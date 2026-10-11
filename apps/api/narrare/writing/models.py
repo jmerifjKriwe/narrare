@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from narrare._app.database import Base
@@ -27,6 +27,10 @@ class GenerationRequest(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     mode: Mapped[str] = mapped_column(String(30), nullable=False)
     tone: Mapped[str] = mapped_column(String(100), nullable=False, default="balanced")
+    # Structured scene snapshot (PLAN-001 spec §8.2): persisted verbatim at
+    # start_generation; the row is the single state carrier between POST and
+    # stream ("what you approved is what streams"). NULL = legacy request.
+    scenes: Mapped[list[dict[str, object]] | None] = mapped_column(JSONB, nullable=True)
     model_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     provider_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

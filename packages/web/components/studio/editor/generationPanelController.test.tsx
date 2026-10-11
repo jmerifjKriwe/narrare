@@ -60,7 +60,13 @@ function makeWrapper() {
   return Wrapper;
 }
 
-function renderController(overrides: { novelId?: string; chapterId?: string } = {}) {
+function renderController(
+  overrides: {
+    novelId?: string;
+    chapterId?: string;
+    scenePlans?: Array<Record<string, unknown>>;
+  } = {},
+) {
   const onDraftAccepted = vi.fn();
   const t = vi.fn((key: string) => key) as unknown as (key: string) => string;
   const wrapper = makeWrapper();
@@ -71,6 +77,7 @@ function renderController(overrides: { novelId?: string; chapterId?: string } = 
         chapterId: overrides.chapterId ?? "chapter-1",
         onDraftAccepted,
         t,
+        scenePlans: overrides.scenePlans as never,
       }),
     { wrapper },
   );
@@ -245,5 +252,54 @@ describe("useGenerationPanelController", () => {
     expect(req.auto_continue).toBe(true);
     expect(req.prompt).toBe("write a mystery");
     expect(req.outline).toBeUndefined();
+  });
+
+  it("threads injected scenePlans into scene_by_scene requests (spec §8.1)", async () => {
+    const scene = {
+      id: "scene-1",
+      title: "The Gate",
+      pov_character_ref: { id: null, name: "John" },
+      location_ref: null,
+      present_characters: [{ id: null, name: "Mara", goal: "Stop him" }],
+      purpose: "Reach the gate",
+      conflict: "",
+      resolution: "",
+      beats: [],
+      status: "planned",
+    };
+    const { result } = renderController({ scenePlans: [scene] });
+
+    act(() => result.current.setMode("scene_by_scene"));
+    act(() => result.current.handleGenerate());
+    await waitFor(() => expect(mockStartGeneration).toHaveBeenCalled());
+
+    const req = mockStartGeneration.mock.calls[0][2] as Record<string, unknown>;
+    // Identity-free GenerateScene shape (RULE-17 mirror), not the raw ScenePlan.
+    expect(req.scenes).toEqual([
+      {
+        title: "The Gate",
+        pov_character_name: "John",
+        location_name: "",
+        present_characters: [{ name: "Mara", goal: "Stop him" }],
+        purpose: "Reach the gate",
+        conflict: "",
+        resolution: "",
+        beats: [],
+        status: "planned",
+      },
+    ]);
+    // Default ON while plans exist — no explicit toggle needed.
+    expect(result.current.useScenePlans).toBe(true);
+  });
+
+  it("omits scenes when the chapter has none, even in scene_by_scene mode", async () => {
+    const { result } = renderController({ scenePlans: [] });
+
+    act(() => result.current.setMode("scene_by_scene"));
+    act(() => result.current.handleGenerate());
+    await waitFor(() => expect(mockStartGeneration).toHaveBeenCalled());
+
+    const req = mockStartGeneration.mock.calls[0][2] as Record<string, unknown>;
+    expect(req.scenes).toBeUndefined();
   });
 });

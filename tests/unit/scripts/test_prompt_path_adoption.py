@@ -179,4 +179,6 @@ class TestRealRegistry:
         # mode, a narrator trend classifier) → 42 modes.
         # SERIES-002 added analysis/band_summary + SERIES-004 added
         # analysis/series_consistency → 44 modes.
-        assert mode_count == 44, f"expected 44 feature modes, got {mode_count}"
+        # ADR-096 / PLAN-001 T7 added planning/scene_plan_draft +
+        # planning/scene_plan_refine → 46 modes.
+        assert mode_count == 46, f"expected 46 feature modes, got {mode_count}"

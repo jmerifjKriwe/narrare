@@ -9,6 +9,8 @@ from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents import NarrareAgent
 from narrare_core.agents.capabilities import NarrareMeta, NarrareUniversalRules
+from narrare_core.agents.scene_plan_agent import ScenePlanAgent
+from narrare_core.agents.scene_plan_types import SceneDraftOutput
 
 if TYPE_CHECKING:
     import pytest
@@ -224,10 +226,16 @@ class TestNarrareAgent:
 
         assert agent_classes, "No production NarrareAgent classes were discovered"
 
+        # Agents whose plan-mandated constructors require more than the model
+        # (e.g. ScenePlanAgent's draft/refine output_type — PLAN-001 T6).
+        extra_constructor_args: dict[type, dict[str, Any]] = {
+            ScenePlanAgent: {"output_type": SceneDraftOutput},
+        }
+
         for agent_class in agent_classes:
             before = len(CapturingPydanticAgent.calls)
             constructor: Any = agent_class
-            constructor(model=object())
+            constructor(model=object(), **extra_constructor_args.get(agent_class, {}))
             assert len(CapturingPydanticAgent.calls) == before + 1, agent_class.__name__
 
             capabilities = CapturingPydanticAgent.calls[-1]["capabilities"]

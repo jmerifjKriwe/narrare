@@ -54,7 +54,10 @@ if TYPE_CHECKING:
     from narrare._app.dependencies_services import ModelResolution
     from narrare.novels.models import Novel
     from narrare.novels.repository import NovelRepository
-    from narrare.planning.contracts import OutlineRepositoryProtocol
+    from narrare.planning.contracts import (
+        OutlineRepositoryProtocol,
+        ScenePlanRepositoryProtocol,
+    )
     from narrare.writing.schemas_story_suggest import StorySuggestRequest
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -96,6 +99,10 @@ class StorySuggestService:
             (§7 closed).  When ``None`` or no chapter is targeted the slot
             stays empty (legitimate RULE-11 — story-suggest is a
             project-level tool and a chapter need not be selected).
+        scene_repo: For the targeted chapter's scene plans (PLAN-001 T15,
+            spec §7 — rendered as numbered blocks into the
+            ``chapter_outline`` slot).  When ``None`` the slot degrades to
+            stage + notes (RULE-11).
         invocation_pipeline: Optional pipeline for invocation evidence
             (Mode 1 prepare/finalize).  Retained for DI-contract
             stability.
@@ -108,6 +115,7 @@ class StorySuggestService:
         model_resolution: ModelResolution,
         composer: PromptComposer | None = None,
         outline_repo: OutlineRepositoryProtocol | None = None,
+        scene_repo: ScenePlanRepositoryProtocol | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
@@ -119,6 +127,7 @@ class StorySuggestService:
         self._resolve_attempted = False
         self._composer = composer
         self._outline_repo = outline_repo
+        self._scene_repo = scene_repo
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
@@ -251,6 +260,7 @@ class StorySuggestService:
             user_id=user_id,
             request=request,
             language=language,
+            scene_repo=self._scene_repo,
         )
         result = await run_story_suggest_agent(
             registry=self._registry,

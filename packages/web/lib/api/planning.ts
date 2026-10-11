@@ -13,6 +13,14 @@ import type {
   StoryboardResponse,
   SyncStatusResponse,
 } from "@/types";
+import type {
+  SceneDraftRequest,
+  SceneDraftResponse,
+  ScenePlanAggregate,
+  ScenePlanSaveRequest,
+  SceneRefineRequest,
+  SceneRefineResponse,
+} from "@/types/planning";
 import { fetchApi } from "./client";
 
 // ---------------------------------------------------------------------------
@@ -67,5 +75,50 @@ export function confirmRemap(novelId: string, newStructure: string): Promise<Rem
   return fetchApi<RemapResponse>(`/planning/storyboard/${novelId}/remap`, {
     method: "POST",
     body: JSON.stringify({ new_structure: newStructure, confirm: true }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Scene Plans
+// ---------------------------------------------------------------------------
+
+/** Fetch the chapter's scene plan aggregate (scenes ordered by position). */
+export function getScenePlans(novelId: string, chapterId: string): Promise<ScenePlanAggregate> {
+  return fetchApi<ScenePlanAggregate>(`/planning/scenes/${novelId}/${chapterId}`);
+}
+
+/** Whole-aggregate save — the server diff-syncs by scene id and renumbers. */
+export function saveScenePlans(
+  novelId: string,
+  chapterId: string,
+  data: ScenePlanSaveRequest,
+): Promise<ScenePlanAggregate> {
+  return fetchApi<ScenePlanAggregate>(`/planning/scenes/${novelId}/${chapterId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+/** AI chapter draft — propose scenes for the chapter (generator, zero DB writes). */
+export function draftScenes(
+  novelId: string,
+  chapterId: string,
+  body: SceneDraftRequest,
+): Promise<SceneDraftResponse> {
+  return fetchApi<SceneDraftResponse>(`/planning/scenes/${novelId}/${chapterId}/draft`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+/** AI single-scene refine — rewrite the carried scene (generator, zero DB writes). */
+export function refineScene(
+  novelId: string,
+  chapterId: string,
+  body: SceneRefineRequest,
+): Promise<SceneRefineResponse> {
+  return fetchApi<SceneRefineResponse>(`/planning/scenes/${novelId}/${chapterId}/refine`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }

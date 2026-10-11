@@ -51,6 +51,7 @@ class GenerationRepository(BaseRepository):
         user_id: uuid.UUID,
         mode: str,
         tone: str = "balanced",
+        scenes: list[dict[str, object]] | None = None,
     ) -> uuid.UUID:
         """Atomically check for active requests and insert a new one.
 
@@ -58,6 +59,17 @@ class GenerationRepository(BaseRepository):
         the TOCTOU race where two concurrent requests both read no active
         row and both INSERT.  Also protected by the partial unique index
         ``uq_generation_requests_active_chapter`` as a database-level guard.
+
+        Args:
+            chapter_id: The chapter the generation is scoped to.
+            novel_id: The novel the generation is scoped to.
+            user_id: The requesting user.
+            mode: Generation mode string.
+            tone: Tone string (default ``"balanced"``).
+            scenes: Optional structured scene snapshot (PLAN-001 spec
+                §8.2) persisted verbatim — the row is the single state
+                carrier between POST and stream. ``None`` = legacy
+                scene-less request.
 
         Returns:
             The UUID of the newly created request.
@@ -89,6 +101,7 @@ class GenerationRepository(BaseRepository):
             mode=mode,
             tone=tone,
             status="pending",
+            scenes=scenes,
         )
         self._session.add(request)
         await self._flush_and_refresh(request)

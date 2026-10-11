@@ -9,10 +9,10 @@ Two consumers live here because both owned data shapes are in
   content), so this consumer MAY rewrite the stored name on rename and MAY
   inject a ``status: deprecated`` marker on deprecate. On hard delete it
   emits ``RefIntegrityIssue(reason="deleted_ref_without_tombstone")``.
-* ``StoryboardRefConsumerImpl`` — name-based free text in
-  ``chapter_outlines.planned_beats[].text`` and ``outline_notes``. This is
-  USER CONTENT (RULE-22 §7): the consumer NEVER rewrites; it only scans
-  for occurrences of the (old) entity name and emits soft issues.
+* ``StoryboardRefConsumerImpl`` — name-based free text in scene plans
+  (all text fields, spec §7) and ``outline_notes``. This is USER CONTENT
+  (RULE-22 §7): the consumer NEVER rewrites; it only scans for
+  occurrences of the (old) entity name and emits soft issues.
 
 Why rename-only scanning for Storyboard deprecate/delete: those observer
 methods receive ``entity_id`` only (Core Protocol). Free-text matching
@@ -24,10 +24,11 @@ event-time detection to the authoritative read-side
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Literal, Protocol
 
 import structlog
 
+from narrare.planning._helpers import iter_scene_texts
 from narrare_core.context.integration_contracts import (
     ContradictionReason,
     RefIntegrityIssue,
@@ -39,15 +40,21 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.consistency.ref_integrity_sink import RefIntegrityIssueSink
-    from narrare.planning.models import ChapterOutline, TimelineEvent
+    from narrare.planning.models import ChapterOutline, ScenePlan, TimelineEvent
 
 logger = structlog.get_logger(__name__)
 
 
 class _OutlineRepoProtocol(Protocol):
-    """Minimal read surface the Storyboard consumer needs."""
+    """Minimal read surface the Storyboard consumer needs (outline notes)."""
 
     async def get_all_for_novel(self, novel_id: UUID) -> Sequence[ChapterOutline]: ...
+
+
+class _SceneRepoProtocol(Protocol):
+    """Minimal scene-plan read surface the Storyboard consumer needs."""
+
+    async def list_by_novel(self, novel_id: UUID) -> Sequence[ScenePlan]: ...
 
 
 class _TimelineRepoProtocol(Protocol):
@@ -159,8 +166,14 @@ class TimelineRefConsumerImpl:
 class StoryboardRefConsumerImpl:
     """Storyboard observer — name-based free text. NEVER rewrites.
 
+    Scans scene plans (all text fields via :func:`iter_scene_texts`,
+    PLAN-001 spec §7) and outline notes for stale entity names.
+
     Args:
-        outline_repo: ChapterOutline repository (shares the request session).
+        outline_repo: ChapterOutline repository (shares the request
+            session) — supplies the ``outline_notes`` scan.
+        scene_repo: ScenePlan repository (shares the request session) —
+            supplies the scene text scan.
         issue_sink: Where ``RefIntegrityIssue`` instances are surfaced.
     """
 
@@ -169,9 +182,11 @@ class StoryboardRefConsumerImpl:
     def __init__(
         self,
         outline_repo: _OutlineRepoProtocol,
+        scene_repo: _SceneRepoProtocol,
         issue_sink: RefIntegrityIssueSink,
     ) -> None:
         self._outline_repo = outline_repo
+        self._scene_repo = scene_repo
         self._sink = issue_sink
 
     async def on_kb_entity_renamed(
@@ -183,19 +198,8 @@ class StoryboardRefConsumerImpl:
         new_name: str,
     ) -> None:
         del new_name  # unused — we never rewrite; we only flag stale names.
-        outlines = await self._list_outlines(novel_id)
+        outlines = await self._outline_repo.get_all_for_novel(novel_id)
         for outline in outlines:
-            for beat_index, text in _beat_texts(outline):
-                if old_name in text:
-                    await self._sink.emit(
-                        _issue(
-                            reason="stale_name_ref",
-                            location=f"chapter_outlines[{outline.id}].planned_beats[{beat_index}].text",
-                            ref_kind="name",
-                            ref_value=old_name,
-                            resolved_status="active",
-                        )
-                    )
             if old_name in (outline.outline_notes or ""):
                 await self._sink.emit(
                     _issue(
@@ -206,6 +210,19 @@ class StoryboardRefConsumerImpl:
                         resolved_status="active",
                     )
                 )
+        scenes = await self._scene_repo.list_by_novel(novel_id)
+        for scene in scenes:
+            for location, text in iter_scene_texts(scene):
+                if old_name in text:
+                    await self._sink.emit(
+                        _issue(
+                            reason="stale_name_ref",
+                            location=location,
+                            ref_kind="name",
+                            ref_value=old_name,
+                            resolved_status="active",
+                        )
+                    )
 
     async def on_kb_entity_deprecated(self, *, novel_id: UUID, entity_id: UUID) -> None:
         # Name-based free text cannot be scanned from entity_id alone and the
@@ -217,9 +234,6 @@ class StoryboardRefConsumerImpl:
         # Entity (and its name) is gone — free-text scan impossible at event
         # time. Read-side index reports the now-unresolvable name as "unknown".
         del novel_id, entity_id  # explicitly no-op, documented.
-
-    async def _list_outlines(self, novel_id: UUID) -> Sequence[ChapterOutline]:
-        return await self._outline_repo.get_all_for_novel(novel_id)
 
 
 # ===========================================================================
@@ -296,30 +310,6 @@ def _mark_deprecated_in_location(
         new_loc["status"] = "deprecated"
         return new_loc
     return None
-
-
-def _beat_texts(outline: ChapterOutline) -> list[tuple[int, str]]:
-    """Flatten planned_beats into (index, text) pairs, tolerant of shape.
-
-    ``planned_beats`` is JSONB; individual beats may carry arbitrary keys.
-    We only read ``text`` when it is a string.
-    """
-    texts: list[tuple[int, str]] = []
-    # JSONB is arbitrary at runtime even though the column is typed
-    # ``list[dict[str, object]]``; treat each beat as ``object`` so the
-    # isinstance guard is both runtime-meaningful and pyright-clean.
-    beats: Sequence[object] = cast("Sequence[object]", outline.planned_beats or [])
-    for index, beat in enumerate(beats):
-        if isinstance(beat, dict):
-            # Planned-beat JSON is arbitrary; cast after the runtime dict guard
-            # so ``get`` is typed and non-dict values are ignored.
-            beat_mapping = cast("dict[object, object]", beat)
-            value = beat_mapping.get("text", "")
-        else:
-            value = ""
-        if isinstance(value, str):
-            texts.append((index, value))
-    return texts
 
 
 def _issue(

@@ -187,6 +187,11 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         # *extracts* temporal expressions per chapter (TemporalExtractionAgent),
         # while "timeline" *generates* a chronological timeline from summaries
         # (TimelineAgent) — different agent/task/service, no semantic overlap.
+        # ADR-096: "scene_plan_draft" and "scene_plan_refine" (PLAN-001) added
+        # for scene planning — chapter-level AI draft of N scenes vs
+        # single-scene constrained rewrite (ScenePlanAgent). Chapter/scene data
+        # is category-3 run-prompt data; no semantic overlap with the five
+        # existing modes.
         allowed_context_modes=frozenset(
             {
                 "outline",
@@ -194,6 +199,8 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
                 "timeline",
                 "character_arc",
                 "timeline_extraction",
+                "scene_plan_draft",
+                "scene_plan_refine",
             }
         ),
     ),

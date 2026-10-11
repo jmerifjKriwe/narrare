@@ -1,11 +1,11 @@
-export type PlanningTab = "storyboard" | "timeline" | "characterArc";
+export type PlanningTab = "storyboard" | "scenes" | "timeline" | "characterArc";
 
 export interface PlanningUrlState {
   open: boolean;
   tab: PlanningTab;
 }
 
-const PLANNING_TABS = new Set<PlanningTab>(["storyboard", "timeline", "characterArc"]);
+const PLANNING_TABS = new Set<PlanningTab>(["storyboard", "scenes", "timeline", "characterArc"]);
 
 export function parsePlanningUrlState(searchParams: URLSearchParams): PlanningUrlState {
   const tabParam = searchParams.get("planningTab");

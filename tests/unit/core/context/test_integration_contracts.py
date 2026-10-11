@@ -67,7 +67,7 @@ class TestRefIntegrityIssue:
     def test_creation_with_deleted_status(self) -> None:
         issue = RefIntegrityIssue(
             consumer_feature="storyboard",
-            consumer_location="planned_beats[5].text",
+            consumer_location="scene_plans[0a1b2c3d].purpose",
             ref_kind="name",
             ref_value="Deleted Entity",
             resolved_status="deleted",
@@ -334,6 +334,28 @@ class TestStoryboardRefConsumer:
     def test_storyboard_consumer_feature_is_storyboard(self) -> None:
         observer = _FakeLifecycleObserver(feature_name="storyboard")
         assert observer.consumer_feature == "storyboard"
+
+    def test_protocol_documents_scene_scan_semantics(self) -> None:
+        """The contract documents the scene scan surface (PLAN-001 spec §7)."""
+        doc = StoryboardRefConsumer.__doc__ or ""
+        assert "scene_plans" in doc
+        assert "scene_plans[{id}].{field}" in doc
+        for field in (
+            "title",
+            "purpose",
+            "conflict",
+            "resolution",
+            "beats[]",
+            "present_characters[].name",
+            "pov_character_ref.name",
+            "location_ref.name",
+        ):
+            assert field in doc, f"scene scan surface must document {field}"
+
+    def test_protocol_documents_never_rewrite(self) -> None:
+        """Scene text is user content — the contract mandates no rewrites."""
+        doc = StoryboardRefConsumer.__doc__ or ""
+        assert "NEVER rewritten" in doc
 
 
 class TestChapterFrontmatterRefConsumer:

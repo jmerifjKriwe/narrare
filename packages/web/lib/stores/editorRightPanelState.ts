@@ -2,6 +2,7 @@ export type EditorRightPanelId =
   | "metadata"
   | "session"
   | "generation"
+  | "scene_plan"
   | "beta_reader"
   | "readability"
   | "pov"
@@ -26,11 +27,12 @@ export type EditorRightPanelRequestSource =
  * Analysis panels rendered through the shared {@link EditorAnalysisPanels}
  * switch (RULE-04 extraction from {@link EditorPanelContent}). Derived from
  * {@link EditorRightPanelId} so it cannot drift — the non-analysis panels
- * (session / generation / metadata / dialogue_coach) stay in EditorPanelContent.
+ * (session / generation / scene_plan / metadata / dialogue_coach) stay in
+ * EditorPanelContent.
  */
 export type AnalysisPanelId = Exclude<
   EditorRightPanelId,
-  "session" | "generation" | "metadata" | "dialogue_coach"
+  "session" | "generation" | "scene_plan" | "metadata" | "dialogue_coach"
 >;
 
 export interface EditorRightPanelState {
@@ -42,6 +44,7 @@ export interface EditorRightPanelState {
 export const EDITOR_RIGHT_PANEL_PRIORITY = [
   "session",
   "generation",
+  "scene_plan",
   "beta_reader",
   "readability",
   "pov",

@@ -10,12 +10,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmRemap,
-  getOutline,
+  draftScenes,
+  getScenePlans,
   getStoryboard,
   previewRemap,
+  refineScene,
+  saveScenePlans,
   updateOutline,
 } from "@/lib/api/planning";
 import type { OutlineUpdateRequest } from "@/types";
+import type { SceneDraftRequest, ScenePlanSaveRequest, SceneRefineRequest } from "@/types/planning";
 
 // --- Query key factory ---
 
@@ -24,6 +28,8 @@ const planningKeys = {
   sync: (novelId: string) => ["planning", "sync", novelId] as const,
   outline: (novelId: string, chapterId: string) =>
     ["planning", "outline", novelId, chapterId] as const,
+  scenes: (novelId: string, chapterId: string) =>
+    ["planning", "scenes", novelId, chapterId] as const,
 };
 
 // --- Query hooks ---
@@ -37,11 +43,11 @@ export function useStoryboard(novelId: string) {
   });
 }
 
-/** Fetch the outline for a specific chapter. */
-export function useChapterOutline(novelId: string, chapterId: string | null) {
+/** Fetch the scene plan aggregate for a chapter (empty aggregate is a valid state). */
+export function useScenePlans(novelId: string, chapterId: string | null) {
   return useQuery({
-    queryKey: planningKeys.outline(novelId, chapterId ?? ""),
-    queryFn: () => getOutline(novelId, chapterId!),
+    queryKey: planningKeys.scenes(novelId, chapterId ?? ""),
+    queryFn: () => getScenePlans(novelId, chapterId!),
     enabled: !!novelId && !!chapterId,
   });
 }
@@ -62,6 +68,42 @@ export function useUpdateOutline(novelId: string) {
         queryKey: planningKeys.outline(novelId, variables.chapterId),
       });
     },
+  });
+}
+
+/** Whole-aggregate scene save (diff-sync). Invalidates scenes + storyboard + sync. */
+export function useSaveScenePlans(novelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ chapterId, data }: { chapterId: string; data: ScenePlanSaveRequest }) =>
+      saveScenePlans(novelId, chapterId, data),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: planningKeys.scenes(novelId, variables.chapterId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: planningKeys.storyboard(novelId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: planningKeys.sync(novelId),
+      });
+    },
+  });
+}
+
+/** AI chapter draft — proposes scenes (zero DB writes; the client applies them). */
+export function useDraftScenes(novelId: string) {
+  return useMutation({
+    mutationFn: ({ chapterId, body }: { chapterId: string; body: SceneDraftRequest }) =>
+      draftScenes(novelId, chapterId, body),
+  });
+}
+
+/** AI single-scene refine — returns a proposal (zero DB writes). */
+export function useRefineScene(novelId: string) {
+  return useMutation({
+    mutationFn: ({ chapterId, body }: { chapterId: string; body: SceneRefineRequest }) =>
+      refineScene(novelId, chapterId, body),
   });
 }
 

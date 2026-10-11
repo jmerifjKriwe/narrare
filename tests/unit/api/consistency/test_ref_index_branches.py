@@ -9,10 +9,13 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from tests.factories import make_scene_plan
+
 from ._ref_index_fakes import (
     FakeChapterRepo,
     FakeKBRepo,
     FakeOutlineRepo,
+    FakeSceneRepo,
     FakeTimelineRepo,
     make_chapter,
     make_entry,
@@ -107,19 +110,58 @@ class TestTimelineHybridRefEdges:
 
 
 class TestStoryboardRefs:
-    async def test_deprecated_name_in_beat_text_is_warned(self) -> None:
+    async def test_deprecated_name_in_scene_purpose_is_flagged_at_scene_location(self) -> None:
+        """PLAN-001 T15 (spec §7): scene free text is ref-index scan surface —
+        a deprecated KB name surviving in a scene purpose is flagged at the
+        exact ``scene_plans[{id}].purpose`` location. (The rename-side
+        ``stale_name_ref`` emission is the write-side hook's job — T14's
+        ``StoryboardRefConsumerImpl``; the read-side backstop can only see
+        names that still resolve.)"""
         kb = FakeKBRepo()
         kb.seed(make_entry(name="Oldcastle", status="deprecated"))
-        outlines = FakeOutlineRepo()
-        outlines.seed(make_outline(planned_beats=[{"text": "They march on Oldcastle at dawn."}]))
-        index = make_index(kb, outline_repo=outlines)
+        scenes = FakeSceneRepo()
+        scenes.seed(make_scene_plan(purpose="They march on Oldcastle at dawn."))
+        index = make_index(kb, scene_repo=scenes)
 
         issues = await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard")
 
         assert len(issues) == 1
         assert issues[0].consumer_feature == "storyboard"
+        assert issues[0].reason == "deprecated_ref_in_active_context"
         assert issues[0].ref_value == "Oldcastle"
+        assert issues[0].consumer_location == (f"scene_plans[{scenes.scenes[0].id}].purpose")
         assert issues[0].suggested_action == "warn_only"
+
+    async def test_deprecated_name_in_scene_field_is_warned(self) -> None:
+        kb = FakeKBRepo()
+        kb.seed(make_entry(name="Oldcastle", status="deprecated"))
+        scenes = FakeSceneRepo()
+        scenes.seed(make_scene_plan(title="March on Oldcastle"))
+        index = make_index(kb, scene_repo=scenes)
+
+        issues = await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard")
+
+        assert len(issues) == 1
+        assert issues[0].resolved_status == "deprecated"
+        assert issues[0].reason == "deprecated_ref_in_active_context"
+        assert issues[0].consumer_location == f"scene_plans[{scenes.scenes[0].id}].title"
+        assert issues[0].suggested_action == "warn_only"
+
+    async def test_scene_fields_and_outline_notes_are_both_scanned(self) -> None:
+        kb = FakeKBRepo()
+        kb.seed(make_entry(name="Ruinfell", status="deprecated"))
+        outlines = FakeOutlineRepo()
+        outlines.seed(make_outline(outline_notes="Recall the fall of Ruinfell."))
+        scenes = FakeSceneRepo()
+        scenes.seed(make_scene_plan(resolution="They rebuild Ruinfell."))
+        index = make_index(kb, outline_repo=outlines, scene_repo=scenes)
+
+        issues = await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard")
+
+        assert len(issues) == 2
+        locations = {issue.consumer_location for issue in issues}
+        assert f"scene_plans[{scenes.scenes[0].id}].resolution" in locations
+        assert any(".outline_notes" in loc for loc in locations)
 
     async def test_deprecated_name_in_outline_notes_is_warned(self) -> None:
         kb = FakeKBRepo()
@@ -136,15 +178,15 @@ class TestStoryboardRefs:
     async def test_active_name_in_storyboard_produces_no_issue(self) -> None:
         kb = FakeKBRepo()
         kb.seed(make_entry(name="Activeville"))
-        outlines = FakeOutlineRepo()
-        outlines.seed(make_outline(planned_beats=[{"text": "Visit Activeville soon."}]))
-        index = make_index(kb, outline_repo=outlines)
+        scenes = FakeSceneRepo()
+        scenes.seed(make_scene_plan(purpose="Visit Activeville soon."))
+        index = make_index(kb, scene_repo=scenes)
         assert await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard") == []
 
-    async def test_whitespace_only_storyboard_text_produces_no_issue(self) -> None:
-        outlines = FakeOutlineRepo()
-        outlines.seed(make_outline(planned_beats=[{"text": "    "}]))
-        index = make_index(FakeKBRepo(), outline_repo=outlines)
+    async def test_whitespace_only_scene_text_produces_no_issue(self) -> None:
+        scenes = FakeSceneRepo()
+        scenes.seed(make_scene_plan(title="   "))
+        index = make_index(FakeKBRepo(), scene_repo=scenes)
         assert await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard") == []
 
 

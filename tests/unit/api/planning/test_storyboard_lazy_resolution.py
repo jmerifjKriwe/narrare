@@ -39,7 +39,12 @@ import pytest
 
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 from tests.factories import make_chapter_outline
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.fakes import (
+    FakeChapterRepository,
+    FakeNovelRepository,
+    FakeOutlineRepository,
+    FakeScenePlanRepository,
+)
 from tests.unit.api.planning._storyboard_test_helpers import (
     _CASCADE_CONFIG,
     make_resolved_model,
@@ -102,6 +107,7 @@ def _make_service(
         outline_repo=FakeOutlineRepository(),
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
+        scene_repo=FakeScenePlanRepository(),
         ai_remap_service=ai_remap_service,
         model_registry=cast("ModelRegistry | None", registry),
         model_resolution=cast("ModelResolution", resolution),

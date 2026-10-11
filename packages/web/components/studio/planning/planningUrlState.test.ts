@@ -8,6 +8,17 @@ describe("planning URL state", () => {
       tab: "timeline",
     });
   });
+  it("parses the scenes tab state", () => {
+    expect(parsePlanningUrlState(new URLSearchParams("planning=1&planningTab=scenes"))).toEqual({
+      open: true,
+      tab: "scenes",
+    });
+  });
+  it("serializes the scenes tab state", () => {
+    expect(serializePlanningUrlState({ open: true, tab: "scenes" }).toString()).toBe(
+      "planning=1&planningTab=scenes",
+    );
+  });
   it("keeps default collapsed state out of the URL", () => {
     expect(serializePlanningUrlState({ open: false, tab: "storyboard" }).toString()).toBe("");
   });

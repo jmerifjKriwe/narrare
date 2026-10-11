@@ -58,4 +58,25 @@ PLANNING_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "genre": "Fantasy",
         },
     ),
+    # ADR-096 (PLAN-001 T8): scene-plan AI modes. Optional template vars
+    # only (project_title/genre) — chapter/scene data is category-3
+    # run-prompt data, never templated (spec §6.2/§6.3).
+    (
+        "planning",
+        "scene_plan_draft",
+        LLMIntent.PLAN,
+        {
+            "project_title": "Test Story",
+            "genre": "Fantasy",
+        },
+    ),
+    (
+        "planning",
+        "scene_plan_refine",
+        LLMIntent.PLAN,
+        {
+            "project_title": "Test Story",
+            "genre": "Fantasy",
+        },
+    ),
 ]

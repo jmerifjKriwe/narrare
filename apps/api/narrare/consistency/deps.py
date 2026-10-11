@@ -148,6 +148,7 @@ def get_cross_feature_ref_index(session: SessionDep) -> CrossFeatureRefIndexImpl
     from narrare.consistency.ref_index import CrossFeatureRefIndexImpl
     from narrare.kb.repository import KBRepository
     from narrare.planning.repository import OutlineRepository
+    from narrare.planning.repository_scenes import ScenePlanRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
 
     return CrossFeatureRefIndexImpl(
@@ -155,4 +156,5 @@ def get_cross_feature_ref_index(session: SessionDep) -> CrossFeatureRefIndexImpl
         timeline_repo=TimelineEventRepository(session),
         outline_repo=OutlineRepository(session),
         chapter_repo=ChapterRepository(session),
+        scene_repo=ScenePlanRepository(session),
     )

@@ -576,6 +576,30 @@ routes:
         optional_variables: [project_title, genre, writing_language, existing_events, culture_guidelines, user_preferences, avoidance_patterns]
         security: {xml_required: [], generated_suggestions_must_be_labelled: []}
         fallback_policy: fail_loudly_if_bundled_missing
+      # ADR-096 (PLAN-001) — scene_plan_draft: chapter-level AI scene-plan
+      # draft (ScenePlanAgent, 3–8 scene proposals). Chapter context arrives
+      # as category-3 run-prompt data (<chapter_context>/<instruction> XML);
+      # no required template variables. Distinct from `outline` (stage
+      # classification) — this composes scene sequences.
+      - mode: scene_plan_draft
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/scene_plan_draft/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, culture_guidelines, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      # ADR-096 (PLAN-001) — scene_plan_refine: single-scene constrained
+      # rewrite under the author's instruction (ScenePlanAgent). Current
+      # scene + neighbour context arrive as category-3 run-prompt data
+      # (<scene_plan>/<chapter_context>/<instruction> XML); never yields new
+      # scenes. No semantic overlap with any existing PLAN mode.
+      - mode: scene_plan_refine
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/scene_plan_refine/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, culture_guidelines, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
 
   # ── Generation operations ──────────────────────────────────────────
 

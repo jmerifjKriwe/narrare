@@ -39,6 +39,8 @@ from narrare._app.dependencies_services import LazyModelResolution, get_model_ro
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
 from narrare.planning.repository import OutlineRepository
+from narrare.planning.repository_scenes import ScenePlanRepository
+from narrare.planning.scene_service import ScenePlanService
 from narrare.planning.service import StoryboardService
 from narrare_core.planning.remap import AIRemapService
 
@@ -79,8 +81,30 @@ async def get_storyboard_service(
         outline_repo=OutlineRepository(session),
         chapter_repo=ChapterRepository(session),
         novel_repo=NovelRepository(session),
+        scene_repo=ScenePlanRepository(session),
         ai_remap_service=AIRemapService(composer=get_composer()),
         model_registry=get_model_registry(),
         model_resolution=model_resolution,
         invocation_pipeline=get_invocation_pipeline(),
+    )
+
+
+def get_scene_plan_service(session: AsyncSession) -> ScenePlanService:
+    """Wire up ScenePlanService with plain repository wiring.
+
+    No model routing: aggregate GET/PUT are pure CRUD (diff-sync, spec
+    §5.2/§5.3). Eager repos mirror ``get_storyboard_service``'s style
+    minus resolution; the AI draft/refine surface gets its own
+    lazy-resolution factory in ``_scene_ai_factory.py`` (T8).
+
+    Args:
+        session: DB session.
+
+    Returns:
+        Fully wired ScenePlanService.
+    """
+    return ScenePlanService(
+        scene_repo=ScenePlanRepository(session),
+        chapter_repo=ChapterRepository(session),
+        novel_repo=NovelRepository(session),
     )

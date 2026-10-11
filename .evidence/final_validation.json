@@ -52,7 +52,9 @@
       "temporal_consistency",
       "character_arc",
       "timeline_extraction",
-      "timeline"
+      "timeline",
+      "scene_plan_draft",
+      "scene_plan_refine"
     ],
     "ai_assist": [
       "dialogue_coach"

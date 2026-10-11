@@ -147,6 +147,14 @@ from narrare_core.agents.readability_types import (
 from narrare_core.agents.registry import AgentRegistry
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
+from narrare_core.agents.scene_plan_agent import ScenePlanAgent
+from narrare_core.agents.scene_plan_types import (
+    SceneDraftOutput,
+    ScenePlanDeps,
+    ScenePresenceModel,
+    SceneProposal,
+    SceneRefineOutput,
+)
 from narrare_core.agents.series_consistency_agent import SeriesConsistencyAgent
 from narrare_core.agents.series_consistency_types import (
     CanonConflict,
@@ -321,6 +329,12 @@ __all__ = [
     "ReviewAgent",
     "ReviewDeps",
     "ReviewOutput",
+    "SceneDraftOutput",
+    "ScenePlanAgent",
+    "ScenePlanDeps",
+    "ScenePresenceModel",
+    "SceneProposal",
+    "SceneRefineOutput",
     "SentenceIssue",
     "SentenceSuggestion",
     "SeriesConsistencyAgent",

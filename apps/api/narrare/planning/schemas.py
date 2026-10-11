@@ -2,6 +2,11 @@
 
 All schemas for the storyboard feature: outlines, sync status,
 and structure remap.
+
+PLAN-001 T14 (ADR-096): the outline surface is beat-free — scene plans
+(`schemas_scenes.py`) are the planning substrate. Unknown request fields
+(e.g. a legacy client still sending beat data) are ignored by Pydantic
+default config.
 """
 
 from __future__ import annotations
@@ -12,19 +17,6 @@ from datetime import datetime  # noqa: TC003
 from pydantic import BaseModel, ConfigDict, Field
 
 # ---------------------------------------------------------------------------
-# Beat schemas
-# ---------------------------------------------------------------------------
-
-
-class BeatSchema(BaseModel):
-    """A single beat within a chapter outline."""
-
-    title: str
-    description: str = ""
-    completed: bool = False
-
-
-# ---------------------------------------------------------------------------
 # Outline schemas
 # ---------------------------------------------------------------------------
 
@@ -33,7 +25,6 @@ class OutlineUpdateRequest(BaseModel):
     """Request body for updating a chapter outline."""
 
     stage_assignment: str | None = Field(default=None, max_length=50)
-    planned_beats: list[BeatSchema] | None = None
     outline_notes: str | None = None
 
 
@@ -45,7 +36,6 @@ class OutlineResponse(BaseModel):
     id: uuid.UUID
     chapter_id: uuid.UUID
     stage_assignment: str
-    planned_beats: list[BeatSchema]
     outline_notes: str
     created_at: datetime
     updated_at: datetime

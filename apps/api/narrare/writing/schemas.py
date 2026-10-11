@@ -7,6 +7,10 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from narrare.writing.schemas_scenes import (
+    GenerateSceneSchema,  # noqa: TC001 — runtime: Pydantic field type
+)
+
 
 class GenerationModeEnum(StrEnum):
     """Supported generation modes."""
@@ -47,6 +51,10 @@ class GenerateRequest(BaseModel):
     word_target: int | None = Field(None, ge=100, le=50000)
     tone: str = Field("balanced", min_length=1, max_length=100)
     language: str = Field("en", min_length=2, max_length=5)
+    # Structured scene snapshot (PLAN-001 spec §8.2): optional input —
+    # NOT an input source for validate_generation_input. Persisted
+    # verbatim to generation_requests.scenes at start_generation.
+    scenes: list[GenerateSceneSchema] | None = None
 
 
 class GenerateResponse(BaseModel):

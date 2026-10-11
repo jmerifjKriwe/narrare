@@ -10,7 +10,12 @@ import pytest
 
 from narrare.planning.service import StoryboardService
 from tests.factories import make_chapter_outline
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeOutlineRepository
+from tests.fakes import (
+    FakeChapterRepository,
+    FakeNovelRepository,
+    FakeOutlineRepository,
+    FakeScenePlanRepository,
+)
 from tests.unit.api.planning._storyboard_test_helpers import make_static_resolution
 
 # ---------------------------------------------------------------------------
@@ -43,6 +48,7 @@ def service(
         outline_repo=outline_repo,
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
+        scene_repo=FakeScenePlanRepository(),
         model_resolution=make_static_resolution(),
     )
 

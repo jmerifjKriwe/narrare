@@ -32,7 +32,6 @@ class FakeOutlineRepository:
         self,
         chapter_id: uuid.UUID,
         stage_assignment: str,
-        planned_beats: list[dict[str, object]] | None = None,
         outline_notes: str = "",
     ) -> ChapterOutline:
         self.calls.append(
@@ -41,6 +40,7 @@ class FakeOutlineRepository:
                 kwargs={
                     "chapter_id": chapter_id,
                     "stage_assignment": stage_assignment,
+                    "outline_notes": outline_notes,
                 },
             )
         )
@@ -53,7 +53,6 @@ class FakeOutlineRepository:
                 "id": uuid.uuid4(),
                 "chapter_id": chapter_id,
                 "stage_assignment": stage_assignment,
-                "planned_beats": planned_beats or [],
                 "outline_notes": outline_notes,
                 "created_at": datetime.now(UTC),
                 "updated_at": datetime.now(UTC),

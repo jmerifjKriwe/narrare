@@ -262,12 +262,25 @@
 ### Planning
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [PLAN-001](planning/PLAN-001-scene-planning.md) | Scene Planning | 📋 | ❌ |
+| [PLAN-001](planning/PLAN-001-scene-planning.md) | Scene Planning | ✅ | ❌ |
 | [PLAN-002](planning/PLAN-002-gap-analysis.md) | Narrative Gap Analysis | 📋 | ❌ |
 | [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | ✅ | ✅ |
 | [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | ✅ | ❌ |
 | [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | ✅ | ✅ |
 | [PLAN-006](planning/PLAN-006-character-arc.md) | Character Arc Analysis | ✅ | ❌ |
+
+> **PLAN-001 v1 implemented (2026-10-11):** scene-plan substrate per
+> [ADR-096](../architecture/decisions/ADR-096-scene-planning.md)
+> (✅ Implemented; spec
+> `docs/superpowers/specs/2026-10-09-plan001-scene-planning-design.md`,
+> commits `0bf569da..42c49c10`) — dedicated `scene_plans` table (hybrid KB
+> refs, manual-only status) with aggregate GET/PUT diff-sync, zero-write AI
+> draft/refine (governed `scene_plan_draft`/`scene_plan_refine` modes,
+> graceful `ai_unavailable`), scene-status-driven storyboard sync,
+> structured `GenerationRequest.scenes` write integration (FE toggle
+> default-on), Planning-tab `ScenePlanEditor` + compact editor panel,
+> migrations 0047/0048/0049 (drop downgrade documented lossy). The v0 CLI
+> promise is retired — `ui_available_in: [editor]`.
 
 > **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 Timeline Management is fully implemented through Phase 4 (AI timeline analysis, extraction, consistency checks, frontend visualization). PLAN-006 Character Arc Analysis is fully implemented (backend service + frontend `CharacterArcPanel` UI).
 >

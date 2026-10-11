@@ -11,10 +11,11 @@ assembly of the story-suggest invocation:
   template carries the task framing and project metadata variables. No
   inline prompt strings (RULE-02 / RULE-02a).
 - The ``chapter_outline`` slot is fed from the injected
-  ``OutlineRepository`` when a chapter is targeted (§7 closed); empty
-  otherwise (legitimate RULE-11 — story-suggest is a project-level tool
-  and a chapter need not be selected; allowlisted confirmed-optional
-  var).
+  ``OutlineRepository`` + ``ScenePlanRepository`` when a chapter is
+  targeted (§7; PLAN-001 T15 renders scene blocks — stage + numbered
+  scenes + notes); empty otherwise (legitimate RULE-11 — story-suggest
+  is a project-level tool and a chapter need not be selected;
+  allowlisted confirmed-optional var).
 """
 
 from __future__ import annotations
@@ -25,10 +26,15 @@ from narrare.writing._outline_render import render_chapter_outline
 from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from uuid import UUID
 
     from narrare.novels.models import Novel
-    from narrare.planning.contracts import OutlineRepositoryProtocol
+    from narrare.planning.contracts import (
+        OutlineRepositoryProtocol,
+        ScenePlanRepositoryProtocol,
+    )
+    from narrare.planning.models import ScenePlan
     from narrare.writing.schemas_story_suggest import StorySuggestRequest
     from narrare_core.agents.story_suggest_types import StorySuggestOutput
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -48,13 +54,14 @@ async def compose_story_suggest_prompt(
     user_id: UUID,
     request: StorySuggestRequest,
     language: str,
+    scene_repo: ScenePlanRepositoryProtocol | None = None,
 ) -> ComposedPrompt:
     """Assemble the Mode 1 story-suggest invocation and return the prompt.
 
     Builds the project-metadata ``PromptContext``, wires the targeted
-    chapter's outline into the ``chapter_outline`` slot, and resolves the
-    governed system prompt via ``compose_invocation`` (RULE-02 /
-    ADR-054 D1).
+    chapter's outline + scene plans into the ``chapter_outline`` slot,
+    and resolves the governed system prompt via ``compose_invocation``
+    (RULE-02 / ADR-054 D1).
 
     Args:
         composer: PromptComposer for the governed template (RULE-02b).
@@ -67,6 +74,9 @@ async def compose_story_suggest_prompt(
         request: Story suggest request (optional ``chapter_id`` and
             ``author_instructions``).
         language: Resolved writing language.
+        scene_repo: Scene-plan repository for the chapter's scene blocks
+            (spec §7). ``None`` degrades gracefully (RULE-11): the slot
+            carries stage + notes without scene blocks.
 
     Returns:
         The composed prompt (system + user channels).
@@ -100,13 +110,17 @@ async def compose_story_suggest_prompt(
         },
     )
 
-    # Wire the chapter outline (stage + beats + notes) when a chapter is
-    # targeted (§7 closed). Skipped when there is no chapter_id or no
-    # outline repo — the slot stays empty (RULE-11, allowlisted).
+    # Wire the chapter outline (stage + scene blocks + notes) when a
+    # chapter is targeted (§7, PLAN-001 T15). Skipped when there is no
+    # chapter_id or no outline repo — the slot stays empty (RULE-11,
+    # allowlisted). A missing scene repo degrades to stage + notes.
     if request.chapter_id is not None and outline_repo is not None:
         outline = await outline_repo.get_by_chapter_id(request.chapter_id)
         if outline is not None:
-            ctx.extra["chapter_outline"] = render_chapter_outline(outline)
+            scenes: Sequence[ScenePlan] = []
+            if scene_repo is not None:
+                scenes = await scene_repo.list_by_chapter(request.chapter_id)
+            ctx.extra["chapter_outline"] = render_chapter_outline(outline, scenes)
 
     invocation_context = build_invocation_context(
         feature_id="writing_story_suggest",

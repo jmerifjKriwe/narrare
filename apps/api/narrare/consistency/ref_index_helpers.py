@@ -1,10 +1,18 @@
-"""Pure helpers for ADR-050 cross-feature reference indexing."""
+"""Pure helpers for ADR-050 cross-feature reference indexing.
+
+PLAN-001 T15 (ADR-096, spec §7): the storyboard scan reads scene plans —
+the shared :func:`iter_scene_texts` from planning's public surface
+(RULE-05: cross-domain via public export) replaces the legacy beat scan.
+Locations are ``scene_plans[{id}].{field}`` and are NEVER rewritten
+(RULE-22 §7 — user content).
+"""
 
 from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING, Literal, cast
 
+from narrare.planning import iter_scene_texts
 from narrare_core.context.integration_contracts import (
     ContradictionReason,
     RefIntegrityIssue,
@@ -13,10 +21,8 @@ from narrare_core.context.integration_contracts import (
 from narrare_core.shared.frontmatter import parse_frontmatter
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from narrare.chapters.models import Chapter
-    from narrare.planning.models import ChapterOutline
+    from narrare.planning.models import ChapterOutline, ScenePlan
 
 
 _FRONTMATTER_REF_KEYS = frozenset(
@@ -49,23 +55,27 @@ def chapter_ref_values(chapter: Chapter) -> list[tuple[str, object]]:
     return refs
 
 
-def storyboard_texts(outline: ChapterOutline) -> list[tuple[str, str]]:
-    """Return storyboard text locations that may contain KB names."""
-    texts: list[tuple[str, str]] = []
-    # JSONB is runtime-shaped even though the ORM column is annotated as a
-    # list of dictionaries; treat beats as object and narrow each element.
-    beats = cast("Sequence[object]", outline.planned_beats or [])
-    for index, beat in enumerate(beats):
-        if isinstance(beat, dict):
-            # Planned-beat JSON is arbitrary; cast after the runtime dict guard
-            # so ``get`` is typed and non-dict values are ignored.
-            beat_mapping = cast("dict[object, object]", beat)
-            text = beat_mapping.get("text")
-            if isinstance(text, str):
-                texts.append((f"chapter_outlines[{outline.id}].planned_beats[{index}].text", text))
+def storyboard_notes_texts(outline: ChapterOutline) -> list[tuple[str, str]]:
+    """Return the outline's free-text notes location (storyboard scan).
+
+    PLAN-001 T15 (spec §7): the beat scan was replaced by the scene-plan
+    scan (:func:`scene_texts`); ``outline_notes`` remains storyboard free
+    text that may contain KB names.
+    """
     if outline.outline_notes:
-        texts.append((f"chapter_outlines[{outline.id}].outline_notes", outline.outline_notes))
-    return texts
+        return [(f"chapter_outlines[{outline.id}].outline_notes", outline.outline_notes)]
+    return []
+
+
+def scene_texts(scene: ScenePlan) -> list[tuple[str, str]]:
+    """Return scene-plan text locations that may contain KB names (spec §7).
+
+    Delegates to planning's shared :func:`iter_scene_texts` — ONE scan
+    definition for every consumer (kb lifecycle + ref-index). Locations
+    use the ``scene_plans[{id}].{field}`` form; entries are NEVER
+    rewritten (RULE-22 §7 — user content).
+    """
+    return iter_scene_texts(scene)
 
 
 def parse_uuid(value: str) -> uuid.UUID | None:

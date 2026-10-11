@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, LayoutGrid, Users } from "lucide-react";
+import { Clapperboard, Clock, LayoutGrid, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import {
   parsePlanningUrlState,
   serializePlanningUrlState,
 } from "./planningUrlState";
+import { ScenePlanEditor } from "./ScenePlanEditor";
 import { StoryboardPanel } from "./StoryboardPanel";
 import { TimelinePanel } from "./timeline/TimelinePanel";
 
@@ -30,6 +31,7 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
   const searchParamsSnapshot = searchParams.toString();
   const storyboardOpen = useEditorStore((s) => s.storyboardOpen);
   const toggleStoryboard = useEditorStore((s) => s.toggleStoryboard);
+  const activeChapterId = useEditorStore((s) => s.activeChapterId);
   const urlState = useMemo(
     () => parsePlanningUrlState(new URLSearchParams(searchParamsSnapshot)),
     [searchParamsSnapshot],
@@ -84,10 +86,11 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
   return (
     <section className="w-full border-b border-border bg-card" aria-label={t("storyboard.title")}>
       {/*
-        Storyboard / Timeline / Character Arc tabs. The bounded viewport height
-        lets PanelTabs' tabpanel scroll internally (mirroring the previous
-        max-h content region). `value`/`onValueChange` stay wired to the
-        existing planningUrlState adapter (combined open+tab URL scheme).
+        Scenes / Storyboard / Timeline / Character Arc tabs. The bounded
+        viewport height lets PanelTabs' tabpanel scroll internally (mirroring
+        the previous max-h content region). `value`/`onValueChange` stay wired
+        to the existing planningUrlState adapter (combined open+tab URL scheme).
+        The scenes tab hosts the PLAN-001 ScenePlanEditor for the active chapter.
       */}
       <div className="h-[45vh] lg:h-[36vh]">
         <PanelTabs
@@ -104,6 +107,12 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
               label: t("storyboard.title"),
               icon: LayoutGrid,
               content: <StoryboardPanel novelId={novelId} hideHeader />,
+            },
+            {
+              id: "scenes",
+              label: t("planning.scenes.title"),
+              icon: Clapperboard,
+              content: <ScenePlanEditor novelId={novelId} chapterId={activeChapterId} />,
             },
             {
               id: "timeline",

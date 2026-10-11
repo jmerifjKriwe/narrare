@@ -6,7 +6,8 @@ planning-owned consumers of KB entity references:
 * :class:`TimelineRefConsumer` — hybrid JSON ``{id, name}`` refs on
   ``timeline_events`` (PLAN-004).
 * :class:`StoryboardRefConsumer` — name-based free text in
-  ``chapter_outlines`` (PLAN-005); never holds direct JSON refs.
+  ``chapter_outlines`` (``outline_notes``) and ``scene_plans``
+  (PLAN-005 / PLAN-001); never holds authoritative JSON refs.
 
 Extracted from the former monolithic ``integration_contracts.py`` per
 RULE-04. Base Protocol in :mod:`._kb_lifecycle`; vocabulary in
@@ -53,28 +54,38 @@ class TimelineRefConsumer(KBEntityLifecycleObserver, Protocol):
 
 @runtime_checkable
 class StoryboardRefConsumer(KBEntityLifecycleObserver, Protocol):
-    """Specialisation for the Storyboard consumer (PLAN-005).
+    """Specialisation for the Storyboard consumer (PLAN-005, scene-scan per PLAN-001 §7).
 
-    The Storyboard does NOT store direct KB entity refs. It reads
-    ``chapter_outlines`` (``stage_assignment``, ``planned_beats``,
-    ``outline_notes``) and ``chapter.position``. Therefore the
+    The Storyboard does NOT store authoritative KB entity refs. It reads
+    ``chapter_outlines`` (``stage_assignment``, ``outline_notes``) and the
+    chapter's ``scene_plans`` rows. Scene POV/location carry *hybrid*
+    ``{id, name}`` refs (TimelineEvent pattern) so display survives KB
+    deletion — the name is the semantic carrier, and every scene text
+    field may reference entity names in free text. Therefore the
     Storyboard is affected by KB lifecycle changes only **indirectly**:
 
-    * ``planned_beats`` may reference entity names in free text.
-      Rename/deprecate does NOT rewrite user-authored beats
-      (RULE-22 §7). The consumer surfaces a soft warning instead.
-    * The storyboard itself has no JSON refs to repair.
+    * Scene text is user content and is NEVER rewritten (RULE-22 §7);
+      the consumer surfaces soft warnings instead.
+    * The storyboard itself has no refs to repair — hybrid refs are
+      left as-is (stale names remain readable by design).
+
+    Scene scan surface (per scene row): ``title``, ``purpose``,
+    ``conflict``, ``resolution``, each ``beats[]`` entry,
+    ``present_characters[].name`` / ``.goal``, ``pov_character_ref.name``
+    and ``location_ref.name``. Issue locations use the
+    ``scene_plans[{id}].{field}`` form (e.g.
+    ``scene_plans[<uuid>].purpose``).
 
     Required behaviour:
 
-    * ``on_kb_entity_renamed``: scan ``outline_notes`` and
-      ``planned_beats[].text`` for occurrences of ``old_name``. Emit
+    * ``on_kb_entity_renamed``: scan ``outline_notes`` and the scene
+      scan surface for occurrences of ``old_name``. Emit
       :class:`RefIntegrityIssue` with reason ``stale_name_ref`` for
       each match. Do NOT rewrite.
-    * ``on_kb_entity_deprecated``: scan planned beats for the name.
+    * ``on_kb_entity_deprecated``: scan the same surface for the name.
       Emit :class:`RefIntegrityIssue` with reason
       ``deprecated_ref_in_active_context`` if found.
-    * ``on_kb_entity_deleted``: scan planned beats for the name.
+    * ``on_kb_entity_deleted``: scan the same surface for the name.
       Emit :class:`RefIntegrityIssue` with reason
       ``deleted_ref_without_tombstone`` if found.
     """

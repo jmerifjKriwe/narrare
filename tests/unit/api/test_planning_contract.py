@@ -11,7 +11,11 @@ import uuid
 
 
 class TestOutlineResponseContract:
-    """OutlineResponse — full chapter outline with all fields."""
+    """OutlineResponse — full chapter outline with all fields.
+
+    PLAN-001 T14: the wire is beat-free (FE de-beated in T13; the beat
+    substrate is replaced by the scene aggregate — ADR-096).
+    """
 
     def test_outline_response_has_required_fields(self) -> None:
         from narrare.planning.schemas import OutlineResponse
@@ -21,7 +25,6 @@ class TestOutlineResponseContract:
             "id",
             "chapter_id",
             "stage_assignment",
-            "planned_beats",
             "outline_notes",
             "created_at",
             "updated_at",
@@ -35,28 +38,30 @@ class TestOutlineResponseContract:
         ann = OutlineResponse.model_fields["chapter_id"].annotation
         assert ann is uuid.UUID, f"Expected chapter_id to be UUID, got {ann}"
 
-    def test_outline_response_planned_beats_is_list(self) -> None:
+    def test_outline_response_is_beat_free(self) -> None:
         from narrare.planning.schemas import OutlineResponse
 
-        ann = OutlineResponse.model_fields["planned_beats"].annotation
-        assert "list" in str(ann).lower(), f"Expected planned_beats to be list type, got {ann}"
+        assert not any("beat" in name for name in OutlineResponse.model_fields), (
+            "OutlineResponse must stay beat-free (PLAN-001 scene substrate, T14/T17)"
+        )
 
 
-class TestBeatSchemaContract:
-    """BeatSchema — a single beat within a chapter outline."""
+class TestBeatRemovalContract:
+    """PLAN-001 T14: the beat wire surface is gone (ADR-096 scene substrate)."""
 
-    def test_beat_schema_has_required_fields(self) -> None:
-        from narrare.planning.schemas import BeatSchema
+    def test_beat_schema_removed(self) -> None:
+        import narrare.planning.schemas as planning_schemas
 
-        field_names = set(BeatSchema.model_fields.keys())
-        for f in ("title", "description", "completed"):
-            assert f in field_names, f"BeatSchema missing field '{f}'"
+        assert not hasattr(planning_schemas, "BeatSchema"), (
+            "BeatSchema must be removed from the planning schemas (PLAN-001 T14)"
+        )
 
-    def test_beat_completed_defaults_false(self) -> None:
-        from narrare.planning.schemas import BeatSchema
+    def test_outline_update_request_is_beat_free(self) -> None:
+        from narrare.planning.schemas import OutlineUpdateRequest
 
-        field = BeatSchema.model_fields["completed"]
-        assert field.default is False, f"Expected completed default False, got {field.default}"
+        assert not any("beat" in name for name in OutlineUpdateRequest.model_fields), (
+            "OutlineUpdateRequest must stay beat-free (scenes are the substrate)"
+        )
 
 
 class TestOutlineUpdateRequestContract:
@@ -65,7 +70,7 @@ class TestOutlineUpdateRequestContract:
     def test_outline_update_all_fields_optional(self) -> None:
         from narrare.planning.schemas import OutlineUpdateRequest
 
-        for field_name in ("stage_assignment", "planned_beats", "outline_notes"):
+        for field_name in ("stage_assignment", "outline_notes"):
             field = OutlineUpdateRequest.model_fields[field_name]
             assert field.default is None, (
                 f"{field_name} should default to None, got {field.default!r}"
@@ -165,3 +170,65 @@ class TestRemapPreviewItemContract:
         field_names = set(RemapPreviewItem.model_fields.keys())
         for f in ("chapter_id", "chapter_title", "old_stage", "new_stage"):
             assert f in field_names, f"RemapPreviewItem missing field '{f}'"
+
+
+class TestScenePlanAggregateResponseContract:
+    """ScenePlanAggregateResponse — whole-chapter scene aggregate (PLAN-001)."""
+
+    def test_scene_plan_aggregate_has_required_fields(self) -> None:
+        from narrare.planning.schemas_scenes import ScenePlanAggregateResponse
+
+        field_names = set(ScenePlanAggregateResponse.model_fields.keys())
+        for f in ("chapter_id", "scenes", "version_updated_at"):
+            assert f in field_names, f"ScenePlanAggregateResponse missing field '{f}'"
+
+    def test_scene_plan_aggregate_chapter_id_is_uuid(self) -> None:
+        from narrare.planning.schemas_scenes import ScenePlanAggregateResponse
+
+        ann = ScenePlanAggregateResponse.model_fields["chapter_id"].annotation
+        assert ann is uuid.UUID, f"Expected chapter_id to be UUID, got {ann}"
+
+
+class TestSceneSchemaContract:
+    """SceneSchema — one scene; doubles as the whole-aggregate save item."""
+
+    def test_scene_schema_has_required_fields(self) -> None:
+        from narrare.planning.schemas_scenes import SceneSchema
+
+        field_names = set(SceneSchema.model_fields.keys())
+        for f in (
+            "id",
+            "position",
+            "title",
+            "pov_character_ref",
+            "location_ref",
+            "present_characters",
+            "purpose",
+            "conflict",
+            "resolution",
+            "beats",
+            "status",
+            "created_at",
+            "updated_at",
+        ):
+            assert f in field_names, f"SceneSchema missing field '{f}'"
+
+    def test_scene_schema_status_is_limited_to_spec_values(self) -> None:
+        from narrare.planning.schemas_scenes import SceneSchema
+
+        ann = str(SceneSchema.model_fields["status"].annotation)
+        for value in ("planned", "in_progress", "complete"):
+            assert value in ann, f"SceneSchema.status missing Literal value '{value}': {ann}"
+
+
+class TestScenePlanSaveRequestContract:
+    """ScenePlanSaveRequest — whole-aggregate PUT body."""
+
+    def test_save_request_has_scenes_list(self) -> None:
+        from narrare.planning.schemas_scenes import ScenePlanSaveRequest
+
+        field_names = set(ScenePlanSaveRequest.model_fields.keys())
+        assert "scenes" in field_names, "ScenePlanSaveRequest missing field 'scenes'"
+
+        ann = str(ScenePlanSaveRequest.model_fields["scenes"].annotation)
+        assert "list" in ann.lower(), f"Expected scenes to be list type, got {ann}"

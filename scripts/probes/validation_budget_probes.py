@@ -129,6 +129,11 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "character_arc",
         "timeline_extraction",
         "timeline",
+        # ADR-096 (PLAN-001 T8): scene-plan AI modes share the PLAN-intent
+        # final-validation path (RuntimeVariableValidatorImpl +
+        # FinalPromptValidatorImpl).
+        "scene_plan_draft",
+        "scene_plan_refine",
     ],
 }
 

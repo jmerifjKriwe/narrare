@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 from narrare.chapters.models import Chapter
 from narrare.consistency.ref_index import CrossFeatureRefIndexImpl
 from narrare.kb.models import KBEntry
-from narrare.planning.models import ChapterOutline, TimelineEvent
+from narrare.planning.models import ChapterOutline, ScenePlan, TimelineEvent
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -60,6 +60,18 @@ class FakeOutlineRepo:
     async def get_all_for_novel(self, novel_id: UUID) -> Sequence[ChapterOutline]:
         del novel_id
         return list(self.outlines)
+
+
+class FakeSceneRepo:
+    def __init__(self) -> None:
+        self.scenes: list[ScenePlan] = []
+
+    def seed(self, scene: ScenePlan) -> None:
+        self.scenes.append(scene)
+
+    async def list_by_novel(self, novel_id: UUID) -> Sequence[ScenePlan]:
+        del novel_id
+        return list(self.scenes)
 
 
 class FakeChapterRepo:
@@ -112,15 +124,10 @@ def make_chapter(*, content: str, pov_character_id: str = "") -> Chapter:
     )
 
 
-def make_outline(
-    *,
-    planned_beats: list[dict[str, object]] | None = None,
-    outline_notes: str = "",
-) -> ChapterOutline:
+def make_outline(*, outline_notes: str = "") -> ChapterOutline:
     return ChapterOutline(
         id=uuid4(),
         chapter_id=uuid4(),
-        planned_beats=list(planned_beats or []),
         outline_notes=outline_notes,
     )
 
@@ -130,10 +137,12 @@ def make_index(
     timeline_repo: FakeTimelineRepo | None = None,
     chapter_repo: FakeChapterRepo | None = None,
     outline_repo: FakeOutlineRepo | None = None,
+    scene_repo: FakeSceneRepo | None = None,
 ) -> CrossFeatureRefIndexImpl:
     return CrossFeatureRefIndexImpl(
         kb_repo=kb_repo,
         timeline_repo=timeline_repo or FakeTimelineRepo(),
         outline_repo=outline_repo or FakeOutlineRepo(),
         chapter_repo=chapter_repo or FakeChapterRepo(),
+        scene_repo=scene_repo or FakeSceneRepo(),
     )

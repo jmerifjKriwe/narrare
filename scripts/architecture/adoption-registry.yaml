@@ -165,6 +165,11 @@ prompt_path_compliance:
   # + intent=DIALOGUE_COACH + context_mode="dialogue_coach"). Runtime
   # evidence lands in Phase 4 Task 14 (SSE integration test).
   ai_assist/dialogue_coach: true
+  # ADR-096 (PLAN-001 T8): scene-plan AI modes resolve via PromptComposer
+  # (D.1: tests/unit/api/planning/test_scene_ai_prompt_path_compliance.py;
+  # D.2: 0 RULE-02b violations for narrare.planning.scene_ai_service).
+  planning/scene_plan_draft: true
+  planning/scene_plan_refine: true
 
 # ── Feature Categories ────────────────────────────────────────────────────────
 # Each category maps to a _bundled/{category}/ directory.
@@ -490,6 +495,14 @@ features:
               - kb_locations
               - kb_factions
               - kb_relationships
+      # ADR-096 (PLAN-001 T8): scene-plan AI draft/refine — zero-write
+      # generators. Runtime consumer: SceneAIService + the T8 service/API
+      # tests (FunctionModel-backed); probes cover prompt resolution +
+      # pipeline evidence per mode.
+      scene_plan_draft:
+        requires_runtime_evidence: true
+      scene_plan_refine:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: partial
       prompt_composer: required

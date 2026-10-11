@@ -27,11 +27,11 @@ from typing import TYPE_CHECKING, Any, cast
 import structlog
 
 from narrare.writing._helpers import (
-    build_pipeline_request,
     get_validated_request,
     record_feedback,
     start_generation_request,
 )
+from narrare.writing._pipeline_request_support import build_pipeline_request
 from narrare.writing._stream_service import stream_pipeline_chunks
 from narrare.writing._writing_support import (
     WritingRuntime,

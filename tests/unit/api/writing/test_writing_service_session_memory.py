@@ -61,6 +61,7 @@ def _make_request_model(user_id: uuid.UUID) -> SimpleNamespace:
         mode="full_draft",
         tone="balanced",
         status="pending",
+        scenes=None,
         word_count=0,
     )
 

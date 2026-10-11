@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanningPanel } from "../PlanningPanel";
 
 const mocks = vi.hoisted(() => {
-  const state = { storyboardOpen: false };
+  const state = { storyboardOpen: false, activeChapterId: "chapter-9" };
   return {
     routerPush: vi.fn(),
     routerReplace: vi.fn(),
@@ -27,10 +27,15 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/stores/editorStore", () => ({
   useEditorStore: (
-    selector: (state: { storyboardOpen: boolean; toggleStoryboard: () => void }) => unknown,
+    selector: (state: {
+      storyboardOpen: boolean;
+      activeChapterId: string;
+      toggleStoryboard: () => void;
+    }) => unknown,
   ) =>
     selector({
       storyboardOpen: mocks.state.storyboardOpen,
+      activeChapterId: mocks.state.activeChapterId,
       toggleStoryboard: mocks.toggleStoryboard,
     }),
 }));
@@ -45,6 +50,10 @@ vi.mock("../timeline/TimelinePanel", () => ({
 
 vi.mock("../CharacterArcPanel", () => ({
   CharacterArcPanel: () => <section data-testid="character-arc-panel" />,
+}));
+
+vi.mock("../ScenePlanEditor", () => ({
+  ScenePlanEditor: () => <section data-testid="scene-plan-editor" />,
 }));
 
 describe("PlanningPanel URL state", () => {
@@ -102,7 +111,7 @@ describe("PlanningPanel URL state", () => {
 
     // PanelTabs renders a tablist with one tab per planning surface.
     expect(screen.getByRole("tablist")).toBeDefined();
-    expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getAllByRole("tab")).toHaveLength(4);
 
     // The active tab's content lives in a labelled tabpanel.
     expect(screen.getByRole("tabpanel")).toBeDefined();
@@ -110,5 +119,14 @@ describe("PlanningPanel URL state", () => {
     // The content region is bounded so it scrolls within the editor.
     const scroller = panel.querySelector(".h-\\[45vh\\]");
     expect(scroller).not.toBeNull();
+  });
+
+  it("renders the scene plan editor on the scenes tab, passing the active chapter", () => {
+    mocks.state.storyboardOpen = true;
+    mocks.searchParams = new URLSearchParams("planning=1&planningTab=scenes");
+
+    render(<PlanningPanel novelId="novel-1" />);
+
+    expect(screen.getByTestId("scene-plan-editor")).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@
 
 Defines interfaces for:
 - OutlineRepositoryProtocol: DB queries for chapter outlines
+- ScenePlanRepositoryProtocol: DB queries for chapter scene plans (PLAN-001)
 - SyncCheckerProtocol: structural sync status calculation
 - StoryboardServiceProtocol: business logic for storyboard feature
 - CharacterArcServiceProtocol: character arc generation
@@ -16,6 +17,8 @@ __all__ = [
     "CharacterAgeServiceProtocol",
     "CharacterArcServiceProtocol",
     "OutlineRepositoryProtocol",
+    "SceneAIServiceProtocol",
+    "ScenePlanRepositoryProtocol",
     "StoryboardServiceProtocol",
     "SyncCheckerProtocol",
     "TemporalConsistencyServiceProtocol",
@@ -43,7 +46,7 @@ from narrare.planning.timeline_contracts import (  # re-export for backward comp
 if TYPE_CHECKING:
     import uuid
 
-    from narrare.planning.models import ChapterOutline
+    from narrare.planning.models import ChapterOutline, ScenePlan
     from narrare.planning.schemas import (
         OutlineResponse,
         OutlineUpdateRequest,
@@ -51,11 +54,21 @@ if TYPE_CHECKING:
         StoryboardResponse,
         SyncStatusResponse,
     )
+    from narrare.planning.schemas_scenes import (
+        SceneDraftRequest,
+        SceneDraftResponse,
+        SceneRefineRequest,
+        SceneRefineResponse,
+    )
 
 
 @runtime_checkable
 class OutlineRepositoryProtocol(Protocol):
-    """Protocol for chapter outline persistence."""
+    """Protocol for chapter outline persistence.
+
+    PLAN-001 T14: outlines carry stage + notes only; scene plans persist
+    through ``ScenePlanRepositoryProtocol``.
+    """
 
     async def get_by_chapter_id(self, chapter_id: uuid.UUID) -> ChapterOutline | None: ...
     async def get_all_for_novel(self, novel_id: uuid.UUID) -> list[ChapterOutline]: ...
@@ -63,10 +76,51 @@ class OutlineRepositoryProtocol(Protocol):
         self,
         chapter_id: uuid.UUID,
         stage_assignment: str,
-        planned_beats: list[dict[str, object]] | None = None,
         outline_notes: str = "",
     ) -> ChapterOutline: ...
     async def update(self, chapter_id: uuid.UUID, **fields: object) -> ChapterOutline: ...
+
+
+@runtime_checkable
+class SceneAIServiceProtocol(Protocol):
+    """Protocol for scene-plan AI draft/refine generators (PLAN-001 T8).
+
+    Zero-write surface: implementations only READ through the injected
+    repositories; proposals are returned to the client and applied via
+    the aggregate PUT (spec §5.2). Degradation contract: no configured
+    AI provider is NOT an error — ``ai_unavailable=True`` responses,
+    HTTP 200 (AI-optional feature).
+    """
+
+    async def draft(
+        self,
+        chapter_id: uuid.UUID,
+        request: SceneDraftRequest,
+        user_id: uuid.UUID,
+        *,
+        novel_id: uuid.UUID,
+    ) -> SceneDraftResponse: ...
+
+    async def refine(
+        self,
+        chapter_id: uuid.UUID,
+        request: SceneRefineRequest,
+        user_id: uuid.UUID,
+        *,
+        novel_id: uuid.UUID,
+    ) -> SceneRefineResponse: ...
+
+
+@runtime_checkable
+class ScenePlanRepositoryProtocol(Protocol):
+    """Protocol for scene plan persistence (PLAN-001 — ADR-096)."""
+
+    async def list_by_chapter(self, chapter_id: uuid.UUID) -> list[ScenePlan]: ...
+    async def list_by_novel(self, novel_id: uuid.UUID) -> list[ScenePlan]: ...
+    async def get(self, scene_id: uuid.UUID) -> ScenePlan | None: ...
+    async def bulk_replace(
+        self, chapter_id: uuid.UUID, rows: list[ScenePlan]
+    ) -> list[ScenePlan]: ...
 
 
 @runtime_checkable

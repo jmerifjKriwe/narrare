@@ -51,7 +51,8 @@ if TYPE_CHECKING:
     from narrare.chapters.models import Chapter
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
-    from narrare.planning.contracts import OutlineRepositoryProtocol
+    from narrare.planning.contracts import OutlineRepositoryProtocol, ScenePlanRepositoryProtocol
+    from narrare.planning.models import ScenePlan
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.planning.remap import AIRemapService
@@ -64,6 +65,11 @@ class StoryboardService:
 
     Optionally integrates AIRemapService for AI-powered structure remap
     when chapter summaries are available (WRITE-012).
+
+    Sync (PLAN-001 T14 — ADR-096) is scene-driven: storyboard assembly
+    and sync status fetch the novel's scene plans via the injected scene
+    repository and thread a per-chapter scene map into the Core sync
+    checker.
     """
 
     def __init__(
@@ -71,6 +77,7 @@ class StoryboardService:
         outline_repo: OutlineRepositoryProtocol,
         chapter_repo: ChapterRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol,
+        scene_repo: ScenePlanRepositoryProtocol,
         ai_remap_service: AIRemapService | None = None,
         model_registry: ModelRegistry | None = None,
         *,
@@ -80,6 +87,7 @@ class StoryboardService:
         self._outline_repo = outline_repo
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
+        self._scene_repo = scene_repo
         self._ai_remap_service = ai_remap_service
         self._model_registry = model_registry
         # Lazy per-user PLAN cascade (ADR-086 L21) — resolved on first
@@ -97,12 +105,20 @@ class StoryboardService:
         adapter = adapter_registry.get(novel.story_structure)
         chapters = await self._list_chapters(novel_id)
         outline_map = await ensure_outlines(self._outline_repo, novel_id, chapters, adapter)
+        scene_map = await self._fetch_scene_map(novel_id)
         total = max(len(chapters), 1)
 
         stages: list[StoryboardStageResponse] = []
         for stage_def in adapter.stages:
             stage_chapters = [
-                chapter_in_storyboard(ch, outline_map, idx, adapter, total)
+                chapter_in_storyboard(
+                    ch,
+                    outline_map,
+                    idx,
+                    adapter,
+                    total,
+                    scenes=scene_map.get(ch.id, ()),
+                )
                 for idx, ch in enumerate(chapters, start=1)
                 if (outline := outline_map.get(ch.id)) is not None
                 and outline.stage_assignment == stage_def.id
@@ -125,13 +141,17 @@ class StoryboardService:
         chapters = await self._list_chapters(novel_id)
         outlines = await self._outline_repo.get_all_for_novel(novel_id)
         outline_map = {o.chapter_id: o for o in outlines}
+        scene_map = await self._fetch_scene_map(novel_id)
         total = max(len(chapters), 1)
 
         return [
             SyncStatusResponse(
                 chapter_id=ch.id,
                 sync_status=compute_sync(
-                    ch, outline_map.get(ch.id), adapter.suggest_stage(i, total)
+                    ch,
+                    outline_map.get(ch.id),
+                    adapter.suggest_stage(i, total),
+                    scenes=scene_map.get(ch.id, ()),
                 ).value,
             )
             for i, ch in enumerate(chapters, start=1)
@@ -181,24 +201,22 @@ class StoryboardService:
         *,
         novel_id: uuid.UUID | None = None,
     ) -> OutlineResponse:
-        """Update specific fields on a chapter outline."""
+        """Update specific fields on a chapter outline.
+
+        PLAN-001 T14: stage + notes only — scene plans are managed through
+        the aggregate PUT (``ScenePlanService.save_aggregate``).
+        """
         updates = request.model_dump(exclude_none=True)
-        if "planned_beats" in updates and request.planned_beats is not None:
-            updates["planned_beats"] = [
-                b.model_dump() if hasattr(b, "model_dump") else b for b in request.planned_beats
-            ]
 
         existing = await self._outline_repo.get_by_chapter_id(chapter_id)
         if existing is not None:
             outline = await self._outline_repo.update(chapter_id, **updates)
         else:
             stage = updates.pop("stage_assignment", "")
-            beats = updates.pop("planned_beats", [])
             notes = updates.pop("outline_notes", "")
             outline = await self._outline_repo.create(
                 chapter_id=chapter_id,
                 stage_assignment=stage,
-                planned_beats=beats,
                 outline_notes=notes,
             )
         logger.info("outline_updated", chapter_id=str(chapter_id))
@@ -267,6 +285,14 @@ class StoryboardService:
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
         return novel
+
+    async def _fetch_scene_map(self, novel_id: uuid.UUID) -> dict[uuid.UUID, tuple[ScenePlan, ...]]:
+        """Fetch the novel's scene plans grouped by chapter (sync input)."""
+        scenes = await self._scene_repo.list_by_novel(novel_id)
+        scene_map: dict[uuid.UUID, tuple[ScenePlan, ...]] = {}
+        for scene in scenes:
+            scene_map[scene.chapter_id] = (*scene_map.get(scene.chapter_id, ()), scene)
+        return scene_map
 
     async def _list_chapters(self, novel_id: uuid.UUID) -> list[Chapter]:
         """List all chapters for a novel, ordered by position."""
