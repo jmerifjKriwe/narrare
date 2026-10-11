@@ -74,8 +74,10 @@ storyboard, the AI assist, and the writer (ADR-096 Context).
 2. Add scenes, reorder them, and fill in as much or little as you want —
    title, POV, location, present characters (with goals), purpose,
    conflict, resolution, beats.
-3. "Draft with AI" proposes 3–8 scenes for the chapter; each scene has a
-   "Refine with AI" action that rewrites it per your instruction. Proposals
+3. "Draft with AI" proposes scenes for the chapter (3–8 is prompt-level
+   guidance, not a validated limit — the model chooses the count); each
+   scene has a "Refine with AI" action that rewrites it per your
+   instruction. Proposals
    land in the editor as unsaved changes — save applies them, discarding
    them changes nothing.
 4. Mark scenes in progress / complete yourself (status is manual). The
