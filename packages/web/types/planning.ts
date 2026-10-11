@@ -121,7 +121,7 @@ export interface SceneDraftRequest {
   chapter_summary?: string;
   neighbor_summaries?: string;
   instruction?: string;
-  /** 0 = model chooses (3–8 enforced server-side). */
+  /** 0 = model chooses; 3–8 is prompt-level guidance, not a validated server constraint. */
   scene_count?: number;
 }
 

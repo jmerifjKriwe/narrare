@@ -41,9 +41,21 @@ def _labeled(label: str, value: str) -> str | None:
 
 
 def _xml_block(tag: str, lines: list[str | None]) -> str:
-    """Wrap the non-empty labeled lines in one XML data block (RULE-22 §6)."""
+    """Wrap the non-empty labeled lines in one XML data block (RULE-22 §6).
+
+    Entirely empty content (every label empty — e.g. a bare draft with no
+    context) omits the block instead of emitting an empty wrapper; any
+    non-empty content keeps the wrapper byte-identical.
+    """
     body = "\n".join(line for line in lines if line)
+    if not body:
+        return ""
     return f"<{tag}>\n{body}\n</{tag}>"
+
+
+def _join_blocks(blocks: list[str]) -> str:
+    """Join XML blocks, dropping omitted (empty) ones — no stray separators."""
+    return "\n".join(block for block in blocks if block)
 
 
 def build_draft_run_prompt(request: SceneDraftRequest) -> str:
@@ -59,9 +71,11 @@ def build_draft_run_prompt(request: SceneDraftRequest) -> str:
         # ("0 = model chooses") — the model can only honor it as
         # run-prompt data, so it rides the chapter-context block.
         context_lines.append(_labeled("Scene count", str(request.scene_count)))
-    return (
-        f"{_xml_block('chapter_context', context_lines)}\n"
-        f"{_xml_block('instruction', [request.instruction])}"
+    return _join_blocks(
+        [
+            _xml_block("chapter_context", context_lines),
+            _xml_block("instruction", [request.instruction]),
+        ]
     )
 
 
@@ -99,10 +113,12 @@ def build_refine_run_prompt(request: SceneRefineRequest) -> str:
     rendered = render_scene_for_prompt(
         scene_data_from_schema(request.scene), request.scene.position
     )
-    return (
-        f"{_xml_block('scene_plan', [rendered])}\n"
-        f"{_xml_block('chapter_context', context_lines)}\n"
-        f"{_xml_block('instruction', [request.instruction])}"
+    return _join_blocks(
+        [
+            _xml_block("scene_plan", [rendered]),
+            _xml_block("chapter_context", context_lines),
+            _xml_block("instruction", [request.instruction]),
+        ]
     )
 
 

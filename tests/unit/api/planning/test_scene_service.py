@@ -65,6 +65,134 @@ def world(
 # ---------------------------------------------------------------------------
 
 
+class TestCorruptRefIdDegrade:
+    """Corrupt JSONB ref ids degrade to ``id=None`` instead of failing the
+    GET — same runtime-arbitrary JSONB tolerance as ``_helpers._to_core_scene``
+    (names are user content and always survive). Entry-shape tolerance mirrors
+    the same helper: non-dict entries are skipped; a name-less entry is
+    unrepresentable on the wire (``ScenePresenceSchema.name`` min_length=1),
+    so it is omitted — the name-less→absent precedent of ``_to_ref_schema``."""
+
+    async def test_get_with_corrupt_ref_ids_returns_name_only_refs(
+        self,
+        service: ScenePlanService,
+        scene_repo: FakeScenePlanRepository,
+        world: _World,
+    ) -> None:
+        scene_repo.seed(
+            _scene_row(
+                world.chapter_id,
+                position=1,
+                pov_character_ref={"id": "not-a-uuid", "name": "John Smith"},
+                location_ref={"id": 12345, "name": "The Castle"},
+            )
+        )
+
+        result = await service.get_aggregate(
+            world.chapter_id, world.user_id, novel_id=world.novel_id
+        )
+
+        scene = result.scenes[0]
+        assert scene.pov_character_ref == SceneRefSchema(id=None, name="John Smith")
+        assert scene.location_ref == SceneRefSchema(id=None, name="The Castle")
+
+    async def test_get_with_corrupt_presence_id_keeps_name_and_goal(
+        self,
+        service: ScenePlanService,
+        scene_repo: FakeScenePlanRepository,
+        world: _World,
+    ) -> None:
+        scene_repo.seed(
+            _scene_row(
+                world.chapter_id,
+                position=1,
+                present_characters=[{"id": "corrupt", "name": "Mara", "goal": "stop him"}],
+            )
+        )
+
+        result = await service.get_aggregate(
+            world.chapter_id, world.user_id, novel_id=world.novel_id
+        )
+
+        assert result.scenes[0].present_characters == [
+            ScenePresenceSchema(id=None, name="Mara", goal="stop him")
+        ]
+
+    async def test_get_with_non_dict_presence_entries_skips_only_those(
+        self,
+        service: ScenePlanService,
+        scene_repo: FakeScenePlanRepository,
+        world: _World,
+    ) -> None:
+        scene_repo.seed(
+            _scene_row(
+                world.chapter_id,
+                position=1,
+                present_characters=["John Smith", 42, None, {"name": "Mara", "goal": "x"}],
+            )
+        )
+
+        result = await service.get_aggregate(
+            world.chapter_id, world.user_id, novel_id=world.novel_id
+        )
+
+        # Non-dict entries are skipped; the valid entry survives (skip, not truncate).
+        assert result.scenes[0].present_characters == [
+            ScenePresenceSchema(id=None, name="Mara", goal="x")
+        ]
+
+    async def test_get_with_nameless_or_null_name_presence_omits_entry(
+        self,
+        service: ScenePlanService,
+        scene_repo: FakeScenePlanRepository,
+        world: _World,
+    ) -> None:
+        scene_repo.seed(
+            _scene_row(
+                world.chapter_id,
+                position=1,
+                present_characters=[
+                    {"id": str(uuid.uuid4()), "name": None, "goal": "stop him"},
+                    {"name": "", "goal": "unrepresentable name too"},
+                    {"name": "Mara", "goal": None},
+                ],
+            )
+        )
+
+        result = await service.get_aggregate(
+            world.chapter_id, world.user_id, novel_id=world.novel_id
+        )
+
+        # ``name=None`` never reaches the wire (no ``"None"`` pollution): the
+        # name-less entry is omitted; null goal degrades to "".
+        assert result.scenes[0].present_characters == [
+            ScenePresenceSchema(id=None, name="Mara", goal="")
+        ]
+
+    async def test_get_with_non_dict_ref_maps_to_no_ref(
+        self,
+        service: ScenePlanService,
+        scene_repo: FakeScenePlanRepository,
+        world: _World,
+    ) -> None:
+        scene_repo.seed(
+            _scene_row(
+                world.chapter_id,
+                position=1,
+                pov_character_ref="John Smith",
+                location_ref=42,
+            )
+        )
+
+        result = await service.get_aggregate(
+            world.chapter_id, world.user_id, novel_id=world.novel_id
+        )
+
+        scene = result.scenes[0]
+        assert scene.pov_character_ref is None
+        assert scene.location_ref is None
+
+
 class TestGetAggregate:
     async def test_returns_scenes_ordered_by_position(
         self,
