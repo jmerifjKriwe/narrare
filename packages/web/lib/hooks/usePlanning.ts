@@ -23,7 +23,9 @@ import type { SceneDraftRequest, ScenePlanSaveRequest, SceneRefineRequest } from
 
 // --- Query key factory ---
 
-const planningKeys = {
+/** Shared planning query keys — exported so cross-feature hooks compose the
+ * same cache entries (invalidations stay coherent, no literal duplication). */
+export const planningKeys = {
   storyboard: (novelId: string) => ["planning", "storyboard", novelId] as const,
   sync: (novelId: string) => ["planning", "sync", novelId] as const,
   outline: (novelId: string, chapterId: string) =>

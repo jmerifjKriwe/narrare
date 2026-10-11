@@ -4,33 +4,14 @@ import { Loader2, Plus, Save, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useDraftScenes, useSaveScenePlans, useScenePlans } from "@/lib/hooks/usePlanning";
-import type { ScenePlan, SceneProposal } from "@/types/planning";
+import { useSceneDraftContext } from "@/lib/hooks/useSceneDraftContext";
+import type { ScenePlan } from "@/types/planning";
 import { SceneCard } from "./SceneCard";
+import { nowIso, proposalToScene, withPositions } from "./scenePlanHelpers";
 
 interface ScenePlanEditorProps {
   novelId: string;
   chapterId: string | null;
-}
-
-/** Renumber positions 1..N in list order (server diff-syncs by id). */
-function withPositions(scenes: ScenePlan[]): ScenePlan[] {
-  return scenes.map((scene, index) =>
-    scene.position === index + 1 ? scene : { ...scene, position: index + 1 },
-  );
-}
-
-const nowIso = () => new Date().toISOString();
-
-/** Turn an AI proposal into a persisted-shape scene appended to the chapter. */
-function proposalToScene(proposal: SceneProposal, position: number): ScenePlan {
-  return {
-    ...proposal,
-    id: crypto.randomUUID(),
-    position,
-    status: "planned",
-    created_at: nowIso(),
-    updated_at: nowIso(),
-  };
 }
 
 /** Inline error line (role="alert"); `subtle` renders the graceful AI notice. */
@@ -50,6 +31,9 @@ export function ScenePlanEditor({ novelId, chapterId }: ScenePlanEditorProps) {
   const { data: aggregate, isLoading } = useScenePlans(novelId, chapterId);
   const save = useSaveScenePlans(novelId);
   const draft = useDraftScenes(novelId);
+  // Chapter context for the AI draft — assembles from outline/storyboard/
+  // chapter data; degrades field-wise, never blocks the button.
+  const draftContext = useSceneDraftContext(novelId, chapterId);
   const draftEmpty = draft.data?.ai_unavailable || draft.data?.proposals.length === 0;
 
   const [scenes, setScenes] = useState<ScenePlan[]>([]);
@@ -119,7 +103,7 @@ export function ScenePlanEditor({ novelId, chapterId }: ScenePlanEditorProps) {
 
   function handleDraft() {
     draft.mutate(
-      { chapterId: cid, body: {} },
+      { chapterId: cid, body: draftContext },
       {
         onSuccess: (res) => {
           if (res.ai_unavailable || res.proposals.length === 0) return;
