@@ -114,6 +114,18 @@ describe("ImportPreviewPanel (F1 ops)", () => {
 
   it("publishes the v2 selection shape after preview", async () => {
     const onSelectionChange = await pickFiles(MD_PREVIEW);
+    // The publish effect runs TWICE (useSelectionPublish): a provisional
+    // pick-time publish (raw File list, empty items, includedCount =
+    // files.length) while the preview request is pending, then the parsed
+    // v2 shape once the preview resolved. pickFiles only waits for the row
+    // list render, which under CI load/coverage can beat the effect
+    // re-fire — so wait for the post-preview publish explicitly. The full
+    // v2 contract stays pinned below; this only selects the call to assert.
+    await waitFor(() =>
+      expect(onSelectionChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ items: MD_PREVIEW.items, includedCount: 2 }),
+      ),
+    );
     expect(onSelectionChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         ops: { splits: {}, merges: [] },
