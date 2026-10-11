@@ -3739,6 +3739,65 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/chapters/{chapter_id}/plan-context": {
+      "get": {
+        "tags": [
+          "chapters"
+        ],
+        "summary": "Get Chapter Plan Context",
+        "description": "Summary-only plan context — chapter + position-adjacent neighbors.",
+        "operationId": "get_chapter_plan_context_api_v1_novels__novel_id__chapters__chapter_id__plan_context_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanContextResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/chapters/{chapter_id}/content": {
       "put": {
         "tags": [
@@ -21136,6 +21195,58 @@
         "type": "object",
         "title": "PdfOptions",
         "description": "PDF-specific options. Maps 1:1 to NarrareRomanConfig keys."
+      },
+      "PlanContextChapterResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "summary"
+        ],
+        "title": "PlanContextChapterResponse",
+        "description": "Chapter reference for planning — title + summary, never content."
+      },
+      "PlanContextResponse": {
+        "properties": {
+          "chapter": {
+            "$ref": "#/components/schemas/PlanContextChapterResponse"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanContextChapterResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanContextChapterResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter"
+        ],
+        "title": "PlanContextResponse",
+        "description": "Summary-only plan context: the chapter plus its position neighbors.\n\nPLAN-001 FU1 BE follow-up — the light alternative to fetching up to\nthree full chapters (whose payloads carry ``content``). Neighbors are\nadjacent by chapter position within the novel; edges are ``None``."
       },
       "PreferenceResponse": {
         "properties": {
