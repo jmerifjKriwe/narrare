@@ -1,6 +1,11 @@
 # ADR-096 — Scene Planning (PLAN-001 v1)
 
-> **Status:** ✅ Accepted (Phase 0 spec — implementation pending)
+> **Status:** ✅ Implemented (per Gate 12 — implementation complete
+> 2026-10-11: branch `feature/plan001-scene-planning`, commits
+> `0bf569da..42c49c10`; binding spec
+> `docs/superpowers/specs/2026-10-09-plan001-scene-planning-design.md`, plan
+> `docs/superpowers/plans/2026-10-09-plan001-scene-planning.md` — see the
+> Implementation Report below)
 > **Date:** 2026-10-09
 > **Deciders:** Architecture Agent; Project Owner (ratified 2026-10-09:
 > full v1 scope · dedicated table · hybrid KB refs · scene-driven sync ·
@@ -306,6 +311,137 @@ review trigger).
 only when table + migrations 0047/0048/0049, scene CRUD + AI endpoints,
 sync rewrite, write integration, FE (ScenePlanEditor + editor panel +
 toggle), consumer adaptations, i18n, and tests are complete.
+
+---
+
+## Implementation Report (2026-10-11)
+
+Implemented on branch `feature/plan001-scene-planning`, commits
+`0bf569da..42c49c10` (Phase 0 + T1–T17a — the 17 planned tasks landed as
+19 commits: T4 split a/b on the LOC cap, plus one type-ignore-ratchet prep
+commit before T8). Every task passed its per-task review gate (APPROVED or
+fix-round → re-review clean). Mapping to the decisions above:
+
+- **D1 (data model):** `planning/models.py::ScenePlan` + Alembic
+  `0047_scene_plans` — hybrid JSONB refs (TimelineEvent AD-1 pattern),
+  `present_characters` a list, `status` default `"planned"`, chapter FK
+  CASCADE + index. Backfill is tolerant of arbitrary legacy JSONB shapes
+  (non-dict beats skipped); `gen_random_uuid()` verified available
+  (PostgreSQL 17, PG 13+ builtin). Core gains `SceneStatus` /
+  `ScenePresence` / `ScenePlanData` + `ChapterOutlineData.scenes`.
+- **D2 (API surface):** `GET/PUT /planning/scenes/{novel_id}/{chapter_id}`
+  + `POST …/draft` + `POST …/refine` (`planning/router_scenes.py`, thin
+  delegates); diff-sync exactly as decided (known id ⇒ update, unknown ⇒
+  422 `unknown scene id`, duplicate ⇒ 422 `duplicate scene id` pre-write,
+  absent ⇒ delete, renumber 1..N); uid-scoped 404 foreign ≡ unknown.
+- **D3 (AI assist):** `ScenePlanAgent` with a deterministic output guard
+  (title and purpose both empty → `ModelRetry`); both governed modes
+  resolve at runtime (INFRA-013 evidence in the route tests + adoption
+  registry + probes, `check-adoption` green); prepared-triple run;
+  `LazyModelResolution(PLAN)`; graceful `ai_unavailable: true` HTTP 200 on
+  `ConfigurationError`; ZERO DB writes (enforced behaviorally — see
+  follow-ups).
+- **D4 (sync rewrite):** `StructuralSyncChecker` rule 4 scene-driven; the
+  legacy beat branch is deleted (T16); storyboard/sync fetch scenes via
+  `ScenePlanRepository.list_by_novel` and thread a scene map
+  (`_to_core_scene` resolves hybrid-ref names, unknown status strings
+  degrade to `PLANNED` with a warning).
+- **D5 (write integration):** `GenerateRequest.scenes` persisted on
+  `generation_requests` (Alembic `0048`) and threaded into Core
+  `GenerationRequest.scenes` (`SceneSpec`, identity-free);
+  `stream_scene_by_scene` renders scenes via `render_scene_for_prompt`
+  when present, `parse_scenes` fallback retained; FE toggle default-ON
+  when plans exist, explicit-off persisted for the session.
+- **D6 (FE):** Planning-tab "Scenes" tab with the `ScenePlanEditor` family
+  (`SceneCard` / `SceneForm` / `SceneListEditors` — the fourth component
+  is the RULE-04 split that keeps `SceneForm` ≤200 lines); editor
+  `scene_plan` right panel (`ScenePlanPanel`, reusing `SceneCard`/
+  `SceneForm`) + generation toggle + "Plan scenes" link; i18n
+  `studio.planning.scenes.*` + `studio.generationPanel.*` en/de/fr.
+- **D7 (coherence):** kb lifecycle consumer, consistency ref-index, and
+  story-suggest all read scene text via the shared `iter_scene_texts`
+  helper (public re-export on the planning package surface, RULE-05);
+  locations `scene_plans[{id}].{field}`; never rewritten (pinned by
+  tests).
+- **D8 (migrations):** 0047 create + backfill, 0048 scenes column, 0049
+  drop — all three with Q-018 round-trip tests (serial phase 2,
+  downgrade-to-parent only).
+- **D9 (BeatDef scoping):** as decided — `BeatDef` survives only in
+  `planning/adapters/base.py` and left the `narrare_core.planning`
+  exports (`rg "class BeatDef" packages/core/` → exactly one match).
+- **D10 (sequencing):** as decided — additive-first, every per-task commit
+  green (`just test` / `just check-architecture` per task; FE
+  vitest/tsc/biome per FE task).
+
+**Where the implementation refined the decision text (factual):**
+
+1. **Router prefix:** the plan's sketch `APIRouter(prefix="/planning/
+   scenes")` included under the `/planning` parent would have mounted
+   `/planning/planning/scenes/…`; the child prefix is `/scenes` (sibling
+   convention of `router_timeline`), yielding the decided surface — proven
+   by the integration tests (T5).
+2. **OutlineEditor → Scenes tab, not an in-place swap:** `OutlineEditor`
+   was already unmounted before T12 (orphan since an earlier cycle), so
+   the FE lands as a new tab with the `planningTab=scenes` URL-state
+   coupling (`planningUrlState.ts`) instead of a component substitution —
+   the decided UX outcome is identical.
+3. **0049 downgrade repopulates scene-derived beats** rather than leaving
+   the recreated column literally empty: only populate-on-downgrade
+   satisfies the round-trip contract ("beats reverse-migrated, column
+   back") and gives spec §3.3's lossy-field list a defined source of
+   truth. The real loss (historical beat-only content, scene-only fields)
+   is documented in the migration docstring; downgrade stays an explicit
+   user action (T17a).
+4. **The scenes snapshot is identity-free at generation time:** the FE maps
+   aggregate `ScenePlan` rows to the wire's `GenerateSceneSchema` (no
+   ids/refs/timestamps — the writer needs names and beats, not identity),
+   matching Core's `SceneSpec` (T13/T9).
+5. **Explicit-off toggle persistence uses sessionStorage**, not hook
+   state: the generation panel unmounts on every right-panel switch, which
+   would silently reset an explicit-off to default-ON (spec §8.1
+   "persists for the session" honored; T13).
+6. **Fifth planning-module file `_scene_ai_support.py`** (run-prompt
+   assembly + output mapping as pure functions) — RULE-04 modularize over
+   the 300-line service gate; plus an optional `run_limit_resolver` ctor
+   seam mirroring `StorySuggestService` (T8).
+
+**Honest residuals / open follow-ups (documented, not hidden — RULE-11):**
+
+- **`consistency/ref_index.py` line-count overage is pre-existing** (313
+  lines before T15, 337 after; the ≤300 service guideline passes via the
+  architecture checker's exception handling). Follow-up recommended:
+  extract `_check_timeline_refs` / `_check_chapter_frontmatter_refs` into
+  a helpers module (T15).
+- **The FE file-size gate is not wired into `just check-architecture`:**
+  `scripts/check_frontend_file_size.py` runs in pre-commit but is not
+  among the justfile recipe's scripts — FE tasks run it directly. Wiring
+  follow-up flagged so gate pairing stays honest (T13).
+- **Pre-existing FE flake (NOT PLAN-001):**
+  `importing/ImportPreviewPanel.test.tsx` "publishes the v2 selection
+  shape" failed 1-of-3 full-suite runs — a test-side assertion race
+  (asserts the publish without `waitFor`); passes in isolation. Fix
+  recommended: wrap the assertion in `waitFor` (T13).
+- **AI zero-write is enforced behaviorally, not statically** — fake repos
+  record every call and the integration suite pins the aggregate
+  unchanged; nothing statically forbids a future repo write inside
+  `SceneAIService` (T8).
+- **`SceneAIService.scene_repo` is an injected-but-unused seam** —
+  draft/refine are fully stateless; the parameter pins the protocol shape.
+  Revisit trigger: the first AI feature that needs scene reads at
+  generation time (T8, carried through T14).
+- **Story-suggest scene fetch sits nested under the outline-existence
+  gate** — contract-consistent and test-pinned; hoisting the fetch above
+  the gate would render scene blocks for outline-less chapters. Only if
+  desired (T15).
+- **`_ref_name`/`_scene_spec` are tolerance twins** (hybrid-ref name
+  resolution + JSONB-tolerant presences in planning `_helpers` vs writing
+  `_outline_render`). Export a public mapper if a third consumer appears
+  (T15).
+
+Gate 12 satisfied — table + migrations 0047/0048/0049, scene CRUD + AI
+endpoints, sync rewrite, write integration, FE (editor family + panel +
+toggle), consumer adaptations, i18n, and tests are complete; INDEX flipped
+to ✅ Implemented in the same docs pass. PR pending.
 
 ---
 
