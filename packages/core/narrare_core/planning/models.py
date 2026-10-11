@@ -70,8 +70,8 @@ class ChapterOutlineData:
     Final shape (PLAN-001 / ADR-096): scene-based only — the legacy
     stored-beats field is gone and a chapter's planned work lives in
     ``scenes``; structure-template beats remain a separate adapter
-    concept (:class:`~narrare_core.planning.adapters.base.BeatDef`,
-    PLAN-003).
+    concept — ``BeatDef`` (the structure-template concept,
+    ``narrare_core.planning.adapters.base``; PLAN-003).
     """
 
     chapter_id: UUID
