@@ -300,31 +300,15 @@ describe("ScenePlanEditor", () => {
           updated_at: "2026-01-01T00:00:00Z",
         });
       }),
-      http.get("*/api/v1/novels/:novelId/chapters/chapter-0", () => {
+      // ONE summary-only plan-context request replaces the former three
+      // full-chapter GETs (W-D): neighbors arrive pre-resolved, no content.
+      http.get("*/api/v1/novels/:novelId/chapters/chapter-1/plan-context", () => {
         counted();
-        return HttpResponse.json(
-          makeChapter({
-            id: "chapter-0",
-            title: "Cold Open",
-            summary: "The rival arrives in town.",
-          }),
-        );
-      }),
-      http.get("*/api/v1/novels/:novelId/chapters/chapter-1", () => {
-        counted();
-        return HttpResponse.json(
-          makeChapter({ id: "chapter-1", title: "Ballroom", summary: "The ball begins." }),
-        );
-      }),
-      http.get("*/api/v1/novels/:novelId/chapters/chapter-2", () => {
-        counted();
-        return HttpResponse.json(
-          makeChapter({
-            id: "chapter-2",
-            title: "Aftermath",
-            summary: "The ball ends in scandal.",
-          }),
-        );
+        return HttpResponse.json({
+          chapter: { title: "Ballroom", summary: "The ball begins." },
+          previous: { title: "Cold Open", summary: "The rival arrives in town." },
+          next: { title: "Aftermath", summary: "The ball ends in scandal." },
+        });
       }),
     );
     harness.render();
@@ -332,10 +316,10 @@ describe("ScenePlanEditor", () => {
     await waitFor(() => {
       expect(screen.getByText("Opening")).toBeDefined();
     });
-    // The button has no loading blocker — settle the context fetches first so
-    // the assertion is deterministic.
+    // The button has no loading blocker — settle the context fetches first
+    // (storyboard + outline + ONE plan-context) so the assertion is deterministic.
     await waitFor(() => {
-      expect(contextGets).toBe(5);
+      expect(contextGets).toBe(3);
     });
     fireEvent.click(screen.getByText("draftWithAi"));
 
@@ -359,7 +343,7 @@ describe("ScenePlanEditor", () => {
       http.get("*/api/v1/planning/outlines/:novelId/:chapterId", () =>
         HttpResponse.json({}, { status: 500 }),
       ),
-      http.get("*/api/v1/novels/:novelId/chapters/:chapterId", () =>
+      http.get("*/api/v1/novels/:novelId/chapters/:chapterId/plan-context", () =>
         HttpResponse.json({}, { status: 500 }),
       ),
     );
@@ -398,10 +382,14 @@ describe("ScenePlanEditor", () => {
           updated_at: "2026-01-01T00:00:00Z",
         });
       }),
-      // All chapter summaries empty (never summarized) — must be omitted.
-      http.get("*/api/v1/novels/:novelId/chapters/:chapterId", () => {
+      // All summaries empty (never summarized), edges null — must be omitted.
+      http.get("*/api/v1/novels/:novelId/chapters/chapter-1/plan-context", () => {
         contextGets += 1;
-        return HttpResponse.json(makeChapter({}));
+        return HttpResponse.json({
+          chapter: { title: "Ballroom", summary: "" },
+          previous: null,
+          next: null,
+        });
       }),
     );
     harness.render();
@@ -410,9 +398,9 @@ describe("ScenePlanEditor", () => {
       expect(screen.getByText("Opening")).toBeDefined();
     });
     // The button has no loading blocker — settle the context fetches first
-    // (storyboard + outline + 3 chapter details) so the click is deterministic.
+    // (storyboard + outline + ONE plan-context) so the click is deterministic.
     await waitFor(() => {
-      expect(contextGets).toBe(5);
+      expect(contextGets).toBe(3);
     });
     fireEvent.click(screen.getByText("draftWithAi"));
 

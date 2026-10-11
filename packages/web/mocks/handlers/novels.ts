@@ -297,6 +297,14 @@ export const handlers = [
     });
   }),
 
+  http.get("*/api/v1/novels/:novelId/chapters/:chapterId/plan-context", async () => {
+    return HttpResponse.json({
+      chapter: { title: "Test Chapter", summary: "A test chapter summary" },
+      previous: { title: "Previous Chapter", summary: "What came before." },
+      next: null,
+    });
+  }),
+
   http.put("*/api/v1/novels/:novelId/chapters/:chapterId/content", async ({ params, request }) => {
     const { chapterId } = params;
     const body = (await request.json()) as Record<string, unknown>;

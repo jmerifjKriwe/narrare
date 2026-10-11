@@ -12,6 +12,7 @@ import type {
   Volume,
   VolumeStats,
 } from "@/types";
+import type { ChapterPlanContext } from "@/types/planning";
 import { fetchApi } from "./core";
 
 // --- Novels ---
@@ -35,6 +36,9 @@ export const chaptersApi = {
   },
   get: (novelId: string, chapterId: string) =>
     fetchApi<Chapter>(`/novels/${novelId}/chapters/${chapterId}`),
+  /** Summary-only plan context — chapter + position-adjacent neighbors, never content. */
+  getPlanContext: (novelId: string, chapterId: string) =>
+    fetchApi<ChapterPlanContext>(`/novels/${novelId}/chapters/${chapterId}/plan-context`),
   create: (novelId: string, payload: { title?: string; content?: string; volume_id?: string }) =>
     fetchApi<Chapter>(`/novels/${novelId}/chapters`, {
       method: "POST",
