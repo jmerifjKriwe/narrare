@@ -76,16 +76,20 @@ def _scene_spec(row: ScenePlan) -> SceneSpec:
     )
 
 
-def render_chapter_outline(outline: ChapterOutline, scenes: Sequence[ScenePlan] = ()) -> str:
+def render_chapter_outline(outline: ChapterOutline | None, scenes: Sequence[ScenePlan] = ()) -> str:
     """Render a chapter outline into a compact, model-readable text block.
 
     Carries the stage assignment, one compact block per planned scene
     (numbered in list order via the Core renderer — spec §6.3/§7), and
     free-form notes — omitting any section that is empty so the block
-    stays compact.
+    stays compact. ``outline=None`` (chapter has scene plans but no
+    outline row — FU-f: scene plans persist independently of the outline
+    row, ADR-096) renders the scene blocks alone; stage and notes
+    require the outline row.
 
     Args:
-        outline: The chapter outline to render.
+        outline: The chapter outline to render, or ``None`` when no
+            outline row exists (stage/notes are then omitted).
         scenes: The chapter's scene plans (position-ordered, as returned
             by ``ScenePlanRepository.list_by_chapter``).
 
@@ -96,9 +100,10 @@ def render_chapter_outline(outline: ChapterOutline, scenes: Sequence[ScenePlan] 
     """
     parts: list[str] = []
 
-    stage = (outline.stage_assignment or "").strip()
-    if stage:
-        parts.append(f"Stage: {stage}")
+    if outline is not None:
+        stage = (outline.stage_assignment or "").strip()
+        if stage:
+            parts.append(f"Stage: {stage}")
 
     scene_blocks = [
         render_scene_for_prompt(_scene_spec(scene), number=position)
@@ -107,8 +112,9 @@ def render_chapter_outline(outline: ChapterOutline, scenes: Sequence[ScenePlan] 
     if scene_blocks:
         parts.append("\n\n".join(scene_blocks))
 
-    notes = (outline.outline_notes or "").strip()
-    if notes:
-        parts.append(f"Notes: {notes}")
+    if outline is not None:
+        notes = (outline.outline_notes or "").strip()
+        if notes:
+            parts.append(f"Notes: {notes}")
 
     return "\n".join(parts)

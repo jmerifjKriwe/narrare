@@ -36,7 +36,7 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.prompts.composer import ComposedPrompt
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeScenePlanRepository
+from tests.fakes import FakeChapterRepository, FakeNovelRepository
 from tests.unit.api.planning._scene_service_test_helpers import _World
 
 if TYPE_CHECKING:
@@ -140,7 +140,6 @@ def _make_service(
     composer = RecordingComposer()
     registry = SeamRegistry(respond)
     service = SceneAIService(
-        FakeScenePlanRepository(),
         chapter_repo,
         novel_repo,
         registry,  # type: ignore[arg-type]

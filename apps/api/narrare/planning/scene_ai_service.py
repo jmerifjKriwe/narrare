@@ -3,9 +3,12 @@
 Zero-DB-write AI surface (spec §5.2/§6): ``draft`` proposes N scenes for a
 chapter, ``refine`` rewrites one carried scene under the author's
 instruction. Proposals return to the client and are applied via the
-aggregate PUT — the single write path. The injected repositories are
-read-only inputs (ownership guards); the contract tests assert zero
-write calls.
+aggregate PUT — the single write path. No scene repository is injected
+at all (the unused seam was removed, FU-e: refine carries the scene in
+the request, draft needs no scene read, and writes never happen by
+design); the chapter/novel repos are read-only ownership-guard inputs.
+Enforcement: behavioral (contract tests assert zero write calls) plus
+the mechanical source scan (``test_scene_ai_zero_write_static.py``).
 
 Ownership: uid-scoped novel guard FIRST, then chapter-must-belong-to-novel
 (foreign ≡ unknown → NotFoundError → 404) — gate-before-resolution ordering
@@ -50,7 +53,6 @@ if TYPE_CHECKING:
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
-    from narrare.planning.contracts import ScenePlanRepositoryProtocol
     from narrare.planning.schemas_scenes import SceneDraftRequest, SceneRefineRequest
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.model_routing import ResolvedModel
@@ -67,7 +69,6 @@ class SceneAIService:
 
     def __init__(
         self,
-        scene_repo: ScenePlanRepositoryProtocol,
         chapter_repo: ChapterRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol,
         model_registry: ModelRegistry,
@@ -76,7 +77,6 @@ class SceneAIService:
         composer: PromptComposer | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
-        self._scene_repo = scene_repo
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._registry = model_registry

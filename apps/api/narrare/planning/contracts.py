@@ -85,9 +85,12 @@ class OutlineRepositoryProtocol(Protocol):
 class SceneAIServiceProtocol(Protocol):
     """Protocol for scene-plan AI draft/refine generators (PLAN-001 T8).
 
-    Zero-write surface: implementations only READ through the injected
-    repositories; proposals are returned to the client and applied via
-    the aggregate PUT (spec §5.2). Degradation contract: no configured
+    Zero-write surface: NO scene repository is injected (unused seam
+    removed, FU-e — refine carries the scene in the request, draft needs
+    no scene read, and writes never happen by design); implementations
+    read only through the novel/chapter repositories for the ownership
+    guards. Proposals are returned to the client and applied via the
+    aggregate PUT (spec §5.2). Degradation contract: no configured
     AI provider is NOT an error — ``ai_unavailable=True`` responses,
     HTTP 200 (AI-optional feature).
     """

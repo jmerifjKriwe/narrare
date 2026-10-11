@@ -8,7 +8,8 @@ validation errors surface as 422 before any routing work.
 The uid-scoped novel guard and the graceful no-provider degradation live
 in the service's first-use path (gate-before-resolution ordering,
 Pattern M-graceful — see ``scene_ai_service.py``). Repos, registry, and
-composer wire eagerly.
+composer wire eagerly. No scene repo is wired: the AI surface is
+zero-write by design (unused seam removed, FU-e).
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ from narrare._app.dependencies import get_composer, get_model_registry
 from narrare._app.dependencies_services import LazyModelResolution, get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
-from narrare.planning.repository_scenes import ScenePlanRepository
 from narrare.planning.scene_ai_service import SceneAIService
 
 if TYPE_CHECKING:
@@ -56,7 +56,6 @@ async def get_scene_ai_service(
     model_resolution = LazyModelResolution(lambda: resolver.resolve(LLMIntent.PLAN, uid, novel_id))
 
     return SceneAIService(
-        ScenePlanRepository(session),
         ChapterRepository(session),
         NovelRepository(session),
         get_model_registry(),

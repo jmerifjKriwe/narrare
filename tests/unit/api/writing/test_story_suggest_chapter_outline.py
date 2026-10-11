@@ -187,10 +187,35 @@ async def test_chapter_outline_empty_when_no_chapter_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_chapter_outline_empty_when_outline_missing() -> None:
-    """RULE-11: chapter_id set but no outline row → slot stays empty."""
+async def test_chapter_outline_renders_scenes_when_outline_missing() -> None:
+    """FU-f (T15 follow-up): chapter_id set, NO outline row, but scene
+    plans exist → the scenes render into the slot. Scene plans persist
+    independently of the outline row (ADR-096: outlines carry stage +
+    notes only), so outline existence must not gate the scene fetch —
+    the old behavior rendered an empty slot and starved the model."""
+    chapter_id = uuid.uuid4()
+    outline_repo = FakeOutlineRepository()  # nothing seeded — no outline row
+    scene_repo = FakeScenePlanRepository()
+    scene_repo.seed(_make_scene(chapter_id))
+    service = _build_service(outline_repo, scene_repo)
+    request = make_request(chapter_id=chapter_id)
+
+    value = await _chapter_outline(service, request)
+    assert value != "", "scenes must render even when the outline row is missing (FU-f)"
+    # Scene blocks render; stage/notes cannot (they require the outline row).
+    assert "Scene 1: The Ambush at the Gate" in value
+    assert "Lyra must slip past the guard" in value
+    assert "1. Lyra reaches the gate" in value
+    assert "Stage:" not in value
+    assert "Notes:" not in value
+
+
+@pytest.mark.asyncio
+async def test_chapter_outline_empty_when_outline_missing_and_no_scenes() -> None:
+    """RULE-11: chapter_id set, no outline row, no scene plans → nothing
+    to render; the slot stays empty (as before the FU-f hoist)."""
     outline_repo = FakeOutlineRepository()  # nothing seeded
-    service = _build_service(outline_repo)
+    service = _build_service(outline_repo, FakeScenePlanRepository())
     request = make_request(chapter_id=uuid.uuid4())
 
     value = await _chapter_outline(service, request)

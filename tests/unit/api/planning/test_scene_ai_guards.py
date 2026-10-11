@@ -5,6 +5,12 @@ Contract conformance (RULE-03), no-provider degradation (HTTP 200
 (gate-before-resolution), the ZERO-repo-write contract, and mapping
 edges. Happy paths live in ``test_scene_ai_service.py``; shared fakes in
 ``_scene_ai_test_helpers.py``.
+
+Zero-write enforcement is two-layered since FU-d: the behavioral proof
+below (recorded fakes) plus the MECHANICAL source scan in
+``test_scene_ai_zero_write_static.py``. The scene repo is not injected
+at all anymore (unused seam removed, FU-e) — writes can only enter via
+the novel/chapter repos guarded here.
 """
 
 from __future__ import annotations
@@ -15,7 +21,7 @@ import pytest
 
 from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_chapter
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeScenePlanRepository
+from tests.fakes import FakeChapterRepository, FakeNovelRepository
 from tests.unit.api.planning._scene_ai_test_helpers import (
     _PROPOSED_SCENE,
     RecordingResolution,
@@ -37,17 +43,12 @@ def chapter_repo() -> FakeChapterRepository:
     return FakeChapterRepository()
 
 
-@pytest.fixture
-def scene_repo() -> FakeScenePlanRepository:
-    return FakeScenePlanRepository()
-
-
 class TestContractConformance:
     def test_service_satisfies_scene_ai_service_protocol(self) -> None:
         """SceneAIService is a structural SceneAIServiceProtocol member."""
         from narrare.planning.contracts import SceneAIServiceProtocol
 
-        world = _AiWorld(FakeNovelRepository(), FakeChapterRepository(), FakeScenePlanRepository())
+        world = _AiWorld(FakeNovelRepository(), FakeChapterRepository())
         service = world.service()
         assert isinstance(service, SceneAIServiceProtocol)
 
@@ -62,9 +63,8 @@ class TestGracefulNoProvider:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.resolution = RecordingResolution(None)
         service = world.service()
 
@@ -79,9 +79,8 @@ class TestGracefulNoProvider:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.resolution = RecordingResolution(None)
         service = world.service()
 
@@ -96,9 +95,8 @@ class TestGracefulNoProvider:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.resolution = RecordingResolution(None)
         service = world.service()
 
@@ -115,9 +113,8 @@ class TestOwnershipGuards:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         with pytest.raises(NotFoundError):
@@ -135,9 +132,8 @@ class TestOwnershipGuards:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         with pytest.raises(NotFoundError):
@@ -149,9 +145,8 @@ class TestOwnershipGuards:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         foreign_chapter = make_chapter(id=uuid.uuid4(), novel_id=world.foreign_novel_id)
         chapter_repo.seed(foreign_chapter)
         service = world.service()
@@ -166,9 +161,8 @@ class TestOwnershipGuards:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         with pytest.raises(NotFoundError):
@@ -196,20 +190,25 @@ _READ_METHODS = frozenset(
         "get_latest_version_number",
         "list_versions",
         "get_version",
-        # scene repo
-        "list_by_chapter",
     }
 )
 
 
 class TestZeroWrites:
+    """Behavioral zero-write proof over the injected repos (novel/chapter).
+
+    The scene repo is NOT injected anymore (unused seam removed, FU-e) —
+    a scene write cannot even be attempted through this service; the
+    source-level guarantee is mechanical via
+    ``test_scene_ai_zero_write_static.py``.
+    """
+
     async def test_draft_and_refine_perform_zero_repo_writes(
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         await service.draft(
@@ -220,25 +219,9 @@ class TestZeroWrites:
             world.chapter_id, _refine_request(), world.user_id, novel_id=world.novel_id
         )
 
-        for repo in (novel_repo, chapter_repo, scene_repo):
+        for repo in (novel_repo, chapter_repo):
             writes = [call.method for call in repo.calls if call.method not in _READ_METHODS]
             assert writes == [], f"AI path performed repo writes: {writes}"
-
-    async def test_scene_repo_is_never_written_even_on_graceful_path(
-        self,
-        novel_repo: FakeNovelRepository,
-        chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
-    ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
-        world.resolution = RecordingResolution(None)
-        service = world.service()
-
-        await service.draft(
-            world.chapter_id, _draft_request(), world.user_id, novel_id=world.novel_id
-        )
-
-        assert scene_repo.call_count("bulk_replace") == 0
 
 
 # ---------------------------------------------------------------------------
@@ -319,9 +302,8 @@ class TestProposalMapping:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.registry._respond = lambda: _draft_response(
             [{**_PROPOSED_SCENE, "pov_character_name": "", "location_name": ""}]
         )

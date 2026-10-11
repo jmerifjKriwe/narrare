@@ -13,9 +13,11 @@ assembly of the story-suggest invocation:
 - The ``chapter_outline`` slot is fed from the injected
   ``OutlineRepository`` + ``ScenePlanRepository`` when a chapter is
   targeted (§7; PLAN-001 T15 renders scene blocks — stage + numbered
-  scenes + notes); empty otherwise (legitimate RULE-11 — story-suggest
-  is a project-level tool and a chapter need not be selected;
-  allowlisted confirmed-optional var).
+  scenes + notes; FU-f: the scene fetch is NOT gated on outline
+  existence — scene plans persist independently of the outline row,
+  ADR-096); empty when there is nothing to render (legitimate RULE-11 —
+  story-suggest is a project-level tool and a chapter need not be
+  selected; allowlisted confirmed-optional var).
 """
 
 from __future__ import annotations
@@ -59,8 +61,9 @@ async def compose_story_suggest_prompt(
     """Assemble the Mode 1 story-suggest invocation and return the prompt.
 
     Builds the project-metadata ``PromptContext``, wires the targeted
-    chapter's outline + scene plans into the ``chapter_outline`` slot,
-    and resolves the governed system prompt via ``compose_invocation``
+    chapter's outline + scene plans into the ``chapter_outline`` slot
+    (scene blocks render with or without an outline row, FU-f), and
+    resolves the governed system prompt via ``compose_invocation``
     (RULE-02 / ADR-054 D1).
 
     Args:
@@ -111,16 +114,25 @@ async def compose_story_suggest_prompt(
     )
 
     # Wire the chapter outline (stage + scene blocks + notes) when a
-    # chapter is targeted (§7, PLAN-001 T15). Skipped when there is no
-    # chapter_id or no outline repo — the slot stays empty (RULE-11,
-    # allowlisted). A missing scene repo degrades to stage + notes.
-    if request.chapter_id is not None and outline_repo is not None:
-        outline = await outline_repo.get_by_chapter_id(request.chapter_id)
-        if outline is not None:
-            scenes: Sequence[ScenePlan] = []
-            if scene_repo is not None:
-                scenes = await scene_repo.list_by_chapter(request.chapter_id)
-            ctx.extra["chapter_outline"] = render_chapter_outline(outline, scenes)
+    # chapter is targeted (§7, PLAN-001 T15 + FU-f). The scene fetch is
+    # NOT gated on outline existence: scene plans persist independently
+    # of the outline row (ADR-096), so a chapter with scene plans but no
+    # outline row still renders its scene blocks. Skipped when there is
+    # no chapter_id — the slot stays empty (RULE-11, allowlisted). A
+    # missing scene repo degrades to stage + notes; missing both renders
+    # nothing.
+    if request.chapter_id is not None:
+        scenes: Sequence[ScenePlan] = []
+        if scene_repo is not None:
+            scenes = await scene_repo.list_by_chapter(request.chapter_id)
+        outline = (
+            await outline_repo.get_by_chapter_id(request.chapter_id)
+            if outline_repo is not None
+            else None
+        )
+        rendered = render_chapter_outline(outline, scenes)
+        if rendered:
+            ctx.extra["chapter_outline"] = rendered
 
     invocation_context = build_invocation_context(
         feature_id="writing_story_suggest",
