@@ -246,6 +246,74 @@ class TestZeroWrites:
 # ---------------------------------------------------------------------------
 
 
+class TestRunPromptEmptyBlockDegrade:
+    """``_xml_block`` omits blocks whose content is entirely empty — a bare
+    draft (no context, no instruction) produces no empty XML wrappers;
+    populated content keeps the exact wrapper shape (FU5)."""
+
+    def test_draft_prompt_with_fully_empty_request_contains_no_wrappers(self) -> None:
+        from narrare.planning._scene_ai_support import build_draft_run_prompt
+        from narrare.planning.schemas_scenes import SceneDraftRequest
+
+        prompt = build_draft_run_prompt(SceneDraftRequest())
+
+        assert prompt == ""
+        assert "<chapter_context>" not in prompt
+        assert "<instruction>" not in prompt
+
+    def test_draft_prompt_with_empty_context_keeps_instruction_block(self) -> None:
+        from narrare.planning._scene_ai_support import build_draft_run_prompt
+        from narrare.planning.schemas_scenes import SceneDraftRequest
+
+        prompt = build_draft_run_prompt(SceneDraftRequest(instruction="Plan 3 tense scenes."))
+
+        assert prompt == "<instruction>\nPlan 3 tense scenes.\n</instruction>"
+        assert "<chapter_context>" not in prompt
+
+    def test_draft_prompt_populated_context_keeps_exact_wrapper_shape(self) -> None:
+        from narrare.planning._scene_ai_support import build_draft_run_prompt
+        from narrare.planning.schemas_scenes import SceneDraftRequest
+
+        prompt = build_draft_run_prompt(
+            SceneDraftRequest(
+                structure_type="three_act",
+                outline_notes="Escape sequence.",
+                instruction="Plan 3 tense scenes.",
+                scene_count=3,
+            )
+        )
+
+        assert prompt == (
+            "<chapter_context>\n"
+            "Structure type: three_act\n"
+            "Outline notes: Escape sequence.\n"
+            "Scene count: 3\n"
+            "</chapter_context>\n"
+            "<instruction>\n"
+            "Plan 3 tense scenes.\n"
+            "</instruction>"
+        )
+
+    def test_refine_prompt_with_empty_context_omits_chapter_context_block(self) -> None:
+        from narrare.planning._scene_ai_support import build_refine_run_prompt
+        from tests.unit.api.planning._scene_ai_test_helpers import _payload_scene
+
+        prompt = build_refine_run_prompt(
+            _refine_request(
+                scene=_payload_scene(),
+                prev_scene_summary="",
+                next_scene_summary="",
+                chapter_summary="",
+                instruction="",
+            )
+        )
+
+        assert "<scene_plan>" in prompt
+        assert "</scene_plan>" in prompt
+        assert "<chapter_context>" not in prompt
+        assert "<instruction>" not in prompt
+
+
 class TestProposalMapping:
     async def test_empty_names_map_to_none_refs(
         self,

@@ -32,6 +32,8 @@ from narrare.planning.schemas_scenes import (
 from narrare_core.shared.errors import NotFoundError, ValidationError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter
     from narrare.novels.contracts import NovelRepositoryProtocol
@@ -107,15 +109,71 @@ class ScenePlanService:
 # ---------------------------------------------------------------------------
 
 
-def _to_ref_schema(raw: dict[str, object] | None) -> SceneRefSchema | None:
-    """Hybrid ref dict → schema; ``None``/name-less storage maps to None."""
-    if raw is None or not raw.get("name"):
+def _parse_ref_id(raw_id: object) -> uuid.UUID | None:
+    """JSONB ref id → UUID; absent or corrupt ids degrade to ``None``.
+
+    Hybrid refs are user-tolerant JSONB (backfill-era rows may carry
+    non-UUID id strings), so a corrupt id must not fail the whole
+    aggregate read: explicit validation → structured warning keeps it
+    visible (RULE-11) → explicit ``None`` default, same degrade shape as
+    the unknown-scene-status tolerance in ``_helpers._to_core_scene``.
+    The ref ``name`` (user content) always survives.
+    """
+    if not raw_id:
         return None
-    raw_id = raw.get("id")
+    try:
+        return uuid.UUID(str(raw_id))
+    except ValueError:
+        logger.warning("corrupt_scene_ref_id", raw_id=str(raw_id))
+        return None
+
+
+def _to_ref_schema(raw: object) -> SceneRefSchema | None:
+    """Hybrid ref dict → schema; absent/corrupt/name-less storage → ``None``.
+
+    Refs are user content of arbitrary runtime shape (JSONB, ``None``
+    included); only a dict carrying a truthy name resolves — mirror of
+    ``_helpers._ref_name``'s isinstance tolerance.
+    """
+    if not isinstance(raw, dict):
+        return None
+    ref_mapping = cast("dict[object, object]", raw)
+    if not ref_mapping.get("name"):
+        return None
     return SceneRefSchema(
-        id=uuid.UUID(str(raw_id)) if raw_id else None,
-        name=str(raw["name"]),
+        id=_parse_ref_id(ref_mapping.get("id")),
+        name=str(ref_mapping["name"]),
     )
+
+
+def _presence_schemas(row: ScenePlan) -> list[ScenePresenceSchema]:
+    """``present_characters`` JSONB → wire presences (runtime-arbitrary).
+
+    Same tolerance as ``_helpers._to_core_scene``: the column is typed
+    ``list[dict[str, object]]`` but arbitrary at runtime, so each entry is
+    treated as ``object`` — non-dict entries are skipped. A name-less
+    entry is unrepresentable on the wire (``ScenePresenceSchema.name``
+    min_length=1) and is omitted — the name-less→absent precedent of
+    ``_to_ref_schema``; kept entries degrade a null ``goal`` to ``""``
+    instead of the ``str(None)`` "None" pollution.
+    """
+    raw_presences: Sequence[object] = cast("Sequence[object]", row.present_characters or [])
+    presences: list[ScenePresenceSchema] = []
+    for presence in raw_presences:
+        if not isinstance(presence, dict):
+            continue
+        presence_mapping = cast("dict[object, object]", presence)
+        name = str(presence_mapping.get("name", "") or "")
+        if not name:
+            continue
+        presences.append(
+            ScenePresenceSchema(
+                id=_parse_ref_id(presence_mapping.get("id")),
+                name=name,
+                goal=str(presence_mapping.get("goal", "") or ""),
+            )
+        )
+    return presences
 
 
 def _to_schema(row: ScenePlan) -> SceneSchema:
@@ -126,14 +184,7 @@ def _to_schema(row: ScenePlan) -> SceneSchema:
         title=row.title,
         pov_character_ref=_to_ref_schema(row.pov_character_ref),
         location_ref=_to_ref_schema(row.location_ref),
-        present_characters=[
-            ScenePresenceSchema(
-                id=uuid.UUID(str(presence["id"])) if presence.get("id") else None,
-                name=str(presence.get("name", "")),
-                goal=str(presence.get("goal", "")),
-            )
-            for presence in row.present_characters or []
-        ],
+        present_characters=_presence_schemas(row),
         purpose=row.purpose,
         conflict=row.conflict,
         resolution=row.resolution,
