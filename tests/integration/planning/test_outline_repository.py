@@ -122,9 +122,8 @@ class TestCreate:
     ) -> None:
         """Create an outline without optional fields — defaults applied.
 
-        The legacy ``planned_beats`` column is NOT NULL until the T17 drop;
-        ``create`` no longer names it and relies on the ORM column default
-        (empty list).
+        The legacy beats column was dropped (Alembic 0049); ``create``
+        sets only stage/notes (planned scenes live in ``scene_plans``).
         """
         novel = await _create_novel(db_session)
         chapter = await _create_chapter(db_session, novel.id)
@@ -136,7 +135,7 @@ class TestCreate:
 
         await db_session.flush()
         await db_session.refresh(outline)
-        assert outline.planned_beats == []
+        assert outline.stage_assignment == "act-2"
         assert outline.outline_notes == ""
 
 

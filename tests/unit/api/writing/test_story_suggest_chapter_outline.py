@@ -10,7 +10,8 @@ runtime** and carries the stage/scenes/notes — the model genuinely receives
 it, not a literal ``""``.
 
 PLAN-001 T15 (ADR-096): scenes come from the injected ``ScenePlanRepository``
-and render as numbered blocks (spec §7); ``planned_beats`` is no longer read.
+and render as numbered blocks (spec §7); the legacy beat column is gone
+(Alembic 0049).
 
 The empty case (no ``chapter_id``) is legitimate RULE-11: story-suggest is a
 project-level tool and a chapter need not be selected. That case stays

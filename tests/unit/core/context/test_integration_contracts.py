@@ -356,7 +356,6 @@ class TestStoryboardRefConsumer:
         """Scene text is user content — the contract mandates no rewrites."""
         doc = StoryboardRefConsumer.__doc__ or ""
         assert "NEVER rewritten" in doc
-        assert "planned_beats" not in doc
 
 
 class TestChapterFrontmatterRefConsumer:

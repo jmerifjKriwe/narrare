@@ -38,11 +38,11 @@ class TestOutlineResponseContract:
         ann = OutlineResponse.model_fields["chapter_id"].annotation
         assert ann is uuid.UUID, f"Expected chapter_id to be UUID, got {ann}"
 
-    def test_outline_response_has_no_planned_beats(self) -> None:
+    def test_outline_response_is_beat_free(self) -> None:
         from narrare.planning.schemas import OutlineResponse
 
-        assert "planned_beats" not in OutlineResponse.model_fields, (
-            "OutlineResponse must not carry planned_beats (PLAN-001 T14 beat-free wire)"
+        assert not any("beat" in name for name in OutlineResponse.model_fields), (
+            "OutlineResponse must stay beat-free (PLAN-001 scene substrate, T14/T17)"
         )
 
 
@@ -56,11 +56,11 @@ class TestBeatRemovalContract:
             "BeatSchema must be removed from the planning schemas (PLAN-001 T14)"
         )
 
-    def test_outline_update_request_has_no_planned_beats(self) -> None:
+    def test_outline_update_request_is_beat_free(self) -> None:
         from narrare.planning.schemas import OutlineUpdateRequest
 
-        assert "planned_beats" not in OutlineUpdateRequest.model_fields, (
-            "OutlineUpdateRequest must not accept planned_beats (scenes are the substrate)"
+        assert not any("beat" in name for name in OutlineUpdateRequest.model_fields), (
+            "OutlineUpdateRequest must stay beat-free (scenes are the substrate)"
         )
 
 

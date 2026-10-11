@@ -2,8 +2,8 @@
 
 PLAN-001 T15 (ADR-096, spec §7): the storyboard scan reads scene plans —
 the shared :func:`iter_scene_texts` from planning's public surface
-(RULE-05: cross-domain via public export) replaces the ``planned_beats``
-scan. Locations are ``scene_plans[{id}].{field}`` and are NEVER rewritten
+(RULE-05: cross-domain via public export) replaces the legacy beat scan.
+Locations are ``scene_plans[{id}].{field}`` and are NEVER rewritten
 (RULE-22 §7 — user content).
 """
 

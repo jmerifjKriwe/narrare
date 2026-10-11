@@ -32,15 +32,10 @@ def _chapter(*, content: str = "", pov_character_id: str = "") -> Chapter:
     )
 
 
-def _outline(
-    *,
-    planned_beats: list[dict[str, object]] | None = None,
-    outline_notes: str = "",
-) -> ChapterOutline:
+def _outline(*, outline_notes: str = "") -> ChapterOutline:
     return ChapterOutline(
         id=uuid4(),
         chapter_id=uuid4(),
-        planned_beats=list(planned_beats or []),
         outline_notes=outline_notes,
     )
 
@@ -85,8 +80,8 @@ class TestStoryboardNotesTexts:
     """PLAN-001 T15 (spec §7): the beat scan is replaced by the scene scan.
 
     The outline's own free-text notes remain storyboard scan surface;
-    ``planned_beats`` is no longer read anywhere (scene plans superseded
-    it — the column itself drops in T17).
+    the legacy beat column is gone (Alembic 0049) — scene plans are the
+    only plan substrate.
     """
 
     def test_collects_outline_notes(self) -> None:
@@ -98,7 +93,6 @@ class TestStoryboardNotesTexts:
     def test_no_notes_returns_empty(self) -> None:
         assert storyboard_notes_texts(_outline()) == []
         assert storyboard_notes_texts(_outline(outline_notes="")) == []
-        assert storyboard_notes_texts(_outline(planned_beats=[{"text": "legacy beat"}])) == []
 
 
 class TestSceneTexts:

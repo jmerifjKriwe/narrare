@@ -10,11 +10,10 @@ The :class:`ChapterOutline`/:class:`ScenePlan` models live in the planning
 domain; this module only reads their fields — it performs no persistence
 or business logic.
 
-PLAN-001 T15 (ADR-096, spec §7): scene plans replaced planned beats — the
-slot renders stage + numbered scene blocks (via Core's shared
+PLAN-001 T15 (ADR-096, spec §7): scene plans replaced the beat outline —
+the slot renders stage + numbered scene blocks (via Core's shared
 :func:`render_scene_for_prompt`, spec §6.3 — one format, no drift with the
-writing pipeline) + notes. ``planned_beats`` is no longer read; the column
-itself drops in T17.
+writing pipeline) + notes. The legacy beats column is gone (Alembic 0049).
 
 See:
     docs/_shared/CONSTRAINTS.md (RULE-04, RULE-06, RULE-11)

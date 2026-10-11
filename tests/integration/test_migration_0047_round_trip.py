@@ -1,18 +1,21 @@
 # tests/integration/test_migration_0047_round_trip.py
 """Round-trip test for migration 0047 (PLAN-001 scene_plans — ADR-096).
 
-Verifies against real PG: upgrading to head creates ``scene_plans`` and
-backfills ONE scene per old ``chapter_outlines.planned_beats`` entry
-(``title→title``, ``description→purpose``, ``completed→complete|planned``,
-list order → ``position``). Non-dict beats are skipped — the historical
-beat shape "is not locked down across all creators" (spec §3.3 tolerance).
-Downgrading to the parent revision drops the table (lossless —
-``planned_beats`` still exists there); re-upgrading re-runs the backfill
-from the surviving beats data.
+Verifies against real PG: upgrading from the parent revision creates
+``scene_plans`` and backfills ONE scene per old ``chapter_outlines``
+beat entry (``title→title``, ``description→purpose``,
+``completed→complete|planned``, list order → ``position``). Non-dict beats
+are skipped — the historical beat shape "is not locked down across all
+creators" (spec §3.3 tolerance).
+
+The legacy beats column only exists BELOW 0049 (the final drop), so the
+seed runs at the parent revision (0046): downgrade head → 0046, seed the
+beats there, then upgrade to head — the backfill runs at 0047 and the
+subsequent 0048/0049 steps leave the backfilled scenes in place.
 
 DB-level helpers (engine / alembic / seed_user) come from
-``_usage_record_test_support.py`` — same subprocess-alembic machinery as the
-0043/0044/0045/0046 round trips (RULE-04).
+``_usage_record_test_support.py`` — same subprocess-alembic machinery as
+the 0043-0049 round trips (RULE-04).
 
 NOTE: mutates the shared test DB schema mid-run; the ``finally`` always
 restores head. Carries ``@pytest.mark.schema_mutating`` so ``just test``
@@ -38,8 +41,9 @@ from tests.integration._usage_record_test_support import (
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncConnection
 
-# Downgrading to the parent revision applies ONLY 0047's downgrade.
-_PARENT_REVISION = "0046_writing_goals"
+# Seeding happens at 0046 — the last revision where the legacy beats
+# column still exists (it is dropped by 0049 at head).
+_SEED_REVISION = "0046_writing_goals"
 
 # Two dict beats (mapped) + one garbage entry (skipped) — the T2 seed spec.
 _BEATS: list[object] = [
@@ -96,13 +100,28 @@ async def _delete_seed(conn: AsyncConnection, novel_id: _uuid.UUID) -> None:
 class TestMigration0047RoundTrip:
     """0047 round-trip safety against the shared test DB."""
 
-    async def test_seed_beats_then_downgrade_then_upgrade(self) -> None:
-        """Backfill maps beats → scenes; downgrade drops; re-up re-backfills."""
+    async def test_seed_beats_at_parent_then_upgrade_backfills(self) -> None:
+        """Beats seeded at 0046 are backfilled into scenes by the upgrade;
+        head afterwards is the final 0049 state (legacy column dropped)."""
         run_alembic("upgrade", "head")
 
         user_id = _uuid.uuid4()
         novel_id = _uuid.uuid4()
         chapter_id = _uuid.uuid4()
+
+        # 1. Downgrade to the seed revision: the scene table is gone and the
+        #    legacy beats column exists again (0049's downgrade recreates it).
+        run_alembic("downgrade", _SEED_REVISION)
+        eng = engine()
+        try:
+            async with eng.begin() as conn:
+                assert not await _table_exists(conn, "scene_plans"), (
+                    "downgrade to the seed revision must drop scene_plans"
+                )
+        finally:
+            await eng.dispose()
+
+        # 2. Seed the legacy beats AT the seed revision.
         eng = engine()
         try:
             async with eng.begin() as conn:
@@ -111,18 +130,8 @@ class TestMigration0047RoundTrip:
             await eng.dispose()
 
         try:
-            # 1. Downgrade to the parent: the table is gone, beats survive.
-            run_alembic("downgrade", _PARENT_REVISION)
-            eng = engine()
-            try:
-                async with eng.begin() as conn:
-                    assert not await _table_exists(conn, "scene_plans"), (
-                        "scene_plans must be dropped after downgrade"
-                    )
-            finally:
-                await eng.dispose()
-
-            # 2. Re-upgrade: the backfill re-runs from the surviving beats.
+            # 3. Upgrade to head: 0047 backfills the scenes, 0049 then drops
+            #    the legacy column — the backfilled scenes survive both.
             run_alembic("upgrade", "head")
             eng = engine()
             try:

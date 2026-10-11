@@ -195,7 +195,7 @@ class TestGetSyncStatus:
 
 
 class TestSyncOverScenes:
-    """Storyboard sync is computed over scene plans, not planned_beats."""
+    """Storyboard sync is computed over scene plans (the only substrate)."""
 
     async def test_all_complete_scenes_with_content_is_completed(
         self,

@@ -189,18 +189,6 @@ class TestStoryboardRefs:
         index = make_index(FakeKBRepo(), scene_repo=scenes)
         assert await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard") == []
 
-    async def test_beat_text_is_no_longer_scanned(self) -> None:
-        """The planned_beats scan died with PLAN-001 T15 (spec §7): a stale
-        name surviving ONLY in legacy beat JSON is invisible to the index —
-        the backfilled scene plans carry the content now."""
-        kb = FakeKBRepo()
-        kb.seed(make_entry(name="Oldcastle", status="deprecated"))
-        outlines = FakeOutlineRepo()
-        outlines.seed(make_outline(planned_beats=[{"text": "They march on Oldcastle at dawn."}]))
-        index = make_index(kb, outline_repo=outlines)
-
-        assert await index.check_refs(novel_id=uuid4(), consumer_feature="storyboard") == []
-
 
 class TestChapterFrontmatterScalarBranches:
     async def test_deprecated_frontmatter_id_is_marked(self) -> None:

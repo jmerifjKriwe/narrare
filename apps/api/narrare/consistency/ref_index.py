@@ -228,10 +228,10 @@ class CrossFeatureRefIndexImpl:
 
         PLAN-001 T15 (spec §7): scans the outline's free-text notes and the
         scene plans' text fields (via the shared ``iter_scene_texts``
-        scan); ``planned_beats`` is no longer read. Storyboard text is
-        free-form, so hard-deleted names cannot be reconstructed without a
-        tombstone store — the write-side rename hook catches old-name
-        occurrences when the old name is still available.
+        scan) — the legacy beat column is gone (Alembic 0049). Storyboard
+        text is free-form, so hard-deleted names cannot be reconstructed
+        without a tombstone store — the write-side rename hook catches
+        old-name occurrences when the old name is still available.
         """
         issues: list[RefIntegrityIssue] = []
         outlines = await self._outline_repo.get_all_for_novel(novel_id)

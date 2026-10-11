@@ -175,8 +175,8 @@ class TestOutlineCRUD:
         data = resp.json()
         assert data["chapter_id"] == chapter_id
         assert data["stage_assignment"]  # auto-assigned
-        # PLAN-001 T14: the wire is beat-free — scenes carry the plan.
-        assert "planned_beats" not in data
+        # PLAN-001 T14/T17: the wire is beat-free — scenes carry the plan.
+        assert not any("beat" in key for key in data)
 
     async def test_update_outline(
         self,
@@ -197,17 +197,18 @@ class TestOutlineCRUD:
         data = resp.json()
         assert data["stage_assignment"] == "act-2"
         assert data["outline_notes"] == "Updated notes"
-        assert "planned_beats" not in data
+        assert not any("beat" in key for key in data)
 
-    async def test_update_outline_ignores_planned_beats_payload(
+    async def test_update_outline_ignores_unknown_legacy_fields(
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
         novel_with_chapters: dict[str, object],
     ) -> None:
-        """Legacy clients may still send planned_beats — pydantic ignores
-        unknown fields (house schema behavior); the update succeeds without
-        persisting or echoing beats (PLAN-001 T14 beat-free wire)."""
+        """Pre-scene-era clients may send fields the schema no longer knows —
+        pydantic ignores unknown fields (house schema behavior); the update
+        succeeds without persisting or echoing them (PLAN-001 T14/T17
+        beat-free wire)."""
         novel_id = novel_with_chapters["novel_id"]
         chapter_ids = cast("list[str]", novel_with_chapters["chapter_ids"])
         chapter_id = chapter_ids[0]
@@ -217,7 +218,7 @@ class TestOutlineCRUD:
             json={
                 "stage_assignment": "act-1",
                 "outline_notes": "Notes kept",
-                "planned_beats": [
+                "legacy_beats": [
                     {"title": "Beat 1", "description": "First beat", "completed": False}
                 ],
             },
@@ -226,7 +227,7 @@ class TestOutlineCRUD:
         assert resp.status_code == 200
         data = resp.json()
         assert data["outline_notes"] == "Notes kept"
-        assert "planned_beats" not in data
+        assert not any("beat" in key for key in data)
 
     async def test_get_outline_nonexistent_chapter_returns_error(
         self,

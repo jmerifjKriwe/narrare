@@ -33,7 +33,8 @@ Create Date: 2026-10-09 00:00:00.000000
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import json
+from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -47,6 +48,21 @@ revision: str = "0047_scene_plans"
 down_revision: str | None = "0046_writing_goals"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+def _coerce_beat(value: object) -> dict[str, Any]:
+    """Return one legacy beat entry as a string-keyed dict (empty ``{}`` if not a dict).
+
+    Tolerant of arbitrary JSONB shapes (spec §3.3 — the beat shape "is not
+    locked down across all creators"): non-dict entries are skipped by the
+    caller. The entry came out of a JSONB column, so the json round-trip is
+    lossless and guarantees ``str`` keys (JSON object keys always are) for
+    the typed field access below.
+    """
+    if not isinstance(value, dict):
+        return {}
+    beat: dict[str, Any] = json.loads(json.dumps(value))
+    return beat
 
 
 def upgrade() -> None:
@@ -89,14 +105,16 @@ def upgrade() -> None:
     op.create_index("ix_scene_plans_chapter_id", "scene_plans", ["chapter_id"])
 
     # Backfill: one scene per old beat (tolerant of arbitrary JSONB shapes —
-    # the planned_beats shape is not locked down across all creators).
+    # see _coerce_beat).
     conn = op.get_bind()
     outlines = conn.execute(
         sa.text("SELECT id, chapter_id, planned_beats FROM chapter_outlines")
     ).mappings()
     for row in outlines:
-        for i, beat in enumerate(row["planned_beats"] or [], start=1):
-            if not isinstance(beat, dict):
+        raw_beats: list[object] = row["planned_beats"] or []
+        for i, raw_beat in enumerate(raw_beats, start=1):
+            beat = _coerce_beat(raw_beat)
+            if not beat:
                 continue
             conn.execute(
                 sa.text(

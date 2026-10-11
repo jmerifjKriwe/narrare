@@ -15,8 +15,9 @@ from narrare._app.database import Base
 class ChapterOutline(Base):
     """Per-chapter outline data for the storyboard feature.
 
-    Stores the stage assignment within the novel's chosen story structure,
-    planned beats (JSONB), and free-form outline notes.
+    Stores the stage assignment within the novel's chosen story structure
+    and free-form outline notes. Planned scenes live in ``scene_plans``
+    (PLAN-001 — ADR-096; the legacy beats column was dropped in 0049).
 
     One outline per chapter (UNIQUE constraint on chapter_id).
     """
@@ -37,9 +38,6 @@ class ChapterOutline(Base):
         nullable=True,
     )
     stage_assignment: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    planned_beats: Mapped[list[dict[str, object]]] = mapped_column(
-        JSONB, nullable=False, default=list
-    )
     outline_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -132,10 +130,11 @@ class TimelineEvent(Base):
 class ScenePlan(Base):
     """One planned scene in a chapter's scene plan (PLAN-001 — ADR-096).
 
-    First-class replacement for ``chapter_outlines.planned_beats``: ordered
-    scenes with a consecutive ``position`` (1..N). Consecutiveness is an
-    application invariant enforced by the aggregate diff-sync, not a DB
-    constraint — a UNIQUE (chapter_id, position) would fight reordering.
+    First-class replacement for the legacy ``chapter_outlines`` beats
+    column (dropped in 0049): ordered scenes with a consecutive
+    ``position`` (1..N). Consecutiveness is an application invariant
+    enforced by the aggregate diff-sync, not a DB constraint — a UNIQUE
+    (chapter_id, position) would fight reordering.
 
     References KB entities via hybrid refs (TimelineEvent / AD-1 pattern):
     ``{"id": "<uuid>", "name": "..."}`` — the id links to the KB entry, the

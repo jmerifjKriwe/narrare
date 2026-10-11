@@ -2,9 +2,9 @@
 
 PLAN-001 T15 (ADR-096, spec §7): the ``chapter_outline`` slot renders
 stage + numbered scene blocks (via Core's shared
-:func:`render_scene_for_prompt`, spec §6.3) + notes. The planned-beats
-section is replaced by per-scene blocks — ``planned_beats`` is no longer
-read (the scene plans superseded it; the column drops in T17).
+:func:`render_scene_for_prompt`, spec §6.3) + notes. The legacy beat
+outline section is replaced by per-scene blocks; the beat column is gone
+(Alembic 0049).
 
 See:
     docs/superpowers/specs/2026-10-09-plan001-scene-planning-design.md §6.3/§7
@@ -67,13 +67,11 @@ class TestRenderChapterOutlineScenes:
 
     def test_beat_json_is_no_longer_rendered(self) -> None:
         """The beats section is REPLACED by per-scene blocks (spec §7):
-        legacy ``planned_beats`` JSON never reaches the prompt slot."""
+        only stage, scene blocks, and notes ever reach the prompt slot."""
         outline = _outline(stage="act-1", notes="Notes.")
-        outline.planned_beats = [{"text": "Legacy beat text"}]
 
         rendered = render_chapter_outline(outline, [])
 
-        assert "Legacy beat text" not in rendered
         assert rendered == "Stage: act-1\nNotes: Notes."
 
     def test_empty_scenes_renders_stage_and_notes_only(self) -> None:

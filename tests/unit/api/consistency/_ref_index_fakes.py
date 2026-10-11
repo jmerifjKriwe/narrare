@@ -124,15 +124,10 @@ def make_chapter(*, content: str, pov_character_id: str = "") -> Chapter:
     )
 
 
-def make_outline(
-    *,
-    planned_beats: list[dict[str, object]] | None = None,
-    outline_notes: str = "",
-) -> ChapterOutline:
+def make_outline(*, outline_notes: str = "") -> ChapterOutline:
     return ChapterOutline(
         id=uuid4(),
         chapter_id=uuid4(),
-        planned_beats=list(planned_beats or []),
         outline_notes=outline_notes,
     )
 
