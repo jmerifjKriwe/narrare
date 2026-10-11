@@ -13,6 +13,7 @@ from narrare.chapters.schemas import (
     ChapterResponse,
     ChapterSummaryResponse,
     CreateChapterRequest,
+    PlanContextResponse,
     ReorderChaptersRequest,
     UpdateChapterContentRequest,
     UpdateChapterMetaRequest,
@@ -74,6 +75,17 @@ async def get_chapter(
 ) -> ChapterResponse:
     chapter = await service.get(chapter_id, novel_id, uuid.UUID(user_id))
     return ChapterResponse.model_validate(chapter)
+
+
+@router.get("/{chapter_id}/plan-context", response_model=PlanContextResponse)
+async def get_chapter_plan_context(
+    novel_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    service: ChapterService = Depends(_get_service),
+) -> PlanContextResponse:
+    """Summary-only plan context — chapter + position-adjacent neighbors."""
+    return await service.get_plan_context(chapter_id, novel_id, uuid.UUID(user_id))
 
 
 @router.put("/{chapter_id}/content", response_model=ChapterResponse)

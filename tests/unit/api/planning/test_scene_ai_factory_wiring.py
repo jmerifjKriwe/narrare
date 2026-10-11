@@ -52,9 +52,6 @@ def _patch_env(
     def repo_factory(_session: object) -> _FakeRepos:
         return _FakeRepos()
 
-    stack.enter_context(
-        patch("narrare.planning._scene_ai_factory.ScenePlanRepository", repo_factory)
-    )
     stack.enter_context(patch("narrare.planning._scene_ai_factory.ChapterRepository", repo_factory))
     stack.enter_context(patch("narrare.planning._scene_ai_factory.NovelRepository", repo_factory))
     stack.enter_context(

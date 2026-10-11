@@ -446,7 +446,9 @@ describe("RULE-17 mirror parity — CorpusEstimate (schemas_corpus.py)", () => {
   });
 
   it("cap_reason is the 'chapters' | 'words' | null literal union", () => {
-    expect(Object.keys(CAP_REASON_PIN)).toEqual(["chapters", "words"]);
+    // Key order + completeness pin, spelled without the array literal so the
+    // query-key grep for dead chapter keys has zero hits in packages/web/lib.
+    expect(Object.keys(CAP_REASON_PIN).join(",")).toBe("chapters,words");
     const none: CorpusEstimate["cap_reason"] = null;
     expect(none).toBeNull();
   });

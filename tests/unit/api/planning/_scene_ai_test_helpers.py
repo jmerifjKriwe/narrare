@@ -34,7 +34,7 @@ from tests.unit.api.planning._scene_service_test_helpers import _World
 
 if TYPE_CHECKING:
     from narrare_core.llm.intents import LLMIntent
-    from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeScenePlanRepository
+    from tests.fakes import FakeChapterRepository, FakeNovelRepository
 
 # ---------------------------------------------------------------------------
 # Fakes (RULE-23 — real implementations, no MagicMocks for domain deps)
@@ -140,12 +140,10 @@ def _make_service(
     registry: RecordingModelRegistry,
     novel_repo: FakeNovelRepository,
     chapter_repo: FakeChapterRepository,
-    scene_repo: FakeScenePlanRepository,
 ) -> Any:
     from narrare.planning.scene_ai_service import SceneAIService
 
     return SceneAIService(
-        scene_repo,
         chapter_repo,
         novel_repo,
         registry,  # type: ignore[arg-type]
@@ -155,18 +153,17 @@ def _make_service(
 
 
 class _AiWorld(_World):
-    """Seeded world + the wired SceneAIService seam set."""
+    """Seeded world + the wired SceneAIService seam set (no scene repo —
+    the unused injection was removed; zero-write is source-guarded)."""
 
     def __init__(
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
         super().__init__(novel_repo, chapter_repo)
         self.novel_repo = novel_repo
         self.chapter_repo = chapter_repo
-        self.scene_repo = scene_repo
         self.composer = FakeComposer()
         self.resolution = RecordingResolution(_resolved_model())
         self.registry = RecordingModelRegistry(lambda: _draft_response([_PROPOSED_SCENE]))
@@ -178,7 +175,6 @@ class _AiWorld(_World):
             registry=self.registry,
             novel_repo=self.novel_repo,
             chapter_repo=self.chapter_repo,
-            scene_repo=self.scene_repo,
         )
 
 

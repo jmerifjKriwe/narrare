@@ -67,6 +67,28 @@ class ChapterSummaryResponse(BaseModel):
     updated_at: datetime
 
 
+class PlanContextChapterResponse(BaseModel):
+    """Chapter reference for planning — title + summary, never content."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    summary: str
+
+
+class PlanContextResponse(BaseModel):
+    """Summary-only plan context: the chapter plus its position neighbors.
+
+    PLAN-001 FU1 BE follow-up — the light alternative to fetching up to
+    three full chapters (whose payloads carry ``content``). Neighbors are
+    adjacent by chapter position within the novel; edges are ``None``.
+    """
+
+    chapter: PlanContextChapterResponse
+    previous: PlanContextChapterResponse | None = None
+    next: PlanContextChapterResponse | None = None
+
+
 class ChapterVersionResponse(BaseModel):
     """Single historical version of chapter content."""
 

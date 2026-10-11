@@ -85,3 +85,28 @@ class TestRenderChapterOutlineScenes:
 
     def test_no_content_at_all_renders_empty_string(self) -> None:
         assert render_chapter_outline(_outline(), []) == ""
+
+
+class TestRenderChapterOutlineWithoutOutlineRow:
+    """FU-f (T15 follow-up): scene plans persist independently of the
+    outline row (ADR-096), so the renderer accepts ``outline=None`` and
+    emits the scene blocks alone — stage/notes require the outline row."""
+
+    def test_none_outline_renders_scene_blocks_only(self) -> None:
+        scene = make_scene_plan(
+            position=1,
+            title="The Ambush at the Gate",
+            purpose="Lyra must slip past the guard before dawn.",
+        )
+
+        rendered = render_chapter_outline(None, [scene])
+
+        # Scene block renders in full (renderer shape, spec §6.3); the
+        # outline-only sections cannot (no outline row).
+        assert "Scene 1: The Ambush at the Gate" in rendered
+        assert "Purpose: Lyra must slip past the guard before dawn." in rendered
+        assert "Stage:" not in rendered
+        assert "Notes:" not in rendered
+
+    def test_none_outline_with_no_scenes_renders_empty_string(self) -> None:
+        assert render_chapter_outline(None, []) == ""

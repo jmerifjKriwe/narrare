@@ -102,6 +102,27 @@ export interface ScenePlanSaveRequest {
   scenes: ScenePlan[];
 }
 
+/**
+ * Summary-only chapter reference for the AI scene draft (PLAN-001 W-D).
+ * Mirrors the BE `PlanContextChapterResponse` (chapters/schemas.py) —
+ * title + summary only, never `content`.
+ */
+export interface ChapterPlanContextChapter {
+  title: string;
+  summary: string;
+}
+
+/**
+ * Plan context for one chapter plus its position-adjacent neighbors.
+ * Mirrors the BE `PlanContextResponse` field-exactly (RULE-17): edge
+ * chapters resolve to `null`, `summary` is a possibly-empty string.
+ */
+export interface ChapterPlanContext {
+  chapter: ChapterPlanContextChapter;
+  previous: ChapterPlanContextChapter | null;
+  next: ChapterPlanContextChapter | null;
+}
+
 /** AI scene proposal — ScenePlan minus identity/status/timestamps. */
 export interface SceneProposal {
   title: string;

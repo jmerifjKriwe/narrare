@@ -12,17 +12,20 @@
  *   the same value the BE's storyboard view reports).
  * - `outline_notes`: the chapter outline aggregate (`getOutline`) — this also
  *   resolves the endpoint's orphaned-client status (CURRENT_STATE FU#4).
- * - `chapter_summary` / `neighbor_summaries`: chapter detail records
- *   (`Chapter.summary`) for the current and the position-adjacent chapters,
- *   ordered via the storyboard stage layout.
+ * - `chapter_summary` / `neighbor_summaries`: the summary-only plan-context
+ *   endpoint (`chaptersApi.getPlanContext`) — ONE light request replacing the
+ *   former up-to-three full-chapter GETs (whose payloads carried `content`).
+ *   Neighbors are position-adjacent within the novel, resolved server-side.
  *
  * `instruction` is intentionally NOT sourced — no UI collects one yet; the
  * server default ("") applies.
  *
  * The outline key comes from `usePlanning`'s exported `planningKeys` factory;
- * the chapter-detail key follows the `["novels", novelId, "chapters", chapterId]`
- * convention shared with the editor view, so cache invalidations stay coherent
- * across features.
+ * plan-context uses its own `["novels", novelId, "chapters", chapterId,
+ * "plan-context"]` family, nested below the shared chapter-detail key so
+ * chapter-scoped invalidations stay coherent. Freshness is the TanStack
+ * default (mount refetch), like the queries it replaces — no extra
+ * invalidation wiring.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -30,28 +33,12 @@ import { useMemo } from "react";
 import { chaptersApi } from "@/lib/api/client";
 import { getOutline } from "@/lib/api/planning";
 import { planningKeys, useStoryboard } from "@/lib/hooks/usePlanning";
-import type { Chapter, ChapterInStoryboard, StoryboardResponse } from "@/types";
-import type { SceneDraftRequest } from "@/types/planning";
-
-/** Flatten the storyboard's stage layout into position-ordered chapters. */
-function orderedStoryboardChapters(storyboard: StoryboardResponse): ChapterInStoryboard[] {
-  return storyboard.stages
-    .flatMap((stage) => stage.chapters)
-    .sort((a, b) => a.position - b.position);
-}
+import type { ChapterPlanContextChapter, SceneDraftRequest } from "@/types/planning";
 
 /** One compact free-form neighbor line; null (omitted) without a summary. */
-function neighborLine(prefix: string, chapter: Chapter | undefined): string | null {
+function neighborLine(prefix: string, chapter: ChapterPlanContextChapter | null): string | null {
   if (!chapter?.summary) return null;
   return `${prefix} "${chapter.title}": ${chapter.summary}`;
-}
-
-/** Context ids around `chapterId` within the position-ordered storyboard. */
-function neighborIds(ordered: ChapterInStoryboard[], chapterId: string | null) {
-  const index = chapterId ? ordered.findIndex((c) => c.chapter_id === chapterId) : -1;
-  const prev = index > 0 ? ordered[index - 1]!.chapter_id : null;
-  const next = index >= 0 && index + 1 < ordered.length ? ordered[index + 1]!.chapter_id : null;
-  return { prev, next };
 }
 
 /**
@@ -62,12 +49,6 @@ function neighborIds(ordered: ChapterInStoryboard[], chapterId: string | null) {
 export function useSceneDraftContext(novelId: string, chapterId: string | null): SceneDraftRequest {
   const { data: storyboard } = useStoryboard(novelId);
 
-  const ordered = useMemo(
-    () => (storyboard ? orderedStoryboardChapters(storyboard) : []),
-    [storyboard],
-  );
-  const { prev, next } = neighborIds(ordered, chapterId);
-
   // Outline aggregate — key from usePlanning's shared factory, so
   // useUpdateOutline invalidations refresh this query too.
   const { data: outline } = useQuery({
@@ -76,36 +57,26 @@ export function useSceneDraftContext(novelId: string, chapterId: string | null):
     enabled: !!novelId && !!chapterId,
   });
 
-  const { data: chapter } = useQuery({
-    queryKey: ["novels", novelId, "chapters", chapterId],
-    queryFn: () => chaptersApi.get(novelId, chapterId!),
+  // ONE summary-only plan-context fetch replaces the former three
+  // full-chapter GETs (current + prev + next) — no `content` on the wire.
+  const { data: planContext } = useQuery({
+    queryKey: ["novels", novelId, "chapters", chapterId ?? "", "plan-context"],
+    queryFn: () => chaptersApi.getPlanContext(novelId, chapterId!),
     enabled: !!novelId && !!chapterId,
-  });
-
-  const { data: prevChapter } = useQuery({
-    queryKey: ["novels", novelId, "chapters", prev],
-    queryFn: () => chaptersApi.get(novelId, prev!),
-    enabled: !!novelId && !!prev,
-  });
-
-  const { data: nextChapter } = useQuery({
-    queryKey: ["novels", novelId, "chapters", next],
-    queryFn: () => chaptersApi.get(novelId, next!),
-    enabled: !!novelId && !!next,
   });
 
   return useMemo(() => {
     const neighbors = [
-      neighborLine("Previous chapter", prevChapter),
-      neighborLine("Next chapter", nextChapter),
+      neighborLine("Previous chapter", planContext?.previous ?? null),
+      neighborLine("Next chapter", planContext?.next ?? null),
     ]
       .filter((line): line is string => line !== null)
       .join("\n");
     return {
       ...(storyboard?.structure_type ? { structure_type: storyboard.structure_type } : {}),
       ...(outline?.outline_notes ? { outline_notes: outline.outline_notes } : {}),
-      ...(chapter?.summary ? { chapter_summary: chapter.summary } : {}),
+      ...(planContext?.chapter.summary ? { chapter_summary: planContext.chapter.summary } : {}),
       ...(neighbors ? { neighbor_summaries: neighbors } : {}),
     };
-  }, [storyboard, outline, chapter, prevChapter, nextChapter]);
+  }, [storyboard, outline, planContext]);
 }

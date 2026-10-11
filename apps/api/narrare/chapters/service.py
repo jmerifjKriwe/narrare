@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.chapters.repository import count_words
+from narrare.chapters.schemas import PlanContextChapterResponse, PlanContextResponse
 from narrare_core.events.types import EventType
 from narrare_core.shared.errors import NotFoundError, ValidationError
 
@@ -210,6 +211,40 @@ class ChapterService:
             )
 
         logger.info("chapter_deleted", chapter_id=str(chapter_id))
+
+    async def get_plan_context(
+        self,
+        chapter_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> PlanContextResponse:
+        """Summary-only plan context: chapter + position-adjacent neighbors.
+
+        Light read for the planning surface (PLAN-001 FU1 BE follow-up) —
+        title + summary only, never content payloads. Neighbors are
+        adjacent by chapter position within the novel; edges are None.
+        """
+        await self._novel_service.get(novel_id, user_id)  # ownership check
+        chapter = await self._repo.get_by_id(chapter_id, novel_id)
+        if not chapter:
+            raise NotFoundError("Chapter", identifier=str(chapter_id))
+        siblings = await self._repo.list_by_novel(novel_id)
+        index = next((i for i, sibling in enumerate(siblings) if sibling.id == chapter.id), None)
+        if index is None:  # scoped fetch guarantees membership — no silent None (RULE-11)
+            raise NotFoundError("Chapter", identifier=str(chapter_id))
+        return PlanContextResponse(
+            chapter=PlanContextChapterResponse.model_validate(chapter),
+            previous=(
+                PlanContextChapterResponse.model_validate(siblings[index - 1])
+                if index > 0
+                else None
+            ),
+            next=(
+                PlanContextChapterResponse.model_validate(siblings[index + 1])
+                if index + 1 < len(siblings)
+                else None
+            ),
+        )
 
     # -- Version methods --
 

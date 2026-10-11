@@ -126,6 +126,8 @@ def _success_summary(label: str, output: str) -> str:
         return f"{m.group(1)} error(s)" if m else "0 errors"
     if "Security" in label:
         return "clean"
+    if "Frontend Size" in label:
+        return "within limits"
     if "Frontend Lint" in label:
         return "clean"
     if "i18n" in label:

@@ -5,7 +5,7 @@
  * the chapter query cache on success.
  */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type QueryKey } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,7 +92,7 @@ describe("useSummarizeChapter", () => {
     expect(mockSummarizeChapter).toHaveBeenCalledWith(chapterId, novelId, undefined);
   });
 
-  it("invalidates chapter queries on success", async () => {
+  it("invalidates the live novel-scoped chapter caches on success", async () => {
     mockSummarizeChapter.mockResolvedValueOnce({
       summary: "S.",
       word_count: 1,
@@ -105,8 +105,25 @@ describe("useSummarizeChapter", () => {
         mutations: { retry: false },
       },
     });
-    // Spy on invalidateQueries
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    // Seed the cache entries the app actually holds (PLAN-001 wave-3 W-E fix:
+    // the hook used to invalidate a dead ["chapters", chapterId] key that no
+    // query used). The keys below are the real ones in use:
+    // - chapter detail: components/studio/editor-view/useEditorChapterData.ts
+    //   (carries the `summary` field the summarizer rewrites);
+    // - this chapter's plan context: lib/hooks/useSceneDraftContext.ts
+    //   (carries chapter + neighbor summaries);
+    // - chapter list: components/studio/SidebarChapterList.tsx &
+    //   lib/hooks consumers of ["novels", novelId, "chapters"]
+    //   (ChapterSummary[] carries `updated_at`, which summarization bumps).
+    const chapterDetailKey: QueryKey = ["novels", novelId, "chapters", chapterId];
+    const planContextKey: QueryKey = ["novels", novelId, "chapters", chapterId, "plan-context"];
+    const chapterListKey: QueryKey = ["novels", novelId, "chapters"];
+    const unrelatedNovelKey: QueryKey = ["novels", novelId];
+    queryClient.setQueryData(chapterDetailKey, { id: chapterId, summary: "stale" });
+    queryClient.setQueryData(planContextKey, { chapter: { summary: "stale" } });
+    queryClient.setQueryData(chapterListKey, [{ id: chapterId, updated_at: "2026-01-01" }]);
+    queryClient.setQueryData(unrelatedNovelKey, { id: novelId });
 
     const { result } = renderHook(() => useSummarizeChapter(chapterId, novelId), {
       wrapper: ({ children }: { children: ReactNode }) => (
@@ -120,10 +137,17 @@ describe("useSummarizeChapter", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    // Should have invalidated the chapter query for this chapter
-    expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["chapters", chapterId],
+    // invalidateQueries resolves asynchronously — wait for the invalidation
+    // to land on the cache entries.
+    await waitFor(() => {
+      expect(queryClient.getQueryState(chapterListKey)?.isInvalidated).toBe(true);
     });
+
+    // Every live chapter-family entry is invalidated…
+    expect(queryClient.getQueryState(chapterDetailKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(planContextKey)?.isInvalidated).toBe(true);
+    // …and caches outside the chapter family are left untouched.
+    expect(queryClient.getQueryState(unrelatedNovelKey)?.isInvalidated).toBe(false);
   });
 
   it("handles API errors gracefully", async () => {

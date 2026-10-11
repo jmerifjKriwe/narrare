@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.llm.intents import LLMIntent
-from tests.fakes import FakeChapterRepository, FakeNovelRepository, FakeScenePlanRepository
+from tests.fakes import FakeChapterRepository, FakeNovelRepository
 from tests.unit.api.planning._scene_ai_test_helpers import (
     _PROPOSED_SCENE,
     _AiWorld,
@@ -33,19 +33,13 @@ def chapter_repo() -> FakeChapterRepository:
     return FakeChapterRepository()
 
 
-@pytest.fixture
-def scene_repo() -> FakeScenePlanRepository:
-    return FakeScenePlanRepository()
-
-
 class TestDraftHappyPath:
     async def test_draft_returns_mapped_proposals_without_ids(
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         response = await service.draft(
@@ -73,9 +67,8 @@ class TestDraftHappyPath:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         await service.draft(
@@ -92,9 +85,8 @@ class TestDraftHappyPath:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
 
         await service.draft(
@@ -114,9 +106,8 @@ class TestDraftHappyPath:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         service = world.service()
         request = _draft_request()
         await service.draft(world.chapter_id, request, world.user_id, novel_id=world.novel_id)
@@ -130,9 +121,8 @@ class TestRefineHappyPath:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.registry._respond = lambda: _refine_response(_PROPOSED_SCENE)
         service = world.service()
 
@@ -149,9 +139,8 @@ class TestRefineHappyPath:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.registry._respond = lambda: _refine_response(_PROPOSED_SCENE)
         service = world.service()
 
@@ -165,9 +154,8 @@ class TestRefineHappyPath:
         self,
         novel_repo: FakeNovelRepository,
         chapter_repo: FakeChapterRepository,
-        scene_repo: FakeScenePlanRepository,
     ) -> None:
-        world = _AiWorld(novel_repo, chapter_repo, scene_repo)
+        world = _AiWorld(novel_repo, chapter_repo)
         world.registry._respond = lambda: _refine_response(_PROPOSED_SCENE)
         service = world.service()
 
