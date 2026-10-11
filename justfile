@@ -458,6 +458,11 @@ check-architecture:
     # so the local gate can no longer go green while CI goes red on it
     # (PR #236 run 37032595571). Measured ~0.6s (42 services, 0 missing).
     uv run --all-packages python scripts/check_test_coverage_gaps.py --fail-on-missing
+    # RULE-04 frontend file-size gate — mirrors the pre-commit hook and the CI
+    # frontend job's step (ci.yml: `python3 scripts/check_frontend_file_size.py`,
+    # no flags) so the local architecture surface can no longer go green while
+    # frontend sizes drift (PLAN-001 follow-up b / T13).
+    uv run --all-packages python scripts/check_frontend_file_size.py
 
 # Run ruff linter (with auto-fix)
 lint:

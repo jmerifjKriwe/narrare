@@ -272,8 +272,12 @@ def build_steps() -> list[Step]:
     if web.is_dir() and (web / "package.json").exists():
         steps.extend(
             [
+                # RULE-04 TS/TSX file-size gate — same script + invocation as
+                # `just check-architecture`, the pre-commit hook and the CI
+                # frontend job. Own step (before lint, mirroring CI order) so
+                # size drift is reported as size, not mislabeled as lint.
                 Step(
-                    "Frontend Lint",
+                    "Frontend Size",
                     [
                         (
                             [
@@ -285,6 +289,11 @@ def build_steps() -> list[Step]:
                             ],
                             None,
                         ),
+                    ],
+                ),
+                Step(
+                    "Frontend Lint",
+                    [
                         (["pnpm", "lint:check"], web),
                     ],
                 ),
