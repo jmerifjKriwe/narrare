@@ -2,7 +2,8 @@
 
 > **Status:** ✅ Implemented (per Gate 12 — implementation complete
 > 2026-10-11: branch `feature/plan001-scene-planning`, commits
-> `0bf569da..42c49c10`; binding spec
+> `0bf569da..42c49c10` (squash-merged to main as `c359fc43` via PR #248;
+> the branch is kept as the per-commit reference); binding spec
 > `docs/superpowers/specs/2026-10-09-plan001-scene-planning-design.md`, plan
 > `docs/superpowers/plans/2026-10-09-plan001-scene-planning.md` — see the
 > Implementation Report below)
@@ -319,8 +320,11 @@ toggle), consumer adaptations, i18n, and tests are complete.
 Implemented on branch `feature/plan001-scene-planning`, commits
 `0bf569da..42c49c10` (Phase 0 + T1–T17a — the 17 planned tasks landed as
 19 commits: T4 split a/b on the LOC cap, plus one type-ignore-ratchet prep
-commit before T8). Every task passed its per-task review gate (APPROVED or
-fix-round → re-review clean). Mapping to the decisions above:
+commit before T8). Merged to main as squash `c359fc43` (PR #248, 2026-10-11,
+including the `.python-version=3.14` CI rider `fcfb5ef0`); the branch is
+kept as the per-commit history reference. Every task passed its per-task
+review gate (APPROVED or fix-round → re-review clean). Mapping to the
+decisions above:
 
 - **D1 (data model):** `planning/models.py::ScenePlan` + Alembic
   `0047_scene_plans` — hybrid JSONB refs (TimelineEvent AD-1 pattern),
