@@ -8,6 +8,8 @@ interface UseEditorCommandPaletteParams {
   handleStopGeneration: () => Promise<void>;
   handleAcceptDraft: () => void;
   handleRejectDraft: () => Promise<void>;
+  /** Continue-writing (extend) — single stream owner is EditorView (audit B08). */
+  handleStartExtend: (length: "short" | "medium" | "long") => void;
 }
 
 interface UseEditorCommandPaletteResult {
@@ -23,6 +25,7 @@ export function useEditorCommandPalette({
   handleStopGeneration,
   handleAcceptDraft,
   handleRejectDraft,
+  handleStartExtend,
 }: UseEditorCommandPaletteParams): UseEditorCommandPaletteResult {
   const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
   const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
@@ -46,7 +49,7 @@ export function useEditorCommandPalette({
       acceptDraft: handleAcceptDraft,
       rejectDraft: handleRejectDraft,
       toggleGenerationPanel,
-      startExtend: (_length: "short" | "medium" | "long") => {},
+      startExtend: handleStartExtend,
       startRewrite: () => {},
     }),
     [
@@ -60,6 +63,7 @@ export function useEditorCommandPalette({
       handleAcceptDraft,
       handleRejectDraft,
       toggleGenerationPanel,
+      handleStartExtend,
     ],
   );
 

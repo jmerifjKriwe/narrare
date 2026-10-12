@@ -18,6 +18,7 @@ import { ReadabilityTrigger } from "../analysis/ReadabilityTrigger";
 import { SentimentTrigger } from "../analysis/SentimentTrigger";
 import { VoiceCheckTrigger } from "../analysis/VoiceCheckTrigger";
 import { VoiceDriftTrigger } from "../analysis/VoiceDriftTrigger";
+import { ContinueButton } from "../editor/ContinueButton";
 import { GhostTextConfig } from "../editor/GhostTextConfig";
 import { AdaptiveStatusIndicator } from "./AdaptiveStatusIndicator";
 
@@ -31,6 +32,10 @@ interface EditorToolbarProps {
   onRightPanelOpenerChange: (element: HTMLElement) => void;
   /** Novel id — project id for the adaptive context query (ADR-069 D14/D15). */
   novelId: string;
+  /** Continue-writing (extend) operations — single owner is EditorView (B08). */
+  onExtend: (length: "short" | "medium" | "long") => void;
+  onExtendStop: () => void;
+  isExtendStreaming: boolean;
 }
 
 export function EditorToolbar({
@@ -42,10 +47,16 @@ export function EditorToolbar({
   openNameGenerator,
   onRightPanelOpenerChange,
   novelId,
+  onExtend,
+  onExtendStop,
+  isExtendStreaming,
 }: EditorToolbarProps) {
   const t = useTranslations("studio");
 
-  if (!editor) return null;
+  // No editor (or a destroyed one — e.g. the store instance during a remount
+  // window, audit B08 carry-forward): render nothing so the extend/generate
+  // controls can never be clicked against a dead editor.
+  if (!editor || editor.isDestroyed) return null;
 
   return (
     <div
@@ -105,6 +116,8 @@ export function EditorToolbar({
         active={activeRightPanel === "generation"}
         onClick={() => toggleRightPanel("generation", "toolbar")}
       />
+      <ToolbarSeparator />
+      <ContinueButton isStreaming={isExtendStreaming} onExtend={onExtend} onStop={onExtendStop} />
       <ToolbarSeparator />
       <ToolbarButton
         label={t("kb.extract")}

@@ -8,6 +8,7 @@ import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
 import { crossfadeVariants } from "@/lib/motion-variants";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { UnblockPanel } from "./editor/UnblockPanel";
+import { useContinueStream } from "./editor/useContinueStream";
 import { EditorHeader } from "./editor-view/EditorHeader";
 import { EditorOverlays } from "./editor-view/EditorOverlays";
 import { EditorRightPanelSlot } from "./editor-view/EditorRightPanelSlot";
@@ -62,12 +63,23 @@ export function EditorView({ novelId }: EditorViewProps) {
     content: chapterData.content,
     handleAutosave: persistence.handleAutosave,
   });
+  // Continue-writing (extend) — single stream owner shared by toolbar,
+  // command palette, and slash commands (audit B08). Null-safe while the
+  // TipTap instance is being created. `activeChapterId` is null only in the
+  // empty-state branch, where neither the toolbar nor the palette — the only
+  // callers of these handlers — is mounted, so the "" fallback is unreachable.
+  const continueStream = useContinueStream({
+    editor,
+    chapterId: activeChapterId ?? "",
+    novelId,
+  });
   const commandPalette = useEditorCommandPalette({
     handleSave: persistence.handleSave,
     handleStartGeneration: generationActions.handleStartGeneration,
     handleStopGeneration: generationActions.handleStopGeneration,
     handleAcceptDraft: generationActions.handleAcceptDraft,
     handleRejectDraft: generationActions.handleRejectDraft,
+    handleStartExtend: continueStream.handleExtend,
   });
   const activeRightPanel = useActiveEditorRightPanel(activeChapterId);
   useEditorUrlPanelSync({ activeRightPanel, openRightPanel });
@@ -119,6 +131,9 @@ export function EditorView({ novelId }: EditorViewProps) {
               openerRef.current = el;
             }}
             novelId={novelId}
+            onExtend={continueStream.handleExtend}
+            onExtendStop={continueStream.handleStop}
+            isExtendStreaming={continueStream.isStreaming}
           />
           <div className="flex-1 flex min-h-0">
             <EditorWorkspace

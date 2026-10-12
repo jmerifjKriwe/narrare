@@ -204,6 +204,9 @@ describe("EditorToolbar — Dialogue Coach trigger + Adaptive Status Indicator",
         openNameGenerator={vi.fn()}
         onRightPanelOpenerChange={vi.fn()}
         novelId="novel-1"
+        onExtend={vi.fn()}
+        onExtendStop={vi.fn()}
+        isExtendStreaming={false}
       />,
     );
 
@@ -230,6 +233,9 @@ describe("EditorToolbar — Dialogue Coach trigger + Adaptive Status Indicator",
         openNameGenerator={vi.fn()}
         onRightPanelOpenerChange={vi.fn()}
         novelId="novel-1"
+        onExtend={vi.fn()}
+        onExtendStop={vi.fn()}
+        isExtendStreaming={false}
       />,
     );
 
