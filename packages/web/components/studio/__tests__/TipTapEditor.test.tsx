@@ -11,9 +11,17 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TipTapEditor } from "@/components/studio/TipTapEditor";
+import { ApiError } from "@/lib/api/core";
+// ADR-043: the rewrite SSE lifecycle under test is owned by useAIOperation
+// (via useRewriteOperation inside TipTapEditor). This suite drives the REAL
+// component chain and only mocks one layer below the hook — the SSE API
+// boundary (streamRewrite) — so the hook's error mapping and phase machine
+// stay under test.
+import { streamRewrite } from "@/lib/api/generation";
 
 // ---------------------------------------------------------------------------
 // Test wrapper
@@ -91,6 +99,16 @@ vi.mock("@/components/studio/editor/AIAnnotationActions", () => ({
   AIAnnotationActions: vi.fn(() => null),
 }));
 
+// The BubbleMenu's floating positioning is not drivable in happy-dom; the
+// rewrite trigger it owns is reduced to a plain button so mount-level tests
+// can drive the real rewrite flow (selection validation → phase machine →
+// AI op) from the component surface.
+vi.mock("@/components/studio/editor/TipTapBubbleMenu", () => ({
+  TipTapBubbleMenu: vi.fn(({ onAIRewrite }) => (
+    <button type="button" data-testid="bubble-rewrite-trigger" onClick={() => onAIRewrite()} />
+  )),
+}));
+
 vi.mock("@/components/studio/editor/InlineDiff", () => ({
   InlineDiff: vi.fn(({ original, alternative }) => (
     <div data-testid="inline-diff">
@@ -101,7 +119,15 @@ vi.mock("@/components/studio/editor/InlineDiff", () => ({
 }));
 
 vi.mock("@/components/studio/editor/RewriteModeSelector", () => ({
-  RewriteModeSelector: vi.fn(() => <div data-testid="rewrite-mode-selector" />),
+  RewriteModeSelector: vi.fn(({ onGenerate }) => (
+    <div data-testid="rewrite-mode-selector">
+      <button
+        type="button"
+        data-testid="rewrite-mode-generate"
+        onClick={() => onGenerate({ mode: "tone", option: "more dramatic", count: 1 })}
+      />
+    </div>
+  )),
 }));
 
 // ---------------------------------------------------------------------------
@@ -340,5 +366,76 @@ describe("TipTapEditor", () => {
     // Editor should still render
     const editorElement = document.querySelector(".tiptap");
     expect(editorElement).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rewrite error mount (audit B01 regression)
+// ---------------------------------------------------------------------------
+
+/**
+ * Audit B01: a pre-stream rewrite failure (e.g. a 422/429 ApiError before any
+ * alternative arrived) resets the flow to idle with `aiSuggestion = null`, so
+ * the RewriteSuggestionModal — which owns the in-modal error UI — never
+ * mounts and the modal "closed silently". The standalone
+ * RewriteErrorBanner in TipTapEditor (mounted when
+ * `controller.rewriteError && !controller.aiSuggestion`) is the fix surface.
+ *
+ * This test drives a failing rewrite AI op through the REAL component and
+ * asserts the banner mounts while the modal stays absent. Component-level
+ * banner tests verify the banner's behavior IF mounted; this one verifies
+ * THAT it mounts — deleting the banner block from TipTapEditor fails here.
+ */
+describe("TipTapEditor rewrite error surface (B01)", () => {
+  const mockOnChange = vi.fn();
+  const mockOnAutosave = vi.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setEditorCalls.length = 0;
+  });
+
+  it("mounts the rewrite error banner (and no modal) when the rewrite AI op fails before streaming", async () => {
+    const user = userEvent.setup();
+    // Retryable 429 (no BUDGET_EXCEEDED code) → maps to errorRateLimit,
+    // retryable: true (mapSSEError → mapHTTPStatus).
+    vi.mocked(streamRewrite).mockRejectedValueOnce(new ApiError("Rate limited", 429));
+
+    // Selection must satisfy MIN_SELECTION_LENGTH (50): 59 selected chars.
+    renderWithProviders(
+      <TipTapEditor
+        content="<p>The old sailor watched the storm approach with growing dread and quiet awe.</p>"
+        onChange={mockOnChange}
+        onAutosave={mockOnAutosave}
+        chapterId="chapter-1"
+        novelId="novel-1"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(setEditorCalls.length).toBeGreaterThan(0);
+    });
+    const editor = setEditorCalls[0] as {
+      commands: { setTextSelection: (range: { from: number; to: number }) => void };
+    };
+    editor.commands.setTextSelection({ from: 1, to: 60 });
+
+    // Selection trigger (BubbleMenu surface, mocked) → mode selector appears.
+    await user.click(screen.getByTestId("bubble-rewrite-trigger"));
+    expect(screen.getByTestId("rewrite-mode-selector")).toBeInTheDocument();
+
+    // Generate → real useRewriteOperation → mocked streamRewrite rejects.
+    await user.click(screen.getByTestId("rewrite-mode-generate"));
+
+    // (1) The standalone banner is the error surface that mounts.
+    await waitFor(() => {
+      expect(screen.getByTestId("rewrite-error-banner")).toBeInTheDocument();
+    });
+
+    // (2) The suggestion modal never appears (no alternatives arrived).
+    expect(screen.queryByText("aiModal.title")).not.toBeInTheDocument();
+
+    // The 429 is retryable → the banner offers retry (mapped per mapper).
+    expect(screen.getByText("aiActions.retry")).toBeInTheDocument();
   });
 });
