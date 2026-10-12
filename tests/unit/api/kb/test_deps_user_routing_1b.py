@@ -111,6 +111,9 @@ class TestSessionFactoryUserRouting:
     """get_kb_session_service wires the KB_INTERVIEW cascade lazily."""
 
     async def test_wires_kb_interview_cascade_lazily_for_user_and_novel(self) -> None:
+        from fastapi import FastAPI, Request
+
+        from narrare._app.lifespan import bind_kb_session_singletons
         from narrare.kb.assist_service import KBAssistService
         from narrare.kb.dependencies_session import get_kb_session_service
         from narrare.kb.session_service import KBSessionService
@@ -119,6 +122,13 @@ class TestSessionFactoryUserRouting:
         user_id = str(uuid4())
         novel_id = uuid4()
         resolver, resolved = _fake_resolver()
+
+        # Real app + production binder: the factory reads the KB session
+        # cache from ``app.state`` (audit B05), so the unit pin exercises
+        # the same lifespan wiring as production.
+        app = FastAPI()
+        bind_kb_session_singletons(app)
+        request = Request({"type": "http", "app": app})
 
         with (
             patch(
@@ -146,6 +156,7 @@ class TestSessionFactoryUserRouting:
                 novel_id=novel_id,
                 session=session,
                 event_publisher=MagicMock(spec=True, name="WikiEventPublisher"),
+                request=request,
                 user_id=user_id,
             )
 

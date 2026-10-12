@@ -246,6 +246,13 @@ async def app() -> AsyncGenerator[FastAPI]:
 
     app = create_app(test_mode=True)
 
+    # ASGITransport never runs the lifespan; bind the KB session cache the
+    # same way startup would so real-factory tests see production wiring
+    # (audit B05 regression suite).
+    from narrare._app.lifespan import bind_kb_session_singletons
+
+    bind_kb_session_singletons(app)
+
     async def override_memory_client():
         return NullMemoryClient()
 

@@ -12,11 +12,11 @@ override). Two structural facts are pinned here:
   NO_AI_PROVIDER from the factory).
 
 The loud-400 on the AI-mediated assist endpoints (suggest/interview/
-enhance) is NOT reachable over HTTP in a real-chain test: the factory
-builds a per-request ``InMemorySessionCache`` (pre-existing wiring, eager
-and lazy alike), so a session created in one request is unreachable in
-the next — the session-ownership gate 404s before the cascade could run.
-The loud-400 semantics are pinned at unit level
+enhance) is NOT pinned over HTTP in this module: since audit B05 the
+KB session cache is app-lifespan-shared, so a session created in one
+request IS resolvable in the next — an HTTP pin would additionally
+require a provider-less authenticated-user fixture. The loud-400
+semantics are pinned at unit level
 (``test_assist_service_lazy_resolution.py`` — un-swallowed
 ``ConfigurationError``) and at the handler level by the L16 extraction
 pin (same global NarrareError handler, same error type).

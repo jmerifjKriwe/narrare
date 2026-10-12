@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from narrare._app.dependencies import (
     SessionDep,
@@ -35,6 +35,7 @@ async def get_kb_session_service(
     novel_id: UUID,
     session: SessionDep,
     event_publisher: WikiEventPublisherDep,
+    request: Request,
     user_id: str = Depends(get_current_user_id),
 ) -> KBSessionService:
     """Create a KBSessionService with per-user lazy model routing.
@@ -59,8 +60,9 @@ async def get_kb_session_service(
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, and KBContextProvider for curated world context
     (ADR-067 — single source for KB prompt context). For session storage,
-    uses InMemorySessionCache for persistence with TTL. Includes
-    InvocationPipeline for invocation evidence (ADR-040).
+    uses the app-lifespan-scoped InMemorySessionCache shared across
+    requests (ADR-080, audit B05) with a 30min TTL applied by the store.
+    Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.dependencies import (
         get_composer,
@@ -74,15 +76,18 @@ async def get_kb_session_service(
     from narrare.kb.session_service import KBSessionService
     from narrare.kb.session_store import KBCreationSessionStore
     from narrare.novels.repository import NovelRepository
-    from narrare_core.cache import InMemorySessionCache
 
     resolver = get_model_routing_resolver(session)
     model_resolution = LazyModelResolution(
         lambda: resolver.resolve(LLMIntent.KB_INTERVIEW, UUID(user_id), novel_id)
     )
 
-    # Session storage: in-memory cache with 30min TTL (ADR-080).
-    cache = InMemorySessionCache()
+    # Session storage: app-lifespan-shared cache (ADR-080, audit B05) —
+    # NOT a per-request cache, otherwise a session created by this request
+    # is invisible to the next (POST 201 → GET 404).
+    cache = getattr(request.app.state, "kb_session_cache", None)
+    if cache is None:
+        raise RuntimeError("app.state.kb_session_cache is not bound; lifespan did not initialize")
     session_store = KBCreationSessionStore(cache=cache)
 
     # KBAssistService with real ModelRegistry + PromptComposer. World context
