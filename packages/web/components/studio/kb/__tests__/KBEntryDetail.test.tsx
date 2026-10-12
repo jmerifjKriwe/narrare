@@ -1,12 +1,17 @@
 /**
  * KBEntryDetail tests — central KB entry interaction.
  *
+ * Since B04 the template endpoint returns `TemplateDetailResponse` (no field
+ * groups), so the detail view always renders metadata + flat body editor.
+ *
  * Tests:
- * 1. Renders entry with template-driven fields for character type
- * 2. Renders accordion groups from template
- * 3. Falls back to flat editor without template
+ * 1. Renders entry with metadata display and flat body editor
+ * 2. Renders entry metadata values from the entry payload
+ * 3. Renders flat editor for any entity type
  * 4. Saves changes on submit
- * 5. Loads template for entity type
+ * 5. Renders flat body editor populated from the entry
+ * 6. Renders status selector
+ * 7. Renders tags input
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -62,7 +67,7 @@ describe("KBEntryDetail", () => {
     vi.clearAllMocks();
   });
 
-  it("renders entry with template-driven fields for character type", async () => {
+  it("renders entry with metadata display and flat body editor", async () => {
     renderWithProviders(
       <KBEntryDetail
         novelId="novel-1"
@@ -72,13 +77,18 @@ describe("KBEntryDetail", () => {
       />,
     );
 
-    // Wait for template to load — the header with the entry name should show
+    // Wait for the template query to settle — the header with the entry name should show
     await waitFor(() => {
       expect(screen.getByDisplayValue("Anna Schmidt")).toBeDefined();
     });
+
+    // The flat body editor is always rendered with the entry body
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("A young historian.")).toBeDefined();
+    });
   });
 
-  it("renders accordion groups from template", async () => {
+  it("renders entry metadata values from the entry payload", async () => {
     renderWithProviders(
       <KBEntryDetail
         novelId="novel-1"
@@ -88,22 +98,15 @@ describe("KBEntryDetail", () => {
       />,
     );
 
-    // The label function falls back to formatKey(group.name) when i18n key equals the key
-    // formatKey("basic_info") → "Basic Info"
-    // formatKey("appearance") → "Appearance"
-    // formatKey("personality") → "Personality"
+    // The metadata fallback display shows entry.metadata key-value pairs
+    // (formatKey("role") → "Role:", value "Protagonist")
     await waitFor(() => {
-      expect(screen.getByText("Basic Info")).toBeDefined();
+      expect(screen.getByText("Role:")).toBeDefined();
     });
-    await waitFor(() => {
-      expect(screen.getByText("Appearance")).toBeDefined();
-    });
-    await waitFor(() => {
-      expect(screen.getByText("Personality")).toBeDefined();
-    });
+    expect(screen.getByText("Protagonist")).toBeDefined();
   });
 
-  it("falls back to flat editor without template", async () => {
+  it("renders flat editor for any entity type", async () => {
     // Use entity type "location" — MSW returns 404 for non-character templates
     renderWithProviders(
       <KBEntryDetail
@@ -114,7 +117,7 @@ describe("KBEntryDetail", () => {
       />,
     );
 
-    // Wait for load and fallback — should show flat body textarea
+    // Wait for load — should show flat body textarea
     await waitFor(() => {
       expect(screen.getByDisplayValue("The Archive")).toBeDefined();
     });
@@ -146,7 +149,7 @@ describe("KBEntryDetail", () => {
     fireEvent.click(saveButton);
   });
 
-  it("loads template for character entity type", async () => {
+  it("renders flat body editor populated from the entry for character type", async () => {
     renderWithProviders(
       <KBEntryDetail
         novelId="novel-1"
@@ -156,10 +159,10 @@ describe("KBEntryDetail", () => {
       />,
     );
 
-    // Character template has field groups. Wait for them to render.
-    // The label fallback produces formatKey(group.name), e.g. "Basic Info"
+    // The flat editor is populated from the entry body (the template query
+    // stays mounted but its payload is no longer read)
     await waitFor(() => {
-      expect(screen.getByText("Basic Info")).toBeDefined();
+      expect(screen.getByDisplayValue("A young historian.")).toBeDefined();
     });
   });
 
