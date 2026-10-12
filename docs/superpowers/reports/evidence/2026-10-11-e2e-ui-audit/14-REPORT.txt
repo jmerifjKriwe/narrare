@@ -1,0 +1,204 @@
+AUDIT ROUND 14 — STATS / SETTINGS / EXPORT / AUTH / ONBOARDING / DEMO (web :3001, API :8000 TestModel)
+Date: 2026-10-11 ~23:00–24:00 · headless chromium-1243 · storage state /tmp/opencode/audit/state.json
+
+STATUS: OK
+
+ANALYTICS (STATS-001/002)
+- Route /analytics; tabs verbatim: "AI Costs" | "Writing" (AI Costs is default tab).
+- Writing tab verbatim dump (14-02-1): "Writing", scope select aria-label="Novel" with options
+  [All novels | Audit Demo Novel | Audit Import B | Audit Import A], stat cards WORDS TODAY /
+  CURRENT STREAK / LONGEST STREAK / TOTAL WORDS, 90-day daily-words bar chart (recharts,
+  x labels 07-14…10-06, y 0/7/14/21/28).
+- Numbers rendered (All novels): WORDS TODAY 25 · CURRENT STREAK 1 day · LONGEST STREAK 1 day ·
+  TOTAL WORDS 25. Activity DOES show today's writing: exactly one bar at the chart's right edge
+  (today). The 25 words = typed words from earlier autosave sessions; import commits (3,061
+  manuscript words) are NOT counted as written-words — honest behavior, not a bug.
+- Per-novel scope switcher: <select> → GET /api/v1/analytics/writing?novel_id={id} (200).
+  Audit Demo Novel scope: same numbers (25 / 1 day / 1 day / 25 — all of today's writing happened
+  there). Import A scope: empty state "No writing activity recorded yet." + 0.
+
+GOAL (STATS-001 E4/E5)
+- Affordance: Novel Settings → "Writing goals" tab → "Project progress" card, field
+  "Writing goal (words)" (#writing-goal-target), SaveFooter Save button.
+- API: PATCH /api/v1/settings/novels/{novelId} {"writing_goals":{"target_words":5000}} → 200;
+  refetch GET /api/v1/settings/novels/{id} shows stored value.
+- Render: /analytics → Writing → scope "Audit Demo Novel" shows a goal progress block:
+  "Writing goal — 3,061 of 5,000 words (61.2%)" (progress vs LIVE manuscript words).
+  Note: sibling "Daily writing goal" card is a local-only motivator (default 1000, not persisted).
+  First attempt filled the daily card by mistake → no API call; retry on #writing-goal-target worked.
+
+COSTS (STATS-002)
+- AI Costs tab dump (14-01-2, month 2026-10): header stats AI CALLS 817 · TOKENS IN 31,689 ·
+  TOKENS OUT 84 · ESTIMATED COST (USD) $0.00; badge "817 unpriced"; month nav (prev enabled,
+  next disabled); "Export CSV" button; per-FEATURE table (Text extraction 771, Suggestions 9,
+  scene_plan 9, Outline 4, Coreference 4, Character voice 4, Name generation 3, Chat 2,
+  Dialogue coach 2, Author voice drift 2, Author voice 2, Wiki generation 2, Write 1, Extend 1,
+  Rewrite 1 — all $0.00); per-MODEL table (test/test 802, ollama/ollama-test-model 15);
+  recharts monthly bar 2026-05…2026-10 all $0.00, y-axis $0–$4. TestModel calls render as
+  zero-cost, honestly labeled "unpriced". Minor i18n gap: raw intent key "scene_plan" untranslated.
+- Budget: AI setup tab → "Monthly budget" card (#monthly-budget amount commits on blur/Enter,
+  #budget-mode auto-saves mode on change).
+  APIs: PATCH /api/v1/settings/ai {"monthly_budget_usd":10} → 200; {"budget_mode":"warn"} → 200;
+  {"budget_mode":"block"} → 200. DB final state: monthly_budget_usd "10.00", budget_mode "block".
+- Badge/banner: /analytics shows badge "0% of budget" (localized: "0% des Budgets" in German) in
+  both warn and block modes. No banner — correct: banner strings exist (budget.bannerTitle/body)
+  but only render when budget reached; $0.00 spent never triggers it. Badge shows mode-agnostic
+  percent; "Over budget"/"Budget reached — AI blocked" states not reachable at zero cost.
+
+NOVEL_SETTINGS
+- Route /novel/{id}/settings?category=…; nav verbatim (9): Novel Details, General, Writing goals,
+  AI setup, System Prompts, KB Templates, Learning, Keyboard shortcuts, About. Full dumps 14-08-tab-*.
+  - Novel Details: Basic Information (Title/Author/Language), Story (Genre/Tone — 9 tone options,
+    Story Structure — 5 options), Summary (Logline/Synopsis). Rename WORKS: PATCH
+    /api/v1/novels/{id} {"title":"Audit Demo Novel RENAMED"} → 200 → dashboard card updated;
+    reverted to "Audit Demo Novel" (verified).
+  - Writing goals: dumped (see GOAL).
+  - AI setup (provider surface, dumped 14-06-1 + full body 14-06-1b): Provider select
+    (single provider "ollama", has_api_key false, is_active true, created 2026-10-11), Add Provider,
+    per-provider "Edit API Key"; Model Data section (models.dev) + "Refresh Model Data";
+    Default Model section (Provider select "No provider selected"/"ollama", Default Model select
+    shows "Select a default provider first"); Monthly budget card; Advanced Settings (collapsed:
+    token profiles Quick/Balanced/Long/Comprehensive/Custom, Category/Intent overrides, Context
+    Budget sliders 30/20/25/15/10 =100%, WS timeout 1800s). NOT SAVED (per instructions): editing
+    provider config/API key could override NARRARE_E2E_TEST TestModel behavior — only budget
+    amount/mode (out-of-band of provider selection) were changed.
+  - System Prompts: categories All/Generation/Writing/Analysis/Knowledge Base/AI Assistance/
+    Planning/Wiki; prompt list with "Default" source badges (dialogue_coach, author_voice, …).
+  - KB Templates: 8 templates v2.0.0 · Default (Characters…Timelines).
+  - Learning: Adaptive Context toggle, Signal Weights (70/90/100/100%), "No adaptive signals
+    active", Learning Progress 0/50 interactions, "Analyze Now — Need at least 5 interactions (0/5)",
+    Reset Preferences.
+  - Keyboard shortcuts: Save Cmd+S, New chapter Cmd+N, Command Palette Cmd+K, Quick capture
+    Ctrl/⌘+Shift+U, Bold/Italic, AI rewrite, Ghost Text accept Tab / word → / dismiss Esc,
+    Execute AI Action Ctrl+Enter.
+  - About: version 0.1.0, MIT, Build 2026.05, feature list, "Replay introduction" (tour — see
+    ONBOARDING).
+
+GLOBAL_SETTINGS (SETUP-004 profile + language)
+- User/global settings live under the same settings page, "General" tab (no separate global route;
+  sidebar has no standalone Settings entry). Verbatim (14-08-tab-general): "General settings —
+  Adjust the basic application settings"; Theme mode (Light/Dark/System), Theme (Neutral/Narrare),
+  Display Name (empty; header shows auth fallback "auditor"), Language (Deutsch/English/Français,
+  value en). Explicit Save button (intentional per source comment: language switch does
+  router.refresh + NEXT_LOCALE cookie).
+- Language switch: select Deutsch → Save → PATCH /api/v1/settings/user
+  {"display_name":"","ui_language":"de"} → 200. German dashboard verbatim dump (14-09b-de-dashboard):
+  "Abmelden", "Meine Romane", "Wähle einen Roman oder erstelle einen neuen", "Neue Reihe",
+  "Neuer Roman", "Demo-Projekte", "Demo laden →", "Zuletzt bearbeitet 11. Okt. 2026",
+  "4 Kapitel / 3130 Wörter / 5 Charaktere". German analytics (14-09b-de-analytics): "KI-Kosten",
+  "Schreiben", "CSV exportieren", "0% des Budgets", "817 ohne Preisangabe", "KI-AUFRUFE",
+  "EINGABE-TOKENS", "AUSGABE-TOKENS", "GESCHÄTZTE KOSTEN (USD)", German number format "0,00 $".
+  Switch back: Save button correctly reads "Speichern" in DE → PATCH {"ui_language":"en"} →
+  "My Novels" restored. DB verified ui_language=en.
+- AI-error-mapping locale check (forced chat SSE failure via browser-context route abort — no
+  server changes): ENGLISH UI renders the hardcoded German fallback
+  "Verbindung verloren. Prüfe deine Internetverbindung." with an English "Retry" button →
+  the German fallback does NOT match locale (ChatPanel.tsx:167 renders error.userMessage —
+  the hardcoded DE string from AI_ERROR_MESSAGE_MAP — and ignores i18nKey; same pattern in
+  ConsistencyCheckPanel.tsx:103 which prefers userMessage over t()). GERMAN UI renders the same
+  German message + "Erneut versuchen" (matches locale, but via the fallback, not i18n).
+  Locale-aware consumers exist (WorldbuildingAnalysisPanel prefers t(i18nKey)) — the fix pattern
+  is present in the codebase, just not applied in ChatPanel/ConsistencyCheckPanel.
+
+CONTEXT_INSPECTOR (WRITE-014)
+- Affordance: editor → toolbar "Generate" → right panel "AI Generation" (URL ?panel=generation).
+  ContextInspector renders only in streaming/review phases (GenerationPanel.tsx:116).
+- Exercised with a real TestModel generation: POST /api/v1/writing/chapters/{chId}/generate →
+  422 MISSING_INPUT with empty prompt/outline (honest validation); with outline filled →
+  POST 200 + GET /writing/generation/{id}/stream. Panel dump (14-11c-1): "AI Generation ·
+  0/50 interactions · No context assembled · AI Draft 0 / 3,000 words · Waiting for AI
+  response… · Accept / Reject / Retry". Token usage surface present ("Tokens total/Prompt/
+  Completion" strings). For this chapter the context meta was empty → "No context assembled";
+  the "Context details" expander (Characters/Locations/Factions/Recent/Budget tiers) only
+  appears when context meta carries data, so sources/token-budget split could not be shown.
+  Draft rejected → POST /writing/generation/{id}/reject → chapter intact (569 words).
+  Generation 422 also triggers a rating prompt ("Rate this suggestion / Submit / Skip" appeared
+  after reject).
+
+EXPORT
+- Novel card "Export" AND editor header Export (title="Export") open the same "Export manuscript"
+  dialog. OPTIONS verbatim: FORMAT — PDF (Print-ready PDF with Libertinus Serif) / EPUB (EPUB
+  e-book with embedded font) / Markdown (Plain Markdown text file) / Word (DOCX — Times 12 pt,
+  1.5 line spacing); INCLUDE IN MANUSCRIPT — Front matter, Back matter, Chapter summaries,
+  Character list, Location glossary; format-specific options: PDF OPTIONS (Paper size B format
+  129×198 / A5 / A4 / US Letter / Custom, Body font size 11, Leading ratio 1.2, Drop caps, Table
+  of contents) or MARKDOWN OPTIONS (Chapter heading level). Scope is manuscript-level; a
+  single-chapter export is NOT offered in this dialog (md file contains all 4 chapters).
+- Flow: Export → POST /api/v1/export 201 → poll GET /export/jobs/{id} → status completed with
+  single-use artifact_url → dialog shows "Export ready." + buttons [Download | New export] →
+  Download → GET /export/jobs/{id}/artifact?token=… (file stream).
+- File evidence: /tmp/opencode/audit/exports/audit-demo-novel.md — 19,461 bytes, UTF-8 Markdown,
+  YAML front matter (title "Audit Demo Novel", author auditor, lang en), H1 per chapter
+  (The Compass Points / Secrets Beneath Stone / The Silent Keep / The Archive of Truth).
+
+AUTH_ROUNDTRIP
+- "Sign out" → POST /api/v1/auth/logout 204 → redirect to /login ✓ (14-13-1).
+- Sign in audit@narrare.dev → POST /api/v1/auth/login 200 → redirect to / → dashboard intact
+  (My Novels + all 3 novels) ✓. Storage state refreshed on disk.
+
+ONBOARDING (ONBOARD-001)
+- Affordances: (a) About tab → "Replay introduction — Replay the guided tour through Narrare's AI
+  features"; (b) auto-start on first workspace visit gated by localStorage
+  narrare:featureTourCompleted (present, =true, so no first-login tour during this audit session).
+  "Replay introduction" only clears the flag; the tour starts on the NEXT workspace shell mount.
+- Tour: 9 steps, stepped through with Next/Back/Skip/Done, dumps 14-13b-tour-step1..9:
+  1 Writing Area · 2 Navigation · 3 AI Assistance · 4 Ghost Text · 5 Worldbuilding · 6 Settings ·
+  7 How Narrare Thinks — Part 1: Knowledge Base · 8 … Part 2: Storyboard & Chapters ·
+  9 Before / After — A Quick Example (Echoes of the Thornwall reference). Full verbatim text in
+  the step files. Ends with flag set true again.
+
+DEMO_LOAD
+- Dashboard "Load Demo →" on the Dead Signal card → navigates to the Quick Start wizard at
+  /wizard?starter=demo_scifi (4 steps: Project Setup / Starter Content / Novel Details / Confirm).
+  FINDINGS: the starter param does NOT pre-fill the project name (empty + "Project name is
+  required" on Next) and does NOT preselect "Demo scifi" on the Starter Content step (validate
+  step-3 payload was {"starter":"blank"} until manually selected). Once "Demo scifi" is selected,
+  Novel Details DO auto-fill from demo metadata (validate step-2: title "Dead Signal", genre
+  "Science Fiction", logline "A signal from a dead world changes everything.", three_act, dramatic).
+- Completed with Finish ✓ → POST /api/v1/setup/complete 200 → auto-navigates into the new novel
+  workspace /novel/4e7b512c-d02b-45c5-9b51-27f498bd0a31 (chapters loaded). Dashboard now lists
+  Dead Signal as a real novel card (Science Fiction, auditor, "Last edited Oct 11, 2026") —
+  net novels 3→4. Left in place as audit substrate.
+
+POLLUTION (net state)
+- Novels 3→4: + "Dead Signal" (4e7b512c-d02b-45c5-9b51-27f498bd0a31) — expected/kept.
+- Writing goal: Audit Demo Novel target_words=5000 — KEPT (report).
+- Budget: monthly_budget_usd=10.00, budget_mode=block — KEPT (report; last task step).
+- Language: back to en (DB + UI verified).
+- Novel title rename: reverted to "Audit Demo Novel".
+- Generation draft: rejected; chapter unchanged (569 words).
+- Server-side export jobs: 3 × format=md for Audit Demo Novel (2 artifacts created + left
+  unconsumed/single-use, 1 downloaded).
+- featureTourCompleted=true (same as before round).
+- AI cost counters: +~25 unpriced TestModel calls (costs page grew 817 total incl. prior rounds).
+- Language select PATCHes also re-sent display_name:"" (was already empty).
+
+CONSOLE_ERRORS (round 14, all scripts, excl. 401 auth-refresh burst; 0 page errors): 64 messages
+  - x19 "Failed to load resource: net::ERR_FAILED" + x15 fetch redirect messages → all from the
+    /api/v1/settings/token-limits infinite 307↔308 trailing-slash redirect loop (AI setup tab):
+      GET /api/v1/settings/token-limits?provider=…&model_id=…&intent=write → 307 →
+      /api/v1/settings/token-limits/?provider=… → 308 → back → … net::ERR_FAILED (15/22 network
+      failures). Repeatable on every AI-tab visit.
+  - x18 "500 (Internal Server Error)" → GET /api/v1/settings/ai/providers/de326032-…/models
+      (model catalog for the ollama provider; response {"detail":"Internal server error"}).
+  - x12 "IntlError: MISSING_MESSAGE: Could not resolve `studio.worldbuilding.title` in messages
+      for locale `en`" (worldbuilding page, known from audit 06, still present).
+  - x4 chat ERR_FAILED = intentional route-abort from the error-mapping probe (not app bugs).
+NETWORK_FAILURES (round 14): 22 total → 15 token-limits redirect loop, 4 intentional chat aborts,
+  2 models-endpoint ERR_ABORTED (in-flight aborts on navigation), 1 misc.
+
+FILES: /tmp/opencode/audit/14-01…14-14* (239 files) — key dumps:
+  14-01-0-dashboard, 14-01-2-analytics-default (costs), 14-02-1-writing-tab, 14-03-1/2 scope,
+  14-04-1/2 settings+goals, 14-05-2/3 goal saved+render, 14-06-1-ai-setup-tab (+1b full body),
+  14-06b-3…6 budget states, 14-07-1…4 budget amount+badges, 14-08-tab-* (9 settings tabs),
+  14-08-renamed, 14-09-1…7 language first pass, 14-09b-de-dashboard/analytics + en-back,
+  14-10-en-1 / 14-10b-en|de-chat-error (locale evidence), 14-11-0 editor, 14-11b-0 generate panel,
+  14-11c-1…4 generation+ContextInspector, 14-12-1 export dialog, 14-12b-1/2 export+editor dialog,
+  14-13-1…4 auth+about, 14-13b-tour-step1..9, 14-14-14c-2…5 demo wizard+dashboard,
+  exports/audit-demo-novel.md; artifacts 14…14u-{api-calls,console,network}.json
+
+CONCERNS: (1) /api/v1/settings/token-limits redirect loop (307↔308) breaks token-limit fetch on
+every AI-settings visit; (2) GET /settings/ai/providers/{id}/models → 500 blocks the model
+catalog dropdown; (3) ai-error German fallback shown in English UI (ChatPanel/ConsistencyCheck);
+(4) "Load Demo →" starts a wizard with neither project name nor starter preselected;
+(5) export dialog cannot export a single chapter.

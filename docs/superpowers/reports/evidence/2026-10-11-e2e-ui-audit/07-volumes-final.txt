@@ -1,0 +1,40 @@
+Narrare
+
+AI-powered writing
+
+All Novels
+Scratchpad
+AI Costs
+Editor
+Volumes
+World & Characters
+16
+Chat
+Settings
+
+CHAPTERS
+
+The Compass Points
+569 words
+Secrets Beneath Stone
+729 words
+The Silent Keep
+872 words
+The Archive of Truth
+891 words
+New Chapter
+Import chaptersAnalyze novel corpus
+
+DEV TOOLS
+
+Design Tokens
+A
+
+auditor
+
+Volumes
+Create Volume
+
+No target set
+
+Panel closed

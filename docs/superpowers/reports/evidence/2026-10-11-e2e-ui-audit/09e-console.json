@@ -1,0 +1,50 @@
+[
+  {
+    "type": "warning",
+    "text": "%c%s%c \u26a0 Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.\nRead more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  "
+  },
+  {
+    "type": "error",
+    "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  },
+  {
+    "type": "error",
+    "text": "Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render."
+  }
+]

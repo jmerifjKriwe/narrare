@@ -1,0 +1,50 @@
+[landing] chars=1623 hasNewEntry=True hasSearch=True
+[landing-buttons] {"buttons": ["The Compass Points\n569 words", "Secrets Beneath Stone\n729 words", "The Silent Keep\n872 words", "The Archive of Truth\n891 words", "New Chapter", "Import chapters", "Analyze novel corpus", "All\n16", "Graph", "Wiki", "Characters\n5", "Concepts\n0", "Factions\n2", "Locations\n4", "Objects\n1", "Settings\n0", "Systems\n3", "Timelines\n1", "Analyze Worldbuilding", "Check Consistency", "New Entry", "New with AI Interview", "Cataclysm History\nDraft\nhistory, cataclysm, truth\n2h ago", "Elara Thornwind\nDraft\nprotagonist, human, mage\n2h ago", "Kaelen Vane\nDraft\ncompanion, human, mage\n2h ago", "Master Verrick\nDraft\nmentor, human, mage\n2h ago", "Sera\nDraft\nsupporting, human, merchant\n2h ago", "Thornwall Ruins\nDraft\nruins, magical, forbidden-zone\n2h ago", "Void Magic System\nDraft\nmagic, void, dangerous\n2h ago"]}
+[search] api=[{"method": "GET", "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries/search?q=Elara", "status": 200, "post": ""}]
+[search-render]  City)
+Draft
+capital, city, markets
+2h ago
+Cataclysm History
+Draft
+history, cataclysm, truth
+2h ago
+Elara Thornwind
+Draft
+protagonist, human, mage
+2h ago
+High Chancellor Morven
+Draft
+antagonist, human, archmage
+2h ago
+Kaelen Vane
+Draft
+companion, human, mage
+2h ago
+Master Verrick
+Draft
+mentor, human, mage
+2h ago
+Order of the Silver Flame
+Draft
+organization, government, magical-order
+2h ago
+Political Structure of Aethelgard
+Draft
+government, politics, monarchy
+2h ago
+Sera
+Draft
+supporting, human,
+[filter] clicked Location tab OK
+[create-form-controls] [{"tag": "input", "type": "search", "placeholder": "Search entries...", "value": "", "label": "Search entries...", "aria": "Search entries...", "name": null}, {"tag": "select", "type": "select-one", "placeholder": null, "value": "character", "label": "Select type", "aria": null, "name": null}, {"tag": "input", "type": "text", "placeholder": "Entry name...", "value": "", "label": "Name", "aria": null, "name": null}, {"tag": "textarea", "type": "textarea", "placeholder": "Write the entry content...", "value": "", "label": "Body", "aria": null, "name": null}, {"tag": "input", "type": "text", "placeholder": "Add tags (comma-separated)", "value": "", "label": "Tags", "aria": null, "name": null}, {"tag": "select", "type": "select-one", "placeholder": null, "value": "draft", "label": "Status", "aria": null, "name": null}]
+[create-form-text] null
+[create-submit] count=1 text=Create
+[create-api] [{"method": "POST", "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries", "status": 201, "post": "{\"entity_type\":\"location\",\"name\":\"Audit Location\",\"body\":\"A windswept cliffside lighthouse used for the headless UI audit. Created by the KB-001 CRUD pass to verify entity create, edit and detail rendering.\",\"tags\":[],\"status\":\"draft\"}"}]
+[created-entry-id] 2d7c8da0-9311-4ae3-8a94-69d64f26f948
+[detail] chars=70
+[detail-groups] []
+[edit] NO textarea found in detail view
+[edit-api] edited=False patch=[]
+[edit-render] EDIT MARKER NOT VISIBLE
+[improve] BUTTON NOT FOUND

@@ -1,0 +1,128 @@
+[
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "req_body": "{}",
+  "resp_body": "<unavailable>"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "req_body": "{}",
+  "resp_body": "{\n \"access_token\": \"REDACTED_JWT.REDACTED_JWT...(209 chars)\",\n \"refresh_token\": \"REDACTED_JWT.REDACTED_JWT...(211 chars)\",\n \"token_type\": \"bearer\",\n \"expires_in\": 3600\n}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 401,
+  "req_body": null,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 401,
+  "req_body": null,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 401,
+  "req_body": null,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "{\n \"id\": \"b4f286d9-e274-4dce-a531-8288e490a8bd\",\n \"email\": \"audit@narrare.dev\",\n \"display_name\": \"auditor\",\n \"is_active\": true,\n \"is_verified\": false,\n \"created_at\": \"2026-10-11T18:43:46.799803Z\",\n \"has_providers\": true\n}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "[\n {\n  \"id\": \"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\n  \"series_id\": null,\n  \"series_position\": null,\n  \"title\": \"Audit Demo Novel\",\n  \"author\": \"auditor\",\n  \"genre\": \"Fantasy\",\n  \"writing_language\": \"en\",\n  \"is_demo\": true,\n  \"updated_at\": \"2026-10-11T19:11:42.793470Z\"\n }\n]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "{\n \"id\": \"b4f286d9-e274-4dce-a531-8288e490a8bd\",\n \"email\": \"audit@narrare.dev\",\n \"display_name\": \"auditor\",\n \"is_active\": true,\n \"is_verified\": false,\n \"created_at\": \"2026-10-11T18:43:46.799803Z\",\n \"has_providers\": true\n}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/setup/demos",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "{\n \"demos\": [\n  {\n   \"id\": \"demo_fantasy\",\n   \"title\": \"Echoes of the Thornwall\",\n   \"writing_language\": \"en\",\n   \"genre\": \"Fantasy\",\n   \"chapter_count\": 4,\n   \"character_count\": 5,\n   \"word_count\": 3130,\n   \"description\": \"A young mage must navigate political intrigue between an ancient order and rising rebels while mastering forbidden magic...(148 chars)\",\n   \"author\": \"Narrare Demo\",\n   \"logline\": \"When an ancient order begins hunting those with forbidden magic, a young mage must choose between safety and rebellion.\",\n   \"pov\": \"Third Person Limited (Multiple)\",\n   \"tags\": [\n    \"...\",\n    \"...\",\n    \"...\",\n    \"...\"\n   ]\n  },\n  {\n   \"id\": \"demo_scifi\",\n   \"title\": \"Dead Signal\",\n   \"writing_language\": \"en\",\n   \"genre\": \"Science Fiction\",\n   \"chapter_count\": 3,\n   \"character_count\": 3,\n   \"word_count\": 3450,\n   \"description\": \"An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to quest...(177 chars)\",\n   \"author\": \"Narrare Demo\",\n   \"logline\": \"A signal from a dead world changes everything.\",\n   \"pov\": \"First Person\",\n   \"tags\": [\n    \"...\",\n    \"...\",\n    \"...\",\n    \"...\",\n    \"...\"\n   ]\n  },\n  {\n   \"id\": \"demo_german"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/export/formats",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "[\n {\n  \"format\": \"pdf\",\n  \"available\": true\n },\n {\n  \"format\": \"md\",\n  \"available\": true\n },\n {\n  \"format\": \"epub\",\n  \"available\": true\n },\n {\n  \"format\": \"docx\",\n  \"available\": true\n }\n]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "{\n \"id\": \"b4f286d9-e274-4dce-a531-8288e490a8bd\",\n \"email\": \"audit@narrare.dev\",\n \"display_name\": \"auditor\",\n \"is_active\": true,\n \"is_verified\": false,\n \"created_at\": \"2026-10-11T18:43:46.799803Z\",\n \"has_providers\": true\n}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "{\n \"id\": \"b4f286d9-e274-4dce-a531-8288e490a8bd\",\n \"email\": \"audit@narrare.dev\",\n \"display_name\": \"auditor\",\n \"is_active\": true,\n \"is_verified\": false,\n \"created_at\": \"2026-10-11T18:43:46.799803Z\",\n \"has_providers\": true\n}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "req_body": null,
+  "resp_body": "{\n \"id\": \"b4f286d9-e274-4dce-a531-8288e490a8bd\",\n \"email\": \"audit@narrare.dev\",\n \"display_name\": \"auditor\",\n \"is_active\": true,\n \"is_verified\": false,\n \"created_at\": \"2026-10-11T18:43:46.799803Z\",\n \"has_providers\": true\n}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-1",
+  "status": 200,
+  "req_body": "{\n \"project_name\": \"Audit Import Novel\",\n \"writing_language\": \"en\",\n \"autosave_interval\": 30\n}",
+  "resp_body": "{\n \"valid\": true,\n \"project_name\": \"Audit Import Novel\",\n \"writing_language\": \"en\",\n \"autosave_interval\": 30\n}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/import/preview",
+  "status": 200,
+  "req_body": "",
+  "resp_body": "{\n \"items\": [\n  {\n   \"index\": 0,\n   \"suggested_title\": \"The Hidden Door\",\n   \"word_count\": 144,\n   \"source_file\": \"ch1.md\",\n   \"split_candidates\": []\n  },\n  {\n   \"index\": 1,\n   \"suggested_title\": \"A Second Chapter\",\n   \"word_count\": 115,\n   \"source_file\": \"ch2.md\",\n   \"split_candidates\": []\n  }\n ],\n \"file_count\": 2,\n \"chapter_count\": 2,\n \"total_word_count\": 259\n}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-3",
+  "status": 200,
+  "req_body": "{\n \"starter\": \"import\"\n}",
+  "resp_body": "{\n \"valid\": true,\n \"starter\": \"import\",\n \"demo_info\": null\n}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-2",
+  "status": 200,
+  "req_body": "{\n \"title\": \"Audit Import Novel\",\n \"author\": \"auditor\",\n \"genre\": \"\",\n \"writing_language\": \"en\",\n \"logline\": \"\",\n \"story_structure\": \"three_act\",\n \"tone\": \"dramatic\"\n}",
+  "resp_body": "{\n \"valid\": true,\n \"title\": \"Audit Import Novel\"\n}"
+ }
+]

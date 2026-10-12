@@ -1,0 +1,14 @@
+{
+  "slash_probe": {
+    "listbox": false
+  },
+  "coauthor_item": null,
+  "cleanup_editor_unchanged": true,
+  "extend_slash_items": null,
+  "coauthor": "probed",
+  "final_exact_match": true,
+  "final_chapter": {
+    "word_count": 569,
+    "content_len": 3914
+  }
+}

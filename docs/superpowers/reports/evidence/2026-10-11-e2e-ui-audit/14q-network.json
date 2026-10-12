@@ -1,0 +1,7 @@
+[
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/logout",
+  "status": "FAILED(net::ERR_ABORTED)"
+ }
+]

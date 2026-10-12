@@ -1,0 +1,6 @@
+[
+  {
+    "url": "http://localhost:3001/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/suggest",
+    "failure": "net::ERR_ABORTED"
+  }
+]

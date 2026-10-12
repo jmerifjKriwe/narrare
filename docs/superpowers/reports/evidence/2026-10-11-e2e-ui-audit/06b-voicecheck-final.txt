@@ -1,0 +1,23 @@
+Editor side panel
+Voice Consistency Check
+
+Check your chapter's dialogue against each character's stored voice profile
+
+Hybrid check · Deterministic metrics + AI judgment
+
+Check Voice
+In
+
+No voice profile available for this character.
+
+Kaelen
+
+No voice profile available for this character.
+
+Master Verrick
+
+No voice profile available for this character.
+
+Order
+
+No voice profile available for this character.

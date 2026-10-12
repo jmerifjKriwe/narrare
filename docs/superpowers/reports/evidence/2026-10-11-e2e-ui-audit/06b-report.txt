@@ -1,0 +1,387 @@
+==============================================================================
+HEADLESS UI AUDIT — 06b BATCH 2 FOLLOW-UP (fixed waits + missed items)
+==============================================================================
+NAVIGATED: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572
+KB BEFORE: {"status": 200, "count": 16, "list_len": 16, "names": ["Aethelgard (Capital City)", "Cataclysm History", "Elara Thornwind", "High Chancellor Morven", "Kaelen Vane", "Master Verrick", "Order of the Silver Flame", "Political Structure of Aethelgard", "Sera", "Silver Flame Fortress", "Temple of Silent Flames", "The Ashen Covenant", "The Thornwell Compass", "Thornwall Ruins", "Timeline of the Void Cataclysm", "Void Magic System"], "shape": "items", "top_keys": ["items", "total", "page", "page_size"]
+
+------------------------------------------------------------------------------
+FUNCTION: Character Voices (ANAL-008, auto-run)
+TRIGGER count: 1
+LOADING (224):
+    Editor side panel
+    Character Voice Analysis
+
+    Capture how each character speaks — vocabulary, sentence patterns, and emotional register
+
+    Analyzing character voices...
+
+    Extracting speech patterns and dialogue for each character
+RENDER (234 chars) — first 1200 verbatim:
+    Editor side panel
+    Character Voice Analysis
+
+    Capture how each character speaks — vocabulary, sentence patterns, and emotional register
+
+    Failed to analyze character voices
+
+    Verbindung verloren. Prüfe deine Internetverbindung.
+
+    Try Again
+CLOSE: True
+API: POST /api/v1/analysis/character-voice/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 stream=True
+
+------------------------------------------------------------------------------
+FUNCTION: Check Voice (WRITE-010)
+TRIGGER 'Check character voices' count: 1
+IDLE (183):
+    Editor side panel
+    Voice Consistency Check
+
+    Check your chapter's dialogue against each character's stored voice profile
+
+    Hybrid check · Deterministic metrics + AI judgment
+
+    Check Voice
+CONTROLS:
+
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Check character voices"
+inner 'Check Voice' count: 1
+RENDER (409 chars) — first 1200 verbatim:
+    Editor side panel
+    Voice Consistency Check
+
+    Check your chapter's dialogue against each character's stored voice profile
+
+    Hybrid check · Deterministic metrics + AI judgment
+
+    Check Voice
+    In
+
+    No voice profile available for this character.
+
+    Kaelen
+
+    No voice profile available for this character.
+
+    Master Verrick
+
+    No voice profile available for this character.
+
+    Order
+
+    No voice profile available for this character.
+CLOSE: True
+API: POST /api/v1/analysis/voice-check/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200 stream=True
+
+------------------------------------------------------------------------------
+FUNCTION: Voice Drift (ANAL-009)
+TRIGGER count: 1
+IDLE controls:
+
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Analyze"
+CTA Analyze count: 1
+RENDER (994 chars) — first 1500 verbatim:
+    Editor side panel
+    Character Voice Drift
+    Refresh Analysis
+
+    See how each character's voice drifts across your book — intentional evolution, context shifts, or inconsistency.
+
+    Hybrid analysis · Deterministic trend + AI classification
+
+    NOT ANALYZED
+
+    About — No stored voice profile
+    Ahead — No stored voice profile
+    Answers — No stored voice profile
+    Archmage Solara — No stored voice profile
+    Behind — No stored voice profile
+    Cataclysm — No stored voice profile
+    Covenant — No stored voice profile
+    Do — No stored voice profile
+    Elara — No stored voice profile
+    Elara Thornwind — No stored voice profile
+    In — No stored voice profile
+    Initiate — No stored voice profile
+    Kaelen — No stored voice profile
+    Keeper — No stored voice profile
+    Master Verrick — No stored voice profile
+    Morven — No stored voice profile
+    Order — No stored voice profile
+    Secret Archives — No stored voice profile
+    Sera — No stored voice profile
+    Solara — No stored voice profile
+    To — No stored voice profile
+    Void — No stored voice profile
+HEATMAP probe: grid-children=0 svg-shapes=1
+CLOSE: True
+API: POST /api/v1/analysis/voice-drift/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 stream=True
+
+------------------------------------------------------------------------------
+FUNCTION: Author Voice (ANAL-007)
+TRIGGER count: 1
+IDLE controls (chapter multi-select):
+    [input type=checkbox] The Compass Points => true
+    [input type=checkbox] Secrets Beneath Stone => true
+    [input type=checkbox] The Silent Keep => true
+    [input type=checkbox] The Archive of Truth => true
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Analyze Voice"
+    button: "Select all" [disabled]
+    button: "Clear"
+CTA 'Analyze Voice' count: 1
+RENDER (411 chars) — first 1500 verbatim:
+    Editor side panel
+    Author Voice Analysis
+    Re-analyze
+
+    Capture your narrative voice — sentence patterns, vocabulary, and prose composition — to guide AI generation
+
+    Hybrid analysis · Deterministic metrics + AI judgement
+
+    Last analyzed: 2026-10-11T20:29:15.576048+00:00
+    UP TO DATE
+
+    Voice Profile
+    Formality
+    50%
+    Casual
+    Formal
+    Vocabulary Level
+    moderate
+    Sentence Profile
+    medium
+    Emotional Range
+    moderate
+    Advanced Metrics
+CLOSE: True
+API: POST /api/v1/analysis/author-voice/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 stream=True
+
+------------------------------------------------------------------------------
+FUNCTION: Author Drift
+TRIGGER count: 1
+CTA Analyze count: 1
+RENDER (606 chars) — first 1500 verbatim:
+    Editor side panel
+    Author Voice Drift
+    Refresh Analysis
+
+    See how your narrative voice drifts across your book — intentional evolution, context shifts, or inconsistency.
+
+    Hybrid analysis · Deterministic trend + AI classification
+
+    Narrator voice
+    4 CHAPTERS ANALYZED
+    MILD VARIATION
+    82%
+    MATCH TO PROFILE
+    DRIFT TREND
+    76
+    Ch1
+    83
+    Ch2
+    82
+    Ch3
+    87
+    Ch4
+    JUMP POINTS
+    ⚡
+    Ch1 → Ch2 — metaphor_density, punctuation_profile, sentence_length_std
+    ⚡
+    Ch2 → Ch3 — dialogue_ratio, metaphor_density
+    ⚡
+    Ch3 → Ch4 — metaphor_density, punctuation_profile
+    DRIFT BANDS
+    ●
+    stable
+    90%+
+    ▲
+    minor
+    70–89%
+    ◆
+    moderate
+    50–69%
+    ◇
+    major
+    <50%
+    ⚡
+    jump point
+CLOSE: True
+API: POST /api/v1/analysis/author-voice-drift/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 stream=True
+
+------------------------------------------------------------------------------
+FUNCTION: Dialogue Coach (selection + Analyse mode)
+SELECTION: {"text": "\"Stay together,\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. \"The spatial distortion here is unpredictable.\"", "idx": 1}
+TRIGGER count: 1
+MODE Analyse count: 1
+RENDER (109 chars) — first 1500 verbatim:
+    Editor side panel
+    Dialogue Coach
+    Mode
+    Analyse
+    Improve
+
+    No dialogue issues found. The passage reads naturally.
+CLOSE: True
+API: POST /api/v1/ai-assist/dialogue-coach/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200 stream=True
+
+------------------------------------------------------------------------------
+FUNCTION: Writer's Unblock (WRITE-009, with input)
+TRIGGER count: 1
+textarea count: 1
+IDLE dump:
+    Writer's Unblock
+    Stuck?
+    Get Suggestions
+'Get Suggestions' count: 1
+RENDER (73 chars) — first 1500 verbatim:
+    Writer's Unblock
+
+    Connection lost. Check your internet connection.
+
+    Retry
+AFFORDANCES:
+
+    --- buttons ---
+    button: "Writer's Unblock"
+    button: "Retry"
+API: POST /api/v1/writing/story-suggest/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 422 stream=False body={"chapter_id":"156b20bd-6f95-4f0c-afe6-d5f58f311b5a","author_instructions":"Elara just discovered the archive is warded.
+CLOSE (never accepted): True
+
+------------------------------------------------------------------------------
+FUNCTION: Name Generator (wait for list)
+FIELDS:
+    [select type=select-one] TYPE => character *SELECTED | place | organization | item
+    [input type=text] NAME STYLE => Fantasy
+    [input type=number] COUNT => 10
+    [select type=select-one] GENDER => any *SELECTED | male | female | neutral
+    [select type=select-one] EXPLANATION LANGUAGE => en *SELECTED | de | fr
+    --- buttons ---
+    button: "Close"
+    button: "Generate Names"
+Generate Names count: 1
+RESULT (227 chars) — first 1500 verbatim:
+    Name Generator
+    Name Generator
+    TYPE
+    Character
+    Place
+    Organization
+    Item
+    NAME STYLE
+    COUNT
+    GENDER
+    Any
+    Male
+    Female
+    Neutral
+    EXPLANATION LANGUAGE
+    English
+    German
+    French
+    Generate Names
+
+    No results yet. Configure and generate names above.
+API: GET /api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 body=
+API: POST /api/v1/generation/names -> 200 body={"project_id":"4a53a95a-d9b6-4d35-b3e7-f6754cb59572","name_type":"character","name_style":"Fantasy","count":10,"gender":"any","explanation_language":"
+CLOSE: True
+
+------------------------------------------------------------------------------
+FUNCTION: Consistency (KB-004)
+TRIGGER 'Consistency' count: 1
+LOADING (226):
+    Editor side panel
+    Consistency Check
+
+    AI-powered analysis · False positives are possible
+
+    Check scope
+
+    Current Chapter
+    Selected Chapters
+    Entire Novel
+
+    Analysis failed
+
+    Verbindung verloren. Prüfe deine Internetverbindung.
+
+    Retry
+RENDER (226 chars) — first 1800 verbatim:
+    Editor side panel
+    Consistency Check
+
+    AI-powered analysis · False positives are possible
+
+    Check scope
+
+    Current Chapter
+    Selected Chapters
+    Entire Novel
+
+    Analysis failed
+
+    Verbindung verloren. Prüfe deine Internetverbindung.
+
+    Retry
+CLOSE: True
+API: POST /api/v1/consistency/check/stream -> 404 stream=False
+API: POST /api/v1/consistency/check/stream -> 404 stream=False
+
+------------------------------------------------------------------------------
+FUNCTION: Extract to KB (KB-007, overlay)
+TRIGGER count: 1
+OVERLAY LOADING (92):
+    Extracting Knowledge
+    0 items found
+    Select all
+    |
+    Select none
+    Cancel
+    0 of 0 selected
+    Apply (0)
+CONTROLS:
+
+    --- buttons ---
+    button: "Cancel"
+    button: "Select all"
+    button: "Select none"
+    button: "Cancel"
+    button: "Apply (0)" [disabled]
+REVIEW overlay (92 chars) — first 2000 verbatim:
+    Extracting Knowledge
+    0 items found
+    Select all
+    |
+    Select none
+    Cancel
+    0 of 0 selected
+    Apply (0)
+ERROR: TimeoutError('Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(".fixed.inset-0 button:has-text(\'Apply\')").first\n    - locator resolved to <button disabled type="button" class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 text-sm">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    29 × waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n')
+KB AFTER: {"status": 200, "count": 16, "list_len": 16, "names": ["Aethelgard (Capital City)", "Cataclysm History", "Elara Thornwind", "High Chancellor Morven", "Kaelen Vane", "Master Verrick", "Order of the Silver Flame", "Political Structure of Aethelgard", "Sera", "Silver Flame Fortress", "Temple of Silent Flames", "The Ashen Covenant", "The Thornwell Compass", "Thornwall Ruins", "Timeline of the Void Cataclysm", "Void Magic System"], "shape": "items", "top_keys": ["items", "total", "page", "page_size"]}
+KB NEW NAMES: []
+
+------------------------------------------------------------------------------
+EDITOR METADATA PANEL — wiki chapter summary 404 check
+Metadata trigger count: 1
+METADATA PANEL (298 chars) — 'Failed to load wiki summary' present: True
+    context: ords |  | CHAPTER INFO | Status | draft | POV Character | char-elara | Timeline | Day 1 | Chapter | Chapter 1 of 4 | NOVEL PROGRESS | Total words | 3,061 |  | 3,061 / 80,000 (4%) |  | Failed to load wiki summary
+WIKI API: GET /api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary -> 404
+WIKI API: GET /api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary -> 404
+
+------------------------------------------------------------------------------
+CONSOLE ERRORS: total=6 non-401=5
+  CONSOLE: Failed to load resource: the server responded with a status of 422 (Unprocessable Content)
+  CONSOLE: Failed to load resource: the server responded with a status of 404 (Not Found)
+  CONSOLE: Failed to load resource: the server responded with a status of 404 (Not Found)
+  CONSOLE: Failed to load resource: the server responded with a status of 404 (Not Found)
+  CONSOLE: Failed to load resource: the server responded with a status of 404 (Not Found)
+PAGE ERRORS: 0
+NET FAILURES: 0

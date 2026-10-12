@@ -1,0 +1,114 @@
+{
+ "steps": [
+  {
+   "tag": "00-dashboard",
+   "url": "http://localhost:3001/",
+   "heading": "My Novels"
+  },
+  {
+   "tag": "01-wizard-project-setup",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Project Setup"
+  },
+  {
+   "tag": "02-starter-content",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Starter Content"
+  },
+  {
+   "tag": "03-import-ui",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Starter Content"
+  },
+  {
+   "tag": "04-import-preview",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Starter Content"
+  },
+  {
+   "tag": "05-import-adjusted",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Starter Content"
+  },
+  {
+   "tag": "06-after-apply",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Starter Content"
+  },
+  {
+   "tag": "07-step-2-details-next",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "07-step-3-confirm",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "08-after-create-3",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "07-step-4-confirm",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "08-after-create-4",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "07-step-5-confirm",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "08-after-create-5",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "07-step-6-confirm",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "08-after-create-6",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "07-step-7-confirm",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "08-after-create-7",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  },
+  {
+   "tag": "09-final-state",
+   "url": "http://localhost:3001/wizard",
+   "heading": "Confirm"
+  }
+ ],
+ "starter_step": "Starter Content",
+ "file_input_count": 1,
+ "split_merge_affordances": [
+  {
+   "text": "Merge with next",
+   "disabled": false
+  }
+ ],
+ "adjustments": [
+  "unchecked last row (exclude)",
+  "rename title input -> 'The Hidden Door (Renamed)'",
+  "split/merge affordances found: [{\"text\": \"Merge with next\", \"disabled\": false}]"
+ ],
+ "final_url": "http://localhost:3001/wizard",
+ "novel_id": null
+}

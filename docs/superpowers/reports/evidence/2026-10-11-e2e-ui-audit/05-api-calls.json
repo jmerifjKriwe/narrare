@@ -1,0 +1,263 @@
+[
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 401,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.477
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/auth/refresh",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{}",
+    "t": 1791748524.579
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.636
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.695
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.768
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.845
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.845
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.855
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748524.917
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/export/formats",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748525.175
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748525.235
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/auth/refresh",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{}",
+    "t": 1791748529.429
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748529.474
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/sentiment?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 500,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"],\"detect_arc\":true}",
+    "t": 1791748529.978
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/sentiment?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 500,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"],\"detect_arc\":true}",
+    "t": 1791748530.186
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/readability?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"]}",
+    "t": 1791748533.971
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/readability?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"]}",
+    "t": 1791748533.983
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/pov?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 500,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"]}",
+    "t": 1791748538.104
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/pov?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 500,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"]}",
+    "t": 1791748538.231
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/coreference/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "content_type": "text/event-stream; charset=utf-8",
+    "stream": true,
+    "post_data": "",
+    "t": 1791748547.466
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/beta-reader?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 500,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"],\"phase\":\"full\",\"refresh\":false}",
+    "t": 1791748550.815
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/analysis/beta-reader?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 500,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"],\"phase\":\"full\",\"refresh\":false}",
+    "t": 1791748551.488
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/memory/preferences?project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748554.444
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/planning/scenes/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748554.506
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/generate?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 422,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{\"mode\":\"full_draft\",\"word_target\":null,\"tone\":\"balanced\",\"outline\":null,\"prompt\":null}",
+    "t": 1791748555.515
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/memory/preferences?project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748614.452
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/memory/preferences?project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748674.462
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/auth/refresh",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "{}",
+    "t": 1791748676.315
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+    "status": 200,
+    "content_type": "application/json",
+    "stream": false,
+    "post_data": "",
+    "t": 1791748676.354
+  }
+]

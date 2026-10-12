@@ -1,0 +1,200 @@
+==============================================================================
+HEADLESS UI AUDIT — AREA 11-13 REPORT
+Import (SETUP-003 + split/merge F1) · Scratchpad (NOTES-001) · Series (SERIES-001..004)
+target: web :3001 (AUTH_JWT_SECRET), api :8000 (TestModel, CSRF origins incl. 3001)
+==============================================================================
+
+STATUS: OK
+
+------------------------------------------------------------------------------
+AREA 1 — PROJECT IMPORT (SETUP-003 + split/merge F1)
+------------------------------------------------------------------------------
+PATH: Dashboard → "New Novel" → /wizard → step "Starter Content" → card
+"Import manuscript — Upload Markdown (.md) or text (.txt) files from your
+computer — chapters are detected automatically".
+
+IMPORT UI (verbatim):
+  Cards: "Blank project / Start with an empty canvas and build from scratch" ·
+  "Import manuscript / Upload Markdown (.md) or text (.txt) files …" ·
+  "Demo fantasy" · "Demo scifi" · "Demo german".
+  File input: id=import-file-input, label "Choose files", accept=".md,.txt".
+  Preview header: "2 files · 2 chapters · 259 words".
+  Preview rows: [Include checkbox] [title input id=import-chapter-title-{i}]
+  "The Hidden Door / Words: 144 / ch1.md" · "A Second Chapter / Words: 115 /
+  ch2.md"; row buttons: "Merge with next", "Merge with previous", "Undo merge",
+  "Split…", "Undo split".
+  Split dialog (after "Split…" on a row with ### headings): "Split points /
+  Create new chapters at the selected subheadings." + one checkbox per ###
+  heading + "Cancel" / "Split chapter".
+
+FIXTURES: ch1.md (# The Hidden Door, 144 words), ch2.md (# A Second Chapter,
+115 words), ch3.md (# The Deep Archive + 2 ### subsections, 85/89 words).
+
+ADJUSTMENTS EXERCISED:
+  1) rename: title input → "The Hidden Door (Renamed)"  ✓
+  2) exclude: unchecked row-2 "Include" checkbox         ✓
+  3) merge: "Merge with next" on ch1 → "The Hidden Door |
+     Words: 259 | Merged 2 chapters" + "Undo merge"      ✓
+  4) split: ch3 "Split…" → both ### points checked →
+     "Split chapter" → Part 1/2/3 (28/25/23 words) +
+     "Undo split"                                        ✓
+  Split candidates: NOT offered for plain "#"-heading files
+  (preview API returned split_candidates: []); offered only
+  for "###" sub-headings (ch3 → 2 candidates).
+
+API CALLS (all 200/201 unless noted):
+  POST /api/v1/import/preview        multipart(files) → {items:[{index,
+    suggested_title, word_count, source_file, split_candidates:[{ordinal,
+    heading, words_before}]}], file_count, chapter_count, total_word_count}
+  POST /api/v1/setup/validate/step-1 {project_name, writing_language,
+    autosave_interval} · step-2 {title, author, genre, writing_language,
+    logline, story_structure, tone} · step-3 {starter: "import"}
+  POST /api/v1/import/commit         multipart, fields: files, novel_id,
+    adjustments = {"splits":[],"merges":[],"excluded_indices":[],
+    "title_overrides":{"0":"Renamed For Capture"}}
+    → {novel_id, created_count, first_position, last_position, chapters:[…]}
+  GET  /api/v1/novels/{id} · GET /api/v1/novels/{id}/chapters
+
+RESULTS (verified via API):
+  Novel A "Audit Import A" (fad582e0): 1 chapter "The Hidden Door (Renamed)",
+  144 words — rename + exclude applied.
+  Novel B "Audit Import B": 4 chapters — "The Hidden Door" 259 w (merged 2),
+  "The Deep Archive" 28 w, "The Turning Pages" 25 w, "What the Compass Wanted"
+  23 w (split at ###).
+  Post-create workspace prompt: "Analyze your imported chapters — Scan the
+  imported chapters for entities? 1 AI calls, one per chapter · 144 words." +
+  "Extract to Knowledge Base" / "Not now".
+  Wizard note: "Novel Details" step shows "Title is required" when not
+  prefilled; Confirm button is "Finish ✓".
+
+------------------------------------------------------------------------------
+AREA 2 — SCRATCHPAD (NOTES-001)
+------------------------------------------------------------------------------
+Sidebar "Scratchpad" (workspace rail) → /scratchpad.
+  Heading: "Scratchpad — Capture thoughts before they escape — ideas,
+  concepts, questions."
+  Filters: Type (All types/Idea/Concept/Question/Other), "Semantic" checkbox,
+  "Search notes…", "Filter by tag…".
+  Empty state: "Nothing captured yet / Save your first thought — a plot
+  twist, a worldbuilding idea, a craft question."
+  Composer: TYPE selector (Idea/Concept/Question/Other) + textarea "Write it
+  down… (Markdown supported)" + "Capture a thought" (disabled until text).
+  NO title field — first line renders as heading; API title=null.
+Note editor affordances (verbatim): Preview (toggle), Type selector,
+  "Discuss in chat", "Save", "Delete note"; TAGS section; "LINK (OPTIONAL)"
+  with "Not linked" + per-novel options (Audit Import B / Audit Import A /
+  Audit Demo Novel).
+Delete confirm: "Delete this note? / This permanently removes the note. It
+  cannot be undone. / Cancel / Delete note".
+
+APIS: POST /api/v1/notes {"content":"…","note_type":"idea"} → 201 ·
+  PATCH /api/v1/notes/{id} {"title":null,"content":"…","note_type":"idea",
+  "tags":[]} → 200 · DELETE /api/v1/notes/{id} → 204.
+RESULT: created → edited → deleted; final notes list [] (clean).
+
+------------------------------------------------------------------------------
+AREA 3 — SERIES (SERIES-001..004)
+------------------------------------------------------------------------------
+CREATE: Dashboard "New Series" → dialog, single field "Title"
+  (id=new-series-title) + Cancel/Create (disabled until title).
+  POST /api/v1/series {"title":"Audit Series"} → 201. Result: dashboard card
+  "Series / Draft / Audit Series / N novels".
+
+DETAIL (/series/{id}; tabs are links): Novels (/series/{id}) · Canon
+  (/canon) · Settings (/settings) · Voice (/voice).
+  NOVELS TAB: "Novels in this Series" + picker select ("Select a novel…") +
+  "Add Novel to Series"; rows: position badge + novel link + "Move up" /
+  "Move down" (reorder EXISTS; disabled with <2 novels). NO remove affordance.
+  ADD FLOW (series side): POST /api/v1/series/{id}/novels {"novel_id"} →
+    dialog 'Add "Audit Demo Novel" to Series' listing KB entities with
+    promotion policy (Policy iii): characters/factions → Novel-Overlay;
+    systems/concepts/settings/locations/objects/timelines → Series-Canon
+    (17 entries enumerated, e.g. char-elara → Novel-Overlay,
+    sys-void-magic → Series-Canon) + "Cancel" / "Confirm Join" →
+    POST /api/v1/series/{id}/novels/{nid}/apply {"position":1}.
+  REMOVE: NO UI affordance (rows have only Move up/Move down; no context
+    menu). Undone via API DELETE /api/v1/series/{id}/novels/{nid} → 204;
+    verified novel.series_id back to null.
+  NOVEL SIDE: novel Settings has NO series field on any tab (Novel Details/
+    General/Writing goals/AI setup/System Prompts/KB Templates/Learning/
+    Shortcuts/About scanned; only hit: "Series_consistency" under System
+    Prompts). → CANNOT add a novel to a series from the novel side.
+  SERIES DELETE: NO UI affordance anywhere (dashboard-card Edit/Export/
+    Delete buttons belong to novel cards; series detail/settings have none).
+    Deleted via API DELETE /api/v1/series/{id} → 204.
+
+AI SURFACES (enumerated, none triggered):
+  SERIES-002 (generation context): Settings tab — "How many previous bands to
+    include?" = 3 + budget text ("…approx. 0 / 16,000 tokens… 16,000 are
+    reserved for the current band… Series history may use up to 16,000 of
+    32,000 context tokens… Model context window unknown — the budget is
+    shown uncapped."). ALSO the join dialog itself (canon-promotion preview).
+  SERIES-003 (voice): Voice tab — "Series Voice / No voice profiled yet /
+    Profile from band / [select novel] / Profile". Settings tab stub:
+    "Series Voice Hierarchy will be available in Spec 3."
+  SERIES-004 (drift): Novels tab — "Cross-Novel Drift / Band to check /
+    [select novel] / Check consistency / Check a band's chapter prose against
+    the series Canon and voice baseline." (button disabled until selection).
+  CANON KB: Canon tab — "Series Canon / Create new Canon entry" + grouped
+    entries (Timelines/Systems/Locations/Objects) with markdown previews
+    (demo: Void Cataclysm timeline, Void Magic System, Aethelgard, Silver
+    Flame Fortress, Thornwell Compass, Temple of Silent Flames, Political
+    Structure).
+
+------------------------------------------------------------------------------
+POLLUTION
+------------------------------------------------------------------------------
+Novels: before 1 ("Audit Demo Novel") → after 3: Audit Demo Novel (untouched,
+  4 chapters 569/729/872/891 w) + audit substrate Audit Import A (fad582e0,
+  1 ch, 144 w) and Audit Import B (5f25125f, 4 ch, 259/28/25/23 w) — both
+  kept intentionally as import substrate.
+Series: 0 (Audit Series created for test → removed via API; an accidental
+  "Audit Scratch Note" series from a loose selector was deleted immediately).
+Notes: 0.
+INCIDENTS (self-inflicted, recovered): Audit Import B was accidentally
+  deleted twice by audit-script clicks hitting adjacent novel-card Delete
+  buttons (loose patterns); recreated identically both times via the same
+  import flow (verified chapters). Final state clean.
+
+------------------------------------------------------------------------------
+CONSOLE ERRORS (non-401-burst, non-known-broken): 2 unique (6 occurrences)
+  1. "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/'
+     (redirected from 'http://localhost:3001/api/v1/settings/token-limits/')
+     from origin 'http://localhost:3001' has been blocked by CORS policy:
+     Response to preflight request doesn't pass access control check: No
+     'Access-Control-Allow-…'  [×2 — plain + ?provider=…&model_id=ollama-test-
+     model&intent=write variants]
+  2. "Failed to load resource: the server responded with a status of 500
+     (Internal Server Error)" [token-limits flow, ×2]
+  Root cause hint: trailing-slash /settings/token-limits/ escapes the :3001
+  proxy via redirect to :8000 → CORS preflight blocked; correlates with
+  "Model context window unknown — the budget is shown uncapped" in Series
+  Settings.
+NETWORK FAILURES (non-401): 3 unique
+  - GET …/settings/token-limits/(?…) → net::ERR_FAILED (CORS, real, ×2)
+  - GET /favicon.png → net::ERR_ABORTED (benign)
+  - in-flight GET /api/v1/notes/{id} & /novels/{id} aborted on navigation
+    (benign client aborts)
+
+------------------------------------------------------------------------------
+FILES
+------------------------------------------------------------------------------
+11-import.py, 11-{00..09}-*.txt/.png, 11-04b-preview-rows.json,
+11-11A-*/11-11B-* (import UI, preview, adjusted, confirm, verify),
+11b/11c-import scripts + dumps + api-calls/console/network JSON,
+11-11D-commit-multipart.raw + 11-11D-commit-fields.txt (commit keys),
+12-scratchpad*.py (a–e) + 12-{10..31}-*.txt/.png + 12*-api-calls.json,
+13-series.py (a–g) + 13-{01..53}-*.txt/.png/.json (form, detail, tabs,
+join dialog, row probes) + 13*-api-calls.json.
+KEY: 11-03/11-04 (import UI/preview), 11-11D-commit-fields.txt (commit keys),
+12-10 (scratchpad), 12-23 (note editor), 13-01 (series form), 13-30 (join
+dialog), 13-41-tab-{canon,voice,settings} (SERIES-002/003/004 surfaces).
+
+------------------------------------------------------------------------------
+CONCERNS
+------------------------------------------------------------------------------
+Series UX has no remove-novel and no delete-series affordance at all (API-only
+operations); /api/v1/settings/token-limits/ trailing-slash redirect escapes
+the proxy → CORS block + 500 → series token budget renders "uncapped";
+import itself (preview/commit incl. splits/merges/excludes/renames) works
+flawlessly end-to-end.

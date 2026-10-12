@@ -1,0 +1,12 @@
+[
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/chat",
+  "status": "FAILED(net::ERR_FAILED)"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/chat",
+  "status": "FAILED(net::ERR_FAILED)"
+ }
+]

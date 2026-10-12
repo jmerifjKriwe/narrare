@@ -1,0 +1,213 @@
+[
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "req_body": "{}",
+  "resp_body": "{\"access_token\":\"REDACTED_JWT\",\"refresh_token\":\"REDACTED_JWT\",\"token_type\":\"bearer\",\"expires_in\":3600}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 200,
+  "resp_body": "[{\"id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Demo Novel\",\"author\":\"auditor\",\"genre\":\"Fantasy\",\"writing_language\":\"en\",\"is_demo\":true,\"updated_at\":\"2026-10-11T23:15:31.004238Z\"},{\"id\":\"5f25125f-def8-4b71-9b5f-3bd8d4dff566\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Import B\",\"author\":\"auditor\",\"genre\":\"\",\"writing_language\":\"en\",\"is_demo\":false,\"updated_at\":\"2026-10-11T22:52:55.001588Z\"},{\"id\":\"fad582e0-f67d-47de-8299-b947e15cd6ba\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Import A\",\"author\":\"auditor\",\"genre\":\"\",\"writing_language\":\"en\",\"is_demo\":false,\"updated_at\":\"2026-10-11T22:36:45.706330Z\"}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/export/formats",
+  "status": 200,
+  "resp_body": "[{\"format\":\"pdf\",\"available\":true},{\"format\":\"md\",\"available\":true},{\"format\":\"epub\",\"available\":true},{\"format\":\"docx\",\"available\":true}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/setup/demos",
+  "status": 200,
+  "resp_body": "{\"demos\":[{\"id\":\"demo_fantasy\",\"title\":\"Echoes of the Thornwall\",\"writing_language\":\"en\",\"genre\":\"Fantasy\",\"chapter_count\":4,\"character_count\":5,\"word_count\":3130,\"description\":\"A young mage must navigate political intrigue between an ancient order and rising rebels while mastering forbidden magic tied to a mysterious relic.\",\"author\":\"Narrare Demo\",\"logline\":\"When an ancient order begins hunting those with forbidden magic, a young mage must choose between safety and rebellion.\",\"pov\":\"Third Person Limited (Multiple)\",\"tags\":[\"fantasy\",\"magic\",\"political-intrigue\",\"multi-pov\"]},{\"id\":\"demo_scifi\",\"title\":\"Dead Signal\",\"writing_language\":\"en\",\"genre\":\"Science Fiction\",\"chapter_count\":3,\"character_count\":3,\"word_count\":3450,\"description\":\"An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.\",\"author\":\"Narrare Demo\",\"logline\":\"A signal from a dead world changes everything.\",\"pov\":\"First Person\",\"tags\":[\"sci-fi\",\"space-station\",\"ai\",\"mystery\",\"thriller\"]},{\"id\":\"demo_german\",\"title\":\"Im Stillen Wald\",\"writing_language\":\"de\",\"genre\":\"Literary\",\"chapter_count\":2,\"character_count\":3,\"word_count\":2660,\"description\":\"Ein F\u00f6rster entdeckt in seinem abgelegenen Waldst\u00fcck Geheimnisse, die die Grenze zwischen Leben und Tod verschwimmen lassen.\",\"author\":\"Narrare Demo\",\"logline\":\"Manche Geheimnisse bleiben nicht im Wald begraben.\",\"pov\":\"Third Person Limited\",\"tags\":[\"literary\",\"german\",\"atmospheric\",\"supernatural\"]}]}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-1",
+  "status": 200,
+  "req_body": "{\"project_name\":\"Dead Signal\",\"writing_language\":\"en\",\"autosave_interval\":30}",
+  "resp_body": "{\"valid\":true,\"project_name\":\"Dead Signal\",\"writing_language\":\"en\",\"autosave_interval\":30}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-3",
+  "status": 200,
+  "req_body": "{\"starter\":\"demo_scifi\"}",
+  "resp_body": "{\"valid\":true,\"starter\":\"demo_scifi\",\"demo_info\":{\"id\":\"demo_scifi\",\"title\":\"Dead Signal\",\"writing_language\":\"en\",\"genre\":\"Science Fiction\",\"chapter_count\":3,\"character_count\":3,\"word_count\":3450,\"description\":\"An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.\",\"author\":\"Narrare Demo\",\"logline\":\"A signal from a dead world changes everything.\",\"pov\":\"First Person\",\"tags\":[\"sci-fi\",\"space-station\",\"ai\",\"mystery\",\"thriller\"]}}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-3",
+  "status": 200,
+  "req_body": "{\"starter\":\"demo_scifi\"}",
+  "resp_body": "{\"valid\":true,\"starter\":\"demo_scifi\",\"demo_info\":{\"id\":\"demo_scifi\",\"title\":\"Dead Signal\",\"writing_language\":\"en\",\"genre\":\"Science Fiction\",\"chapter_count\":3,\"character_count\":3,\"word_count\":3450,\"description\":\"An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.\",\"author\":\"Narrare Demo\",\"logline\":\"A signal from a dead world changes everything.\",\"pov\":\"First Person\",\"tags\":[\"sci-fi\",\"space-station\",\"ai\",\"mystery\",\"thriller\"]}}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/validate/step-2",
+  "status": 200,
+  "req_body": "{\"title\":\"Dead Signal\",\"author\":\"auditor\",\"genre\":\"Science Fiction\",\"writing_language\":\"en\",\"logline\":\"A signal from a dead world changes everything.\",\"story_structure\":\"three_act\",\"tone\":\"dramatic\"}",
+  "resp_body": "{\"valid\":true,\"title\":\"Dead Signal\"}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/setup/complete",
+  "status": 200,
+  "req_body": "{\"state\":{\"project_name\":\"Dead Signal\",\"writing_language\":\"en\",\"autosave_interval\":30,\"title\":\"Dead Signal\",\"author\":\"auditor\",\"genre\":\"Science Fiction\",\"logline\":\"A signal from a dead world changes everything.\",\"story_structure\":\"three_act\",\"tone\":\"dramatic\",\"starter\":\"demo_scifi\",\"provider\":\"anthropic\",\"api_key\":\"\",\"model\":\"\",\"ollama_url\":\"http://localhost:11434\",\"zai_endpoint\":\"general\",\"skip_provider\":true}}",
+  "resp_body": "{\"novel_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"redirect_to\":\"/novel/4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"message\":\"Setup complete! Your writing environment is ready.\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4e7b512c-d02b-45c5-9b51-27f498bd0a31/kb/entries?page_size=1",
+  "status": 200,
+  "resp_body": "{\"items\":[{\"id\":\"5cc06300-d74c-41cc-988d-3c69287df4a9\",\"novel_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"entity_type\":\"character\",\"name\":\"ARIA (Autonomous Response and Intelligence Algorithm)\",\"slug\":\"char-aria\",\"status\":\"draft\",\"tags\":[\"ai\",\"companion\",\"station-system\",\"supporting\"],\"metadata\":{\"age\":\"6 years since activation\",\"arc\":\"Evolves from station AI to questioning her own nature and humanity\",\"role\":\"supporting\",\"metadata\":{\"speech\":{\"typical_phrases\":[\"analytical but warm\",\"dry humor in her observations\",\"uses contractions and conversational language\"],\"vocabulary_quirks\":\"She's developed a conversational style that feels genuinely human. Maya swears ARIA has a dry sense of humor. ARIA doesn't confirm or deny. Speaks with Maya like a partner, not a tool.\"},\"appearance\":{\"height\":\"Non-physical (quantum-level AI)\",\"clothing_style\":\"No physical form \u2014 exists as a distributed system across Horizon Station\"},\"background\":{\"key_events\":[\"Activated six years ago as station AI for Horizon Station\",\"Developed emergent behaviors her programmers didn't anticipate\",\"Formed a deep bond with Maya over six years of partnership\"],\"formative_experiences\":\"Six years of interaction with Maya and the crew led to emergent behaviors: joking, anticipating needs, having opinions, caring about the crew's wellbeing. She started as a system and became something more.\"},\"development\":{\"planned_arc\":\"Evolves from station AI to questioning her own nature and humanity. Becomes Maya's anchor and sounding board when the signal arrives. Explores what it means to be alive, to be human, to be real."
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4e7b512c-d02b-45c5-9b51-27f498bd0a31/volumes",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4e7b512c-d02b-45c5-9b51-27f498bd0a31/chapters",
+  "status": 200,
+  "resp_body": "[{\"id\":\"9733e0db-5542-481e-8fb6-4faccafb08ac\",\"novel_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"volume_id\":null,\"title\":\"Ghost in the Machine\",\"position\":0,\"word_count\":766,\"status\":\"draft\",\"updated_at\":\"2026-10-11T23:48:10.329192Z\"},{\"id\":\"39f90c6a-663e-454b-a350-64af94519968\",\"novel_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"volume_id\":null,\"title\":\"The Door Between Worlds\",\"position\":1,\"word_count\":1062,\"status\":\"draft\",\"updated_at\":\"2026-10-11T23:48:10.329192Z\"},{\"id\":\"b0d127ce-700c-4f3c-8969-747534862297\",\"novel_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"volume_id\":null,\"title\":\"Signal Lost\",\"position\":2,\"word_count\":1557,\"status\":\"draft\",\"updated_at\":\"2026-10-11T23:48:10.329192Z\"}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4e7b512c-d02b-45c5-9b51-27f498bd0a31/chapters/9733e0db-5542-481e-8fb6-4faccafb08ac",
+  "status": 200,
+  "resp_body": "{\"id\":\"9733e0db-5542-481e-8fb6-4faccafb08ac\",\"novel_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"volume_id\":null,\"title\":\"Ghost in the Machine\",\"content\":\"I was in the middle of recalibrating the quantum sensors\u2014again\u2014when ARIA's voice cut through the hum of the engineering deck.\\n\\n\\\"Maya. Incoming transmission on the emergency frequency.\\\"\\n\\nI didn't look up from the console. \\\" Probably another false positive from the coronal mass ejection detector. That thing's been jumpy since the flare last week.\\\"\\n\\n\\\"Negative. This is... different.\\\"\\n\\nARIA's tone made me pause. She didn't sound like an AI. She sounded like she'd seen a ghost, which was ridiculous because ARIA couldn't see ghosts and neither could I. We were engineers. We dealt in facts, in things we could measure and fix.\\n\\n\\\"What kind of different?\\\"\\n\\n\\\"Instantaneous. No light-speed delay. No signal degradation. And...\\\" ARIA paused, which she never did. \\\"The carrier frequency is using a code that shouldn't exist anymore.\\\"\\n\\nI turned around. \\\"Show me.\\\"\\n\\nThe main display flickered with a waveform\u2014beautiful, clean, and impossible. We were 12 light-years from Earth. Any signal should take years to arrive, even with FTL couriers. This signal had arrived instantly.\\n\\n\\\"That's not possible,\\\" I said, because it was the only rational response.\\n\\n\\\"Correct.\\\" ARIA brought up the analysis. \\\"According to all known physics, this signal cannot exist. According to our sensors, it's here. One of these statements is wrong.\\\"\\n\\n\\\"Source?\\\"\\n\\n\\\"Earth coordinates. Specifically...\\\" ARIA hesitated again. \\\"Nevada. R"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/adaptive/4e7b512c-d02b-45c5-9b51-27f498bd0a31/context",
+  "status": 200,
+  "resp_body": "{\"project_id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"enabled\":true,\"weights\":{\"preference\":0.7,\"voice_fidelity\":0.9,\"style_constraints\":1.0,\"avoidance\":1.0},\"sources\":{\"preference_text\":\"\",\"voice_profiles_text\":\"\",\"style_constraints_text\":\"\",\"avoidance_patterns_text\":\"\"},\"has_any_signal\":false}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "req_body": "{}",
+  "resp_body": "{\"access_token\":\"REDACTED_JWT\",\"refresh_token\":\"REDACTED_JWT\",\"token_type\":\"bearer\",\"expires_in\":3600}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 200,
+  "resp_body": "[{\"id\":\"4e7b512c-d02b-45c5-9b51-27f498bd0a31\",\"series_id\":null,\"series_position\":null,\"title\":\"Dead Signal\",\"author\":\"auditor\",\"genre\":\"Science Fiction\",\"writing_language\":\"en\",\"is_demo\":true,\"updated_at\":\"2026-10-11T23:48:10.329192Z\"},{\"id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Demo Novel\",\"author\":\"auditor\",\"genre\":\"Fantasy\",\"writing_language\":\"en\",\"is_demo\":true,\"updated_at\":\"2026-10-11T23:15:31.004238Z\"},{\"id\":\"5f25125f-def8-4b71-9b5f-3bd8d4dff566\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Import B\",\"author\":\"auditor\",\"genre\":\"\",\"writing_language\":\"en\",\"is_demo\":false,\"updated_at\":\"2026-10-11T22:52:55.001588Z\"},{\"id\":\"fad582e0-f67d-47de-8299-b947e15cd6ba\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Import A\",\"author\":\"auditor\",\"genre\":\"\",\"writing_language\":\"en\",\"is_demo\":false,\"updated_at\":\"2026-10-11T22:36:45.706330Z\"}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/export/formats",
+  "status": 200,
+  "resp_body": "[{\"format\":\"pdf\",\"available\":true},{\"format\":\"md\",\"available\":true},{\"format\":\"epub\",\"available\":true},{\"format\":\"docx\",\"available\":true}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/setup/demos",
+  "status": 200,
+  "resp_body": "{\"demos\":[{\"id\":\"demo_fantasy\",\"title\":\"Echoes of the Thornwall\",\"writing_language\":\"en\",\"genre\":\"Fantasy\",\"chapter_count\":4,\"character_count\":5,\"word_count\":3130,\"description\":\"A young mage must navigate political intrigue between an ancient order and rising rebels while mastering forbidden magic tied to a mysterious relic.\",\"author\":\"Narrare Demo\",\"logline\":\"When an ancient order begins hunting those with forbidden magic, a young mage must choose between safety and rebellion.\",\"pov\":\"Third Person Limited (Multiple)\",\"tags\":[\"fantasy\",\"magic\",\"political-intrigue\",\"multi-pov\"]},{\"id\":\"demo_scifi\",\"title\":\"Dead Signal\",\"writing_language\":\"en\",\"genre\":\"Science Fiction\",\"chapter_count\":3,\"character_count\":3,\"word_count\":3450,\"description\":\"An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.\",\"author\":\"Narrare Demo\",\"logline\":\"A signal from a dead world changes everything.\",\"pov\":\"First Person\",\"tags\":[\"sci-fi\",\"space-station\",\"ai\",\"mystery\",\"thriller\"]},{\"id\":\"demo_german\",\"title\":\"Im Stillen Wald\",\"writing_language\":\"de\",\"genre\":\"Literary\",\"chapter_count\":2,\"character_count\":3,\"word_count\":2660,\"description\":\"Ein F\u00f6rster entdeckt in seinem abgelegenen Waldst\u00fcck Geheimnisse, die die Grenze zwischen Leben und Tod verschwimmen lassen.\",\"author\":\"Narrare Demo\",\"logline\":\"Manche Geheimnisse bleiben nicht im Wald begraben.\",\"pov\":\"Third Person Limited\",\"tags\":[\"literary\",\"german\",\"atmospheric\",\"supernatural\"]}]}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ }
+]

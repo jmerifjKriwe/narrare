@@ -1,0 +1,16 @@
+Editor side panel
+Consistency Check
+
+AI-powered analysis · False positives are possible
+
+Check scope
+
+Current Chapter
+Selected Chapters
+Entire Novel
+
+Analysis failed
+
+Verbindung verloren. Prüfe deine Internetverbindung.
+
+Retry

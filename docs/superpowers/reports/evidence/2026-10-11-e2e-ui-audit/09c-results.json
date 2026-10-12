@@ -1,0 +1,30 @@
+{
+  "rewrite_post": {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/rewrite?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+    "status": 422,
+    "post": "{\"selection_text\":\"\\\"Stay together,\\\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings.\",\"context_before\":\"The ruined tower smelled of ancient stone and something else\u2014something that made Elara's skin tingle. \",\"context_after\":\" \\\"The spatial distortion here is unpredictable.\\\" Elara nodded, but her attention was elsewhere. Her void magic\u2014suppressed for twelve years, practiced in secret\u2014was stirring. The ruins of Thornwall Academy called to something deep within her. The air between her fingers seemed to shimmer, full of possibilities that terrified her. The Order's expedition continued through what had once been a research hall. Elara lagged behind, ostensibly examining fallen debris, actually listening to the hum of void resonance that only she could hear. It grew stronger as they approached a collapsed section of the tower. \\\"Elara.\\\" Kaelen fell back beside her. His earth magic stirred dust around his boots. \\\"You're too close to the unstable zone.\\\" \\\"I'm fine.\\\" She adjusted her Order robes, suddenly conscious \",\"mode\":\"custom\",\"count\":1,\"custom_instructions\":\"Make it more vivid and ominous.\",\"language\":\"en\"}"
+  },
+  "rewrite_err_bodies": [
+    {
+      "url": "/api/v1/auth/me",
+      "status": 401,
+      "body": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "url": "/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/rewrite?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+      "status": 422,
+      "body": "{\"detail\":[{\"type\":\"string_too_long\",\"loc\":[\"body\",\"context_after\"],\"msg\":\"String should have at most 500 characters\",\"input\":\" \\\"The spatial distortion here is unpredictable.\\\" Elara nodded, but her attention was elsewhere. Her void magic\u2014suppressed for twelve years, practiced in secret\u2014was stirring. The ruins of Thornwall Academy called to something deep within her. The air between her fingers seemed to shimmer, full of possibilities that terrified her. The Order's expedition continued through what had once been a research hall. Elara lagged behind, ostensibly examining fallen debris, actually listening to the hum of void resonance that only she could hear. It grew stronger as they approached a collapsed section of the tower. \\\"Elara.\\\" Kaelen fell back beside her. His earth magic stirred dust around his boots. \\\"You're too close to the unstable zone.\\\" \\\"I'm fine.\\\" She adjusted her Order robes, suddenly conscious \",\"ctx\":{\"max_length\":500}}]}"
+    }
+  ],
+  "rewrite_result_overlays": [],
+  "rewrite_result_buttons": [],
+  "rewrite": "done",
+  "coauthor": "error: over:bg-accent transition-colors flex items-center gap-1.5 text-sm text-primary \">\u2026</button> from <div tabindex=\"0\" class=\"bubble-menu bg-popover border border-border rounded-lg shadow-lg overflow-hidden\">\u2026</div> subtree intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n\n",
+  "final_chapter": {
+    "id": "156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "word_count": 569,
+    "content_len": 3914
+  },
+  "final_exact_match": true
+}

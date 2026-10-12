@@ -1,0 +1,185 @@
+==============================================================================
+HEADLESS UI AUDIT — 05 AI TOOLBAR BATCH 1 (Generate, Beta Reader, Sentiment, Readability, POV, Coreference)
+==============================================================================
+NAVIGATED: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572
+BASELINE chapter1: {"id": "156b20bd-6f95-4f0c-afe6-d5f58f311b5a", "word_count": 569, "title": "The Compass Points", "content_len": 0, "head": "", "tail": ""}
+
+------------------------------------------------------------------------------
+FUNCTION: Sentiment
+TRIGGER button count: 1
+LOADING state captured (160 chars), marker hit: ['Analyzing sentiment']
+RESULT panel (135 chars) — first 400:
+    Editor side panel
+    Sentiment Analysis
+
+    Deterministic analysis · No AI generation used
+
+    Analysis failed
+
+    Internal server error
+
+    Try Again
+API: POST http://localhost:3001/api/v1/analysis/sentiment -> 500 ct=application/json stream=False
+API: POST http://localhost:3001/api/v1/analysis/sentiment -> 500 ct=application/json stream=False
+CLOSE: panel closed=True, count now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Readability
+TRIGGER button count: 1
+LOADING state captured (438 chars), marker hit: NO (may be too fast)
+RESULT panel (438 chars) — first 400:
+    Editor side panel
+    Readability Analysis
+    Refresh Analysis
+
+    Deterministic metrics + AI sentence analysis
+
+    Readability Scores
+    Flesch Reading Ease
+    66.5
+    Flesch-Kincaid Grade
+    9.8
+    Gunning Fog Index
+    8.9
+    Text Statistics
+    Words
+    662
+    Sentences
+    39
+    Avg. Sentence Length
+    17.0words
+    Complex Words
+    10.9%
+    Genre Comparison
+    Middle Grade
+    80.0
+    -13.5
+    Young Adult
+    70.0
+    -3.5
+    Commercial Fiction
+    65.0
+    +1.5
+    Literary Fiction
+    50.0
+    +1
+API: POST http://localhost:3001/api/v1/analysis/readability -> 200 ct=application/json stream=False
+API: POST http://localhost:3001/api/v1/analysis/readability -> 200 ct=application/json stream=False
+CLOSE: panel closed=True, count now=0
+
+------------------------------------------------------------------------------
+FUNCTION: POV
+TRIGGER button count: 1
+LOADING state captured (142 chars), marker hit: NO (may be too fast)
+RESULT panel (142 chars) — first 400:
+    Editor side panel
+    POV Analysis
+
+    Detect POV character, head-hopping, and knowledge leakage
+
+    Failed to analyze POV
+
+    Internal server error
+
+    Retry
+API: POST http://localhost:3001/api/v1/analysis/pov -> 500 ct=application/json stream=False
+API: POST http://localhost:3001/api/v1/analysis/pov -> 500 ct=application/json stream=False
+CLOSE: panel closed=True, count now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Coreference
+TRIGGER button count: 1
+LOADING state captured (178 chars), marker hit: ['Analyzing coreference']
+RESULT panel (196 chars) — first 400:
+    Editor side panel
+    Coreference Analysis
+
+    Resolve pronouns to characters and check referential clarity
+
+    Failed to analyze coreference
+
+    Verbindung verloren. Prüfe deine Internetverbindung.
+
+    Try Again
+API: POST http://localhost:3001/api/v1/analysis/coreference/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200 ct=text/event-stream stream=True
+CLOSE: panel closed=True, count now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Beta Reader
+TRIGGER button count: 1
+LOADING state captured (149 chars), marker hit: ['Reading your chapter']
+RESULT panel (153 chars) — first 400:
+    Editor side panel
+    Beta Reader
+
+    AI-generated insights · Results may vary
+
+    Analysis failed
+
+    Verbindung verloren. Prüfe deine Internetverbindung.
+
+    Try Again
+API: POST http://localhost:3001/api/v1/analysis/beta-reader -> 500 ct=application/json stream=False
+API: POST http://localhost:3001/api/v1/analysis/beta-reader -> 500 ct=application/json stream=False
+TABS: []
+CLOSE: panel closed=True, count now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Generate (AI Generation panel, WRITE-002)
+TRIGGER toolbar Generate count: 1
+CONFIG panel text (first 700):
+    Editor side panel
+    AI Generation
+    0/50 interactions
+    Full Draft
+    Scene by Scene
+    Interview
+    Interactive
+    OUTLINE
+    PROMPT
+    WORD TARGET
+    TONE
+    Balanced
+    Dramatic
+    Humorous
+    Suspenseful
+    Contemplative
+    Romantic
+    Dark
+    Adventurous
+    Quiet
+    Generate
+CONFIG controls dump:
+    [textarea type=textarea] OUTLINE =>
+    [textarea type=textarea] PROMPT =>
+    [input type=number] WORD TARGET =>
+    [select type=select-one] TONE => balanced *SELECTED | dramatic | humorous | suspenseful | contemplative | romantic | dark | adventurous | quiet
+    --- buttons in panel ---
+    button: "Close panel"
+    button: "Full Draft"
+    button: "Scene by Scene"
+    button: "Interview"
+    button: "Interactive"
+    button: "Generate"
+CLICKED panel Generate — waiting for stream/review…
+STREAMING panel snapshot (108 chars) — first 300:
+    Editor side panel
+    AI Generation
+    0/50 interactions
+    Verbindung verloren. Prüfe deine Internetverbindung.
+    Retry
+ERROR in Generate: TimeoutError('Page.wait_for_selector: Timeout 120000ms exceeded.\nCall log:\n  - waiting for locator("[data-testid=\\"editor-right-panel\\"] button:has-text(\'Accept\')") to be visible\n')
+
+------------------------------------------------------------------------------
+AFTER chapter1: {"id": "156b20bd-6f95-4f0c-afe6-d5f58f311b5a", "word_count": 569, "title": "The Compass Points", "content_len": 0, "head": "", "tail": ""}
+POLLUTION: none
+
+------------------------------------------------------------------------------
+CONSOLE ERRORS total=8 non-401=7
+  CONSOLE: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+  CONSOLE: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+  CONSOLE: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+  CONSOLE: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+  CONSOLE: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+NETWORK FAILURES total=0 non-401=0
+STATE: storage_state refreshed

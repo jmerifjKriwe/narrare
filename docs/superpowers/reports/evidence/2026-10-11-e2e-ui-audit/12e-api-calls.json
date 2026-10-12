@@ -1,0 +1,158 @@
+[
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "resp_body": "{\"access_token\":\"REDACTED_JWT\",\"refresh_token\":\"REDACTED_JWT\",\"token_type\":\"bearer\",\"expires_in\":3600}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1",
+  "status": 200,
+  "resp_body": "{\"items\":[{\"id\":\"b2b4649a-3dec-4806-a3e9-b16cd8834a6d\",\"novel_id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"entity_type\":\"location\",\"name\":\"Aethelgard (Capital City)\",\"slug\":\"loc-aethelgard\",\"status\":\"draft\",\"tags\":[\"capital\",\"city\",\"markets\",\"underground\"],\"metadata\":{\"region\":\"Kingdom of Aethelgard\",\"population\":\"150,000\"},\"body\":\"# Aethelgard\\n\\nThe capital and largest city of the kingdom, built on the ruins of the old capital destroyed in the Void Cataclysm.\\n\\n## Description\\n\\nAethelgard is "
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+  "status": 200,
+  "resp_body": "[{\"id\":\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\",\"novel_id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"volume_id\":null,\"title\":\"The Compass Points\",\"position\":0,\"word_count\":569,\"status\":\"draft\",\"updated_at\":\"2026-10-11T22:07:17.557364Z\"},{\"id\":\"a8106b51-81a5-42a0-88e7-8f4b0a361ad6\",\"novel_id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"volume_id\":null,\"title\":\"Secrets Beneath Stone\",\"position\":1,\"word_count\":729,\"status\":\"draft\",\"updated_at\":\"2026-10-11T19:11:42.793470Z\"},{\"id\":\"4b37455a-2e93-4b7b-8c2a-e"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "resp_body": "{\"id\":\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\",\"novel_id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"volume_id\":null,\"title\":\"The Compass Points\",\"content\":\"<p>The ruined tower smelled of ancient stone and something else\u2014something that made Elara's skin tingle.</p><p>\\\"Stay together,\\\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. \\\"The spatial distortion here is unpredictable.\\\"</p><p>Elara nodded, but her attention was elsewhere. Her void magic\u2014suppressed f"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/export/formats",
+  "status": 200,
+  "resp_body": "[{\"format\":\"pdf\",\"available\":true},{\"format\":\"md\",\"available\":true},{\"format\":\"epub\",\"available\":true},{\"format\":\"docx\",\"available\":true}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context",
+  "status": 200,
+  "resp_body": "{\"project_id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"enabled\":true,\"weights\":{\"preference\":0.7,\"voice_fidelity\":0.9,\"style_constraints\":1.0,\"avoidance\":1.0},\"sources\":{\"preference_text\":\"\",\"voice_profiles_text\":\"\",\"style_constraints_text\":\"\",\"avoidance_patterns_text\":\"\"},\"has_any_signal\":false}"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "resp_body": "<unavailable>"
+ },
+ {
+  "method": "POST",
+  "url": "/api/v1/auth/refresh",
+  "status": 200,
+  "resp_body": "{\"access_token\":\"REDACTED_JWT\",\"refresh_token\":\"REDACTED_JWT\",\"token_type\":\"bearer\",\"expires_in\":3600}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 401,
+  "resp_body": "{\"detail\":\"Not authenticated\"}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/notes?limit=1",
+  "status": 200,
+  "resp_body": "[{\"id\":\"98c865f4-e77e-4edb-8c5d-55aa980c2077\",\"title\":null,\"content\":\"Audit Scratch Note (edited)\\n\\nEdited body.\",\"note_type\":\"idea\",\"tags\":[],\"novel_id\":null,\"series_id\":null,\"created_at\":\"2026-10-11T22:43:14.827582Z\",\"updated_at\":\"2026-10-11T22:43:17.711403Z\"}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/notes/tags",
+  "status": 200,
+  "resp_body": "{\"tags\":[]}"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/novels",
+  "status": 200,
+  "resp_body": "[{\"id\":\"c0e50bf5-a3b8-44b6-a6db-accd474cfa2b\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Import B\",\"author\":\"auditor\",\"genre\":\"\",\"writing_language\":\"en\",\"is_demo\":false,\"updated_at\":\"2026-10-11T22:37:01.334870Z\"},{\"id\":\"fad582e0-f67d-47de-8299-b947e15cd6ba\",\"series_id\":null,\"series_position\":null,\"title\":\"Audit Import A\",\"author\":\"auditor\",\"genre\":\"\",\"writing_language\":\"en\",\"is_demo\":false,\"updated_at\":\"2026-10-11T22:36:45.706330Z\"},{\"id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"serie"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/notes",
+  "status": 200,
+  "resp_body": "[{\"id\":\"98c865f4-e77e-4edb-8c5d-55aa980c2077\",\"title\":null,\"content\":\"Audit Scratch Note (edited)\\n\\nEdited body.\",\"note_type\":\"idea\",\"tags\":[],\"novel_id\":null,\"series_id\":null,\"created_at\":\"2026-10-11T22:43:14.827582Z\",\"updated_at\":\"2026-10-11T22:43:17.711403Z\"}]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/series",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/auth/me",
+  "status": 200,
+  "resp_body": "{\"id\":\"b4f286d9-e274-4dce-a531-8288e490a8bd\",\"email\":\"audit@narrare.dev\",\"display_name\":\"auditor\",\"is_active\":true,\"is_verified\":false,\"created_at\":\"2026-10-11T18:43:46.799803Z\",\"has_providers\":true}"
+ },
+ {
+  "method": "DELETE",
+  "url": "/api/v1/notes/98c865f4-e77e-4edb-8c5d-55aa980c2077",
+  "status": 204,
+  "resp_body": "<unavailable>"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/notes",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/notes?limit=1",
+  "status": 200,
+  "resp_body": "[]"
+ },
+ {
+  "method": "GET",
+  "url": "/api/v1/notes/tags",
+  "status": 200,
+  "resp_body": "{\"tags\":[]}"
+ }
+]
