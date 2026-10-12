@@ -1929,6 +1929,7 @@
     "rejectAll": "Reject All",
     "applySelected": "Apply Selected",
     "retry": "Retry",
+    "dismiss": "Dismiss",
     "stop": "Stop",
     "addToDraft": "Add to Draft",
     "insertAsNew": "Insert as New",

@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { BlockControls } from "./BlockControls";
 import { AIAnnotationActions } from "./editor/AIAnnotationActions";
 import { GhostTextOnboarding } from "./editor/GhostTextOnboarding";
+import { RewriteErrorBanner } from "./editor/RewriteErrorBanner";
 import { RewriteModeSelector } from "./editor/RewriteModeSelector";
 import { RewriteSuggestionModal } from "./editor/RewriteSuggestionModal";
 import {
@@ -160,6 +161,18 @@ export function TipTapEditor({
           onInsertAsNew={controller.insertAsNew}
           onNewSuggestions={controller.handleAIRewrite}
           onAccept={controller.acceptSuggestion}
+          t={t}
+        />
+      )}
+
+      {controller.rewriteError && !controller.aiSuggestion && (
+        <RewriteErrorBanner
+          error={controller.rewriteError}
+          onRetry={() => {
+            controller.setRewriteError(null);
+            controller.handleAIRewrite();
+          }}
+          onDismiss={() => controller.setRewriteError(null)}
           t={t}
         />
       )}

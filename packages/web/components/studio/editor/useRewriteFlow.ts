@@ -119,6 +119,7 @@ export function useRewriteFlow({ editor, chapterId, novelId, locale }: UseRewrit
     rewritePhase,
     rewriteSelection,
     rewriteError,
+    setRewriteError,
     isRewriteStreaming:
       rewritePhase === "streaming" || rewriteAiOp.isLoading || rewriteAiOp.isStreaming,
     handleAIRewrite,

@@ -96,6 +96,7 @@ export function useTipTapEditorController({
     rewritePhase: rewrite.rewritePhase,
     rewriteSelection: rewrite.rewriteSelection,
     rewriteError: rewrite.rewriteError,
+    setRewriteError: rewrite.setRewriteError,
     showOnboarding,
     dismissOnboarding,
     onboardingAnchor,
