@@ -26,7 +26,6 @@ export {
   useKBRelationships,
 } from "./useKBRelationships";
 export {
-  useKBAutocomplete,
   useKBDebouncedSearch,
   useKBInverseSuggestion,
   useKBResolveReferences,

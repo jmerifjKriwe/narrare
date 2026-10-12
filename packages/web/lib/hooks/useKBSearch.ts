@@ -62,12 +62,3 @@ export function useKBResolveReferences(novelId: string, text: string | null) {
     enabled: !!novelId && !!text && text.length > 0,
   });
 }
-
-/** Auto-complete KB entry names for @mention dropdown. Requires at least 2 characters. */
-export function useKBAutocomplete(novelId: string, query: string) {
-  return useQuery<Array<{ id: string; name: string; entity_type: string; slug: string }>>({
-    queryKey: kbKeys.autocomplete(novelId, query),
-    queryFn: () => kbApi.autocompleteEntries(novelId, query),
-    enabled: !!novelId && query.length >= 2,
-  });
-}

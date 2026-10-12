@@ -6,7 +6,6 @@
  * 2. useKBDebouncedSearch debounces and fetches after the delay
  * 3. useKBInverseSuggestion fetches when relType is set; disabled when null
  * 4. useKBResolveReferences fetches when text is set; disabled when null
- * 5. useKBAutocomplete enables only with >= 2 characters
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -19,13 +18,11 @@ vi.mock("@/lib/api/kb", () => ({
     searchEntries: vi.fn(),
     getInverseSuggestion: vi.fn(),
     resolveReferences: vi.fn(),
-    autocompleteEntries: vi.fn(),
   },
 }));
 
 import { type KBInverseSuggestion, kbApi, type ResolveReferencesResponse } from "@/lib/api/kb";
 import {
-  useKBAutocomplete,
   useKBDebouncedSearch,
   useKBInverseSuggestion,
   useKBResolveReferences,
@@ -34,7 +31,6 @@ import {
 const searchEntries = vi.mocked(kbApi.searchEntries);
 const getInverseSuggestion = vi.mocked(kbApi.getInverseSuggestion);
 const resolveReferences = vi.mocked(kbApi.resolveReferences);
-const autocompleteEntries = vi.mocked(kbApi.autocompleteEntries);
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -154,31 +150,5 @@ describe("useKBResolveReferences", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(resolveReferences).not.toHaveBeenCalled();
-  });
-});
-
-describe("useKBAutocomplete", () => {
-  it("fetches suggestions when query has at least 2 characters", async () => {
-    autocompleteEntries.mockResolvedValueOnce([
-      { id: "e1", name: "Anna", entity_type: "character", slug: "anna" },
-    ]);
-
-    const { result } = renderHook(() => useKBAutocomplete("novel-1", "an"), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(autocompleteEntries).toHaveBeenCalledWith("novel-1", "an");
-    expect(result.current.data).toHaveLength(1);
-  });
-
-  it("is disabled for queries shorter than 2 characters", () => {
-    const { result } = renderHook(() => useKBAutocomplete("novel-1", "a"), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current.fetchStatus).toBe("idle");
-    expect(autocompleteEntries).not.toHaveBeenCalled();
   });
 });
