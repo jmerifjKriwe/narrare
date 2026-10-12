@@ -1,41 +1,25 @@
 "use client";
 
-import type { Editor } from "@tiptap/react";
 import { ChevronDown, Loader2, PenLine } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { ExtendLength } from "@/lib/api/generation";
-import { useContinueStream } from "./useContinueStream";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface ContinueButtonProps {
-  readonly editor: Editor;
-  readonly chapterId: string;
-  readonly novelId: string;
-  readonly tone?: string;
+  /** Whether a continue/extend stream is active (owned by EditorView). */
+  readonly isStreaming: boolean;
+  /** Start an extension of the given target length. */
+  readonly onExtend: (length: ExtendLength) => void;
+  /** Stop the active extension stream. */
+  readonly onStop: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueButtonProps) {
+export function ContinueButton({ isStreaming, onExtend, onStop }: ContinueButtonProps) {
   const t = useTranslations("studio");
   const [length, setLength] = useState<ExtendLength>("medium");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { handleExtend, handleStop, isStreaming } = useContinueStream({
-    editor,
-    chapterId,
-    novelId,
-    tone,
-  });
-
-  // Close dropdown on outside click
   useEffect(() => {
     if (!dropdownOpen) return;
     const handler = (e: MouseEvent) => {
@@ -52,10 +36,9 @@ export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueBut
       <div className="flex items-center">
         <button
           type="button"
-          onClick={() => (isStreaming ? handleStop() : handleExtend(length))}
+          onClick={() => (isStreaming ? onStop() : onExtend(length))}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-card hover:bg-accent transition-colors"
           aria-label={t("annotation.continueWriting")}
-          disabled={editor.isDestroyed}
         >
           {isStreaming ? (
             <>
