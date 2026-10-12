@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { RewriteConfig } from "@/lib/api/generation";
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { getSelectionContext } from "./selectionContext";
 import type { AISuggestion, RewritePhase, RewriteSelection } from "./TipTapEditorController";
 import { useRewriteActions } from "./useRewriteActions";
 import { useRewriteOperation } from "./useRewriteOperation";
@@ -54,31 +55,15 @@ export function useRewriteFlow({ editor, chapterId, novelId, locale }: UseRewrit
     setters: { setAiSuggestion, setSelectedSuggestion, setRewritePhase, setRewriteError },
   });
 
-  const getSelectionContext = useCallback(
-    (from: number, to: number) => {
-      if (!editor) return { contextBefore: "", contextAfter: "" };
-      const contextRadius = 800;
-      return {
-        contextBefore: editor.state.doc.textBetween(Math.max(0, from - contextRadius), from, " "),
-        contextAfter: editor.state.doc.textBetween(
-          to,
-          Math.min(editor.state.doc.content.size, to + contextRadius),
-          " ",
-        ),
-      };
-    },
-    [editor],
-  );
-
   const handleAIRewrite = useCallback(() => {
     if (!editor) return;
     const { from, to } = editor.state.selection;
     const selectedText = editor.state.doc.textBetween(from, to, " ");
     const trimmedLength = selectedText.trim().length;
     if (trimmedLength < MIN_SELECTION_LENGTH || trimmedLength > MAX_SELECTION_LENGTH) return;
-    setRewriteSelection({ text: selectedText, from, to, ...getSelectionContext(from, to) });
+    setRewriteSelection({ text: selectedText, from, to, ...getSelectionContext(editor, from, to) });
     setRewritePhase("selecting-mode");
-  }, [editor, getSelectionContext]);
+  }, [editor]);
 
   const handleRewriteGenerate = useCallback(
     (config: RewriteConfig) => {
