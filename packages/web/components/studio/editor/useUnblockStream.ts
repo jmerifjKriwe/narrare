@@ -24,7 +24,9 @@ import { type StorySuggestion, streamStorySuggestions } from "@/lib/api/story-su
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
 /**
- * @param novelId   Novel to generate suggestions for (SSE URL path parameter).
+ * @param novelId   Novel to generate suggestions for (SSE URL path parameter,
+ *                  also sent in the request body — `StorySuggestRequest`
+ *                  requires `novel_id` there; audit B02).
  * @param chapterId Optional chapter to scope the suggestions (request body).
  * @returns The AI-operation lifecycle (state, flags, cancel/retry/reset) plus
  *          {@link request}, which stages the author instructions and starts the
@@ -65,6 +67,7 @@ export function useUnblockStream(novelId: string, chapterId?: string) {
         streamStorySuggestions(
           novelId,
           {
+            novel_id: novelId,
             chapter_id: chapterId,
             author_instructions: instructionsRef.current.trim() || undefined,
           },

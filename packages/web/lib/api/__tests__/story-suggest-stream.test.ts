@@ -63,7 +63,7 @@ describe("streamStorySuggestions", () => {
 
   it("POSTs to the story-suggest endpoint with the body and forwards the signal", async () => {
     const controller = new AbortController();
-    const body = { chapter_id: "ch-1", author_instructions: "Make it darker" };
+    const body = { novel_id: "novel-1", chapter_id: "ch-1", author_instructions: "Make it darker" };
 
     await streamStorySuggestions(
       "novel-1",
@@ -81,7 +81,11 @@ describe("streamStorySuggestions", () => {
 
   it("calls onSuggestions with the full list on a suggestions event", async () => {
     const onSuggestions = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions, onComplete: vi.fn() });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions, onComplete: vi.fn() },
+    );
 
     capture().onChunk({ event: "suggestions", suggestions: sampleSuggestions });
 
@@ -91,7 +95,11 @@ describe("streamStorySuggestions", () => {
 
   it("ignores a suggestions event with a null payload", async () => {
     const onSuggestions = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions, onComplete: vi.fn() });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions, onComplete: vi.fn() },
+    );
 
     capture().onChunk({ event: "suggestions", suggestions: null });
 
@@ -100,7 +108,11 @@ describe("streamStorySuggestions", () => {
 
   it("calls onComplete on the terminal done event", async () => {
     const onComplete = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onComplete });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onComplete },
+    );
 
     capture().onChunk({ event: "done", is_final: true });
 
@@ -109,7 +121,11 @@ describe("streamStorySuggestions", () => {
 
   it("calls onComplete when is_final is set without the done discriminator", async () => {
     const onComplete = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onComplete });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onComplete },
+    );
 
     capture().onChunk({ is_final: true });
 
@@ -119,7 +135,11 @@ describe("streamStorySuggestions", () => {
   it("surfaces a terminal error event with its message", async () => {
     const onError = vi.fn();
     const onComplete = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onComplete, onError });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onComplete, onError },
+    );
 
     capture().onChunk({ event: "error", error: "model unavailable", is_final: true });
 
@@ -130,7 +150,11 @@ describe("streamStorySuggestions", () => {
 
   it("uses a generic message when an error event omits the message", async () => {
     const onError = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onError });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onError },
+    );
 
     capture().onChunk({ event: "error" });
 
@@ -140,7 +164,11 @@ describe("streamStorySuggestions", () => {
 
   it("surfaces an error when event.error is set without the error discriminator", async () => {
     const onError = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onError });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onError },
+    );
 
     capture().onChunk({ event: "done", error: "late failure", is_final: true });
 
@@ -151,7 +179,11 @@ describe("streamStorySuggestions", () => {
   it("does not complete after a terminal error event", async () => {
     const onComplete = vi.fn();
     const onError = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onComplete, onError });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onComplete, onError },
+    );
 
     const { onChunk, options } = capture();
     onChunk({ event: "error", error: "boom" });
@@ -163,7 +195,11 @@ describe("streamStorySuggestions", () => {
 
   it("completes once when both the done event and the transport [DONE] sentinel arrive", async () => {
     const onComplete = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onComplete });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onComplete },
+    );
 
     const { options, onChunk } = capture();
     onChunk({ event: "done", is_final: true });
@@ -174,7 +210,11 @@ describe("streamStorySuggestions", () => {
 
   it("forwards transport errors via onError", async () => {
     const onError = vi.fn();
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn(), onError });
+    await streamStorySuggestions(
+      "novel-1",
+      { novel_id: "novel-1" },
+      { onSuggestions: vi.fn(), onError },
+    );
 
     capture().options.onError?.(new SSEStreamError("HTTP 500", "http", 500));
 
@@ -183,7 +223,7 @@ describe("streamStorySuggestions", () => {
   });
 
   it("does not throw when onComplete and onError callbacks are omitted", async () => {
-    await streamStorySuggestions("novel-1", {}, { onSuggestions: vi.fn() });
+    await streamStorySuggestions("novel-1", { novel_id: "novel-1" }, { onSuggestions: vi.fn() });
 
     const { options, onChunk } = capture();
     onChunk({ event: "done", is_final: true });

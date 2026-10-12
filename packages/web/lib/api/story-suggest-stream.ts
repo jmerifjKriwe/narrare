@@ -51,12 +51,13 @@ export interface StorySuggestion {
 /**
  * Request body for the story-suggest endpoint.
  *
- * RULE-17 contract parity: mirrors `StorySuggestRequest` — `novel_id` is
- * required but supplied via the URL path parameter, not the body, so it is
- * omitted here and only the optional fields are sent in the JSON body.
+ * RULE-17 contract parity: mirrors `StorySuggestRequest` — `novel_id` is a
+ * REQUIRED body field even though the route also carries it as the URL path
+ * parameter (audit B02: omitting it yields 422 "Field required").
  * `author_instructions` is capped at 2000 characters server-side.
  */
 export interface StorySuggestRequestBody {
+  novel_id: string;
   chapter_id?: string;
   author_instructions?: string;
 }
@@ -105,8 +106,10 @@ export interface StorySuggestStreamHandlers {
  * `data: [DONE]` signal. A terminal `"error"` event surfaces a server-side
  * failure through `onError`.
  *
- * @param novelId     Novel to generate suggestions for (URL path parameter).
- * @param body        Optional request body (`chapter_id`, `author_instructions`).
+ * @param novelId     Novel to generate suggestions for (URL path parameter,
+ *                    also required in the request body per `StorySuggestRequest`).
+ * @param body        Request body (`novel_id`, optional `chapter_id` and
+ *                    `author_instructions`).
  * @param handlers    Callbacks for suggestions, completion, and errors.
  * @param signal      Optional abort signal to cancel the in-flight stream.
  */
