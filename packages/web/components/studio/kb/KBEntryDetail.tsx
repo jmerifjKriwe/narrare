@@ -59,9 +59,6 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
     setConfirmOpen(true);
   }
 
-  const handleFieldChange = (fieldName: string, value: unknown) =>
-    setFieldValues((prev) => ({ ...prev, [fieldName]: value }));
-
   if (templateLoading) {
     return (
       <div className="flex-1 overflow-y-auto bg-background flex items-center justify-center min-h-[40vh]">
@@ -112,13 +109,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
           </div>
         )}
 
-        <KBFlatEditor
-          fieldValues={fieldValues}
-          entryMetadata={entry.metadata}
-          body={extraBody}
-          onFieldChange={handleFieldChange}
-          onBodyChange={setExtraBody}
-        />
+        <KBFlatEditor entryMetadata={entry.metadata} body={extraBody} onBodyChange={setExtraBody} />
 
         <div className="pt-2">
           <KBRelationshipSection novelId={novelId} entry={entry} relationships={relationships} />

@@ -12,10 +12,8 @@
 import { useTranslations } from "next-intl";
 
 interface KBFlatEditorProps {
-  fieldValues: Record<string, unknown>;
   body: string;
   entryMetadata: Record<string, unknown>;
-  onFieldChange: (name: string, value: unknown) => void;
   onBodyChange: (body: string) => void;
 }
 

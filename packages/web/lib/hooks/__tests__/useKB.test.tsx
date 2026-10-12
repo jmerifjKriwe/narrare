@@ -48,11 +48,13 @@ const mockListTemplates = kbApi.listTemplates as ReturnType<typeof vi.fn>;
 // ---------------------------------------------------------------------------
 
 const mockTemplate = {
-  meta: { template_type: "character", template_version: "1.0", schema_version: "1.0" },
-  fields: [{ name: "name", field_type: "text", required: true, description: "Character name" }],
-  field_groups: [],
-  sections: [],
-  body: "# Character",
+  entity_type: "character",
+  scope: "global",
+  content: "---\nprompt_type: kb\n---\n\n# Character",
+  base_content: null,
+  schema_version: "2.0.0",
+  based_on_version: null,
+  is_overridden: false,
 };
 
 const mockTemplateInfoList = [
@@ -113,8 +115,8 @@ describe("useKBTemplate", () => {
     });
 
     expect(mockGetTemplate).toHaveBeenCalledWith("novel-1", "character");
-    expect(result.current.data?.meta.template_type).toBe("character");
-    expect(result.current.data?.fields).toHaveLength(1);
+    expect(result.current.data?.entity_type).toBe("character");
+    expect(result.current.data?.is_overridden).toBe(false);
   });
 
   it("is disabled when entityType is null", () => {

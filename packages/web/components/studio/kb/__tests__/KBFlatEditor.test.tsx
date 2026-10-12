@@ -22,10 +22,8 @@ import { KBFlatEditor } from "@/components/studio/kb/KBFlatEditor";
 // ---------------------------------------------------------------------------
 
 const defaultProps = {
-  fieldValues: {} as Record<string, unknown>,
   body: "A dark forest with ancient trees.",
   entryMetadata: {} as Record<string, unknown>,
-  onFieldChange: vi.fn(),
   onBodyChange: vi.fn(),
 };
 

@@ -1,40 +1,10 @@
 // Knowledge Base Template types
-
-export interface KBTemplateField {
-  name: string;
-  field_type: string;
-  required: boolean;
-  description: string;
-}
-
-export interface KBTemplateSection {
-  name: string;
-  label_key: string;
-  description_key: string;
-  order: number;
-}
-
-export interface KBTemplateFieldGroup {
-  name: string;
-  label_key: string;
-  description_key: string;
-  fields: KBTemplateField[];
-  order: number;
-}
-
-export interface KBTemplateMeta {
-  template_type: string;
-  template_version: string;
-  schema_version: string;
-}
-
-export interface KBTemplate {
-  meta: KBTemplateMeta;
-  fields: KBTemplateField[];
-  field_groups: KBTemplateFieldGroup[];
-  sections: KBTemplateSection[];
-  body: string;
-}
+//
+// NOTE (audit B04): the fantasy field-schema shapes (`KBTemplate` with
+// `meta`/`fields`/`field_groups`/`sections`, `KBTemplateMeta`,
+// `KBTemplateField`, `KBTemplateFieldGroup`, `KBTemplateSection`) were
+// deleted — the template endpoints return flat prompt-template payloads.
+// The live contract types live in `lib/api/kb.ts` (`KBTemplate`) and here.
 
 export interface KBTemplateInfo {
   entity_type: string;
