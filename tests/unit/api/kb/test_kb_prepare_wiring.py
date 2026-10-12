@@ -72,9 +72,20 @@ class TestImprovePrepareWiring:
             kb_repo=cast("KBRepository", MagicMock(spec=True, name="KBRepository")),
             rel_repo=cast("RelationshipRepository", MagicMock(spec=True, name="RelRepo")),
         )
-        deps = MagicMock(spec=["entity_type", "entry_content"])
+        deps = MagicMock(
+            spec=[
+                "entity_type",
+                "entry_content",
+                "template_structure",
+                "existing_relationships",
+                "world_context",
+            ]
+        )
         deps.entity_type = "character"
         deps.entry_content = {"name": "Lyra"}
+        deps.template_structure = {"name": "Name"}
+        deps.existing_relationships = []
+        deps.world_context = None
         output = MagicMock(spec=["suggestions", "overall_assessment", "completeness_score"])
         output.suggestions = []
         output.overall_assessment = "Solid entry."

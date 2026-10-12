@@ -176,22 +176,34 @@ class KBImproveAnalyzer:
         self,
         entity_type: str,
         entry_content: dict[str, object],
+        *,
+        template_structure: str = "",
+        existing_relationships: str = "",
+        world_context: str = "",
     ) -> PromptContext:
         """Build PromptContext for the improve prompt (RULE-02).
 
-        Prompt construction is retained here; composition happens via
-        ``compose_invocation`` in ``analyze``.
+        Mode defers to the route-table default (``kb/en/improve``) — a
+        non-empty mode is treated as the template mode and previously
+        pointed at the nonexistent ``kb/en/kb_improve`` (audit B06). The
+        template-declared slots (template_structure / existing_relationships
+        / world_context) are fed from the analyzer's deps so the compose
+        preflight passes with real data (architectural-discipline §7).
         """
         from narrare_core.prompts.context import PromptContext
 
         return PromptContext(
             language="en",
+            writing_language="en",
             genre="",
             project_title="",
-            mode=LLMIntent.KB_IMPROVE.value,
+            mode="",
             extra={
                 "entity_type": entity_type,
                 "entry_content": str(entry_content),
+                "template_structure": template_structure,
+                "existing_relationships": existing_relationships,
+                "world_context": world_context,
             },
         )
 
@@ -283,6 +295,9 @@ class KBImproveAnalyzer:
         prompt_context = self._build_prompt_context(
             entity_type=deps.entity_type,
             entry_content=deps.entry_content or {},
+            template_structure=str(deps.template_structure or ""),
+            existing_relationships=str(deps.existing_relationships),
+            world_context=deps.world_context or "",
         )
 
         # Compose prompt via compose_invocation (Mode 1 — composer-driven,
