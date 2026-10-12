@@ -51,6 +51,7 @@ async def compose_analysis_invocation_prompt(
     user_id: UUID,
     language: str,
     mode: str,
+    extra: dict[str, str] | None = None,
 ) -> ComposedPrompt:
     """Compose an analysis system prompt via Mode 1 (composer-driven, ADR-048).
 
@@ -75,6 +76,9 @@ async def compose_analysis_invocation_prompt(
         language: Resolved language code.
         mode: PromptComposer mode (e.g. ``"pov"``, ``"readability"``,
             ``"beta_reader"``).
+        extra: Optional prompt variables spread into ``PromptContext.extra``
+            (e.g. the four ``kb_*`` slots from the canonical KBContextProvider,
+            ADR-067 — audit B07). ``None`` keeps the previous bare context.
 
     Returns:
         The composed prompt (with ``.system`` for the agent constructor).
@@ -86,7 +90,12 @@ async def compose_analysis_invocation_prompt(
     from narrare._app.invocation_context import build_invocation_context
     from narrare_core.ai_invocation import compose_invocation
 
-    ctx = PromptContext(language=language, mode=mode, project_title="")
+    ctx = PromptContext(
+        language=language,
+        mode=mode,
+        project_title="",
+        extra=dict(extra or {}),
+    )
     invocation_context = build_invocation_context(
         feature_id=feature_id,
         intent=intent,
@@ -120,7 +129,12 @@ async def compose_analysis_invocation_prompt(
         )
     # Fallback: compose directly without pipeline (no enrichment, no
     # evidence). Raises AnalysisError on failure (RULE-11).
-    ctx = PromptContext(language=language, mode=mode, project_title="")
+    ctx = PromptContext(
+        language=language,
+        mode=mode,
+        project_title="",
+        extra=dict(extra or {}),
+    )
     try:
         return await composer.build(intent, ctx)
     except Exception as exc:

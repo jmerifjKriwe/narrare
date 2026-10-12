@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
     from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare_core.agents.pov_agent import POVDetectionAgent
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -57,6 +58,10 @@ class POVService:
         composer: PromptComposer for Mode 1 (composer-driven) system prompt
             assembly (ADR-048). Builds the feature-specific POV system prompt
             from the bundled ``analysis/{lang}/pov`` template.
+        kb_context_provider: Canonical KB-context source (ADR-067) feeding
+            the pov template's ``kb_characters`` / ``kb_locations`` /
+            ``kb_factions`` / ``kb_relationships`` slots. ``None`` degrades
+            to empty slots (RULE-11).
         invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
@@ -68,6 +73,7 @@ class POVService:
         model_registry: ModelRegistry,
         model_resolution: ModelResolution,
         composer: PromptComposer,
+        kb_context_provider: KBContextProviderProtocol | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
@@ -76,6 +82,7 @@ class POVService:
         self._model_registry = model_registry
         self._model_resolution = model_resolution
         self._composer = composer
+        self._kb_context_provider = kb_context_provider
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
 
@@ -154,6 +161,25 @@ class POVService:
         # correlated evidence + enrichment. Falls back to direct composition
         # on pipeline failure so analysis proceeds regardless of
         # evidence/enrichment issues.
+
+        # KB-context variables for the pov template's {{kb_*}} slots (audit
+        # B07): canonical provider (ADR-067) — the same SSOT supply the
+        # coreference service uses. ``None`` provider or empty KB degrades
+        # to empty slots (RULE-11); the provider never raises.
+        from narrare_core.context._render_options import RenderOptions
+
+        if self._kb_context_provider is None:
+            from narrare.kb.context_contracts import KBContextBundle
+
+            kb_bundle = KBContextBundle.empty(RenderOptions(annotate_provenance=True))
+        else:
+            kb_bundle = await self._kb_context_provider.fetch_context(
+                novel_id,
+                entity_types=["character", "location", "faction"],
+                options=RenderOptions(annotate_provenance=True),
+            )
+        kb_vars = kb_bundle.to_prompt_variables()
+
         composed = await compose_analysis_invocation_prompt(
             composer=self._composer,
             invocation_pipeline=self._invocation_pipeline,
@@ -163,6 +189,7 @@ class POVService:
             user_id=user_id,
             language=effective_language,
             mode="pov",
+            extra=kb_vars,
         )
 
         # 4. Run POVDetectionAgent with the composed feature-specific prompt
