@@ -1,0 +1,200 @@
+AUDIT 08 — World & Characters (KB) deep-dive
+Date: 2026-10-11 · Novel "Audit Demo Novel" (4a53a95a) · web :3001 / API :8000 TestModel
+Scripts: 08a-kb-crud-improve.py · 08b-kb-graph-session-merge-bulk.py · 08c-kb-followups.py · 08d-merge-graph-final.py
+Artifacts: 45 files (08-*.png/txt/json) · state.json refreshed (21:39)
+
+STATUS: OK (with 3 new blocking bugs found; audit could not be blocked because all
+blocked surfaces were additionally verifiable at API level)
+
+===========================================================================
+1. ENTITY CRUD (KB-001)
+===========================================================================
+SEARCH/FILTER (list):
+- Sidebar type tabs with live counts: All 16, Characters 5, Concepts 0, Factions 2,
+  Locations 4, Objects 1, Settings 0, Systems 3, Timelines 1 (+ Graph / Wiki mode buttons;
+  "Analyze Worldbuilding", "Check Consistency", "New Entry", "New with AI Interview").
+  Counts fetched per-type via GET /kb/entries?entity_type=<t>&page_size=1 (all 200).
+- Search input: placeholder/aria-label "Search entries...", debounced (useKBDebouncedSearch)
+  -> GET /kb/entries/search?q=... 200. Query "Elara" matched Elara Thornwind card
+  (render: name, Draft badge, tags "protagonist, human, mage", relative time "2h ago").
+  "Clear search" affordance present. Type-filter click (Locations) works, shows 4 cards.
+CREATE (UI):
+- "New Entry" opens inline form. Controls dumped verbatim (08-03-create-form.txt):
+  [select "Select type" value=character] [input "Entry name..." label=Name]
+  [textarea "Write the entry content..." label=Body] [input "Add tags (comma-separated)"
+  label=Tags] [select Status value=draft (Draft/Reviewed/Canon/Deprecated)] + Create/Cancel.
+  Type options: character, concept, faction, location, object, setting, system, timeline.
+- Submit -> POST /api/v1/novels/{id}/kb/entries -> 201
+  body: {"entity_type":"location","name":"Audit Location","body":"A windswept cliffside
+  lighthouse...","tags":[],"status":"draft"}
+  Created: 2d7c8da0-9311-4ae3-8a94-69d64f26f948.
+DETAIL VIEW: *** CRASHES — NEW BLOCKING BUG ***
+- Clicking ANY entry card (new + pre-existing Elara Thornwind) -> app error boundary
+  "This page couldn't load / Reload / Back" + Next.js dev overlay intercepting pointer
+  events. Uncaught pageerror: "TypeError: Cannot read properties of undefined (reading
+  'length')" (2x captured).
+- Root cause: KBEntryDetail.tsx:35 `const hasTemplate = !!template && template.field_groups.length > 0`
+  but GET /kb/templates/location 200 returns TemplateDetailResponse {entity_type, scope,
+  content, base_content, schema_version, based_on_version, is_overridden} — NO field_groups
+  key (openapi-confirmed). Frontend lib/api/kb.ts:148 KBTemplate interface expects
+  {meta, fields, field_groups, sections, body} — full contract drift.
+- Consequence: aliases/relationships/voice/tags/metadata field groups UNRENDERABLE in UI;
+  in-UI edit + "Improve with AI" (which live in the detail view) unreachable.
+- APIs that back the detail all return 200 (entry, /relationships -> [], /templates/location).
+EDIT (API; UI path blocked by crash):
+- PATCH /kb/entries/{id} -> 200; re-GET verifies body change persisted.
+- Entry shape (08-10-entry-api-shape.txt): body, created_at, embeddings_dirty,
+  entity_type, id, metadata(null), name, novel_id, review_status, slug("audit-location"),
+  source, status(draft), tags[], template_version, updated_at.
+
+===========================================================================
+2. KNOWLEDGE GRAPH (KB-008)
+===========================================================================
+- Graph mode opens (sidebar "Graph" button). GET /kb/graph 200.
+- Data: 17 nodes / 0 EDGES while Audit Location existed (location 5, character 5,
+  system 3, faction 2, object 1, timeline 1); 16 nodes after cleanup. Sample nodes:
+  "Aethelgard (Capital City)", "Cataclysm History", "Elara Thornwind", "High Chancellor Morven".
+  NOTE: 0 edges novel-wide — sample novel has no KB relationships; graph is node cloud only.
+- Render: 3 stacked <canvas> 928x580 (cytoscape), header text "16 nodes · 0 edges".
+- Controls dumped verbatim: LAYOUT = Force-directed | Hierarchical | Concentric (switch
+  to Hierarchical works); FILTER = per-type toggles (Character/Concept/Faction/Location/
+  Object/Setting/System/Timeline); zoom controls present (zoom-in worked).
+- Node interaction: 35-point and 64-point hover+click sweeps (incl. zoomed) found NO
+  tooltip/selection response detectable headlessly. Even if a click selects a node, the
+  handler routes to the KB DETAIL VIEW (onSelectEntry -> ?entry=) which crashes (bug #1) —
+  graph drill-down is dead-ended regardless.
+
+===========================================================================
+3. ENTITY MERGE (KB-009)
+===========================================================================
+- NO dedicated merge route in openapi (grep "merge" paths: NONE). Merge exists ONLY as
+  resolution-suggestion endorse: POST /kb/resolution/analyze {refresh} -> GET
+  /kb/resolution/suggestions -> POST /kb/resolution/suggestions/{id}/endorse (executes
+  merge server-side) | /reject (persists dismissal). Schemas MergeConflict +
+  MergeExecutionResult are referenced only by the endorse endpoint.
+- UI affordance exists in code (ResolutionSuggestionsList.tsx: per-row "Merge / Dismiss",
+  "merges happen ONLY on endorse" ADR-085 D3) but is rendered by DedupCard inside
+  BulkExtractionPanel — i.e. ONLY reachable during/after a bulk extraction job
+  (cost: 1 AI call/chapter; starting one was forbidden by audit rules at 4 AI calls).
+  -> PARTIAL PARITY GAP: merge UI gated behind extraction review; no standalone surface.
+- Duplicate handling at create: same-name duplicate is blocked only via slug uniqueness
+  -> POST /kb/entries 409 Conflict while slug exists (08b); after deletion re-create 201.
+- Resolution analyze on planted near-dupes: 2x 200 {"suggestions": [], stats 0/0/0}
+  ("Audit Location" vs "Audit Lighthouse"). Exact-content duplicate of "Thornwall Ruins"
+  (name "Thornwall Ruin") -> analyze 200 {"suggestions": [], "stats": {"review": 0,
+  "auto_eligible": 0, "suppressed": 1}} — the pair is DETECTED then SUPPRESSED, never
+  surfaced. Merge execution could not be exercised (nothing endorsable); no merge dialog
+  render possible. Survivor/field-merge semantics remain unverified end-to-end.
+
+===========================================================================
+4. KB SUGGESTIONS (KB-005)
+===========================================================================
+- PARITY GAP: GET /kb/suggestions/{chapter_id} (200) has NO frontend consumer.
+  Grep over packages/web (lib/components/app, excluding tests/kbResolution/kb-improve):
+  zero references to kb/suggestions. Endpoint returns per-chapter relevance list, e.g.
+  [{"entry_id": "...", "entry_type": "location", "name": "Audit Location",
+    "relevance_score": 0.3877, "reason": "semantically_similar", "similarity": 0.7354,
+    "usage_count": 0, "last_referenced_at": null}, {"name": "Master Verrick",
+    "reason": "mentioned_in_text", ...}] (08-18-kb-suggestions.json).
+- No accept/dismiss possible (no surface). The only "suggestion" UIs are
+  resolution (merge) suggestions and per-field "Suggest AI" inside the assisted session.
+
+===========================================================================
+5. IMPROVE KB ENTRY (KB-003)
+===========================================================================
+- BROKEN — NEW BUG #2 (API-level, not TestModel-related):
+  POST /kb/entities/{id}/improve -> 400
+  {"detail": "Prompt not found: kb/en/kb_improve", "code": "PROMPT_NOT_FOUND"}
+- Root cause: apps/api/narrare/kb/improve_analyzer.py:192 builds PromptContext(mode=
+  LLMIntent.KB_IMPROVE.value) i.e. mode="kb_improve"; composer resolves category/lang/mode
+  -> looks up kb/en/kb_improve. But route table maps KB_IMPROVE -> ("kb", "improve")
+  (prompts/route_table.py:128) and the bundle ships packages/core/narrare_core/prompts/
+  _bundled/kb/en/improve. Mode override renames the prompt -> not found.
+- UI affordance ("Improve with AI" -> "AI Suggestions" panel, "Apply Selected") lives in
+  the crashed detail view — doubly unreachable. No render possible.
+
+===========================================================================
+6. KB SESSION (KB-002) — AI-assisted creation
+===========================================================================
+- Entry: sidebar "New with AI Interview" (per active type tab; Locations).
+- Panel renders (08-20/21 + 08-14-session-panel.txt.txt): "AI-Assisted Creation /
+  Locations / Active / Save resume pointer on this device for 24 hours / Abandon /
+  0 of 18 fields complete 0% / Start Interview / Enhance All / TO FILL (18)" with 18
+  template fields each with a "Suggest AI" button (Location Type, Parent Location,
+  Coordinates, Climate, Terrain, Size, First Appearance, Features {Architecture, Natural
+  Features, Landmarks, Atmosphere}, Inhabitants {Population, Species, Factions, Notable
+  Residents}, History {Founded, Key Events, Current State}).
+- *** BROKEN — NEW BLOCKING BUG #3: session is never readable after create. ***
+  API evidence: POST /kb/sessions {"entity_type":"location"} -> 201 with full body
+  {id, name, status, fields, context_entries, user_id, novel_id, created_at, updated_at};
+  IMMEDIATE GET /kb/sessions/{same id} -> 404 {"detail": "Session not found"};
+  DELETE -> 404 too. UI: POST fires TWICE (React StrictMode double-create, 2x 201),
+  then GET/interview on the created id -> 404 (2x POST /interview 404, GET 404);
+  interview turn impossible. UI error card renders misleadingly: "Question 0 /
+  Connection lost. Check your internet connection. / Retry / Panel closed" (08-22).
+- Root cause: apps/api/narrare/kb/dependencies_session.py:85-86 constructs
+  `cache = InMemorySessionCache()` PER REQUEST and wraps it in KBCreationSessionStore —
+  session written in request A lives in a cache instance that no other request shares.
+- Also: GET /kb/sessions (list) = 405 Method Not Allowed (no list route).
+- One interview turn: NOT executable (404). "Suggest AI" per field untestable for the
+  same reason (session-bound).
+
+===========================================================================
+7. BULK EXTRACTION + CORPUS (ADR-092 / IO-002)
+===========================================================================
+- Affordances in editor chapter sidebar: per-chapter "Extract to KB" (single-chapter,
+  known-broken extract storm — NOT triggered), "Import chapters", and
+  "Analyze novel corpus" (corpus pass entry -> CorpusEstimateDialog -> BulkExtractionPanel).
+- Estimate (all 4 chapters) via UI: dialog rendered verbatim (08-19-corpus-dialog.txt):
+  "Analyze novel corpus / 4 chapters · 3061 words · 4 AI calls / Runs in the background
+  at your analysis rate (default: 5 AI calls per minute). One call per chapter, sharing
+  the same budget as interactive extraction. / [Cancel] [Start corpus pass]"
+  -> GET /kb/extract/bulk/corpus/estimate 200. 4 AI calls > 0 -> CANCELLED, job NOT
+  started (per audit rules). Status/results affordances (BulkStateChip, review view,
+  "Apply to Knowledge Base", skip, cancel/resume strings) exist per i18n + components
+  but were not exercisable without starting a job.
+- Corpus pass estimate: same dialog/endpoint, 200 with counts (no 422).
+
+===========================================================================
+POLLUTION
+===========================================================================
+- Net KB changes: ZERO. Final census = 16 entities (names verbatim in 08b/c logs:
+  Aethelgard (Capital City), Cataclysm History, Elara Thornwind, High Chancellor Morven,
+  Kaelen Vane, Master Verrick, Order of the Silver Flame, Political Structure of
+  Aethelgard, Sera, Silver Flame Fortress, Temple of Silent Flames, The Ashen Covenant,
+  The Thornwell Compass, Thornwall Ruins, Timeline of the Void Cataclysm, Void Magic System).
+- All audit entities deleted (DELETE 204): Audit Location x2, Audit Lighthouse,
+  Thornwall Ruin (merge probe). KB sessions cannot persist (per-request cache bug) —
+  no residue possible; DELETE attempts 404 confirm nothing stored.
+- No bulk job started; no AI content written. state.json refreshed after last run.
+
+===========================================================================
+CONSOLE ERRORS
+===========================================================================
+Total captured: 316 (08a-d). Known-broken excluded: 267 (worldbuilding.title IntlError
+bursts, 401 bursts, consistency/wiki/extract artifacts). Tooling noise: 30x pageerror
+"Cannot read properties of null (reading 'isHeadless')" — all in run 08c only, string
+not present anywhere in packages/web source (Next.js dev-overlay internals in headless
+Chromium) -> classified as environment noise. Remaining APP errors: 19
+- 2x pageerror "Cannot read properties of undefined (reading 'length')" -> KB detail crash (bug #1)
+- 11x "Failed to load resource: 404" -> KB session GET/interview after create (bug #3)
+- 3x "Failed to load resource: 405" -> GET /kb/sessions list (audit's own probes; no list route exists)
+- 1x "Failed to load resource: 400" -> improve PROMPT_NOT_FOUND (bug #2)
+- 1x "Failed to load resource: 409" -> slug-conflict duplicate create (expected behavior)
+- 1x pageerror "Cannot read properties of null (reading 'notify')" -> 08c, interview error
+  path (toast notifier null on the 404 handling)
+
+NETWORK FAILURES: 0 (requestfailed events; all failures were HTTP status errors, not
+transport failures)
+
+FILES: 08-00..08-31 (png/txt/json), 08a/08b/08c/08d-{report,run}.txt,
+08{a,b,c,d}-{api-calls,console,network}.json, 08b-state.json — see
+08-03 (create form), 08-07 (detail crash), 08-10 (entry shape), 08-11 (improve 400),
+08-12/13/24/25/31 (graph), 08-19 (corpus dialog), 08-20..23 (session panel/interview),
+08-17/26/28/29 (resolution/merge), 08-18 (chapter suggestions)
+
+CONCERNS: KB detail view crash (contract drift field_groups) blocks the entire
+entity detail/edit/improve surface; KB assisted-creation sessions 404 immediately
+after create (per-request InMemorySessionCache) with a misleading "Connection lost"
+error; improve endpoint points at a nonexistent prompt (kb/en/kb_improve vs bundled
+kb/en/improve); merge + chapter suggestions are effectively unreachable/absent in the UI.

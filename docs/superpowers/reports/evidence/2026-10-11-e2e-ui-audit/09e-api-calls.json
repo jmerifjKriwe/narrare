@@ -1,0 +1,110 @@
+[
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 401,
+    "post": ""
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/auth/refresh",
+    "status": 200,
+    "post": "{}"
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/auth/me",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/export/formats",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/suggest",
+    "status": 200,
+    "post": "{\"text_before\":\"She would need a distraction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.Elara pressed her palm against the cold stones and felt a faint draft slipping through a seam no wider than a hair; when she shifted the cracked shelf aside, a hidden door swung inward, revealing stairs that spiralled down beneath"
+  },
+  {
+    "method": "PATCH",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "post": "{\"title\":\"The Compass Points\"}"
+  },
+  {
+    "method": "PUT",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/content",
+    "status": 200,
+    "post": "{\"content\":\"<p>The ruined tower smelled of ancient stone and something else\u2014something that made Elara's skin tingle.</p><p>\\\"Stay together,\\\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. \\\"The spatial distortion here is unpredictable.\\\"</p><p>Elara nodded, but her attention was elsewhere. Her void magic\u2014suppressed for twelve years, practiced in secret\u2014was"
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "post": ""
+  },
+  {
+    "method": "POST",
+    "url": "http://localhost:3001/api/v1/auth/refresh",
+    "status": 200,
+    "post": "{}"
+  },
+  {
+    "method": "GET",
+    "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+    "status": 200,
+    "post": ""
+  }
+]

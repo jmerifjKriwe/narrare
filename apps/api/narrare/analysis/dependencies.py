@@ -143,6 +143,10 @@ async def get_pov_service(
     - NovelRepository for novel access control + language resolution.
     - ModelRegistry + lazy ModelResolution (ADR-086) for the
       POVDetectionAgent (AI-powered scene detection + violation analysis).
+    - Canonical KB-context provider (ADR-067) for the ``kb_characters`` /
+      ``kb_locations`` / ``kb_factions`` / ``kb_relationships`` prompt
+      variables — rendered through the ADR-050 envelope with provenance
+      (FIND-017). Degrades gracefully (RULE-11).
     - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
     - InvocationPipeline for invocation evidence (ADR-040).
     """
@@ -153,6 +157,9 @@ async def get_pov_service(
     )
     from narrare.analysis.services.pov_service import POVService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb._context_provider import KBContextProvider
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
 
     resolver = get_model_routing_resolver(session)
@@ -165,11 +172,19 @@ async def get_pov_service(
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
 
+    # Canonical KB-context provider (ADR-067): single fetch+render source for
+    # the pov template's kb_* slots. Degrades gracefully (RULE-11).
+    kb_context_provider = KBContextProvider(
+        kb_repo=KBRepository(session),
+        relationship_repo=RelationshipRepository(session),
+    )
+
     return POVService(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         model_registry=registry,
         model_resolution=model_resolution,
         composer=get_composer(),
+        kb_context_provider=kb_context_provider,
         invocation_pipeline=get_invocation_pipeline(),
     )

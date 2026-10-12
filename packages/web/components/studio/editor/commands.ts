@@ -19,6 +19,13 @@ export interface CommandState {
   hasPendingAnnotation: boolean;
   hasSelection: boolean;
   selectionLength: number;
+  /**
+   * Whether the host surface wired the rewrite flow. The rewrite flow is
+   * controller-owned inside TipTapEditor (bubble menu + `/rewrite`); hosts
+   * that cannot trigger it keep the rewrite palette command hidden instead
+   * of binding a silent no-op (RULE-11).
+   */
+  canRewrite: boolean;
 }
 
 export interface CommandItem {
@@ -44,7 +51,12 @@ export interface CommandContext {
   rejectDraft: () => void;
   toggleGenerationPanel: () => void;
   startExtend: (length: "short" | "medium" | "long") => void;
-  startRewrite: () => void;
+  /**
+   * Optional: only hosts that own the rewrite flow supply it. The palette
+   * host (EditorView) does not — `rewrite-selection` stays hidden there via
+   * `CommandState.canRewrite` instead of binding a no-op (RULE-11).
+   */
+  startRewrite?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +217,10 @@ export const builtInCommands: CommandItem[] = [
     label: "Rewrite Selection",
     category: "generation",
     isVisible: (state) =>
-      state.hasSelection && state.selectionLength >= 50 && state.selectionLength <= 2000,
-    action: (_editor, ctx) => ctx.startRewrite(),
+      state.canRewrite &&
+      state.hasSelection &&
+      state.selectionLength >= 50 &&
+      state.selectionLength <= 2000,
+    action: (_editor, ctx) => ctx.startRewrite?.(),
   },
 ];

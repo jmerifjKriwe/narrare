@@ -1,0 +1,92 @@
+==============================================================================
+AUDIT 14 — 14b-6-dashboard-final
+URL: http://localhost:3001/
+HEADING: My Novels
+
+BODY INNERTEXT:
+Narrare
+A
+auditor
+Sign out
+My Novels
+
+Select a novel or create a new one
+
+Audit Demo Novel
+
+auditor
+
+Fantasy
+Last edited Oct 11, 2026
+Audit Import B
+
+auditor
+
+Last edited Oct 11, 2026
+Audit Import A
+
+auditor
+
+Last edited Oct 11, 2026
+New Series
+New Novel
+Demo Projects
+
+Try Narrare with a ready-made story
+
+Echoes of the Thornwall
+Fantasy
+en
+
+A young mage must navigate political intrigue between an ancient order and rising rebels while mastering forbidden magic tied to a mysterious relic.
+
+4 chapters
+3130 words
+5 characters
+Load Demo →
+Dead Signal
+Science Fiction
+en
+
+An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.
+
+3 chapters
+3450 words
+3 characters
+Load Demo →
+Im Stillen Wald
+Literary
+de
+
+Ein Förster entdeckt in seinem abgelegenen Waldstück Geheimnisse, die die Grenze zwischen Leben und Tod verschwimmen lassen.
+
+2 chapters
+2660 words
+3 characters
+Load Demo →
+
+FIELDS:
+
+BUTTONS:
+  [0] text='Sign out' title='' aria='Sign out' disabled=False
+  [1] text='' title='' aria='Edit' disabled=False
+  [2] text='' title='' aria='Export' disabled=False
+  [3] text='' title='' aria='Delete' disabled=False
+  [4] text='' title='' aria='Edit' disabled=False
+  [5] text='' title='' aria='Export' disabled=False
+  [6] text='' title='' aria='Delete' disabled=False
+  [7] text='' title='' aria='Edit' disabled=False
+  [8] text='' title='' aria='Export' disabled=False
+  [9] text='' title='' aria='Delete' disabled=False
+  [10] text='New Series' title='' aria='' disabled=False
+  [11] text='New Novel' title='' aria='' disabled=False
+  [12] text='Echoes of the Thornwall\nFantasy\nen\n\nA young mage must navigate political intrigue between an ancient order and rising re' title='' aria='' disabled=False
+  [13] text='Dead Signal\nScience Fiction\nen\n\nAn engineer on a remote space station receives a mysterious signal from Earth that shoul' title='' aria='' disabled=False
+  [14] text='Im Stillen Wald\nLiterary\nde\n\nEin Förster entdeckt in seinem abgelegenen Waldstück Geheimnisse, die die Grenze zwischen L' title='' aria='' disabled=False
+  [15] text='' title='' aria='Open Tanstack query devtools' disabled=False
+
+LINKS:
+  'Audit Demo Novel\n\nauditor\n\nFantasy\nLast edited Oct 11, 2026' -> /novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572
+  'Audit Import B\n\nauditor\n\nLast edited Oct 11, 2026' -> /novel/5f25125f-def8-4b71-9b5f-3bd8d4dff566
+  'Audit Import A\n\nauditor\n\nLast edited Oct 11, 2026' -> /novel/fad582e0-f67d-47de-8299-b947e15cd6ba
+==============================================================================

@@ -1,0 +1,385 @@
+==============================================================================
+HEADLESS UI AUDIT — 06 AI TOOLBAR BATCH 2 (+KB extract, Wiki UI)
+==============================================================================
+NAVIGATED: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572
+KB BASELINE: status=200 count=0
+CHAPTER1 BASELINE: id=156b20bd-6f95-4f0c-afe6-d5f58f311b5a words=569 content_len=3914
+
+------------------------------------------------------------------------------
+FUNCTION: Character Voices
+TRIGGER button count: 1
+LOADING (224 chars) markers=['Analyzing character voices']
+OPTIONS dump:
+
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+RENDER (6 chars) — verbatim first 500:
+    <none>
+API: POST /api/v1/analysis/character-voice/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 ct=text/event-stream stream=True
+CLOSE: closed=True panels_now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Check Voice
+TRIGGER button count: 0
+ERROR in Check Voice: TimeoutError('Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for get_by_role("button", name="Check if dialogue matches each character\'s established voice profile").first\n')
+
+------------------------------------------------------------------------------
+FUNCTION: Voice Drift
+TRIGGER button count: 1
+LOADING (333 chars) markers=NO
+IDLE dump:
+
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Analyze"
+CTA 'Analyze' count: 1
+RENDER (6 chars) — verbatim first 500:
+    <none>
+CLOSE: closed=True panels_now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Author Voice
+TRIGGER button count: 1
+LOADING (495 chars) markers=NO
+IDLE dump:
+    [input type=checkbox] The Compass Points => true
+    [input type=checkbox] Secrets Beneath Stone => true
+    [input type=checkbox] The Silent Keep => true
+    [input type=checkbox] The Archive of Truth => true
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Analyze Voice"
+    button: "Select all" [disabled]
+    button: "Clear"
+CTA 'Analyze Voice' count: 1
+RENDER (6 chars) — verbatim first 500:
+    <none>
+CLOSE: closed=True panels_now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Author Drift
+TRIGGER button count: 1
+LOADING (345 chars) markers=NO
+IDLE dump:
+
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Analyze"
+CTA 'Analyze' count: 1
+RENDER (6 chars) — verbatim first 500:
+    <none>
+CLOSE: closed=True panels_now=0
+
+------------------------------------------------------------------------------
+FUNCTION: Dialogue Coach
+SELECTION target: {"text": "The ruined tower smelled of ancient stone and something else\u2014something that made Elara's skin tingle.", "idx": 0}
+TRIGGER button count: 1
+IDLE dump (first 400):
+    Editor side panel
+    Dialogue Coach
+    Mode
+    Analyse
+    Improve
+
+    Select a dialogue passage and choose a mode to begin.
+CONTROLS dump:
+
+    --- buttons ---
+    button: "Close"
+    button: "Close"
+    button: "Analyse"
+    button: "Improve"
+MODE 'Analyse' count: 1
+RENDER (6 chars) — verbatim first 600:
+    <none>
+API: POST /api/v1/ai-assist/dialogue-coach/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200 stream=True
+CLOSE: closed=True
+
+------------------------------------------------------------------------------
+FUNCTION: Writer's Unblock
+TRIGGER button count: 1
+IDLE dump (first 500):
+    Writer's Unblock
+    Stuck?
+    Get Suggestions
+CONTROLS dump:
+    [textarea type=textarea] Stuck? =>
+    --- buttons ---
+    button: "Writer's Unblock"
+    button: "Get Suggestions"
+'Get Suggestions' count: 1
+LOADING (73 chars) first 200:
+    Writer's Unblock
+
+Connection lost. Check your internet connection.
+
+Retry
+RENDER (73 chars) — verbatim first 900:
+    Writer's Unblock
+
+    Connection lost. Check your internet connection.
+
+    Retry
+API: POST /api/v1/writing/story-suggest/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 422 stream=False
+CLOSE (no accept!): closed=True
+
+------------------------------------------------------------------------------
+FUNCTION: Name Generator
+TRIGGER button count: 1
+dialog count: 1
+FIELDS dump:
+    [select type=select-one] TYPE => character *SELECTED | place | organization | item
+    [input type=text] NAME STYLE => Fantasy
+    [input type=number] COUNT => 10
+    [select type=select-one] GENDER => any *SELECTED | male | female | neutral
+    [select type=select-one] EXPLANATION LANGUAGE => en *SELECTED | de | fr
+    --- buttons ---
+    button: "Close"
+    button: "Generate Names"
+Generate button count: 1
+RESULT (227 chars) — verbatim first 900:
+    Name Generator
+    Name Generator
+    TYPE
+    Character
+    Place
+    Organization
+    Item
+    NAME STYLE
+    COUNT
+    GENDER
+    Any
+    Male
+    Female
+    Neutral
+    EXPLANATION LANGUAGE
+    English
+    German
+    French
+    Generate Names
+
+    No results yet. Configure and generate names above.
+API: GET /api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200
+API: POST /api/v1/generation/names -> 200
+CLOSE: closed=True
+
+------------------------------------------------------------------------------
+FUNCTION: Consistency
+TRIGGER button count: 0
+ERROR in Consistency: TimeoutError('Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for get_by_role("button", name="Check your text for character, timeline, world, and plot inconsistencies").first\n')
+
+------------------------------------------------------------------------------
+FUNCTION: Extract to KB
+TRIGGER button count: 1
+LOADING (16 chars) first 300:
+    <PANEL NOT OPEN>
+ERROR in Extract: TimeoutError('Page.wait_for_selector: Timeout 150000ms exceeded.\nCall log:\n  - waiting for locator("[data-testid=\\"editor-right-panel\\"] button:has-text(\'Apply\')") to be visible\n')
+
+------------------------------------------------------------------------------
+EDITOR METADATA PANEL — WikiChapterSummaryPanel (wiki 404 check)
+Metadata trigger count: 1
+ERROR metadata wiki check: TimeoutError('Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for get_by_role("button", name="Metadata", exact=True).first\n    - locator resolved to <button type="button" title="Metadata" aria-label="Metadata" class="p-2 rounded-md hover:bg-accent transition-colors ">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">…</div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">…</div> intercepts pointer events\n    - retrying click action\n      - waiting 100ms\n    29 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">…</div> intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n')
+
+------------------------------------------------------------------------------
+WORLD & CHARACTERS — KB count + Wiki tab (WIKI-001)
+WORLD PAGE (1623 chars) — first 600:
+    Narrare
+
+    AI-powered writing
+
+    All Novels
+    Scratchpad
+    AI Costs
+    Editor
+    Volumes
+    World & Characters
+    16
+    Chat
+    Settings
+
+    CHAPTERS
+
+    The Compass Points
+    569 words
+    Secrets Beneath Stone
+    729 words
+    The Silent Keep
+    872 words
+    The Archive of Truth
+    891 words
+    New Chapter
+    Import chaptersAnalyze novel corpus
+
+    DEV TOOLS
+
+    Design Tokens
+    A
+
+    auditor
+
+    studio.worldbuilding.title
+    KNOWLEDGE BASE
+    All
+    16
+    Graph
+    Wiki
+    Characters
+    5
+    Concepts
+    0
+    Factions
+    2
+    Locations
+    4
+    Objects
+    1
+    Settings
+    0
+    Systems
+    3
+    Timelines
+    1
+    Analyze Worldbuilding
+    Check Consistency
+    New Entry
+    New with AI Interview
+    Search entries...
+    Aethelgard (Capital City)
+    Draft
+    ca
+KB AFTER: status=200 count=0
+NEW KB ENTITIES after extract: []
+Wiki tab matches: 1
+WIKI TAB (1755 chars) — first 1200:
+    Narrare
+
+    AI-powered writing
+
+    All Novels
+    Scratchpad
+    AI Costs
+    Editor
+    Volumes
+    World & Characters
+    16
+    Chat
+    Settings
+
+    CHAPTERS
+
+    The Compass Points
+    569 words
+    Secrets Beneath Stone
+    729 words
+    The Silent Keep
+    872 words
+    The Archive of Truth
+    891 words
+    New Chapter
+    Import chaptersAnalyze novel corpus
+
+    DEV TOOLS
+
+    Design Tokens
+    A
+
+    auditor
+
+    studio.worldbuilding.title
+    KNOWLEDGE BASE
+    All
+    16
+    Graph
+    Wiki
+    Characters
+    5
+    Concepts
+    0
+    Factions
+    2
+    Locations
+    4
+    Objects
+    1
+    Settings
+    0
+    Systems
+    3
+    Timelines
+    1
+    Analyze Worldbuilding
+    Check Consistency
+    New Entry
+    New with AI Interview
+    Search entries...
+    Aethelgard (Capital City)
+    Draft
+    capital, city, markets
+    1h ago
+    Cataclysm History
+    Draft
+    history, cataclysm, truth
+    1h ago
+    Elara Thornwind
+    Draft
+    protagonist, human, mage
+    1h ago
+    High Chancellor Morven
+    Draft
+    antagonist, human, archmage
+    1h ago
+    Kaelen Vane
+    Draft
+    companion, human, mage
+    1h ago
+    Master Verrick
+    Draft
+    mentor, human, mage
+    1h ago
+    Order of the Silver Flame
+    Draft
+    organization, government, magical-order
+    1h ago
+    Political Structure of Aethelgard
+    Draft
+    government, politics, monarchy
+    1h ago
+    Sera
+    Draft
+    supporting, human, merchant
+    1h ago
+    Silver Flame Fortress
+    Draft
+    order-headquarters, fortress, capital
+    1h ago
+    Temple of Silent Flames
+    D
+Refresh buttons: 1
+ERROR in World/Wiki: TimeoutError('Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for get_by_role("button", name=re.compile(r"refresh", re.IGNORECASE)).first\n    - locator resolved to <button disabled type="button" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm↵              border border-border rounded-md hover:bg-muted transition-colors↵              disabled:opacity-50 disabled:cursor-not-allowed">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    29 × waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n')
+
+------------------------------------------------------------------------------
+POLLUTION chapter1: content_changed=False len 3914 -> 3914
+
+------------------------------------------------------------------------------
+CONSOLE ERRORS: total=13 non-401=11
+  CONSOLE: Failed to load resource: the server responded with a status of 422 (Unprocessable Content)
+  CONSOLE: IntlError: MISSING_MESSAGE: Could not resolve `studio.worldbuilding.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/node_modules__pnpm_17--vit._.js:12055:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/node_mod
+  CONSOLE: IntlError: MISSING_MESSAGE: Could not resolve `studio.worldbuilding.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/node_modules__pnpm_17--vit._.js:12055:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/node_mod
+  CONSOLE: IntlError: MISSING_MESSAGE: Could not resolve `studio.worldbuilding.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/node_modules__pnpm_17--vit._.js:12055:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/node_mod
+  CONSOLE: IntlError: MISSING_MESSAGE: Could not resolve `studio.worldbuilding.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/node_modules__pnpm_17--vit._.js:12055:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/node_mod
+PAGE ERRORS: 0
+NET FAILURES: 2
+  NETFAIL: POST http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> net::ERR_ABORTED
+  NETFAIL: POST http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> net::ERR_ABORTED

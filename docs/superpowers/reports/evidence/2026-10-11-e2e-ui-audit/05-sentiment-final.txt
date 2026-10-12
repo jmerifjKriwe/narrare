@@ -1,0 +1,10 @@
+Editor side panel
+Sentiment Analysis
+
+Deterministic analysis · No AI generation used
+
+Analysis failed
+
+Internal server error
+
+Try Again

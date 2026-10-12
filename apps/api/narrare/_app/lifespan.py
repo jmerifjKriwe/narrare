@@ -58,6 +58,22 @@ def bind_writing_session_singletons(app: FastAPI) -> None:
         raise
 
 
+def bind_kb_session_singletons(app: FastAPI) -> None:
+    """Bind the KB creation-session cache singleton on ``app.state`` (audit B05).
+
+    ADR-080 in-process cache: one ``InMemorySessionCache`` per app process,
+    shared by every ``get_kb_session_service`` factory call so a session
+    created in one request is readable in the next. The store's 30-minute
+    TTL is applied on write by ``KBCreationSessionStore``. Multi-worker
+    deployments re-plug a shared backend via ``SessionCacheProtocol``
+    (same re-introduction path as the writing-session singletons above).
+    """
+    from narrare_core.cache import InMemorySessionCache
+
+    app.state.kb_session_cache = InMemorySessionCache()
+    logger.info("kb_session_singletons_bound")
+
+
 async def _get_db_version(db_url: str) -> str | None:
     """Query the current Alembic revision from the database.
 
@@ -255,6 +271,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         logger.warning("wiki_listeners_init_failed", exc_info=True)
 
     bind_writing_session_singletons(app)
+    bind_kb_session_singletons(app)
 
     # Usage event sink (STATS-002 / ADR-093 D1): every LLM call emitted via
     # the Core gateway lands in ``usage_records``. Cleared on shutdown below,

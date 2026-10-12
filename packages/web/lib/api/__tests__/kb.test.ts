@@ -41,11 +41,13 @@ const mockEntryList = {
 };
 
 const mockTemplate = {
-  meta: { template_type: "character", template_version: "1.0", schema_version: "1.0" },
-  fields: [{ name: "name", field_type: "text", required: true, description: "Character name" }],
-  field_groups: [],
-  sections: [],
-  body: "# Character Template\n## Name\n{{name}}",
+  entity_type: "character",
+  scope: "global",
+  content: "---\nprompt_type: kb\n---\n\n# Character Template\n{{content}}",
+  base_content: null,
+  schema_version: "2.0.0",
+  based_on_version: null,
+  is_overridden: false,
 };
 
 const mockTemplateInfo = [
@@ -94,8 +96,8 @@ describe("kbApi", () => {
       );
 
       const result = await kbApi.getTemplate("novel-1", "character");
-      expect(result.meta.template_type).toBe("character");
-      expect(result.fields).toHaveLength(1);
+      expect(result.entity_type).toBe("character");
+      expect(result.is_overridden).toBe(false);
     });
   });
 

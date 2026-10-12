@@ -4057,6 +4057,191 @@
         }
       }
     },
+    "/api/v1/consistency/check": {
+      "post": {
+        "tags": [
+          "consistency"
+        ],
+        "summary": "Run consistency check on chapter(s)",
+        "description": "Run cross-chapter and cross-entity consistency analysis (non-streaming).\n\nChecks character, timeline, world, and plot consistency across\nthe requested chapters (or all chapters if none specified) and\noptionally against KB entity data.",
+        "operationId": "check_consistency_api_v1_consistency_check_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consistency/check/stream": {
+      "post": {
+        "tags": [
+          "consistency"
+        ],
+        "summary": "Stream staged consistency check with progressive results",
+        "description": "SSE stream for staged consistency analysis (ADR-044 Slice 4).\n\nReturns Server-Sent Events with stage-by-stage progress:\n1. ``extracting_facts`` — Stage 1 fact extraction progress\n2. ``checking_consistency`` — Stage 2 analysis progress\n3. ``complete`` — Pipeline finished\n4. Final ``ConsistencyResponse`` JSON event\n5. ``[DONE]`` sentinel\n\nErrors are communicated in-band as JSON error events since SSE\ncannot change status codes after headers are sent.",
+        "operationId": "stream_consistency_check_api_v1_consistency_check_stream_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consistency/chapters/{chapter_id}/check": {
+      "post": {
+        "tags": [
+          "consistency"
+        ],
+        "summary": "Check a single chapter for consistency",
+        "description": "Run consistency check focused on a single chapter.\n\nCompares a single chapter against KB entity data and optionally\nother chapters in the novel. Useful for targeted checking after\na writing session.",
+        "operationId": "check_chapter_api_v1_consistency_chapters__chapter_id__check_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/analysis/beta-reader": {
       "post": {
         "tags": [
@@ -9076,7 +9261,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorldbuildingAnalysisResponse"
+                  "$ref": "#/components/schemas/WorldbuildingAnalysisResponse-Output"
                 }
               }
             }
@@ -16444,7 +16629,7 @@
           },
           "issues": {
             "items": {
-              "$ref": "#/components/schemas/ConsistencyIssue"
+              "$ref": "#/components/schemas/narrare__kb__worldbuilding_contracts__ConsistencyIssue"
             },
             "type": "array",
             "title": "Issues"
@@ -16477,7 +16662,18 @@
         "title": "ConsistencyCheckResponse",
         "description": "Response from a consistency check.\n\nAttributes:\n    novel_id: The project that was checked.\n    entity_count: How many entities were analyzed.\n    issues: All consistency issues found, sorted by severity (critical first),\n        with semantically-dismissed findings filtered out.\n    summary: Breakdown counts by category.\n    suppressed_count: Number of issues hidden because they matched a past\n        dismissal in mem0 (CR-AUFG-03-10 semantic suppression layer).\n        ``0`` when mem0 is disabled, unavailable, or found no matches —\n        so the field doubles as an audit signal (\"N known false positives\n        hidden\"). Defaults to ``0`` for backwards compatibility with\n        cached responses produced before this field existed.\n    checked_at: When the check was performed."
       },
-      "ConsistencyIssue": {
+      "ConsistencyCheckType": {
+        "type": "string",
+        "enum": [
+          "character",
+          "timeline",
+          "world",
+          "plot"
+        ],
+        "title": "ConsistencyCheckType",
+        "description": "Type of consistency check to perform.\n\nAttributes:\n    CHARACTER: Behavior, voice, knowledge, abilities consistency.\n    TIMELINE: Event sequencing, durations, ages, temporal markers.\n    WORLD: Location properties, system rules, faction relationships, geography.\n    PLOT: Cause/effect chains, character motivations, setup/payoff, loose ends."
+      },
+      "ConsistencyIssue-Input": {
         "properties": {
           "finding_index": {
             "type": "integer",
@@ -16542,6 +16738,113 @@
         ],
         "title": "ConsistencyIssue",
         "description": "A contradiction or inconsistency found in the worldbuilding."
+      },
+      "ConsistencyRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Chapter Ids"
+          },
+          "check_types": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyCheckType"
+            },
+            "type": "array",
+            "title": "Check Types"
+          },
+          "include_kb": {
+            "type": "boolean",
+            "title": "Include Kb",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ConsistencyRequest",
+        "description": "Request to run consistency check.\n\nAttributes:\n    chapter_ids: Chapters to check. If empty, checks all chapters.\n    check_types: Which types to check. If empty, runs all.\n    include_kb: Whether to include KB data for context. Default True."
+      },
+      "ConsistencyResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Chapter Ids"
+          },
+          "check_types": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyCheckType"
+            },
+            "type": "array",
+            "title": "Check Types"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/narrare_core__agents__consistency_types__ConsistencyIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "error_count": {
+            "type": "integer",
+            "title": "Error Count",
+            "default": 0
+          },
+          "warning_count": {
+            "type": "integer",
+            "title": "Warning Count",
+            "default": 0
+          },
+          "info_count": {
+            "type": "integer",
+            "title": "Info Count",
+            "default": 0
+          },
+          "total_issues": {
+            "type": "integer",
+            "title": "Total Issues",
+            "default": 0
+          },
+          "overall_assessment": {
+            "type": "string",
+            "title": "Overall Assessment",
+            "default": ""
+          },
+          "analyzed_at": {
+            "type": "string",
+            "title": "Analyzed At",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "chapter_ids",
+          "check_types",
+          "issues"
+        ],
+        "title": "ConsistencyResponse",
+        "description": "Response from consistency check.\n\nAttributes:\n    novel_id: The novel that was checked.\n    chapter_ids: Which chapters were analyzed.\n    check_types: Which checks were executed.\n    issues: All issues found, grouped by severity.\n    error_count: Number of ERROR severity issues.\n    warning_count: Number of WARNING severity issues.\n    info_count: Number of INFO severity issues.\n    total_issues: Total number of issues found.\n    overall_assessment: Summary of project consistency health.\n    analyzed_at: ISO datetime when the check was performed."
+      },
+      "ConsistencySeverity": {
+        "type": "string",
+        "enum": [
+          "error",
+          "warning",
+          "info"
+        ],
+        "title": "ConsistencySeverity",
+        "description": "Severity of a consistency issue.\n\nAttributes:\n    ERROR: Impossible contradiction (e.g., character alive in one chapter, dead in next).\n    WARNING: Likely inconsistency (e.g., personality trait contradicts behavior).\n    INFO: Minor discrepancy (e.g., slight age mismatch that might be intentional)."
       },
       "CorpusEstimateView": {
         "properties": {
@@ -27581,7 +27884,7 @@
         "title": "WorldbuildingAnalysisRequest",
         "description": "Request to run a worldbuilding analysis."
       },
-      "WorldbuildingAnalysisResponse": {
+      "WorldbuildingAnalysisResponse-Input": {
         "properties": {
           "novel_id": {
             "type": "string",
@@ -27607,7 +27910,75 @@
           },
           "consistency_issues": {
             "items": {
-              "$ref": "#/components/schemas/ConsistencyIssue"
+              "$ref": "#/components/schemas/ConsistencyIssue-Input"
+            },
+            "type": "array",
+            "title": "Consistency Issues"
+          },
+          "worldbuilding_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Worldbuilding Score"
+          },
+          "overall_assessment": {
+            "type": "string",
+            "title": "Overall Assessment"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          },
+          "analyzed_at": {
+            "type": "string",
+            "title": "Analyzed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "entity_count",
+          "gap_findings",
+          "connection_suggestions",
+          "consistency_issues",
+          "worldbuilding_score",
+          "overall_assessment",
+          "summary",
+          "analyzed_at"
+        ],
+        "title": "WorldbuildingAnalysisResponse",
+        "description": "Complete worldbuilding analysis response."
+      },
+      "WorldbuildingAnalysisResponse-Output": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id"
+          },
+          "entity_count": {
+            "type": "integer",
+            "title": "Entity Count"
+          },
+          "gap_findings": {
+            "items": {
+              "$ref": "#/components/schemas/GapFinding"
+            },
+            "type": "array",
+            "title": "Gap Findings"
+          },
+          "connection_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionSuggestion"
+            },
+            "type": "array",
+            "title": "Connection Suggestions"
+          },
+          "consistency_issues": {
+            "items": {
+              "$ref": "#/components/schemas/narrare__kb__worldbuilding_contracts__ConsistencyIssue"
             },
             "type": "array",
             "title": "Consistency Issues"
@@ -27659,7 +28030,7 @@
             "title": "Finding Indices"
           },
           "analysis": {
-            "$ref": "#/components/schemas/WorldbuildingAnalysisResponse"
+            "$ref": "#/components/schemas/WorldbuildingAnalysisResponse-Input"
           }
         },
         "type": "object",
@@ -27856,6 +28227,72 @@
         ],
         "title": "WsTicketResponse",
         "description": "Single-use WebSocket handshake ticket (ADR-084).\n\n``token`` is opaque, returned exactly once, and never stored raw\nserver-side (only its SHA-256 hash — see ``auth/ws_tickets.py``)."
+      },
+      "narrare__kb__worldbuilding_contracts__ConsistencyIssue": {
+        "properties": {
+          "finding_index": {
+            "type": "integer",
+            "title": "Finding Index"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ConsistencyCategory"
+          },
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Ids"
+          },
+          "entity_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Names"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "contradiction": {
+            "type": "string",
+            "title": "Contradiction"
+          },
+          "suggested_resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Resolution"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WorldbuildingSeverity",
+            "default": "major"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_index",
+          "category",
+          "entity_ids",
+          "entity_names",
+          "description",
+          "contradiction",
+          "confidence"
+        ],
+        "title": "ConsistencyIssue",
+        "description": "A contradiction or inconsistency found in the worldbuilding."
       },
       "narrare__memory__schemas__ResetResponse": {
         "properties": {
@@ -28064,6 +28501,62 @@
         ],
         "title": "UpdateInfoResponse",
         "description": "Information about a template with available bundled updates."
+      },
+      "narrare_core__agents__consistency_types__ConsistencyIssue": {
+        "properties": {
+          "check_type": {
+            "$ref": "#/components/schemas/ConsistencyCheckType"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/ConsistencySeverity"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "locations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Locations"
+          },
+          "conflicting_facts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Conflicting Facts"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "check_type",
+          "severity",
+          "description",
+          "locations",
+          "conflicting_facts",
+          "confidence"
+        ],
+        "title": "ConsistencyIssue",
+        "description": "A single consistency issue found.\n\nAttributes:\n    check_type: Which check type produced this issue.\n    severity: How serious the issue is.\n    description: Human-readable description of what's inconsistent.\n    locations: Where the contradiction appears (chapter references or KB references).\n    conflicting_facts: The facts that contradict each other.\n    suggestion: Optional suggestion for how to resolve the issue.\n    confidence: AI confidence score 0.0-1.0."
       }
     },
     "securitySchemes": {

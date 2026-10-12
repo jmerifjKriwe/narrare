@@ -1,0 +1,31 @@
+[
+  {
+    "url": "ws://localhost:3001/api/v1/writing/sessions/156b20bd-6f95-4f0c-afe6-d5f58f311b5a?token=REDACTED&project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572&mode=interactive_session",
+    "sent": [
+      {
+        "t": 1791757409.8750014,
+        "frame": "{\"type\":\"user_direction\",\"content\":\"Continue the scene where Elara opens the hidden door.\"}"
+      },
+      {
+        "t": 1791757414.0682,
+        "frame": "{\"type\":\"end_session\"}"
+      }
+    ],
+    "recv": [
+      {
+        "t": 1791757406.4158163,
+        "frame": "{\"type\":\"greeting\",\"message\":\"What would you like to write today?\",\"session_id\":\"048597e4-386d-4b11-b410-3a8c111138c2\"}"
+      },
+      {
+        "t": 1791757410.1553934,
+        "frame": "{\"type\":\"text_chunk\",\"text\":\"success (no tool calls)\"}"
+      },
+      {
+        "t": 1791757410.331149,
+        "frame": "{\"type\":\"text_done\",\"text\":\"success (no tool calls)\",\"usage\":{\"prompt_tokens\":8368,\"completion_tokens\":4,\"total_tokens\":8372}}"
+      }
+    ],
+    "closed": true,
+    "closed_at": 1791757414.0717685
+  }
+]

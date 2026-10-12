@@ -1,0 +1,254 @@
+[
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 401,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=100",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/export/formats",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries",
+  "status": 201,
+  "post": "{\"entity_type\":\"location\",\"name\":\"Thornwall Ruin\",\"body\":\"# Thornwall Ruins\\n\\nThe remains of an ancient academy, destroyed during the Void Cataclysm forty years ago. Now a forbidden zone, shrouded in magical distortion.\\n\\n## Description\\n\\nThornwall was once the premier magical academy in the king"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/resolution/analyze",
+  "status": 200,
+  "post": "{\"refresh\":true}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/resolution/suggestions",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "DELETE",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries/9048124e-5d09-46c2-ab96-df2598ef7e24",
+  "status": 204,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=100",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 401,
+  "post": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "post": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=concept&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=character&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=faction&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=object&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=location&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=setting&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=system&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/index",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?entity_type=timeline&page_size=1",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries",
+  "status": 200,
+  "post": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/graph",
+  "status": 200,
+  "post": ""
+ }
+]

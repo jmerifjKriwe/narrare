@@ -1,0 +1,150 @@
+{
+ "at": "23:13:47",
+ "console": [
+  {
+   "type": "info",
+   "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+   "type": "log",
+   "text": "[HMR] connected"
+  },
+  {
+   "type": "warning",
+   "text": "%c%s%c \u26a0 Unsupported metadata colorScheme is configured in metadata export in /novel/[id]/settings. Please move it to viewport export instead.\nRead more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  "
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+   "type": "error",
+   "text": "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/' (redirected from 'http://localhost:3001/api/v1/settings/token-limits/') from origin 'http://localhost:3001' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "type": "error",
+   "text": "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write' (redirected from 'http://localhost:3001/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write') from origin 'http://localhost:3001' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "error",
+   "text": "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write' (redirected from 'http://localhost:3001/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write') from origin 'http://localhost:3001' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "info",
+   "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+   "type": "log",
+   "text": "[HMR] connected"
+  },
+  {
+   "type": "warning",
+   "text": "%c%s%c \u26a0 Unsupported metadata colorScheme is configured in metadata export in /analytics. Please move it to viewport export instead.\nRead more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  "
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+   "type": "info",
+   "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+   "type": "log",
+   "text": "[HMR] connected"
+  },
+  {
+   "type": "warning",
+   "text": "%c%s%c \u26a0 Unsupported metadata colorScheme is configured in metadata export in /novel/[id]/settings. Please move it to viewport export instead.\nRead more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  "
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+   "type": "error",
+   "text": "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/' (redirected from 'http://localhost:3001/api/v1/settings/token-limits/') from origin 'http://localhost:3001' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "type": "error",
+   "text": "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write' (redirected from 'http://localhost:3001/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write') from origin 'http://localhost:3001' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "error",
+   "text": "Access to fetch at 'http://localhost:8000/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write' (redirected from 'http://localhost:3001/api/v1/settings/token-limits/?provider=de326032-83bd-4d4f-b211-d186f802c7b8&model_id=ollama-test-model&intent=write') from origin 'http://localhost:3001' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+   "type": "info",
+   "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+   "type": "log",
+   "text": "[HMR] connected"
+  },
+  {
+   "type": "warning",
+   "text": "%c%s%c \u26a0 Unsupported metadata colorScheme is configured in metadata export in /analytics. Please move it to viewport export instead.\nRead more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  "
+  },
+  {
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  }
+ ],
+ "page_errors": []
+}

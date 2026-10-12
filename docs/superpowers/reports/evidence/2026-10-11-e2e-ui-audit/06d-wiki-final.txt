@@ -1,0 +1,144 @@
+Narrare
+
+AI-powered writing
+
+All Novels
+Scratchpad
+AI Costs
+Editor
+Volumes
+World & Characters
+16
+Chat
+Settings
+
+CHAPTERS
+
+The Compass Points
+569 words
+Secrets Beneath Stone
+729 words
+The Silent Keep
+872 words
+The Archive of Truth
+891 words
+New Chapter
+Import chaptersAnalyze novel corpus
+
+DEV TOOLS
+
+Design Tokens
+A
+
+auditor
+
+studio.worldbuilding.title
+KNOWLEDGE BASE
+All
+16
+Graph
+Wiki
+Characters
+5
+Concepts
+0
+Factions
+2
+Locations
+4
+Objects
+1
+Settings
+0
+Systems
+3
+Timelines
+1
+Analyze Worldbuilding
+Check Consistency
+New Entry
+New with AI Interview
+Search entries...
+Aethelgard (Capital City)
+Draft
+capital, city, markets
+1h ago
+Cataclysm History
+Draft
+history, cataclysm, truth
+1h ago
+Elara Thornwind
+Draft
+protagonist, human, mage
+1h ago
+High Chancellor Morven
+Draft
+antagonist, human, archmage
+1h ago
+Kaelen Vane
+Draft
+companion, human, mage
+1h ago
+Master Verrick
+Draft
+mentor, human, mage
+1h ago
+Order of the Silver Flame
+Draft
+organization, government, magical-order
+1h ago
+Political Structure of Aethelgard
+Draft
+government, politics, monarchy
+1h ago
+Sera
+Draft
+supporting, human, merchant
+1h ago
+Silver Flame Fortress
+Draft
+order-headquarters, fortress, capital
+1h ago
+Temple of Silent Flames
+Draft
+temple, shrine, ancient
+1h ago
+The Ashen Covenant
+Draft
+rebellion, resistance, underground
+1h ago
+The Thornwell Compass
+Draft
+artifact, magical, void-resonant
+1h ago
+Thornwall Ruins
+Draft
+ruins, magical, forbidden-zone
+1h ago
+Timeline of the Void Cataclysm
+Draft
+history, cataclysm, events
+1h ago
+Void Magic System
+Draft
+magic, void, dangerous
+1h ago
+Wiki Overview
+WIKI STATUS
+Fresh: 1
+Stale: 0
+Pending: 0
+Total: 1
+
+Never generated
+
+Refresh Stale
+Mark All Stale
+ENTITY SUMMARIES
+
+398ebe75-adb8-4fd8-a70e-b7a390b79c7f
+
+a
+
+Refresh
+Panel closed

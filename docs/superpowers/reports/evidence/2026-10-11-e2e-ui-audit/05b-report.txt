@@ -1,0 +1,51 @@
+==============================================================================
+05b GENERATE with prompt (full_draft, TestModel) -> REJECT
+==============================================================================
+BEFORE: {"word_count": 569, "status": "draft", "summary_len": 0}
+PROMPT textarea count: 1
+CLICKED Generate with prompt
+STREAMING snapshot (142 chars) — first 350:
+    Editor side panel
+    AI Generation
+    0/50 interactions
+    No context assembled
+    AI Draft
+    0 / 3.000 words
+    Waiting for AI response...
+    Accept
+    Reject
+    Retry
+REVIEW panel (142 chars) — first 1200:
+    Editor side panel
+    AI Generation
+    0/50 interactions
+    No context assembled
+    AI Draft
+    0 / 3.000 words
+    Waiting for AI response...
+    Accept
+    Reject
+    Retry
+GENERATION API calls:
+  POST /api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/generate?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200 ct=application/json stream=False
+    req body: {"mode":"full_draft","word_target":null,"tone":"balanced","outline":null,"prompt":"Write a short scene in which Elara secretly tests the compass at night."}
+  GET /api/v1/writing/generation/3de2f1f1-81cb-4e1b-b8cc-df90dbaf575c/stream -> 200 ct=text/event-stream stream=True
+AFTER REJECT (first 400):
+    Editor side panel
+    AI Generation
+    0/50 interactions
+    No context assembled
+    AI Draft
+    0 / 3.000 words
+    Waiting for AI response...
+    Accept
+    Reject
+    Retry
+    Rate this suggestion
+    Submit
+    Skip
+PANEL count after close: 0
+AFTER: {"word_count": 569, "status": "draft", "summary_len": 0}
+POLLUTION: word_count 569 -> 569 — unchanged=True
+CONSOLE ERRORS total=1 non-401=0
+STATE: storage_state refreshed

@@ -262,6 +262,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.chapters.router import router as chapters_router
     from narrare.chapters.router_versions import router as chapter_versions_router
     from narrare.chat.router import router as chat_router
+    from narrare.consistency.router import router as consistency_router
     from narrare.embeddings.router import router as embeddings_router
     from narrare.export.router import router as export_router
     from narrare.generation.router import router as generation_router
@@ -331,6 +332,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(planning_router, prefix=prefix)
     app.include_router(chapters_router, prefix=prefix)
     app.include_router(chapter_versions_router, prefix=prefix)
+    app.include_router(consistency_router, prefix=prefix)
     app.include_router(analysis_router, prefix=prefix)
     app.include_router(analysis_readability_router, prefix=prefix)
     app.include_router(analysis_pov_router, prefix=prefix)

@@ -33,6 +33,7 @@ const mockCommandState = {
   hasPendingAnnotation: false,
   hasSelection: false,
   selectionLength: 0,
+  canRewrite: false,
 };
 
 // ---------------------------------------------------------------------------

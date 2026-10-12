@@ -1,0 +1,26 @@
+[
+  {
+    "url": "ws://localhost:3001/api/v1/writing/sessions/156b20bd-6f95-4f0c-afe6-d5f58f311b5a?token=REDACTED&project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572&mode=interactive_session",
+    "sent": [],
+    "recv": [
+      "{\"type\":\"error\",\"message\":\"Origin not allowed\"}"
+    ],
+    "closed": true
+  },
+  {
+    "url": "ws://localhost:3001/api/v1/writing/sessions/156b20bd-6f95-4f0c-afe6-d5f58f311b5a?token=REDACTED&project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572&mode=interactive_session",
+    "sent": [],
+    "recv": [
+      "{\"type\":\"error\",\"message\":\"Origin not allowed\"}"
+    ],
+    "closed": true
+  },
+  {
+    "url": "ws://localhost:3001/api/v1/writing/sessions/156b20bd-6f95-4f0c-afe6-d5f58f311b5a?token=REDACTED&project_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572&mode=interactive_session",
+    "sent": [],
+    "recv": [
+      "{\"type\":\"error\",\"message\":\"Origin not allowed\"}"
+    ],
+    "closed": true
+  }
+]

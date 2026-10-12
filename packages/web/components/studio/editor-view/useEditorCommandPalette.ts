@@ -8,6 +8,8 @@ interface UseEditorCommandPaletteParams {
   handleStopGeneration: () => Promise<void>;
   handleAcceptDraft: () => void;
   handleRejectDraft: () => Promise<void>;
+  /** Continue-writing (extend) — single stream owner is EditorView (audit B08). */
+  handleStartExtend: (length: "short" | "medium" | "long") => void;
 }
 
 interface UseEditorCommandPaletteResult {
@@ -23,6 +25,7 @@ export function useEditorCommandPalette({
   handleStopGeneration,
   handleAcceptDraft,
   handleRejectDraft,
+  handleStartExtend,
 }: UseEditorCommandPaletteParams): UseEditorCommandPaletteResult {
   const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
   const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
@@ -46,8 +49,7 @@ export function useEditorCommandPalette({
       acceptDraft: handleAcceptDraft,
       rejectDraft: handleRejectDraft,
       toggleGenerationPanel,
-      startExtend: (_length: "short" | "medium" | "long") => {},
-      startRewrite: () => {},
+      startExtend: handleStartExtend,
     }),
     [
       toggleSidebar,
@@ -60,6 +62,7 @@ export function useEditorCommandPalette({
       handleAcceptDraft,
       handleRejectDraft,
       toggleGenerationPanel,
+      handleStartExtend,
     ],
   );
 
@@ -70,6 +73,12 @@ export function useEditorCommandPalette({
       hasPendingAnnotation: false,
       hasSelection: false,
       selectionLength: 0,
+      // Rewrite is wired inside TipTapEditor's controller (bubble menu +
+      // `/rewrite` slash) and is not reachable from the palette host without
+      // hoisting the whole flow out of the editor surface. Keep the rewrite
+      // palette command explicitly hidden until a host-level handler exists —
+      // never a silent no-op (RULE-11; B08 carry-forward).
+      canRewrite: false,
     }),
     [isGenerating, draftText],
   );

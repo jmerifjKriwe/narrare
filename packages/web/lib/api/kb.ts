@@ -117,40 +117,22 @@ export interface ResolveReferencesResponse {
 
 // --- KB Template types ---
 
-export interface KBTemplateField {
-  name: string;
-  field_type: string;
-  required: boolean;
-  description: string;
-}
-
-export interface KBTemplateSection {
-  name: string;
-  label_key: string;
-  description_key: string;
-  order: number;
-}
-
-export interface KBTemplateFieldGroup {
-  name: string;
-  label_key: string;
-  description_key: string;
-  fields: KBTemplateField[];
-  order: number;
-}
-
-export interface KBTemplateMeta {
-  template_type: string;
-  template_version: string;
-  schema_version: string;
-}
-
+/**
+ * Template detail for a KB entity type.
+ *
+ * RULE-17 contract parity: mirrors `TemplateDetailResponse` in
+ * `apps/api/narrare/templates/schemas.py` exactly (audit B04: the previous
+ * shape claimed `meta` / `fields` / `field_groups` / `sections`, none of
+ * which this route has ever returned).
+ */
 export interface KBTemplate {
-  meta: KBTemplateMeta;
-  fields: KBTemplateField[];
-  field_groups: KBTemplateFieldGroup[];
-  sections: KBTemplateSection[];
-  body: string;
+  entity_type: string;
+  scope: string;
+  content: string;
+  base_content: string | null;
+  schema_version: string;
+  based_on_version: string | null;
+  is_overridden: boolean;
 }
 
 export interface KBTemplateInfo {

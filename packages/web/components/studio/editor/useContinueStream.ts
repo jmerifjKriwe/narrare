@@ -3,9 +3,16 @@
 /**
  * Continue-streaming hook for the AI "continue writing" feature.
  *
- * Wraps useAIOperation with the TipTap-specific streaming logic
- * (insertAIContent, appendToPendingMark, finalizePendingMark).
- * Extracted from ContinueButton for modularity (RULE-04).
+ * Wraps useAIOperation, delegating the TipTap-specific streaming bridge to
+ * {@link runContinueStream} (insertAIContent, appendToPendingMark,
+ * finalizePendingMark). Extracted from ContinueButton for modularity
+ * (RULE-04).
+ *
+ * Null-safe by contract: the single stream instance is owned by EditorView
+ * (B08 wiring, Task 11) and shared by toolbar, palette, and slash commands;
+ * `useAIOperation` reads `executeRef.current`, so closures always see the
+ * latest editor. Payload caps are enforced at extraction (ExtendRequest:
+ * text_before ≤ 10 000, text_after ≤ 2 000 chars).
  *
  * @module useContinueStream
  */
@@ -13,34 +20,17 @@
 import type { Editor } from "@tiptap/react";
 import { useLocale } from "next-intl";
 import { useCallback, useRef } from "react";
-import {
-  appendToPendingMark,
-  finalizePendingMark,
-  insertAIContent,
-} from "@/components/studio/editor/extensions/AIAnnotation";
-import { type ExtendLength, streamExtend } from "@/lib/api/generation";
+import type { ExtendLength } from "@/lib/api/generation";
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ExtendRequestParams {
-  readonly textBefore: string;
-  readonly textAfter: string | null;
-  readonly selectedLength: ExtendLength;
-}
+import { type ExtendRequestParams, runContinueStream } from "./continueStream";
 
 interface UseContinueStreamParams {
-  readonly editor: Editor;
+  /** Nullable: the stream owner (EditorView) may not have mounted the editor yet. */
+  readonly editor: Editor | null;
   readonly chapterId: string;
   readonly novelId: string;
   readonly tone?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
 
 export function useContinueStream({ editor, chapterId, novelId, tone }: UseContinueStreamParams) {
   const locale = useLocale();
@@ -50,71 +40,17 @@ export function useContinueStream({ editor, chapterId, novelId, tone }: UseConti
   // -- AI operation lifecycle via useAIOperation --
 
   const { start, cancel, notifyData, isLoading, isStreaming } = useAIOperation<void>({
-    execute: (signal) =>
-      new Promise<void>((resolve, reject) => {
-        const req = requestRef.current;
-        if (!req || editor.isDestroyed) {
-          resolve();
-          return;
-        }
-
-        let settled = false;
-        let isFirstChunk = true;
-
-        const onAbort = () => {
-          if (!settled) {
-            settled = true;
-            reject(new DOMException("Aborted", "AbortError"));
-          }
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-
-        streamExtend(
-          chapterId,
-          novelId,
-          {
-            text_before: req.textBefore,
-            text_after: req.textAfter,
-            length: req.selectedLength,
-            tone,
-            language: locale,
-          },
-          {
-            onChunk: (text) => {
-              if (editor.isDestroyed) return;
-              if (isFirstChunk) {
-                notifyData();
-                isFirstChunk = false;
-              }
-
-              const localId = `extend-${Date.now()}`;
-              if (accumulatedRef.current.length === 0) {
-                insertAIContent(editor, null, text, localId, "extend");
-              } else {
-                appendToPendingMark(editor, text);
-              }
-              accumulatedRef.current += text;
-            },
-            onComplete: () => {
-              if (!settled) {
-                settled = true;
-                signal.removeEventListener("abort", onAbort);
-                if (!editor.isDestroyed) {
-                  finalizePendingMark(editor, accumulatedRef.current);
-                }
-                resolve();
-              }
-            },
-            onError: (err) => {
-              if (!settled) {
-                settled = true;
-                signal.removeEventListener("abort", onAbort);
-                reject(err);
-              }
-            },
-          },
-          signal,
-        );
+    execute: (signal): Promise<void> =>
+      runContinueStream({
+        editor,
+        request: requestRef.current,
+        chapterId,
+        novelId,
+        tone,
+        locale,
+        signal,
+        notifyData,
+        accumulatedRef,
       }),
     connectionLossTimeout: 15_000,
   });
@@ -122,11 +58,14 @@ export function useContinueStream({ editor, chapterId, novelId, tone }: UseConti
   const handleExtend = useCallback(
     (selectedLength: ExtendLength) => {
       if (isLoading || isStreaming) return;
-      if (editor.isDestroyed) return;
+      if (!editor || editor.isDestroyed) return;
 
       const $head = editor.state.selection.$head;
-      const textBefore = $head.parent.textContent.slice(0, $head.parentOffset);
-      const textAfter = $head.parent.textContent.slice($head.parentOffset);
+      // ExtendRequest caps: text_before ≤ 10 000, text_after ≤ 2 000 chars
+      // (apps/api/narrare/writing/schemas.py) — clamp at extraction so the
+      // payload is compliant by construction (same class as audit B01).
+      const textBefore = $head.parent.textContent.slice(0, $head.parentOffset).slice(0, 10_000);
+      const textAfter = $head.parent.textContent.slice($head.parentOffset).slice(0, 2_000);
 
       requestRef.current = { textBefore, textAfter: textAfter || null, selectedLength };
       accumulatedRef.current = "";

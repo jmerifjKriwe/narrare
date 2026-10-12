@@ -1,0 +1,58 @@
+{
+ "Character Voices": {
+  "loading": "Editor side panel\nCharacter Voice Analysis\n\nCapture how each character speaks \u2014 vocabulary, sentence patterns, and emotional register\n\nAnalyzing character voices...\n\nExtracting speech patterns and dialogue for each character",
+  "final": "Editor side panel\nCharacter Voice Analysis\n\nCapture how each character speaks \u2014 vocabulary, sentence patterns, and emotional register\n\nFailed to analyze character voices\n\nVerbindung verloren. Pr\u00fcfe deine Internetverbindung.\n\nTry Again",
+  "clean_exit": true
+ },
+ "Check Voice": {
+  "idle": "Editor side panel\nVoice Consistency Check\n\nCheck your chapter's dialogue against each character's stored voice profile\n\nHybrid check \u00b7 Deterministic metrics + AI judgment\n\nCheck Voice",
+  "controls": "\n--- buttons ---\nbutton: \"Close\"\nbutton: \"Close\"\nbutton: \"Check character voices\"",
+  "final": "Editor side panel\nVoice Consistency Check\n\nCheck your chapter's dialogue against each character's stored voice profile\n\nHybrid check \u00b7 Deterministic metrics + AI judgment\n\nCheck Voice\nIn\n\nNo voice profile available for this character.\n\nKaelen\n\nNo voice profile available for this character.\n\nMaster Verrick\n\nNo voice profile available for this character.\n\nOrder\n\nNo voice profile available for this character.",
+  "clean_exit": true
+ },
+ "Voice Drift": {
+  "idle_controls": "\n--- buttons ---\nbutton: \"Close\"\nbutton: \"Close\"\nbutton: \"Analyze\"",
+  "final": "Editor side panel\nCharacter Voice Drift\nRefresh Analysis\n\nSee how each character's voice drifts across your book \u2014 intentional evolution, context shifts, or inconsistency.\n\nHybrid analysis \u00b7 Deterministic trend + AI classification\n\nNOT ANALYZED\n\nAbout \u2014 No stored voice profile\nAhead \u2014 No stored voice profile\nAnswers \u2014 No stored voice profile\nArchmage Solara \u2014 No stored voice profile\nBehind \u2014 No stored voice profile\nCataclysm \u2014 No stored voice profile\nCovenant \u2014 No stored voice profile\nDo \u2014 No stored voice profile\nElara \u2014 No stored voice profile\nElara Thornwind \u2014 No stored voice profile\nIn \u2014 No stored voice profile\nInitiate \u2014 No stored voice profile\nKaelen \u2014 No stored voice profile\nKeeper \u2014 No stored voice profile\nMaster Verrick \u2014 No stored voice profile\nMorven \u2014 No stored voice profile\nOrder \u2014 No stored voice profile\nSecret Archives \u2014 No stored voice profile\nSera \u2014 No stored voice profile\nSolara \u2014 No stored voice profile\nTo \u2014 No stored voice profile\nVoid \u2014 No stored voice profile",
+  "heatmap_probe": "grid-children=0 svg-shapes=1",
+  "clean_exit": true
+ },
+ "Author Voice": {
+  "idle_controls": "[input type=checkbox] The Compass Points => true\n[input type=checkbox] Secrets Beneath Stone => true\n[input type=checkbox] The Silent Keep => true\n[input type=checkbox] The Archive of Truth => true\n--- buttons ---\nbutton: \"Close\"\nbutton: \"Close\"\nbutton: \"Analyze Voice\"\nbutton: \"Select all\" [disabled]\nbutton: \"Clear\"",
+  "final": "Editor side panel\nAuthor Voice Analysis\nRe-analyze\n\nCapture your narrative voice \u2014 sentence patterns, vocabulary, and prose composition \u2014 to guide AI generation\n\nHybrid analysis \u00b7 Deterministic metrics + AI judgement\n\nLast analyzed: 2026-10-11T20:29:15.576048+00:00\nUP TO DATE\n\nVoice Profile\nFormality\n50%\nCasual\nFormal\nVocabulary Level\nmoderate\nSentence Profile\nmedium\nEmotional Range\nmoderate\nAdvanced Metrics",
+  "clean_exit": true
+ },
+ "Author Drift": {
+  "final": "Editor side panel\nAuthor Voice Drift\nRefresh Analysis\n\nSee how your narrative voice drifts across your book \u2014 intentional evolution, context shifts, or inconsistency.\n\nHybrid analysis \u00b7 Deterministic trend + AI classification\n\nNarrator voice\n4 CHAPTERS ANALYZED\nMILD VARIATION\n82%\nMATCH TO PROFILE\nDRIFT TREND\n76\nCh1\n83\nCh2\n82\nCh3\n87\nCh4\nJUMP POINTS\n\u26a1\nCh1 \u2192 Ch2 \u2014 metaphor_density, punctuation_profile, sentence_length_std\n\u26a1\nCh2 \u2192 Ch3 \u2014 dialogue_ratio, metaphor_density\n\u26a1\nCh3 \u2192 Ch4 \u2014 metaphor_density, punctuation_profile\nDRIFT BANDS\n\u25cf\nstable\n90%+\n\u25b2\nminor\n70\u201389%\n\u25c6\nmoderate\n50\u201369%\n\u25c7\nmajor\n<50%\n\u26a1\njump point",
+  "clean_exit": true
+ },
+ "Dialogue Coach": {
+  "selection": {
+   "text": "\"Stay together,\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. \"The spatial distortion here is unpredictable.\"",
+   "idx": 1
+  },
+  "final": "Editor side panel\nDialogue Coach\nMode\nAnalyse\nImprove\n\nNo dialogue issues found. The passage reads naturally.",
+  "clean_exit": true
+ },
+ "Writer's Unblock": {
+  "idle": "Writer's Unblock\nStuck?\nGet Suggestions",
+  "final": "Writer's Unblock\n\nConnection lost. Check your internet connection.\n\nRetry",
+  "affordances": "\n--- buttons ---\nbutton: \"Writer's Unblock\"\nbutton: \"Retry\"",
+  "clean_exit": true
+ },
+ "Name Generator": {
+  "fields": "[select type=select-one] TYPE => character *SELECTED | place | organization | item\n[input type=text] NAME STYLE => Fantasy\n[input type=number] COUNT => 10\n[select type=select-one] GENDER => any *SELECTED | male | female | neutral\n[select type=select-one] EXPLANATION LANGUAGE => en *SELECTED | de | fr\n--- buttons ---\nbutton: \"Close\"\nbutton: \"Generate Names\"",
+  "result": "Name Generator\nName Generator\nTYPE\nCharacter\nPlace\nOrganization\nItem\nNAME STYLE\nCOUNT\nGENDER\nAny\nMale\nFemale\nNeutral\nEXPLANATION LANGUAGE\nEnglish\nGerman\nFrench\nGenerate Names\n\nNo results yet. Configure and generate names above.",
+  "clean_exit": true
+ },
+ "Consistency": {
+  "loading": "Editor side panel\nConsistency Check\n\nAI-powered analysis \u00b7 False positives are possible\n\nCheck scope\n\nCurrent Chapter\nSelected Chapters\nEntire Novel\n\nAnalysis failed\n\nVerbindung verloren. Pr\u00fcfe deine Internetverbindung.\n\nRetry",
+  "final": "Editor side panel\nConsistency Check\n\nAI-powered analysis \u00b7 False positives are possible\n\nCheck scope\n\nCurrent Chapter\nSelected Chapters\nEntire Novel\n\nAnalysis failed\n\nVerbindung verloren. Pr\u00fcfe deine Internetverbindung.\n\nRetry",
+  "clean_exit": true
+ },
+ "Extract to KB": {
+  "loading": "Extracting Knowledge\n0 items found\nSelect all\n|\nSelect none\nCancel\n0 of 0 selected\nApply (0)",
+  "loading_controls": "\n--- buttons ---\nbutton: \"Cancel\"\nbutton: \"Select all\"\nbutton: \"Select none\"\nbutton: \"Cancel\"\nbutton: \"Apply (0)\" [disabled]",
+  "review": "Extracting Knowledge\n0 items found\nSelect all\n|\nSelect none\nCancel\n0 of 0 selected\nApply (0)",
+  "error": "Traceback (most recent call last):\n  File \"/tmp/opencode/audit/06b-followup.py\", line 707, in main\n    apply_btn.click()\n    ~~~~~~~~~~~~~~~^^\n  File \"/home/kiesow/.local/share/opencode/worktree/3e7abe4e892d779ef964e6da88d52f8213976240/groovy-gopher/.venv/lib/python3.14/site-packages/playwright/sync_api/_generated.py\", line 17672, in click\n    self._sync(\n    ~~~~~~~~~~^\n        self._impl_obj.click(\n        ^^^^^^^^^^^^^^^^^^^^^\n    ...<10 lines>...\n        )\n        ^\n    )\n    ^\n  File \"/home/kiesow/.local/share/opencode/worktree/3e7abe4e892d779ef964e6da88d52f8213976240/groovy-gopher/.venv/lib/python3.14/site-packages/playwright/_impl/_sync_base.py\", line 115, in _sync\n    return task.result()\n           ~~~~~~~~~~~^^\n  File \"/home/kiesow/.local/share/opencode/worktree/3e7abe4e892d779ef964e6da88d52f8213976240/groovy-gopher/.venv/lib/python3.14/site-packages/playwright/_impl/_locator.py\", line 163, in click\n    return await self._frame._click(self._selector, strict=True, **params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kiesow/.local/share/opencode/worktree/3e7abe4e892d779ef964e6da88d52f8213976240/groovy-gopher/.venv/lib/python3.14/site-packages/playwright/_impl/_frame.py\", line 591, in _click\n    await self._channel.send(\"click\", self._timeout, locals_to_params(locals()))\n  File \"/home/kiesow/.local/share/opencode/worktree/3e7abe4e892d779ef964e6da88d52f8213976240/groovy-gopher/.venv/lib/python3.14/site-packages/playwright/_impl/_connection.py\", line 69, in send\n    return await self._connection.wrap_api_call(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<3 lines>...\n    )\n    ^\n  File \"/home/kiesow/.local/share/opencode/worktree/3e7abe4e892d779ef964e6da88d52f8213976240/groovy-gopher/.venv/lib/python3.14/site-packages/playwright/_impl/_connection.py\", line 563, in wrap_api_call\n    raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nplaywright._impl._errors.TimeoutError: Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\".fixed.inset-0 button:has-text('Apply')\").first\n    - locator resolved to <button disabled type=\"button\" class=\"flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 text-sm\">\u2026</button>\n  - attempting click action\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    29 \u00d7 waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n\n"
+ }
+}

@@ -75,14 +75,9 @@ export type {
   ImportSplitOperation,
 } from "./importing";
 export type {
-  KBTemplate,
   KBTemplateDetail,
   KBTemplateDiff,
-  KBTemplateField,
-  KBTemplateFieldGroup,
   KBTemplateInfo,
-  KBTemplateMeta,
-  KBTemplateSection,
   KBTemplateUpdateInfo,
 } from "./kb";
 // Scratchpad notes (NOTES-001)

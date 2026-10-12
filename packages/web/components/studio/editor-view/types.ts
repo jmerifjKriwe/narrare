@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
+import type { SlashCommandHandlers } from "../editor/slash-commands";
 
 export interface EditorChapterData {
   chapter: Chapter | undefined;
@@ -40,4 +41,6 @@ export interface EditorSurfaceProps {
   content: string;
   setContent: (content: string) => void;
   handleAutosave: (htmlContent: string) => Promise<void>;
+  /** Host handlers for slash commands the workspace surface wires (B08/B09). */
+  slashCommandHandlers?: Partial<SlashCommandHandlers>;
 }

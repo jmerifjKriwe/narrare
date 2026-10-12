@@ -1,0 +1,786 @@
+[
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 401,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/auth/me",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/export/formats",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/auth/refresh",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": "{}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?limit=500",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/analysis/character-voice/4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 200,
+  "ct": "text/event-stream",
+  "stream": true,
+  "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"]}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/analysis/voice-check/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "text/event-stream",
+  "stream": true,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/analysis/voice-drift/4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 200,
+  "ct": "text/event-stream",
+  "stream": true,
+  "post_data": "{}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/analysis/author-voice/4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 200,
+  "ct": "text/event-stream",
+  "stream": true,
+  "post_data": "{\"chapter_ids\":null}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/analysis/author-voice-drift/4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 200,
+  "ct": "text/event-stream",
+  "stream": true,
+  "post_data": "{\"chapter_ids\":null}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/ai-assist/dialogue-coach/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "text/event-stream",
+  "stream": true,
+  "post_data": "{\"selection_text\":\"\\\"Stay together,\\\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. \\\"The spatial distortion here is unpredictable.\\\"\",\"mode\":\"analyze\"}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/writing/story-suggest/4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 422,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": "{\"chapter_id\":\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\",\"author_instructions\":\"Elara just discovered the archive is warded. I am stuck on how she reacts and what she tries next.\"}"
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/generation/names",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": "{\"project_id\":\"4a53a95a-d9b6-4d35-b3e7-f6754cb59572\",\"name_type\":\"character\",\"name_style\":\"Fantasy\",\"count\":10,\"gender\":\"any\",\"explanation_language\":\"en\"}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/consistency/check/stream?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 404,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"],\"check_types\":[\"character\",\"timeline\",\"world\",\"plot\"],\"include_kb\":true}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/consistency/check/stream?novel_id=4a53a95a-d9b6-4d35-b3e7-f6754cb59572",
+  "status": 404,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": "{\"chapter_ids\":[\"156b20bd-6f95-4f0c-afe6-d5f58f311b5a\"],\"check_types\":[\"character\",\"timeline\",\"world\",\"plot\"],\"include_kb\":true}"
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "POST",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/extract/156b20bd-6f95-4f0c-afe6-d5f58f311b5a",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?limit=500",
+  "status": 200,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary",
+  "status": 404,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ },
+ {
+  "method": "GET",
+  "url": "http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary",
+  "status": 404,
+  "ct": "application/json",
+  "stream": false,
+  "post_data": ""
+ }
+]

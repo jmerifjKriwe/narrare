@@ -1,25 +1,19 @@
 "use client";
 
 /**
- * Fallback flat editor for KB entries without a template.
+ * Flat editor for KB entry detail.
  *
- * Renders:
- * - A flat list of template fields (if available) as typed inputs
- * - A metadata key-value read-only display (if no template fields)
+ * The template endpoint returns `TemplateDetailResponse` — a YAML prompt
+ * template, not a field schema — so the detail view always renders:
+ * - A metadata key-value read-only display (when the entry has metadata)
  * - A single body textarea for free-form content
  */
 
 import { useTranslations } from "next-intl";
-import type { KBTemplate } from "@/lib/api/kb";
-import { KBMoreFields } from "./KBMoreFields";
-import { KBTypeField } from "./KBTypeField";
 
 interface KBFlatEditorProps {
-  template: KBTemplate | null | undefined;
-  fieldValues: Record<string, unknown>;
   body: string;
   entryMetadata: Record<string, unknown>;
-  onFieldChange: (name: string, value: unknown) => void;
   onBodyChange: (body: string) => void;
 }
 
@@ -28,46 +22,12 @@ function formatKey(key: string): string {
   return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function KBFlatEditor({
-  template,
-  fieldValues,
-  body,
-  entryMetadata,
-  onFieldChange,
-  onBodyChange,
-}: KBFlatEditorProps) {
+export function KBFlatEditor({ body, entryMetadata, onBodyChange }: KBFlatEditorProps) {
   const t = useTranslations("studio");
-  const hasFlatFields = template?.fields && template.fields.length > 0;
 
   return (
     <div className="space-y-4">
-      {hasFlatFields ? (
-        <div className="space-y-3 p-4 border border-border/60 rounded-lg bg-card">
-          <h3 className="text-sm font-semibold text-foreground">{t("kb.metadata")}</h3>
-          {(() => {
-            const fields = template!.fields;
-            const requiredFields = fields.filter((field) => field.required);
-            const optionalFields = fields.filter((field) => !field.required);
-            const renderField = (field: (typeof fields)[number]) => (
-              <KBTypeField
-                key={field.name}
-                field={field}
-                value={fieldValues[field.name]}
-                onChange={onFieldChange}
-                label={formatKey(field.name)}
-              />
-            );
-            return (
-              <>
-                {requiredFields.map(renderField)}
-                {optionalFields.length > 0 && (
-                  <KBMoreFields>{optionalFields.map(renderField)}</KBMoreFields>
-                )}
-              </>
-            );
-          })()}
-        </div>
-      ) : Object.keys(entryMetadata).length > 0 ? (
+      {Object.keys(entryMetadata).length > 0 ? (
         <div>
           <span className="block text-sm font-medium text-muted-foreground mb-1.5">
             {t("kb.metadata")}

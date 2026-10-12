@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScopeToggle } from "@/components/kb/ScopeToggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntry, KBEntryStatus, KBRelationship } from "@/lib/api/kb";
@@ -10,11 +10,9 @@ import { useDeleteKBEntry, useKBTemplate, useUpdateKBEntry } from "@/lib/hooks/u
 import { TYPE_ICONS } from "./constants";
 import { KBEntryAISections } from "./KBEntryAISections";
 import { KBEntryHeader } from "./KBEntryHeader";
-import { KBEntrySections } from "./KBEntrySections";
-import { KBEntryTemplateFields } from "./KBEntryTemplateFields";
+import { KBFlatEditor } from "./KBFlatEditor";
 import { KBMetadataBar } from "./KBMetadataBar";
 import { KBRelationshipSection } from "./KBRelationshipSection";
-import { buildBodyFromSections, parseSectionsFromBody } from "./kbBodyUtils";
 
 interface KBEntryDetailProps {
   novelId: string;
@@ -23,16 +21,11 @@ interface KBEntryDetailProps {
   onDeleted: () => void;
 }
 
-function formatKey(key: string): string {
-  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEntryDetailProps) {
   const t = useTranslations("studio");
   const Icon = TYPE_ICONS[entry.entity_type];
 
-  const { data: template, isLoading: templateLoading } = useKBTemplate(novelId, entry.entity_type);
-  const hasTemplate = !!template && template.field_groups.length > 0;
+  const { isLoading: templateLoading } = useKBTemplate(novelId, entry.entity_type);
 
   const updateMutation = useUpdateKBEntry(novelId);
   const deleteMutation = useDeleteKBEntry(novelId);
@@ -41,7 +34,6 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
   const [status, setStatus] = useState<KBEntryStatus>(entry.status);
   const [tags, setTags] = useState<string[]>(entry.tags);
   const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(entry.metadata);
-  const [sectionContents, setSectionContents] = useState<Record<string, string>>({});
   const [extraBody, setExtraBody] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingAction = useRef<(() => void) | null>(null);
@@ -51,30 +43,11 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
     setStatus(entry.status);
     setTags(entry.tags);
     setFieldValues(entry.metadata as Record<string, unknown>);
-    if (template?.sections?.length) {
-      const { sectionContents: parsed, remaining } = parseSectionsFromBody(
-        entry.body,
-        template.sections,
-      );
-      setSectionContents(parsed);
-      setExtraBody(remaining);
-    } else setExtraBody(entry.body);
-  }, [entry, template]);
-
-  const sortedSections = useMemo(
-    () => [...(template?.sections ?? [])].sort((a, b) => a.order - b.order),
-    [template],
-  );
-
-  const label = (key: string, fb: string) => {
-    const v = t(key);
-    return v !== key ? v : fb;
-  };
+    setExtraBody(entry.body);
+  }, [entry]);
 
   function handleSave() {
-    const body = hasTemplate
-      ? buildBodyFromSections(template!.sections, sectionContents, extraBody)
-      : extraBody;
+    const body = extraBody;
     updateMutation.mutate({
       entryId: entry.id,
       data: { name, body, tags, status, metadata: fieldValues },
@@ -85,9 +58,6 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
     pendingAction.current = () => deleteMutation.mutate(entry.id, { onSuccess: onDeleted });
     setConfirmOpen(true);
   }
-
-  const handleFieldChange = (fieldName: string, value: unknown) =>
-    setFieldValues((prev) => ({ ...prev, [fieldName]: value }));
 
   if (templateLoading) {
     return (
@@ -139,27 +109,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
           </div>
         )}
 
-        <KBEntryTemplateFields
-          template={template}
-          fieldValues={fieldValues}
-          entryMetadata={entry.metadata}
-          body={extraBody}
-          onFieldChange={handleFieldChange}
-          onBodyChange={setExtraBody}
-          label={label}
-          formatKey={formatKey}
-        />
-
-        <KBEntrySections
-          novelId={novelId}
-          sections={sortedSections}
-          sectionContents={sectionContents}
-          extraBody={extraBody}
-          showExtraBody={hasTemplate}
-          onSectionChange={(name, val) => setSectionContents((prev) => ({ ...prev, [name]: val }))}
-          onExtraBodyChange={setExtraBody}
-          label={label}
-        />
+        <KBFlatEditor entryMetadata={entry.metadata} body={extraBody} onBodyChange={setExtraBody} />
 
         <div className="pt-2">
           <KBRelationshipSection novelId={novelId} entry={entry} relationships={relationships} />

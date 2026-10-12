@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorToolbar } from "./EditorToolbar";
@@ -58,6 +59,11 @@ const baseProps = {
   openNameGenerator: vi.fn(),
   onRightPanelOpenerChange: vi.fn(),
   novelId: "novel-1",
+  // Continue-writing (extend) wiring (audit B08) — handlers come from
+  // EditorView's useContinueStream; individual tests override as needed.
+  onExtend: vi.fn(),
+  onExtendStop: vi.fn(),
+  isExtendStreaming: false,
 };
 
 describe("EditorToolbar opener tracking", () => {
@@ -114,6 +120,16 @@ describe("EditorToolbar rendering", () => {
 
   it("renders nothing when the editor is null", () => {
     const { container } = render(<EditorToolbar {...baseProps} editor={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing when the editor is destroyed (B08 carry-forward)", () => {
+    // After a remount the store can still hold the previous (destroyed)
+    // instance while the next one is being created. The toolbar must not
+    // offer any buttons — in particular Continue — in that window.
+    const { editor } = makeChainEditor();
+    const destroyed = { ...editor, isDestroyed: true } as unknown as Editor;
+    const { container } = render(<EditorToolbar {...baseProps} editor={destroyed} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -233,6 +249,24 @@ describe("EditorToolbar interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: "editor.nameGenerator" }));
 
     expect(openNameGenerator).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the Continue button and forwards the default length (B08)", async () => {
+    const onExtend = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <EditorToolbar
+        {...baseProps}
+        onExtend={onExtend}
+        onExtendStop={vi.fn()}
+        isExtendStreaming={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "annotation.continueWriting" }));
+
+    expect(onExtend).toHaveBeenCalledTimes(1);
+    expect(onExtend).toHaveBeenCalledWith("medium");
   });
 
   it("opens the voice-check panel via toggleRightPanel when VoiceCheck is clicked", () => {

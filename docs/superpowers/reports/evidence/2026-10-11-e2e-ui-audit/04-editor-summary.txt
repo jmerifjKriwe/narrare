@@ -1,0 +1,684 @@
+==============================================================================
+HEADLESS UI AUDIT — 04b EDITOR CORE (WRITE-001)
+target: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572
+==============================================================================
+URL PATTERN: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572  (novel id in path, no chapter segment)
+TOUR: dismissed via 'Skip'
+
+--- SIDEBAR LANDMARKS ---
+<nav class='p-3 border-b border-border space-y-0.5'>
+Editor
+Volumes
+World & Characters
+16
+Chat
+Settings
+
+--- MAIN AREA INNERTEXT (truncated 6000) ---
+Storyboard
+Step —/6:
+Outline
+Draft
+Review
+Revise
+Finalize
+Summarize
+--:--
+Save
+Name Generator
+Generate
+Extract to KB
+Beta Reader
+Sentiment
+Consistency
+Readability
+POV
+Coreference
+Character Voices
+Check Voice
+Voice Drift
+Author Voice
+Author Drift
+Dialogue Coach
+Ghost Text
+Trigger delay
+800ms
+No data
+
+The ruined tower smelled of ancient stone and something else—something that made Elara's skin tingle.
+
+"Stay together," Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. "The spatial distortion here is unpredictable."
+
+Elara nodded, but her attention was elsewhere. Her void magic—suppressed for twelve years, practiced in secret—was stirring. The ruins of Thornwall Academy called to something deep within her. The air between her fingers seemed to shimmer, full of possibilities that terrified her.
+
+The Order's expedition continued through what had once been a research hall. Elara lagged behind, ostensibly examining fallen debris, actually listening to the hum of void resonance that only she could hear. It grew stronger as they approached a collapsed section of the tower.
+
+"Elara." Kaelen fell back beside her. His earth magic stirred dust around his boots. "You're too close to the unstable zone."
+
+"I'm fine." She adjusted her Order robes, suddenly conscious of the silver flame insignia—a symbol of protection, or control? "Just curious."
+
+Kaelen's blue eyes studied her. "Master Verrick says curiosity is good. He also says it gets initiates killed."
+
+Elara didn't respond. Her compass—the void-sensitive artifact she'd secretly carried for months—was pulling toward a gap in the collapsed wall. A gap that shouldn't be there. The spatial distortion shifted, and suddenly the gap was an archway, leading into darkness that hadn't existed a moment before.
+
+She slipped through before Kaelen could stop her.
+
+The room beyond hadn't seen light in forty years. Shelves lined the walls, holding texts that had survived the Cataclysm. In the center, on a pedestal that shouldn't have remained standing, lay a compass made of dark metal that seemed to absorb light.
+
+Elara approached it, heart pounding. This was forbidden. Unauthorized. Dangerous.
+
+Her hand reached out anyway.
+
+The compass was warm. As her fingers brushed its surface, a needle of soft blue light flared to life—and pointed directly at her.
+
+Welcome, the compass seemed to whisper in her mind. I've been waiting.
+
+"Elara!" Kaelen's voice from the archway. "Master Verrick is calling—what's that?"
+
+The compass flared brighter. For a heartbeat, Elara saw everything: the academy as it had been, mages working at desks, dimensional portal swirling in the center, and then—
+
+Sabotage. The word came unbidden. Not accident. Sabotage.
+
+The vision faded. Elara stood in a ruined room, compass in hand, Kaelen staring from the archway, and the terrible knowledge that she'd just crossed a line she couldn't uncross.
+
+"Nothing," she said, hiding the compass in her robes. "Just... old memories trapped in the stone."
+
+Kaelen didn't look convinced. But he also didn't report her. For that, Elara was grateful—and suspicious. How much did he really know? How much did anyone know about what had happened at Thornwall forty years ago?
+
+The compass pulsed against her chest. It had secrets. And for the first time in her life, Elara Thornwind intended to find them.
+
+---
+
+Back at the fortress that night, Elara examined the compass by candlelight. The blue needle pointed to her, yes, but also to something else. Something beneath the fortress itself. The Secret Archives, forbidden to all initiates.
+
+She would need a distraction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.
+
+Writer's Unblock
+Panel closed
+
+--- EDITOR SURFACE: all visible labeled buttons (verbatim, ordered) ---
+  Quick capture
+  The Compass Points
+  Secrets Beneath Stone
+  The Silent Keep
+  The Archive of Truth
+  New Chapter
+  Import chapters
+  Analyze novel corpus
+  Sign out
+  Storyboard
+  Step —/6:
+  Export
+  Toggle Storyboard
+  Metadata
+  Save
+  Bold
+  Italic
+  Heading 2
+  Heading 3
+  Quote
+  Name Generator
+  Generate
+  Extract to KB
+  Get AI-powered feedback as if from a beta reader
+  Analyze emotional tone and sentiment of your text
+  Consistency
+  Analyze text complexity and get readability scores
+  Detect POV character, head-hopping, and knowledge leakage
+  Analyze pronoun clarity and resolve character references
+  Analyze character dialogue to create voice profiles for consistency
+  Check character voices
+  Track how each character's voice drifts across chapters
+  Analyze your narrative voice and create an author-voice profile for AI generation
+  Track how your narrative voice drifts across chapters
+  Analyse selected dialogue for issues and suggested rewrites
+  Ghost Text
+  No data
+  Writer's Unblock
+  Open Tanstack query devtools
+
+CHAPTER 1 BUTTON present: True
+URL after selecting chapter 1: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 (same as before: True)
+
+--- CHAPTER 1 CONTENT STATE ---
+editor element found: True
+paragraph blocks: 24, textLen=3456
+  [0] <p> "The ruined tower smelled of ancient stone and something else—something that made Elara's skin tingle."
+  [1] <p> '"Stay together," Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. "The spatial distortion here is unpredictable."'
+  [2] <p> 'Elara nodded, but her attention was elsewhere. Her void magic—suppressed for twelve years, practiced in secret—was stirring. The ruins of Thornwall Academy call'
+  [3] <p> "The Order's expedition continued through what had once been a research hall. Elara lagged behind, ostensibly examining fallen debris, actually listening to the "
+  [4] <p> '"Elara." Kaelen fell back beside her. His earth magic stirred dust around his boots. "You\'re too close to the unstable zone."'
+  [5] <p> '"I\'m fine." She adjusted her Order robes, suddenly conscious of the silver flame insignia—a symbol of protection, or control? "Just curious."'
+  [6] <p> 'Kaelen\'s blue eyes studied her. "Master Verrick says curiosity is good. He also says it gets initiates killed."'
+  [7] <p> "Elara didn't respond. Her compass—the void-sensitive artifact she'd secretly carried for months—was pulling toward a gap in the collapsed wall. A gap that shoul"
+  [8] <p> 'She slipped through before Kaelen could stop her.'
+  [9] <p> "The room beyond hadn't seen light in forty years. Shelves lined the walls, holding texts that had survived the Cataclysm. In the center, on a pedestal that shou"
+  [10] <p> 'Elara approached it, heart pounding. This was forbidden. Unauthorized. Dangerous.'
+  [11] <p> 'Her hand reached out anyway.'
+  [12] <p> 'The compass was warm. As her fingers brushed its surface, a needle of soft blue light flared to life—and pointed directly at her.'
+  [13] <p> "Welcome, the compass seemed to whisper in her mind. I've been waiting."
+  [14] <p> '"Elara!" Kaelen\'s voice from the archway. "Master Verrick is calling—what\'s that?"'
+  [15] <p> 'The compass flared brighter. For a heartbeat, Elara saw everything: the academy as it had been, mages working at desks, dimensional portal swirling in the cente'
+  [16] <p> 'Sabotage. The word came unbidden. Not accident. Sabotage.'
+  [17] <p> "The vision faded. Elara stood in a ruined room, compass in hand, Kaelen staring from the archway, and the terrible knowledge that she'd just crossed a line she "
+  [18] <p> '"Nothing," she said, hiding the compass in her robes. "Just... old memories trapped in the stone."'
+  [19] <p> "Kaelen didn't look convinced. But he also didn't report her. For that, Elara was grateful—and suspicious. How much did he really know? How much did anyone know "
+  [20] <p> 'The compass pulsed against her chest. It had secrets. And for the first time in her life, Elara Thornwind intended to find them.'
+  [21] <p> '---'
+  [22] <p> 'Back at the fortress that night, Elara examined the compass by candlelight. The blue needle pointed to her, yes, but also to something else. Something beneath t'
+  [23] <p> 'She would need a distraction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.'
+tail: ' needle pointed to her, yes, but also to something else. Something beneath the fortress itself. The Secret Archives, forbidden to all initiates.\n\nShe would need a distraction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.'
+
+--- WORD COUNT BEFORE (all lines containing 'word') ---
+  '544 words'
+  '729 words'
+  '872 words'
+  '891 words'
+  'Sabotage. The word came unbidden. Not accident. Sabotage.'
+
+--- WORD COUNT AFTER TYPING (all lines containing 'word') ---
+  '544 words'
+  '729 words'
+  '872 words'
+  '891 words'
+  'Sabotage. The word came unbidden. Not accident. Sabotage.'
+  'Tab accept · Esc dismiss · → word'
+  'Tab = Accept | → = Word-by-word | Esc = Dismiss×'
+EDITOR TAIL AFTER TYPING: 'rity, she would need to stop being the kind of initiate who followed all the rules.Elara pressed her palm against the cold stones and felt a faint draft slipping through a seam no wider than a hair; when she shifted the cracked shelf aside, a hidden door swung inward, revealing stairs that spiralled down beneath the academy into a darkness that seemed to breathe.s\nTab accept · Esc dismiss · → word'
+
+--- AUTOSAVE WATCH (up to 45s) ---
+AUTOSAVE OBSERVED: PATCH http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  payload-keys PUT http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/content: <unparsed: {"content":"<p>The ruined tower smelled of ancient stone and something else—something that made Elara's skin tingle.</p>>
+  payload-keys PATCH http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a: ['title']
+
+--- VERSIONS/HISTORY PROBE ---
+labeled buttons matching version/history/revision/snapshot: []
+METADATA PANEL (verbatim, truncated): []
+versions/history lines in panel: []
+
+--- CREATE SCRATCH CHAPTER ('New Chapter', non-AI) ---
+New Chapter button present: True
+DIALOG after New Chapter click: []
+  create-API: POST http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 201
+  create-API: GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  create-API: GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  create-API: GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+  create-request body: POST http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters {"title":"New Chapter"}
+scratch not found by title; chapter-like buttons now: ["The Compass Points | 569 words", "Secrets Beneath Stone | 729 words", "The Silent Keep | 872 words", "The Archive of Truth | 891 words", "New Chapter | 0 words", "New Chapter"]
+SCRATCH CHAPTER CREATED: False
+
+STATE: storage_state refreshed
+
+==============================================================================
+PAGE ERRORS: 0
+
+==============================================================================
+CONSOLE MESSAGES: 8 total, 7 non-401-error
+  [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+  [log] [HMR] connected
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server
+  [error] [401-burst] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server
+  [error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [error] Failed to load resource: the server responded with a status of 404 (Not Found)
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server
+
+==============================================================================
+NETWORK FAILURES: 3 total (1 x 401-burst, 2 other)
+  - GET http://localhost:3001/api/v1/auth/me -> 401
+  - GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary -> 404
+  - GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary -> 404
+
+==============================================================================
+API CALLS: 22
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  GET http://localhost:3001/api/v1/export/formats -> 200
+  GET http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context -> 200
+  POST http://localhost:3001/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/suggest -> 200
+  PATCH http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  PUT http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/content -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary -> 404
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/wiki/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/summary -> 404
+  POST http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 201
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+
+==============================================================================
+MUTATING REQUEST BODIES: 5
+  POST http://localhost:3001/api/v1/auth/refresh
+    {}
+  POST http://localhost:3001/api/v1/writing/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/suggest
+    {"text_before":"She would need a distraction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.Elara pressed her palm against the cold stones and felt a faint draft slipping through a seam no wider than a hair; when she shifted the cracked shelf aside, a hidden door swung inward, revealing stairs that spiralled down beneath the academy into a darkness that seemed to breathe.","language":"en"}
+  PUT http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a/content
+    {"content":"<p>The ruined tower smelled of ancient stone and something else—something that made Elara's skin tingle.</p><p>\"Stay together,\" Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. \"The spatial distortion here is unpredictable.\"</p><p>Elara nodded, but her attention was elsewhere. Her void magic—suppressed for twelve years, practiced in secret—was stirring. The ruins of Thornwall Academy called to something deep within her. The air between her fingers seemed to shimmer, full of possibilities that terrified her.</p><p>The Order's expedition continued through what had once been a research hall. Elara lagged behind, ostensibly examining fallen debris, actually listening to the hum of void resonance that only she could hear. It grew stronger a
+  PATCH http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a
+    {"title":"The Compass Points"}
+  POST http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters
+    {"title":"New Chapter"}
+
+==============================================================================
+04c FOLLOW-UP RUN
+==============================================================================
+==============================================================================
+HEADLESS UI AUDIT — 04c EDITOR FOLLOW-UP (persist, metadata, scratch chapter)
+==============================================================================
+--- CHAPTER 1 PERSISTED TAIL (after reload) ---
+raction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.Elara pressed her palm against the cold stones and felt a faint draft slipping through a seam no wider than a hair; when she shifted the cracked shelf aside, a hidden door swung inward, revealing stairs that spiralled down beneath the academy into a darkness that seemed to breathe.s
+Tab accept · Esc dismiss · → word
+TYPED PARAGRAPH PERSISTED: True
+API GET chapter -> 401; fields=['detail']; content wordCount(api-side, html-stripped)=0; content tail: ''
+word-count-bearing lines now: ["569 words", "729 words", "872 words", "891 words", "0 words"]
+
+--- METADATA PANEL PROBE ---
+{
+ "panels": [],
+ "labeledButtons": []
+}
+
+--- SCRATCH CHAPTER: rename, sentence, delete ---
+title input value before: 'New Chapter'
+title input value after: 'Audit Scratch Chapter'
+typed scratch sentence
+
+--- API CALLS during rename+type (waiting 8s for saves) ---
+  POST http://localhost:3001/api/v1/writing/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213/suggest -> 200
+  body: POST http://localhost:3001/api/v1/writing/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213/suggest {"text_before":"Scratch sentence for audit cleanup.","language":"en"}
+WARN: sidebar item with new title not found; using 'New Chapter 0 words'
+ROW BUTTONS (hover): [{"i": 0, "aria": "", "text": "The Compass Points\n569 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transparent\" data-audit-ch-btn=\"0\"><di"}, {"i": 1, "aria": "", "text": "Secrets Beneath Stone\n729 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transparent\" data-audit-ch-btn=\"1\"><di"}, {"i": 2, "aria": "", "text": "The Silent Keep\n872 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transparent\" data-audit-ch-btn=\"2\"><di"}, {"i": 3, "aria": "", "text": "The Archive of Truth\n891 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transparent\" data-audit-ch-btn=\"3\"><di"}, {"i": 4, "aria": "", "text": "New Chapter\n0 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors bg-card shadow-sm border border-border\" data-audit-ch-btn=\"4\"><div c"}]
+DELETE via row failed — trying right-click context menu
+CONTEXT MENU (verbatim): []
+SCRATCH CHAPTER DELETED: False
+
+--- API CALLS DURING DELETE ---
+CHAPTER LIST AFTER DELETE: ["The Compass Points | 569 words", "Secrets Beneath Stone | 729 words", "The Silent Keep | 872 words", "The Archive of Truth | 891 words", "New Chapter | 0 words"]
+
+STATE: storage_state refreshed
+
+
+==============================================================================
+04d DELETE-HUNT RUN
+==============================================================================
+==============================================================================
+HEADLESS UI AUDIT — 04d CHAPTER DELETE AFFORDANCE HUNT
+==============================================================================
+--- VOLUMES PAGE ---
+URL: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes
+Narrare
+
+AI-powered writing
+
+All Novels
+Scratchpad
+AI Costs
+Editor
+Volumes
+World & Characters
+16
+Chat
+Settings
+
+CHAPTERS
+
+The Compass Points
+569 words
+Secrets Beneath Stone
+729 words
+The Silent Keep
+872 words
+The Archive of Truth
+891 words
+New Chapter
+0 words
+New Chapter
+Import chaptersAnalyze novel corpus
+
+DEV TOOLS
+
+Design Tokens
+A
+
+auditor
+
+Volumes
+Create Volume
+
+No target set
+
+Panel closed
+scratch-ish text present on volumes: True
+scratch-row button probe on volumes page: [{"hit": "New Chapter", "btns": [{"k": "0-0", "aria": "", "text": "The Compass Points\n569 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "0-1", "aria": "", "text": "Secrets Beneath Stone\n729 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "0-2", "aria": "", "text": "The Silent Keep\n872 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "0-3", "aria": "", "text": "The Archive of Truth\n891 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "0-4", "aria": "", "text": "New Chapter\n0 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors bg-card shadow-sm border border-border"}]}, {"hit": "New Chapter", "btns": [{"k": "1-0", "aria": "", "text": "New Chapter", "html": "<button type=\"button\" data-testid=\"new-chapter-btn\" class=\"w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foregroun"}, {"k": "1-1", "aria": "", "text": "Import chapters", "html": "<button type=\"button\" data-testid=\"import-chapters-btn\" class=\"mt-2 w-full rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transitio"}, {"k": "1-2", "aria": "", "text": "Analyze novel corpus", "html": "<button type=\"button\" data-testid=\"corpus-pass-btn\" class=\"mt-2 w-full rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-co"}]}, {"hit": "self.__next_f.push([1,\"7:I[\\\"[project]/node_modules/.pnpm/ne", "btns": [{"k": "2-0", "aria": "Quick capture", "text": "", "html": "<button type=\"button\" aria-label=\"Quick capture\" title=\"Quick capture (Ctrl/⌘+Shift+U)\" class=\"inline-flex items-center justify-center transition-colo"}, {"k": "2-1", "aria": "", "text": "The Compass Points\n569 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "2-2", "aria": "", "text": "Secrets Beneath Stone\n729 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "2-3", "aria": "", "text": "The Silent Keep\n872 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent border border-transpar"}, {"k": "2-4", "aria": "", "text": "The Archive of Truth\n891 words", "html": "<button type=\"button\"
+
+--- SETTINGS PAGE ---
+URL: http://localhost:3001/novel/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/settings
+Narrare
+
+AI-powered writing
+
+All Novels
+Scratchpad
+AI Costs
+Editor
+Volumes
+World & Characters
+16
+Chat
+Settings
+
+CHAPTERS
+
+The Compass Points
+569 words
+Secrets Beneath Stone
+729 words
+The Silent Keep
+872 words
+The Archive of Truth
+891 words
+New Chapter
+0 words
+New Chapter
+Import chaptersAnalyze novel corpus
+
+DEV TOOLS
+
+Design Tokens
+A
+
+auditor
+
+SETTINGS
+SETTINGS
+Novel Details
+General
+Writing goals
+AI setup
+System Prompts
+KB Templates
+Learning
+Keyboard shortcuts
+About
+Novel Details
+
+Edit your novel's metadata
+
+Basic Information
+
+Title, author and language
+
+Title
+
+The title of your novel
+
+Author
+
+The author's name
+
+Language
+
+The primary language of your novel
+
+Story
+
+Genre, tone and structure
+
+Genre
+
+The genre of your novel
+
+Tone
+
+The overall tone of your story
+
+—
+Balanced
+Dramatic
+Humorous
+Suspenseful
+Contemplative
+Romantic
+Dark
+Adventurous
+Quiet
+Story Structure
+
+The narrative structure
+
+Three-Act Structure
+Five-Act Structure
+Hero's Journey
+Save the Cat
+Seven-Point Structure
+Summary
+
+Logline and synopsis
+
+Logline
+
+A one-sentence summary of your story
+
+Synopsis
+
+A detailed summary of your story
+
+Panel closed
+
+--- EDITOR: active-chapter header kebab hunt ---
+header buttons: [{"i": 0, "aria": "Quick capture", "text": "", "html": "<button type=\"button\" aria-label=\"Quick capture\" title=\"Quick capture (Ctrl/⌘+Shift+U)\" class=\"inline-flex items-center justify-ce"}, {"i": 1, "aria": "", "text": "The Compass Points\n569 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent bo"}, {"i": 2, "aria": "", "text": "Secrets Beneath Stone\n729 word", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent bo"}, {"i": 3, "aria": "", "text": "The Silent Keep\n872 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent bo"}, {"i": 4, "aria": "", "text": "The Archive of Truth\n891 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors hover:bg-accent bo"}, {"i": 5, "aria": "", "text": "New Chapter\n0 words", "html": "<button type=\"button\" data-testid=\"chapter-item\" class=\"w-full text-left px-4 py-3 rounded-md transition-colors bg-card shadow-sm "}, {"i": 6, "aria": "", "text": "New Chapter", "html": "<button type=\"button\" data-testid=\"new-chapter-btn\" class=\"w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary te"}, {"i": 7, "aria": "", "text": "Import chapters", "html": "<button type=\"button\" data-testid=\"import-chapters-btn\" class=\"mt-2 w-full rounded-md border border-border px-4 py-2 text-sm hover"}, {"i": 8, "aria": "", "text": "Analyze novel corpus", "html": "<button type=\"button\" data-testid=\"corpus-pass-btn\" class=\"mt-2 w-full rounded-md border border-border px-4 py-2 text-sm hover:bg-"}, {"i": 9, "aria": "Sign out", "text": "", "html": "<button type=\"button\" class=\"p-2 hover:bg-accent rounded-md transition-colors flex-shrink-0\" aria-label=\"Sign out\" data-audit-h-bt"}]
+
+--- API CALLS (delete attempt session) ---
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/settings/user -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/settings/user/tones -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+  GET http://localhost:3001/api/v1/export/formats -> 200
+  GET http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context -> 200
+  body: POST http://localhost:3001/api/v1/auth/refresh {}
+  body: POST http://localhost:3001/api/v1/auth/refresh {}
+  body: POST http://localhost:3001/api/v1/auth/refresh {}
+
+SCRATCH CHAPTER DELETED: False
+STATE: storage_state refreshed
+
+
+==============================================================================
+04e DELETE-API PROBE RUN
+==============================================================================
+==============================================================================
+HEADLESS UI AUDIT — 04e CHAPTER DELETE API PROBE
+==============================================================================
+IN-PAGE GET scratch chapter -> 401
+  body: {"detail":"Not authenticated"}
+IN-PAGE DELETE scratch chapter -> 401
+  body: {"detail":"Not authenticated"}
+DELETE endpoint did not return success — scratch chapter remains
+CHAPTER LIST AFTER: ["The Compass Points | 569 words", "Secrets Beneath Stone | 729 words", "The Silent Keep | 872 words", "The Archive of Truth | 891 words", "New Chapter | 0 words"]
+STATE: storage_state refreshed
+
+==============================================================================
+04e CAPTURE
+PAGE ERRORS: 0
+CONSOLE: 6
+  [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+  [log] [HMR] connected
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));c
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+NETWORK FAILURES: 3
+  - {'method': 'GET', 'url': 'http://localhost:3001/api/v1/auth/me', 'status': 401}
+  - {'method': 'GET', 'url': 'http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213', 'status': 401}
+  - {'method': 'DELETE', 'url': 'http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213', 'status': 401}
+API CALLS: 13
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+  GET http://localhost:3001/api/v1/export/formats -> 200
+  GET http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 401
+  DELETE http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 401
+
+
+==============================================================================
+04e DELETE-API PROBE RUN
+==============================================================================
+==============================================================================
+HEADLESS UI AUDIT — 04e CHAPTER DELETE API PROBE
+==============================================================================
+AUTH REFRESH -> 200
+IN-PAGE GET scratch chapter -> 401
+  body: {"detail":"Not authenticated"}
+IN-PAGE DELETE scratch chapter -> 401
+  body: {"detail":"Not authenticated"}
+DELETE endpoint did not return success — scratch chapter remains
+CHAPTER LIST AFTER: ["The Compass Points | 569 words", "Secrets Beneath Stone | 729 words", "The Silent Keep | 872 words", "The Archive of Truth | 891 words", "New Chapter | 0 words"]
+STATE: storage_state refreshed
+
+==============================================================================
+04e CAPTURE
+PAGE ERRORS: 0
+CONSOLE: 6
+  [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+  [log] [HMR] connected
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));c
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+NETWORK FAILURES: 3
+  - {'method': 'GET', 'url': 'http://localhost:3001/api/v1/auth/me', 'status': 401}
+  - {'method': 'GET', 'url': 'http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213', 'status': 401}
+  - {'method': 'DELETE', 'url': 'http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213', 'status': 401}
+API CALLS: 14
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+  GET http://localhost:3001/api/v1/export/formats -> 200
+  GET http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context -> 200
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 401
+  DELETE http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 401
+
+
+==============================================================================
+04e DELETE-API PROBE RUN
+==============================================================================
+==============================================================================
+HEADLESS UI AUDIT — 04e CHAPTER DELETE API PROBE (bearer-token based)
+==============================================================================
+AUTH REFRESH -> 200 body={"access_token":"REDACTED_JWT","refresh_token":"REDACTED_JWT
+TOKEN FOUND: True
+IN-PAGE GET scratch chapter -> 200
+  body: {"id":"df1bf4d1-2adb-4e8d-aae5-cc7553aa8213","novel_id":"4a53a95a-d9b6-4d35-b3e7-f6754cb59572","volume_id":null,"title":"New Chapter","content":"","summary":"","position":4,"word_count":0,"status":"draft","pov_character_id":"","timeline_position":"","created_at":"2026-10-11T19:34
+IN-PAGE DELETE scratch chapter -> 204
+  body:
+DELETE endpoint exists — scratch removed via API (UI affordance missing)
+CHAPTER LIST AFTER: ['The Compass Points | 569 words', 'Secrets Beneath Stone | 729 words', 'The Silent Keep | 872 words', 'The Archive of Truth | 891 words']
+STATE: storage_state refreshed
+
+==============================================================================
+04e CAPTURE
+PAGE ERRORS: 0
+CONSOLE: 8
+  [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+  [log] [HMR] connected
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));c
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+  [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+  [log] [HMR] connected
+  [warning] %c%s%c ⚠ Unsupported metadata colorScheme is configured in metadata export in /novel/[id]. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));c
+  [error] Failed to load resource: the server responded with a status of 401 (Unauthorized)
+NETWORK FAILURES: 2
+  - {'method': 'GET', 'url': 'http://localhost:3001/api/v1/auth/me', 'status': 401}
+  - {'method': 'GET', 'url': 'http://localhost:3001/api/v1/auth/me', 'status': 401}
+API CALLS: 25
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+  GET http://localhost:3001/api/v1/export/formats -> 200
+  GET http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context -> 200
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 200
+  DELETE http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/df1bf4d1-2adb-4e8d-aae5-cc7553aa8213 -> 204
+  GET http://localhost:3001/api/v1/auth/me -> 401
+  POST http://localhost:3001/api/v1/auth/refresh -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/auth/me -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/kb/entries?page_size=1 -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/volumes -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters -> 200
+  GET http://localhost:3001/api/v1/novels/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/chapters/156b20bd-6f95-4f0c-afe6-d5f58f311b5a -> 200
+  GET http://localhost:3001/api/v1/export/formats -> 200
+  GET http://localhost:3001/api/v1/adaptive/4a53a95a-d9b6-4d35-b3e7-f6754cb59572/context -> 200
+
+
+==============================================================================
+04f WORD-COUNT DISCREPANCY CHECK (API truth)
+==============================================================================
+GET /api/v1/novels/4a53a95a.../chapters/156b20bd... (bearer via refresh):
+  api_title            = "The Compass Points"
+  api_word_count_field = 569
+  content_actual_words = 592  (html-stripped)
+  content_tail         = "...a hidden door swung inward, revealing stairs that
+                          spiralled down beneath the academy into a darkness
+                          that seemed to breathe."
+VERDICT: typed paragraph fully persisted; word_count field STALE (569 vs 592) —
+not recomputed after the final content save (mid-typing autosave value stuck).
+Ghost-text note: the stray "s" seen in editor innerText was the ghost-text
+suggestion preview rendered inline (NOT part of saved content).
+
+FINAL STATE:
+  novels: 1 ("Audit Demo Novel", clean, id 4a53a95a-d9b6-4d35-b3e7-f6754cb59572)
+  chapters: 4 (scratch chapter df1bf4d1 deleted via API; UI affordance missing)
+  storage state refreshed: yes (/tmp/opencode/audit/state.json)
