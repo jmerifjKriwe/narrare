@@ -72,11 +72,11 @@ red/skip-marked form where useful).
 
 | Spec (new) | Features | Audit gates (findings) | Scope |
 |---|---|---|---|
-| test_ai_writing.py | WRITE-002/003/004/005/006/007/009 | B01 B02 B06 B08 B09 M06 | generate modes happy+empty-422+stream-death paths; extend/co-author/rewrite/unblock happy + apply/reject; ghost text accept/dismiss; WS session full flow |
+| test_ai_writing.py | WRITE-002/003/004/005/006/007/009 | B01 B02 B08 B09 M06 | generate modes happy+empty-422+stream-death paths; extend/co-author/rewrite/unblock happy + apply/reject; ghost text accept/dismiss; WS session full flow |
 | test_kb_management.py | KB-001/008/009 | B04 B06 M01 N14 N15 N16 | CRUD incl. detail view, graph render/interactions, merge flow, suggestions surface, extract single incl. storm-regression pin |
 | test_kb_ai.py | KB-002/003/004/005/007 + corpus | B03 B05 B06 | session interview, improve, consistency check, bulk + corpus estimate/status/results happy + cancel |
 | test_wiki.py | WIKI-001 | M11 | first-generation path, refresh, staleness lifecycle, chapter summary panel |
-| test_analysis.py | ANAL-001..005/007/008/009 | B07 M11? E03 N11 N12 N13 | per-analyzer happy path via mocks; beta-reader min-words boundary; readability honest-skip pin; voice family panels |
+| test_analysis.py | ANAL-001..005/007/008/009 | B07 E03 N11 N12 N13 | per-analyzer happy path via mocks; beta-reader min-words boundary; readability honest-skip pin; voice family panels |
 | test_import_export.py | SETUP-003, export | N18 | preview/adjustments/commit (already strong — pin it), export formats incl. download |
 | test_stats_budget.py | STATS-001/002 | M02 | analytics render + goals + cost dashboard + budget modes incl. banner trigger via mock |
 | test_volumes_scenes.py | WRITE-011, PLAN-001 | M09 M10 | volume CRUD/assign/reorder (+prefill pin), scenes CRUD + storyboard stages |
