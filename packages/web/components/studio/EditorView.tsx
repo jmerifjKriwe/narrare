@@ -8,7 +8,7 @@ import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
 import { crossfadeVariants } from "@/lib/motion-variants";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { UnblockPanel } from "./editor/UnblockPanel";
-import { useContinueStream } from "./editor/useContinueStream";
+import { CoAuthorOverlay } from "./editor-view/CoAuthorOverlay";
 import { EditorHeader } from "./editor-view/EditorHeader";
 import { EditorOverlays } from "./editor-view/EditorOverlays";
 import { EditorRightPanelSlot } from "./editor-view/EditorRightPanelSlot";
@@ -16,6 +16,7 @@ import { EditorEmptyState, EditorLoadingState } from "./editor-view/EditorStates
 import { EditorToolbar } from "./editor-view/EditorToolbar";
 import { EditorWorkspace } from "./editor-view/EditorWorkspace";
 import { useActiveEditorRightPanel } from "./editor-view/useActiveEditorRightPanel";
+import { useEditorAiEntryPoints } from "./editor-view/useEditorAiEntryPoints";
 import { useEditorChapterData } from "./editor-view/useEditorChapterData";
 import { useEditorCommandPalette } from "./editor-view/useEditorCommandPalette";
 import { useEditorGenerationActions } from "./editor-view/useEditorGenerationActions";
@@ -63,15 +64,14 @@ export function EditorView({ novelId }: EditorViewProps) {
     content: chapterData.content,
     handleAutosave: persistence.handleAutosave,
   });
-  // Continue-writing (extend) — single stream owner shared by toolbar,
-  // command palette, and slash commands (audit B08). Null-safe while the
-  // TipTap instance is being created. `activeChapterId` is null only in the
-  // empty-state branch, where neither the toolbar nor the palette — the only
-  // callers of these handlers — is mounted, so the "" fallback is unreachable.
-  const continueStream = useContinueStream({
+  // AI entry points (B08/B09): the continue stream (single owner shared by
+  // toolbar, palette, and slash commands) plus the co-author flow, joined
+  // into the workspace's slash handlers — see useEditorAiEntryPoints.
+  const ai = useEditorAiEntryPoints({
     editor,
-    chapterId: activeChapterId ?? "",
     novelId,
+    chapterId: activeChapterId ?? "",
+    handleAutosave: persistence.handleAutosave,
   });
   const commandPalette = useEditorCommandPalette({
     handleSave: persistence.handleSave,
@@ -79,8 +79,9 @@ export function EditorView({ novelId }: EditorViewProps) {
     handleStopGeneration: generationActions.handleStopGeneration,
     handleAcceptDraft: generationActions.handleAcceptDraft,
     handleRejectDraft: generationActions.handleRejectDraft,
-    handleStartExtend: continueStream.handleExtend,
+    handleStartExtend: ai.continueStream.handleExtend,
   });
+
   const activeRightPanel = useActiveEditorRightPanel(activeChapterId);
   useEditorUrlPanelSync({ activeRightPanel, openRightPanel });
 
@@ -131,9 +132,9 @@ export function EditorView({ novelId }: EditorViewProps) {
               openerRef.current = el;
             }}
             novelId={novelId}
-            onExtend={continueStream.handleExtend}
-            onExtendStop={continueStream.handleStop}
-            isExtendStreaming={continueStream.isStreaming}
+            onExtend={ai.continueStream.handleExtend}
+            onExtendStop={ai.continueStream.handleStop}
+            isExtendStreaming={ai.continueStream.isStreaming}
           />
           <div className="flex-1 flex min-h-0">
             <EditorWorkspace
@@ -143,6 +144,7 @@ export function EditorView({ novelId }: EditorViewProps) {
               content={chapterData.content}
               setContent={chapterData.setContent}
               handleAutosave={persistence.handleAutosave}
+              slashCommandHandlers={ai.slashCommandHandlers}
             />
             <div className="flex items-center">
               <UnblockPanel
@@ -188,6 +190,7 @@ export function EditorView({ novelId }: EditorViewProps) {
             toggleExtractionPanel={toggleExtractionPanel}
             queryClient={queryClient}
           />
+          <CoAuthorOverlay novelId={novelId} chapterId={activeChapterId} flow={ai.coAuthor} />
         </motion.div>
       )}
     </AnimatePresence>

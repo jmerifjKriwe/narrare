@@ -34,6 +34,18 @@ describe("useEditorCommandPalette", () => {
     expect(params.handleStartExtend).toHaveBeenCalledWith("short");
   });
 
+  it("binds no startRewrite no-op — rewrite stays controller-owned until a host wires it (B08 carry-forward)", () => {
+    const params = makeParams();
+    const { result } = renderHook(() => useEditorCommandPalette(params));
+
+    // The palette host (EditorView) does not own the rewrite flow — it lives
+    // inside TipTapEditor's controller (bubble menu + /rewrite). No silent
+    // no-op may be bound (RULE-11), and the rewrite palette command must be
+    // explicitly hidden via commandState.canRewrite = false until wired.
+    expect(result.current.commandContext.startRewrite).toBeUndefined();
+    expect(result.current.commandState.canRewrite).toBe(false);
+  });
+
   it("keeps the commandContext stable across re-renders with stable inputs", () => {
     const params = makeParams();
     const { result, rerender } = renderHook(() => useEditorCommandPalette(params));

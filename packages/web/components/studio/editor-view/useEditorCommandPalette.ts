@@ -50,7 +50,6 @@ export function useEditorCommandPalette({
       rejectDraft: handleRejectDraft,
       toggleGenerationPanel,
       startExtend: handleStartExtend,
-      startRewrite: () => {},
     }),
     [
       toggleSidebar,
@@ -74,6 +73,12 @@ export function useEditorCommandPalette({
       hasPendingAnnotation: false,
       hasSelection: false,
       selectionLength: 0,
+      // Rewrite is wired inside TipTapEditor's controller (bubble menu +
+      // `/rewrite` slash) and is not reachable from the palette host without
+      // hoisting the whole flow out of the editor surface. Keep the rewrite
+      // palette command explicitly hidden until a host-level handler exists —
+      // never a silent no-op (RULE-11; B08 carry-forward).
+      canRewrite: false,
     }),
     [isGenerating, draftText],
   );

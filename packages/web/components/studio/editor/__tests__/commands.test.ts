@@ -27,6 +27,7 @@ const defaultState = {
   hasPendingAnnotation: false,
   hasSelection: false,
   selectionLength: 0,
+  canRewrite: false,
 };
 
 describe("builtInCommands", () => {
@@ -268,25 +269,61 @@ describe("builtInCommands", () => {
     expect(continueCmd.isVisible!({ ...defaultState, isGenerating: true })).toBe(false);
   });
 
-  it("rewrite-selection is only visible with valid selection length", () => {
+  it("rewrite-selection is only visible when wired and with valid selection length", () => {
     const rewriteCmd = builtInCommands.find((c) => c.id === "rewrite-selection")!;
+    // B08 carry-forward: the palette host does not own the rewrite flow
+    // (controller-owned inside TipTapEditor), so the command stays hidden
+    // until a host wires it — even with a perfectly valid selection.
     expect(
       rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 100 }),
+    ).toBe(false);
+    expect(
+      rewriteCmd.isVisible!({
+        ...defaultState,
+        canRewrite: true,
+        hasSelection: true,
+        selectionLength: 100,
+      }),
     ).toBe(true);
     expect(
-      rewriteCmd.isVisible!({ ...defaultState, hasSelection: false, selectionLength: 0 }),
+      rewriteCmd.isVisible!({
+        ...defaultState,
+        canRewrite: true,
+        hasSelection: false,
+        selectionLength: 0,
+      }),
     ).toBe(false);
     expect(
-      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 30 }),
+      rewriteCmd.isVisible!({
+        ...defaultState,
+        canRewrite: true,
+        hasSelection: true,
+        selectionLength: 30,
+      }),
     ).toBe(false);
     expect(
-      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 2500 }),
+      rewriteCmd.isVisible!({
+        ...defaultState,
+        canRewrite: true,
+        hasSelection: true,
+        selectionLength: 2500,
+      }),
     ).toBe(false);
     expect(
-      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 50 }),
+      rewriteCmd.isVisible!({
+        ...defaultState,
+        canRewrite: true,
+        hasSelection: true,
+        selectionLength: 50,
+      }),
     ).toBe(true);
     expect(
-      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 2000 }),
+      rewriteCmd.isVisible!({
+        ...defaultState,
+        canRewrite: true,
+        hasSelection: true,
+        selectionLength: 2000,
+      }),
     ).toBe(true);
   });
 });

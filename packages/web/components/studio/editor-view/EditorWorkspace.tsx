@@ -7,6 +7,7 @@ export function EditorWorkspace({
   content,
   setContent,
   handleAutosave,
+  slashCommandHandlers,
 }: EditorSurfaceProps) {
   return (
     <div className="flex-1 overflow-y-auto">
@@ -18,6 +19,7 @@ export function EditorWorkspace({
           autosaveInterval={30_000}
           chapterId={activeChapterId}
           novelId={novelId}
+          slashCommandHandlers={slashCommandHandlers}
         />
       </div>
     </div>
