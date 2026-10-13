@@ -78,7 +78,9 @@ def complete_wizard(
 
     # Step 2: starter card selection (positional among aria-pressed cards).
     cards = page.locator("button[aria-pressed]")
-    cards.wait_for(state="visible", timeout=_STEP_TIMEOUT_MS)
+    # .first — Locator.wait_for is strict: a bare multi-match locator
+    # (5 starter cards) throws a strict-mode violation instead of waiting.
+    cards.first.wait_for(state="visible", timeout=_STEP_TIMEOUT_MS)
     card = cards.nth(_STARTER_CARD_INDEX[starter])
     card.click()
     page.wait_for_function(
@@ -128,7 +130,14 @@ def complete_wizard(
     active_indicator.first.wait_for(state="visible", timeout=_STEP_TIMEOUT_MS)
 
     if page.locator('[data-testid="wizard-step-4"][aria-current="step"]').count():
-        # Step 4: provider (mocked) — wait until Next is enabled (model selected).
+        # Step 4: provider (mocked). The model-list effect only fires once
+        # the API key has >8 chars (useProviderSetup.ts) — a fresh user's
+        # key is empty, so fill a dummy key first: BOTH the models listing
+        # and the validation POST are browser-mocked (setup_llm_mocks), so
+        # the fetch resolves, auto-selects the first model, and enables Next.
+        api_key_input = page.locator("#api_key").first
+        if api_key_input.count():
+            api_key_input.fill("sk-e2e-mock-dummy-key")
         page.wait_for_function(
             "document.querySelector('[data-testid=\"wizard-next\"]')"
             " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",

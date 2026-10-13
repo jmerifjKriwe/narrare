@@ -25,24 +25,24 @@ from typing import TYPE_CHECKING, Any
 import pytest
 import requests as http_requests
 
+from tests.e2e.config import API_URL, BASE_URL, DEV_EMAIL, DEV_PASSWORD
+
+# Re-exported so pytest discovers the foundation fixtures for tests/e2e/
+# specs. Defined in tests/e2e/foundation.py (RULE-04: conftest hard size
+# limit) — the public fixture API is unchanged.
+from tests.e2e.foundation import (  # noqa: F401 — re-export for fixture discovery
+    _validate_mock_catalog,
+    module_stable_user,
+    stable_novel,
+    stable_user,
+    verify_e2e_environment,
+)
 from tests.e2e.http_session import build_api_session
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from playwright.sync_api import Browser, Page
-
-
-# ---------------------------------------------------------------------------
-# URLs
-# ---------------------------------------------------------------------------
-
-BASE_URL = os.environ.get("E2E_BASE_URL", "http://localhost:3000")
-API_URL = os.environ.get("E2E_API_URL", "http://localhost:8000")
-
-# Dev user credentials (seeded by scripts/seed_dev_user.py)
-DEV_EMAIL = "dev@narrare.dev"
-DEV_PASSWORD = "narrare-dev"
 
 
 # ---------------------------------------------------------------------------
