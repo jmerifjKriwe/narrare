@@ -1,10 +1,14 @@
 """Novel factory: wizard completion + volume/chapter API setup (spec §4).
 
-``complete_wizard`` drives the CURRENT 5-step wizard (WizardShell.tsx):
+``complete_wizard`` drives the CURRENT wizard (WizardShell.tsx):
 1 project name + language · 2 starter selection (blank/import/demo cards,
    ``button[aria-pressed]`` in render order) · 3 novel details
    (``#novel_title``) · 4 provider (LLM-mocked, Next disabled until a model
    auto-selects) · 5 complete → editor redirect.
+
+Variant-aware: users WITHOUT configured providers get all 5 steps; users WITH
+providers get 4 (the AI-Provider step is omitted — indicators render
+1/2/3/5 and step 3 jumps straight to confirm). Both variants complete.
 
 The page must ALREADY be logged in (compose with audit_user helpers or the
 conftest stable_* fixtures) — the factory owns no auth concerns (RULE-04).
@@ -90,7 +94,20 @@ def complete_wizard(
             state="visible", timeout=_STEP_TIMEOUT_MS
         )
         page.set_input_files("#import-file-input", str(import_file))
-        page.wait_for_timeout(500)  # client-side parse + onSelectionChange
+        # Server preview decides the outcome: rows render (success) or the
+        # panel shows role="alert" (failure). A blind sleep here let a failed
+        # preview slip through as a silently EMPTY novel (false-green).
+        outcome = page.locator(
+            '[data-testid="import-preview-panel"] ul li, '
+            '[data-testid="import-preview-panel"] p[role="alert"]'
+        )
+        outcome.first.wait_for(state="visible", timeout=_STEP_TIMEOUT_MS)
+        alert = page.locator('[data-testid="import-preview-panel"] p[role="alert"]')
+        if alert.count():
+            raise ValueError(f"Import preview failed: {alert.first.inner_text().strip()}")
+        page.locator('[data-testid="import-preview-panel"] ul li').first.wait_for(
+            state="visible", timeout=_STEP_TIMEOUT_MS
+        )  # ≥1 previewed chapter — never complete an empty import
     _click_next(page, expected_step=3)
 
     # Step 3: novel details — fill title ONLY when not prefilled (N17-neutral).
@@ -98,29 +115,36 @@ def complete_wizard(
     title_input.wait_for(state="visible", timeout=_STEP_TIMEOUT_MS)
     if not title_input.input_value():
         title_input.fill(novel_title)
-    _click_next(page, expected_step=4)
-
-    # Step 4: provider (mocked) — wait until Next is enabled (model selected).
-    page.wait_for_function(
-        "document.querySelector('[data-testid=\"wizard-next\"]')"
-        " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
-        timeout=_REDIRECT_TIMEOUT_MS,
-    )
     _click_next(page)
 
-    # Step 5: complete → editor redirect.
+    # Variant branch (WizardShell.tsx): users WITHOUT configured providers get
+    # the 5-step flow — step 3 advances to the provider step (4). Users WITH
+    # providers get indicators 1/2/3/5 only (no wizard-step-4 testid exists)
+    # and step 3 jumps straight to confirm (5). Wait for whichever activates.
+    active_indicator = page.locator(
+        '[data-testid="wizard-step-4"][aria-current="step"], '
+        '[data-testid="wizard-step-5"][aria-current="step"]'
+    )
+    active_indicator.first.wait_for(state="visible", timeout=_STEP_TIMEOUT_MS)
+
+    if page.locator('[data-testid="wizard-step-4"][aria-current="step"]').count():
+        # Step 4: provider (mocked) — wait until Next is enabled (model selected).
+        page.wait_for_function(
+            "document.querySelector('[data-testid=\"wizard-next\"]')"
+            " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
+            timeout=_REDIRECT_TIMEOUT_MS,
+        )
+        _click_next(page)
+    # else variant B: confirm step (5) is already active — no provider step.
+
+    # Step 5: complete → editor redirect. useWizardCompletion always pushes
+    # /novel/{novel_id} (a "/dashboard" landing is impossible — it 404s), so
+    # the previous dashboard-fallback branch was dead code (fix round 1).
     page.locator('[data-testid="wizard-complete"]').first.wait_for(
         state="visible", timeout=_REDIRECT_TIMEOUT_MS
     )
     page.locator('[data-testid="wizard-complete"]').first.click()
-    page.wait_for_url(
-        lambda url: "/novel/" in url or "/dashboard" in url, timeout=_REDIRECT_TIMEOUT_MS
-    )
-    if "/novel/" not in page.url:
-        page.wait_for_timeout(1_000)
-        novel_link = page.locator('a[href*="/novel/"]').first
-        novel_link.click()
-        page.wait_for_url(lambda url: "/novel/" in url, timeout=_REDIRECT_TIMEOUT_MS)
+    page.wait_for_url(lambda url: "/novel/" in url, timeout=_REDIRECT_TIMEOUT_MS)
 
     match = re.search(r"/novel/([a-f0-9-]+)", page.url)
     if not match:
