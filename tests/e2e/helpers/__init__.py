@@ -7,6 +7,13 @@ One responsibility per module (RULE-04):
 - novel_factory— wizard completion + volume/chapter API setup
 """
 
+from tests.e2e.helpers.audit_user import (
+    attach_session,
+    build_stable_session,
+    login_via_api,
+    register_user_via_ui,
+    wait_logged_in,
+)
 from tests.e2e.helpers.llm_mocks import mock_llm
 from tests.e2e.helpers.probes import (
     PROVIDER_HOSTS,
@@ -21,8 +28,13 @@ __all__ = [
     "PROVIDER_HOSTS",
     "ConsoleCapture",
     "NetworkCapture",
+    "attach_session",
+    "build_stable_session",
     "capture_console",
     "capture_network",
     "dump_a11y",
+    "login_via_api",
     "mock_llm",
+    "register_user_via_ui",
+    "wait_logged_in",
 ]
