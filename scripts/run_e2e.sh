@@ -82,7 +82,14 @@ export NARRARE_E2E_TEST=1                     # → all LLM factories return pyd
 export ANTHROPIC_API_KEY=sk-test-dummy        # required by settings validation; unused under NARRARE_E2E_TEST
 export OPENAI_API_KEY=sk-test-dummy
 export NARRARE_ENCRYPTION_KEY=WYcr1iULJse2Oo6GPpmw1Au4ovp_fXZwbrNF11C12ZQ=
-export AUTH_JWT_SECRET=test-secret-key-not-for-production   # must match backend SECRET_KEY for JWT verify
+# E01 (2026-10-11 audit): the Next.js proxy (packages/web/proxy.ts) verifies
+# the narrare_auth cookie with AUTH_JWT_SECRET ?? SECRET_KEY ?? dev-default.
+# If the web process does NOT inherit this env (e.g. a standalone `pnpm dev`
+# start), EVERY protected navigation bounces to /login. Both services below
+# inherit this export; the guard fails loudly on an empty override, and
+# tests/e2e/test_environment_smoke.py pins the runtime behaviour.
+export AUTH_JWT_SECRET="${AUTH_JWT_SECRET-test-secret-key-not-for-production}"   # must match backend SECRET_KEY for JWT verify
+: "${AUTH_JWT_SECRET:?AUTH_JWT_SECRET must not be empty — proxy verify would bounce every navigation to /login (E01)}"
 export NEXT_PUBLIC_API_URL=http://localhost:8000
 export E2E_BASE_URL=http://localhost:3000
 export E2E_API_URL=http://localhost:8000
@@ -193,6 +200,43 @@ check_browser_deps() {
 EOF
     return 1
   fi
+}
+
+# ---------------------------------------------------------------------------
+# browser-presence preflight (audit risk: playwright cache drift)
+# ---------------------------------------------------------------------------
+check_browser_present() {
+  # The Python playwright package (uv.lock) pins ONE exact Chromium build.
+  # A stale/different cached build (audit: chromium-1243 cached vs the pinned
+  # one) launches fine on libs but fails at binary resolve. Probe a real
+  # headless launch — version-agnostic, catches corruption, ~1-2s.
+  log "  browser presence: probing pinned Playwright Chromium launch"
+  if ! ( cd "$REPO_ROOT" && uv run python - <<'PY'
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    browser.close()
+PY
+  ) >/dev/null 2>&1; then
+    err "Playwright Chromium is missing or not launchable."
+    cat >&2 <<'EOF'
+
+   Install the exact build pinned by the Python playwright package:
+
+     uv run playwright install chromium
+
+   If a WRONG build lingers in the cache (audit saw chromium-1243 vs the
+   pinned one), inspect and prune it first:
+
+     ls ~/.cache/ms-playwright/
+     uv run playwright install chromium --dry-run   # shows the expected build
+
+   Then re-run:  just e2e
+EOF
+    return 1
+  fi
+  log "  browser present: pinned Chromium launches headless"
 }
 
 # ---------------------------------------------------------------------------
@@ -311,6 +355,7 @@ log "  frontend mode: $E2E_FRONTEND_MODE  (override with E2E_FRONTEND_MODE=build
 preflight_services
 preflight_ports_free
 check_browser_deps
+check_browser_present
 
 log "Database: alembic upgrade head  (DB: narrare_test on :$PG_TEST_PORT)"
 ( cd "$API_DIR" && uv run alembic upgrade head )
@@ -375,11 +420,16 @@ fi
 # ---------------------------------------------------------------------------
 # run E2E tests — CI's exact invocation (timeout 300s, thread method)
 # ---------------------------------------------------------------------------
-log "Running E2E tests: pytest tests/e2e/ -v -m e2e --timeout=300 --timeout-method=thread"
+# Subset lever for suite growth (spec §4): default is the full suite — the
+# CI job's exact invocation. Override per run for triage or single-spec work:
+#   E2E_PYTEST_ARGS="tests/e2e/test_settings_persistence.py" just e2e
+E2E_PYTEST_ARGS="${E2E_PYTEST_ARGS:-tests/e2e/}"
+log "Running E2E tests: pytest $E2E_PYTEST_ARGS -v -m e2e --timeout=300 --timeout-method=thread"
 echo ""
 # Temporarily disable `set -e` so pytest's exit code is captured, not swallowed.
 set +e
-( cd "$REPO_ROOT" && uv run pytest tests/e2e/ -v -m e2e --timeout=300 --timeout-method=thread )
+# shellcheck disable=SC2086 — intentional word splitting: E2E_PYTEST_ARGS may carry multiple paths/options
+( cd "$REPO_ROOT" && uv run pytest $E2E_PYTEST_ARGS -v -m e2e --timeout=300 --timeout-method=thread )
 PYTEST_RC=$?
 set -e
 echo ""

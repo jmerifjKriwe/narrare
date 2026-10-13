@@ -1223,6 +1223,7 @@ These test that functions handle arbitrary input correctly.
 > **CI:** Main branch only — full stack (API + Frontend + PostgreSQL)
 > **Run time target:** < 5 minutes total
 > **Current status:** ~28 tests passing (snapshot 2026-07-09), implemented in Phase 5 — re-measurable via `pytest tests/e2e/ --collect-only -q`
+> **Suite foundation (runner, helpers, mock catalog, shared fixtures):** see [End-to-End (E2E)](#end-to-end-e2e) below.
 
 ### Infrastructure — `NARRARE_E2E_TEST` Mode
 
@@ -1333,6 +1334,71 @@ just test-e2e
 # Run specific test
 uv run pytest tests/e2e/test_auth_flow.py -v -m e2e --timeout=60
 ```
+
+---
+
+## End-to-End (E2E)
+
+Scope: full-stack browser tests against API + DB + frontend with ALL AI
+functions deterministically mocked (`tests/e2e/`, marker `e2e`). Not part of
+default runs; the nightly + manual-dispatch CI `test-e2e` job runs the suite.
+
+### Runner
+
+- Canonical entry: `just e2e` → `scripts/run_e2e.sh` (CI-faithful:
+  `narrare_test` DB on :5433, migrate+seed, `ENVIRONMENT=test`, CSRF off,
+  `NARRARE_E2E_TEST=1`, cleanup trap; browser-presence preflight; requires
+  :3000/:8000 free (fail-fast, no auto-kill)).
+- Subsets: `E2E_PYTEST_ARGS="tests/e2e/test_<area>.py" just e2e`.
+- Frontend mode: `E2E_FRONTEND_MODE=build just e2e` (CI-exact standalone).
+- Env lever (E01): `AUTH_JWT_SECRET` MUST be exported to the web process —
+  the Next.js proxy verifies `narrare_auth` with it. The runner exports it;
+  standalone web starts do not inherit it (every navigation bounces to
+  /login). Pinned by `tests/e2e/test_environment_smoke.py`.
+
+### AI mocking (two layers)
+
+1. Factory layer: `NARRARE_E2E_TEST=1` → `pydantic_ai.TestModel` for all
+   providers (tolerance-loose surfaces: chat, WS, ghost text, …).
+2. Browser layer: the deterministic catalog (`tests/e2e/mocks/catalog*.py`)
+   for validator-strict surfaces (audit E04). Install per capability:
+
+   ```python
+   from tests.e2e.helpers import mock_llm
+   mock_llm(page, "generation_stream")                    # happy
+   mock_llm(page, "coreference_stream", fixture="error")  # failure path
+   ```
+
+   Catalog contract (spec §10): every entry validates against the real app
+   pydantic models — enforced at session start (conftest
+   (`tests/e2e/foundation.py`) `_validate_mock_catalog`) and in
+   `tests/unit/test_e2e_mock_catalog.py`.
+   Adding an entry = fixture constant + `RouteSpec` + module `validate()`
+   case + unit test, in the same commit.
+
+### Helper package (`tests/e2e/helpers/`)
+
+| Module | Use |
+|---|---|
+| `probes` | `capture_console` / `capture_network` / `dump_a11y` + assertions (incl. `assert_no_provider_calls`) |
+| `llm_mocks` | `mock_llm(page, capability, fixture=…)` |
+| `audit_user` | `register_user_via_ui`, `build_stable_session`, `wait_logged_in` |
+| `novel_factory` | `complete_wizard` (blank/import/demo starters), `create_volume_via_api`, `create_chapter_via_api` |
+
+Shared fixtures (conftest (`tests/e2e/foundation.py`)): `stable_user` (fresh
+user registered through the real `/register` form + deterministic session;
+function-scoped isolation default), `module_stable_user` (one UI
+registration shared per spec module — only when no test mutates user-level
+state), `stable_novel` (+ wizard-created novel in the editor). All
+registration goes through the UI (PO 2026-10-13). Prefer these over
+hand-rolled login/wizard flows — they are the mitigation for the auth-race
+flake class (N06).
+
+### When to add an E2E spec
+
+Add here ONLY browser-visible behaviour that needs the full stack. Contract
+drift belongs in integration tests; component behaviour in vitest. Track
+coverage in `docs/development/e2e-coverage.md` (spec §5 matrix).
 
 ---
 

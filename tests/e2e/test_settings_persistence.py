@@ -4,24 +4,18 @@ Covers: settings page loading, tab navigation, novel detail persistence
 across page reloads.
 
 All LLM responses are mocked via page.route() — no real API tokens consumed.
-Runs against the full stack (API port 8000, Frontend port 3000).
+Runs against the full stack (URLs via E2E_BASE_URL / E2E_API_URL, see
+tests/e2e/config.py). Sessions come from the foundation ``stable_novel``
+fixture (deterministic logged-in state; nightly-38231495215 triage).
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.e2e.test_helpers import (
-    _complete_wizard_to_editor,
-    _setup_auth_proxy,
-    goto_with_retry,
-)
-
-if TYPE_CHECKING:
-    from playwright.sync_api import Page
+from tests.e2e.test_helpers import goto_with_retry
 
 
 @pytest.mark.e2e
@@ -30,14 +24,12 @@ class TestSettingsPersistence:
 
     def test_settings_novel_details_persist_after_reload(
         self,
-        page: Page,
+        stable_novel,
         base_url: str,
-        register_unique_user,
     ) -> None:
         """Changing novel title in settings persists after page reload."""
-        result = _complete_wizard_to_editor(page, base_url, register_unique_user)
-        _setup_auth_proxy(page, result["access_token"])
-        novel_id = result["novel_id"]
+        page = stable_novel.page
+        novel_id = stable_novel.novel_id
 
         # Navigate to settings
         goto_with_retry(page, f"{base_url}/novel/{novel_id}/settings")
@@ -120,37 +112,80 @@ class TestSettingsPersistence:
         else:
             pytest.skip("Title input not found after reload — page may have changed")
 
-    def test_settings_general_tab_renders(
-        self,
-        page: Page,
-        base_url: str,
-        register_unique_user,
-    ) -> None:
-        """Settings page loads with tabs and content."""
-        result = _complete_wizard_to_editor(page, base_url, register_unique_user)
-        _setup_auth_proxy(page, result["access_token"])
-        novel_id = result["novel_id"]
+    @pytest.mark.xfail(
+        reason=(
+            "nightly-38231495215 (Branch C, product regression): Settings → AI tab "
+            "bounces authenticated users to /login — GET /settings/token-limits/ is "
+            "308-slash-stripped by the Next.js rewrite, re-307'd by the API with an "
+            "absolute http://localhost:8000 Location, the cross-origin redirect "
+            "strips Authorization (fetch spec), and the post-refresh retry 401s "
+            "again → core.ts dead-session bounce. Product fix lands in a separate "
+            "slice; strict=True turns this into CI failure the moment the fix "
+            "lands (XPASS), forcing mark removal."
+        ),
+        strict=True,
+    )
+    def test_settings_general_tab_renders(self, stable_novel, base_url: str) -> None:
+        """Settings page loads with tabs and content (nightly 38231495215 triage).
 
-        goto_with_retry(page, f"{base_url}/novel/{novel_id}/settings")
+        BRANCH C VERDICT (2026-10-13 triage, live stack): PRODUCT REGRESSION,
+        not tab drift and not test-side session fragility. The tab list
+        itself is correct — the strict 9-tab assertion below PASSES — and
+        the AI tab then deterministically bounces the authenticated user
+        to /login (observed 3/3 runs, also reproduced outside pytest):
+
+        GET /api/v1/settings/token-limits/ (canonical slash-ful client URL)
+          → Next.js rewrite/trailingSlash normalization 308-strips the slash
+          → API redirect_slashes answers 307 with ABSOLUTE Location
+            http://localhost:8000/api/v1/settings/token-limits/ (internal
+            origin leaked through the Next rewrite)
+          → browser follows the cross-origin redirect and strips the
+            Authorization header (fetch spec) → 401
+          → core.ts refreshes (200) and retries → same chain → 401 again
+          → "refresh succeeded but retry still unauthorized — dead session"
+            → window.location.href = "/login" (N06-class hard bounce)
+
+        The tab walk below trips it at the ai → prompts transition, so this
+        spec is pinned red via xfail(strict=True) until the product fix
+        (relative redirect Location and/or slash-preserving rewrite) lands
+        in a separate slice. Mark removal is the fix's regression gate:
+        when the bounce is gone this test XPASSes and strict=True fails CI
+        until the mark is dropped.
+        """
+        page = stable_novel.page
+        goto_with_retry(page, f"{base_url}/novel/{stable_novel.novel_id}/settings")
         page.wait_for_timeout(2000)
 
-        # Verify settings page loaded (not redirected to login)
         assert "/settings" in page.url, f"Expected settings URL, got: {page.url}"
+        assert "/login" not in page.url, (
+            "Session bounced mid-navigation (N06 class) — stable_novel should "
+            "make this impossible; treat as a product regression, not a flake."
+        )
 
-        # Check that at least one tab is visible
+        # SSOT: packages/web/components/studio/settings/settings-view-config.ts
+        expected_tabs = [
+            "novel-details",
+            "general",
+            "writing",
+            "ai",
+            "prompts",
+            "kb-templates",
+            "learning",
+            "shortcuts",
+            "about",
+        ]
         tab_buttons = page.locator('button[data-testid^="settings-tab-"]')
-        if tab_buttons.count() == 0:
-            # Fallback: try generic tab / nav buttons
-            tab_buttons = page.locator("button[role='tab'], nav button")
+        rendered_ids = [
+            tab_buttons.nth(i).get_attribute("data-testid").removeprefix("settings-tab-")
+            for i in range(tab_buttons.count())
+        ]
+        assert rendered_ids == expected_tabs, (
+            f"Settings tabs drifted from settings-view-config.ts: rendered "
+            f"{rendered_ids}, expected {expected_tabs}"
+        )
 
-        assert tab_buttons.count() > 0, "Expected at least one settings tab"
-
-        # Click through each tab and verify content changes
-        tab_count = min(tab_buttons.count(), 5)
-        for i in range(tab_count):
+        for i in range(tab_buttons.count()):
             tab = tab_buttons.nth(i)
-            if tab.is_visible():
-                tab_text = tab.inner_text()
-                tab.click()
-                page.wait_for_timeout(500)
-                print(f"  Tab '{tab_text}': content loaded OK")
+            tab.wait_for(state="visible", timeout=10_000)
+            tab.click()
+            page.wait_for_timeout(300)
