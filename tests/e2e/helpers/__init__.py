@@ -7,6 +7,7 @@ One responsibility per module (RULE-04):
 - novel_factory— wizard completion + volume/chapter API setup
 """
 
+from tests.e2e.helpers.llm_mocks import mock_llm
 from tests.e2e.helpers.probes import (
     PROVIDER_HOSTS,
     ConsoleCapture,
@@ -23,4 +24,5 @@ __all__ = [
     "capture_console",
     "capture_network",
     "dump_a11y",
+    "mock_llm",
 ]
