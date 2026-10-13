@@ -1341,13 +1341,14 @@ uv run pytest tests/e2e/test_auth_flow.py -v -m e2e --timeout=60
 
 Scope: full-stack browser tests against API + DB + frontend with ALL AI
 functions deterministically mocked (`tests/e2e/`, marker `e2e`). Not part of
-default runs; the existing main/nightly CI `test-e2e` job runs the suite.
+default runs; the nightly + manual-dispatch CI `test-e2e` job runs the suite.
 
 ### Runner
 
 - Canonical entry: `just e2e` → `scripts/run_e2e.sh` (CI-faithful:
   `narrare_test` DB on :5433, migrate+seed, `ENVIRONMENT=test`, CSRF off,
-  `NARRARE_E2E_TEST=1`, cleanup trap; browser-presence preflight).
+  `NARRARE_E2E_TEST=1`, cleanup trap; browser-presence preflight; requires
+  :3000/:8000 free (fail-fast, no auto-kill)).
 - Subsets: `E2E_PYTEST_ARGS="tests/e2e/test_<area>.py" just e2e`.
 - Frontend mode: `E2E_FRONTEND_MODE=build just e2e` (CI-exact standalone).
 - Env lever (E01): `AUTH_JWT_SECRET` MUST be exported to the web process —
@@ -1370,7 +1371,8 @@ default runs; the existing main/nightly CI `test-e2e` job runs the suite.
 
    Catalog contract (spec §10): every entry validates against the real app
    pydantic models — enforced at session start (conftest
-   `_validate_mock_catalog`) and in `tests/unit/test_e2e_mock_catalog.py`.
+   (`tests/e2e/foundation.py`) `_validate_mock_catalog`) and in
+   `tests/unit/test_e2e_mock_catalog.py`.
    Adding an entry = fixture constant + `RouteSpec` + module `validate()`
    case + unit test, in the same commit.
 
@@ -1383,13 +1385,14 @@ default runs; the existing main/nightly CI `test-e2e` job runs the suite.
 | `audit_user` | `register_user_via_ui`, `build_stable_session`, `wait_logged_in` |
 | `novel_factory` | `complete_wizard` (blank/import/demo starters), `create_volume_via_api`, `create_chapter_via_api` |
 
-Shared fixtures (conftest): `stable_user` (fresh user registered through
-the real `/register` form + deterministic session; function-scoped
-isolation default), `module_stable_user` (one UI registration shared per
-spec module — only when no test mutates user-level state), `stable_novel`
-(+ wizard-created novel in the editor). All registration goes through the
-UI (PO 2026-10-13). Prefer these over hand-rolled login/wizard flows —
-they are the mitigation for the auth-race flake class (N06).
+Shared fixtures (conftest (`tests/e2e/foundation.py`)): `stable_user` (fresh
+user registered through the real `/register` form + deterministic session;
+function-scoped isolation default), `module_stable_user` (one UI
+registration shared per spec module — only when no test mutates user-level
+state), `stable_novel` (+ wizard-created novel in the editor). All
+registration goes through the UI (PO 2026-10-13). Prefer these over
+hand-rolled login/wizard flows — they are the mitigation for the auth-race
+flake class (N06).
 
 ### When to add an E2E spec
 
