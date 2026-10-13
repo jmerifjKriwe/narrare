@@ -15,6 +15,16 @@ from tests.e2e.helpers.audit_user import (
     wait_logged_in,
 )
 from tests.e2e.helpers.llm_mocks import mock_llm
+from tests.e2e.helpers.novel_factory import (
+    STARTER_BLANK,
+    STARTER_DEMO_FANTASY,
+    STARTER_DEMO_GERMAN,
+    STARTER_DEMO_SCIFI,
+    STARTER_IMPORT,
+    complete_wizard,
+    create_chapter_via_api,
+    create_volume_via_api,
+)
 from tests.e2e.helpers.probes import (
     PROVIDER_HOSTS,
     ConsoleCapture,
@@ -26,12 +36,20 @@ from tests.e2e.helpers.probes import (
 
 __all__ = [
     "PROVIDER_HOSTS",
+    "STARTER_BLANK",
+    "STARTER_DEMO_FANTASY",
+    "STARTER_DEMO_GERMAN",
+    "STARTER_DEMO_SCIFI",
+    "STARTER_IMPORT",
     "ConsoleCapture",
     "NetworkCapture",
     "attach_session",
     "build_stable_session",
     "capture_console",
     "capture_network",
+    "complete_wizard",
+    "create_chapter_via_api",
+    "create_volume_via_api",
     "dump_a11y",
     "login_via_api",
     "mock_llm",
