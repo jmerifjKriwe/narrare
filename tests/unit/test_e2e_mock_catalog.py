@@ -47,6 +47,57 @@ class TestSseWellformedness:
             assert_sse_body_wellformed("data: {not json}\n\ndata: [DONE]\n\n")
 
 
+class TestAnalysisEntries:
+    def test_coreference_happy_envelope_validates_against_real_model(self) -> None:
+        from narrare.analysis.schemas_coreference import CoreferenceStreamEvent
+
+        spec = entries_for("coreference_stream", "happy")[0]
+        events = assert_sse_body_wellformed(spec.body)
+        for event in events:
+            CoreferenceStreamEvent.model_validate(event)
+        assert events[-1]["event"] == "done"
+
+    def test_character_voice_happy_has_progress_result_done(self) -> None:
+        from narrare.analysis.schemas_character_voice import CharacterVoiceStreamEvent
+
+        spec = entries_for("character_voice_stream", "happy")[0]
+        events = assert_sse_body_wellformed(spec.body)
+        for event in events:
+            CharacterVoiceStreamEvent.model_validate(event)
+        kinds = [e["event"] for e in events]
+        assert kinds[0] == "progress"
+        assert kinds.count("result") >= 1
+        assert kinds[-1] == "done"
+
+    def test_beta_reader_fixture_validates_and_excludes_deep_dive(self) -> None:
+        spec = entries_for("beta_reader", "happy")[0]
+        assert spec.url_exclude == "/deep-dive"
+        from narrare.analysis.schemas import BetaReaderResponse
+
+        BetaReaderResponse.model_validate_json(spec.body)
+
+    def test_consistency_result_validates_and_stream_excluded_from_check(self) -> None:
+        json_spec = entries_for("consistency_check", "happy")[0]
+        assert json_spec.url_exclude == "/stream"
+        from narrare.consistency.schemas import ConsistencyResponse
+
+        ConsistencyResponse.model_validate_json(json_spec.body)
+
+        sse_spec = entries_for("consistency_stream", "happy")[0]
+        events = assert_sse_body_wellformed(sse_spec.body)
+        assert events[0]["type"] == "stage"
+        assert events[-1]["type"] == "result"
+
+
+class TestKbWikiEntries:
+    def test_extraction_and_improve_exclude_sibling_routes(self) -> None:
+        assert entries_for("kb_extraction", "happy")[0].url_exclude == "/extract/bulk"
+        assert entries_for("kb_improve", "happy")[0].url_exclude == "/improve/apply"
+
+    def test_full_catalog_validates(self) -> None:
+        validate_catalog()
+
+
 class TestWritingEntries:
     def test_generation_stream_has_happy_and_error_variants(self) -> None:
         assert {s.variant for s in entries_for("generation_stream", "happy")} == {"happy"}
