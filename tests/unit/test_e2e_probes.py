@@ -53,7 +53,7 @@ class _FakePage:
 
     def __init__(self) -> None:
         self.listeners: dict[str, list[Any]] = {}
-        self.a11y_snapshot: dict[str, Any] | None = None
+        self.cdp_axtree: dict[str, Any] | None = None
 
     def on(self, event: str, handler: Any) -> None:
         self.listeners.setdefault(event, []).append(handler)
@@ -73,7 +73,10 @@ class _FakePage:
                 class _CdpSession:
                     def send(self, method: str) -> Any:
                         assert method == "Accessibility.getFullAXTree"
-                        return page.a11y_snapshot
+                        return page.cdp_axtree
+
+                    def detach(self) -> None:
+                        pass
 
                 return _CdpSession()
 
@@ -140,6 +143,23 @@ class TestNetworkCapture:
         with pytest.raises(AssertionError, match="real LLM provider"):
             capture.assert_no_provider_calls()
 
+    def test_first_party_zai_host_calls_flagged(self) -> None:
+        # Explicit regression for the first-party "zai" provider host, using
+        # the real adapter URL shape (see _ZAI_GENERAL_URL in
+        # packages/core/narrare_core/llm/_providers/zai.py). The loop test
+        # above covers every PROVIDER_HOSTS member generically.
+        page = _FakePage()
+        capture = capture_network(cast("Page", page))
+
+        page.emit(
+            "request",
+            _FakeRequest("POST", "https://api.z.ai/api/paas/v4/chat/completions"),
+        )
+
+        assert capture.provider_calls == ["POST https://api.z.ai/api/paas/v4/chat/completions"]
+        with pytest.raises(AssertionError, match="real LLM provider"):
+            capture.assert_no_provider_calls()
+
     def test_assert_no_api_failures_with_allowed_status(self) -> None:
         page = _FakePage()
         capture = capture_network(cast("Page", page))
@@ -153,11 +173,23 @@ class TestNetworkCapture:
 
 
 class TestDumpA11y:
-    def test_writes_snapshot_json(self, tmp_path: Path) -> None:
+    def test_writes_full_cdp_axtree_json(self, tmp_path: Path) -> None:
+        # Payload mirrors the real CDP Accessibility.getFullAXTree response:
+        # {"nodes": [...]} with role/name as {type, value} objects.
         page = _FakePage()
-        page.a11y_snapshot = {"role": "WebArea", "children": [{"role": "heading"}]}
+        page.cdp_axtree = {
+            "nodes": [
+                {
+                    "nodeId": "1",
+                    "ignored": False,
+                    "role": {"type": "role", "value": "WebArea"},
+                    "childIds": ["2"],
+                }
+            ]
+        }
 
         out = dump_a11y(cast("Page", page), tmp_path / "a11y" / "login.json")
 
         assert out.exists()
-        assert json.loads(out.read_text(encoding="utf-8"))["role"] == "WebArea"
+        snapshot = json.loads(out.read_text(encoding="utf-8"))
+        assert snapshot["nodes"][0]["role"]["value"] == "WebArea"

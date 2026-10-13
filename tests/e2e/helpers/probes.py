@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 
 
 #: LLM provider hosts the browser must never call (spec §3: no real LLM calls).
+#: Includes ``api.z.ai`` — the first-party "zai" provider adapter's host
+#: (packages/core/narrare_core/llm/_providers/zai.py). ``open.bigmodel.cn`` is
+#: deliberately absent: it appears nowhere in the Narrare codebase.
 PROVIDER_HOSTS = frozenset(
     {
         "api.openai.com",
@@ -30,6 +33,7 @@ PROVIDER_HOSTS = frozenset(
         "generativelanguage.googleapis.com",
         "api.groq.com",
         "openrouter.ai",
+        "api.z.ai",
     }
 )
 
@@ -118,7 +122,10 @@ def dump_a11y(page: Page, path: Path) -> Path:
     removed by 1.61 (the version pinned here).
     """
     cdp = page.context.new_cdp_session(page)
-    snapshot = cdp.send("Accessibility.getFullAXTree")
+    try:
+        snapshot = cdp.send("Accessibility.getFullAXTree")
+    finally:
+        cdp.detach()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
     return path
