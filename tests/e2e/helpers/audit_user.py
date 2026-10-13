@@ -25,7 +25,6 @@ from tests.e2e.test_helpers import _setup_auth_proxy
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    import requests as http_requests
     from playwright.sync_api import Page, Route
 
 _WaitUntil = Literal["commit", "domcontentloaded", "load", "networkidle"]
@@ -91,6 +90,37 @@ class _StableSessionPage(
     of its three callee contracts; real pages satisfy all three."""
 
 
+class _HarvestResponse(Protocol):
+    """What the token harvest READS off the login response — nothing more.
+
+    Read-only properties (not attributes) so both plain-attribute fakes and
+    the real ``requests.Response`` (where ``text`` is a property) satisfy it.
+    """
+
+    @property
+    def status_code(self) -> int: ...
+
+    @property
+    def text(self) -> str: ...
+
+    def json(self) -> dict[str, str]: ...
+
+
+class _TokenHarvestSession(Protocol):
+    """What ``login_via_api`` needs from an HTTP session — nothing more.
+
+    Structural contract (RULE-03), mirroring ``_AuthAttachablePage``: the
+    real ``requests.Session`` satisfies it (``post(url, json=...)`` →
+    ``Response``), and so does the browser-free fake in the unit tests —
+    with zero suppressions (RULE-23: structural typing instead of
+    baseline-grown ignore lists). Typing the seam narrowly also keeps the
+    tests project honest: the fake is a valid argument WITHOUT pretending
+    to be a full ``requests.Session``.
+    """
+
+    def post(self, url: str, *, json: dict[str, str]) -> _HarvestResponse: ...
+
+
 def register_user_via_ui(
     page: _RegistrationPage,
     base_url: str,
@@ -125,7 +155,7 @@ def register_user_via_ui(
 
 
 def login_via_api(
-    api_session: http_requests.Session,
+    api_session: _TokenHarvestSession,
     api_url: str,
     email: str,
     password: str,
@@ -180,7 +210,7 @@ def wait_logged_in(page: _NavigationPage, base_url: str, timeout: int = 15_000) 
 def build_stable_session(
     page: _StableSessionPage,
     base_url: str,
-    api_session: http_requests.Session,
+    api_session: _TokenHarvestSession,
     api_url: str,
     *,
     email: str | None = None,
