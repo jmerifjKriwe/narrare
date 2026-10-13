@@ -2,7 +2,8 @@
 
 Wire formats mirror the REAL endpoints (verified 2026-10-12):
 - POST /api/v1/novels/{id}/kb/extract/{chapter_id} — ExtractionOutput JSON
-  (bulk extract lives at /kb/extract/bulk… and is excluded).
+  (bulk extract lives at /kb/extract/bulk and the apply sibling at
+  /kb/extract/apply; both are excluded so the glob only serves extraction).
 - POST /api/v1/novels/{id}/kb/entities/{entry_id}/improve —
   KBImproveAnalysisResponse JSON (…/improve/apply excluded).
 - POST /api/v1/novels/{id}/wiki/summaries/{entity_id}/refresh —
@@ -87,7 +88,7 @@ SPECS: tuple[RouteSpec, ...] = (
         pattern="**/api/v1/novels/*/kb/extract/*",
         method="POST",
         body=KB_EXTRACTION_HAPPY,
-        url_exclude="/extract/bulk",
+        url_exclude=("/extract/bulk", "/extract/apply"),
     ),
     RouteSpec(
         capability="kb_improve",

@@ -81,6 +81,35 @@ class TestMockLlm:
 
         assert route.fell_back is True
 
+    def test_kb_extraction_falls_back_on_apply_but_fulfills_single_extract(self) -> None:
+        # Audit finding: pattern **/kb/extract/* also matches POST /kb/extract/apply;
+        # without the second exclude needle the handler would answer the apply call
+        # with the extraction JSON (false green in extract→apply flows).
+        page = _FakePage()
+        mock_llm(page, "kb_extraction", fixture="happy")
+        handler = page.routes[0][1]
+
+        apply_route = _FakeRoute(
+            "POST",
+            "http://localhost:3000/api/v1/novels/00000000-0000-0000-0000-000000000001"
+            "/kb/extract/apply",
+        )
+        handler(apply_route)
+
+        assert apply_route.fell_back is True
+        assert apply_route.fulfilled is None
+
+        extract_route = _FakeRoute(
+            "POST",
+            "http://localhost:3000/api/v1/novels/00000000-0000-0000-0000-000000000001"
+            "/kb/extract/00000000-0000-0000-0000-0000000000c7",
+        )
+        handler(extract_route)
+
+        assert extract_route.fell_back is False
+        assert extract_route.fulfilled is not None
+        assert extract_route.fulfilled["body"] == entries_for("kb_extraction", "happy")[0].body
+
     def test_raises_for_unknown_capability(self) -> None:
         with pytest.raises(ValueError, match="Unknown capability/variant"):
             mock_llm(_FakePage(), "telepathy")

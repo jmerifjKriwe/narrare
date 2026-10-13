@@ -44,7 +44,20 @@ class RouteSpec:
     status: int = 200
     content_type: str = "application/json"
     body: str = ""
-    url_exclude: str | None = None  # handler falls back when this is in the URL
+    url_exclude: str | tuple[str, ...] | None = None  # needle(s) → handler falls back
+
+    def is_excluded(self, url: str) -> bool:
+        """True when any exclude needle appears in ``url``.
+
+        Normalizes the legacy single-string form and the tuple form, so a
+        spec can exclude several sibling routes matching one glob pattern.
+        """
+        if self.url_exclude is None:
+            return False
+        needles: tuple[str, ...] = (
+            (self.url_exclude,) if isinstance(self.url_exclude, str) else self.url_exclude
+        )
+        return any(needle in url for needle in needles)
 
 
 def assert_sse_body_wellformed(body: str) -> list[dict[str, object]]:

@@ -57,7 +57,7 @@ def mock_llm(
 def _handler_for(spec: RouteSpec) -> Callable[[Route], None]:
     def _handle(route: Route) -> None:
         request = route.request
-        if request.method != spec.method or (spec.url_exclude and spec.url_exclude in request.url):
+        if request.method != spec.method or spec.is_excluded(request.url):
             route.fallback()
             return
         route.fulfill(

@@ -91,7 +91,10 @@ class TestAnalysisEntries:
 
 class TestKbWikiEntries:
     def test_extraction_and_improve_exclude_sibling_routes(self) -> None:
-        assert entries_for("kb_extraction", "happy")[0].url_exclude == "/extract/bulk"
+        # kb_extraction's pattern also matches POST /kb/extract/apply — it must be
+        # excluded alongside /extract/bulk or apply calls get extraction JSON.
+        extraction_spec = entries_for("kb_extraction", "happy")[0]
+        assert extraction_spec.url_exclude == ("/extract/bulk", "/extract/apply")
         assert entries_for("kb_improve", "happy")[0].url_exclude == "/improve/apply"
 
     def test_full_catalog_validates(self) -> None:
