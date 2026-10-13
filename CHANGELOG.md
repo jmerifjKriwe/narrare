@@ -555,6 +555,10 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - Core: `text_reconstructor.py` — pure function for stateless text reconstruction from original + accepted changes
   - Settings: Word-count validation for co-author selection text via `validate_coauthor()` (SET-005 cascade pattern, default 2000 words)
 
+- E2E suite foundation: helper package (stable sessions, novel factory,
+  probes), deterministic AI-response catalog with schema validation,
+  runner preflight/subset lever, and environment smoke pins (E01/E04).
+
 ### Fixed
 
 - JWT secret fallback chain in `proxy.ts`: added `process.env.SECRET_KEY` as second fallback (matching backend's env var). Previously only checked `AUTH_JWT_SECRET`, causing verification failures on protected routes when only `SECRET_KEY` was set.
