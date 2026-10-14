@@ -1,10 +1,11 @@
-"""AI-writing E2E specs — chapter generation (WRITE-002).
+"""AI-writing E2E specs — chapter generation (WRITE-002) + ghost text (WRITE-007).
 
 Drives the REAL generation panel against the real stack: the START POST and
 accept/reject hit the real backend; the validator-strict generation STREAM
 is deterministic via the browser-layer catalog (audit E04). Pins the three
 fixed M06 behaviors (localized empty-input 422, stream-death error phase,
-no empty-draft review) plus the happy accept/reject flows.
+no empty-draft review) plus the happy accept/reject flows, and the ghost
+text accept/dismiss keyboard contract on the real SSE suggest endpoint.
 
 Runtime budget: ≤ 3 min (spec §7 — full suite ≤ 25 min). Markers: e2e.
 """
@@ -184,3 +185,82 @@ class TestGenerateErrorPaths:
             state="visible", timeout=30_000
         )
         assert page.get_by_role("button", name="Accept", exact=True).count() == 0
+
+
+@pytest.mark.e2e
+class TestGhostText:
+    """WRITE-007: inline ghost text on the real SSE suggest path.
+
+    Under ``NARRARE_E2E_TEST=1`` the suggest stream carries TestModel's
+    degenerate payload ("success (no tool calls)"), so both specs assert
+    STRUCTURALLY: Tab grows the document beyond the typed seed with the
+    ghost gone; Escape removes the ghost and leaves the document untouched.
+
+    DOM contract (``extensions/GhostText.ts``): the suggestion and the
+    keyboard hint are rendered as widget decorations INSIDE ``.ProseMirror``
+    (``.ghost-text-suggestion`` / ``.ghost-text-hint``, aria-hidden but
+    rendered). ``editor_text`` therefore includes them while a suggestion
+    is up — snapshots for content assertions are taken from widget-free
+    states, never from the visible-ghost moment.
+    """
+
+    def test_ghost_text_tab_accept_inserts_suggestion(
+        self, ai_novel: NovelContext, authed_request: Callable[..., http_requests.Response]
+    ) -> None:
+        """WRITE-007: an inline suggestion appears after typing; Tab accepts
+        it into the document."""
+        page = ai_novel.page
+        network = capture_network(page)
+        seed = "Elara waited at the gate "
+
+        prepare_ai_chapter(page, authed_request, ai_novel.novel_id, title="Ghost Accept")
+        editor = page.locator(".ProseMirror").first
+        editor.click()
+        page.keyboard.type(seed)
+
+        ghost = page.locator(".ghost-text-suggestion").first
+        ghost.wait_for(state="visible", timeout=30_000)
+
+        page.keyboard.press("Tab")
+
+        # Tab inserts the FULL suggestion (the ghost reveals it char-by-char
+        # at 30 ms/char) and removes the widget decorations. Growth is pinned
+        # against the typed seed — a pre-Tab innerText snapshot includes the
+        # ghost + hint widgets themselves, so `> len(before)` on that baseline
+        # can never hold (Task 10 brief bug, live-proven).
+        page.wait_for_function(
+            """(seedLen) => {
+                const editor = document.querySelector('.ProseMirror');
+                return Boolean(editor)
+                    && !editor.querySelector('.ghost-text-suggestion')
+                    && editor.innerText.length > seedLen;
+            }""",
+            arg=len(seed),
+            timeout=10_000,
+        )
+        network.assert_no_provider_calls()
+
+    def test_ghost_text_escape_dismisses_suggestion(
+        self, ai_novel: NovelContext, authed_request: Callable[..., http_requests.Response]
+    ) -> None:
+        """WRITE-007: Escape clears the suggestion without inserting."""
+        page = ai_novel.page
+        seed = "Elara waited at the gate "
+
+        prepare_ai_chapter(page, authed_request, ai_novel.novel_id, title="Ghost Dismiss")
+        editor = page.locator(".ProseMirror").first
+        editor.click()
+        page.keyboard.type(seed)
+
+        # Snapshot BEFORE the ghost can exist (auto-trigger fires ≥ 800 ms
+        # after the last keystroke): this is the widget-free baseline the
+        # post-Escape text must equal verbatim.
+        before = editor_text(page)
+
+        ghost = page.locator(".ghost-text-suggestion").first
+        ghost.wait_for(state="visible", timeout=30_000)
+
+        page.keyboard.press("Escape")
+
+        page.locator(".ghost-text-suggestion").wait_for(state="detached", timeout=10_000)
+        assert editor_text(page) == before  # dismissed, nothing inserted
