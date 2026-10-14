@@ -3,7 +3,7 @@ name: CI
 # ---------------------------------------------------------------------------
 # Gate Compliance Audit (as of: 2026-06-03)
 # ---------------------------------------------------------------------------
-# Referenz: .opencode/context/narrare-dev/processes/quality-gates.md
+# Reference: this header table is the CI-gate SSOT.
 #
 # | Gate | Tool / Check                          | CI Status   | Notes                              |
 # |------|----------------------------------------|-------------|------------------------------------|
