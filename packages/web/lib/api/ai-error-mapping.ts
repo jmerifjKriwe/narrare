@@ -17,7 +17,12 @@ import type { SSEStreamError } from "./streaming";
 // Error message map — i18n keys with DE fallbacks
 // ---------------------------------------------------------------------------
 
-/** i18n key → default DE message and retryability. Actual text comes from i18n. */
+/**
+ * i18n key → default DE message and retryability. Actual text comes from i18n.
+ * Keys may come from any `studio.*` sub-namespace (e.g. `aiActions.*` and
+ * `generationPanel.*` both live in `studio.json`) — the mapper only needs the
+ * suffix form because every consumer resolves under `useTranslations("studio")`.
+ */
 export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boolean }> = {
   "aiActions.errorApiKey": {
     de: "Dein API-Schlüssel ist ungültig. Überprüfe deine KI-Einstellungen.",
@@ -55,6 +60,10 @@ export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boole
     de: "Die Daten konnten nicht gelesen werden. Möglicherweise ist eine Datei beschädigt. Überprüfe deine Sicherungen oder kontaktiere den Support.",
     retryable: false,
   },
+  "generationPanel.validationMissingInput": {
+    de: "Mindestens eines der Felder Gliederung, Prompt oder automatisches Fortfahren muss ausgefüllt sein.",
+    retryable: false,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -70,6 +79,7 @@ export const AI_ERROR_MESSAGE_MAP: Record<string, { de: string; retryable: boole
  *   - ApiError (REST) → mapped by status + machine `code` (429 BUDGET_EXCEEDED → budget stop)
  *   - kind="http" + 401  → api key invalid
  *   - kind="http" + 413  → text too long
+ *   - kind="http" + 422 + code="MISSING_INPUT" → empty-input validation (not retryable)
  *   - kind="http" + 429 + code="BUDGET_EXCEEDED" → monthly budget stop (not a rate limit)
  *   - kind="http" + 429  → rate limit
  *   - kind="http" + 408  → timeout
@@ -210,6 +220,20 @@ function mapHTTPStatus(status: number, code: string | null, cause: Error): AIErr
       status: 413,
       i18nKey: "aiActions.errorTextTooLong",
       userMessage: AI_ERROR_MESSAGE_MAP["aiActions.errorTextTooLong"].de,
+      retryable: false,
+      cause,
+    };
+  }
+
+  if (status === 422 && code === "MISSING_INPUT") {
+    // Audit M06: an empty generate form is a validation error, not a
+    // connection failure — map it to the panel's honest key (en/de/fr
+    // parity already shipped with the panel).
+    return {
+      kind: "http",
+      status: 422,
+      i18nKey: "generationPanel.validationMissingInput",
+      userMessage: AI_ERROR_MESSAGE_MAP["generationPanel.validationMissingInput"].de,
       retryable: false,
       cause,
     };

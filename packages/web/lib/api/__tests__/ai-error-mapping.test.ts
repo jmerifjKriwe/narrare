@@ -268,3 +268,29 @@ describe("mapSSEError", () => {
     expect(result!.userMessage.length).toBeGreaterThan(0);
   });
 });
+
+describe("MISSING_INPUT validation mapping (audit M06)", () => {
+  it("maps 422 + MISSING_INPUT to the generationPanel validation key", () => {
+    const error = new ApiError(
+      "At least one of prompt, outline, or auto_continue must be provided",
+      422,
+      "MISSING_INPUT",
+    );
+
+    const result = mapSSEError(error);
+
+    expect(result).not.toBeNull();
+    expect(result!.kind).toBe("http");
+    expect(result!.status).toBe(422);
+    expect(result!.i18nKey).toBe("generationPanel.validationMissingInput");
+    expect(result!.retryable).toBe(false);
+  });
+
+  it("keeps the generic connection mapping for 422 without a known code", () => {
+    const error = new ApiError("Unprocessable entity", 422, null);
+
+    const result = mapSSEError(error);
+
+    expect(result!.i18nKey).toBe("aiActions.errorConnection");
+  });
+});

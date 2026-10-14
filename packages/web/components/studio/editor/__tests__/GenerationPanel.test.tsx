@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, type Mock, vi } from "vitest";
 import { GenerationPanel } from "@/components/studio/editor/GenerationPanel";
+import { ApiError } from "@/lib/api/core";
 
 // ---------------------------------------------------------------------------
 // Test wrapper
@@ -138,5 +139,30 @@ describe("GenerationPanel", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "contextInspector.toggle" })).toBeDefined();
     });
+  });
+
+  it("renders the localized validation message for 422 MISSING_INPUT (M06)", async () => {
+    // next-intl is mocked globally to echo keys (setupTests.ts), so the
+    // localized rendering assertion is on the KEY being passed to t().
+    mockStartGeneration.mockRejectedValue(
+      new ApiError("At least one of prompt, outline, or auto_continue", 422, "MISSING_INPUT"),
+    );
+    renderWithProviders(
+      <GenerationPanel
+        novelId="novel-1"
+        chapterId="chapter-1"
+        chapterContent=""
+        onDraftAccepted={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "generationPanel.generate" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toBe("generationPanel.validationMissingInput"),
+    );
+    // M06 pin: the German connection-lost fallback must NOT be the rendered text.
+    expect(screen.getByRole("alert").textContent).not.toContain("Verbindung");
   });
 });
