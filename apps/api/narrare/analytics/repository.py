@@ -82,7 +82,7 @@ def _to_agg_row(
     calls: int,
     tokens_in: int,
     tokens_out: int,
-    cost: Decimal | int,
+    cost: Decimal | int | None,
     unpriced_calls: int,
 ) -> UsageAggRow:
     """Map one result row (positional, SELECT column order) onto the contract."""

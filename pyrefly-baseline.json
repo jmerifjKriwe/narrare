@@ -1,0 +1,102 @@
+{
+  "errors": [
+    {
+      "column": 15,
+      "path": "apps/api/narrare/writing/ws_context_assembler.py",
+      "name": "bad-override",
+      "concise_description": "Class member `WsWritingContextAssembler.assemble` overrides parent class `WritingContextAssembler` in an inconsistent manner",
+      "severity": "error"
+    },
+    {
+      "column": 27,
+      "path": "apps/api/narrare/writing/ws_session_control_service.py",
+      "name": "bad-assignment",
+      "concise_description": "`str` is not assignable to TypedDict key `status` with type `Literal['no_active_turn', 'stopped']`",
+      "severity": "error"
+    },
+    {
+      "column": 23,
+      "path": "apps/api/narrare/writing/ws_session_control_service.py",
+      "name": "bad-assignment",
+      "concise_description": "`str` is not assignable to TypedDict key `status` with type `Literal['no_active_turn', 'stopped']`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "apps/api/narrare/writing/ws_session_control_service.py",
+      "name": "bad-assignment",
+      "concise_description": "`str` is not assignable to TypedDict key `kind` with type `Literal['expired', 'not_found', 'ownership_mismatch', 'recovered']`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "apps/api/narrare/writing/ws_session_control_service.py",
+      "name": "bad-assignment",
+      "concise_description": "`str` is not assignable to TypedDict key `kind` with type `Literal['expired', 'not_found', 'ownership_mismatch', 'recovered']`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "apps/api/narrare/writing/ws_session_control_service.py",
+      "name": "bad-assignment",
+      "concise_description": "`str` is not assignable to TypedDict key `kind` with type `Literal['expired', 'not_found', 'ownership_mismatch', 'recovered']`",
+      "severity": "error"
+    },
+    {
+      "column": 21,
+      "path": "apps/api/narrare/writing/ws_session_control_service.py",
+      "name": "bad-assignment",
+      "concise_description": "`str` is not assignable to TypedDict key `kind` with type `Literal['expired', 'not_found', 'ownership_mismatch', 'recovered']`",
+      "severity": "error"
+    },
+    {
+      "column": 12,
+      "path": "benchmark/corpus_views.py",
+      "name": "bad-return",
+      "concise_description": "Returned type `str` is not assignable to declared return type `Literal['female', 'male'] | None`",
+      "severity": "error"
+    },
+    {
+      "column": 35,
+      "path": "packages/core/narrare_core/context/integration_contracts/_chapters_consumer.py",
+      "name": "bad-return",
+      "concise_description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    },
+    {
+      "column": 35,
+      "path": "packages/core/narrare_core/context/integration_contracts/_planning_consumer.py",
+      "name": "bad-return",
+      "concise_description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    },
+    {
+      "column": 35,
+      "path": "packages/core/narrare_core/context/integration_contracts/_planning_consumer.py",
+      "name": "bad-return",
+      "concise_description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    },
+    {
+      "column": 11,
+      "path": "packages/core/narrare_core/nlp/syllables.py",
+      "name": "bad-assignment",
+      "concise_description": "`set[LiteralString]` is not assignable to dict value type `set[str]`",
+      "severity": "error"
+    },
+    {
+      "column": 11,
+      "path": "packages/core/narrare_core/nlp/syllables.py",
+      "name": "bad-assignment",
+      "concise_description": "`set[LiteralString]` is not assignable to dict value type `set[str]`",
+      "severity": "error"
+    },
+    {
+      "column": 11,
+      "path": "packages/core/narrare_core/nlp/syllables.py",
+      "name": "bad-assignment",
+      "concise_description": "`set[LiteralString]` is not assignable to dict value type `set[str]`",
+      "severity": "error"
+    }
+  ]
+}

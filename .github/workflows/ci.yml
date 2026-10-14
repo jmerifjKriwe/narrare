@@ -17,6 +17,7 @@ name: CI
 # | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G6   | pyright (strict; mypy not required)    | ✅ Blocking  | quality Job                        |
+# | G6a  | pyrefly (additive, ADR-097; 3 kinds off + baseline) | ✅ Blocking  | quality Job                       |
 # | G7   | ruff check + ruff format --check       | ✅ Blocking  | quality Job                        |
 # | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
 # | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |
@@ -358,6 +359,13 @@ jobs:
       # gate-coverage follow-up.
       - name: Pyright (Tests)
         run: uv run pyright --project tests/pyrightconfig.json
+
+      # ADR-097: additive fast type check. CI backing for the pre-commit
+      # `pyrefly` hook (local = staged scope, here = whole project).
+      # Error-kind set + baseline live in pyrefly.toml / pyrefly-baseline.json.
+      # pyright above stays the authoritative strict gate (G6).
+      - name: Pyrefly
+        run: uv run pyrefly check
 
       # ── Security ──────────────────────────────────────────────────────
       - name: Install Gitleaks
