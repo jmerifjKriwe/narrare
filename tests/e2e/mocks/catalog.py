@@ -115,6 +115,9 @@ def validate_catalog() -> None:
     # are skipped — the check arms itself as entries land.
     for capability in (
         "generation_stream",
+        "rewrite_stream",
+        "story_suggest",
+        "coauthor_stream",
         "coreference_stream",
         "character_voice_stream",
         "consistency_stream",

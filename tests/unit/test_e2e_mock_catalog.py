@@ -21,7 +21,12 @@ class TestRegistry:
         for spec in CATALOG:
             assert spec.body, f"{spec.capability}/{spec.variant}: empty body"
             assert spec.pattern.startswith("**/api/v1/"), spec.pattern
-            assert spec.variant in {"happy", "error"}
+            if spec.capability == "generation_stream":
+                # "truncated" models the audit-M06 silent stream death (no
+                # is_final, no error) — a deliberate third generation variant.
+                assert spec.variant in {"happy", "error", "truncated"}, spec.variant
+            else:
+                assert spec.variant in {"happy", "error"}, spec.variant
 
     def test_entries_for_raises_on_unknown_capability(self) -> None:
         with pytest.raises(ValueError, match="Unknown capability"):
@@ -119,3 +124,54 @@ class TestWritingEntries:
         happy = {s.capability: s for s in CATALOG if s.variant == "happy"}
         assert "scene_draft" in happy
         assert "scene_refine" in happy
+
+
+class TestWritingCatalogGrowth:
+    def test_generation_stream_truncated_has_no_final_chunk(self) -> None:
+        spec = entries_for("generation_stream", "truncated")[0]
+        events = assert_sse_body_wellformed(spec.body)
+        assert events and events[0]["type"] == "context_meta"
+        assert not any(e.get("is_final") for e in events), "truncated = silent death: no is_final"
+        assert not any("text" in e for e in events), "truncated emits no draft text"
+
+    def test_rewrite_stream_happy_carries_two_complete_alternatives(self) -> None:
+        spec = entries_for("rewrite_stream", "happy")[0]
+        assert spec.method == "POST"
+        events = assert_sse_body_wellformed(spec.body)
+        assert events[0]["type"] == "request_info"
+        texts = "".join(str(e.get("text") or "") for e in events)
+        assert texts.count('<alternative label="') == texts.count("</alternative>") == 2
+        assert any(e.get("is_final") for e in events)
+
+    def test_rewrite_stream_has_error_variant(self) -> None:
+        assert entries_for("rewrite_stream", "error")[0].status == 500
+
+    def test_story_suggest_suggestions_validate_against_real_model(self) -> None:
+        from narrare_core.agents.story_suggest_types import StorySuggestOutput
+
+        spec = entries_for("story_suggest", "happy")[0]
+        events = assert_sse_body_wellformed(spec.body)
+        suggestions_event = next(e for e in events if e.get("event") == "suggestions")
+        StorySuggestOutput.model_validate({"suggestions": suggestions_event["suggestions"]})
+        done = events[-1]
+        assert done.get("event") == "done" and done.get("is_final") is True
+
+    def test_story_suggest_has_error_variant(self) -> None:
+        assert entries_for("story_suggest", "error")[0].status == 500
+
+    def test_coauthor_stream_final_event_carries_valid_changes(self) -> None:
+        from narrare.writing.schemas_coauthor import ChangeDetail
+
+        spec = entries_for("coauthor_stream", "happy")[0]
+        assert spec.method == "POST"
+        events = assert_sse_body_wellformed(spec.body)
+        assert events[0]["type"] == "context_meta"
+        final = events[-1]
+        assert final.get("is_final") is True
+        assert final.get("has_changes") is True
+        assert final.get("total_changes") == len(final["changes"])
+        for change in final["changes"]:
+            ChangeDetail.model_validate(change)  # ChangeDetail.id is a UUID — fixture must use one
+
+    def test_coauthor_stream_has_error_variant(self) -> None:
+        assert entries_for("coauthor_stream", "error")[0].status == 500
