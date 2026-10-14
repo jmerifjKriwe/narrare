@@ -1356,6 +1356,19 @@ default runs; the nightly + manual-dispatch CI `test-e2e` job runs the suite.
   standalone web starts do not inherit it (every navigation bounces to
   /login). Pinned by `tests/e2e/test_environment_smoke.py`.
 
+### Live-stack manual verification (:3001 recipe)
+
+For fix tasks that need human eyes on the real UI (M06-class slices), run the
+stack exactly as the 2026-10-11 audit did (reproduction section in
+`docs/superpowers/reports/2026-10-11-e2e-ui-audit.md`):
+
+- API :8000 — `DATABASE_URL=…:5433/narrare_test`, `ENVIRONMENT=test`,
+  `SECRET_KEY=test-secret-key-not-for-production`, `NARRARE_E2E_TEST=1`,
+  `AUTH_JWT_SECRET=test-secret-key-not-for-production`,
+  `NARRARE_CSRF_TRUSTED_ORIGINS='["http://localhost:3001"]'`
+- Web :3001 — `pnpm dev --port 3001` with `AUTH_JWT_SECRET` exported (E01)
+- Then verify the fixed behavior by hand before committing the fix task.
+
 ### AI mocking (two layers)
 
 1. Factory layer: `NARRARE_E2E_TEST=1` → `pydantic_ai.TestModel` for all
@@ -1384,6 +1397,8 @@ default runs; the nightly + manual-dispatch CI `test-e2e` job runs the suite.
 | `llm_mocks` | `mock_llm(page, capability, fixture=…)` |
 | `audit_user` | `register_user_via_ui`, `build_stable_session`, `wait_logged_in` |
 | `novel_factory` | `complete_wizard` (blank/import/demo starters), `create_volume_via_api`, `create_chapter_via_api` |
+| `editor_ai` | AI-editor prep: `prepare_ai_chapter`, `editor_text`, `focus_editor_end`, `open_generation_panel`, `click_panel_generate` |
+| `ws_probe` | `WritingSocketTracker` — WS frame capture for ticketed sessions (extracted from the ADR-084 gate) |
 
 Shared fixtures (conftest (`tests/e2e/foundation.py`)): `stable_user` (fresh
 user registered through the real `/register` form + deterministic session;
@@ -1392,7 +1407,10 @@ registration shared per spec module — only when no test mutates user-level
 state), `stable_novel` (+ wizard-created novel in the editor). All
 registration goes through the UI (PO 2026-10-13). Prefer these over
 hand-rolled login/wizard flows — they are the mitigation for the auth-race
-flake class (N06).
+flake class (N06). For seeding through the API, spec modules bind a
+function-scoped `authed_request` fixture over the factory
+`make_authed_request(api_request, context)` — the shared conftest
+`api_request` is deliberately unauthenticated.
 
 ### When to add an E2E spec
 
