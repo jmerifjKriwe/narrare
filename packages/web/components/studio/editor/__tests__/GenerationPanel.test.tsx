@@ -102,7 +102,7 @@ describe("GenerationPanel", () => {
     streamMock.mockImplementation(
       async (
         _requestId: string,
-        onChunk: (chunk: { text: string }) => void,
+        onChunk: (chunk: { text: string; is_final?: boolean }) => void,
         onComplete?: () => void,
         _onError?: (error: Error) => void,
         _signal?: AbortSignal,
@@ -125,7 +125,9 @@ describe("GenerationPanel", () => {
           tone: "dramatic",
           total_budget_tokens: 8000,
         });
-        onChunk({ text: "Once upon a time..." });
+        // is_final: production streams end with a final chunk; without it the
+        // stream counts as dead (M06 guard) and never completes.
+        onChunk({ text: "Once upon a time...", is_final: true });
         onComplete?.();
       },
     );

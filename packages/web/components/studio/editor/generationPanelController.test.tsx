@@ -84,11 +84,17 @@ function renderController(
   return { ...result, onDraftAccepted };
 }
 
-// streamGeneration calls onChunk then onComplete by default.
+// streamGeneration calls onChunk then onComplete by default. The chunk
+// carries is_final — per the stream contract (M06), a stream that ends
+// without a final chunk is a dead stream, not a completed one.
 function streamEmits(text: string) {
   mockStreamGeneration.mockImplementation(
-    async (_rid: string, onChunk: (c: { text: string }) => void, onComplete?: () => void) => {
-      onChunk({ text });
+    async (
+      _rid: string,
+      onChunk: (c: { text: string; is_final?: boolean }) => void,
+      onComplete?: () => void,
+    ) => {
+      onChunk({ text, is_final: true });
       await onComplete?.();
     },
   );
@@ -219,7 +225,7 @@ describe("useGenerationPanelController", () => {
     act(() => result.current.acceptDraft());
     await waitFor(() => expect(result.current.acceptMutation.isSuccess).toBe(true));
 
-    expect(mockAcceptDraft).toHaveBeenCalledWith("gen-1");
+    expect(mockAcceptDraft).toHaveBeenCalledWith("gen-1", "final text");
     expect(onDraftAccepted).toHaveBeenCalledWith("final text");
   });
 
@@ -301,5 +307,67 @@ describe("useGenerationPanelController", () => {
 
     const req = mockStartGeneration.mock.calls[0][2] as Record<string, unknown>;
     expect(req.scenes).toBeUndefined();
+  });
+
+  it("treats a stream that completes without is_final as an error (M06)", async () => {
+    mockStartGeneration.mockResolvedValue({ request_id: "gen-m06", status: "pending" });
+    mockStreamGeneration.mockImplementation(
+      async (_rid: string, onChunk: (c: { text: string; is_final?: boolean }) => void) => {
+        onChunk({ text: "" }); // silent death: no is_final, stream just ends
+      },
+    );
+
+    const { result } = renderHook(
+      () =>
+        useGenerationPanelController({
+          novelId: "novel-1",
+          chapterId: "chapter-1",
+          onDraftAccepted: vi.fn(),
+          t: (key: string) => key,
+        }),
+      { wrapper: makeWrapper() },
+    );
+
+    act(() => result.current.handleGenerate());
+
+    await waitFor(() => expect(result.current.phase).toBe("error"));
+    expect(result.current.error?.i18nKey).toBe("aiActions.errorDefault");
+  });
+
+  it("accepts with the streamed draft text as modified_text (M06 + Task 1 contract)", async () => {
+    mockStartGeneration.mockResolvedValue({ request_id: "gen-m06b", status: "pending" });
+    mockStreamGeneration.mockImplementation(
+      async (_rid: string, onChunk: (c: { text: string; is_final?: boolean }) => void) => {
+        onChunk({ text: "The harbour bell rang twice." });
+        onChunk({ text: " Done.", is_final: true });
+      },
+    );
+    mockAcceptDraft.mockResolvedValue({ request_id: "gen-m06b", chapter_id: "c1", word_count: 5 });
+
+    const onDraftAccepted = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useGenerationPanelController({
+          novelId: "novel-1",
+          chapterId: "chapter-1",
+          onDraftAccepted,
+          t: (key: string) => key,
+        }),
+      { wrapper: makeWrapper() },
+    );
+
+    act(() => result.current.handleGenerate());
+    await waitFor(() => expect(result.current.phase).toBe("review"));
+    act(() => result.current.acceptDraft());
+
+    await waitFor(() =>
+      expect(mockAcceptDraft).toHaveBeenCalledWith(
+        "gen-m06b",
+        "The harbour bell rang twice. Done.",
+      ),
+    );
+    await waitFor(() =>
+      expect(onDraftAccepted).toHaveBeenCalledWith("The harbour bell rang twice. Done."),
+    );
   });
 });

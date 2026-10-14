@@ -58,7 +58,15 @@ describe("GenerationDraft", () => {
 
   it("calls onAccept when accept is clicked", () => {
     const onAccept = vi.fn();
-    render(<GenerationDraft {...defaultProps} phase="review" onAccept={onAccept} />);
+    // Non-empty draft: Accept is disabled while the draft is empty (M06).
+    render(
+      <GenerationDraft
+        {...defaultProps}
+        phase="review"
+        draftText="The harbour bell rang twice."
+        onAccept={onAccept}
+      />,
+    );
     fireEvent.click(screen.getByText("aiActions.accept"));
     expect(onAccept).toHaveBeenCalledOnce();
   });
@@ -87,5 +95,26 @@ describe("GenerationDraft", () => {
   it("shows word count progress", () => {
     render(<GenerationDraft {...defaultProps} wordCount={500} targetNum={1000} />);
     expect(screen.getByText("generationPanel.wordCountProgress")).toBeDefined();
+  });
+
+  it("disables Accept when the draft is empty (M06)", () => {
+    render(<GenerationDraft {...defaultProps} phase="review" draftText="" wordCount={0} />);
+    const button = screen.getByText("aiActions.accept").closest("button");
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(true);
+  });
+
+  it("keeps Accept enabled for a non-empty draft (M06)", () => {
+    render(
+      <GenerationDraft
+        {...defaultProps}
+        phase="review"
+        draftText="The harbour bell rang twice before dawn."
+        wordCount={7}
+      />,
+    );
+    const button = screen.getByText("aiActions.accept").closest("button");
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(false);
   });
 });
