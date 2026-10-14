@@ -1,9 +1,7 @@
 # ADR-097 — Pyrefly as Additive Pre-Commit Type Check
 
-> **Status:** 🔄 Proposed — implementation is wired in this branch (hook +
-> config + baseline + CI step + gate row G6a). Flips to ✅ Implemented only
-> after the CI quality job runs green (the one evidence not producible
-> locally).
+> **Status:** ✅ Implemented — all 7 completeness items verified; item 7
+> (green CI quality job) evidenced by PR #254.
 > **Date:** 2026-10-14
 > **Deciders:** Architecture Agent (binding direction validated by
 > measurement; see §Measurement Basis)
