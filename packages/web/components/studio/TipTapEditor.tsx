@@ -107,6 +107,7 @@ export function TipTapEditor({
         isRewriteStreaming={controller.isRewriteStreaming}
         selectionLength={controller.selectionLength}
         onAIRewrite={controller.handleAIRewrite}
+        onCoAuthor={slashCommandHandlers?.onCoAuthor}
         t={t}
       />
 

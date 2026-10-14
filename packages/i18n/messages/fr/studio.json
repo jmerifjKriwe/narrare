@@ -148,7 +148,8 @@
   "bubble": {
     "bold": "B",
     "italic": "I",
-    "aiRewrite": "Réécriture IA"
+    "aiRewrite": "Réécriture IA",
+    "coAuthor": "Co-auteur"
   },
   "aiModal": {
     "title": "Suggestions IA"

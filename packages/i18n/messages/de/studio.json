@@ -148,7 +148,8 @@
   "bubble": {
     "bold": "B",
     "italic": "I",
-    "aiRewrite": "KI umformulieren"
+    "aiRewrite": "KI umformulieren",
+    "coAuthor": "Co-Autor"
   },
   "aiModal": {
     "title": "KI-Vorschläge"
