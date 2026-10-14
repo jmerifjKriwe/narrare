@@ -2,9 +2,13 @@
 
 Extracted from check_gate_drift.py for RULE-04 compliance.
 This module contains the "business logic" for detecting drift between
-documented quality gates and CI configuration.
+gate-exceptions.json / the CI workflow and the documented gate baseline.
 
-See: .opencode/context/narrare-dev/processes/quality-gates.md Gate 11.
+Authority: ADR-098 — the gate SSOT is the ci.yml header table (G1-G10 + G6a)
+plus CONSTRAINTS.md §6. The retired doc anchor
+quality-gates.md (removed in f11eb44a, retired by ADR-098)
+is no longer compared; ADR-098 is also the process authority for the
+gate-exception registry (scripts/gate-exceptions.json).
 """
 
 from __future__ import annotations
@@ -19,10 +23,6 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CI_YAML_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
-QUALITY_GATES_PATH = (
-    REPO_ROOT / ".opencode" / "context" / "narrare-dev" / "processes" / "quality-gates.md"
-)
 EXCEPTIONS_PATH = REPO_ROOT / "scripts" / "gate-exceptions.json"
 
 
@@ -102,27 +102,6 @@ def _find_cov_fail_under(ci_content: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _has_mypy_in_ci(ci_content: str) -> bool:
-    """Check if mypy is referenced as a run step (not just in comments)."""
-    for line in ci_content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            continue
-        if "mypy" in stripped and "run" in line.lower():
-            return True
-    return False
-
-
-def _has_mypy_config(pyproject_content: str) -> bool:
-    """Check if [tool.mypy] is configured in pyproject.toml."""
-    return bool(re.search(r"^\[tool\.mypy\]", pyproject_content, re.MULTILINE))
-
-
-def _mypy_in_docs(docs_content: str) -> bool:
-    """Check if quality-gates documentation mentions mypy as a gate."""
-    return "mypy" in docs_content.lower()
-
-
 def _check_step_in_architecture_job(ci_content: str, script_name: str) -> bool:
     """Check if a script is run in the architecture job."""
     return bool(re.search(rf"(?:uv run )?python\s+scripts/{re.escape(script_name)}", ci_content))
@@ -145,10 +124,9 @@ def _has_continue_on_error(ci_content: str, script_name: str) -> bool:
 
 def check_coverage_threshold(
     ci_content: str,
-    docs_content: str,
     exception_ids: set[str],
 ) -> DriftItem:
-    """Check coverage threshold drift between CI and documentation."""
+    """Check CI coverage threshold against the documented gate baseline."""
     ci_value = _find_cov_fail_under(ci_content)
 
     if ci_value is None:
@@ -160,7 +138,8 @@ def check_coverage_threshold(
             exception_id="coverage-threshold" if "coverage-threshold" in exception_ids else None,
         )
 
-    # Documented target is 80% (core 90%, api 80%) per quality-gates.md Gate 2
+    # Documented target is 80% (core 90%, api 80%) per ci.yml gate row G2 and
+    # CONSTRAINTS.md §6 (RULE-10); re-anchored by ADR-098.
     ci_int = int(ci_value)
     target = 80
     has_drift = ci_int < target
@@ -178,53 +157,6 @@ def check_coverage_threshold(
         exception_id="coverage-threshold"
         if has_drift and "coverage-threshold" in exception_ids
         else None,
-    )
-
-
-def check_mypy_drift(
-    ci_content: str,
-    pyproject_content: str | None,
-    docs_content: str,
-    exception_ids: set[str],
-) -> DriftItem:
-    """Check if mypy is documented but not configured in CI."""
-    mypy_in_doc = _mypy_in_docs(docs_content)
-    mypy_ci = _has_mypy_in_ci(ci_content)
-    mypy_configured = pyproject_content is not None and _has_mypy_config(pyproject_content)
-
-    if not mypy_in_doc:
-        return DriftItem(
-            check_id="mypy",
-            passed=True,
-            detail="mypy not referenced in quality-gates documentation",
-        )
-
-    # Doc mentions mypy — check if it's actually running
-    if mypy_ci and mypy_configured:
-        return DriftItem(
-            check_id="mypy",
-            passed=True,
-            detail="mypy is documented, configured, and runs in CI",
-        )
-
-    # Doc mentions mypy but CI doesn't have it
-    has_exception = "mypy-not-configured" in exception_ids
-    detail_parts: list[str] = ["Documented in quality-gates.md"]
-    if not mypy_ci:
-        detail_parts.append("not in CI")
-    if not mypy_configured:
-        detail_parts.append("not in pyproject.toml")
-
-    detail = ", ".join(detail_parts)
-    if has_exception:
-        detail += " (exception registered)"
-
-    return DriftItem(
-        check_id="mypy",
-        passed=False,
-        detail=detail,
-        has_exception=has_exception,
-        exception_id="mypy-not-configured" if has_exception else None,
     )
 
 
@@ -306,16 +238,11 @@ def check_locale_sync(
 def run_all_checks() -> DriftReport:
     """Run all drift checks and return the aggregated report."""
     ci_content = _read_file(CI_YAML_PATH) or ""
-    pyproject_content = _read_file(PYPROJECT_PATH)
-    docs_content = _read_file(QUALITY_GATES_PATH) or ""
     exceptions_data = _load_exceptions()
     exception_ids = _get_exception_ids(exceptions_data)
 
     report = DriftReport()
-    report.items.append(check_coverage_threshold(ci_content, docs_content, exception_ids))
-    report.items.append(
-        check_mypy_drift(ci_content, pyproject_content, docs_content, exception_ids)
-    )
+    report.items.append(check_coverage_threshold(ci_content, exception_ids))
     report.items.append(check_streaming_compliance(ci_content, exception_ids))
     report.items.append(check_locale_sync(ci_content, exception_ids))
 

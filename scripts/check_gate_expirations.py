@@ -15,7 +15,8 @@ Usage:
   python scripts/check_gate_expirations.py              # human-readable
   python scripts/check_gate_expirations.py --json       # JSON for CI
 
-See: .opencode/context/narrare-dev/processes/quality-gates.md Gate 11.
+See: ADR-098 (docs/architecture/decisions/) — the gate-exception registry
+authority is scripts/gate-exceptions.json, anchored by ADR-098.
 """
 
 from __future__ import annotations

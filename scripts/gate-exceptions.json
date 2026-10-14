@@ -1,5 +1,5 @@
 {
-  "_comment": "Registry of CI gate exceptions with expiry dates. See .opencode/context/narrare-dev/processes/quality-gates.md Gate 11.",
+  "_comment": "Registry of CI gate exceptions with expiry dates. Authority and process: ADR-098 (retired the former Gate 11 doc anchor) + scripts/check_gate_expirations.py.",
   "exceptions": [
     {
       "id": "coverage-threshold",
