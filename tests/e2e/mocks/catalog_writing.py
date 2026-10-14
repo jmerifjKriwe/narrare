@@ -10,9 +10,9 @@ Wire formats mirror the REAL endpoints (verified 2026-10-12):
   Variant ``truncated`` models the audit-M06 silent death: the stream ends
   WITHOUT ``is_final`` and WITHOUT an error event (Task 3's guard E2E).
 - POST /api/v1/writing/chapters/{chapter_id}/rewrite — SSE (router_rewrite.py):
-  ``request_info`` event, ``<alternative label="…">…</alternative>`` text
-  chunks, final chunk ``is_final`` + ``usage`` (frontend:
-  ``packages/web/lib/api/generation-streams.ts`` ``streamRewrite``).
+  ``context_meta`` event first (CR-07), ``<alternative label="…">…</alternative>``
+  text chunks, final chunk ``is_final`` + ``usage``
+  (frontend: ``packages/web/lib/api/generation-streams.ts`` ``streamRewrite``).
 - POST /api/v1/writing/story-suggest/{novel_id} — SSE (router_story_suggest.py):
   one ``{"event": "suggestions", "suggestions": [...]}`` event,
   ``{"event": "done", "is_final": true}`` (frontend: story-suggest-stream.ts).
@@ -20,8 +20,10 @@ Wire formats mirror the REAL endpoints (verified 2026-10-12):
   ``context_meta`` event, ``{"text": ...}`` chunks, final event ``is_final``
   + ``usage`` + ``changes`` + ``total_changes`` + ``has_changes`` +
   ``reasoning`` + ``request_id`` (frontend: coauthor.ts ``streamCoAuthor``).
-  The pattern ends at ``/co-author`` — Playwright full-match semantics leave
-  ``/co-author/apply`` and ``/co-author/feedback`` on the real backend.
+  The pattern ends at ``/co-author*`` — the trailing ``*`` eats the query
+  string the frontend appends (``?novel_id=…``), while a single ``*`` cannot
+  cross ``/``, so ``/co-author/apply`` and ``/co-author/feedback`` stay on
+  the real backend (pinned by a unit test).
 - POST /api/v1/planning/scenes/{novel_id}/{chapter_id}/draft|refine — JSON
   (apps/api/narrare/planning/schemas_scenes.py).
 """
@@ -94,7 +96,7 @@ GENERATION_TRUNCATED_SSE = _sse(
 # No text chunks, no is_final — the audit-M06 silent stream death.
 
 REWRITE_HAPPY_SSE = _sse(
-    json.dumps({"type": "request_info", "request_id": "e2e-mock-rewrite-1"}),
+    json.dumps({"type": "context_meta", "source": "e2e-mock", "word_count": 1420}),
     json.dumps(
         {
             "text": '<alternative label="Tighter">The harbour bell rang twice; '
@@ -253,7 +255,7 @@ SPECS: tuple[RouteSpec, ...] = (
     RouteSpec(
         capability="coauthor_stream",
         variant="happy",
-        pattern="**/api/v1/writing/chapters/*/co-author",
+        pattern="**/api/v1/writing/chapters/*/co-author*",
         method="POST",
         content_type="text/event-stream",
         body=COAUTHOR_HAPPY_SSE,
@@ -261,7 +263,7 @@ SPECS: tuple[RouteSpec, ...] = (
     RouteSpec(
         capability="coauthor_stream",
         variant="error",
-        pattern="**/api/v1/writing/chapters/*/co-author",
+        pattern="**/api/v1/writing/chapters/*/co-author*",
         method="POST",
         status=500,
         body=COAUTHOR_ERROR_BODY,

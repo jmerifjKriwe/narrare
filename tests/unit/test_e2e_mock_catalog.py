@@ -6,6 +6,8 @@ this is the drift-ratchet the spec demands, runnable without a stack.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from tests.e2e.mocks.catalog import (
@@ -14,6 +16,30 @@ from tests.e2e.mocks.catalog import (
     entries_for,
     validate_catalog,
 )
+
+
+def _playwright_route_matches(pattern: str, url: str) -> bool:
+    """Approximate Playwright page.route glob matching for catalog patterns.
+
+    Playwright matches a string pattern against the FULL URL (query string
+    included), anchored at both ends: ``**`` spans ``/``, a single ``*``
+    matches any run of characters except ``/``. Only ``**``, ``*`` and
+    literals appear in catalog patterns; the unit tests use this to pin
+    URL-match semantics without launching a browser.
+    """
+    tokens: list[str] = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**", i):
+            tokens.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            tokens.append("[^/]*")
+            i += 1
+        else:
+            tokens.append(re.escape(pattern[i]))
+            i += 1
+    return re.fullmatch("".join(tokens), url) is not None
 
 
 class TestRegistry:
@@ -138,7 +164,7 @@ class TestWritingCatalogGrowth:
         spec = entries_for("rewrite_stream", "happy")[0]
         assert spec.method == "POST"
         events = assert_sse_body_wellformed(spec.body)
-        assert events[0]["type"] == "request_info"
+        assert events[0]["type"] == "context_meta"
         texts = "".join(str(e.get("text") or "") for e in events)
         assert texts.count('<alternative label="') == texts.count("</alternative>") == 2
         assert any(e.get("is_final") for e in events)
@@ -175,3 +201,27 @@ class TestWritingCatalogGrowth:
 
     def test_coauthor_stream_has_error_variant(self) -> None:
         assert entries_for("coauthor_stream", "error")[0].status == 500
+
+    def test_coauthor_pattern_matches_query_string_but_not_sibling_routes(self) -> None:
+        # Playwright matches route globs against the FULL URL including the
+        # query string (coauthor.ts sends "?novel_id=…"), so the pattern needs
+        # its trailing '*'. A single '*' never crosses '/', keeping the REAL
+        # /co-author/apply and /co-author/feedback endpoints unmocked.
+        for spec in (
+            *entries_for("coauthor_stream", "happy"),
+            *entries_for("coauthor_stream", "error"),
+        ):
+            assert spec.pattern.endswith("co-author*"), spec.pattern
+            base = (
+                "http://localhost:3000/api/v1/writing/chapters"
+                "/00000000-0000-0000-0000-0000000000a1/co-author"
+            )
+            assert _playwright_route_matches(
+                spec.pattern, f"{base}?novel_id=00000000-0000-0000-0000-0000000000b2"
+            ), f"{spec.pattern} must match the streamed URL with query string"
+            assert not _playwright_route_matches(
+                spec.pattern, f"{base}/apply?novel_id=00000000-0000-0000-0000-0000000000b2"
+            ), f"{spec.pattern} must NOT match /co-author/apply"
+            assert not _playwright_route_matches(spec.pattern, f"{base}/feedback"), (
+                f"{spec.pattern} must NOT match /co-author/feedback"
+            )

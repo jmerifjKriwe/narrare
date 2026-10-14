@@ -38,7 +38,7 @@ class RouteSpec:
     """One deterministic browser-layer response for an AI surface."""
 
     capability: str
-    variant: str  # "happy" | "error"
+    variant: str  # "happy" | "error" | capability-specific (generation_stream also: "truncated")
     pattern: str  # Playwright glob matched against the full URL
     method: str  # "GET" | "POST"
     status: int = 200
