@@ -27,15 +27,16 @@ rules:
   artipacked:
     ignore:
       # (lines re-pinned 2026-10-02 after nightly-cron comment shift, PR #235)
-      # ci.yml:122 `changes` — dorny/paths-filter takes the git path on
+      # (re-pinned 2026-10-14 after ADR-97 ci.yml inserts, PR #254)
+      # ci.yml:123 `changes` — dorny/paths-filter takes the git path on
       # push runs (`git fetch origin <sha>`; depth-1 clone lacks the
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
-      - ci.yml:122
-      # ci.yml:680 `update-coverage-badge` — git-auto-commit pushes the
+      - ci.yml:123
+      # ci.yml:688 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:680
+      - ci.yml:688
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -64,7 +65,7 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      - ci.yml:826 # frontend-tests duration (own step output, numeric)
+      - ci.yml:839 # frontend-tests duration (own step output, numeric)
       - mutation-testing-monthly.yml:106 # scope label (own step output)
       - release-please.yml:65 # VERSION (release-please tag output)
       - release-please.yml:95 # IMAGE name:tag (own step outputs)
