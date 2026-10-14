@@ -1,8 +1,7 @@
 # ADR-098 — Retire the Phantom `quality-gates.md` Doc Anchor
 
-> **Status:** 🔄 Proposed — flips to ✅ after the implementation wave's PR CI
-> runs green (same discipline as ADR-097 completeness item 7: the only item
-> that cannot be evidenced locally).
+> **Status:** ✅ Implemented — PR #255 CI green (run 38633764724);
+> wave commits 98296b57 + 32ce36e0.
 > **Date:** 2026-10-14
 > **Deciders:** Architecture Agent
 > **Supersedes:** none
