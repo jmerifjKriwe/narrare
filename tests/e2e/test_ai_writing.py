@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.e2e.config import BASE_URL
-from tests.e2e.foundation import NovelContext
+from tests.e2e.foundation import NovelContext, make_authed_request
 from tests.e2e.helpers import capture_network, mock_llm
 from tests.e2e.helpers.editor_ai import (
     click_panel_generate,
@@ -52,21 +52,10 @@ def authed_request(
 ) -> Callable[..., http_requests.Response]:
     """``api_request`` carrying the module user's bearer token.
 
-    The conftest ``api_request`` is deliberately unauthenticated (shared
-    session); the suite convention is per-call ``Authorization`` merged over
-    the browser-mimic session defaults (http_session.py, ws-ticket spec) —
-    chapter seeding must land on THIS user's novel, not the dev user's.
+    Delegates to the foundation factory (extracted at the Task 9 third
+    consumer; this module held the first copy).
     """
-
-    def _request(method: str, path: str, **kwargs: object) -> http_requests.Response:
-        return api_request(
-            method,
-            path,
-            headers={"Authorization": f"Bearer {ai_novel.access_token}"},
-            **kwargs,
-        )
-
-    return _request
+    return make_authed_request(api_request, ai_novel)
 
 
 @pytest.mark.e2e
