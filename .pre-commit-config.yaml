@@ -267,6 +267,22 @@ repos:
         files: ^tests/
         stages: [pre-commit]
 
+      # Pyrefly — additive commit-time type check (ADR-097), staged scope.
+      # Restores the commit-time type coverage D1 (2026-08-13 runtime plan)
+      # moved to pre-push for latency: pyright costs 47.2s whole-project,
+      # pyrefly ~0.35s per staged file. pyright strict stays the authoritative
+      # gate (pre-push + CI); pyrefly's kind set starts narrow (3 artifact-
+      # heavy kinds disabled) with a residual baseline — see pyrefly.toml +
+      # pyrefly-baseline.json. Scope mirrors pyright's include list.
+      - id: pyrefly
+        name: Pyrefly Type Check (staged)
+        entry: uv run --no-sync pyrefly check --progress-bar no
+        language: system
+        types: [python]
+        files: ^(apps/api|packages/core|packages/i18n|scripts|benchmark)/.*\.py$
+        pass_filenames: true
+        stages: [pre-commit]
+
       # Security — pass_filenames: false + a fixed -r target set makes the
       # push gate scope-identical to `just security` and the CI security job
       # by construction (production + scripts + evals; no history-dependent
@@ -376,4 +392,6 @@ repos:
         pass_filenames: false
 
 ci:
-  skip: [pyright]  # pyright runs as full check in CI, not per-file in CI
+  # pyright + pyrefly run as full checks in CI (quality job), not per-file
+  # in CI (pre-commit.ci)
+  skip: [pyright, pyrefly]

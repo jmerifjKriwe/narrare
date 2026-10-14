@@ -1,0 +1,54 @@
+# Pyrefly — additive commit-time type check (ADR-097).
+# pyright strict stays THE authoritative type gate (`just typecheck`, CI G6);
+# this file exists so the pre-commit staged hook and the CI quality-job step
+# run an identical, reproducible scope.
+#
+# MANDATORY per ADR-097 Decision 3: without this file, `pyrefly check
+# --preset <X>` silently discards the in-memory migration of [tool.pyright]
+# in pyproject.toml and re-scopes to `**/*.py*` including tests/ (measured:
+# 1,480 errors in tests/, 197 missing-imports instead of 1).
+
+# Mirrors [tool.pyright] include; tests stay excluded (they have their own
+# basic-mode gate via tests/pyrightconfig.json).
+project-includes = ["apps/api", "packages/core", "packages/i18n", "scripts", "benchmark"]
+# Mirrors pyright's exclude entry (currently a no-op — no such dirs — kept
+# for parity so the two checkers cannot drift apart silently).
+project-excludes = ["**/migrations/**"]
+
+# = pyright extraPaths
+search-path = ["apps/api", "packages/core", "packages/i18n", "scripts"]
+
+python-version = "3.14"
+python-interpreter-path = ".venv/bin/python"
+
+# Honor the existing 117 `# pyright: ignore` + 37 `# type: ignore`
+# suppressions (pyright does by default; pyrefly only with this flag).
+permissive-ignores = true
+
+# Match pyright's resolution of script-sibling imports (scripts run with
+# sys.path[0]=scripts/<dir>; pyright resolves them via the importing file's
+# own directory). Verified: removes exactly one false missing-import,
+# changes nothing else.
+enable-fallback-search-path = true
+
+# Rust binary — preset/migration defaults shift between minor versions.
+# The baseline below is only reproducible against this exact version.
+required-version = "==1.3.2"
+
+# Residual-findings baseline (ADR-097 Decision 4/6). NOT a RULE-23
+# type-suppression channel, not counted by scripts/check_type_ignores.
+# Baseline additions require naming the error class + justification in the
+# PR description. Regenerate only deliberately:
+#   uv run pyrefly check --update-baseline
+baseline = "pyrefly-baseline.json"
+
+# ADR-097 Decision 4 + OQ-1: three artifact-heavy kinds stay disabled until
+# their upstream root causes shrink. 86/93 of the initial findings sat in
+# these kinds — 100% tool artifacts from 4 root causes: pydantic_ai
+# Agent.output_validator overload resolution, SQLAlchemy C-extension Row
+# stubs (BaseRow.__getattribute__), dataclass __replace__ **dict unpacking,
+# scripts.x vs x duplicate module identity.
+[errors]
+no-matching-overload = false
+bad-argument-type = false
+missing-argument = false
