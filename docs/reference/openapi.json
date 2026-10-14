@@ -12285,7 +12285,7 @@
           "writing"
         ],
         "summary": "Accept Draft",
-        "description": "Accept a generated draft.",
+        "description": "Accept a generated draft (optionally with user edits in the body).",
         "operationId": "accept_draft_api_v1_writing_generation__request_id__accept_post",
         "security": [
           {
@@ -12302,24 +12302,25 @@
               "format": "uuid",
               "title": "Request Id"
             }
-          },
-          {
-            "name": "modified_text",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Modified Text"
-            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AcceptRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Accept Request"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -13666,6 +13667,24 @@
           "zai"
         ],
         "title": "AIProvider"
+      },
+      "AcceptRequest": {
+        "properties": {
+          "modified_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modified Text"
+          }
+        },
+        "type": "object",
+        "title": "AcceptRequest",
+        "description": "Accept-draft request body.\n\nRULE-17 repair (audit M06 slice): the FE has always sent\n``{\"modified_text\": …}`` as a JSON body\n(packages/web/lib/api/generation.ts), but the route read it as a query\nparameter — silently discarding the value. This model makes the body the\ncontract."
       },
       "AcceptResponse": {
         "properties": {

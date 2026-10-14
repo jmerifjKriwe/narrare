@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 from narrare.writing.schemas import (
+    AcceptRequest,
     AcceptResponse,
     GenerateRequest,
     GenerateResponse,
@@ -110,10 +111,11 @@ async def accept_draft(
     request_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
-    modified_text: str | None = None,
+    accept_request: AcceptRequest | None = None,
 ) -> AcceptResponse:
-    """Accept a generated draft."""
+    """Accept a generated draft (optionally with user edits in the body)."""
     service = await get_writing_service(session, user_id)
+    modified_text = accept_request.modified_text if accept_request is not None else None
     return await service.accept_draft(request_id, user_id, modified_text)
 
 

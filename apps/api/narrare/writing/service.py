@@ -26,9 +26,9 @@ from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
+from narrare.writing._draft_feedback import accept_draft_request, reject_draft_request
 from narrare.writing._helpers import (
     get_validated_request,
-    record_feedback,
     start_generation_request,
 )
 from narrare.writing._pipeline_request_support import build_pipeline_request
@@ -231,22 +231,18 @@ class WritingService:
         user_id: str,
         modified_text: str | None = None,
     ) -> AcceptResponse:
-        """Accept a generated draft."""
-        request_model = await get_validated_request(self._repo, request_id, user_id)
-        await record_feedback(self._feedback, request_model, "accept", modified_text=modified_text)
-        logger.info("draft_accepted", request_id=str(request_id))
-        return AcceptResponse(
-            request_id=request_id,
-            chapter_id=request_model.chapter_id,
-            word_count=request_model.word_count,
+        """Accept a generated draft.
+
+        Delegates per RULE-04; raises ``EMPTY_DRAFT`` for text-less rows
+        (see :func:`narrare.writing._draft_feedback.accept_draft_request`).
+        """
+        return await accept_draft_request(
+            self._repo, self._feedback, request_id, user_id, modified_text
         )
 
     async def reject_draft(self, request_id: UUID, user_id: str) -> RejectResponse:
         """Reject a generated draft."""
-        request_model = await get_validated_request(self._repo, request_id, user_id)
-        await record_feedback(self._feedback, request_model, "reject")
-        logger.info("draft_rejected", request_id=str(request_id))
-        return RejectResponse(request_id=request_id)
+        return await reject_draft_request(self._repo, self._feedback, request_id, user_id)
 
     # -- Scene-by-scene (delegates to SceneService) ---------------------
 
