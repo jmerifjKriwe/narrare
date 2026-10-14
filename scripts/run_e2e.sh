@@ -82,6 +82,7 @@ export NARRARE_E2E_TEST=1                     # → all LLM factories return pyd
 export ANTHROPIC_API_KEY=sk-test-dummy        # required by settings validation; unused under NARRARE_E2E_TEST
 export OPENAI_API_KEY=sk-test-dummy
 export NARRARE_ENCRYPTION_KEY=WYcr1iULJse2Oo6GPpmw1Au4ovp_fXZwbrNF11C12ZQ=
+export NARRARE_RATE_LIMIT_WS=100              # global WS connect bucket (3/min default) would flake the 4 WS-connecting specs under randomized module order
 # E01 (2026-10-11 audit): the Next.js proxy (packages/web/proxy.ts) verifies
 # the narrare_auth cookie with AUTH_JWT_SECRET ?? SECRET_KEY ?? dev-default.
 # If the web process does NOT inherit this env (e.g. a standalone `pnpm dev`
