@@ -2,7 +2,7 @@
 
 Wire formats mirror the REAL endpoints (verified 2026-10-12):
 - GET  /api/v1/writing/generation/{request_id}/stream — SSE:
-  optional ``{"type": "context_meta", ...}`` first, then
+  ``context_meta`` first (real ``ContextMetadata.to_dict()`` shape), then
   ``{"text": ...}`` chunks, final chunk carries ``is_final`` + ``usage``,
   terminated by ``data: [DONE]`` (apps/api/narrare/writing/router.py).
   The START POST is NOT mocked — the real backend creates the request row
@@ -39,8 +39,40 @@ def _sse(*events: str) -> str:
     return "".join(f"data: {event}\n\n" for event in events) + "data: [DONE]\n\n"
 
 
+# Real context_meta wire shape (CR-07): narrare_core.writing.context_models
+# ContextMetadata.to_dict() — empty-KB values. The frontend ContextInspector
+# reads character_names/location_names with .slice() during streaming, so a
+# minimal/fabricated payload crashes the page (Task 7 live-run finding).
+_CONTEXT_META: str = json.dumps(
+    {
+        "type": "context_meta",
+        "kb_characters_count": 0,
+        "kb_locations_count": 0,
+        "kb_factions_count": 0,
+        "kb_systems_count": 0,
+        "kb_timelines_count": 0,
+        "kb_relationships_count": 0,
+        "kb_suggested_count": 0,
+        "kb_pinned_count": 0,
+        "recent_chapter_count": 1,
+        "character_names": [],
+        "location_names": [],
+        "faction_names": [],
+        "is_first_chapter": True,
+        "has_user_preferences": False,
+        "has_cross_session_context": False,
+        "tone": "balanced",
+        "story_structure": "",
+        "timeline_position": "",
+        "wiki_summaries_count": 0,
+        "wiki_summaries_stale": 0,
+        "total_budget_tokens": 120_000,
+    }
+)
+
+
 GENERATION_HAPPY_SSE = _sse(
-    json.dumps({"type": "context_meta", "source": "e2e-mock", "word_count": 1420}),
+    _CONTEXT_META,
     json.dumps({"text": "The harbour bell rang twice before dawn, "}),
     json.dumps({"text": "and Elara counted the strikes the way her mother had taught her."}),
     json.dumps(
@@ -91,12 +123,12 @@ SCENE_DRAFT_HAPPY = json.dumps(
 SCENE_REFINE_HAPPY = json.dumps({"proposal": _SCENE_PROPOSAL, "ai_unavailable": False})
 
 GENERATION_TRUNCATED_SSE = _sse(
-    json.dumps({"type": "context_meta", "source": "e2e-mock", "word_count": 1420}),
+    _CONTEXT_META,
 )
 # No text chunks, no is_final — the audit-M06 silent stream death.
 
 REWRITE_HAPPY_SSE = _sse(
-    json.dumps({"type": "context_meta", "source": "e2e-mock", "word_count": 1420}),
+    _CONTEXT_META,
     json.dumps(
         {
             "text": '<alternative label="Tighter">The harbour bell rang twice; '
@@ -161,7 +193,7 @@ _COAUTHOR_CHANGE = {
 }
 
 COAUTHOR_HAPPY_SSE = _sse(
-    json.dumps({"type": "context_meta", "source": "e2e-mock", "word_count": 1420}),
+    _CONTEXT_META,
     json.dumps({"text": "The harbour bell rang twice before dawn. "}),
     json.dumps({"text": "Elara counted each strike, tasting salt on the wind."}),
     json.dumps(
@@ -282,6 +314,13 @@ def validate() -> None:
     events = assert_sse_body_wellformed(happy.body)
     assert events[0]["type"] == "context_meta", "generation SSE must open with context_meta"
     assert any(e.get("is_final") is True for e in events), "missing is_final chunk"
+
+    # Drift ratchet: the context_meta payload must be exactly the real
+    # ContextMetadata wire shape (unknown/missing keys fail) — the FE
+    # ContextInspector slices its name arrays during streaming (Task 7).
+    from narrare_core.writing.context_models import ContextMetadata
+
+    ContextMetadata(**{k: v for k, v in events[0].items() if k != "type"})
 
     truncated = next(
         s for s in SPECS if s.capability == "generation_stream" and s.variant == "truncated"
