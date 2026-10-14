@@ -226,7 +226,21 @@ class TestHandshakeOrder:
     ) -> None:
         mock_websocket.headers["origin"] = "http://evil.com"
         token = ws_tickets.issue(USER)
-        await interactive_session(mock_websocket, chapter_id, token=token, project_id=project_id)
+        # N08: pin a NON-test environment — the suite runs under
+        # ENVIRONMENT=test (where the origin gate relaxes, REST CSRF
+        # parity); this handshake-ORDER pin requires the strict posture.
+        # Alias key via model_validate: a field-name ctor kwarg for the
+        # aliased csrf field would be silently dropped.
+        dev_settings = AppSettings.model_validate(
+            {
+                "environment": "development",
+                "NARRARE_CSRF_TRUSTED_ORIGINS": ["http://localhost:3000"],
+            },
+        )
+        with patch("narrare._app.config.get_settings", return_value=dev_settings):
+            await interactive_session(
+                mock_websocket, chapter_id, token=token, project_id=project_id
+            )
         assert mock_websocket.close.await_args.kwargs["code"] == 1008
 
     async def test_rate_limited_after_valid_ticket_closes_4003(

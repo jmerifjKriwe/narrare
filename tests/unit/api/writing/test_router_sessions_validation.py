@@ -90,15 +90,25 @@ async def test_untrusted_origin_returns_error(
 
     Reclassified from 4001 per ADR-084: an untrusted origin is a policy
     violation per RFC 6455 §7.4.1, not a malformed handshake.
+
+    N08: settings are pinned to a NON-test environment — the suite runs
+    under ``ENVIRONMENT=test`` (where the gate relaxes, REST CSRF parity);
+    this test pins the unchanged production posture.
     """
     mock_websocket.headers["origin"] = "http://evil.com"
-
-    await interactive_session(
-        mock_websocket,
-        chapter_id,
-        token=mint_ws_ticket(USER_ID),
-        project_id=project_id,
+    # Alias key: a field-name ``csrf_trusted_origins=`` ctor kwarg is
+    # silently dropped (extra="ignore"); model_validate makes it real.
+    dev_settings = AppSettings.model_validate(
+        {"environment": "development", "NARRARE_CSRF_TRUSTED_ORIGINS": ["http://localhost:3000"]},
     )
+
+    with patch("narrare._app.config.get_settings", return_value=dev_settings):
+        await interactive_session(
+            mock_websocket,
+            chapter_id,
+            token=mint_ws_ticket(USER_ID),
+            project_id=project_id,
+        )
 
     mock_websocket.accept.assert_awaited_once()
     mock_websocket.send_json.assert_awaited_once()
@@ -141,6 +151,40 @@ async def test_empty_origin_is_allowed(
         code=4003,
         reason="Rate limited",
     )
+
+
+async def test_untrusted_origin_allowed_under_environment_test(
+    mock_websocket: AsyncMock,
+    chapter_id: UUID,
+    project_id: UUID,
+) -> None:
+    """N08: under ENVIRONMENT=test the origin gate relaxes like REST CSRF.
+
+    Mirrors ``test_empty_origin_is_allowed``: the rate limiter is forced to
+    reject so reaching close(4003) PROVES the foreign origin passed the
+    origin gate (pre-fix: close(1008) — the red).
+    """
+    from narrare._app import config as app_config
+    from narrare._app.rate_limits import AI_WS_LIMITER
+
+    mock_websocket.headers["origin"] = "http://localhost:9999"
+    # Alias key: a field-name ``csrf_trusted_origins=`` ctor kwarg is
+    # silently dropped (extra="ignore"); model_validate makes it real.
+    test_settings = AppSettings.model_validate(
+        {"environment": "test", "NARRARE_CSRF_TRUSTED_ORIGINS": ["http://localhost:3000"]},
+    )
+    with (
+        patch.object(app_config, "get_settings", return_value=test_settings),
+        patch.object(AI_WS_LIMITER, "try_acquire", return_value=False),
+    ):
+        await interactive_session(
+            mock_websocket,
+            chapter_id,
+            token=mint_ws_ticket(USER_ID),
+            project_id=project_id,
+        )
+
+    mock_websocket.close.assert_awaited_once_with(code=4003, reason="Rate limited")
 
 
 # ---------------------------------------------------------------------------
@@ -190,12 +234,14 @@ async def test_origin_check_closes_on_empty_trusted_list(
     """When csrf_trusted_origins is empty and origin is set, reject.
 
     Edge case: a misconfigured deployment that sets an empty list
-    should reject all origins (defense-in-depth).
+    should reject all origins (defense-in-depth). N08: ``is_test`` is
+    pinned ``False`` — the defense applies outside ``ENVIRONMENT=test``.
     """
     mock_websocket.headers["origin"] = "http://localhost:3000"
 
     with patch("narrare._app.config.get_settings") as mock_get_settings:
         mock_settings = MagicMock(spec=AppSettings)
+        mock_settings.is_test = False
         mock_settings.csrf_trusted_origins = []
         mock_get_settings.return_value = mock_settings
 

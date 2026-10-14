@@ -80,13 +80,13 @@ async def interactive_session(
         await _close_with_error(websocket, code=4001, reason="Missing project_id")
         return
 
-    # 3. Origin validation (CSRF defense-in-depth, AUFG-05-13) — a policy
-    #    violation per RFC 6455 §7.4.1, hence 1008 (ADR-084 reclassification).
+    # 3. Origin validation (CSRF defense-in-depth, AUFG-05-13; 1008 per
+    #    ADR-084). ENVIRONMENT=test mirrors the REST seam (main.py skips
+    #    the middleware under is_test); production posture unchanged (N08).
     from narrare._app.config import get_settings
+    from narrare.writing.ws_origin import origin_is_allowed
 
-    _trusted = get_settings().csrf_trusted_origins
-    _origin = websocket.headers.get("origin", "")
-    if _origin and _origin not in _trusted:
+    if not origin_is_allowed(websocket.headers.get("origin", ""), get_settings()):
         await _close_with_error(websocket, code=1008, reason="Origin not allowed")
         return
 
