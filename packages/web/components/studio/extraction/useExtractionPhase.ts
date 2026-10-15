@@ -15,7 +15,7 @@
  */
 
 import type { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApplyExtraction, useExtractChapter } from "@/lib/hooks/useExtraction";
 import { useExtractionSelection } from "@/lib/hooks/useExtractionSelection";
 import {
@@ -60,29 +60,33 @@ export function useExtractionPhase({
   // Auto-close on "done" phase after a short delay.
   useExtractionAutoClose(phase, "done", onClose);
 
-  // Mount-only trigger: extract on open.
+  // Mount-only trigger: extract on open. M01: startedRef makes this true
+  // even though the effect's deps include `extractMutation.mutateAsync`,
+  // whose identity changes on every useAIOperation state transition —
+  // without the guard each transition re-fired POST /kb/extract/{chapter}
+  // (audit: 697 calls in one modal session). Retry stays explicit
+  // (handleRetry below). Deliberately NO cancelled-cleanup: under dev
+  // StrictMode (setup → cleanup → setup) cancelling the first run while
+  // the guard skips the second would drop the only in-flight extraction;
+  // same fire-once shape as CharacterVoicePanel/useBulkExtractionController.
+  const startedRef = useRef(false);
   useEffect(() => {
-    let cancelled = false;
+    if (startedRef.current) return;
+    startedRef.current = true;
 
     extractMutation
       .mutateAsync()
       .then((output) => {
-        if (cancelled) return;
         selection.loadResults(output);
         setPhase("review");
       })
       .catch((err) => {
-        if (cancelled) return;
         handleExtractionError(err, t("kb.extractionFailed"), {
           onClose,
           setErrorMsg,
           setPhase,
         });
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [extractMutation.mutateAsync, t, selection.loadResults, onClose]);
 
   const handleApply = useCallback(() => {
