@@ -2,7 +2,7 @@
 
 import type { Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Users } from "lucide-react";
 import type { useTranslations } from "next-intl";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { MAX_SELECTION_LENGTH, MIN_SELECTION_LENGTH } from "./TipTapEditorController";
@@ -15,6 +15,14 @@ interface TipTapBubbleMenuProps {
   isRewriteStreaming: boolean;
   selectionLength: number;
   onAIRewrite: () => void;
+  /**
+   * Host co-author handler (B09 residual, PO ruling 1). When defined, a
+   * "Co-Author" entry renders after the AI-rewrite button — the bubble menu is
+   * visible exactly when a selection exists, so this is the selection-carrying
+   * path (the slash trigger cannot carry one). Optional: TipTapEditor is also
+   * used outside EditorView, where no host handler exists.
+   */
+  readonly onCoAuthor?: () => void;
   t: StudioTranslator;
 }
 
@@ -24,6 +32,7 @@ export function TipTapBubbleMenu({
   isRewriteStreaming,
   selectionLength,
   onAIRewrite,
+  onCoAuthor,
   t,
 }: TipTapBubbleMenuProps) {
   return (
@@ -65,6 +74,17 @@ export function TipTapBubbleMenu({
           )}
           <span>{t("bubble.aiRewrite")}</span>
         </button>
+        {onCoAuthor && (
+          <button
+            type="button"
+            onClick={onCoAuthor}
+            title={t("bubble.coAuthor")}
+            className="px-3 py-2 hover:bg-accent transition-colors flex items-center gap-1.5 text-sm text-primary"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>{t("bubble.coAuthor")}</span>
+          </button>
+        )}
       </div>
     </BubbleMenu>
   );

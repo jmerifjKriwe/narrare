@@ -11,7 +11,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TipTapEditor } from "@/components/studio/TipTapEditor";
@@ -102,10 +102,19 @@ vi.mock("@/components/studio/editor/AIAnnotationActions", () => ({
 // The BubbleMenu's floating positioning is not drivable in happy-dom; the
 // rewrite trigger it owns is reduced to a plain button so mount-level tests
 // can drive the real rewrite flow (selection validation → phase machine →
-// AI op) from the component surface.
+// AI op) from the component surface. The co-author bubble entry (B09
+// residual) is exposed conditionally so forwarding tests can drive and pin
+// both prop states.
 vi.mock("@/components/studio/editor/TipTapBubbleMenu", () => ({
-  TipTapBubbleMenu: vi.fn(({ onAIRewrite }) => (
-    <button type="button" data-testid="bubble-rewrite-trigger" onClick={() => onAIRewrite()} />
+  TipTapBubbleMenu: vi.fn(({ onAIRewrite, onCoAuthor }) => (
+    <div>
+      <button type="button" data-testid="bubble-rewrite-trigger" onClick={() => onAIRewrite()} />
+      {onCoAuthor && (
+        <button type="button" onClick={onCoAuthor}>
+          Co-Author
+        </button>
+      )}
+    </div>
   )),
 }));
 
@@ -366,6 +375,51 @@ describe("TipTapEditor", () => {
     // Editor should still render
     const editorElement = document.querySelector(".tiptap");
     expect(editorElement).not.toBeNull();
+  });
+
+  // B09 residual (PO ruling 1, 2026-10-13): the slash trigger provably cannot
+  // carry a selection (its dispatch deletes the selected passage before the
+  // host handler reads it), so the bubble menu — visible exactly when a
+  // selection exists — is THE selection-carrying co-author path. These tests
+  // pin that TipTapEditor forwards the host handler into the bubble menu.
+  it("forwards the host co-author handler to the bubble menu (B09 residual)", async () => {
+    const onCoAuthor = vi.fn();
+    renderWithProviders(
+      <TipTapEditor
+        content="<p>Hello world</p>"
+        onChange={mockOnChange}
+        onAutosave={mockOnAutosave}
+        chapterId="chapter-1"
+        novelId="novel-1"
+        slashCommandHandlers={{ onCoAuthor }}
+      />,
+    );
+
+    // The editor (and with it the mocked bubble menu) mounts asynchronously
+    // (`immediatelyRender: false`), so wait for the entry before clicking.
+    fireEvent.click(await screen.findByRole("button", { name: "Co-Author" }));
+
+    expect(onCoAuthor).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no co-author bubble entry when the host supplies no handler", async () => {
+    renderWithProviders(
+      <TipTapEditor
+        content="<p>Hello world</p>"
+        onChange={mockOnChange}
+        onAutosave={mockOnAutosave}
+        chapterId="chapter-1"
+        novelId="novel-1"
+      />,
+    );
+
+    // Wait for the editor (and thus the bubble menu mock) to mount so the
+    // absence assertion is meaningful rather than vacuous.
+    await waitFor(() => {
+      expect(setEditorCalls.length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByRole("button", { name: "Co-Author" })).toBeNull();
   });
 });
 

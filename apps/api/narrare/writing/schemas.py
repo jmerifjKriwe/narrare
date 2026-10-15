@@ -93,6 +93,19 @@ class StopResponse(BaseModel):
     word_count: int
 
 
+class AcceptRequest(BaseModel):
+    """Accept-draft request body.
+
+    RULE-17 repair (audit M06 slice): the FE has always sent
+    ``{"modified_text": …}`` as a JSON body
+    (packages/web/lib/api/generation.ts), but the route read it as a query
+    parameter — silently discarding the value. This model makes the body the
+    contract.
+    """
+
+    modified_text: str | None = None
+
+
 class AcceptResponse(BaseModel):
     """Response after accepting draft."""
 
@@ -106,12 +119,6 @@ class RejectResponse(BaseModel):
 
     request_id: uuid.UUID
     status: str = "rejected"
-
-
-class SceneAcceptRequest(BaseModel):
-    """Accept a scene in scene-by-scene mode."""
-
-    scene_text: str | None = None
 
 
 class SceneNextResponse(BaseModel):

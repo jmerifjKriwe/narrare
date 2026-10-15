@@ -38,7 +38,7 @@ class RouteSpec:
     """One deterministic browser-layer response for an AI surface."""
 
     capability: str
-    variant: str  # "happy" | "error"
+    variant: str  # "happy" | "error" | capability-specific (generation_stream also: "truncated")
     pattern: str  # Playwright glob matched against the full URL
     method: str  # "GET" | "POST"
     status: int = 200
@@ -115,6 +115,9 @@ def validate_catalog() -> None:
     # are skipped — the check arms itself as entries land.
     for capability in (
         "generation_stream",
+        "rewrite_stream",
+        "story_suggest",
+        "coauthor_stream",
         "coreference_stream",
         "character_voice_stream",
         "consistency_stream",

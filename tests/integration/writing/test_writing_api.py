@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +160,7 @@ class TestGenerationLifecycle:
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        db_session: AsyncSession,
     ) -> None:
         """POST /writing/generation/{id}/accept returns AcceptResponse."""
         novel_id, chapter_id = await _create_novel_with_chapter(
@@ -183,6 +185,20 @@ class TestGenerationLifecycle:
             f"/api/v1/writing/generation/{request_id}",
             headers=auth_headers,
         )
+
+        # Post-M06 guard: a request row that never streamed text
+        # (word_count == 0) must not be acceptable — make the row non-empty
+        # exactly like a completed stream would before asserting the 200 path.
+        from sqlalchemy import update
+
+        from narrare.writing.models import GenerationRequest
+
+        await db_session.execute(
+            update(GenerationRequest)
+            .where(GenerationRequest.id == uuid.UUID(request_id))
+            .values(word_count=120, status="completed")
+        )
+        await db_session.flush()
 
         # Now accept
         accept_resp = await client.post(
@@ -270,3 +286,60 @@ class TestNonExistentRequest:
         )
 
         assert response.status_code == 404
+
+
+class TestAcceptDraftEmptyGuard:
+    """Audit M06 — accepting a draft that never received text must 422.
+
+    A browser-side stream death leaves the request row at word_count == 0;
+    the API must not record an "accept" for it (empty-draft accept was
+    possible, polluting feedback + generation stats).
+    """
+
+    async def _start_request(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> str:
+        novel_id, chapter_id = await _create_novel_with_chapter(client, auth_headers)
+        start_resp = await client.post(
+            f"/api/v1/writing/chapters/{chapter_id}/generate",
+            params={"novel_id": str(novel_id)},
+            json={"mode": "full_draft", "prompt": "A dramatic scene", "language": "en"},
+            headers=auth_headers,
+        )
+        assert start_resp.status_code == 200, start_resp.text[:300]
+        return start_resp.json()["request_id"]
+
+    async def test_accept_without_generated_text_returns_422_empty_draft(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        request_id = await self._start_request(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/writing/generation/{request_id}/accept",
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 422, resp.text[:300]
+        body = resp.json()
+        assert body["code"] == "EMPTY_DRAFT"
+
+    async def test_accept_with_edited_text_passes_guard_on_empty_row(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """modified_text in the JSON BODY must reach the service (contract repair)."""
+        request_id = await self._start_request(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/writing/generation/{request_id}/accept",
+            json={"modified_text": "Hand-edited opening line."},
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200, resp.text[:300]
+        assert resp.json()["request_id"] == request_id

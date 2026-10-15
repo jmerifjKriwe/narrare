@@ -15,6 +15,7 @@ import {
   streamGeneration,
   writingApi,
 } from "@/lib/api/generation";
+import { SSEStreamError } from "@/lib/api/streaming";
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import type { TokenUsage } from "@/types";
 
@@ -63,10 +64,12 @@ export function useGenerationStream({
       setWordCount(0);
       setTokenUsage(null);
       setContextMeta(null);
+      let sawFinalChunk = false;
       await streamGeneration(
         rid,
         (chunk) => {
           onChunkNotify();
+          if (chunk.is_final) sawFinalChunk = true;
           setDraftText((prev) => prev + chunk.text);
           setWordCount((prev) => prev + chunk.text.split(/\s+/).filter(Boolean).length);
         },
@@ -78,6 +81,13 @@ export function useGenerationStream({
         setTokenUsage,
         setContextMeta,
       );
+      // Audit M06: a generation stream that ends without an is_final chunk
+      // died silently (TestModel retry exhaustion / provider drop). Treat it
+      // as a stream error — NOT a completed draft — so the panel never
+      // reaches the review phase with an empty draft.
+      if (!sawFinalChunk) {
+        throw new SSEStreamError("Generation stream ended without a final chunk", "stream");
+      }
       return null;
     },
     connectionLossTimeout: 15_000,

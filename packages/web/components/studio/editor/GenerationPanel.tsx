@@ -48,8 +48,7 @@ export function GenerationPanel({
   });
 
   // Keyboard Shortcuts (KEYBOARD-001, CR-AUFG-07-13)
-  // Escape: stop (streaming) / close (review)
-  // Ctrl/Cmd+Enter: accept draft (review)
+  // Escape: stop (streaming) / close (review); Ctrl/Cmd+Enter: accept draft (review)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && controller.phase === "streaming") {
@@ -143,7 +142,9 @@ export function GenerationPanel({
                 className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm"
                 role="alert"
               >
-                {controller.errorMsg || t("generationPanel.unknownError")}
+                {controller.error?.i18nKey
+                  ? t(controller.error.i18nKey)
+                  : controller.errorMsg || t("generationPanel.unknownError")}
               </div>
               <div className="flex gap-2">
                 <button

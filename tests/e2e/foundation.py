@@ -24,7 +24,7 @@ from tests.e2e.config import API_URL, BASE_URL, DEV_EMAIL, DEV_PASSWORD
 from tests.e2e.helpers.novel_factory import complete_wizard
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     import requests as http_requests
     from playwright.sync_api import Browser
@@ -111,6 +111,31 @@ class NovelContext:
     email: str
     password: str
     access_token: str
+
+
+def make_authed_request(
+    api_request: Callable[..., http_requests.Response],
+    context: NovelContext,
+) -> Callable[..., http_requests.Response]:
+    """``api_request`` carrying a novel owner's bearer token (suite convention).
+
+    The conftest ``api_request`` is deliberately unauthenticated (shared
+    session); chapter seeding must land on THIS user's novel. Extracted once
+    at the third consumer (Task 9) — previously module-local in
+    ``test_ai_writing.py`` and ``test_ai_writing_selection.py``. Spec modules
+    keep a two-line ``authed_request`` fixture binding their own novel fixture
+    (the module novel fixture names differ by design).
+    """
+
+    def _request(method: str, path: str, **kwargs: object) -> http_requests.Response:
+        return api_request(
+            method,
+            path,
+            headers={"Authorization": f"Bearer {context.access_token}"},
+            **kwargs,
+        )
+
+    return _request
 
 
 def _new_stable_user(

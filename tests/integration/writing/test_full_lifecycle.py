@@ -87,9 +87,14 @@ class TestFullDraftLifecycle:
         assert stop_data["status"] == "stopped"
         assert "word_count" in stop_data
 
-        # 3. Accept draft
+        # 3. Accept draft — the FE always sends the accepted text as
+        # ``modified_text`` (Task 3 body contract), which is what passes the
+        # M06 EMPTY_DRAFT guard here: the test double's background stream has
+        # not accumulated row text by stop time (word_count stays 0), and a
+        # body-less accept of that row is exactly the hole the guard closes.
         accept_resp = await client.post(
             f"/api/v1/writing/generation/{request_id}/accept",
+            json={"modified_text": "The hero stepped into the dark forest."},
             headers=auth_headers,
         )
         assert accept_resp.status_code == 200

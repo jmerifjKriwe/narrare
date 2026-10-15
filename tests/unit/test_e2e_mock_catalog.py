@@ -6,6 +6,8 @@ this is the drift-ratchet the spec demands, runnable without a stack.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from tests.e2e.mocks.catalog import (
@@ -16,12 +18,41 @@ from tests.e2e.mocks.catalog import (
 )
 
 
+def _playwright_route_matches(pattern: str, url: str) -> bool:
+    """Approximate Playwright page.route glob matching for catalog patterns.
+
+    Playwright matches a string pattern against the FULL URL (query string
+    included), anchored at both ends: ``**`` spans ``/``, a single ``*``
+    matches any run of characters except ``/``. Only ``**``, ``*`` and
+    literals appear in catalog patterns; the unit tests use this to pin
+    URL-match semantics without launching a browser.
+    """
+    tokens: list[str] = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**", i):
+            tokens.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            tokens.append("[^/]*")
+            i += 1
+        else:
+            tokens.append(re.escape(pattern[i]))
+            i += 1
+    return re.fullmatch("".join(tokens), url) is not None
+
+
 class TestRegistry:
     def test_every_spec_has_body_pattern_and_capability(self) -> None:
         for spec in CATALOG:
             assert spec.body, f"{spec.capability}/{spec.variant}: empty body"
             assert spec.pattern.startswith("**/api/v1/"), spec.pattern
-            assert spec.variant in {"happy", "error"}
+            if spec.capability == "generation_stream":
+                # "truncated" models the audit-M06 silent stream death (no
+                # is_final, no error) — a deliberate third generation variant.
+                assert spec.variant in {"happy", "error", "truncated"}, spec.variant
+            else:
+                assert spec.variant in {"happy", "error"}, spec.variant
 
     def test_entries_for_raises_on_unknown_capability(self) -> None:
         with pytest.raises(ValueError, match="Unknown capability"):
@@ -119,3 +150,78 @@ class TestWritingEntries:
         happy = {s.capability: s for s in CATALOG if s.variant == "happy"}
         assert "scene_draft" in happy
         assert "scene_refine" in happy
+
+
+class TestWritingCatalogGrowth:
+    def test_generation_stream_truncated_has_no_final_chunk(self) -> None:
+        spec = entries_for("generation_stream", "truncated")[0]
+        events = assert_sse_body_wellformed(spec.body)
+        assert events and events[0]["type"] == "context_meta"
+        assert not any(e.get("is_final") for e in events), "truncated = silent death: no is_final"
+        assert not any("text" in e for e in events), "truncated emits no draft text"
+
+    def test_rewrite_stream_happy_carries_two_complete_alternatives(self) -> None:
+        spec = entries_for("rewrite_stream", "happy")[0]
+        assert spec.method == "POST"
+        events = assert_sse_body_wellformed(spec.body)
+        assert events[0]["type"] == "context_meta"
+        texts = "".join(str(e.get("text") or "") for e in events)
+        assert texts.count('<alternative label="') == texts.count("</alternative>") == 2
+        assert any(e.get("is_final") for e in events)
+
+    def test_rewrite_stream_has_error_variant(self) -> None:
+        assert entries_for("rewrite_stream", "error")[0].status == 500
+
+    def test_story_suggest_suggestions_validate_against_real_model(self) -> None:
+        from narrare_core.agents.story_suggest_types import StorySuggestOutput
+
+        spec = entries_for("story_suggest", "happy")[0]
+        events = assert_sse_body_wellformed(spec.body)
+        suggestions_event = next(e for e in events if e.get("event") == "suggestions")
+        StorySuggestOutput.model_validate({"suggestions": suggestions_event["suggestions"]})
+        done = events[-1]
+        assert done.get("event") == "done" and done.get("is_final") is True
+
+    def test_story_suggest_has_error_variant(self) -> None:
+        assert entries_for("story_suggest", "error")[0].status == 500
+
+    def test_coauthor_stream_final_event_carries_valid_changes(self) -> None:
+        from narrare.writing.schemas_coauthor import ChangeDetail
+
+        spec = entries_for("coauthor_stream", "happy")[0]
+        assert spec.method == "POST"
+        events = assert_sse_body_wellformed(spec.body)
+        assert events[0]["type"] == "context_meta"
+        final = events[-1]
+        assert final.get("is_final") is True
+        assert final.get("has_changes") is True
+        assert final.get("total_changes") == len(final["changes"])
+        for change in final["changes"]:
+            ChangeDetail.model_validate(change)  # ChangeDetail.id is a UUID — fixture must use one
+
+    def test_coauthor_stream_has_error_variant(self) -> None:
+        assert entries_for("coauthor_stream", "error")[0].status == 500
+
+    def test_coauthor_pattern_matches_query_string_but_not_sibling_routes(self) -> None:
+        # Playwright matches route globs against the FULL URL including the
+        # query string (coauthor.ts sends "?novel_id=…"), so the pattern needs
+        # its trailing '*'. A single '*' never crosses '/', keeping the REAL
+        # /co-author/apply and /co-author/feedback endpoints unmocked.
+        for spec in (
+            *entries_for("coauthor_stream", "happy"),
+            *entries_for("coauthor_stream", "error"),
+        ):
+            assert spec.pattern.endswith("co-author*"), spec.pattern
+            base = (
+                "http://localhost:3000/api/v1/writing/chapters"
+                "/00000000-0000-0000-0000-0000000000a1/co-author"
+            )
+            assert _playwright_route_matches(
+                spec.pattern, f"{base}?novel_id=00000000-0000-0000-0000-0000000000b2"
+            ), f"{spec.pattern} must match the streamed URL with query string"
+            assert not _playwright_route_matches(
+                spec.pattern, f"{base}/apply?novel_id=00000000-0000-0000-0000-0000000000b2"
+            ), f"{spec.pattern} must NOT match /co-author/apply"
+            assert not _playwright_route_matches(spec.pattern, f"{base}/feedback"), (
+                f"{spec.pattern} must NOT match /co-author/feedback"
+            )

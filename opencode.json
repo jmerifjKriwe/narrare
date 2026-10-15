@@ -11,16 +11,7 @@
   "plugin": [
     "superpowers@git+https://github.com/obra/superpowers.git"
   ],
-  "mcp": {
-    "code-review-graph": {
-      "type": "local",
-      "command": [
-        "/home/kiesow/.local/share/pipx/venvs/code-review-graph/bin/code-review-graph",
-        "serve"
-      ],
-      "timeout": 120000
-    }
-  },
+  "mcp": {},
   "formatter": true,
   "lsp": true
 }

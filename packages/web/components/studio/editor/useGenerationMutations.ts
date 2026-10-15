@@ -35,7 +35,11 @@ export function useGenerationMutations({
   onDraftAccepted,
 }: UseGenerationMutationsParams) {
   const acceptMutation = useMutation({
-    mutationFn: () => writingApi.acceptDraft(requestId!),
+    // Audit M06 + accept-body contract: send the accepted text as
+    // modified_text. For browser-mocked streams the backend row has no
+    // text (the stream never ran server-side), so the EMPTY_DRAFT guard
+    // needs it; in production feedback records what the user accepted.
+    mutationFn: () => writingApi.acceptDraft(requestId!, draftText || undefined),
     onSuccess: () => {
       rating.captureOriginal();
       onDraftAccepted(draftText);

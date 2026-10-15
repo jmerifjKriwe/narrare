@@ -19,6 +19,10 @@ upgrades). Assertions therefore observe the real network via page.on(
 "websocket") frame events plus a window.WebSocket recorder used only to
 force-close the underlying socket (simulated connection loss).
 
+The WS tracker now lives in helpers/ws_probe.py (shared with the WRITE-005
+spec, Task 11) — imported below under its original private name so this
+gate's body stays untouched.
+
 Follows the house patterns of tests/e2e/test_editor_autosave.py and
 tests/e2e/test_helpers_wizard.py.
 """
@@ -27,19 +31,16 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.e2e.helpers.ws_probe import WritingSocketTracker as _WritingSocketTracker
 from tests.e2e.test_helpers_wizard import _complete_wizard_to_editor
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from playwright.sync_api import Page
 
-    from playwright.sync_api import Page, WebSocket
-
-WS_SESSION_PATH = "/api/v1/writing/sessions/"
 WS_TICKET_PATH = "/api/v1/auth/ws-ticket"
 
 # Injected before any navigation: records every WebSocket the page creates so
@@ -55,66 +56,6 @@ window.WebSocket = class extends __NarrareOrigWS {
   }
 };
 """
-
-
-@dataclass
-class _SocketRecord:
-    """One writing-session WebSocket and its observed text-frame traffic."""
-
-    url: str
-    frames: list[str] = field(default_factory=list)
-    sent: list[str] = field(default_factory=list)
-
-
-def _append_text_frame(target: list[str], payload: bytes | str) -> None:
-    """Record a WS frame payload, skipping binary frames (defensive)."""
-    if isinstance(payload, str):
-        target.append(payload)
-
-
-def _json_frame_types(frames: Iterable[str]) -> list[str]:
-    """Parsed ``type`` field of every JSON frame in ``frames``."""
-    types: list[str] = []
-    for raw in frames:
-        try:
-            msg = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(msg, dict):
-            types.append(str(msg.get("type")))
-    return types
-
-
-class _WritingSocketTracker:
-    """Collects writing-session WebSockets and their frames/sent messages.
-
-    Filters out the Next.js/Turbopack HMR socket by URL path. Frame payloads
-    are text (JSON) frames; binary frames arrive as bytes and are skipped.
-    """
-
-    def __init__(self, page: Page) -> None:
-        self.sockets: list[_SocketRecord] = []
-        page.on("websocket", self._on_websocket)
-
-    def _on_websocket(self, ws: WebSocket) -> None:
-        if WS_SESSION_PATH not in ws.url:
-            return
-        record = _SocketRecord(url=ws.url)
-        self.sockets.append(record)
-        ws.on("framereceived", lambda payload: _append_text_frame(record.frames, payload))
-        ws.on("framesent", lambda payload: _append_text_frame(record.sent, payload))
-
-    @property
-    def urls(self) -> list[str]:
-        return [record.url for record in self.sockets]
-
-    def frame_types(self, index: int) -> list[str]:
-        """Parsed ``type`` field of every server frame on socket ``index``."""
-        return _json_frame_types(self.sockets[index].frames)
-
-    def sent_types(self, index: int) -> list[str]:
-        """Parsed ``type`` field of every client frame on socket ``index``."""
-        return _json_frame_types(self.sockets[index].sent)
 
 
 def _wait_until(page: Page, predicate, *, timeout_s: float, description: str) -> None:
