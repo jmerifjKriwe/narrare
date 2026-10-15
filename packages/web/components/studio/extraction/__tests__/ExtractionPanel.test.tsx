@@ -21,6 +21,8 @@
  * 9. Items sorted by confidence (descending)
  * 10. Mount extraction fires exactly once despite unstable mutateAsync
  *     identity (M01 storm pin, rendered under StrictMode)
+ * 11. Cancel during loading closes exactly once — the post-cancel abort
+ *     rejection must not re-open the modal (wave-fix pin)
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -102,6 +104,13 @@ let applyReject: ((reason: unknown) => void) | null = null;
 // Stable mock functions — defined once, reused across renders
 const stableExtractMutate = vi.fn();
 const stableApplyMutate = vi.fn();
+// Mirror useAbortCallback (ai-mutation-adapter): abort synchronously rejects
+// the pending mutateAsync promise with AbortError. This timing is exactly
+// what makes the cancel path racy (see the wave-fix test below).
+const stableAbort = vi.fn(() => {
+  extractReject?.(new DOMException("Aborted", "AbortError"));
+  extractReject = null;
+});
 const stableExtractMutateAsync = vi.fn<() => Promise<unknown>>(
   () =>
     new Promise((resolve, reject) => {
@@ -123,6 +132,7 @@ const stableApplyMutateAsync = vi.fn<(items: unknown[]) => Promise<unknown>>(
 interface ExtractChapterHookValue {
   mutate: (...args: unknown[]) => unknown;
   mutateAsync: () => Promise<unknown>;
+  abort: () => void;
   isPending: boolean;
   isError: boolean;
   error: null;
@@ -131,6 +141,7 @@ interface ExtractChapterHookValue {
 const baseExtractMutationValue: ExtractChapterHookValue = {
   mutate: stableExtractMutate,
   mutateAsync: stableExtractMutateAsync,
+  abort: stableAbort,
   isPending: false,
   isError: false,
   error: null,
@@ -376,6 +387,44 @@ describe("ExtractionPanel", () => {
     fireEvent.click(closeButton);
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // Wave-fix pin (kb wave, pre-Task-6): cancel during loading. Clicking the
+  // loading-phase cancel calls abort() + onClose(); abort synchronously
+  // rejects the pending mutateAsync promise (ai-mutation-adapter), and that
+  // rejection lands in the mount-effect catch on a microtask AFTER onClose.
+  // handleExtractionError maps AbortError → onClose, so onClose fired TWICE —
+  // and the real wiring (EditorOverlays) passes editorStore.toggleExtractionPanel
+  // as onClose, a TRUE toggle, so the second call flipped the closed modal
+  // back open, stuck in "loading" (startedRef prevents a re-fire). The cancel
+  // path must be idempotent: exactly one close, post-cancel rejection = no-op.
+  it("cancel during loading closes exactly once — abort rejection must not re-open", async () => {
+    // Toggle-shaped onClose, mirroring the real EditorOverlays wiring: a
+    // second onClose call re-opens the modal instead of staying closed.
+    let open = true;
+    const toggleOnClose = vi.fn(() => {
+      open = !open;
+    });
+
+    renderWithProviders(<ExtractionPanel {...defaultProps} onClose={toggleOnClose} />);
+
+    // Extraction started and still pending (never resolved by this test)
+    expect(stableExtractMutateAsync).toHaveBeenCalledTimes(1);
+
+    // Loading-phase cancel button (ExtractionLoading action, studio.aiActions.stop;
+    // this file's t-mock returns the bare key)
+    fireEvent.click(screen.getByRole("button", { name: "stop" }));
+
+    // Synchronous close from handleCancelExtraction
+    expect(open).toBe(false);
+
+    // Flush the microtask on which the synchronous abort rejection lands
+    await act(async () => {});
+
+    // RED pre-fix: the abort rejection ran handleExtractionError → onClose
+    // again → toggle flipped the modal back open.
+    expect(open).toBe(false);
+    expect(toggleOnClose).toHaveBeenCalledTimes(1);
   });
 
   it("shows done state after successful apply", async () => {
