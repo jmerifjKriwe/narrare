@@ -17,7 +17,6 @@ goes red.
 
 Check families:
     - Stale pydantic-ai / mem0 / fastapi-limiter references (TECH_STACK drift)
-    - Stale coverage-threshold references (60% transition is resolved)
     - Phantom justfile commands (``just dev-up`` does not exist)
     - Hardcoded pre-commit hook counts (must point at the config as SSOT)
 
@@ -96,22 +95,6 @@ _PATTERNS: tuple[_Pattern, ...] = (
             "fastapi-limiter is unmaintained and not used; the project uses "
             "pyrate-limiter directly via apps/api/narrare/_app/rate_limiter_dep.py. "
             "(See docs/_shared/TECH_STACK.md for the authoritative statement.)"
-        ),
-    ),
-    # ── Coverage-gate drift: the 60% transition is resolved ──
-    _Pattern(
-        check_id="LOOKUP-COVERAGE-60-FLOOR",
-        rel_path="processes/quality-gates.md",
-        # Match the resolved 60% hard floor only when framed as *current*
-        # policy. We allow the historical marker "Resolved am …" / "resolved"
-        # by requiring the surrounding context to read as active.
-        pattern=re.compile(r"(?i)hard\s+floor\s*[:=]?\s*60\s*%|cov-fail-under\s*=?\s*'?60"),
-        severity="critical",
-        message=(
-            "Lookup file documents a 60% coverage hard floor as current. "
-            "The 60% transition was resolved; CI enforces --cov-fail-under=80 "
-            "(see .github/workflows/ci.yml). Update to 80% or remove the "
-            "stale 60% statement."
         ),
     ),
     # ── Phantom justfile commands ──

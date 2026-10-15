@@ -65,17 +65,12 @@ def test_clean_lookup_files_have_no_findings(checker, lookup_tree: Path) -> None
     _repointer(checker, lookup_tree)
     (lookup_tree / "lookup").mkdir()
     (lookup_tree / "guides").mkdir()
-    (lookup_tree / "processes").mkdir()
     (lookup_tree / "lookup" / "tech-stack.md").write_text(
         "# tech stack\nSee packages/core/pyproject.toml for pydantic-ai (v2.x).\n",
         encoding="utf-8",
     )
     (lookup_tree / "guides" / "deployment.md").write_text(
         "# deployment\nNo `just dev-up` — use `just dev-services`.\n",
-        encoding="utf-8",
-    )
-    (lookup_tree / "processes" / "quality-gates.md").write_text(
-        "# gates\nCoverage floor: 80% (--cov-fail-under=80).\n",
         encoding="utf-8",
     )
     assert checker.check_lookup_drift() == []
@@ -141,16 +136,6 @@ def test_phantom_dev_up_negation_not_flagged(checker, lookup_tree: Path) -> None
     )
     findings = checker.check_lookup_drift()
     assert not any("LOOKUP-PHANTOM-DEV-UP" in f.message for f in findings)
-
-
-def test_60_percent_coverage_floor_is_critical(checker, lookup_tree: Path) -> None:
-    _repointer(checker, lookup_tree)
-    (lookup_tree / "processes").mkdir(parents=True)
-    (lookup_tree / "processes" / "quality-gates.md").write_text(
-        "Hard floor: 60%\n", encoding="utf-8"
-    )
-    findings = checker.check_lookup_drift()
-    assert any("LOOKUP-COVERAGE-60-FLOOR" in f.message for f in findings)
 
 
 def test_hardcoded_hook_count_is_warning(checker, lookup_tree: Path) -> None:
