@@ -8,6 +8,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api/core";
 import {
   type WikiChapterSummaryResponse,
   type WikiIndexResponse,
@@ -51,9 +52,19 @@ export function useWikiSummaries(novelId: string, entityIds?: string[]) {
 
 /** Fetch a chapter-level wiki summary. */
 export function useWikiChapterSummary(novelId: string, chapterId: string) {
-  return useQuery<WikiChapterSummaryResponse>({
+  return useQuery<WikiChapterSummaryResponse | null>({
     queryKey: wikiKeys.chapterSummary(novelId, chapterId),
-    queryFn: () => wikiApi.getChapterSummary(novelId, chapterId),
+    queryFn: async () => {
+      try {
+        return await wikiApi.getChapterSummary(novelId, chapterId);
+      } catch (error) {
+        // N20: "never generated" is this endpoint's 404 contract state,
+        // not an error — map it to null so the panel renders its
+        // existing kb.wiki.noSummaryYet empty state.
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
     enabled: !!novelId && !!chapterId,
   });
 }
