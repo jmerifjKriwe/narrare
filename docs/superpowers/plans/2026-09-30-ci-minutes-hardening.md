@@ -182,7 +182,7 @@ Expected: `OK`
 - [ ] **Step 5: Docs gate**
 
 Run: `uv run --no-sync python scripts/check_gate_drift.py`
-If it reports drift for changed triggers (e.g. "runs-on/push documented"): update the gate table in the doc file it names (expected: `.opencode/context/narrare-dev/processes/quality-gates.md`) so triggers match. Keep the edit minimal (trigger columns only).
+If it reports drift for changed triggers (e.g. "runs-on/push documented"): update the gate table in the doc file it names (expected: `.opencode/context/narrare-dev/processes/quality-gates.md` *(2026-10-15 correction: that path was removed in f11eb44a and the doc anchor retired by ADR-098 — each ADR states its own completeness checklist; the gate SSOT is the ci.yml header table + CONSTRAINTS.md §6.)* ) so triggers match. Keep the edit minimal (trigger columns only).
 
 - [ ] **Step 6: Commit**
 

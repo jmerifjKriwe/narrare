@@ -192,7 +192,7 @@ pattern consistent.
 
 **ADR Implementation Completeness Gate (Gate 12):** Before marking this ADR as
 "✅ Implemented", verify all items in the Gate 12 checklist at
-`.opencode/context/narrare-dev/processes/quality-gates.md`. An ADR is not
+`.opencode/context/narrare-dev/processes/quality-gates.md` *(2026-10-15 correction: that path was removed in f11eb44a and the doc anchor retired by ADR-098 — each ADR states its own completeness checklist; the gate SSOT is the ci.yml header table + CONSTRAINTS.md §6.)*. An ADR is not
 implemented until it is fully wired, tested, consumed, and documented.
 
 ---
