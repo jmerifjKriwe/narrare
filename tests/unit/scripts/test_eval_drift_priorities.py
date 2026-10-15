@@ -9,7 +9,7 @@ Covers:
 - back-compat: without ``--fail-on-priority`` any drift still exits 1.
 
 The scripts/ tree is not on the pytest ``pythonpath``, so the package is
-loaded via sys.path insertion (same pattern as test_lookup_drift_checks.py).
+loaded via sys.path insertion (same pattern as test_quality_joiner.py).
 """
 
 from __future__ import annotations

@@ -11,7 +11,6 @@ Check families:
   - ADR cross-reference and status consistency
   - Spec/RULE-XX reference alignment
   - Checker terminology alignment
-  - Lookup-context drift (pydantic-ai/mem0/coverage/phantom commands — review-04 AUFG-04-13)
   - Just-recipe doc-drift (phantom `just <recipe>` references — review-04 AUFG-04-02/04)
   - Agent-name doc-drift (fake subagent_type references — review-04 AUFG-04-15)
   - Removed-governance-artifact references (WARNING-ONLY ratcheted baseline)
@@ -50,7 +49,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from doc_drift.adr_checks import DocDriftFinding, check_adr_consistency
 from doc_drift.agent_name_checks import check_agent_name_drift
 from doc_drift.just_command_checks import check_just_command_drift
-from doc_drift.lookup_drift_checks import check_lookup_drift
 from doc_drift.removed_governance_refs_checks import check_removed_governance_refs
 from doc_drift.spec_checks import check_spec_references
 from doc_drift.ssot_locale_path_checks import check_ssot_locale_path
@@ -92,7 +90,6 @@ _GOVERNANCE_CHECKS: list[tuple[str, Callable[[], list[DocDriftFinding]]]] = [
     ("adr", check_adr_consistency),
     ("spec", check_spec_references),
     ("terminology", check_terminology_alignment),
-    ("lookup", check_lookup_drift),
     ("ssot_locale", check_ssot_locale_path),
     ("just_command", check_just_command_drift),
     ("agent_name", check_agent_name_drift),

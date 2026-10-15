@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-10T09:25:27.357510+00:00",
-  "total_count": 901,
+  "generated_at": "2026-10-15T11:04:53.356383+00:00",
+  "total_count": 900,
   "production_total": 13,
-  "test_total": 875,
+  "test_total": 874,
   "naked_ignores": 0,
   "uncommented_ignores": 0,
   "files": {
@@ -286,7 +286,6 @@
     "tests/unit/scripts/test_agent_name_checks.py": 1,
     "tests/unit/scripts/test_eval_drift_priorities.py": 4,
     "tests/unit/scripts/test_just_command_checks.py": 1,
-    "tests/unit/scripts/test_lookup_drift_checks.py": 1,
     "tests/unit/scripts/test_removed_governance_refs_checks.py": 1,
     "tests/unit/scripts/test_stub_variable_checks.py": 1,
     "tests/unit/test_e2e_http_session.py": 1
