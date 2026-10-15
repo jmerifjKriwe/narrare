@@ -455,7 +455,7 @@ Likely files affected:
 - `docs/development/prompt-content-standards.md`
 - .opencode/context/narrare-dev/standards/prompt-standards.md
 - .opencode/context/narrare-dev/processes/feature-pipeline.md
-- .opencode/context/narrare-dev/processes/quality-gates.md
+- .opencode/context/narrare-dev/processes/quality-gates.md *(2026-10-15 correction: that path was removed in f11eb44a and the doc anchor retired by ADR-098 — each ADR states its own completeness checklist; the gate SSOT is the ci.yml header table + CONSTRAINTS.md §6.)*
 - Feature docs for any prompt whose output schema/UX semantics change.
 
 Docs Definition of Done:

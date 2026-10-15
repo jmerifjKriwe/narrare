@@ -324,3 +324,23 @@ flip to ✅.
       fate of the remaining dormant lookup-drift patterns (tech-stack,
       deployment) — this ADR deliberately scoped itself to the
       quality-gates anchor only.
+
+---
+
+## Amendment 1 — 2026-10-15: lookup-drift subsystem retired
+
+The Review Trigger's open question (all five remaining lookup-drift
+patterns resolve under the removed `_LOOKUP_DIR` tree, so the whole
+lookup-drift subsystem ran vacuously in CI) was decided by PO ruling
+on 2026-10-15: **retire**.
+
+Deleted: `scripts/doc_drift/lookup_drift_checks.py` and
+`tests/unit/scripts/test_lookup_drift_checks.py`; `check_doc_drift.py`
+drops the `("lookup", …)` registration. The RULE-23 ratchet key for the
+deleted test file was removed via the sanctioned
+`--update-baseline --allow-removed` procedure (totals 901→900). The
+pattern catalog (pydantic-ai/mem0 1.x pins, fastapi-limiter,
+the phantom `just dev-up` (does not exist), hardcoded hook count)
+remains recoverable from git history: if a future agent-context
+lookup layer returns, that is a new decision with new guards, not a
+restoration of these.

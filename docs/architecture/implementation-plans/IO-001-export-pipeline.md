@@ -1471,7 +1471,7 @@ and i18n en/de/fr (RULE-16/17).
 **Goal:** prove completeness (RULE-20) and close the architecture gate.
 
 ### Scope
-- Run the full Gate 12 checklist (`.opencode/context/narrare-dev/processes/quality-gates.md`).
+- Run the full Gate 12 checklist (`.opencode/context/narrare-dev/processes/quality-gates.md` *(2026-10-15 correction: that path was removed in f11eb44a and the doc anchor retired by ADR-098 — each ADR states its own completeness checklist; the gate SSOT is the ci.yml header table + CONSTRAINTS.md §6.)* ).
 - Manual cross-feature verification (RULE-22): export a real novel; confirm the
   source project is unmodified (read-only).
 - Confirm no half-implementation: normalizer strip-guarantee green; all three

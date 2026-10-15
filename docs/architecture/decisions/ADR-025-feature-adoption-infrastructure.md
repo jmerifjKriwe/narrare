@@ -13,7 +13,7 @@
 A comprehensive content review audit (CR-03) identified that despite excellent core infrastructure — TokenBudget, mem0, KG-Relationships, PromptComposer, InjectionDefense — many features do not adopt it consistently. The root causes are:
 
 1. **Passive documentation, no active enforcement.** `check_architecture.py` enforces RULE-01b–19 (technical), but NO checks exist for content/feature adoption (TokenBudget, mem0, KG, i18n).
-2. **Quality Gates exist only as text.** Referenced in Coordinator prompt and now materialized as `.opencode/context/narrare-dev/processes/quality-gates.md` (Gate 1–7), but missing the Feature Adoption Gate and AI Content Review Gate.
+2. **Quality Gates exist only as text.** Referenced in Coordinator prompt and now materialized as `.opencode/context/narrare-dev/processes/quality-gates.md` *(2026-10-15 correction: that path was removed in f11eb44a and the doc anchor retired by ADR-098 — each ADR states its own completeness checklist; the gate SSOT is the ci.yml header table + CONSTRAINTS.md §6.)* (Gate 1–7), but missing the Feature Adoption Gate and AI Content Review Gate.
 3. **Dual Prompt paths.** Bundled (via PromptComposer) and Inline (Python strings). Changes to PromptComposer don't reach Inline prompts. Three files contain inline fallbacks: `consistency/prompt_builder.py`, `kb/extraction_service.py`, `agents/writing_graph_prompts.py`.
 4. **No ContextAssembly abstraction outside Writing.** Only Writing features use the 5-tier TokenBudget (`WritingContextAssembler` + `TokenBudgetManager`). Analysis features (Beta-Reader, Story-Suggest) and KB features build context manually with no budget protection.
 5. **No Health Metrics for Feature Adoption.** No automated measurement of how well features adopt core infrastructure.
@@ -622,7 +622,7 @@ See: scripts/architecture/adoption-registry.yaml
 
 ### Problem
 
-Quality gates exist at `.opencode/context/narrare-dev/processes/quality-gates.md` (Gates 1–7), but two gates are missing:
+Quality gates exist at `.opencode/context/narrare-dev/processes/quality-gates.md` *(path removed f11eb44a; retired by ADR-098)* (Gates 1–7), but two gates are missing:
 
 1. **Feature Adoption Gate** — validates that new features adopt required infrastructure
 2. **AI Content Review Gate** — the CR-06 checklist for content quality
@@ -822,8 +822,8 @@ Decision 6 (Quality Gates)
 
 | Step | What | Files |
 |------|------|-------|
-| 4.1 | Add Gate 8 (Feature Adoption Gate) | `.opencode/context/narrare-dev/processes/quality-gates.md` (MODIFY) |
-| 4.2 | Add Gate 9 (AI Content Review Gate) | `.opencode/context/narrare-dev/processes/quality-gates.md` (MODIFY) |
+| 4.1 | Add Gate 8 (Feature Adoption Gate) | `.opencode/context/narrare-dev/processes/quality-gates.md` *(path removed f11eb44a; retired by ADR-098)* (MODIFY) |
+| 4.2 | Add Gate 9 (AI Content Review Gate) | `.opencode/context/narrare-dev/processes/quality-gates.md` *(path removed f11eb44a; retired by ADR-098)* (MODIFY) |
 | 4.3 | Add feature templates to adoption registry | `scripts/architecture/adoption-registry.yaml` (MODIFY) |
 | 4.4 | Update feature pipeline to reference adoption registry | `.opencode/context/narrare-dev/processes/feature-pipeline.md` (MODIFY) |
 | 4.5 | Update ADR INDEX | `docs/architecture/decisions/INDEX.md` (MODIFY) |

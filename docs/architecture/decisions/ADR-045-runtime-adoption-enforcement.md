@@ -833,7 +833,7 @@ item remains governed debt.
 - `docs/_shared/CURRENT_STATE.md` — separate:
   - **Infrastructure complete**: contracts/probes/checkers exist,
   - **Runtime adopted**: correlated production path evidence passes.
-- `.opencode/context/narrare-dev/processes/quality-gates.md` and
+- `.opencode/context/narrare-dev/processes/quality-gates.md` *(2026-10-15 correction: that path was removed in f11eb44a and the doc anchor retired by ADR-098 — each ADR states its own completeness checklist; the gate SSOT is the ci.yml header table + CONSTRAINTS.md §6.)* and
   `docs/development/testing-standards.md` — update Gate 8 semantics.
 - `docs/architecture/decisions/ADR-038-ai-invocation-adoption-contract.md` — reference
   ADR-045 for correlation/enforcement details.

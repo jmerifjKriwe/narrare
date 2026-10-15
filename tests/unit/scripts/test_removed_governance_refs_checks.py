@@ -12,8 +12,8 @@ Allowlisted files are legitimate historical references (ADRs, implementation
 plans, audit/review findings, and curated standards that annotate the removal).
 
 Note: loads the module dynamically like the other ``scripts/doc_drift`` tests
-(``test_lookup_drift_checks.py`` …); tests are excluded from pyright's CI
-``include`` (see pyproject.toml ``[tool.pyright]``).
+(``test_doc_drift.py``, ``test_doc_drift_alignment.py``); tests are excluded
+from pyright's CI ``include`` (see pyproject.toml ``[tool.pyright]``).
 """
 
 from __future__ import annotations
