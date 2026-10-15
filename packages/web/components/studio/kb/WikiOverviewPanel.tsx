@@ -4,18 +4,15 @@
  * WikiOverviewPanel — Shows all wiki summaries with status overview.
  *
  * Displays index stats (fresh/stale/pending), entity summaries grouped
- * by status, and actions for refreshing stale or marking all stale.
+ * by status, and actions for generating from the KB, refreshing stale
+ * (any non-fresh row), or marking all stale.
  */
 
-import { AlertTriangle, BookOpen, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import {
-  useWikiIndex,
-  useWikiMarkStale,
-  useWikiRefresh,
-  useWikiSummaries,
-} from "@/lib/hooks/useWiki";
+import { useWikiIndex, useWikiMarkStale, useWikiSummaries } from "@/lib/hooks/useWiki";
+import { useWikiOverviewActions } from "./useWikiOverviewActions";
 import { useWikiRelativeTime } from "./useWikiRelativeTime";
 import { WikiEntitySummaryCard } from "./WikiEntitySummaryCard";
 import { WikiIndexStats } from "./WikiIndexStats";
@@ -65,7 +62,6 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
     isLoading: summariesLoading,
     isError: summariesError,
   } = useWikiSummaries(novelId);
-  const refreshMutation = useWikiRefresh(novelId);
   const markStaleMutation = useWikiMarkStale(novelId);
 
   const isLoading = indexLoading || summariesLoading;
@@ -78,8 +74,11 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
     return [...items].sort((a, b) => (priority[a.status] ?? 3) - (priority[b.status] ?? 3));
   }, [summariesData]);
 
+  // M11: generation + non-fresh refresh affordances (see useWikiOverviewActions).
+  const { refreshMutation, kbEntityIds, generateAllFromKb, refreshNonFresh, canRefreshNonFresh } =
+    useWikiOverviewActions({ novelId, sortedSummaries, indexData });
+
   const relativeTime = useWikiRelativeTime(indexData?.last_generated_at);
-  const staleCount = indexData?.stale_count ?? 0;
 
   // Loading state
   if (isLoading) {
@@ -131,16 +130,8 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => {
-              // Refresh all stale summaries
-              const staleIds = sortedSummaries
-                .filter((s) => s.status === "stale")
-                .map((s) => s.entity_id);
-              for (const entityId of staleIds) {
-                refreshMutation.mutate({ entityId });
-              }
-            }}
-            disabled={staleCount === 0 || refreshMutation.isPending}
+            onClick={refreshNonFresh}
+            disabled={!canRefreshNonFresh}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm
               border border-border rounded-md hover:bg-muted transition-colors
               disabled:opacity-50 disabled:cursor-not-allowed"
@@ -176,9 +167,18 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
           </h3>
 
           {sortedSummaries.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              {t("kb.wiki.noSummaries")}
-            </p>
+            <div className="py-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">{t("kb.wiki.noSummaries")}</p>
+              <button
+                type="button"
+                onClick={generateAllFromKb}
+                disabled={kbEntityIds.length === 0 || refreshMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {t("kb.wiki.generateAll")}
+              </button>
+            </div>
           ) : (
             sortedSummaries.map((summary) => (
               <WikiEntitySummaryCard
