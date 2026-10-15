@@ -24,6 +24,8 @@ class WikiSummaryResponse(BaseModel):
     id: uuid.UUID
     novel_id: uuid.UUID
     entity_id: uuid.UUID
+    # M11: display name from the KB entry (None when the entry is gone).
+    entity_name: str | None = None
     narrative_summary: str
     role_in_story: str | None
     key_attributes: list[str] | None

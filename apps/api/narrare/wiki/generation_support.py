@@ -183,12 +183,27 @@ async def generate_and_persist_summary(
 
 async def list_summaries(
     wiki_repo: WikiRepository,
+    kb_repo: KBRepositoryProtocol,
     entity_ids: list[uuid.UUID] | None,
     novel_id: uuid.UUID,
 ) -> WikiSummaryListResponse:
-    """Fetch wiki summaries and map them to the list response schema."""
+    """Fetch wiki summaries and map them to the list response schema.
+
+    M11: enriches each item with the KB entity's NAME via one batched
+    KB read — the overview card previously had only the raw UUID to render.
+    ``None`` for entries that no longer exist.
+    """
+    from narrare.kb.worldbuilding_entity_assembly import list_entities
+
     summaries = await wiki_repo.get_summaries(entity_ids, novel_id)
-    items = [WikiSummaryResponse.model_validate(s) for s in summaries]
+    entities = await list_entities(kb_repo, novel_id, None)
+    names = {e.id: e.name for e in entities}
+    items: list[WikiSummaryResponse] = []
+    for s in summaries:
+        # pydantic 2.13 has no ``model_validate(update=…)`` — two-step form.
+        item = WikiSummaryResponse.model_validate(s)
+        item.entity_name = names.get(s.entity_id)
+        items.append(item)
     return WikiSummaryListResponse(items=items, total=len(items))
 
 

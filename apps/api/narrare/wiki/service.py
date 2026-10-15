@@ -207,7 +207,7 @@ class APIWikiService(WikiSystemAccessors):
     ) -> WikiSummaryListResponse:
         """List wiki summaries, optionally filtered by entity IDs."""
         await self._verify_access(novel_id, user_id)
-        return await list_summaries(self._wiki_repo, entity_ids, novel_id)
+        return await list_summaries(self._wiki_repo, self._kb_repo, entity_ids, novel_id)
 
     async def get_chapter_summary(
         self,
