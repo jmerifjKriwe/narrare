@@ -6,29 +6,34 @@
  * action buttons and the per-entity summary cards:
  * - `generateAllFromKb`: at Total 0 no ROW exists, so no per-card Generate
  *   button can render. Generate the wiki from the KB itself — the refresh
- *   service creates rows for entities that have none.
+ *   service creates rows for entities that have none. Collects entry ids by
+ *   paging the entries endpoint on demand, so KBs larger than one page are
+ *   fully covered.
  * - `refreshNonFresh`: pending (never generated) rows need the same path as
  *   stale ones — refresh every non-fresh summary.
  */
 
 import { useCallback, useMemo } from "react";
-import type { WikiIndexResponse, WikiSummaryResponse } from "@/lib/api/wiki";
+import { kbApi } from "@/lib/api/kb";
+import type { WikiSummaryResponse } from "@/lib/api/wiki";
 import { useKBEntries } from "@/lib/hooks/useKB";
 import { useWikiRefresh } from "@/lib/hooks/useWiki";
+
+/** Backend caps page_size at 100 (kb router `Query(default=50, ge=1, le=100)`). */
+const KB_PAGE_SIZE = 100;
 
 interface UseWikiOverviewActionsParams {
   novelId: string;
   sortedSummaries: WikiSummaryResponse[];
-  indexData: WikiIndexResponse | undefined;
 }
 
-export function useWikiOverviewActions({
-  novelId,
-  sortedSummaries,
-  indexData,
-}: UseWikiOverviewActionsParams) {
+export function useWikiOverviewActions({ novelId, sortedSummaries }: UseWikiOverviewActionsParams) {
   const refreshMutation = useWikiRefresh(novelId);
 
+  // Mount fetch (backend-default first page) stays as-is: it only feeds the
+  // "KB is empty" disable check on the Generate button. It is NOT the source
+  // of generate-all's ids — a first page is capped (default 50), so the
+  // action below pages the endpoint itself.
   const { data: entriesData } = useKBEntries(novelId);
   const kbEntityIds = useMemo(
     () => (entriesData?.items ?? []).map((entry) => entry.id),
@@ -38,11 +43,19 @@ export function useWikiOverviewActions({
   // M11 first-generation path: at Total 0 no ROW exists, so no per-card
   // Generate button can render. Generate the wiki from the KB itself —
   // the refresh service creates rows for entities that have none.
-  const generateAllFromKb = useCallback(() => {
-    for (const entityId of kbEntityIds) {
+  const generateAllFromKb = useCallback(async () => {
+    // Fetch on demand, paged at the backend maximum; stop at the first
+    // short page (fewer items than page_size ⇒ last page).
+    const entityIds: string[] = [];
+    for (let page = 1; ; page += 1) {
+      const data = await kbApi.listEntries(novelId, { page, page_size: KB_PAGE_SIZE });
+      entityIds.push(...data.items.map((entry) => entry.id));
+      if (data.items.length < KB_PAGE_SIZE) break;
+    }
+    for (const entityId of entityIds) {
       refreshMutation.mutate({ entityId });
     }
-  }, [kbEntityIds, refreshMutation]);
+  }, [novelId, refreshMutation]);
 
   // M11: pending (never generated) rows need the same path as
   // stale ones — refresh every non-fresh summary.
@@ -53,10 +66,11 @@ export function useWikiOverviewActions({
     }
   }, [sortedSummaries, refreshMutation]);
 
-  // Enabled iff at least one summary is non-fresh (stale or pending).
+  // Reconciled with refreshNonFresh: enablement and action read the same
+  // source (the summaries list), instead of enablement trusting the index
+  // counters while the action iterates the list rows.
   const canRefreshNonFresh =
-    (indexData?.stale_count ?? 0) + (indexData?.pending_count ?? 0) > 0 &&
-    !refreshMutation.isPending;
+    sortedSummaries.some((s) => s.status !== "fresh") && !refreshMutation.isPending;
 
   return {
     refreshMutation,

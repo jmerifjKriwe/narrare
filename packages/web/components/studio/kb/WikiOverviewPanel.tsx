@@ -76,7 +76,7 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
 
   // M11: generation + non-fresh refresh affordances (see useWikiOverviewActions).
   const { refreshMutation, kbEntityIds, generateAllFromKb, refreshNonFresh, canRefreshNonFresh } =
-    useWikiOverviewActions({ novelId, sortedSummaries, indexData });
+    useWikiOverviewActions({ novelId, sortedSummaries });
 
   const relativeTime = useWikiRelativeTime(indexData?.last_generated_at);
 
