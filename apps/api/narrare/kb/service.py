@@ -80,12 +80,16 @@ class KBService:
         if data.metadata is not None:
             validate_entry_metadata(data.entity_type, data.metadata)
 
-        # Absent metadata persists as {} — never jsonb null. An explicit
-        # None here stores the JSON scalar null in the NOT NULL jsonb
-        # column, flows out of KBEntryResponse as `"metadata": null`, and
+        # Omitted/None metadata must never reach the ORM as None: the
+        # column is nullable with a Python-side ``default=dict``, and an
+        # explicitly-set None bypasses that default, persisting jsonb null
+        # — which flows out of KBEntryResponse as `"metadata": null` and
         # crashes the FE detail view (KBEntry.metadata is typed non-null;
-        # KBFlatEditor's Object.keys(null) killed the whole WorldBuilding
+        # KBFlatEditor's Object.keys(null) killed the WorldBuilding
         # subtree — caught by the Task 7 KB-management E2E, 2026-10-16).
+        # KBEntryCreate now defaults omission to {}, so this coercion is
+        # the explicit-null guard for the seams that share the schema
+        # (novel create; canon create reads the same default).
         metadata = data.metadata if data.metadata is not None else {}
 
         # Generate slug if not provided

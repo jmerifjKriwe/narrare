@@ -141,10 +141,11 @@ class TestKBServiceCreate:
     async def test_create_with_omitted_metadata_persists_empty_dict(self) -> None:
         """Omitted/None metadata persists as {}, never jsonb null.
 
-        The UI create form omits the field; persisting Python None stored
-        the JSON scalar null in the NOT NULL jsonb column, which flowed to
-        the FE as `"metadata": null` and crashed the detail view (Task 7
-        KB-management E2E, 2026-10-16).
+        The UI create form omits the field. The column is nullable with a
+        Python-side ``default=dict`` — an explicitly-set None bypasses
+        that default and persists jsonb null, which flowed to the FE as
+        `"metadata": null` and crashed the detail view (Task 7
+        KB-management E2E, 2026-10-16; schema default + service coercion).
         """
         service, repo, _ = _make_service()
         repo.get_by_slug = AsyncMock(return_value=None)
@@ -155,6 +156,22 @@ class TestKBServiceCreate:
 
         call_args = repo.create.call_args[0][0]
         assert call_args.metadata_ == {}
+
+    async def test_create_with_explicit_metadata_passes_through(self) -> None:
+        """Explicit metadata is stored verbatim — the coercion never over-applies."""
+        service, repo, _ = _make_service()
+        repo.get_by_slug = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value=MagicMock(spec=KBEntry))
+
+        data = KBEntryCreate(
+            entity_type="character",
+            name="John",
+            metadata={"age": 30, "role": "protagonist"},
+        )
+        await service.create(uuid.uuid4(), uuid.uuid4(), data)
+
+        call_args = repo.create.call_args[0][0]
+        assert call_args.metadata_ == {"age": 30, "role": "protagonist"}
 
 
 class TestKBServiceGet:

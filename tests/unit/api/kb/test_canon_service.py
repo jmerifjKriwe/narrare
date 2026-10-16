@@ -153,6 +153,25 @@ class TestCreateCanon:
         with pytest.raises(ValidationError, match="Invalid metadata"):
             await service.create_canon(uuid.uuid4(), OWNER_ID, data)
 
+    async def test_create_with_omitted_metadata_persists_empty_dict(self) -> None:
+        """Omitted metadata reaches the ORM as {} on the canon seam too.
+
+        The schema default (``KBEntryCreate.metadata`` → {}) covers both
+        UI creation seams; persisting None here lands as jsonb null and
+        crashes the FE detail view (Task 7 fix round 1, 2026-10-16).
+        """
+        service, repo, _ = _make_service()
+        series_id = uuid.uuid4()
+        repo.find_canon_by_slug = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value=_make_canon_entry(series_id=series_id))
+
+        await service.create_canon(
+            series_id, OWNER_ID, KBEntryCreate(entity_type="system", name="Canon Probe")
+        )
+
+        created = repo.create.call_args[0][0]
+        assert created.metadata_ == {}
+
 
 # ---------------------------------------------------------------------------
 # Get

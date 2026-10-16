@@ -1,7 +1,4 @@
-"""Knowledge Base Pydantic schemas.
-
-Request/response models for KB entry and relationship endpoints.
-"""
+"""Knowledge Base Pydantic schemas: request/response models for entry/relationship endpoints."""
 
 from __future__ import annotations
 
@@ -23,7 +20,11 @@ class KBEntryCreate(BaseModel):
     slug: str | None = Field(default=None, max_length=500)
     status: str = Field(default="draft", max_length=20)
     tags: list[str] | None = Field(default=None)
-    metadata: dict[str, object] | None = Field(default=None)
+    # Omitted metadata defaults to {} — the create seams (novel + canon)
+    # must never persist None, which lands as jsonb null and crashes the
+    # FE detail view. Explicit null stays legal (None) so the services'
+    # explicit-null coercion remains the guard for programmatic clients.
+    metadata: dict[str, object] | None = Field(default_factory=dict)
     body: str | None = Field(default=None)
     template_version: str | None = Field(default=None, max_length=20)
     source: str = Field(default="manual", max_length=50)
@@ -124,7 +125,6 @@ class KBRelationshipResponse(BaseModel):
     )
     created_at: datetime
     updated_at: datetime
-    # Enriched names for display
     source_name: str | None = None
     target_name: str | None = None
 
