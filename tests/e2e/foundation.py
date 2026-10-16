@@ -14,11 +14,14 @@ them for ``tests/e2e/`` specs. One responsibility per module (RULE-06):
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import requests as http_requests
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from tests.e2e.config import API_URL, BASE_URL, DEV_EMAIL, DEV_PASSWORD
 from tests.e2e.helpers.novel_factory import complete_wizard
@@ -26,8 +29,34 @@ from tests.e2e.helpers.novel_factory import complete_wizard
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
-    import requests as http_requests
     from playwright.sync_api import Browser
+
+# Setup-path transient tolerance (absorb ONCE, then fail loudly — RULE-11;
+# the goto_with_retry contract from commit 168945f4 applied at fixture
+# granularity).
+_TRANSIENT_ATTEMPTS: int = 2
+_TRANSIENT_BACKOFF_S: float = 2.0
+
+
+def _send_with_retry(
+    session: http_requests.Session, method: str, url: str, **kwargs: Any
+) -> http_requests.Response:
+    """Session-start HTTP with ONE retry on transient transport errors.
+
+    Forensic target (Oct-15 nightly, run 38700481557): a mid-run API
+    restart plus Next-proxy ``read ECONNRESET`` on ``/auth/refresh`` turned
+    fixture setups into session-level errors. The retry absorbs only that
+    transient window (connection reset / timeout); after the final attempt
+    the original exception re-raises — real breakage is never masked.
+    """
+    for attempt in range(1, _TRANSIENT_ATTEMPTS + 1):
+        try:
+            return session.request(method, url, **kwargs)
+        except http_requests.exceptions.RequestException:
+            if attempt == _TRANSIENT_ATTEMPTS:
+                raise
+            time.sleep(_TRANSIENT_BACKOFF_S)
+    raise AssertionError("unreachable")  # for pyright: loop always returns or raises
 
 
 def _api_log_banner_present() -> bool | None:
@@ -59,7 +88,9 @@ def verify_e2e_environment(api_session: http_requests.Session) -> None:
             "Restart the stack via scripts/run_e2e.sh."
         )
 
-    login = api_session.post(
+    login = _send_with_retry(
+        api_session,
+        "POST",
         f"{API_URL}/api/v1/auth/login",
         json={"email": DEV_EMAIL, "password": DEV_PASSWORD},
     )
@@ -70,7 +101,9 @@ def verify_e2e_environment(api_session: http_requests.Session) -> None:
     )
     access_token = login.json()["access_token"]
 
-    probe = api_session.get(
+    probe = _send_with_retry(
+        api_session,
+        "GET",
         f"{BASE_URL}/dashboard",
         cookies={"narrare_auth": access_token},
         allow_redirects=False,
@@ -148,13 +181,30 @@ def _new_stable_user(
     Creates a browser context, registers a fresh user through the REAL
     /register form, and pins the deterministic logged-in state. Returns
     ``(user, context)`` — the caller owns scope and context teardown.
+
+    ONE fresh-user retry on ``PlaywrightTimeoutError`` (absorb-once, commit-
+    168945f4 contract): the Oct-14/15 nightlies (runs 38531844492 /
+    38700481557) errored fixture setups with ``Page.goto: Timeout 30000ms``
+    while the stack was under first-exposure load. A retry registers a NEW
+    user in a FRESH context (the aborted attempt's state is discarded).
+    ``AssertionError`` is NEVER retried — ``wait_logged_in`` converts a
+    /login bounce into AssertionError (E01/N06 regression class), and that
+    must stay loud (regression-first, no auto-healing).
     """
     from tests.e2e.helpers.audit_user import build_stable_session
 
     context = browser.new_context(**browser_context_args)
     page = context.new_page()
     page.add_init_script("localStorage.setItem('narrare:featureTourCompleted', 'true');")
-    session = build_stable_session(page, BASE_URL, api_session, API_URL)
+    try:
+        session = build_stable_session(page, BASE_URL, api_session, API_URL)
+    except PlaywrightTimeoutError:
+        time.sleep(_TRANSIENT_BACKOFF_S)
+        context.close()
+        context = browser.new_context(**browser_context_args)
+        page = context.new_page()
+        page.add_init_script("localStorage.setItem('narrare:featureTourCompleted', 'true');")
+        session = build_stable_session(page, BASE_URL, api_session, API_URL)
     user = StableUser(
         page=page,
         email=session["email"],
