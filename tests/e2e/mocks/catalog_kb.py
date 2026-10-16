@@ -9,6 +9,10 @@ Wire formats mirror the REAL endpoints (verified 2026-10-12):
 - POST /api/v1/novels/{id}/wiki/summaries/{entity_id}/refresh —
   WikiRefreshResponse JSON (path param is UUID-typed: real UUID required;
   a successful regeneration answers status="fresh" like the real service).
+- POST /api/v1/novels/{id}/kb/consistency-check —
+  ConsistencyCheckResponse JSON (JSON endpoint, NOT /stream; category and
+  severity literals use the real StrEnum values — the validate() ratchet
+  fails loudly if ConsistencyCategory/WorldbuildingSeverity ever drift).
 """
 
 from __future__ import annotations
@@ -81,6 +85,31 @@ WIKI_REFRESH_HAPPY = json.dumps(
     }
 )
 
+KB_CONSISTENCY_CHECK_HAPPY = json.dumps(
+    {
+        "novel_id": "00000000-0000-0000-0000-0000000000a1",
+        "entity_count": 2,
+        "issues": [
+            {
+                "finding_index": 0,
+                "category": "entry_internal",
+                "entity_ids": ["00000000-0000-0000-0000-0000000000b1"],
+                "entity_names": ["Elara Thornwind"],
+                "description": "Goal stated without its deadline",
+                "contradiction": "Urgency claimed but no time pressure exists",
+                "suggested_resolution": "Anchor the goal to the second bell",
+                "severity": "major",
+                "confidence": 0.91,
+            }
+        ],
+        "summary": {"entry_internal": 1, "asymmetry": 0, "cross_entity": 0},
+        "suppressed_count": 0,
+        "checked_at": "2026-10-15T00:00:00Z",
+    }
+)
+
+_KB_ERROR_500 = json.dumps({"detail": "e2e-mock: request failed"})
+
 SPECS: tuple[RouteSpec, ...] = (
     RouteSpec(
         capability="kb_extraction",
@@ -105,11 +134,53 @@ SPECS: tuple[RouteSpec, ...] = (
         method="POST",
         body=WIKI_REFRESH_HAPPY,
     ),
+    RouteSpec(
+        capability="kb_consistency_check",
+        variant="happy",
+        pattern="**/api/v1/novels/*/kb/consistency-check*",
+        method="POST",
+        body=KB_CONSISTENCY_CHECK_HAPPY,
+    ),
+    RouteSpec(
+        capability="kb_consistency_check",
+        variant="error",
+        pattern="**/api/v1/novels/*/kb/consistency-check*",
+        method="POST",
+        status=500,
+        body=_KB_ERROR_500,
+    ),
+    RouteSpec(
+        capability="kb_improve",
+        variant="error",
+        pattern="**/api/v1/novels/*/kb/entities/*/improve*",
+        method="POST",
+        status=500,
+        body=_KB_ERROR_500,
+        url_exclude="/improve/apply",
+    ),
+    RouteSpec(
+        capability="kb_extraction",
+        variant="error",
+        pattern="**/api/v1/novels/*/kb/extract/*",
+        method="POST",
+        status=500,
+        body=_KB_ERROR_500,
+        url_exclude=("/extract/bulk", "/extract/apply"),
+    ),
+    RouteSpec(
+        capability="wiki_refresh",
+        variant="error",
+        pattern="**/api/v1/novels/*/wiki/summaries/*/refresh",
+        method="POST",
+        status=500,
+        body=_KB_ERROR_500,
+    ),
 )
 
 
 def validate() -> None:
     """Spec §10 ratchet against the real app/core models."""
+    from narrare.kb.consistency_contracts import ConsistencyCheckResponse
     from narrare.kb.improve_contracts import KBImproveAnalysisResponse
     from narrare.wiki.schemas import WikiRefreshResponse
     from narrare_core.agents.extraction_types import ExtractionOutput
@@ -117,3 +188,4 @@ def validate() -> None:
     ExtractionOutput.model_validate_json(KB_EXTRACTION_HAPPY)
     KBImproveAnalysisResponse.model_validate_json(KB_IMPROVE_HAPPY)
     WikiRefreshResponse.model_validate_json(WIKI_REFRESH_HAPPY)
+    ConsistencyCheckResponse.model_validate_json(KB_CONSISTENCY_CHECK_HAPPY)

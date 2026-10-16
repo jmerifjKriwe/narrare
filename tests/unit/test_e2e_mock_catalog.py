@@ -6,6 +6,7 @@ this is the drift-ratchet the spec demands, runnable without a stack.
 
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
@@ -225,3 +226,28 @@ class TestWritingCatalogGrowth:
             assert not _playwright_route_matches(spec.pattern, f"{base}/feedback"), (
                 f"{spec.pattern} must NOT match /co-author/feedback"
             )
+
+
+class TestKbCatalogGrowth:
+    def test_kb_consistency_check_happy_validates_and_carries_issue(self) -> None:
+        from narrare.kb.consistency_contracts import ConsistencyCheckResponse
+
+        spec = entries_for("kb_consistency_check", "happy")[0]
+        assert spec.method == "POST"
+        payload = json.loads(spec.body)
+        response = ConsistencyCheckResponse.model_validate(payload)
+        assert response.entity_count == 2
+        assert response.summary["entry_internal"] == 1
+        assert response.issues[0].entity_names == ["Elara Thornwind"]
+
+    def test_kb_consistency_check_error_variant(self) -> None:
+        assert entries_for("kb_consistency_check", "error")[0].status == 500
+
+    def test_kb_improve_has_error_variant(self) -> None:
+        assert entries_for("kb_improve", "error")[0].status == 500
+
+    def test_kb_extraction_has_error_variant(self) -> None:
+        assert entries_for("kb_extraction", "error")[0].status == 500
+
+    def test_wiki_refresh_has_error_variant(self) -> None:
+        assert entries_for("wiki_refresh", "error")[0].status == 500
