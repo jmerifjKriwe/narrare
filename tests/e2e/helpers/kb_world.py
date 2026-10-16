@@ -82,8 +82,14 @@ def seed_kb_entity(
     name: str,
     entity_type: str = "character",
     body: str = "",
+    metadata: dict | None = None,
 ) -> dict:
-    """Create a KB entry through the entries API (KBEntryCreate shape)."""
+    """Create a KB entry through the entries API (KBEntryCreate shape).
+
+    ``metadata`` defaults to ``{}`` (the API's schema seam default); the
+    merge spec passes the shared attribute family its deterministic
+    detection corroboration needs (ADR-085 signal S3).
+    """
     resp = authed_request(
         "POST",
         f"/api/v1/novels/{novel_id}/kb/entries",
@@ -91,7 +97,7 @@ def seed_kb_entity(
             "entity_type": entity_type,
             "name": name,
             "body": body,
-            "metadata": {},
+            "metadata": metadata or {},
             "tags": [],
         },
     )
