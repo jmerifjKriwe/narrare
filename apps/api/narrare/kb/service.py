@@ -80,6 +80,14 @@ class KBService:
         if data.metadata is not None:
             validate_entry_metadata(data.entity_type, data.metadata)
 
+        # Absent metadata persists as {} — never jsonb null. An explicit
+        # None here stores the JSON scalar null in the NOT NULL jsonb
+        # column, flows out of KBEntryResponse as `"metadata": null`, and
+        # crashes the FE detail view (KBEntry.metadata is typed non-null;
+        # KBFlatEditor's Object.keys(null) killed the whole WorldBuilding
+        # subtree — caught by the Task 7 KB-management E2E, 2026-10-16).
+        metadata = data.metadata if data.metadata is not None else {}
+
         # Generate slug if not provided
         slug = resolve_entry_slug(data.slug, data.name)
 
@@ -97,7 +105,7 @@ class KBService:
             slug=slug,
             status=data.status,
             tags=data.tags,
-            metadata_=data.metadata,
+            metadata_=metadata,
             body=data.body or "",
             template_version=data.template_version,
             source=data.source,
