@@ -49,6 +49,8 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
+          # World-drift pin — see ci.yml architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
+          python-version: "3.14"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
