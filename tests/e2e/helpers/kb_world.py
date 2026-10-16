@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import contextlib
 import re
-import weakref
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -117,29 +116,27 @@ def seed_relationship(
     return resp.json()
 
 
-class _PostLog(list[str]):
-    """``list`` subclass — plain lists are not weak-referenceable, and the
-    teardown below needs a weakref to attach its finalize callback."""
-
-
 def track_posts(page: Page, needle: str) -> list[str]:
     """Collect the URLs of POST requests whose URL contains *needle*.
 
     The probes' ``NetworkCapture`` records failures/provider leaks only —
-    request COUNTING needs its own listener (M01 storm pin). The listener
-    is removed when the returned list is garbage-collected
-    (``weakref.finalize`` — CPython refcounting fires it at test
-    teardown), so module-scoped pages never accumulate dead listeners
-    across the specs that reuse this helper.
+    request COUNTING needs its own listener (M01 storm pin).
+
+    Listeners accumulate per page for the page's lifetime — bounded by
+    the module-scoped page closing at session end — and each call
+    appends into its own list, so counted behavior stays stable across a
+    module's tests (KB-management spec: 7/7, two runs). Deliberately NO
+    removal mechanism: a ``weakref.finalize`` teardown can never fire
+    here (the handler closure holds the list alive), and a test helper
+    should not carry dead machinery.
     """
-    seen = _PostLog()
+    seen: list[str] = []
 
     def _on_request(request) -> None:
         if request.method == "POST" and needle in request.url:
             seen.append(request.url)
 
     page.on("request", _on_request)
-    weakref.finalize(seen, page.remove_listener, "request", _on_request)
     return seen
 
 
