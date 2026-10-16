@@ -33,7 +33,12 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
   const [name, setName] = useState(entry.name);
   const [status, setStatus] = useState<KBEntryStatus>(entry.status);
   const [tags, setTags] = useState<string[]>(entry.tags);
-  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(entry.metadata);
+  // Legacy rows can carry the JSON scalar null in the metadata column
+  // (pre-fix creates persisted Python None as jsonb null); the write path
+  // now coerces to {}, and the read side defaults here so the flat
+  // editor's Object.keys never sees null (B04-class crash guard).
+  const metadata = entry.metadata ?? {};
+  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(metadata);
   const [extraBody, setExtraBody] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingAction = useRef<(() => void) | null>(null);
@@ -42,7 +47,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
     setName(entry.name);
     setStatus(entry.status);
     setTags(entry.tags);
-    setFieldValues(entry.metadata as Record<string, unknown>);
+    setFieldValues(entry.metadata ?? {});
     setExtraBody(entry.body);
   }, [entry]);
 
@@ -109,7 +114,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
           </div>
         )}
 
-        <KBFlatEditor entryMetadata={entry.metadata} body={extraBody} onBodyChange={setExtraBody} />
+        <KBFlatEditor entryMetadata={metadata} body={extraBody} onBodyChange={setExtraBody} />
 
         <div className="pt-2">
           <KBRelationshipSection novelId={novelId} entry={entry} relationships={relationships} />
