@@ -164,6 +164,11 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       workflows: ${{ steps.filter.outputs.workflows }}
       code: ${{ steps.filter.outputs.code }}
+      # Gates test-e2e's PR branch (W1-12, §5.10). Consulted on
+      # pull_request only — the schedule/dispatch paths run the full
+      # matrix via nightly-gate (W1-2 empty-output pattern: the gate
+      # skips on PRs, so its outputs are '' and this output decides).
+      e2e_specs: ${{ steps.filter.outputs.e2e_specs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -227,6 +232,25 @@ jobs:
               - 'evals/**'
               - 'pyproject.toml'
               - 'uv.lock'
+            # E2E spec-suite files (W1-12, spec §5.10) — gates test-e2e's
+            # PR branch. Decision: tests/e2e/** ONLY. The CI E2E job runs
+            # the pytest suite (uv run pytest tests/e2e/); it never reads
+            # packages/web/playwright.config.ts — that config drives the
+            # frontend Job's Node @playwright/test runner (VRT + web e2e),
+            # already PR-gated via the `frontend` filter
+            # (packages/web/**). Shared boot infra (seed_dev_user.py,
+            # justfile, export toolchain) is likewise excluded:
+            # cross-job inputs are validated by the nightly (≤1d) and by
+            # the jobs that own them on the same PR. The PR path
+            # validates the SPECS (the W0-3 cluster-A gap), not the app.
+            # Nightly needs NO duplicate term here: tests/e2e/** ⊂
+            # tests/** ⊂ the backend filter, so spec changes already wake
+            # the nightly and set backend=true — nightly-gate's derived
+            # `e2e` (backend ∨ frontend) covers them. Deliberately
+            # distinct from that derived output: spec files (PR) vs
+            # full-stack delta (nightly).
+            e2e_specs:
+              - 'tests/e2e/**'
 
   # -------------------------------------------------------------------------
   # Nightly Gate — event-driven nightly foundation (spec
@@ -1249,7 +1273,7 @@ jobs:
           retention-days: 7
 
   # -------------------------------------------------------------------------
-  # E2E tests (nightly + manual dispatch, full stack)
+  # E2E tests (nightly + manual dispatch + path-gated PRs, full stack)
   # -------------------------------------------------------------------------
   test-e2e:
     name: E2E Tests
@@ -1261,22 +1285,30 @@ jobs:
     # `architecture` replaces the dissolved quality edge (W1-4, §5.8) —
     # LOAD-BEARING: with `needs: [quality, …]` left in place this job
     # would silently skip on every PR/nightly run once quality became
-    # push-only (spec §12 risk row "Missed needs rewires").
-    needs: [architecture, nightly-gate]
+    # push-only (spec §12 risk row "Missed needs rewires"). `changes`
+    # feeds the PR branch's e2e_specs gate (W1-12, §5.10).
+    needs: [architecture, changes, nightly-gate]
     # Full-stack E2E moved from every main-push to nightly + manual
     # dispatch (spec §3; was 192 min of the Sept 1-14 burn). Nightly
     # path: active nights only — `e2e` is backend ∨ frontend (full-stack),
     # plus the weekly probe (§5.1). Dispatch = full matrix (the gate
-    # emits all-true). PR path lands with W1-12 (§5.10); the
-    # !cancelled() && !failure() prefix keeps dispatch alive when
-    # nightly-gate skips on other events.
+    # emits all-true). PR path (W1-12, §5.10): path-gated on tests/e2e/**
+    # only, draft != true — the PO-sealed closure of the W0-3 cluster-A
+    # blind spot (new E2E specs' first CI contact was the post-merge
+    # nightly; PRs #253/#256). Accepted cost: +1 ~9-min run per
+    # E2E-spec PR (~2-4/mo = +18..36 min/mo, §5.10/§9.1). The
+    # !cancelled() && !failure() prefix keeps the PR/dispatch paths
+    # alive when nightly-gate skips on other events (W1-2 pattern).
     if: >-
       !cancelled() && !failure() &&
       ((github.event_name == 'schedule' &&
         needs.nightly-gate.outputs.should_run == 'true' &&
         (needs.nightly-gate.outputs.probe == 'true' ||
          needs.nightly-gate.outputs.e2e == 'true')) ||
-       github.event_name == 'workflow_dispatch')
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.draft != true &&
+        needs.changes.outputs.e2e_specs == 'true'))
 
     services:
       postgres:
