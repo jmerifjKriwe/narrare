@@ -57,6 +57,10 @@ on:
     # Oct 1). Validated executable via workflow_dispatch run 36972990834.
     - cron: "37 2 * * *"
   pull_request:
+    # W1-5 (spec §5.5): default types omit ready_for_review, so jobs that
+    # skip drafts (draft != true guards) never rerun when a draft is marked
+    # ready — with no branch protection (GitHub Free) nothing catches the gap.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "apps/**"
       - "packages/**"
