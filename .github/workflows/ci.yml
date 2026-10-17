@@ -1609,3 +1609,53 @@ jobs:
                     "activate reserve levers (spec §8: Phase 2 consolidation, "
                     "weekly nightly).")
           EOF
+
+  # -------------------------------------------------------------------------
+  # Release-PR orchestration (W2-1, spec §6.1): creates/updates the
+  # release-please pull request on code nights. This is ONE HALF of the
+  # release-please split: this job runs with `skip-github-release: true`
+  # (release-PR bookkeeping only), while release-please.yml keeps release
+  # creation + publishing on push with `skip-github-pull-request: true`
+  # (W2-2). Release creation is decided by manifest-version-vs-latest-tag,
+  # so the two invocations are cleanly disjoint. Until W2-2 narrows the
+  # push trigger, BOTH paths run (double coverage by design, spec §11).
+  # Release-PR latency: ≤1 day (PO-sealed, OQ2 — spec §14).
+  # -------------------------------------------------------------------------
+  release-orchestration:
+    name: Release PR Orchestration
+    # Schedule + code-day only: PR/push/dispatch runs skip the job, so the
+    # job-level write token below is never held outside the nightly path.
+    # Budget nights (03:07 Sundays) skip too: nightly-gate skips there, its
+    # outputs stay empty, and `should_run == 'true'` is false. A skipped
+    # nightly-gate (or a failed nightly) also skips this job by default
+    # success() semantics — release-PR latency degrades to the failure
+    # duration (accepted, spec §12).
+    needs: [nightly-gate]
+    if: >-
+      github.event_name == 'schedule' &&
+      needs.nightly-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Job-level escalation (spec §12): release-please must open/update PRs.
+    # NEVER widen the workflow-level permissions for this.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # No git commands follow: the action drives everything through
+          # its own `token:` input (same usage as release-please.yml).
+          persist-credentials: false
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        id: release
+        # Same inputs as release-please.yml's step, PLUS the W2-1 half of
+        # the split: never create/tag the release here (that happens on
+        # the release-PR merge, in release-please.yml, same day).
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: python
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true
