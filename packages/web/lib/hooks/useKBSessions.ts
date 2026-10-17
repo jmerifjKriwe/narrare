@@ -5,6 +5,10 @@
  *
  * Query keys follow the pattern ["kb-sessions", novelId, ...]
  * to avoid collision with regular KB entry keys.
+ *
+ * The assist-mode mutations (suggest/interview/enhance) and the shared
+ * key factory live in kbSessionsSupport.ts (RULE-04 split) and are
+ * re-exported here for existing consumers.
  */
 
 import { type UseQueryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,19 +16,17 @@ import {
   type KBCreationSession,
   type KBSessionCompleteResponse,
   kbSessionApi,
-  requestEnhance,
-  requestInterview,
-  suggestField,
 } from "@/lib/api/kb-sessions";
+import { kbSessionKeys } from "./kbSessionsSupport";
 
-// --- Query key factory ---
-
-const kbSessionKeys = {
-  all: (novelId: string) => ["kb-sessions", novelId] as const,
-  sessions: (novelId: string) => [...kbSessionKeys.all(novelId), "sessions"] as const,
-  session: (novelId: string, sessionId: string) =>
-    [...kbSessionKeys.sessions(novelId), sessionId] as const,
-};
+// Re-exported for backwards compatibility (the implementations live in
+// kbSessionsSupport.ts to keep this lifecycle module within size limits).
+export {
+  kbSessionKeys,
+  useKBSessionEnhance,
+  useKBSessionInterview,
+  useKBSessionSuggest,
+} from "./kbSessionsSupport";
 
 // --- Query hooks ---
 
@@ -50,7 +52,7 @@ export function useKBSession(
   });
 }
 
-// --- Mutation hooks: REST ---
+// --- Mutation hooks: REST lifecycle ---
 
 /** Create a new KB creation session. */
 export function useCreateKBSession(novelId: string) {
@@ -77,11 +79,15 @@ export function useAnswerField(novelId: string, sessionId: string) {
   });
 }
 
-/** Complete a session and create the KB entry. Returns the entry_id via onSuccess. */
+/**
+ * Complete a session and create the KB entry.
+ * Takes the collected entry name (F9-1) — it fills the session's name on
+ * the backend before the entry is mapped. Returns the entry_id via onSuccess.
+ */
 export function useCompleteKBSession(novelId: string, sessionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => kbSessionApi.completeSession(novelId, sessionId),
+    mutationFn: (name: string) => kbSessionApi.completeSession(novelId, sessionId, name),
     onSuccess: (_data: KBSessionCompleteResponse) => {
       // Invalidate KB entries list to show the new entry
       void queryClient.invalidateQueries({ queryKey: ["kb", novelId, "entries"] });
@@ -99,52 +105,6 @@ export function useAbandonKBSession(novelId: string, sessionId: string) {
     onSuccess: () => {
       // Remove session from cache
       void queryClient.removeQueries({ queryKey: kbSessionKeys.session(novelId, sessionId) });
-    },
-  });
-}
-
-// --- Mutation hooks: SSE (AI operations) ---
-
-/**
- * Request AI suggestion for a field.
- * On success, invalidates session query to refresh state.
- */
-export function useKBSessionSuggest(novelId: string, sessionId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ fieldKey, signal }: { fieldKey: string; signal?: AbortSignal }) =>
-      suggestField(novelId, sessionId, fieldKey, signal),
-    onSuccess: () => {
-      // Invalidate session query to get updated ai_suggested_value from backend
-      void queryClient.invalidateQueries({ queryKey: kbSessionKeys.session(novelId, sessionId) });
-    },
-  });
-}
-
-/**
- * Request interview question from AI.
- * On success, invalidates session query.
- */
-export function useKBSessionInterview(novelId: string, sessionId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (signal?: AbortSignal) => requestInterview(novelId, sessionId, signal),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: kbSessionKeys.session(novelId, sessionId) });
-    },
-  });
-}
-
-/**
- * Request AI enhancement for all fields.
- * On success, invalidates session query.
- */
-export function useKBSessionEnhance(novelId: string, sessionId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (signal?: AbortSignal) => requestEnhance(novelId, sessionId, signal),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: kbSessionKeys.session(novelId, sessionId) });
     },
   });
 }

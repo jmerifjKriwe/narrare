@@ -247,13 +247,13 @@ describe("useCompleteKBSession", () => {
       wrapper: createWrapperWithClient(queryClient),
     });
 
-    result.current.mutate();
+    result.current.mutate("Sir Aldric");
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockCompleteSession).toHaveBeenCalledWith("novel-1", "session-1");
+    expect(mockCompleteSession).toHaveBeenCalledWith("novel-1", "session-1", "Sir Aldric");
 
     // Should invalidate KB entries and remove session from cache
     expect(invalidateSpy).toHaveBeenCalledWith({

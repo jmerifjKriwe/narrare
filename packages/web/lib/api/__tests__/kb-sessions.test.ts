@@ -1,9 +1,10 @@
 /**
  * KB Sessions API client tests.
  *
- * Tests for REST operations and SSE operations.
- * REST: createSession, getSession, answerField, completeSession, abandonSession
- * SSE: suggestField, requestInterview, requestEnhance (with mocked connectSSE)
+ * All operations are plain REST (F9-2 transport fix): the backend's
+ * suggest/interview/enhance routes return aggregate JSON documents, so the
+ * client maps those documents instead of parsing SSE frames. Mocks live at
+ * the fetchApi/MSW boundary — no module-level transport mocks.
  */
 
 import { HttpResponse, http } from "msw";
@@ -13,81 +14,23 @@ import { setAccessToken } from "../client";
 import { kbSessionApi, requestEnhance, requestInterview, suggestField } from "../kb-sessions";
 
 // ---------------------------------------------------------------------------
-// Mock connectSSE for SSE operation tests
-// ---------------------------------------------------------------------------
-
-vi.mock("../streaming", () => ({
-  connectSSE: vi.fn(),
-}));
-
-// Need to import the mocked module to set up mock implementations
-import { connectSSE } from "../streaming";
-
-const mockConnectSSE = connectSSE as ReturnType<typeof vi.fn>;
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function clearMockConnectSSE() {
-  mockConnectSSE.mockReset();
-}
-
-function mockSuggestFieldSSE(textChunks: { type: string; text: string }[]) {
-  mockConnectSSE.mockImplementation(
-    ({
-      onChunk,
-      onComplete,
-      onError,
-    }: {
-      onChunk: (c: { type: string; text: string }) => void;
-      onComplete: () => void;
-      onError: (e: Error) => void;
-    }) => {
-      try {
-        for (const chunk of textChunks) {
-          onChunk(chunk);
-        }
-        onComplete();
-      } catch (e) {
-        onError(e instanceof Error ? e : new Error(String(e)));
-      }
-    },
-  );
-}
-
-function mockInterviewSSE(textChunks: { type: string; text: string }[]) {
-  mockConnectSSE.mockImplementation(
-    ({
-      onChunk,
-      onComplete,
-    }: {
-      onChunk: (c: { type: string; text: string }) => void;
-      onComplete: () => void;
-    }) => {
-      for (const chunk of textChunks) {
-        onChunk(chunk);
-      }
-      onComplete();
-    },
-  );
-}
-
-function mockEnhanceSSE(textChunks: { type: string; text: string }[]) {
-  mockConnectSSE.mockImplementation(
-    ({
-      onChunk,
-      onComplete,
-    }: {
-      onChunk: (c: { type: string; text: string }) => void;
-      onComplete: () => void;
-    }) => {
-      for (const chunk of textChunks) {
-        onChunk(chunk);
-      }
-      onComplete();
-    },
-  );
+function sessionResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "session-1",
+    novel_id: "novel-1",
+    user_id: "u1",
+    entity_type: "character",
+    status: "active",
+    name: null,
+    fields: [],
+    context_entries: [],
+    created_at: "",
+    updated_at: "",
+    ...overrides,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -119,17 +62,7 @@ describe("kbSessionApi (REST)", () => {
         http.post("*/api/v1/novels/:novelId/kb/sessions", async ({ request }) => {
           const body = (await request.json()) as Record<string, unknown>;
           return HttpResponse.json(
-            {
-              id: "custom",
-              novel_id: "novel-1",
-              user_id: "u1",
-              entity_type: body.entity_type as string,
-              status: "active",
-              fields: [],
-              context_entries: [],
-              created_at: "",
-              updated_at: "",
-            },
+            sessionResponse({ id: "custom", entity_type: body.entity_type as string }),
             { status: 201 },
           );
         }),
@@ -177,11 +110,33 @@ describe("kbSessionApi (REST)", () => {
   });
 
   describe("completeSession", () => {
-    it("POST /novels/:novelId/kb/sessions/:sessionId/complete", async () => {
-      const result = await kbSessionApi.completeSession("novel-1", "session-1");
+    it("sends the collected entry name in the request body (F9-1)", async () => {
+      let captured: Record<string, unknown> | null = null;
+      server.use(
+        http.post(
+          "*/api/v1/novels/:novelId/kb/sessions/:sessionId/complete",
+          async ({ request }) => {
+            captured = (await request.json()) as Record<string, unknown>;
+            return HttpResponse.json({
+              session: sessionResponse({ status: "complete", name: "Sir Aldric" }),
+              entry_id: "kb-entry-new-123",
+            });
+          },
+        ),
+      );
 
+      const result = await kbSessionApi.completeSession("novel-1", "session-1", "Sir Aldric");
+
+      expect(captured).toEqual({ name: "Sir Aldric" });
       expect(result.session.status).toBe("complete");
-      expect(result.entry_id).toBeDefined();
+      expect(result.entry_id).toBe("kb-entry-new-123");
+    });
+
+    it("completing without a name hits the backend's name guard", async () => {
+      // Default MSW handler emulates the BE: absent body/name → 400.
+      await expect(kbSessionApi.completeSession("novel-1", "session-1")).rejects.toThrow(
+        "Session must have a name before completion",
+      );
     });
 
     it("throws on server error", async () => {
@@ -191,9 +146,9 @@ describe("kbSessionApi (REST)", () => {
         ),
       );
 
-      await expect(kbSessionApi.completeSession("novel-1", "session-1")).rejects.toThrow(
-        "Session already completed",
-      );
+      await expect(
+        kbSessionApi.completeSession("novel-1", "session-1", "Sir Aldric"),
+      ).rejects.toThrow("Session already completed");
     });
   });
 
@@ -206,45 +161,54 @@ describe("kbSessionApi (REST)", () => {
   });
 });
 
-describe("suggestField (SSE)", () => {
-  beforeEach(() => {
-    clearMockConnectSSE();
-  });
-
-  it("accumulates text chunks and returns suggestion", async () => {
-    mockSuggestFieldSSE([
-      { type: "text", text: "A brave " },
-      { type: "text", text: "adventurer" },
-      { type: "reasoning", text: "Common archetype" },
-    ]);
-
+describe("suggestField (REST)", () => {
+  it("maps the aggregate JSON response to the suggestion result", async () => {
     const result = await suggestField("novel-1", "session-1", "description");
 
-    expect(result.field_key).toBe("description");
-    expect(result.suggestion).toBe("A brave adventurer");
-    expect(result.reasoning).toBe("Common archetype");
-  });
-
-  it("handles reasoning chunks correctly", async () => {
-    mockSuggestFieldSSE([
-      { type: "text", text: "A mysterious stranger" },
-      { type: "reasoning", text: "Reason 1. " },
-      { type: "reasoning", text: "Reason 2." },
-    ]);
-
-    const result = await suggestField("novel-1", "session-1", "background");
-
-    expect(result.suggestion).toBe("A mysterious stranger");
-    expect(result.reasoning).toBe("Reason 1. Reason 2.");
-  });
-
-  it("rejects on SSE error", async () => {
-    mockConnectSSE.mockImplementation(({ onError }: { onError: (e: Error) => void }) => {
-      onError(new Error("SSE connection failed"));
+    expect(result).toEqual({
+      field_key: "description",
+      suggestion: "A brave adventurer seeking their destiny.",
+      reasoning: "Common heroic archetype for fantasy stories.",
     });
+  });
+
+  it("POSTs to the suggest endpoint", async () => {
+    let method = "";
+    let path = "";
+    server.use(
+      http.post(
+        "*/api/v1/novels/:novelId/kb/sessions/:sessionId/suggest/:fieldKey",
+        async ({ request }) => {
+          method = request.method;
+          path = new URL(request.url).pathname;
+          return HttpResponse.json({
+            session: sessionResponse(),
+            suggestion: {
+              field_key: "description",
+              suggestion: "x",
+              reasoning: null,
+              context_used: [],
+            },
+          });
+        },
+      ),
+    );
+
+    await suggestField("novel-1", "session-1", "description");
+
+    expect(method).toBe("POST");
+    expect(path).toContain("/novels/novel-1/kb/sessions/session-1/suggest/description");
+  });
+
+  it("surfaces the backend error on 400", async () => {
+    server.use(
+      http.post("*/api/v1/novels/:novelId/kb/sessions/:sessionId/suggest/:fieldKey", async () =>
+        HttpResponse.json({ detail: "Session is not active" }, { status: 400 }),
+      ),
+    );
 
     await expect(suggestField("novel-1", "session-1", "description")).rejects.toThrow(
-      "SSE connection failed",
+      "Session is not active",
     );
   });
 
@@ -256,63 +220,27 @@ describe("suggestField (SSE)", () => {
       suggestField("novel-1", "session-1", "description", controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
   });
-
-  it("handles empty suggestion gracefully", async () => {
-    mockSuggestFieldSSE([]);
-
-    const result = await suggestField("novel-1", "session-1", "empty_field");
-
-    expect(result.field_key).toBe("empty_field");
-    expect(result.suggestion).toBe("");
-    expect(result.reasoning).toBe("");
-  });
-
-  it("passes novelId, sessionId, fieldKey to connectSSE URL", async () => {
-    mockSuggestFieldSSE([{ type: "text", text: "test" }]);
-
-    await suggestField("novel-1", "session-1", "description");
-
-    expect(mockConnectSSE).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "/novels/novel-1/kb/sessions/session-1/suggest/description",
-      }),
-    );
-  });
 });
 
-describe("requestInterview (SSE)", () => {
-  beforeEach(() => {
-    clearMockConnectSSE();
-  });
-
-  it("accumulates question and identifies target field", async () => {
-    mockInterviewSSE([
-      { type: "meta", text: "field:name" },
-      { type: "text", text: "What is this " },
-      { type: "text", text: "character's name?" },
-    ]);
-
+describe("requestInterview (REST)", () => {
+  it("returns the real question from the JSON aggregate response", async () => {
+    // Pins the wave-fix-4 emptiness class: the pre-fix SSE parser yielded zero
+    // events on this plain-JSON body and resolved with an empty question.
     const result = await requestInterview("novel-1", "session-1");
 
-    expect(result.question).toBe("What is this character's name?");
-    expect(result.target_field).toBe("name");
+    expect(result.question).toBe("Tell me about this character's greatest fear.");
+    expect(result.target_field).toBe("background");
+    expect(result.reasoning).toBe("Background is still empty; fears reveal backstory.");
   });
 
-  it("returns empty target field when no meta", async () => {
-    mockInterviewSSE([{ type: "text", text: "Tell me about the character." }]);
+  it("surfaces the backend error on 400", async () => {
+    server.use(
+      http.post("*/api/v1/novels/:novelId/kb/sessions/:sessionId/interview", async () =>
+        HttpResponse.json({ detail: "Session is not active" }, { status: 400 }),
+      ),
+    );
 
-    const result = await requestInterview("novel-1", "session-1");
-
-    expect(result.question).toBe("Tell me about the character.");
-    expect(result.target_field).toBe("");
-  });
-
-  it("rejects on SSE error", async () => {
-    mockConnectSSE.mockImplementation(({ onError }: { onError: (e: Error) => void }) => {
-      onError(new Error("Interview SSE failed"));
-    });
-
-    await expect(requestInterview("novel-1", "session-1")).rejects.toThrow("Interview SSE failed");
+    await expect(requestInterview("novel-1", "session-1")).rejects.toThrow("Session is not active");
   });
 
   it("rejects on abort signal", async () => {
@@ -323,79 +251,50 @@ describe("requestInterview (SSE)", () => {
       { name: "AbortError" },
     );
   });
-
-  it("passes correct URL to connectSSE", async () => {
-    mockInterviewSSE([{ type: "text", text: "test" }]);
-
-    await requestInterview("novel-1", "session-1");
-
-    expect(mockConnectSSE).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "/novels/novel-1/kb/sessions/session-1/interview",
-      }),
-    );
-  });
 });
 
-describe("requestEnhance (SSE)", () => {
-  beforeEach(() => {
-    clearMockConnectSSE();
-  });
-
-  it("accumulates multiple enhancements from SSE chunks", async () => {
-    mockEnhanceSSE([
-      { type: "meta", text: "field:description" },
-      { type: "original", text: "A brave hero" },
-      { type: "text", text: "A brave and selfless hero" },
-      { type: "reasoning", text: "Added depth" },
-      { type: "meta", text: "field:name" },
-      { type: "original", text: "Test" },
-      { type: "text", text: "Sir Aldric" },
-      { type: "reasoning", text: "More evocative" },
-    ]);
-
-    const results = await requestEnhance("novel-1", "session-1");
-
-    expect(results).toHaveLength(2);
-    expect(results[0].field_key).toBe("description");
-    expect(results[0].original).toBe("A brave hero");
-    expect(results[0].suggested).toBe("A brave and selfless hero");
-    expect(results[0].reasoning).toBe("Added depth");
-
-    expect(results[1].field_key).toBe("name");
-    expect(results[1].original).toBe("Test");
-    expect(results[1].suggested).toBe("Sir Aldric");
-    expect(results[1].reasoning).toBe("More evocative");
-  });
-
-  it("handles single enhancement", async () => {
-    mockEnhanceSSE([
-      { type: "meta", text: "field:description" },
-      { type: "original", text: "Old" },
-      { type: "text", text: "New" },
-      { type: "reasoning", text: "Better" },
-    ]);
-
+describe("requestEnhance (REST)", () => {
+  it("maps draft_entry to per-field enhancement results", async () => {
     const results = await requestEnhance("novel-1", "session-1");
 
     expect(results).toHaveLength(1);
-    expect(results[0].field_key).toBe("description");
-    expect(results[0].suggested).toBe("New");
+    expect(results[0]).toEqual({
+      field_key: "description",
+      // The user's prior value travels back via the aggregate's session half.
+      original: "A brave hero",
+      suggested: "A brave and compassionate hero who always puts others before themselves.",
+      reasoning: "Enhanced to show more depth and character traits.",
+    });
   });
 
-  it("handles empty enhancements", async () => {
-    mockEnhanceSSE([]);
+  it("skips non-string draft_entry values", async () => {
+    server.use(
+      http.post("*/api/v1/novels/:novelId/kb/sessions/:sessionId/enhance", async () =>
+        HttpResponse.json({
+          session: sessionResponse(),
+          enhancement: {
+            draft_entry: { description: "Kept", tags: { nested: "object" }, aliases: ["a", "b"] },
+            progress: 0.5,
+            reasoning: "r",
+            context_used: [],
+          },
+        }),
+      ),
+    );
 
     const results = await requestEnhance("novel-1", "session-1");
-    expect(results).toHaveLength(0);
+
+    expect(results.map((r) => r.field_key)).toEqual(["description"]);
   });
 
-  it("rejects on SSE error", async () => {
-    mockConnectSSE.mockImplementation(({ onError }: { onError: (e: Error) => void }) => {
-      onError(new Error("Enhance SSE failed"));
-    });
+  it("surfaces the backend error on 400", async () => {
+    server.use(
+      http.post("*/api/v1/novels/:novelId/kb/sessions/:sessionId/enhance", async () =>
+        HttpResponse.json({ detail: "Session is not active" }, { status: 400 }),
+      ),
+    );
 
-    await expect(requestEnhance("novel-1", "session-1")).rejects.toThrow("Enhance SSE failed");
+    await expect(requestEnhance("novel-1", "session-1")).rejects.toThrow("Session is not active");
   });
 
   it("rejects on abort signal", async () => {
@@ -405,20 +304,5 @@ describe("requestEnhance (SSE)", () => {
     await expect(requestEnhance("novel-1", "session-1", controller.signal)).rejects.toMatchObject({
       name: "AbortError",
     });
-  });
-
-  it("passes correct URL to connectSSE", async () => {
-    mockEnhanceSSE([
-      { type: "meta", text: "field:test" },
-      { type: "text", text: "x" },
-    ]);
-
-    await requestEnhance("novel-1", "session-1");
-
-    expect(mockConnectSSE).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "/novels/novel-1/kb/sessions/session-1/enhance",
-      }),
-    );
   });
 });

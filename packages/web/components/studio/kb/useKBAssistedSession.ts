@@ -107,7 +107,9 @@ export function useKBAssistedSession({
 
   function handleCompleteAndSave() {
     if (!sessionId || !entryName.trim()) return;
-    completeSessionMutation.mutate(undefined, {
+    // F9-1: the collected entry name travels in the complete body so the
+    // backend can fill the session's name before mapping the entry.
+    completeSessionMutation.mutate(entryName.trim(), {
       onSuccess: (response) => {
         clearPendingInterview(novelId);
         toast.success(t("kb.sessionSaved"));

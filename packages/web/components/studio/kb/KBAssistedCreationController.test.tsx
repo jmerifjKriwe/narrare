@@ -10,8 +10,10 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { KBEntityType } from "@/lib/api/kb";
+import { server } from "@/mocks/server";
 import { useKBAssistedCreationController } from "./KBAssistedCreationController";
 import type { StudioTranslator } from "./useKBAssistedSession";
 
@@ -178,5 +180,76 @@ describe("useKBAssistedCreationController", () => {
     await waitFor(() => expect(result.current.session).not.toBeNull());
 
     expect(() => result.current.handleRejectSuggestion("description")).not.toThrow();
+  });
+
+  it("handleCompleteAndSave sends the collected name and completes with the created entry (F9-1)", async () => {
+    // Resume a session that already has a stored name so the one-shot
+    // session→entryName sync is observable; the collected (edited) name must
+    // win in the complete body.
+    let captured: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/api/v1/novels/:novelId/kb/sessions/:sessionId", async () =>
+        HttpResponse.json({
+          id: "kb-session-1",
+          novel_id: "novel-1",
+          user_id: "test-user-id",
+          entity_type: "character",
+          status: "active",
+          name: "Sir Aldric",
+          fields: [
+            {
+              field_key: "name",
+              label: "Name",
+              field_type: "text",
+              required: true,
+              options: null,
+              user_value: "Sir Aldric",
+              ai_suggested_value: null,
+              ai_reasoning: null,
+              source: "user",
+              final_value: "Sir Aldric",
+            },
+          ],
+          context_entries: [],
+          created_at: "2026-06-01T00:00:00Z",
+          updated_at: "2026-06-01T00:10:00Z",
+        }),
+      ),
+    );
+    server.use(
+      http.post("*/api/v1/novels/:novelId/kb/sessions/:sessionId/complete", async ({ request }) => {
+        captured = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          session: { id: "kb-session-1", status: "complete", name: "Sir Aldric the Bold" },
+          entry_id: "kb-entry-new-123",
+        });
+      }),
+    );
+
+    const { result, onComplete } = renderController({ resumeSessionId: "kb-session-1" });
+    await waitFor(() => expect(result.current.session).not.toBeNull());
+    // Wait out the one-shot sync deterministically before editing.
+    await waitFor(() => expect(result.current.entryName).toBe("Sir Aldric"));
+
+    act(() => result.current.setEntryName("Sir Aldric the Bold"));
+
+    await act(async () => {
+      result.current.handleCompleteAndSave();
+    });
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith("kb-entry-new-123"));
+    // The complete body carries the collected entry name (F9-1 wire contract).
+    expect(captured).toEqual({ name: "Sir Aldric the Bold" });
+  });
+
+  it("handleCompleteAndSave is a no-op without a collected name (guard stays)", async () => {
+    const { result, onComplete } = renderController({ resumeSessionId: "kb-session-1" });
+    await waitFor(() => expect(result.current.session).not.toBeNull());
+
+    await act(async () => {
+      result.current.handleCompleteAndSave();
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });
