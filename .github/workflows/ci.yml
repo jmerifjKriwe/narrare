@@ -109,7 +109,9 @@ jobs:
   # Always runs on push (main/develop) so post-merge signal stays complete;
   # on PRs it narrows scope to what the diff actually touches. Nightly and
   # dispatch runs execute this job too — on schedule the filter step is
-  # skipped (no diff base); its outputs are only consulted on PRs.
+  # skipped (no diff base). Outputs are consulted on PRs (component gates)
+  # and, since W1-4, on push: the `code` output gates the push-only
+  # quality job (spec §5.3).
   # -------------------------------------------------------------------------
   changes:
     name: Detect Changes
@@ -119,6 +121,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       workflows: ${{ steps.filter.outputs.workflows }}
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -142,6 +145,10 @@ jobs:
               - 'evals/**'
               - 'pyproject.toml'
               - 'uv.lock'
+              # Tool-input parity (§5.8, W1-4): a gitleaks-config-only PR
+              # still exercises the folded quality tools (same precedent
+              # as pyproject.toml/uv.lock above).
+              - '.gitleaks.toml'
             frontend:
               - 'packages/web/**'
               - 'package.json'
@@ -163,6 +170,21 @@ jobs:
               - '.github/workflows/**'
               - '.github/zizmor.yml'
               - '.github/CODEOWNERS'
+            # Push-only quality gate (R3, spec §5.3, task W1-4): consumed
+            # by the `quality` job's `if`. Sealed exact list — a superset
+            # of every quality-tool input (ruff/pyright/bandit/pip-audit
+            # target exactly these paths; gitleaks scans shallow on push),
+            # so docs/state-only pushes cannot change any tool input and
+            # skip the job. Deliberately job-level (NOT on.push.paths): a
+            # workflow-level filter would suppress changes/architecture on
+            # docs pushes, violating §5.3's "always" requirement.
+            code:
+              - 'apps/api/**'
+              - 'packages/**'
+              - 'scripts/**'
+              - 'evals/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
 
   # -------------------------------------------------------------------------
   # Nightly Gate — event-driven nightly foundation (spec
@@ -353,9 +375,9 @@ jobs:
             # NIGHTLY FILTER SYNC: the backend/frontend/workflows path
             # lists below must stay identical to the `changes` job's
             # filters above (spec §5.1 reuse-verbatim rule) so the PR-side
-            # and nightly side can never drift; W1-4's `.gitleaks.toml`
-            # backend addition must land in BOTH lists. should_run = the
-            # union of the three.
+            # and nightly side can never drift; the `.gitleaks.toml`
+            # backend entry (W1-4, §5.8 tool-input parity) is present in
+            # BOTH lists. should_run = the union of the three.
             backend:
               - 'apps/api/**'
               - 'packages/core/**'
@@ -369,6 +391,10 @@ jobs:
               - 'evals/**'
               - 'pyproject.toml'
               - 'uv.lock'
+              # Tool-input parity (§5.8, W1-4): a gitleaks-config-only PR
+              # still exercises the folded quality tools (same precedent
+              # as pyproject.toml/uv.lock above).
+              - '.gitleaks.toml'
             frontend:
               - 'packages/web/**'
               - 'package.json'
@@ -528,37 +554,39 @@ jobs:
         run: uv run --no-sync python scripts/check_current_state_facts.py
 
   # -------------------------------------------------------------------------
-  # Quality gate: lint, typecheck, security in ONE job (spec §8 Phase 2) —
-  # a shared checkout + a single `uv sync` save ~2-3 min per run in setup
-  # and per-job minute rounding. Event-agnostic like its predecessors
-  # (lint / typecheck / security ran on every event too).
+  # Quality gate (PUSH-ONLY, R3 decision (a), spec §5.8 + §5.3) — lint,
+  # typecheck, security for direct pushes to main/develop, which bypass
+  # PR gating entirely (§5.3: ~152 direct code pushes/month — this job
+  # is their ONLY quality gate). On the PR and nightly paths the
+  # identical tool set runs as a folded step-group inside test-unit
+  # (backend-gated, §5.4), calling the same composite — tool parity
+  # between the two call sites is structural, not discipline-dependent.
+  # Code-gated (the sealed §5.3 `code` filter): docs/state-only pushes
+  # cannot change any quality-tool input (ruff/pyright/bandit/pip-audit
+  # inputs are exactly the filter's paths; gitleaks scans shallow on
+  # push), so they skip the job.
   # -------------------------------------------------------------------------
   quality:
     name: Lint, Typecheck & Security
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [architecture, nightly-gate]
-    # Nightly path: only on active (non-idle) nights — the R3 fold
-    # (§5.8, task W1-4) moves the tool steps into test-unit and makes
-    # this job push-only; until then this trim merely spares idle
-    # nights (spec §5.1). PR/push behavior unchanged; the
-    # !cancelled() && !failure() prefix keeps the job alive on PR/push
-    # despite the skipped nightly-gate need.
+    needs: [architecture, changes]
+    # Push-only AND code-gated (§5.3, task W1-4): never on PR/schedule/
+    # dispatch — those paths get the tools inside test-unit (§5.8). The
+    # !cancelled() && !failure() prefix keeps the push fast-fail
+    # property: an architecture failure on a code push still skips this
+    # job (unchanged from when the job ran on every event).
     if: >-
       !cancelled() && !failure() &&
-      (github.event_name != 'schedule' ||
-       needs.nightly-gate.outputs.should_run == 'true')
+      github.event_name == 'push' &&
+      needs.changes.outputs.code == 'true'
     steps:
-      # fetch-depth: full history (0) on pushes to main/develop for the
-      # gitleaks full-history scan; shallow (1) otherwise — PR diffs are
-      # small enough that the default clone covers the changed range.
-      # NOTE: must stay in canonical ternary form `!= 'push' && 1 || 0`.
-      # The previous `== 'push' && 0 || 1` silently always yielded 1 (the
-      # true-branch 0 is falsy, so `|| 1` always won) — zizmor's
-      # unsound-ternary rule guards this pattern now.
+      # Push-only since W1-4: full history (0) for the gitleaks
+      # full-history scan. The old event ternary collapsed to its push
+      # branch once the job stopped running on any other event (§5.8).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: ${{ github.event_name != 'push' && 1 || 0 }}
+          fetch-depth: 0
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
@@ -576,13 +604,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev --extra embeddings
 
-      # ── Tool steps: shared composite action (R3, spec §5.8, W1-3) ─────
+      # ── Tool steps: shared composite action (R3, spec §5.8) ───────────
       # ruff → pip-audit + the Pyright cache restore/save live ONCE in
-      # .github/actions/quality (moved verbatim from this job); the
-      # push-only quality job (W1-4) and the folded test-unit step-group
-      # (W1-4) both call it, so the tool sequence cannot drift between
-      # call sites. Contract (inputs/outputs, caller obligations) is
-      # documented in that action's header.
+      # .github/actions/quality; this push-only job and the folded
+      # test-unit step-group both call it, so the tool sequence cannot
+      # drift between call sites. Contract (inputs/outputs, caller
+      # obligations) is documented in that action's header.
       - uses: ./.github/actions/quality
   # -------------------------------------------------------------------------
   # Workflow security audit (zizmor) — blocking PR check when workflows
@@ -626,18 +653,25 @@ jobs:
           zizmor --config .github/zizmor.yml .github/workflows/
 
   # -------------------------------------------------------------------------
-  # Unit tests (< 5 min, no Docker)
+  # Unit tests (< 5 min, no Docker) + folded quality tools (R3, §5.8)
   # -------------------------------------------------------------------------
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [quality, nightly-gate]
-    # PR path: every pull_request run (backend gating lands with the R3
-    # fold in W1-4, spec §5.4 — deliberately NOT here). Nightly path:
-    # active nights with a backend delta, or the weekly probe (§5.1).
-    # Dispatch = full matrix. The !cancelled() && !failure() prefix
-    # keeps the PR/dispatch paths alive when nightly-gate skips.
+    # `architecture` replaces the dissolved quality edge as fast-fail
+    # predecessor; `changes` feeds the PR backend gate (§5.4).
+    needs: [architecture, changes, nightly-gate]
+    # PR path: backend PRs only (§5.4, task W1-4) — docs-only, frontend-only
+    # and workflows-only PRs skip unit AND the folded tools (R5 absorbed,
+    # §5.8). The PR branch OR-composes nightly-gate's backend with changes'
+    # backend per the W1-2 empty-output pattern (the gate skips on PR
+    # events, so its output is '' and only `changes` decides). Nightly
+    # path: active nights with a backend delta, or the weekly probe (§5.1)
+    # — the folded tools ride this same gate, so unit nights exercise them
+    # by construction (§5.8). Dispatch = full matrix incl. tools. The
+    # !cancelled() && !failure() prefix keeps the PR/dispatch paths alive
+    # when nightly-gate skips.
     if: >-
       !cancelled() && !failure() &&
       ((github.event_name == 'schedule' &&
@@ -645,7 +679,9 @@ jobs:
         (needs.nightly-gate.outputs.probe == 'true' ||
          needs.nightly-gate.outputs.backend == 'true')) ||
        github.event_name == 'workflow_dispatch' ||
-       github.event_name == 'pull_request')
+       (github.event_name == 'pull_request' &&
+        (needs.nightly-gate.outputs.backend == 'true' ||
+         needs.changes.outputs.backend == 'true')))
     permissions:
       contents: read
       pull-requests: write
@@ -662,8 +698,23 @@ jobs:
           # World-drift pin — see architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
           python-version: "3.14"
 
+      # The embeddings extra is REQUIRED from W1-4: pyright (folded
+      # below) resolves imports behind it (§5.8 — previously only the
+      # quality job synced it; setup-uv caching keeps the delta at
+      # ~0.1–0.3 min).
       - name: Install dependencies
-        run: uv sync --frozen --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra embeddings
+
+      # ── R3 fold: quality tool steps (spec §5.8, task W1-4) ────────────
+      # ruff → pip-audit + the Pyright cache restore/save run here via
+      # the shared composite — the identical sequence the push-only
+      # quality job runs (drift structurally impossible). Backend-gated
+      # by this job's `if` (R5 absorbed); on the nightly path the cache
+      # save stays schedule-only (the gate `if` lives inside the
+      # composite). A lint/typecheck failure now fails THIS job — the
+      # signal location changed, the isolation effect did not (§5.8
+      # honest trade-off); pytest runs only after the tools pass.
+      - uses: ./.github/actions/quality
 
       - name: Install export toolchain
         # pandoc is required by the real-binary renderer unit tests in
@@ -775,7 +826,11 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [quality, changes, nightly-gate]
+    # `architecture` replaces the dissolved quality edge (W1-4, §5.8) —
+    # LOAD-BEARING: with `needs: [quality, …]` left in place this job
+    # would silently skip on every PR/nightly run once quality became
+    # push-only (spec §12 risk row "Missed needs rewires").
+    needs: [architecture, changes, nightly-gate]
     # PR path: skip on draft PRs (WIP iteration doesn't need the
     # Docker+spaCy path — it reruns once marked ready-for-review) and on
     # PRs whose diff never touched backend code. Nightly path: active
@@ -1187,7 +1242,11 @@ jobs:
     # divergence between the two browser-driven jobs.
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [quality, nightly-gate]
+    # `architecture` replaces the dissolved quality edge (W1-4, §5.8) —
+    # LOAD-BEARING: with `needs: [quality, …]` left in place this job
+    # would silently skip on every PR/nightly run once quality became
+    # push-only (spec §12 risk row "Missed needs rewires").
+    needs: [architecture, nightly-gate]
     # Full-stack E2E moved from every main-push to nightly + manual
     # dispatch (spec §3; was 192 min of the Sept 1-14 burn). Nightly
     # path: active nights only — `e2e` is backend ∨ frontend (full-stack),
