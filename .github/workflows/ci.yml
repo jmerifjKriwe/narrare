@@ -1141,6 +1141,36 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ── Playwright Chromium cache (W3-1, spec §7) ─────────────────────
+      # RESTORE early, gated SAVE after the install step — mirrors the
+      # Pyright cache pattern (explicit writes, never implicit post-step
+      # side effects). Key: the resolved @playwright/test version — the
+      # most stable minimal key. @playwright/test, playwright and
+      # playwright-core release in exact lockstep (pnpm-lock.yaml resolves
+      # a single 1.63.0 across all three), and the pinned Chromium build
+      # revision is a pure function of that version — so the key changes
+      # ONLY when the browser itself changes. hashFiles('pnpm-lock.yaml')
+      # would additionally bust on every unrelated frontend dep bump.
+      # runner.os stays in the key: both Playwright jobs pin
+      # ubuntu-22.04, but the runner image (not the pin) ships the OS
+      # libraries the browser needs. npm gets its own key namespace — the
+      # pip ecosystem in test-e2e resolves a DIFFERENT playwright version
+      # (different Chromium revision), so the two never share an entry.
+      - name: Resolve Playwright version (cache key)
+        id: pw-version
+        run: |
+          cd packages/web
+          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright Chromium cache
+        id: pw-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-npm-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+          restore-keys: |
+            playwright-npm-${{ runner.os }}-
+
       - name: Biome lint + format check
         run: cd packages/web && npx biome check .
 
@@ -1200,7 +1230,25 @@ jobs:
         run: cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts
 
       - name: Install Playwright Chromium
+        # Cache-aware (restore above): with a warm ~/.cache/ms-playwright
+        # playwright validates the pinned Chromium revision's completion
+        # marker and skips the download — a near-no-op on exact cache
+        # hit. On a restore-keys fallback (older version) it downloads
+        # only the missing revision.
         run: cd packages/web && pnpm playwright install chromium
+
+      # WRITE gate (spec §7 trust boundary): schedule only — nightly/
+      # probe nights are the only writers (this job does not run on
+      # push, so unlike the Pyright cache there is no push-main writer).
+      # PRs and dispatch are restore-only: PR-supplied code can never
+      # poison a cache other runs consume. The cache-hit guard skips
+      # futile re-saves of an already-existing immutable key.
+      - name: Save Playwright Chromium cache
+        if: github.event_name == 'schedule' && steps.pw-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-npm-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
 
       - name: VRT Screenshot Tests
         id: vrt-tests
@@ -1361,6 +1409,28 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
+      # ── Playwright Chromium cache (W3-1, spec §7) — pip twin ──────────
+      # Same design as the frontend job's npm cache, but its own key
+      # namespace: this job installs the browser via the PYTHON
+      # playwright package (uv.lock — 1.61.0), which pins a DIFFERENT
+      # Chromium revision than the npm @playwright/test 1.63.0 the
+      # frontend resolves. Verified: the two package identities differ,
+      # so per the W3-1 contract they get separate keys — a shared key
+      # would leave exactly one job's revision present per save, and the
+      # cache-hit guard would then block the other job's refresh.
+      - name: Resolve Playwright version (cache key)
+        id: pw-version
+        run: echo "version=$(uv run python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright Chromium cache
+        id: pw-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-pip-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+          restore-keys: |
+            playwright-pip-${{ runner.os }}-
+
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
@@ -1370,7 +1440,21 @@ jobs:
         run: just install-nlp-models
 
       - name: Install Playwright Chromium
+        # Cache-aware (restore above): warm cache → pinned revision
+        # validated, download skipped (near-no-op on exact hit; only the
+        # missing revision downloads on a restore-keys fallback).
         run: uv run playwright install chromium
+
+      # WRITE gate: schedule only (nightly/probe nights are the only
+      # writers — test-e2e does not run on push). PRs/dispatch are
+      # restore-only (spec §7 trust boundary); the cache-hit guard skips
+      # futile re-saves of an existing immutable key.
+      - name: Save Playwright Chromium cache
+        if: github.event_name == 'schedule' && steps.pw-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-pip-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile

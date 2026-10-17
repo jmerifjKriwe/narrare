@@ -76,8 +76,8 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      # ci.yml:1177 frontend-tests duration (own step output, numeric)
-      - ci.yml:1177
+      # ci.yml:1207 frontend-tests duration (own step output, numeric)
+      - ci.yml:1207
       - mutation-testing-monthly.yml:108 # scope label (own step output)
       - release-please.yml:97 # VERSION (release-please tag output)
       - release-please.yml:126 # IMAGE name:tag (own step outputs)
