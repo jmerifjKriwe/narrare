@@ -6,10 +6,10 @@ gate-exceptions.json / the CI workflow and the documented gate baseline.
 
 Authority: ADR-098, re-anchored by CI-R1 W1-9a — the gate SSOT is the ci.yml
 header audit table (G1-G10 + G6a) plus CONSTRAINTS.md §6, mirrored in prose by
-docs/development/quality-gates.md (QUALITY_GATES_PATH). The retired agent-context
-anchor .opencode/context/narrare-dev/processes/quality-gates.md (removed in
-f11eb44a, retired by ADR-098) stays retired. ADR-098 is also the process authority
-for the gate-exception registry (scripts/gate-exceptions.json).
+docs/development/quality-gates.md (QUALITY_GATES_PATH). The agent-context doc
+anchor retired by ADR-098 (removed in f11eb44a) stays retired. ADR-098 is also
+the process authority for the gate-exception registry
+(scripts/gate-exceptions.json).
 
 A MISSING quality-gates.md is a hard failure (check "ssot-present"), not a vacuous
 pass: the pre-W1-9 design treated the SSOT as optional and silently degraded on

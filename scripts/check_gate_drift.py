@@ -3,8 +3,8 @@
 Narrare Gate Drift Checker.
 
 Detects drift between documented quality gates and CI configuration.
-Compares gate-exceptions.json, CI YAML, pyproject.toml, and quality-gates
-documentation to find mismatches.
+Compares gate-exceptions.json, the CI YAML audit block, and the
+quality-gates SSOT doc (docs/development/quality-gates.md) to find mismatches.
 
 Exit codes:
   0: All drift has registered exceptions (or no drift found).
@@ -14,7 +14,9 @@ Usage:
   python scripts/check_gate_drift.py                   # human-readable
   python scripts/check_gate_drift.py --json            # JSON for CI
 
-See: .opencode/context/narrare-dev/processes/quality-gates.md Gate 11.
+See: docs/development/quality-gates.md (committed SSOT; the retired
+agent-context anchor referenced here before W1-9 was removed in f11eb44a and
+stays retired per ADR-098).
 """
 
 from __future__ import annotations

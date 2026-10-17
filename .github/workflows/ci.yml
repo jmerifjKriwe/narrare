@@ -6,8 +6,8 @@ name: CI
 # docs/superpowers/specs/2026-10-16-ci-r1-event-driven-redesign.md)
 # ---------------------------------------------------------------------------
 # Reference: this header table is the CI-gate SSOT; canonical prose doc:
-# docs/development/quality-gates.md (W1-9a creates it later in this same
-# PR — the pointer is deliberately ahead of the file within the stack).
+# docs/development/quality-gates.md (mirrored content, machine-checked for
+# presence by scripts/check_gate_drift.py — keep the two in sync).
 #
 # | Gate | Tool / Check                            | CI Status   | Notes                                                          |
 # |------|------------------------------------------|-------------|----------------------------------------------------------------|
