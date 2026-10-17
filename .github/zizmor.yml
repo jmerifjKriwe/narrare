@@ -44,10 +44,13 @@ rules:
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
       - ci.yml:123
-      # ci.yml:973 `update-coverage-badge` — git-auto-commit pushes the
+      # ci.yml:891 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:973
+      # (Re-pinned from 973: W1-3 moved the quality tool steps into the
+      # .github/actions/quality composite action, shifting lines below
+      # the quality job up; re-triaged against live zizmor 1.30.1.)
+      - ci.yml:891
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -76,7 +79,10 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      - ci.yml:1133 # frontend-tests duration (own step output, numeric)
+      # ci.yml:1051 frontend-tests duration (own step output, numeric)
+      # (Re-pinned from 1133: W1-3 composite-action extraction shifted
+      # lines below the quality job up; live zizmor 1.30.1 output.)
+      - ci.yml:1051
       - mutation-testing-monthly.yml:108 # scope label (own step output)
       - release-please.yml:67 # VERSION (release-please tag output)
       - release-please.yml:97 # IMAGE name:tag (own step outputs)
@@ -98,3 +104,19 @@ rules:
       # drop both entries.
       - vrt-update-baselines.yml:136
       - vrt-update-baselines.yml:137
+
+  self-repository:
+    ignore:
+      # ci.yml:586 `quality` — local composite action introduced by W1-3
+      # (spec §5.8). zizmor 1.30.0+ prefers the July-2026 self-repository
+      # syntax (`uses: $/...`) over workspace-relative `uses: ./...`, but
+      # actionlint (≤ v1.7.12, 2026-03) does not parse `$/` yet, so `./`
+      # is the only form that passes both gates. Risk accepted: a `./`
+      # ref executes the action from the running commit (no supply-chain
+      # exposure), and no step clones repo content into
+      # .github/actions before the call, so the audit's "runtime
+      # filesystem state" concern does not apply. Finding is
+      # informational. Follow-up: switch ci.yml (and W1-4's folded
+      # call site) to `$/` once actionlint supports it, then remove
+      # this entry.
+      - ci.yml:586

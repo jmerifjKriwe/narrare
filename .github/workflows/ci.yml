@@ -576,96 +576,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev --extra embeddings
 
-      # ── Lint & format ─────────────────────────────────────────────────
-      - name: Ruff lint
-        run: uv run ruff check apps/ packages/ scripts/ tests/
-
-      - name: Ruff format check
-        run: uv run ruff format --check apps/ packages/ scripts/ tests/
-
-      # ── Type checking ─────────────────────────────────────────────────
-      # Pyright cache: RESTORE-only here. The write is a separate, explicit
-      # actions/cache/save step at the END of this job, gated to nightly
-      # and main pushes (see "Save Pyright cache" below) — cache writes are
-      # visible and deliberate, never an implicit post-step side effect.
-      - name: Restore Pyright cache
-        id: pyright-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            .pyright/
-            **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
-          restore-keys: |
-            pyright-${{ runner.os }}-
-
-      - name: Pyright
-        run: uv run pyright
-
-      # Mirror the local `just typecheck-tests` gate (and pre-commit
-      # `pyright-tests` hook): the main pyright config (pyproject.toml)
-      # excludes tests/ for performance, so test files are type-checked
-      # separately by tests/pyrightconfig.json (basic mode). Q-015-Q-019
-      # gate-coverage follow-up.
-      - name: Pyright (Tests)
-        run: uv run pyright --project tests/pyrightconfig.json
-
-      # ADR-097: additive fast type check. CI backing for the pre-commit
-      # `pyrefly` hook (local = staged scope, here = whole project).
-      # Error-kind set + baseline live in pyrefly.toml / pyrefly-baseline.json.
-      # pyright above stays the authoritative strict gate (G6).
-      - name: Pyrefly
-        run: uv run pyrefly check
-
-      # ── Security ──────────────────────────────────────────────────────
-      - name: Install Gitleaks
-        env:
-          GITLEAKS_VERSION: "8.30.1"
-        run: |
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | sudo tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
-
-      - name: Secret scanning (Gitleaks) — AUFG-05-09
-        run: uv run python scripts/check_secrets.py
-
-      # Bandit — the -r target set MUST stay set-equal to the pre-push bandit
-      # hook and `just security` (production + scripts + evals); parity is
-      # machine-pinned by tests/unit/scripts/test_bandit_scope_parity.py.
-      - name: Bandit
-        run: |
-          uv run bandit -c pyproject.toml \
-            -r apps/api/narrare packages/core/narrare_core scripts evals
-
-      - name: pip-audit
-        # No vulnerability ignores are currently active (re-evaluated 2026-08).
-        # Previously-ignored advisories — both now resolved, so the ignores
-        # were stale and have been removed:
-        #   - PYSEC-2025-183 (CVE-2025-45768, PyJWT <= 2.10.1): pyjwt is pinned
-        #     at 2.13.0, above the last-affected version, so pip-audit no longer
-        #     flags it.
-        #   - GHSA-rrmf-rvhw-rf47 (CVE-2025-3000, PyTorch torch.jit.script): a
-        #     fix is now published upstream (torch 2.13.0) and torch is locked at
-        #     that version, so the previous "no upstream fix" ignore was stale.
-        # h2 CVE-2026-71554 was resolved by upgrading h2 4.3.0 -> 4.4.1.
-        # If a future advisory genuinely has no upstream fix, add a targeted
-        # --ignore-vuln here with a re-evaluate date and a linked tracking issue.
-        run: uv run pip-audit --skip-editable
-
-      # Pyright cache WRITE — explicit, gated, auditable (TanStack lesson:
-      # cache writes must be visible, not hidden in a post-step). PRs are
-      # restore-only; only the nightly (schedule) and pushes to main write
-      # the cache, so PR-supplied code can never poison a cache consumed by
-      # other workflows. The cache-hit guard skips futile re-saves of an
-      # already-existing immutable key (nightly/main noise).
-      - name: Save Pyright cache
-        if: (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && steps.pyright-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            .pyright/
-            **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
+      # ── Tool steps: shared composite action (R3, spec §5.8, W1-3) ─────
+      # ruff → pip-audit + the Pyright cache restore/save live ONCE in
+      # .github/actions/quality (moved verbatim from this job); the
+      # push-only quality job (W1-4) and the folded test-unit step-group
+      # (W1-4) both call it, so the tool sequence cannot drift between
+      # call sites. Contract (inputs/outputs, caller obligations) is
+      # documented in that action's header.
+      - uses: ./.github/actions/quality
   # -------------------------------------------------------------------------
   # Workflow security audit (zizmor) — blocking PR check when workflows
   # change + nightly (spec §5.2). Catches: dangerous triggers, template
