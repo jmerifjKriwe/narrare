@@ -56,6 +56,11 @@ on:
     # high load at common minutes (our monthly cron saw a 6.8 h delay on
     # Oct 1). Validated executable via workflow_dispatch run 36972990834.
     - cron: "37 2 * * *"
+    # Budget report: weekly, Sundays 03:07 UTC (W1-7, spec §5.7) — off-peak
+    # like the nightly. Jobs discriminate by the exact schedule string
+    # (`github.event.schedule`): on budget nights everything except
+    # budget-report skips.
+    - cron: "7 3 * * 0"
   pull_request:
     # W1-5 (spec §5.5): default types omit ready_for_review, so jobs that
     # skip drafts (draft != true guards) never rerun when a draft is marked
@@ -113,14 +118,21 @@ jobs:
   # Always runs on push (main/develop) so post-merge signal stays complete;
   # on PRs it narrows scope to what the diff actually touches. Nightly and
   # dispatch runs execute this job too — on schedule the filter step is
-  # skipped (no diff base). Outputs are consulted on PRs (component gates)
-  # and, since W1-4, on push: the `code` output gates the push-only
-  # quality job (spec §5.3).
+  # skipped (no diff base). Budget nights (03:07 Sundays, W1-7 §5.7) skip
+  # the whole job: nothing consumes these outputs there. Outputs are
+  # consulted on PRs (component gates) and, since W1-4, on push: the
+  # `code` output gates the push-only quality job (spec §5.3).
   # -------------------------------------------------------------------------
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # The exact schedule string is the 02:37-nightly vs 03:07-budget
+    # discriminator (W1-7, §5.7): PR/push/dispatch/nightly run exactly as
+    # before, budget nights skip.
+    if: >-
+      github.event_name != 'schedule' ||
+      github.event.schedule == '37 2 * * *'
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -217,8 +229,13 @@ jobs:
     name: Nightly Gate
     # PR/push runs skip the whole job: outputs are consulted on the
     # nightly path only (W1-2's PR branches keep consulting `changes`).
+    # W1-7 (§5.7): the schedule branch additionally discriminates the cron
+    # string, so the gate doesn't run (and bill) on budget nights (03:07
+    # Sundays); dispatch and the 02:37 nightly keep running.
     if: >-
-      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' &&
+       github.event.schedule == '37 2 * * *')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -1430,7 +1447,12 @@ jobs:
   # -------------------------------------------------------------------------
   budget-report:
     name: Quota Budget Report
-    if: github.event_name == 'schedule'
+    # Weekly only (W1-7, §5.7): the Sunday 03:07 schedule entry — the exact
+    # string is the 02:37-vs-03:07 discriminator; the nightly no longer
+    # runs this job. Quota-overrun warning latency 1d → 7d (accepted, §8).
+    if: >-
+      github.event_name == 'schedule' &&
+      github.event.schedule == '7 3 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
