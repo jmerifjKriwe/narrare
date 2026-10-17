@@ -1156,57 +1156,17 @@ jobs:
       - name: Build
         run: cd packages/web && pnpm build
 
-      - name: Upload warnings
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: warnings-frontend
-          path: /tmp/warnings/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  # -------------------------------------------------------------------------
-  # Frontend standalone smoke (PR-only blind-spot guard)
-  # -------------------------------------------------------------------------
-  # test-e2e boots the standalone Next server but runs nightly + on dispatch —
-  # the next@16.3.1/@swc/helpers standalone crash (fixed in 5e014943) was
-  # invisible on PR CI. This job builds the standalone tree and verifies it
-  # boots on PRs, cheaply: no Playwright, no screenshots → ubuntu-latest
-  # (no font-rendering sensitivity).
-  frontend-standalone:
-    name: Frontend Standalone Smoke
-    runs-on: ubuntu-latest
-    needs: [changes]
-    # PR-only (nightly runs are covered by test-e2e). workflows==true keeps
-    # the job self-exercising on PRs that modify ci.yml itself.
-    if: >-
-      github.event_name == 'pull_request' &&
-      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflows == 'true')
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          # Jobs below execute PR-supplied scripts — do not leave the
-          # repo token persisted in the workspace (spec §5.4).
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          version: 11.5.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build standalone frontend
-        run: cd packages/web && pnpm build
-
+      # ── Standalone boot smoke (folded from frontend-standalone, W1-6) ──
+      # test-e2e boots the standalone Next server but runs nightly + on
+      # dispatch — the next@16.3.1/@swc/helpers standalone crash (fixed in
+      # 5e014943) was invisible on PR CI. Steps lifted near-verbatim from
+      # the removed frontend-standalone job (spec §5.6): the smoke reuses
+      # this job's Build output and is not font-sensitive (server boot +
+      # curl only), so colocating on ubuntu-22.04 costs nothing. It now
+      # also runs on frontend-active nights and dispatch — harmless:
+      # bounded by the poll loop below plus this job's timeout. Drafts
+      # skip until marked ready (this job's draft guard; W1-5's
+      # ready_for_review type makes the transition rerun).
       - name: Copy static + public into standalone tree
         run: |
           cp -r packages/web/.next/static packages/web/.next/standalone/packages/web/.next/static
@@ -1235,6 +1195,15 @@ jobs:
             cat /tmp/standalone-server.log || true
             exit 1
           fi
+
+      - name: Upload warnings
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: warnings-frontend
+          path: /tmp/warnings/
+          if-no-files-found: ignore
+          retention-days: 7
 
   # -------------------------------------------------------------------------
   # E2E tests (nightly + manual dispatch, full stack)
