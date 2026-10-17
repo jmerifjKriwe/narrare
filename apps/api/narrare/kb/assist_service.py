@@ -132,18 +132,20 @@ class KBAssistService:
         user_prompt: str,
         deps: KBAssistDeps,
         intent: LLMIntent,
-        entity_type: str,
-        existing_fields: dict[str, str],
+        target_field: str = "",
     ) -> KBAssistOutput:
         """Run KBAssistAgent with composer-driven system prompt (Mode 1).
 
         Composes the invocation via the pipeline (ADR-048 Mode 1) so
         enrichment flows through the composer into the system prompt.
+        The prompt context is built from the SAME ``deps`` the agent
+        receives (single source — the F9-2 fix); ``target_field`` feeds
+        the suggest template's target-field slots (inert elsewhere).
         """
         from narrare._app.invocation_context import build_invocation_context
         from narrare_core.ai_invocation import compose_invocation
 
-        prompt_context = build_prompt_context(intent, entity_type, existing_fields)
+        prompt_context = build_prompt_context(intent, deps, target_field=target_field)
         invocation_context = build_invocation_context(
             feature_id="kb_assist",
             intent=intent,
@@ -206,8 +208,6 @@ class KBAssistService:
             user_prompt=user_prompt,
             deps=deps,
             intent=LLMIntent.KB_INTERVIEW,
-            entity_type=entity_type,
-            existing_fields=existing_fields,
         )
 
         return KBAssistQuestionResponse(
@@ -233,8 +233,7 @@ class KBAssistService:
             user_prompt=user_prompt,
             deps=deps,
             intent=LLMIntent.KB_SUGGEST,
-            entity_type=entity_type,
-            existing_fields=existing_fields,
+            target_field=field_key,
         )
 
         return KBAssistSuggestionResponse(
@@ -260,8 +259,6 @@ class KBAssistService:
             user_prompt=user_prompt,
             deps=deps,
             intent=LLMIntent.KB_ENHANCE,
-            entity_type=entity_type,
-            existing_fields=existing_fields,
         )
 
         return KBAssistEnhancementResponse(

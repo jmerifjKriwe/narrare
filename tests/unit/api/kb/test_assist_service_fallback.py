@@ -73,8 +73,6 @@ async def test_invocation_validation_error_triggers_fallback(
             user_prompt="Ask the next question.",
             deps=deps,  # type: ignore[arg-type]
             intent=LLMIntent.KB_INTERVIEW,
-            entity_type="character",
-            existing_fields={},
         )
 
     assert composer.build.await_count == 1
@@ -110,8 +108,6 @@ async def test_prompt_error_triggers_fallback(
             user_prompt="Ask the next question.",
             deps=deps,  # type: ignore[arg-type]
             intent=LLMIntent.KB_INTERVIEW,
-            entity_type="character",
-            existing_fields={},
         )
 
     assert composer.build.await_count == 1
@@ -145,8 +141,6 @@ async def test_unexpected_exception_propagates(
             user_prompt="Ask the next question.",
             deps=deps,  # type: ignore[arg-type]
             intent=LLMIntent.KB_INTERVIEW,
-            entity_type="character",
-            existing_fields={},
         )
 
     assert composer.build.await_count == 0
@@ -186,8 +180,6 @@ async def test_composition_none_raises_configuration_error(
             user_prompt="Ask the next question.",
             deps=deps,  # type: ignore[arg-type]
             intent=LLMIntent.KB_INTERVIEW,
-            entity_type="character",
-            existing_fields={},
         )
 
     assert composer.build.await_count == 1

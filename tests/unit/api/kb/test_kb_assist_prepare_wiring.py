@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from narrare._app.dependencies_services import StaticModelResolution
+from narrare_core.agents.kb_assist_agent import KBAssistDeps
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm._prepared_call import PreparedModelCall
 from narrare_core.llm.intents import LLMIntent
@@ -146,10 +147,14 @@ class TestAssistPrepareWiring:
         ):
             result = await service._run_agent(
                 user_prompt="Test prompt",
-                deps=MagicMock(spec=["language", "genre"]),
+                deps=KBAssistDeps(
+                    language="en",
+                    entity_type="character",
+                    template_structure={"role": "Role"},
+                    existing_answers={},
+                    world_context="",
+                ),
                 intent=LLMIntent.KB_INTERVIEW,
-                entity_type="character",
-                existing_fields={},
             )
 
         # prepare() is the single assembly point with the DYNAMIC intent
