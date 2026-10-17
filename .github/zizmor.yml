@@ -33,10 +33,11 @@ rules:
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
       - ci.yml:123
-      # ci.yml:688 `update-coverage-badge` — git-auto-commit pushes the
+      # ci.yml:700 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:688
+      # (line re-pinned 2026-10-16 after setup-uv python-version pin, W0-4a)
+      - ci.yml:700
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -53,10 +54,11 @@ rules:
 
   superfluous-actions:
     ignore:
-      # release-please.yml:262 — softprops/action-gh-release could be
+      # release-please.yml:264 — softprops/action-gh-release could be
       # `gh release` in a script step; the action is SHA-pinned and
       # Dependabot-tracked, so this is hygiene only. Cosmetic follow-up.
-      - release-please.yml:262
+      # (line re-pinned 2026-10-16 after setup-uv python-version pin, W0-4a)
+      - release-please.yml:264
 
   template-injection:
     ignore:
@@ -65,18 +67,18 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      - ci.yml:839 # frontend-tests duration (own step output, numeric)
-      - mutation-testing-monthly.yml:106 # scope label (own step output)
-      - release-please.yml:65 # VERSION (release-please tag output)
-      - release-please.yml:95 # IMAGE name:tag (own step outputs)
-      - release-please.yml:160 # bundle README heredoc (own step outputs)
-      - release-please.yml:194 # docker pull docs line (own step outputs)
-      - release-please.yml:250 # cosign verify docs (own step outputs)
-      - release-please.yml:259 # bundle zip name (own step outputs)
-      - release-please.yml:272 # release summary: tag name
-      - release-please.yml:274 # release summary: image:tag (2 findings)
-      - release-please.yml:275 # release summary: image digest
-      - release-please.yml:277 # release summary: bundle zip name
+      - ci.yml:846 # frontend-tests duration (own step output, numeric)
+      - mutation-testing-monthly.yml:108 # scope label (own step output)
+      - release-please.yml:67 # VERSION (release-please tag output)
+      - release-please.yml:97 # IMAGE name:tag (own step outputs)
+      - release-please.yml:162 # bundle README heredoc (own step outputs)
+      - release-please.yml:196 # docker pull docs line (own step outputs)
+      - release-please.yml:252 # cosign verify docs (own step outputs)
+      - release-please.yml:261 # bundle zip name (own step outputs)
+      - release-please.yml:274 # release summary: tag name
+      - release-please.yml:276 # release summary: image:tag (2 findings)
+      - release-please.yml:277 # release summary: image digest
+      - release-please.yml:279 # release summary: bundle zip name
       # vrt-update-baselines.yml:136-137 — job-summary echo of the
       # workflow's own git-status outputs (changed, changed_count) and,
       # at 137 col 117, `github.ref_name`. Accepted risk for line 137:

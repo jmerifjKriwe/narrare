@@ -38,6 +38,7 @@ from tests.e2e.foundation import (  # noqa: F401 — re-export for fixture disco
     verify_e2e_environment,
 )
 from tests.e2e.http_session import build_api_session
+from tests.e2e.test_helpers import goto_with_retry
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -254,7 +255,11 @@ def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -
     # so the initial fetch requests will be intercepted and proxied via
     # Playwright's network stack (no browser connection-pool hang).
     # -----------------------------------------------------------------------
-    page.goto(BASE_URL)
+    # Hardened goto (commit-168945f4 contract): ``domcontentloaded`` + ONE
+    # retry absorbs the Oct-14/15 nightly env-smoke setup failures
+    # (``Page.goto: Timeout 30000ms`` — dev-proxy stall, run 38531844492);
+    # a second timeout still raises so real breakage stays loud (RULE-11).
+    goto_with_retry(page, BASE_URL)
 
     # Wait for the auth store to initialize (loadUser completes)
     page.wait_for_timeout(1000)

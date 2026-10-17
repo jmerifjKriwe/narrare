@@ -24,6 +24,7 @@ from tests.e2e.helpers.editor_ai import (
     editor_text,
     open_generation_panel,
     prepare_ai_chapter,
+    type_into_editor,
 )
 from tests.e2e.helpers.novel_factory import complete_wizard
 
@@ -214,9 +215,12 @@ class TestGhostText:
         seed = "Elara waited at the gate "
 
         prepare_ai_chapter(page, authed_request, ai_novel.novel_id, title="Ghost Accept")
-        editor = page.locator(".ProseMirror").first
-        editor.click()
-        page.keyboard.type(seed)
+        # Hydration-safe typing (wait_editor_hydrated + seed-landed
+        # confirmation): the Oct-16 nightly (run 38867487325) failed THIS
+        # spec with zero /suggest calls in the whole 30s ghost window —
+        # keystrokes typed before TipTap attached never reached the editor,
+        # so the ≥800ms auto-trigger had nothing to fire on.
+        type_into_editor(page, seed)
 
         ghost = page.locator(".ghost-text-suggestion").first
         ghost.wait_for(state="visible", timeout=30_000)
@@ -248,9 +252,9 @@ class TestGhostText:
         seed = "Elara waited at the gate "
 
         prepare_ai_chapter(page, authed_request, ai_novel.novel_id, title="Ghost Dismiss")
-        editor = page.locator(".ProseMirror").first
-        editor.click()
-        page.keyboard.type(seed)
+        # Hydration-safe typing — see the sibling Tab spec (Oct-16 nightly
+        # class: seed never landed, auto-trigger never fired).
+        type_into_editor(page, seed)
 
         # Snapshot BEFORE the ghost can exist (auto-trigger fires ≥ 800 ms
         # after the last keystroke): this is the widget-free baseline the

@@ -13,6 +13,7 @@ import re
 from typing import TYPE_CHECKING
 
 from tests.e2e.helpers.novel_factory import create_chapter_via_api
+from tests.e2e.test_helpers import reload_page
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,6 +24,53 @@ if TYPE_CHECKING:
 _EDITOR_SELECTOR = ".ProseMirror"
 _SIDEBAR_CHAPTER = '[data-testid="chapter-item"]'
 _UI_WAIT_MS: int = 15_000
+_HYDRATION_WAIT_MS: int = 15_000
+"""Budget for the TipTap hydration gate (editor instance attaches on mount)."""
+
+
+def wait_editor_hydrated(page: Page) -> None:
+    """Block until the TipTap instance is actually attached to the page.
+
+    Hydration signal: ``window.__narrareEditor``, set by
+    ``useEditorInstance.ts`` when the editor is created — the same hook
+    ``test_helpers._insert_editor_text`` relies on. ``.ProseMirror`` being
+    VISIBLE is not sufficient: keystrokes typed between first paint and
+    editor attachment are swallowed, so downstream waits (ghost-text
+    auto-trigger, suggestion streaming) burn their whole budget on input
+    that never reached the editor.
+
+    Prevents the Oct-16 nightly class (run 38867487325,
+    ``TestGhostText::test_ghost_text_tab_accept_inserts_suggestion``:
+    suggestion never visible, ZERO ``/suggest`` calls in the 30s window —
+    the frontend never fired the request because the typed seed never
+    landed in a hydrated editor).
+    """
+    page.wait_for_function(
+        "() => Boolean(window.__narrareEditor) && Boolean(document.querySelector('.ProseMirror'))",
+        timeout=_HYDRATION_WAIT_MS,
+    )
+
+
+def type_into_editor(page: Page, text: str) -> None:
+    """Hydration-safe typing into the chapter editor.
+
+    Waits for the editor instance, focuses, types, then CONFIRMS the text
+    landed in ``.ProseMirror`` before returning (deterministic: a dropped
+    keystroke fails here in seconds with a precise message instead of as a
+    30s "downstream element never appeared" timeout).
+
+    Trailing whitespace is trimmed from the confirmation seed: the ghost
+    widgets render INSIDE ``.ProseMirror`` (extensions/GhostText.ts), so
+    ``innerText`` may normalize a document-trailing typed space.
+    """
+    wait_editor_hydrated(page)
+    page.locator(_EDITOR_SELECTOR).first.click()
+    page.keyboard.type(text)
+    page.wait_for_function(
+        "(seed) => document.querySelector('.ProseMirror')?.innerText.includes(seed)",
+        arg=text.rstrip(),
+        timeout=_HYDRATION_WAIT_MS,
+    )
 
 
 def prepare_ai_chapter(
@@ -38,14 +86,23 @@ def prepare_ai_chapter(
     Returns ``{"chapter_id": …, "title": …}``. Reloads the novel page so the
     sidebar picks up the new chapter, then selects it by title (the editor
     auto-selects the FIRST chapter — ours is newest/last).
+
+    Reload hardening: ``reload_page`` (``domcontentloaded`` + one retry,
+    commit-168945f4 pattern) instead of a bare ``page.reload()`` whose
+    default ``load`` wait stalls 30s on a dev-proxy stall — the Oct-15
+    nightly class (run 38700481557: ``Page.reload: Timeout 30000ms`` in
+    ``test_ai_writing_selection.py::TestCoAuthor`` and
+    ``test_ai_writing.py::TestGenerateErrorPaths::test_empty_form…``).
+    Returns only after the editor is hydrated (see
+    :func:`wait_editor_hydrated`), so callers can interact immediately.
     """
     created = create_chapter_via_api(api_request, novel_id, title=title, content=content)
-    page.reload()
-    page.wait_for_load_state("domcontentloaded")
+    reload_page(page)
     chapter_button = page.locator(_SIDEBAR_CHAPTER, has_text=re.compile(re.escape(title)))
     chapter_button.last.wait_for(state="visible", timeout=_UI_WAIT_MS)
     chapter_button.last.click()
     page.locator(_EDITOR_SELECTOR).first.wait_for(state="visible", timeout=_UI_WAIT_MS)
+    wait_editor_hydrated(page)
     return {"chapter_id": created["id"], "title": title}
 
 

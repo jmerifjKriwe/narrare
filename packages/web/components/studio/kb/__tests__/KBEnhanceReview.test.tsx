@@ -152,8 +152,16 @@ describe("KBEnhanceReview", () => {
       expect(screen.getByText("kb.enhanceReview")).toBeDefined();
     });
 
+    // The header title renders in EVERY phase (idle/loading/review/error), so
+    // it is not a completion signal. Gate on the first review-phase card
+    // instead: the enhancement promise resolves asynchronously and the cards
+    // commit in a later render pass. All cards render in that same commit, so
+    // the remaining assertions below are deterministic once this passes.
+    await waitFor(() => {
+      expect(screen.getByText("Description")).toBeDefined();
+    });
+
     // Should show field labels
-    expect(screen.getByText("Description")).toBeDefined();
     expect(screen.getByText("Name")).toBeDefined();
 
     // Should show original text
