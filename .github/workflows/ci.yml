@@ -165,6 +165,219 @@ jobs:
               - '.github/CODEOWNERS'
 
   # -------------------------------------------------------------------------
+  # Nightly Gate — event-driven nightly foundation (spec
+  # 2026-10-16-ci-r1-event-driven-redesign §5.1, task W1-1).
+  #
+  # Resolves the last SUCCESSFUL schedule run of this workflow ("last
+  # green") and diffs every nightly-relevant path against it. W1-2 will
+  # consume these outputs to run only changed components; until then the
+  # outputs have NO consumers — on PR/push events this job skips entirely
+  # and this commit changes zero behavior.
+  #
+  # FAIL-OPEN CONTRACT (spec §5.1, §11): an unresolvable API failure or a
+  # first-ever run without any successful nightly emits should_run=true
+  # plus every component true — a gate bug must degrade to a FULL nightly,
+  # never to a skipped one. should_run=false is reachable ONLY through a
+  # correctly resolved, genuinely empty delta (idle night). dorny with an
+  # explicit base SHA likewise treats an unreachable base (force-push/
+  # rebase, no common ancestor) as "all files added" — same direction.
+  #
+  # workflow_dispatch = full matrix unconditionally (manual run, no base
+  # comparison); `probe` additionally turns true on Sundays (§5.1.4).
+  # -------------------------------------------------------------------------
+  nightly-gate:
+    name: Nightly Gate
+    # PR/push runs skip the whole job: outputs are consulted on the
+    # nightly path only (W1-2's PR branches keep consulting `changes`).
+    if: >-
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Last-green lookup calls the Actions API (workflow runs list).
+      actions: read
+    outputs:
+      # Composition: dispatch or fail-open forces every output true;
+      # otherwise the resolved dorny delta decides. All derivation stays
+      # in these expressions — no ${{ }} templating inside run: bodies.
+      should_run: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.backend == 'true' ||
+          steps.filter.outputs.frontend == 'true' ||
+          steps.filter.outputs.workflows == 'true'
+        }}
+      backend: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.backend == 'true'
+        }}
+      frontend: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.frontend == 'true'
+        }}
+      workflows: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.workflows == 'true'
+        }}
+      # E2E is full-stack (spec §5.1): runs when either side changed.
+      e2e: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.backend == 'true' ||
+          steps.filter.outputs.frontend == 'true'
+        }}
+      # Weekly full probe: Sundays, UTC (§5.1.4). Dispatch/fail-open
+      # already run the full matrix, which subsumes the probe.
+      probe: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.lastgreen.outputs.sunday == 'true'
+        }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The last-green base can be arbitrarily old; a full clone keeps
+          # dorny's local diff possible and fetch-doubling out of the way.
+          fetch-depth: 0
+          # dorny must be able to fetch the base commit when it is no
+          # longer locally reachable (force-push/rebase) — without the
+          # token that path would fail CLOSED, violating the fail-open
+          # contract. Same adjudication as the `changes` job's checkout
+          # above (persisted credentials REQUIRED; Task-2 CONCERN 1);
+          # the zizmor baseline carries the entry.
+          persist-credentials: true
+
+      - name: Resolve last successful nightly SHA (fail-open)
+        id: lastgreen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python3 - <<'PYEOF'
+          import datetime as dt
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+
+          out_path = os.environ["GITHUB_OUTPUT"]
+
+          def emit(key, value):
+              with open(out_path, "a", encoding="utf-8") as fh:
+                  fh.write(f"{key}={value}\n")
+
+          # Manual dispatch = full matrix by definition; no base lookup.
+          if os.environ["EVENT_NAME"] == "workflow_dispatch":
+              emit("failopen", "true")
+              print("workflow_dispatch: manual run = full matrix (no base)")
+              raise SystemExit(0)
+
+          # Weekly full-probe flag (§5.1.4): Sunday in UTC. (Note: %u
+          # numbers Sunday 7, not 0 — weekday()==6 is the unambiguous form.)
+          now = dt.datetime.now(dt.timezone.utc)
+          emit("sunday", "true" if now.weekday() == 6 else "false")
+
+          url = (
+              "https://api.github.com/repos/"
+              + os.environ["REPO"]
+              + "/actions/workflows/ci.yml/runs"
+              + "?event=schedule&status=success&per_page=1"
+          )
+          data = None
+          try:
+              # Retry with backoff on 429/5xx — budget-report pattern
+              # (§5.1 step 1). Unresolvable failure -> fail-open below.
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request(url, headers={
+                          "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                          "Accept": "application/vnd.github+json",
+                      })
+                      with urllib.request.urlopen(req, timeout=30) as resp:
+                          data = json.load(resp)
+                      break
+                  except urllib.error.HTTPError as exc:
+                      if attempt == 3 or exc.code not in (429, 500, 502, 503, 504):
+                          raise
+                      time.sleep(2 * (attempt + 1))
+          except Exception as exc:
+              # Fail-open contract: degrade to a full nightly, never fail
+              # closed (failure is logged here, RULE-11 satisfied).
+              print(f"last-green lookup failed: {exc!r} -> fail-open")
+
+          runs = (data or {}).get("workflow_runs") or []
+          sha = runs[0].get("head_sha") if runs else ""
+          if sha:
+              emit("sha", sha)
+              emit("failopen", "false")
+              print(f"last successful nightly: {sha[:12]}")
+          else:
+              # First-ever run (no successful nightly yet) or unresolved
+              # API failure — both fail open.
+              emit("failopen", "true")
+              print("no last-green SHA resolved -> fail-open (full nightly)")
+          PYEOF
+
+      - name: Detect nightly-relevant changes since last green
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        # Meaningful only with a resolved base; dispatch and fail-open
+        # short-circuit at the outputs level instead (all forced true).
+        if: steps.lastgreen.outputs.sha != ''
+        with:
+          # Delta against the last green nightly, not the default branch.
+          base: ${{ steps.lastgreen.outputs.sha }}
+          filters: |
+            # NIGHTLY FILTER SYNC: the backend/frontend/workflows path
+            # lists below must stay identical to the `changes` job's
+            # filters above (spec §5.1 reuse-verbatim rule) so the PR-side
+            # and nightly side can never drift; W1-4's `.gitleaks.toml`
+            # backend addition must land in BOTH lists. should_run = the
+            # union of the three.
+            backend:
+              - 'apps/api/**'
+              - 'packages/core/**'
+              - 'packages/i18n/**'
+              - 'scripts/**'
+              - '!scripts/check_frontend_file_size.py'
+              - '!scripts/check-testid.ts'
+              - '!scripts/validate-i18n.ts'
+              - '!scripts/testid_baselines.json'
+              - 'tests/**'
+              - 'evals/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            frontend:
+              - 'packages/web/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              # Cross-cutting scripts: rationale documented in the
+              # `changes` job's frontend filter (shared baseline module).
+              - 'scripts/check_frontend_file_size.py'
+              - 'scripts/architecture/baselines.py'
+              - 'scripts/check-testid.ts'
+              - 'scripts/check_test_performance.py'
+              - 'scripts/validate-i18n.ts'
+              - 'scripts/testid_baselines.json'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/zizmor.yml'
+              - '.github/CODEOWNERS'
+
+  # -------------------------------------------------------------------------
   # Fast fail: architecture constraints (< 30s)
   # -------------------------------------------------------------------------
   architecture:

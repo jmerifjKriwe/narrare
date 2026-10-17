@@ -11,6 +11,19 @@
 # are 1-based and must move with their finding: an edit that shifts a line
 # un-ignores it and fails CI until the baseline is re-triaged (intended).
 #
+# ANCHOR CONVENTION: an ignore's file:line anchor must match a location
+# zizmor reports for the finding. Multi-line findings (a step's run:
+# block, a uses:+with: pair) may name the step-start line OR the specific
+# expression line — zizmor's matcher accepts ANY location inside the
+# finding's span, so both work. Pin the line the current zizmor output
+# names, and re-triage empirically against real zizmor output.
+#
+# RE-PIN CONVENTION: entries carry their acceptance reason ONLY — no
+# dated "(re-pinned …)" history annotations. Line moves are auditable
+# via this file's git history; what is mandatory is the re-triage itself
+# after any insertion above a pinned anchor (an un-ignored finding fails
+# CI by design).
+#
 # zizmor 1.30.1 semantics: the exit code reflects the HIGHEST finding
 # severity (11=informational … 14=high) — any unsuppressed finding from
 # any rule fails the job.
@@ -26,18 +39,15 @@ rules:
 
   artipacked:
     ignore:
-      # (lines re-pinned 2026-10-02 after nightly-cron comment shift, PR #235)
-      # (re-pinned 2026-10-14 after ADR-97 ci.yml inserts, PR #254)
       # ci.yml:123 `changes` — dorny/paths-filter takes the git path on
       # push runs (`git fetch origin <sha>`; depth-1 clone lacks the
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
       - ci.yml:123
-      # ci.yml:700 `update-coverage-badge` — git-auto-commit pushes the
+      # ci.yml:913 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      # (line re-pinned 2026-10-16 after setup-uv python-version pin, W0-4a)
-      - ci.yml:700
+      - ci.yml:913
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -57,7 +67,6 @@ rules:
       # release-please.yml:264 — softprops/action-gh-release could be
       # `gh release` in a script step; the action is SHA-pinned and
       # Dependabot-tracked, so this is hygiene only. Cosmetic follow-up.
-      # (line re-pinned 2026-10-16 after setup-uv python-version pin, W0-4a)
       - release-please.yml:264
 
   template-injection:
@@ -67,7 +76,7 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      - ci.yml:846 # frontend-tests duration (own step output, numeric)
+      - ci.yml:1064 # frontend-tests duration (own step output, numeric)
       - mutation-testing-monthly.yml:108 # scope label (own step output)
       - release-please.yml:67 # VERSION (release-please tag output)
       - release-please.yml:97 # IMAGE name:tag (own step outputs)
