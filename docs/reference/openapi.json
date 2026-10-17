@@ -8964,7 +8964,7 @@
           "kb-sessions"
         ],
         "summary": "Complete Session",
-        "description": "Complete a KB creation session and create the KB entry.\n\nCreates a KB entry from the session's collected fields and marks\nthe session as complete. Returns the updated session and the\nnew entry's ID.",
+        "description": "Complete a KB creation session and create the KB entry.\n\nCreates a KB entry from the session's collected fields and marks\nthe session as complete. Returns the updated session and the\nnew entry's ID.\n\nThe body is optional (F9-1): ``{\"name\": ...}`` supplies the entry\nname collected by the FE; an absent body or absent name keeps the\nexisting behavior (400 when the session has no name).",
         "operationId": "complete_session_api_v1_novels__novel_id__kb_sessions__session_id__complete_post",
         "security": [
           {
@@ -8993,6 +8993,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CompleteSessionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -16413,6 +16430,26 @@
         ],
         "title": "CoAuthorRequest",
         "description": "Request for co-author revision of a text selection.\n\nThe frontend sends the selected passage with optional surrounding\ncontext and one or more improvement focus areas.  The backend streams\nthe revised text through the pipeline, then computes a server-side\ndiff and returns change metadata in the final SSE event."
+      },
+      "CompleteSessionRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "title": "CompleteSessionRequest",
+        "description": "Optional request body for completing a KB creation session.\n\nF9-1: the FE collects the entry name at the final step and sends it\nhere. The body itself is optional (absent body or absent name keeps\nthe existing name-required guard in the service/mapper); name\nconstraints mirror ``KBEntryCreate.name``."
       },
       "CompleteSetupRequest": {
         "properties": {

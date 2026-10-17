@@ -38,7 +38,7 @@ from ._assist_fakes import FakeKBContextProvider
 
 _ENTITY_TYPE = "character"
 #: Session-realistic answered field — the session store only ever feeds
-#: values for template fields (see ``KBSessionService._extract_existing_fields``).
+#: values for template fields (see ``narrare.kb.session_ops.extract_filled_fields``).
 _EXISTING = {"role": "Protagonist"}
 
 #: intent → governed template mode (route_table.py, kb category) — the
