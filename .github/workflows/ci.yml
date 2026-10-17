@@ -956,6 +956,43 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
+      # ── spaCy model cache (W3-2, spec §7) ─────────────────────────────
+      # `just install-nlp-models` (justfile) does `uv pip install` of three
+      # GitHub-release wheels (de/en/fr_core_news_md-<SPACY_VER>), where
+      # SPACY_VER derives at runtime from the INSTALLED spacy version
+      # (major.minor + ".0" per the recipe) — the model versions are NOT
+      # literals in the justfile, so hashFiles('justfile') would NOT bust
+      # on a spaCy/model bump. The key therefore resolves the same
+      # derivation from the synced venv (uv.lock pins spacy): the most
+      # stable minimal key — changes only when the models change. Tradeoff
+      # vs duplicating the formula: if the recipe's derivation ever
+      # changed, a drifted key would at worst restore models the install
+      # step then correctly replaces (uv pip install compares
+      # name==version, satisfaction always wins) — a saving degradation,
+      # never a correctness risk.
+      # Path: the wheels are pure (py3-none-any) and land as plain
+      # packages in .venv site-packages. Restoring them AFTER `uv sync`
+      # (which would prune foreign packages) makes `uv pip install`
+      # short-circuit as already-satisfied — a wheel-URL requirement
+      # carries name+version in its filename, so on match there is no
+      # download and no relink: the install step becomes a near-no-op.
+      # NO restore-keys: a fallback hit would restore wrong-version
+      # models — stale model versions are useless, not partial (unlike
+      # Playwright's additive browser revisions).
+      - name: Resolve spaCy model version (cache key)
+        id: spacy-version
+        run: echo "version=$(uv run python -c 'import spacy; print(spacy.__version__.rsplit(".", 1)[0] + ".0")')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore spaCy model cache
+        id: spacy-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
+
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
@@ -963,6 +1000,22 @@ jobs:
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
+
+      # WRITE gate (spec §7 trust boundary): schedule only — nightly/
+      # probe nights are the only writers (test-integration does not run
+      # on push). PRs and dispatch are restore-only; the cache-hit guard
+      # skips futile re-saves of an existing immutable key. (If both
+      # this job and test-e2e miss on the same night, the losing save
+      # logs a benign "cache already exists" warning — job stays green.)
+      - name: Save spaCy model cache
+        if: github.event_name == 'schedule' && steps.spacy-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
 
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
@@ -1409,6 +1462,30 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
+      # ── spaCy model cache (W3-2, spec §7) ─────────────────────────────
+      # Same contract as the test-integration cache: `just
+      # install-nlp-models` wheels three de/en/fr_core_news_md-<SPACY_VER>
+      # releases whose version derives from the INSTALLED spacy (not a
+      # justfile literal — hashFiles('justfile') would never bust). Key
+      # resolves the recipe's own derivation from the synced venv.
+      # Restore lands the pure wheels inside .venv site-packages AFTER
+      # `uv sync` (which prunes foreign packages), so `uv pip install`
+      # short-circuits already-satisfied and skips the download.
+      # Restore-only on PRs/dispatch; schedule writes (trust boundary).
+      - name: Resolve spaCy model version (cache key)
+        id: spacy-version
+        run: echo "version=$(uv run python -c 'import spacy; print(spacy.__version__.rsplit(".", 1)[0] + ".0")')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore spaCy model cache
+        id: spacy-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
+
       # ── Playwright Chromium cache (W3-1, spec §7) — pip twin ──────────
       # Same design as the frontend job's npm cache, but its own key
       # namespace: this job installs the browser via the PYTHON
@@ -1438,6 +1515,23 @@ jobs:
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
+
+      # WRITE gate (spec §7 trust boundary): schedule only — nightly/
+      # probe nights are the only writers (test-e2e does not run on
+      # push). PRs/dispatch restore-only; cache-hit guard skips futile
+      # re-saves. Same key namespace as test-integration's save: on a
+      # shared night the second writer logs a benign "already exists"
+      # warning; on later nights the exact hit makes the install step a
+      # near-no-op for BOTH jobs.
+      - name: Save spaCy model cache
+        if: github.event_name == 'schedule' && steps.spacy-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
 
       - name: Install Playwright Chromium
         # Cache-aware (restore above): warm cache → pinned revision
