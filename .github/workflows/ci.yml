@@ -169,10 +169,12 @@ jobs:
   # 2026-10-16-ci-r1-event-driven-redesign §5.1, task W1-1).
   #
   # Resolves the last SUCCESSFUL schedule run of this workflow ("last
-  # green") and diffs every nightly-relevant path against it. W1-2 will
-  # consume these outputs to run only changed components; until then the
-  # outputs have NO consumers — on PR/push events this job skips entirely
-  # and this commit changes zero behavior.
+  # green") and diffs every nightly-relevant path against it. Every
+  # expensive job consumes these outputs since W1-2 (spec §5.1 table):
+  # the schedule path gates on them, the PR path keeps consulting the
+  # `changes` job, so on PR/push events this job skips entirely and its
+  # outputs stay empty by design (consumer `if`s tolerate that — every
+  # gate-output reference sits behind an explicit event check).
   #
   # FAIL-OPEN CONTRACT (spec §5.1, §11): an unresolvable API failure or a
   # first-ever run without any successful nightly emits should_run=true
@@ -201,10 +203,18 @@ jobs:
       # Composition: dispatch or fail-open forces every output true;
       # otherwise the resolved dorny delta decides. All derivation stays
       # in these expressions — no ${{ }} templating inside run: bodies.
+      # should_run includes the probe term: a probe Sunday forces the
+      # FULL matrix "regardless of deltas" (§5.1.4; §9.2 R4 bills 4.3 ×
+      # ~39 min/mo for exactly that), and the consumer conditions are
+      # sealed as `should_run && (probe ‖ component)` — without the term
+      # here, an idle Sunday would evaluate should_run=false, probe=true
+      # and skip the entire probe. should_run therefore means "the
+      # nightly does anything tonight", not merely "a delta exists".
       should_run: >-
         ${{
           github.event_name == 'workflow_dispatch' ||
           steps.lastgreen.outputs.failopen == 'true' ||
+          steps.lastgreen.outputs.sunday == 'true' ||
           steps.filter.outputs.backend == 'true' ||
           steps.filter.outputs.frontend == 'true' ||
           steps.filter.outputs.workflows == 'true'
@@ -387,7 +397,16 @@ jobs:
     # Deliberately NOT gated on `changes` — this job is cheap (~3min) and
     # covers cross-cutting drift checks (docs, ADRs, eval smoke, registry)
     # that don't map cleanly to a single path. Keep it as the universal
-    # fast-fail gate; gate only the genuinely expensive jobs below instead.
+    # fast-fail gate on PR/push/dispatch; only the nightly path respects
+    # nightly-gate's should_run so idle nights skip everything
+    # (spec 2026-10-16 §5.1 table). The !cancelled() && !failure() prefix
+    # is load-bearing: nightly-gate SKIPS on PR/push events, and without
+    # an always()-class guard GitHub would skip this dependent too.
+    needs: [nightly-gate]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'schedule' ||
+       needs.nightly-gate.outputs.should_run == 'true')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -518,7 +537,17 @@ jobs:
     name: Lint, Typecheck & Security
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [architecture]
+    needs: [architecture, nightly-gate]
+    # Nightly path: only on active (non-idle) nights — the R3 fold
+    # (§5.8, task W1-4) moves the tool steps into test-unit and makes
+    # this job push-only; until then this trim merely spares idle
+    # nights (spec §5.1). PR/push behavior unchanged; the
+    # !cancelled() && !failure() prefix keeps the job alive on PR/push
+    # despite the skipped nightly-gate need.
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'schedule' ||
+       needs.nightly-gate.outputs.should_run == 'true')
     steps:
       # fetch-depth: full history (0) on pushes to main/develop for the
       # gitleaks full-history scan; shallow (1) otherwise — PR diffs are
@@ -646,12 +675,22 @@ jobs:
     name: Workflow Security (zizmor)
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [changes]
+    needs: [changes, nightly-gate]
+    # Nightly path: workflow-relevant nights and the weekly probe only
+    # (§5.1); PR path unchanged (self-exercising via `changes`); push
+    # events keep skipping it. The !cancelled() && !failure() prefix
+    # keeps the PR path alive despite the skipped nightly-gate need
+    # (empty gate outputs are only ever consulted behind the explicit
+    # `schedule` conjunct).
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       needs.changes.outputs.workflows == 'true')
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.workflows == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        needs.changes.outputs.workflows == 'true'))
     permissions:
       contents: read
     steps:
@@ -675,12 +714,20 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [quality]
-    # PR-gated full suite; nightly/dispatch run everything (spec §3).
+    needs: [quality, nightly-gate]
+    # PR path: every pull_request run (backend gating lands with the R3
+    # fold in W1-4, spec §5.4 — deliberately NOT here). Nightly path:
+    # active nights with a backend delta, or the weekly probe (§5.1).
+    # Dispatch = full matrix. The !cancelled() && !failure() prefix
+    # keeps the PR/dispatch paths alive when nightly-gate skips.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.backend == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'pull_request')
     permissions:
       contents: read
       pull-requests: write
@@ -810,16 +857,23 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [quality, changes]
+    needs: [quality, changes, nightly-gate]
     # PR path: skip on draft PRs (WIP iteration doesn't need the
     # Docker+spaCy path — it reruns once marked ready-for-review) and on
-    # PRs whose diff never touched backend code. Nightly/dispatch run all.
+    # PRs whose diff never touched backend code. Nightly path: active
+    # nights with a backend delta, or the weekly probe (§5.1); dispatch
+    # runs all. The !cancelled() && !failure() prefix keeps the PR/
+    # dispatch paths alive when nightly-gate skips.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       needs.changes.outputs.backend == 'true' &&
-       github.event.pull_request.draft != true)
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.backend == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        needs.changes.outputs.backend == 'true' &&
+        github.event.pull_request.draft != true))
 
     services:
       postgres:
@@ -905,8 +959,14 @@ jobs:
     needs: test-unit
     # Nightly-only: test-unit is skipped on push, so no coverage artifact
     # exists there to download (spec §4.1 — push+schedule collapses to
-    # schedule).
-    if: github.event_name == 'schedule'
+    # schedule). With the event-driven nightly, unit ALSO skips on idle
+    # and non-backend nights — without the result guard this job would
+    # fail downloading a nonexistent artifact (spec §5.1 table, fixed in
+    # W1-2). Needs stays `test-unit` only: the condition references no
+    # nightly-gate output, and with no status-check function in the `if`
+    # the implicit success() prefix additionally guarantees the job never
+    # runs after a failed/cancelled unit run.
+    if: github.event_name == 'schedule' && needs.test-unit.result == 'success'
     permissions:
       contents: write
     steps:
@@ -992,14 +1052,23 @@ jobs:
     # rotates OS versions and would drift baselines without warning.
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    needs: [architecture, changes]
+    needs: [architecture, changes, nightly-gate]
+    # Nightly path: frontend/workflow deltas or the weekly probe (§5.1).
+    # PR path unchanged (frontend/workflows filter + draft guard); the
+    # !cancelled() && !failure() prefix keeps the PR/dispatch paths
+    # alive when nightly-gate skips.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       (needs.changes.outputs.frontend == 'true' ||
-        needs.changes.outputs.workflows == 'true') &&
-       github.event.pull_request.draft != true)
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.frontend == 'true' ||
+         needs.nightly-gate.outputs.workflows == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        (needs.changes.outputs.frontend == 'true' ||
+         needs.changes.outputs.workflows == 'true') &&
+        github.event.pull_request.draft != true))
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -1200,12 +1269,21 @@ jobs:
     # divergence between the two browser-driven jobs.
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [quality]
+    needs: [quality, nightly-gate]
     # Full-stack E2E moved from every main-push to nightly + manual
-    # dispatch (spec §3; was 192 min of the Sept 1-14 burn).
+    # dispatch (spec §3; was 192 min of the Sept 1-14 burn). Nightly
+    # path: active nights only — `e2e` is backend ∨ frontend (full-stack),
+    # plus the weekly probe (§5.1). Dispatch = full matrix (the gate
+    # emits all-true). PR path lands with W1-12 (§5.10); the
+    # !cancelled() && !failure() prefix keeps dispatch alive when
+    # nightly-gate skips on other events.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch'
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.e2e == 'true')) ||
+       github.event_name == 'workflow_dispatch')
 
     services:
       postgres:
