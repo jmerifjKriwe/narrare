@@ -1,5 +1,7 @@
 # CI Minute Optimization + GitHub Actions Hardening — Design
 
+> **Partially superseded by** `docs/superpowers/specs/2026-10-16-ci-r1-event-driven-redesign.md` (2026-10-16) — see its §2.
+>
 > **Status:** Approved (2026-09-29) — spec awaiting final review
 > **Repo anchor:** `ebd1bb26`
 > **Deciders:** PO (rulings below), Dev Coordinator (analysis + draft)
