@@ -1,8 +1,22 @@
 name: Release Please
 
+# Release + publish half of the release-please split (W2-2, spec §6.2):
+# the push trigger is path-filtered to the manifest/config, which the
+# manifest version bump of a merged release PR always touches. That merge
+# is a HUMAN push to main, so it triggers workflows normally (the
+# GITHUB_TOKEN no-retrigger restriction applies only to token-authored
+# commits, not human merges) — release + publish therefore still run
+# same-day. Code-only pushes to main no longer fire this workflow (the
+# ~60×/mo mostly-no-op runs from the measured baseline are gone); the
+# release PR itself is now created/updated nightly by ci.yml's
+# `release-orchestration` job (W2-1).
+
 on:
   push:
     branches: [main]
+    paths:
+      - ".release-please-manifest.json"
+      - "release-please-config.json"
 
 permissions:
   contents: read
@@ -26,6 +40,11 @@ jobs:
           release-type: python
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # W2-2 half of the split (spec §6.2): PR creation/updates moved
+          # to ci.yml's nightly release-orchestration job. Release creation
+          # itself is decided by manifest-version-vs-latest-tag and still
+          # happens here, on the release-PR merge push.
+          skip-github-pull-request: true
 
   publish:
     needs: release-please

@@ -55,19 +55,19 @@ rules:
 
   cache-poisoning:
     ignore:
-      # release-please.yml:49 — spec §5.5 adjudication: no
+      # release-please.yml:67 — spec §5.5 adjudication: no
       # pull_request_target anywhere in the repo; publish tokens (GHCR
       # login, release upload) exist only inside this push-to-main job;
       # the uv cache is default-branch-scoped and never shared with PR
       # runs, so no PR-reachable consumer can inherit it.
-      - release-please.yml:49
+      - release-please.yml:67
 
   superfluous-actions:
     ignore:
-      # release-please.yml:264 — softprops/action-gh-release could be
+      # release-please.yml:282 — softprops/action-gh-release could be
       # `gh release` in a script step; the action is SHA-pinned and
       # Dependabot-tracked, so this is hygiene only. Cosmetic follow-up.
-      - release-please.yml:264
+      - release-please.yml:282
 
   template-injection:
     ignore:
@@ -79,16 +79,16 @@ rules:
       # ci.yml:1177 frontend-tests duration (own step output, numeric)
       - ci.yml:1177
       - mutation-testing-monthly.yml:108 # scope label (own step output)
-      - release-please.yml:67 # VERSION (release-please tag output)
-      - release-please.yml:97 # IMAGE name:tag (own step outputs)
-      - release-please.yml:162 # bundle README heredoc (own step outputs)
-      - release-please.yml:196 # docker pull docs line (own step outputs)
-      - release-please.yml:252 # cosign verify docs (own step outputs)
-      - release-please.yml:261 # bundle zip name (own step outputs)
-      - release-please.yml:274 # release summary: tag name
-      - release-please.yml:276 # release summary: image:tag (2 findings)
-      - release-please.yml:277 # release summary: image digest
-      - release-please.yml:279 # release summary: bundle zip name
+      - release-please.yml:86 # VERSION (release-please tag output)
+      - release-please.yml:115 # IMAGE name:tag (own step outputs)
+      - release-please.yml:181 # bundle README heredoc (own step outputs)
+      - release-please.yml:215 # docker pull docs line (own step outputs, 2 findings)
+      - release-please.yml:271 # cosign verify docs (own step outputs)
+      - release-please.yml:280 # bundle zip name (own step outputs)
+      - release-please.yml:292 # release summary: tag name
+      - release-please.yml:294 # release summary: image:tag (2 findings)
+      - release-please.yml:295 # release summary: image digest
+      - release-please.yml:297 # release summary: bundle zip name
       # vrt-update-baselines.yml:136-137 — job-summary echo of the
       # workflow's own git-status outputs (changed, changed_count) and,
       # at 137 col 117, `github.ref_name`. Accepted risk for line 137:
