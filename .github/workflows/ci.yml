@@ -1620,6 +1620,19 @@ jobs:
   # so the two invocations are cleanly disjoint. Until W2-2 narrows the
   # push trigger, BOTH paths run (double coverage by design, spec §11).
   # Release-PR latency: ≤1 day (PO-sealed, OQ2 — spec §14).
+  #
+  # Split semantics (W2-3, spec §6): release creation is decided by
+  # manifest-version-vs-latest-tag, so the two invocations are cleanly
+  # disjoint — this job only creates/updates the release PR
+  # (skip-github-release: true), release-please.yml (push-side, W2-2)
+  # only tags + publishes (skip-github-pull-request: true) when the
+  # release PR merges — a HUMAN merge, which triggers workflows normally
+  # (the GITHUB_TOKEN no-retrigger restriction applies only to
+  # token-authored commits). A run with nothing to release is an
+  # idempotent no-op (~1.7 min). Settings note (PO one-time manual
+  # action, NOT a task): bot-authored workflow runs on private repos
+  # park at `action_required` — approve the github-actions[bot] runs /
+  # unstick release PR #231 once.
   # -------------------------------------------------------------------------
   release-orchestration:
     name: Release PR Orchestration
