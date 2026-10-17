@@ -44,10 +44,10 @@ rules:
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
       - ci.yml:173
-      # ci.yml:1070 `update-coverage-badge` — git-auto-commit pushes the
+      # ci.yml:1144 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:1070
+      - ci.yml:1144
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -76,8 +76,8 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      # ci.yml:1260 frontend-tests duration (own step output, numeric)
-      - ci.yml:1260
+      # ci.yml:1334 frontend-tests duration (own step output, numeric)
+      - ci.yml:1334
       - mutation-testing-monthly.yml:108 # scope label (own step output)
       - release-please.yml:97 # VERSION (release-please tag output)
       - release-please.yml:126 # IMAGE name:tag (own step outputs)

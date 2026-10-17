@@ -787,6 +787,30 @@ jobs:
       # honest trade-off); pytest runs only after the tools pass.
       - uses: ./.github/actions/quality
 
+      # ── Export toolchain cache (W3-3, spec §7) ────────────────────────
+      # Key = hashFiles of the installer script (its version pins are the
+      # only cache-relevant input) + runner.os, with a `lite` variant
+      # namespace: this job installs WITHOUT EPUBCheck, test-integration/
+      # test-e2e install WITH it — a shared key would let unit hit a
+      # full cache and silently skip the launcher the golden tests need
+      # (or poison a full cache with a launcher-less tree). Exact-key
+      # only, NO restore-keys: a stale fallback would skip the install
+      # of NEWLY pinned tool versions (silent version skew — the one
+      # unacceptable failure mode here).
+      # Hit mechanism: the install step is skipped entirely on exact
+      # hit — the script force-reinstalls by design, so the guard is
+      # what makes the hit a no-op; the cache itself carries identical
+      # binaries (same script hash ⇒ same pins ⇒ same artifacts).
+      # NARRARE_TOOLCHAIN_DIR redirects the installer into the cacheable
+      # dir; the PATH step (always) makes shutil.which() find the
+      # binaries in the pytest steps, exactly like ~/.local/bin did.
+      - name: Restore export toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-lite-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
+
       - name: Install export toolchain
         # pandoc is required by the real-binary renderer unit tests in
         # tests/unit/api/export/test_pandoc_{base,md}.py (ADR-081 / Slice 3).
@@ -799,7 +823,24 @@ jobs:
         # never be exercised in CI. Typst is included for the upcoming PDF
         # renderer tests (Slice 4/5, also tests/unit/). EPUBCheck is skipped —
         # it needs Java and is CI-validation-only (golden tests).
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        env:
+          NARRARE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchain
         run: bash scripts/install_export_toolchain.sh
+
+      - name: Add export toolchain to PATH
+        run: echo "${{ github.workspace }}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # WRITE gate (spec §7 trust boundary): schedule only (nightly/
+      # probe nights are the only writers; test-unit does not run on
+      # push). PRs/dispatch restore-only; cache-hit guard skips futile
+      # re-saves of an existing immutable key.
+      - name: Save export toolchain cache
+        if: github.event_name == 'schedule' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-lite-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Run unit tests
         id: tests
@@ -1020,11 +1061,44 @@ jobs:
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
 
+      # ── Export toolchain cache (W3-3, spec §7) — full variant ─────────
+      # `full` namespace: INSTALL_EPUBCHECK=1 (the `lite` cache test-unit
+      # saves must never be hit here, nor poison a full tree). Key =
+      # script hash (pins) + os; exact-key only — no stale-binary
+      # fallback. Hit mechanism: install step skipped on exact hit (the
+      # script force-reinstalls by design); NARRARE_TOOLCHAIN_DIR aims
+      # the installer at the cacheable dir, the PATH step keeps
+      # shutil.which() resolution identical.
+      - name: Restore export toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
+
       - name: Install export toolchain
         # Typst + pandoc (render binaries) + EPUBCheck (EPUB validation gate).
         # The Golden-Pages acceptance tests (tests/golden/export/) need all
         # three; the RULE-08 checker runs statically in the architecture job.
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        env:
+          NARRARE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchain
         run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
+
+      - name: Add export toolchain to PATH
+        run: echo "${{ github.workspace }}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # WRITE gate: schedule only (nightly/probe nights are the only
+      # writers; test-integration does not run on push). PRs/dispatch
+      # restore-only; cache-hit guard skips futile re-saves. Shared key
+      # with test-e2e's save: on a shared night the second writer logs a
+      # benign already-exists warning.
+      - name: Save export toolchain cache
+        if: github.event_name == 'schedule' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Run integration tests
         run: |
@@ -1559,9 +1633,36 @@ jobs:
       - name: Seed dev user
         run: uv run python scripts/seed_dev_user.py
 
+      # ── Export toolchain cache (W3-3, spec §7) — full variant ─────────
+      # Same contract as test-integration's (`full` key with EPUBCheck;
+      # script-hash key; skip-install-on-exact-hit; NARRARE_TOOLCHAIN_DIR
+      # + PATH step for shutil.which() parity). Restore-only on PRs/
+      # dispatch; schedule writes (trust boundary).
+      - name: Restore export toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
+
       - name: Install export toolchain
         # Typst + pandoc so a real export E2E can run (ADR-081).
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        env:
+          NARRARE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchain
         run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
+
+      - name: Add export toolchain to PATH
+        run: echo "${{ github.workspace }}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # WRITE gate: schedule only (test-e2e does not run on push);
+      # cache-hit guard skips futile re-saves of an existing key.
+      - name: Save export toolchain cache
+        if: github.event_name == 'schedule' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Build frontend
         run: cd packages/web && pnpm build
