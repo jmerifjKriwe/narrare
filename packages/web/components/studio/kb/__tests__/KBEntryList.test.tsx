@@ -187,6 +187,20 @@ describe("KBEntryList", () => {
     expect(tagElements.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("renders legacy entry with null tags without crashing", () => {
+    // F10 regression: rows created before the schema seam fix persist
+    // tags as SQL null (the API returns "tags": null while the TS type
+    // says string[]); the list must render the entry, not crash blank.
+    const legacyEntry = createEntry({
+      tags: null as unknown as string[],
+    });
+    render(<KBEntryList {...defaultProps} entries={[legacyEntry]} />);
+
+    expect(screen.getByText("Anna Schmidt")).toBeDefined();
+    // No tag preview may leak from a null value
+    expect(screen.queryByText("protagonist")).toBeNull();
+  });
+
   it("updates search input value on change", () => {
     render(<KBEntryList {...defaultProps} />);
 
