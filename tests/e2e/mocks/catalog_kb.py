@@ -6,6 +6,13 @@ Wire formats mirror the REAL endpoints (verified 2026-10-12):
   /kb/extract/apply; both are excluded so the glob only serves extraction).
 - POST /api/v1/novels/{id}/kb/entities/{entry_id}/improve —
   KBImproveAnalysisResponse JSON (…/improve/apply excluded).
+- POST /api/v1/novels/{id}/kb/sessions/{session_id}/interview —
+  {session, question} aggregate exactly as router_sessions.py answers it
+  (session = a KBCreationSession dump, question = KBAssistQuestionResponse).
+  The fixture session mirrors a trimmed real character session (the FE's
+  requestInterview reads only question.{field_key,question,reasoning}); the
+  question's field_key is a REAL character-template field so the FE's
+  follow-up answer PATCH hits an existing field.
 - POST /api/v1/novels/{id}/wiki/summaries/{entity_id}/refresh —
   WikiRefreshResponse JSON (path param is UUID-typed: real UUID required;
   a successful regeneration answers status="fresh" like the real service).
@@ -77,6 +84,55 @@ KB_IMPROVE_HAPPY = json.dumps(
     }
 )
 
+KB_INTERVIEW_QUESTION_HAPPY = json.dumps(
+    {
+        "session": {
+            "id": "00000000-0000-0000-0000-0000000000c1",
+            "novel_id": "00000000-0000-0000-0000-0000000000a1",
+            "user_id": "00000000-0000-0000-0000-0000000000b7",
+            "entity_type": "character",
+            "name": None,
+            "status": "active",
+            "fields": [
+                {
+                    "field_key": "age",
+                    "label": "Age",
+                    "field_type": "text",
+                    "required": False,
+                    "options": None,
+                    "user_value": "34",
+                    "ai_suggested_value": None,
+                    "ai_reasoning": None,
+                    "source": "user",
+                    "final_value": "34",
+                },
+                {
+                    "field_key": "personality.motivations",
+                    "label": "Personality Motivations",
+                    "field_type": "text",
+                    "required": False,
+                    "options": None,
+                    "user_value": None,
+                    "ai_suggested_value": None,
+                    "ai_reasoning": None,
+                    "source": "user",
+                    "final_value": None,
+                },
+            ],
+            "context_entries": [],
+            "created_at": "2026-10-15T00:00:00Z",
+            "updated_at": "2026-10-15T00:00:00Z",
+        },
+        "question": {
+            "field_key": "personality.motivations",
+            "question": "What does Maren want most — and what is she willing to trade for it?",
+            "reasoning": (
+                "Motivations is still empty; a concrete want anchors the personality group."
+            ),
+        },
+    }
+)
+
 WIKI_REFRESH_HAPPY = json.dumps(
     {
         "summary_id": "00000000-0000-0000-0000-0000000000d1",
@@ -142,6 +198,17 @@ SPECS: tuple[RouteSpec, ...] = (
         body=KB_CONSISTENCY_CHECK_HAPPY,
     ),
     RouteSpec(
+        capability="kb_assist_question",
+        variant="happy",
+        # Trailing '*' = query-string safety (Playwright matches the FULL
+        # URL); a single '*' never crosses '/', so the sibling session
+        # routes (GET session, PATCH fields/{key}, suggest, enhance,
+        # complete) stay unmocked — only /interview is intercepted.
+        pattern="**/api/v1/novels/*/kb/sessions/*/interview*",
+        method="POST",
+        body=KB_INTERVIEW_QUESTION_HAPPY,
+    ),
+    RouteSpec(
         capability="kb_consistency_check",
         variant="error",
         pattern="**/api/v1/novels/*/kb/consistency-check*",
@@ -175,13 +242,23 @@ SPECS: tuple[RouteSpec, ...] = (
         status=500,
         body=_KB_ERROR_500,
     ),
+    RouteSpec(
+        capability="kb_assist_question",
+        variant="error",
+        pattern="**/api/v1/novels/*/kb/sessions/*/interview*",
+        method="POST",
+        status=500,
+        body=_KB_ERROR_500,
+    ),
 )
 
 
 def validate() -> None:
     """Spec §10 ratchet against the real app/core models."""
+    from narrare.kb.assist_contracts import KBAssistQuestionResponse
     from narrare.kb.consistency_contracts import ConsistencyCheckResponse
     from narrare.kb.improve_contracts import KBImproveAnalysisResponse
+    from narrare.kb.session_models import KBCreationSession
     from narrare.wiki.schemas import WikiRefreshResponse
     from narrare_core.agents.extraction_types import ExtractionOutput
 
@@ -189,3 +266,9 @@ def validate() -> None:
     KBImproveAnalysisResponse.model_validate_json(KB_IMPROVE_HAPPY)
     WikiRefreshResponse.model_validate_json(WIKI_REFRESH_HAPPY)
     ConsistencyCheckResponse.model_validate_json(KB_CONSISTENCY_CHECK_HAPPY)
+
+    # The interview aggregate has no single pydantic model (the route
+    # handler returns a plain dict) — ratchet both halves separately.
+    interview_aggregate = json.loads(KB_INTERVIEW_QUESTION_HAPPY)
+    KBCreationSession.model_validate(interview_aggregate["session"])
+    KBAssistQuestionResponse.model_validate(interview_aggregate["question"])

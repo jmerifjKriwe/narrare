@@ -3,9 +3,10 @@
 Interview and consistency run the REAL backend under TestModel (factory
 layer) — B05's session cache and the Task-1 governed consistency route
 make these paths exercisable. B03's stream route gets its 404→SSE pin;
-stream content stays with the analysis wave. Improve content is asserted
-via the browser-layer catalog (E04); its error variant pins the error
-branch.
+stream content stays with the analysis wave. Improve and interview
+QUESTION content are asserted via the browser-layer catalog (E04 —
+TestModel's minimal output cannot clear the validators); the
+interview's error variant pins the error branch.
 
 Calibration (2026-10-17, live components — the brief's draft matched the
 dead ``kb.aiDialog`` i18n set): trigger ``kb.newWithAI`` = "New with AI
@@ -26,15 +27,18 @@ transport — the 400 MISSING_VARIABLE is gone); F9-3 consistency (the
 StrictMode operation-id fix in ``useAIOperation`` lands results in dev
 mode, so the render probes pin the results view).
 
-Two RESIDUAL DEFECTS block two render legs (full assertions kept under
-``xfail(strict=False)``): (a) interview questions — TestModel returns
-``KBAssistOutput(mode='question', question=None, ...)`` and
-``KBAssistAgent._validate_output`` raises ModelRetry →
-``ModelRetryExhaustedError`` → 500 on every question POST; (b) the
-completed-entry list render — ``map_session_to_entry`` persists
-``tags=None`` and ``KBEntryList.tsx`` reads ``entry.tags.length``
-unguarded → the KB view crashes blank (seeded entries pass
-``tags: []`` and never hit it).
+The two former render-leg blockers are closed (2026-10-18): (a) interview
+questions — TestModel still cannot satisfy ``KBAssistAgent``'s strict
+validator (``KBAssistOutput(question=None)`` → ModelRetry →
+``ModelRetryExhaustedError`` → 500 on every question POST), so the
+interview surface joined the E04 browser-layer catalog: the
+``kb_assist_question`` capability intercepts the REST interview POST
+with a valid ``{session, question}`` aggregate (wire shape per
+``router_sessions.py``) and the Q1→Q2 flow runs on a real session, a
+real target-field PATCH and the real UI; (b) the completed-entry list
+render — ``KBEntryCreate.tags`` now defaults to ``[]`` and
+``KBEntryList.tsx`` null-guards legacy rows, so the completed entry
+renders in the KB list.
 
 Runtime budget: ≤ 2.5 min (spec §7). Markers: e2e."""
 
@@ -44,11 +48,11 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from tests.e2e.config import BASE_URL
 from tests.e2e.foundation import NovelContext, make_authed_request
 from tests.e2e.helpers import mock_llm
+from tests.e2e.helpers.kb_interview import open_assisted_fields_view
 from tests.e2e.helpers.kb_world import (
     capture_json_response,
     open_kb_mode,
@@ -79,61 +83,6 @@ def authed_request(api_request, kbai_novel) -> Callable:
     return make_authed_request(api_request, kbai_novel)
 
 
-def _open_assisted_fields_view(page) -> str:
-    """Shared interview-leg preamble: trigger → session created on mount
-    → fields view renders → first template field answered (blur commits
-    the real PATCH). Returns the session id."""
-    open_worldbuilding(page)
-
-    # A previous leg leaves ?mode=assist + its mounted panel; the shell
-    # link strips the param and the URL-sync effect then unmounts the
-    # stale panel ASYNC — acting earlier races the reset (the observed
-    # order-dependent blank third column).
-    page.wait_for_url(re.compile(r"/worldbuilding$"), timeout=15_000)
-
-    # Defense for a panel that survived: exit a latched interview view,
-    # then header Abandon → "End" confirm (deletes the session).
-    if page.get_by_text("Interview Mode").first.is_visible():
-        page.locator("button:has(svg.lucide-arrow-left)").first.click()
-    if page.get_by_label("Entry Name").first.is_visible():
-        page.get_by_role("button", name="Abandon", exact=True).click()
-        page.get_by_role("button", name="End", exact=True).click()
-        page.get_by_label("Entry Name").first.wait_for(state="hidden", timeout=15_000)
-
-    # Capture the session-create response (first /kb/sessions hit).
-    created = capture_json_response(page, "/kb/sessions")
-    page.get_by_role("button", name="New with AI Interview").click()
-
-    # A stale localStorage resume pointer short-circuits the trigger
-    # into the "Resumed interview found" dialog — discard, re-trigger.
-    try:
-        page.get_by_text(re.compile(r"of \d+ fields complete")).first.wait_for(
-            state="visible", timeout=2_500
-        )
-    except PlaywrightTimeoutError:
-        resume_dialog = page.get_by_text("Resumed interview found").first
-        if resume_dialog.is_visible():
-            page.get_by_role("button", name="Start new interview").click()
-            created = capture_json_response(page, "/kb/sessions")
-            page.get_by_role("button", name="New with AI Interview").click()
-
-    # Fields view renders the progress line (create+GET survived); 60s
-    # for a cold `next dev` compiling the studio chunks on this hit.
-    page.get_by_text(re.compile(r"of \d+ fields complete")).first.wait_for(
-        state="visible", timeout=60_000
-    )
-    session_id = created()["id"]
-
-    # First field is `age` (int in CharacterMetadata): map_session_to_entry
-    # validates mapped metadata — a prose value would 400 at completion.
-    page.locator("textarea").first.fill("34")
-    page.keyboard.press("Tab")
-    page.get_by_text(re.compile(r"1 of \d+ fields complete")).first.wait_for(
-        state="visible", timeout=30_000
-    )
-    return session_id
-
-
 @pytest.mark.e2e
 class TestKBSessionInterview:
     def test_assisted_session_creates_entry(self, kbai_novel, authed_request) -> None:
@@ -148,7 +97,7 @@ class TestKBSessionInterview:
         must have a name before completion").
         """
         page = kbai_novel.page
-        session_id = _open_assisted_fields_view(page)
+        session_id = open_assisted_fields_view(page)
 
         # The interview view opens + fires its question request.
         page.get_by_role("button", name="Start Interview").first.click()
@@ -180,8 +129,8 @@ class TestKBSessionInterview:
         assert complete_body.get("entry_id"), complete_body
         entry_id = complete_body["entry_id"]
 
-        # The entry EXISTS in the KB list (wire pin; the UI-list render
-        # is blocked by the tags defect — see the render leg below).
+        # The entry EXISTS in the KB list (wire pin; the rendered-list
+        # half is pinned by the render leg below).
         try:
             listing = authed_request(
                 "GET",
@@ -192,43 +141,35 @@ class TestKBSessionInterview:
             assert "Maren Dusk" in names, names
         finally:
             # MANDATORY cleanup: the module novel is shared — no entry
-            # leak (nor a tags-null list poison).
+            # leak into later legs.
             del_resp = authed_request(
                 "DELETE",
                 f"/api/v1/novels/{kbai_novel.novel_id}/kb/entries/{entry_id}",
             )
             assert del_resp.status_code == 204, del_resp.status_code
-            # Recover the shared page: the list refetch may have crashed
-            # the view before the DELETE landed; a reload re-mounts clean.
+            # Recover the shared page: a reload re-mounts the list clean
+            # after the DELETE (drops the stale react-query cache).
             page.reload()
             page.wait_for_load_state("domcontentloaded")
 
-    @pytest.mark.xfail(
-        reason="RESIDUAL DEFECT: the completed entry crashes the KB "
-        "view — map_session_to_entry persists tags=None (KBEntryCreate "
-        "has no tags), the wire returns null, and KBEntryList.tsx reads "
-        "entry.tags.length UNGUARDED → TypeError → blank page. Seeded "
-        "entries pass tags: [] and never hit it. Remove once the list "
-        "null-guards tags (or the mapper defaults them).",
-        strict=False,
-    )
     def test_completed_entry_renders_in_kb_list(self, kbai_novel, authed_request) -> None:
         """KB-002 UI half: the completed entry renders in the KB list.
 
         Leanest chain (no interview view): fill → name → Complete & Save
         → the entry must appear in the rendered list (the complete
-        mutation invalidates the entries query). Today the tags-null
-        entry crashes the list instead — cleaned up regardless.
+        mutation invalidates the entries query). The former tags-null
+        crash is fixed on both sides — ``KBEntryCreate.tags`` defaults
+        to ``[]`` and ``KBEntryList.tsx`` null-guards legacy rows.
         """
         page = kbai_novel.page
-        _open_assisted_fields_view(page)
+        open_assisted_fields_view(page)
 
         completed = capture_json_response(page, "/complete")
         page.get_by_label("Entry Name").fill("Render Dusk")
         page.get_by_role("button", name="Complete & Save").click()
         entry_id = completed()["entry_id"]
 
-        try:  # the crash lands as a visibility timeout today
+        try:
             page.get_by_text("Render Dusk").first.wait_for(state="visible", timeout=15_000)
         finally:
             del_resp = authed_request(
@@ -236,38 +177,53 @@ class TestKBSessionInterview:
                 f"/api/v1/novels/{kbai_novel.novel_id}/kb/entries/{entry_id}",
             )
             assert del_resp.status_code == 204, del_resp.status_code
-            # Recover the shared page (crashed view today — see the mark).
+            # Recover the shared page for the next leg (drops the stale
+            # list cache after the DELETE).
             page.reload()
             page.wait_for_load_state("domcontentloaded")
 
-    @pytest.mark.xfail(
-        reason="RESIDUAL DEFECT: every question POST 500s — TestModel "
-        "returns KBAssistOutput(mode='question', question=None, ...) "
-        "and KBAssistAgent._validate_output raises ModelRetry (empty "
-        "question) → ModelRetryExhaustedError. The F9-2 prompt fix "
-        "HOLDS (final_prompt_validated: true); the seam is TestModel's "
-        "minimal structured output vs the strict validator. Remove "
-        "once the agent can answer under TestModel.",
-        strict=False,
-    )
     def test_interview_second_question_renders(self, kbai_novel) -> None:
         """KB-002 Q1→Q2 leg: answer Question 1 → Submit → Question 2.
 
-        The F9-2 transport + prompt feed make each request a REAL
-        `{session, question}` aggregate; the counter must advance.
+        Interview content is browser-layer catalog (E04 pattern): the
+        F9-2 transport makes each request a REAL ``{session, question}``
+        aggregate POST, but TestModel still cannot satisfy
+        ``KBAssistAgent``'s strict validator — so ``kb_assist_question``
+        intercepts the interview POST with a valid aggregate. Everything
+        around it stays real: the session, the target-field PATCH the
+        answer fires, and the UI. The fixture serves the same question on
+        every POST; the "Question {current}" counter is FE-internal (one
+        increment per fulfilled request), so the honest assertion is the
+        counter advancing 1 → 2 — which also proves the answer's real
+        PATCH landed (a failed PATCH keeps the card latched and no second
+        request fires).
         """
         page = kbai_novel.page
-        _open_assisted_fields_view(page)
+        open_assisted_fields_view(page)
+
+        # Install BEFORE Start Interview: the interview view fires its
+        # question POST on mount (page.route contract).
+        mock_llm(page, "kb_assist_question")  # happy variant
 
         page.get_by_role("button", name="Start Interview").first.click()
         page.get_by_text("Interview Mode").first.wait_for(state="visible", timeout=30_000)
         page.get_by_text("Question 1").first.wait_for(state="visible", timeout=30_000)
 
-        # Answer Q1 and submit: the target field PATCHes, then the next
-        # question request fires — Question 2 renders.
+        # Answer Q1 and submit: the target field PATCHes (real, wire-pinned
+        # below), then the next question request fires — Question 2 renders.
+        answered = capture_json_response(page, "/fields/personality.motivations")
         page.get_by_placeholder("Type your answer...").fill("She fears open water since the wreck.")
         page.get_by_role("button", name="Submit Answer").click()
         page.get_by_text("Question 2").first.wait_for(state="visible", timeout=30_000)
+
+        # Wire pin on the real leg: the PATCH response is the updated
+        # session dump with the answer committed to the fixture's target
+        # field (the catalog question's field_key).
+        patched = answered()
+        values = {f["field_key"]: f["user_value"] for f in patched["fields"]}
+        assert values.get("personality.motivations") == ("She fears open water since the wreck."), (
+            values
+        )
 
 
 @pytest.mark.e2e

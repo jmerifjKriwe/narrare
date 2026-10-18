@@ -240,6 +240,56 @@ class TestKbCatalogGrowth:
         assert response.summary["entry_internal"] == 1
         assert response.issues[0].entity_names == ["Elara Thornwind"]
 
+    def test_kb_assist_question_aggregate_validates_against_real_models(self) -> None:
+        from narrare.kb.assist_contracts import KBAssistQuestionResponse
+        from narrare.kb.session_models import KBCreationSession
+
+        spec = entries_for("kb_assist_question", "happy")[0]
+        assert spec.method == "POST"
+        payload = json.loads(spec.body)
+        # Exact wire shape of request_interview_question (router_sessions.py).
+        assert set(payload) == {"session", "question"}
+        session = KBCreationSession.model_validate(payload["session"])
+        question = KBAssistQuestionResponse.model_validate(payload["question"])
+        # The FE answers the question with a real PATCH to question.field_key
+        # — the fixture must target a field the fixture session carries.
+        assert question.field_key in {f.field_key for f in session.fields}
+
+    def test_kb_assist_question_has_error_variant(self) -> None:
+        assert entries_for("kb_assist_question", "error")[0].status == 500
+
+    def test_kb_assist_question_pattern_matches_interview_only(self) -> None:
+        # Playwright matches route globs against the FULL URL including the
+        # query string, so the pattern carries its trailing '*'. A single
+        # '*' never crosses '/', keeping every sibling session route
+        # (create/GET/PATCH fields/suggest/enhance/complete) unmocked —
+        # only POST …/sessions/{id}/interview is intercepted.
+        for spec in (
+            *entries_for("kb_assist_question", "happy"),
+            *entries_for("kb_assist_question", "error"),
+        ):
+            assert spec.pattern.endswith("/interview*"), spec.pattern
+            base = (
+                "http://localhost:3001/api/v1/novels"
+                "/00000000-0000-0000-0000-0000000000a1/kb/sessions"
+                "/00000000-0000-0000-0000-0000000000c1"
+            )
+            assert _playwright_route_matches(spec.pattern, f"{base}/interview"), spec.pattern
+            assert _playwright_route_matches(spec.pattern, f"{base}/interview?trace=1"), (
+                spec.pattern
+            )
+            for sibling in (
+                "http://localhost:3001/api/v1/novels"
+                "/00000000-0000-0000-0000-0000000000a1/kb/sessions",
+                f"{base}",
+                f"{base}/fields/age",
+                f"{base}/fields/personality.motivations",
+                f"{base}/suggest/age",
+                f"{base}/enhance",
+                f"{base}/complete",
+            ):
+                assert not _playwright_route_matches(spec.pattern, sibling), sibling
+
     def test_kb_consistency_check_error_variant(self) -> None:
         assert entries_for("kb_consistency_check", "error")[0].status == 500
 
