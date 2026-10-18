@@ -93,13 +93,16 @@ class WikiEventListener:
             log.exception("wiki_listener_entity_failed")
 
         # Cross-entity staleness: mark summaries that reference this entity.
+        svc = self._factory()
         try:
-            svc = self._factory()
             count = await svc.mark_related_stale(entity_id)
+            await svc.commit()
             if count > 0:
                 log.info("wiki_related_marked_stale", related_count=count)
         except Exception:
             log.exception("wiki_listener_related_stale_failed")
+        finally:
+            await svc.close()
 
     async def on_chapter_finalized(self, event: DomainEvent) -> None:
         """Handle ``chapter.finalized`` — generate chapter wiki summary."""

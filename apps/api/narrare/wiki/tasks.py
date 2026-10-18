@@ -40,17 +40,24 @@ async def run_wiki_generate_entity(
     Returns True if generated, False if skipped (already fresh) or failed.
     """
     svc = wiki_service_factory()
+    try:
+        # Idempotency: skip if summary is already fresh.
+        existing = await svc.get_summary_raw(entity_id, novel_id)
+        if existing is not None and existing.status == "fresh":
+            logger.info("wiki_entity_skipped_fresh", entity_id=str(entity_id))
+            return False
 
-    # Idempotency: skip if summary is already fresh.
-    existing = await svc.get_summary_raw(entity_id, novel_id)
-    if existing is not None and existing.status == "fresh":
-        logger.info("wiki_entity_skipped_fresh", entity_id=str(entity_id))
-        return False
+        async def _gen(eid: uuid.UUID, nid: uuid.UUID) -> Any:
+            result = await svc.generate_entity_summary(eid, nid, SYSTEM_USER_ID)
+            # Finalize the unit of work per attempt: a successful
+            # generation only exists durably once committed (system
+            # sessions have no request-teardown commit).
+            await svc.commit()
+            return result
 
-    async def _gen(eid: uuid.UUID, nid: uuid.UUID) -> Any:
-        return await svc.generate_entity_summary(eid, nid, SYSTEM_USER_ID)
-
-    return await _retry_generate(_gen, entity_id, novel_id, context="wiki_entity")
+        return await _retry_generate(_gen, entity_id, novel_id, context="wiki_entity")
+    finally:
+        await svc.close()
 
 
 async def run_wiki_generate_chapter(
@@ -64,16 +71,23 @@ async def run_wiki_generate_chapter(
     Returns True if generated, False if skipped or failed.
     """
     svc = wiki_service_factory()
+    try:
+        existing = await svc.get_chapter_summary_raw(chapter_id)
+        if existing is not None and existing.status == "fresh":
+            logger.info("wiki_chapter_skipped_fresh", chapter_id=str(chapter_id))
+            return False
 
-    existing = await svc.get_chapter_summary_raw(chapter_id)
-    if existing is not None and existing.status == "fresh":
-        logger.info("wiki_chapter_skipped_fresh", chapter_id=str(chapter_id))
-        return False
+        async def _gen(cid: uuid.UUID, nid: uuid.UUID) -> Any:
+            result = await svc.generate_chapter_summary(cid, nid, SYSTEM_USER_ID)  # type: ignore[attr-defined]  # reason: APIWikiService inherits method, type checker can't resolve through TYPE_CHECKING import chain
+            # Finalize the unit of work per attempt — without this
+            # commit the listener's session rolls back at GC and the
+            # "persisted" summary never becomes readable.
+            await svc.commit()
+            return result
 
-    async def _gen(cid: uuid.UUID, nid: uuid.UUID) -> Any:
-        return await svc.generate_chapter_summary(cid, nid, SYSTEM_USER_ID)  # type: ignore[attr-defined]  # reason: APIWikiService inherits method, type checker can't resolve through TYPE_CHECKING import chain
-
-    return await _retry_generate(_gen, chapter_id, novel_id, context="wiki_chapter")
+        return await _retry_generate(_gen, chapter_id, novel_id, context="wiki_chapter")
+    finally:
+        await svc.close()
 
 
 async def run_wiki_mark_all_stale(
@@ -86,11 +100,14 @@ async def run_wiki_mark_all_stale(
     svc = wiki_service_factory()
     try:
         count = await svc.mark_all_stale(novel_id, SYSTEM_USER_ID, prompt_version)
+        await svc.commit()
         logger.info("wiki_marked_stale", novel_id=str(novel_id), count=count)
         return count
     except Exception:
         logger.exception("wiki_mark_stale_failed", novel_id=str(novel_id))
         return 0
+    finally:
+        await svc.close()
 
 
 async def run_wiki_mark_all_stale_global(
@@ -106,11 +123,14 @@ async def run_wiki_mark_all_stale_global(
     svc = wiki_service_factory()
     try:
         count = await svc.mark_all_stale_global()
+        await svc.commit()
         logger.info("wiki_marked_stale_global", count=count, prompt_version=prompt_version)
         return count
     except Exception:
         logger.exception("wiki_mark_stale_global_failed")
         return 0
+    finally:
+        await svc.close()
 
 
 async def run_wiki_refresh_summary(
@@ -121,11 +141,16 @@ async def run_wiki_refresh_summary(
 ) -> bool:
     """Force-refresh a single entity wiki summary with retry."""
     svc = wiki_service_factory()
+    try:
 
-    async def _refresh(eid: uuid.UUID, nid: uuid.UUID) -> Any:
-        return await svc.refresh_summary(eid, nid, SYSTEM_USER_ID, force=True)
+        async def _refresh(eid: uuid.UUID, nid: uuid.UUID) -> Any:
+            result = await svc.refresh_summary(eid, nid, SYSTEM_USER_ID, force=True)
+            await svc.commit()
+            return result
 
-    return await _retry_generate(_refresh, entity_id, novel_id, context="wiki_refresh")
+        return await _retry_generate(_refresh, entity_id, novel_id, context="wiki_refresh")
+    finally:
+        await svc.close()
 
 
 async def _retry_generate(

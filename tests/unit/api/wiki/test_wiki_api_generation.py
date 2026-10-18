@@ -286,3 +286,34 @@ class TestGenerateEntitySummary:
         result = await service.generate_entity_summary(_ENTITY_ID, _NOVEL_ID, _USER_ID)
 
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_summary_data — staleness snapshot stamping
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSummaryData:
+    """build_summary_data stamps the wiki prompt version into depends_on.
+
+    ``mark_all_stale`` version-gates on ``depends_on->>'wiki_prompt_version'``
+    and skips rows with empty/NULL ``depends_on`` — a summary persisted
+    without the stamp could never be marked stale (2026-10-18 E2E finding:
+    Mark-All-Stale reported count 0 against a fresh summary).
+    """
+
+    def test_depends_on_carries_wiki_prompt_version(self) -> None:
+        from narrare.wiki.generation_support import build_summary_data
+        from narrare.wiki.prompt_version import WIKI_PROMPT_VERSION
+
+        data = build_summary_data(uuid.uuid4(), uuid.uuid4(), _make_entity_output())
+
+        assert data.depends_on == {"wiki_prompt_version": WIKI_PROMPT_VERSION}
+
+    def test_prompt_version_matches_chapter_service_convention(self) -> None:
+        """Entity + chapter summaries stamp the SAME version — one bump
+        invalidates both families together."""
+        from narrare.wiki import chapter_service
+        from narrare.wiki.prompt_version import WIKI_PROMPT_VERSION
+
+        assert chapter_service.WIKI_PROMPT_VERSION is WIKI_PROMPT_VERSION

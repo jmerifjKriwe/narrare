@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.wiki.chapter_service import ChapterWikiService
+from narrare.wiki.prompt_version import WIKI_PROMPT_VERSION
 from narrare.wiki.schemas import WikiIndexResponse, WikiSummaryListResponse, WikiSummaryResponse
 from narrare_core.shared.errors import ForbiddenError
 from narrare_core.wiki.types import (
@@ -116,7 +117,13 @@ def build_summary_data(
     novel_id: uuid.UUID,
     result: WikiEntityOutput,
 ) -> WikiSummaryData:
-    """Map a core generation result to the persistable summary data."""
+    """Map a core generation result to the persistable summary data.
+
+    ``depends_on`` carries the wiki prompt version — the staleness
+    snapshot ``mark_all_stale`` version-gates on. Left empty, the
+    summary could never be marked stale (the JSONB filter skips
+    NULL/empty ``depends_on`` rows — 2026-10-18 E2E finding).
+    """
     return WikiSummaryData(
         entity_id=str(entity_id),
         novel_id=str(novel_id),
@@ -125,6 +132,7 @@ def build_summary_data(
         key_attributes=result.key_attributes,
         relationships=result.relationships,
         character_arc=result.character_arc,
+        depends_on={"wiki_prompt_version": WIKI_PROMPT_VERSION},
         status=WikiSummaryStatus.FRESH,
     )
 
