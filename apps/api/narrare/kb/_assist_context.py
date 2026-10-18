@@ -76,10 +76,29 @@ async def build_assist_deps(
 
 def build_prompt_context(
     intent: LLMIntent,
-    entity_type: str,
-    existing_fields: dict[str, str],
+    deps: KBAssistDeps,
+    *,
+    target_field: str = "",
 ) -> PromptContext:
     """Build PromptContext for the assist prompt (RULE-02).
+
+    Every feed is derived from the SAME assembled deps the agent
+    receives (``build_assist_deps``) so the prompt context can never
+    diverge from the agent deps — the F9-2 asymmetry (deps carried
+    ``template_structure``/``world_context`` while the prompt context
+    fed only ``entity_type``/``existing_answers``) 400'd every
+    interview/suggest/enhance compose with MISSING_VARIABLE: the kb
+    routes declare no ``optional_variables`` (route_table.py), so each
+    of the three templates' placeholders must be fed here:
+
+    - ``{{template_structure}}`` + ``{{world_context}}`` — interview,
+      suggest AND enhance.
+    - ``{{target_field}}`` / ``{{target_field_description}}`` — suggest
+      only (fed from the requested field key + its template label;
+      inert extras for the other intents).
+    - ``{{user_preferences}}`` / ``{{avoidance_patterns}}`` /
+      ``{{writing_language}}`` are PromptContext dataclass fields and
+      always render (empty defaults, RULE-11).
 
     Prompt construction is retained here; composition happens via
     ``compose_invocation`` in ``KBAssistService._run_agent``.
@@ -87,13 +106,18 @@ def build_prompt_context(
     from narrare_core.prompts.context import PromptContext
 
     mode = _INTENT_MAP.get(intent, "")
+    template_structure = deps.template_structure or {}
     return PromptContext(
-        language="en",
-        genre="",
+        language=deps.language,
+        genre=deps.genre,
         project_title="",
         mode=mode,
         extra={
-            "entity_type": entity_type,
-            "existing_answers": str(existing_fields),
+            "entity_type": deps.entity_type,
+            "existing_answers": str(deps.existing_answers or {}),
+            "template_structure": str(template_structure),
+            "world_context": deps.world_context or "",
+            "target_field": target_field,
+            "target_field_description": template_structure.get(target_field, ""),
         },
     )

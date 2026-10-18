@@ -76,3 +76,25 @@ class TestSearch:
 
         with pytest.raises(EmbeddingError, match="Query embedding returned no vectors"):
             await service.search("test query")
+
+    @patch("narrare.embeddings.service.embed_texts")
+    async def test_search_forwards_novel_scope_to_repo(
+        self,
+        mock_embed: AsyncMock,
+        service: EmbeddingService,
+        fake_repo: FakeEmbeddingRepository,
+    ) -> None:
+        """The novel scope reaches the repository (ADR-088 suggestions).
+
+        Regression: ``EmbeddingService.search`` accepted ``novel_id`` but
+        never forwarded it — the KB suggestions search ran unscoped and
+        could surface other novels' (and orphaned) embedding rows.
+        """
+        mock_embed.return_value = [[0.1] * 1536]
+        novel_id = uuid.uuid4()
+
+        await service.search("test query", source_type="kb_entry", novel_id=novel_id)
+
+        search_calls = [c for c in fake_repo.calls if c.method == "search"]
+        assert search_calls, "repository search was not called"
+        assert search_calls[-1].kwargs["novel_id"] == novel_id

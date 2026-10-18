@@ -1,16 +1,14 @@
 /**
- * KB Session API client — assisted creation with AI streaming.
+ * KB Session API client — assisted creation with AI single-shot responses.
  *
- * Typed wrappers around session lifecycle endpoints.
- * REST for CRUD operations, SSE for AI streaming operations.
- *
- * Architecture:
- * - REST operations: use fetchApi from client.ts
- * - SSE operations: use connectSSE from streaming.ts, wrapped in Promises
+ * Typed wrappers around session lifecycle endpoints. All operations are
+ * REST `fetchApi` calls: the backend's suggest/interview/enhance routes
+ * answer with one aggregate JSON document each (`{session, suggestion}`,
+ * `{session, question}`, `{session, enhancement}`) — no SSE framing
+ * (F9-2 transport fix, mirrors apps/api/narrare/kb/router_sessions.py).
  */
 
 import { fetchApi } from "./client";
-import { connectSSE } from "./streaming";
 
 // --- Session types ---
 
@@ -44,19 +42,57 @@ export interface KBCreationSession {
   updated_at: string;
 }
 
+/**
+ * Optional body for completing a session (RULE-17 mirror of the backend's
+ * ``CompleteSessionRequest``). The collected entry name fills the session's
+ * name before the entry is mapped; an absent body or absent name keeps the
+ * backend's name-required guard (400).
+ */
+export interface KBCompleteSessionRequest {
+  name?: string | null;
+}
+
 /** Response from completing a session — includes the new KB entry ID. */
 export interface KBSessionCompleteResponse {
   session: KBCreationSession;
   entry_id: string;
 }
 
-// --- SSE Response types ---
+// --- AI aggregate response types (RULE-17 mirrors of router_sessions.py) ---
 
-/** Chunk format for SSE streaming from the backend. */
-export interface SSETextChunk {
-  text: string;
-  type: string;
+/** Aggregate response from the suggest route. */
+export interface KBSuggestResponse {
+  session: KBCreationSession;
+  suggestion: {
+    field_key: string;
+    suggestion: string;
+    reasoning: string | null;
+    context_used: string[];
+  };
 }
+
+/** Aggregate response from the interview route. */
+export interface KBInterviewResponse {
+  session: KBCreationSession;
+  question: {
+    field_key: string;
+    question: string;
+    reasoning: string | null;
+  };
+}
+
+/** Aggregate response from the enhance route. */
+export interface KBEnhanceResponse {
+  session: KBCreationSession;
+  enhancement: {
+    draft_entry: Record<string, unknown>;
+    progress: number;
+    reasoning: string | null;
+    context_used: string[];
+  };
+}
+
+// --- Result types (FE consumption contract) ---
 
 /** Result from a field suggestion request. */
 export interface KBSuggestionResult {
@@ -65,14 +101,17 @@ export interface KBSuggestionResult {
   reasoning: string;
 }
 
-/** Result from an interview question request. */
+/**
+ * Result from an interview question request. `target_field` is the wire's
+ * `question.field_key`; `reasoning` is the model's why-this-question note.
+ */
 export interface KBInterviewResult {
   question: string;
   target_field: string;
-  context: string;
+  reasoning: string | null;
 }
 
-/** Result from an enhancement request. */
+/** Result from an enhancement request, expanded per field. */
 export interface KBEnhancementResult {
   field_key: string;
   original: string;
@@ -101,11 +140,22 @@ export const kbSessionApi = {
       body: JSON.stringify({ value }),
     }),
 
-  /** Mark session as complete and create the KB entry. */
-  completeSession: (novelId: string, sessionId: string) =>
-    fetchApi<KBSessionCompleteResponse>(`/novels/${novelId}/kb/sessions/${sessionId}/complete`, {
-      method: "POST",
-    }),
+  /**
+   * Mark session as complete and create the KB entry.
+   * `name` is the entry name collected by the panel (F9-1); omitting it
+   * keeps the backend's name-required guard.
+   */
+  completeSession: (novelId: string, sessionId: string, name?: string) => {
+    const body: KBCompleteSessionRequest = { name: name ?? null };
+    return fetchApi<KBSessionCompleteResponse>(
+      `/novels/${novelId}/kb/sessions/${sessionId}/complete`,
+      {
+        method: "POST",
+        // Body stays absent when no name was collected (BE treats it as absent).
+        ...(name ? { body: JSON.stringify(body) } : {}),
+      },
+    );
+  },
 
   /** Abandon and delete a session. */
   abandonSession: (novelId: string, sessionId: string) =>
@@ -114,218 +164,72 @@ export const kbSessionApi = {
     }),
 };
 
-// --- API functions: SSE (Promise-wrapped) ---
+// --- API functions: AI aggregates (REST single-shot) ---
 
 /**
  * Request AI suggestion for a specific field.
- * Uses SSE streaming, wrapped in a Promise for async/await usage.
+ * Maps the `{session, suggestion}` aggregate to the suggestion result.
  */
-export function suggestField(
+export async function suggestField(
   novelId: string,
   sessionId: string,
   fieldKey: string,
   signal?: AbortSignal,
 ): Promise<KBSuggestionResult> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let accumulatedText = "";
-    let accumulatedReasoning = "";
-
-    const onAbort = () => {
-      if (!settled) {
-        settled = true;
-        reject(new DOMException("Aborted", "AbortError"));
-      }
-    };
-
-    if (signal?.aborted) {
-      onAbort();
-      return;
-    }
-
-    signal?.addEventListener("abort", onAbort, { once: true });
-
-    connectSSE<SSETextChunk>({
-      url: `/novels/${novelId}/kb/sessions/${sessionId}/suggest/${fieldKey}`,
-      body: {},
-      onChunk: (chunk) => {
-        // Backend sends type: "text" for suggestion, type: "reasoning" for reasoning
-        if (chunk.type === "reasoning") {
-          accumulatedReasoning += chunk.text;
-        } else {
-          accumulatedText += chunk.text;
-        }
-      },
-      onComplete: () => {
-        if (!settled) {
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          resolve({
-            field_key: fieldKey,
-            suggestion: accumulatedText,
-            reasoning: accumulatedReasoning,
-          });
-        }
-      },
-      onError: (error) => {
-        if (!settled) {
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          reject(error);
-        }
-      },
-      signal,
-    });
-  });
+  const response = await fetchApi<KBSuggestResponse>(
+    `/novels/${novelId}/kb/sessions/${sessionId}/suggest/${fieldKey}`,
+    { method: "POST", signal },
+  );
+  return {
+    field_key: response.suggestion.field_key,
+    suggestion: response.suggestion.suggestion,
+    reasoning: response.suggestion.reasoning ?? "",
+  };
 }
 
 /**
  * Request next interview question from AI.
- * Uses SSE streaming, wrapped in a Promise.
+ * Maps the `{session, question}` aggregate to the interview result.
  */
-export function requestInterview(
+export async function requestInterview(
   novelId: string,
   sessionId: string,
   signal?: AbortSignal,
 ): Promise<KBInterviewResult> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let accumulatedQuestion = "";
-    let targetField = "";
-
-    const onAbort = () => {
-      if (!settled) {
-        settled = true;
-        reject(new DOMException("Aborted", "AbortError"));
-      }
-    };
-
-    if (signal?.aborted) {
-      onAbort();
-      return;
-    }
-
-    signal?.addEventListener("abort", onAbort, { once: true });
-
-    connectSSE<SSETextChunk>({
-      url: `/novels/${novelId}/kb/sessions/${sessionId}/interview`,
-      body: {},
-      onChunk: (chunk) => {
-        // type: "question" for the main question, type: "meta" for target_field
-        if (chunk.type === "meta" && chunk.text.startsWith("field:")) {
-          targetField = chunk.text.slice(6).trim();
-        } else {
-          accumulatedQuestion += chunk.text;
-        }
-      },
-      onComplete: () => {
-        if (!settled) {
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          resolve({
-            question: accumulatedQuestion,
-            target_field: targetField,
-            context: "",
-          });
-        }
-      },
-      onError: (error) => {
-        if (!settled) {
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          reject(error);
-        }
-      },
-      signal,
-    });
-  });
+  const response = await fetchApi<KBInterviewResponse>(
+    `/novels/${novelId}/kb/sessions/${sessionId}/interview`,
+    { method: "POST", signal },
+  );
+  return {
+    question: response.question.question,
+    target_field: response.question.field_key,
+    reasoning: response.question.reasoning,
+  };
 }
 
 /**
- * Request AI enhancement for all fields.
- * Uses SSE streaming, wrapped in a Promise.
+ * Request AI enhancement of the entry.
+ * Expands the `{session, enhancement}` aggregate's `draft_entry` into
+ * per-field results; `original` comes from the field's prior user value in
+ * the returned session (the backend overwrites `ai_suggested_value` before
+ * responding, so that prior AI value is no longer recoverable).
  */
-export function requestEnhance(
+export async function requestEnhance(
   novelId: string,
   sessionId: string,
   signal?: AbortSignal,
 ): Promise<KBEnhancementResult[]> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const enhancements: KBEnhancementResult[] = [];
-
-    const onAbort = () => {
-      if (!settled) {
-        settled = true;
-        reject(new DOMException("Aborted", "AbortError"));
-      }
-    };
-
-    if (signal?.aborted) {
-      onAbort();
-      return;
-    }
-
-    signal?.addEventListener("abort", onAbort, { once: true });
-
-    // Simple accumulator pattern — backend streams one enhancement after another
-    // In a real implementation, we'd track per-field metadata via chunk.type
-    let currentField = "";
-    let currentOriginal = "";
-    let currentSuggested = "";
-    let currentReasoning = "";
-
-    connectSSE<SSETextChunk>({
-      url: `/novels/${novelId}/kb/sessions/${sessionId}/enhance`,
-      body: {},
-      onChunk: (chunk) => {
-        // type: "field:field_key" signals start of a new field's enhancement
-        if (chunk.type === "meta" && chunk.text.startsWith("field:")) {
-          // Save previous if exists
-          if (currentField && currentSuggested) {
-            enhancements.push({
-              field_key: currentField,
-              original: currentOriginal,
-              suggested: currentSuggested,
-              reasoning: currentReasoning,
-            });
-          }
-          currentField = chunk.text.slice(6).trim();
-          currentOriginal = "";
-          currentSuggested = "";
-          currentReasoning = "";
-        } else if (chunk.type === "original") {
-          currentOriginal += chunk.text;
-        } else if (chunk.type === "reasoning") {
-          currentReasoning += chunk.text;
-        } else {
-          currentSuggested += chunk.text;
-        }
-      },
-      onComplete: () => {
-        if (!settled) {
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          // Save the last enhancement
-          if (currentField && currentSuggested) {
-            enhancements.push({
-              field_key: currentField,
-              original: currentOriginal,
-              suggested: currentSuggested,
-              reasoning: currentReasoning,
-            });
-          }
-          resolve(enhancements);
-        }
-      },
-      onError: (error) => {
-        if (!settled) {
-          settled = true;
-          signal?.removeEventListener("abort", onAbort);
-          reject(error);
-        }
-      },
-      signal,
-    });
-  });
+  const response = await fetchApi<KBEnhanceResponse>(
+    `/novels/${novelId}/kb/sessions/${sessionId}/enhance`,
+    { method: "POST", signal },
+  );
+  return Object.entries(response.enhancement.draft_entry)
+    .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+    .map(([fieldKey, suggested]) => ({
+      field_key: fieldKey,
+      original:
+        response.session.fields.find((field) => field.field_key === fieldKey)?.user_value ?? "",
+      suggested,
+      reasoning: response.enhancement.reasoning ?? "",
+    }));
 }

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.wiki.prompt_version import WIKI_PROMPT_VERSION as WIKI_PROMPT_VERSION
 from narrare.wiki.schemas import WikiChapterSummaryResponse
 from narrare_core.shared.errors import ForbiddenError
 from narrare_core.wiki.types import (
@@ -110,7 +111,7 @@ class ChapterWikiService:
                 themes=result.themes,
                 emotional_arc=result.emotional_arc,
                 chapter_content_hash=content_hash,
-                wiki_prompt_version="1.0.0",
+                wiki_prompt_version=WIKI_PROMPT_VERSION,
                 status=WikiSummaryStatus.FRESH,
             )
             persisted = await self._wiki_repo.upsert_chapter_summary(summary_data, result)

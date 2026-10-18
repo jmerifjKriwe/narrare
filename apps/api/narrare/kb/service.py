@@ -80,6 +80,18 @@ class KBService:
         if data.metadata is not None:
             validate_entry_metadata(data.entity_type, data.metadata)
 
+        # Omitted/None metadata must never reach the ORM as None: the
+        # column is nullable with a Python-side ``default=dict``, and an
+        # explicitly-set None bypasses that default, persisting jsonb null
+        # — which flows out of KBEntryResponse as `"metadata": null` and
+        # crashes the FE detail view (KBEntry.metadata is typed non-null;
+        # KBFlatEditor's Object.keys(null) killed the WorldBuilding
+        # subtree — caught by the Task 7 KB-management E2E, 2026-10-16).
+        # KBEntryCreate now defaults omission to {}, so this coercion is
+        # the explicit-null guard for the seams that share the schema
+        # (novel create; canon create reads the same default).
+        metadata = data.metadata if data.metadata is not None else {}
+
         # Generate slug if not provided
         slug = resolve_entry_slug(data.slug, data.name)
 
@@ -97,7 +109,7 @@ class KBService:
             slug=slug,
             status=data.status,
             tags=data.tags,
-            metadata_=data.metadata,
+            metadata_=metadata,
             body=data.body or "",
             template_version=data.template_version,
             source=data.source,

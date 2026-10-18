@@ -43,6 +43,9 @@ def _make_mock_service(**overrides: object) -> MagicMock:
     service.generate_chapter_summary = AsyncMock(return_value=MagicMock(spec=object))
     service.refresh_summary = AsyncMock(return_value=MagicMock(spec=object))
     service.mark_all_stale = AsyncMock(return_value=0)
+    # System-plane session lifecycle (tasks finalize their unit of work).
+    service.commit = AsyncMock()
+    service.close = AsyncMock()
     for key, value in overrides.items():
         setattr(service, key, value)
     return service

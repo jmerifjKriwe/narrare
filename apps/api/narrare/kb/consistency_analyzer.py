@@ -200,7 +200,12 @@ class KBConsistencyAnalyzer:
 
         ctx = PromptContext(
             language="en",
-            mode=LLMIntent.KB_CONSISTENCY.value,
+            # Route-table MODE, not the intent enum value: KB_CONSISTENCY
+            # governs kb/<lang>/consistency (allowed_context_modes
+            # {"consistency", "merge"}). The pre-fix mode="kb_consistency"
+            # was rejected by resolve_prompt_route and swallowed per-entry
+            # (E2E-GATE carry-forward 2026-10-15).
+            mode="consistency",
             entity_type=entity.entity_type,
             entity_name=entity.name,
             extra={

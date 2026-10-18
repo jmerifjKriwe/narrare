@@ -15,10 +15,10 @@ governed template modes per ``route_table.py`` (kb category) and those
 templates must exist on disk and resolve through the real
 ``PromptRegistry`` — the exact composition stage that failed pre-fix.
 
-Note: full end-to-end ``composer.build()`` additionally requires the
-``template_structure`` / ``world_context`` variables, which
-``build_prompt_context`` does not thread today (separate pre-existing
-gap — tracked independently); these tests pin the mode-routing stage.
+Note: full end-to-end ``composer.build()`` feed coverage (template_structure
+/ world_context / target_field) is pinned separately in
+``test_assist_prompt_context_compose.py`` (F9-2); these tests pin the
+mode-routing stage of the same builder.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 from narrare.kb._assist_context import build_prompt_context
+from narrare_core.agents.kb_assist_agent import KBAssistDeps
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts import PromptRegistry
 from narrare_core.prompts.routes import resolve_prompt_route
@@ -56,6 +57,17 @@ _ASSIST_INTENTS: list[tuple[LLMIntent, str]] = list(_GOVERNED_MODES.items())
 _UNGOVERNED_ENUM_VALUES = frozenset({"kb_interview", "kb_suggest", "kb_enhance"})
 
 
+def _deps() -> KBAssistDeps:
+    """Minimal assembled deps — mode routing only reads ``_INTENT_MAP``."""
+    return KBAssistDeps(
+        language="en",
+        entity_type="character",
+        template_structure={"role": "Role"},
+        existing_answers={"role": "Protagonist"},
+        world_context="",
+    )
+
+
 @pytest.fixture(scope="module")
 def registry() -> PromptRegistry:
     return PromptRegistry()
@@ -67,7 +79,7 @@ def test_build_prompt_context_maps_intent_to_governed_template_mode(
     expected_mode: str,
 ) -> None:
     """Each assist intent's context mode is the governed template mode."""
-    ctx = build_prompt_context(intent, "character", {"name": "Alice"})
+    ctx = build_prompt_context(intent, _deps())
 
     assert ctx.mode == expected_mode
     # Regression: the mode must never be the raw LLMIntent enum value.
@@ -102,7 +114,7 @@ async def test_assist_intent_resolves_governed_template_through_real_registry(
     governance) followed by ``PromptRegistry.resolve`` (real template
     lookup). No compose_invocation mock involved.
     """
-    ctx = build_prompt_context(intent, "character", {"name": "Alice"})
+    ctx = build_prompt_context(intent, _deps())
 
     route = resolve_prompt_route(intent, ctx.mode)
     assert route.category == "kb"
@@ -125,7 +137,7 @@ def test_build_prompt_context_unmapped_intent_defers_to_route_table_default() ->
     defers to the intent's governed ``default_mode`` (single source of
     truth) instead of hardcoding a mode at the app layer.
     """
-    ctx = build_prompt_context(LLMIntent.KB_IMPROVE, "character", {})
+    ctx = build_prompt_context(LLMIntent.KB_IMPROVE, _deps())
 
     assert ctx.mode == ""
 

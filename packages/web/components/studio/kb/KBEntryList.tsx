@@ -153,6 +153,9 @@ function EntryCard({ entry, isSelected, onClick }: EntryCardProps) {
   const t = useTranslations("studio");
   const Icon = TYPE_ICONS[entry.entity_type];
   const statusClass = STATUS_COLORS[entry.status] ?? STATUS_COLORS.draft;
+  // Legacy rows (pre-seam creates) can carry tags: null; default so the
+  // preview never crashes the list view (F10 crash guard).
+  const tags = entry.tags ?? [];
 
   return (
     <button
@@ -171,9 +174,9 @@ function EntryCard({ entry, isSelected, onClick }: EntryCardProps) {
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusClass}`}>
                 {t(`kb.status.${entry.status}`)}
               </span>
-              {entry.tags.length > 0 && (
+              {tags.length > 0 && (
                 <span className="text-xs text-muted-foreground truncate">
-                  {entry.tags.slice(0, 3).join(", ")}
+                  {tags.slice(0, 3).join(", ")}
                 </span>
               )}
             </div>

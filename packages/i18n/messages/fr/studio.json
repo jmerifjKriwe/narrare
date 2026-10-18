@@ -1616,6 +1616,7 @@
       "notGenerated": "Wiki pas encore généré",
       "generating": "Génération...",
       "generate": "Générer",
+      "generateAll": "Générer le wiki",
       "refreshAll": "Tout actualiser",
       "markStaleConfirm": "Tous les résumés seront marqués comme obsolètes. Ils se régénéreront à la prochaine utilisation.",
       "close": "Fermer",

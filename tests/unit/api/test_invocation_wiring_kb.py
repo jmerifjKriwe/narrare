@@ -221,6 +221,7 @@ class TestAssistInvocationWiring:
         pipeline = _pipeline_with_sink(sink)
 
         from narrare.kb.assist_service import KBAssistService
+        from narrare_core.agents.kb_assist_agent import KBAssistDeps
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.composer import ComposedPrompt
 
@@ -250,12 +251,18 @@ class TestAssistInvocationWiring:
             mock_agent.run = AsyncMock(return_value=mock_output)
             mock_agent_cls.return_value = mock_agent
 
+            # F9-2 contract: _run_agent takes a single KBAssistDeps (the
+            # same deps object feeds agent AND prompt context). Entity
+            # type / existing fields live on deps, mirroring what
+            # build_assist_deps assembles for the public flows.
             _result = await service._run_agent(
                 user_prompt="Test prompt",
-                deps=MagicMock(spec=["language", "genre"]),
+                deps=KBAssistDeps(
+                    language="en",
+                    entity_type="character",
+                    existing_answers={},
+                ),
                 intent=LLMIntent.KB_INTERVIEW,
-                entity_type="character",
-                existing_fields={},
             )
 
         assert len(sink.records) >= 1

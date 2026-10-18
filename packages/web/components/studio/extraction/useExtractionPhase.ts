@@ -15,16 +15,16 @@
  */
 
 import type { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApplyExtraction, useExtractChapter } from "@/lib/hooks/useExtraction";
 import { useExtractionSelection } from "@/lib/hooks/useExtractionSelection";
 import {
   type ExtractionPhase,
   getErrorMessage,
-  handleExtractionError,
   isAbortError,
   mapSelectedItems,
 } from "./extraction-utils";
+import { handleExtractionRejection, runCancelExtraction } from "./extractionCancelGuard";
 import { useExtractionAutoClose } from "./useExtractionAutoClose";
 
 export type { ExtractionPhase };
@@ -60,30 +60,41 @@ export function useExtractionPhase({
   // Auto-close on "done" phase after a short delay.
   useExtractionAutoClose(phase, "done", onClose);
 
-  // Mount-only trigger: extract on open.
+  // Mount-only trigger: extract on open. M01: startedRef makes this true
+  // even though the effect's deps include `extractMutation.mutateAsync`,
+  // whose identity changes on every useAIOperation state transition —
+  // without the guard each transition re-fired POST /kb/extract/{chapter}
+  // (audit: 697 calls in one modal session). Retry stays explicit
+  // (handleRetry below). Deliberately NO cancelled-cleanup: under dev
+  // StrictMode (setup → cleanup → setup) cancelling the first run while
+  // the guard skips the second would drop the only in-flight extraction;
+  // same fire-once shape as CharacterVoicePanel/useBulkExtractionController.
+  const startedRef = useRef(false);
+
+  // Cancel/suppression seam (extractionCancelGuard.ts): one-shot flag +
+  // shared catch params; the idempotent logic lives in the guard module.
+  const cancelledRef = useRef(false);
+  const rejectionParams = useMemo(
+    () => ({
+      cancelledRef,
+      fallbackMsg: t("kb.extractionFailed"),
+      actions: { onClose, setErrorMsg, setPhase },
+    }),
+    [t, onClose],
+  );
+
   useEffect(() => {
-    let cancelled = false;
+    if (startedRef.current) return;
+    startedRef.current = true;
 
     extractMutation
       .mutateAsync()
       .then((output) => {
-        if (cancelled) return;
         selection.loadResults(output);
         setPhase("review");
       })
-      .catch((err) => {
-        if (cancelled) return;
-        handleExtractionError(err, t("kb.extractionFailed"), {
-          onClose,
-          setErrorMsg,
-          setPhase,
-        });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [extractMutation.mutateAsync, t, selection.loadResults, onClose]);
+      .catch((err) => handleExtractionRejection(err, rejectionParams));
+  }, [extractMutation.mutateAsync, selection.loadResults, rejectionParams]);
 
   const handleApply = useCallback(() => {
     const selected = mapSelectedItems(selection.items, selection.selectedIndices);
@@ -112,19 +123,13 @@ export function useExtractionPhase({
         selection.loadResults(output);
         setPhase("review");
       })
-      .catch((err) => {
-        handleExtractionError(err, t("kb.extractionFailed"), {
-          onClose,
-          setErrorMsg,
-          setPhase,
-        });
-      });
-  }, [extractMutation, selection, onClose, t]);
+      .catch((err) => handleExtractionRejection(err, rejectionParams));
+  }, [extractMutation, selection, rejectionParams]);
 
-  const handleCancelExtraction = useCallback(() => {
-    extractMutation.abort();
-    onClose();
-  }, [extractMutation, onClose]);
+  const handleCancelExtraction = useCallback(
+    () => runCancelExtraction({ cancelledRef, abort: extractMutation.abort, onClose }),
+    [extractMutation, onClose],
+  );
 
   return {
     phase,

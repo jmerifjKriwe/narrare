@@ -74,6 +74,8 @@ export function createLifecycleActions<T>(
         ctx.operationIdRef.current = newOpId;
         queueMicrotask(() => {
           if (!ctx.mountedRef.current) return;
+          // Fire-time re-validation: a newer operation superseded this one.
+          if (ctx.operationIdRef.current !== newOpId) return;
           ctx.setState((prev) => ({
             ...prev,
             status: "loading",
@@ -107,6 +109,10 @@ export function createLifecycleActions<T>(
 
     queueMicrotask(() => {
       if (!ctx.mountedRef.current) return;
+      // Fire-time re-validation: an intervening cancel()/reset() (e.g. a
+      // StrictMode cleanup between setup #1's queue and this microtask)
+      // superseded this operation — it must not fire a duplicate request.
+      if (ctx.operationIdRef.current !== newOpId) return;
       ctx.startConnectionLossTimer();
       invokeExecute(ctx, newOpId);
     });
@@ -117,9 +123,18 @@ export function createLifecycleActions<T>(
     ctx.abortRef.current = null;
     clearConnectionLossTimer();
 
+    // Invalidate the current operation HERE — synchronously, exactly once per
+    // call, outside any setState updater. Updaters must be pure: React may
+    // invoke them multiple times (guaranteed under StrictMode dev) and at any
+    // later time (updater replay). Bumping inside the updater invalidated
+    // operations started AFTER this cancel — a StrictMode double-mount's
+    // cleanup #1 then killed setup #2's fresh operation, and the stale guard
+    // dropped every result (F9-3). Matches start()/retry()/reset(), which all
+    // bump the id synchronously as well.
+    ctx.operationIdRef.current += 1;
+
     ctx.setState((prev) => {
       if (prev.status === "loading" || prev.status === "streaming") {
-        ctx.operationIdRef.current += 1;
         return { ...prev, status: "idle", error: null };
       }
       return prev;
@@ -145,6 +160,8 @@ export function createLifecycleActions<T>(
 
     queueMicrotask(() => {
       if (!ctx.mountedRef.current) return;
+      // Fire-time re-validation: a newer operation superseded this one.
+      if (ctx.operationIdRef.current !== newOpId) return;
       ctx.startConnectionLossTimer();
       invokeExecute(ctx, newOpId);
     });

@@ -14,6 +14,8 @@ export interface WikiSummaryResponse {
   id: string;
   novel_id: string;
   entity_id: string;
+  /** KB entry display name (M11) — null when the entry no longer exists. */
+  entity_name?: string | null;
   narrative_summary: string;
   role_in_story: string | null;
   key_attributes: string[] | null;

@@ -20,7 +20,7 @@ interface WikiEntitySummaryCardProps {
 export function WikiEntitySummaryCard({ summary, refreshMutation }: WikiEntitySummaryCardProps) {
   const t = useTranslations("studio");
   const isRefreshing = refreshMutation.isPending;
-  const entityName = summary.entity_id;
+  const entityName = summary.entity_name ?? summary.entity_id;
   const label = summary.narrative_summary
     ? summary.narrative_summary.length > 120
       ? `${summary.narrative_summary.slice(0, 120)}…`

@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from narrare.kb.schemas import KBEntryCreate
 from narrare_core.shared.errors import NotFoundError
 
 from ._test_fakes import FakeKBService, make_service, make_session
@@ -118,6 +119,34 @@ class TestCompleteSession:
 
         with pytest.raises(ValueError, match="Session must have a name"):
             await service.complete_session(session.id, session.novel_id, session.user_id)
+
+    async def test_body_name_fills_missing_session_name(self) -> None:
+        """F9-1: name argument fills a missing session name before mapping."""
+        created: list[dict[str, object]] = []
+        fake_kb = FakeKBService(created_entries=created)
+        service, store, _ = make_service(kb_service=fake_kb)
+        session = make_session(name=None)
+        await store.create(session)
+
+        result_session, _entry_id = await service.complete_session(
+            session.id, session.novel_id, session.user_id, name="Aria"
+        )
+
+        assert result_session.status == "complete"
+        assert result_session.name == "Aria"
+        entry_data = created[0]["data"]
+        assert isinstance(entry_data, KBEntryCreate)
+        assert entry_data.name == "Aria"
+
+    async def test_name_argument_is_ignored_when_none(self) -> None:
+        """name=None (absent body) keeps current behavior — mapper guard fires."""
+        fake_kb = FakeKBService()
+        service, store, _ = make_service(kb_service=fake_kb)
+        session = make_session(name=None)
+        await store.create(session)
+
+        with pytest.raises(ValueError, match="Session must have a name"):
+            await service.complete_session(session.id, session.novel_id, session.user_id, name=None)
 
     async def test_raises_without_kb_service(self) -> None:
         """Session service without kb_service raises ValueError."""

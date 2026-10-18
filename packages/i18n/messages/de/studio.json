@@ -1616,6 +1616,7 @@
       "notGenerated": "Wiki noch nicht erstellt",
       "generating": "Wird erstellt...",
       "generate": "Erstellen",
+      "generateAll": "Wiki generieren",
       "refreshAll": "Alle aktualisieren",
       "markStaleConfirm": "Alle Zusammenfassungen werden als veraltet markiert. Sie werden bei der nächsten Nutzung neu erstellt.",
       "close": "Schließen",

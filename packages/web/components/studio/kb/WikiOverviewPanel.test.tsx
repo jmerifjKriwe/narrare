@@ -1,13 +1,28 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { WikiIndexResponse, WikiSummaryListResponse } from "@/lib/api/wiki";
+import type { KBEntry, KBEntryListParams, KBEntryListResponse } from "@/lib/api/kb";
+import type {
+  WikiIndexResponse,
+  WikiSummaryListResponse,
+  WikiSummaryResponse,
+} from "@/lib/api/wiki";
 import { WikiOverviewPanel } from "./WikiOverviewPanel";
 
 // --- Mock hooks ---
 
 const mockRefreshMutate = vi.fn();
 const mockMarkStaleMutate = vi.fn();
+const mockListEntries =
+  vi.fn<(novelId: string, params?: KBEntryListParams) => Promise<KBEntryListResponse>>();
+
+// The generate-all ACTION pages through the entries endpoint directly
+// (useWikiOverviewActions), bypassing the mocked useKBEntries query.
+vi.mock("@/lib/api/kb", () => ({
+  kbApi: {
+    listEntries: (novelId: string, params?: KBEntryListParams) => mockListEntries(novelId, params),
+  },
+}));
 
 vi.mock("@/lib/hooks/useWiki", () => ({
   useWikiIndex: () => wikiIndexResult,
@@ -24,9 +39,18 @@ vi.mock("@/lib/hooks/useWiki", () => ({
   }),
 }));
 
+vi.mock("@/lib/hooks/useKB", () => ({
+  useKBEntries: () => kbEntriesResult,
+}));
+
 let wikiIndexResult: { data: WikiIndexResponse | undefined; isLoading: boolean; isError: boolean };
 let wikiSummariesResult: {
   data: WikiSummaryListResponse | { items: never[]; total: number };
+  isLoading: boolean;
+  isError: boolean;
+};
+let kbEntriesResult: {
+  data: { items: Array<{ id: string }> } | undefined;
   isLoading: boolean;
   isError: boolean;
 };
@@ -91,6 +115,51 @@ const mockSummaries: WikiSummaryListResponse = {
   total: 3,
 };
 
+// --- M11 harness helpers (minimal additions mirroring the fixture style) ---
+
+const mockWikiIndexData = (overrides: Partial<WikiIndexResponse>) => {
+  wikiIndexResult = { data: { ...mockIndex, ...overrides }, isLoading: false, isError: false };
+};
+
+const mockWikiSummariesData = (data: WikiSummaryListResponse) => {
+  wikiSummariesResult = { data, isLoading: false, isError: false };
+};
+
+const mockKBEntriesData = (items: Array<{ id: string }>) => {
+  kbEntriesResult = { data: { items }, isLoading: false, isError: false };
+};
+
+const freshSummary = (entityId: string): WikiSummaryResponse => ({
+  id: `ws-${entityId}`,
+  novel_id: "novel-1",
+  entity_id: entityId,
+  narrative_summary: "A generated summary.",
+  role_in_story: null,
+  key_attributes: null,
+  relationships: null,
+  chapter_references: null,
+  character_arc: null,
+  status: "fresh",
+  version: 1,
+  generated_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  refreshed_at: null,
+});
+
+const kbEntry = (id: string): KBEntry => ({
+  id,
+  novel_id: "novel-1",
+  entity_type: "character",
+  name: id,
+  slug: id,
+  status: "canon",
+  tags: [],
+  metadata: {},
+  body: "",
+  template_version: null,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
 
@@ -102,6 +171,12 @@ beforeEach(() => {
 
   wikiSummariesResult = {
     data: mockSummaries,
+    isLoading: false,
+    isError: false,
+  };
+
+  kbEntriesResult = {
+    data: { items: [] },
     isLoading: false,
     isError: false,
   };
@@ -181,5 +256,94 @@ describe("WikiOverviewPanel", () => {
     const closeButtons = screen.getAllByRole("button", { name: "kb.wiki.close" });
     await userEvent.click(closeButtons[0]);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // --- M11: first-generation path + non-fresh refresh affordances ---
+
+  it("renders a Generate Wiki affordance in the empty state that refreshes every KB entity (M11)", async () => {
+    mockWikiIndexData({ total_summaries: 0, fresh_count: 0, stale_count: 0, pending_count: 0 });
+    mockWikiSummariesData({ items: [], total: 0 });
+    // Enablement (mount query) sees a non-empty page, so the button renders enabled…
+    mockKBEntriesData([{ id: "entity-1" }, { id: "entity-2" }]);
+    // …while the action pages the entries endpoint itself for its ids.
+    mockListEntries.mockResolvedValue({
+      items: ["entity-1", "entity-2"].map(kbEntry),
+      total: 2,
+      page: 1,
+      page_size: 100,
+    });
+
+    render(<WikiOverviewPanel novelId="novel-1" onClose={vi.fn()} />);
+
+    const generateAll = await screen.findByRole("button", { name: "kb.wiki.generateAll" });
+    fireEvent.click(generateAll);
+
+    // The action resolves the paged fetch before mutating.
+    await waitFor(() => expect(mockRefreshMutate).toHaveBeenCalledTimes(2));
+    expect(mockRefreshMutate).toHaveBeenCalledWith({ entityId: "entity-1" });
+    expect(mockRefreshMutate).toHaveBeenCalledWith({ entityId: "entity-2" });
+  });
+
+  it("keeps Refresh Stale disabled when everything is fresh (M11)", () => {
+    mockWikiIndexData({ total_summaries: 2, fresh_count: 2, stale_count: 0, pending_count: 0 });
+    mockWikiSummariesData({
+      items: [freshSummary("e1"), freshSummary("e2")],
+      total: 2,
+    });
+
+    render(<WikiOverviewPanel novelId="novel-1" onClose={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "kb.wiki.refreshStale" })).toBeDisabled();
+  });
+
+  it("enables Refresh Stale for pending rows and refreshes every non-fresh summary (M11)", () => {
+    // Audit ground truth: pending ("Never generated") rows were unreachable from
+    // the overview — the old filter and disabled-state counted stale only.
+    mockWikiIndexData({ total_summaries: 2, fresh_count: 1, stale_count: 0, pending_count: 1 });
+    mockWikiSummariesData({
+      items: [freshSummary("e1"), { ...freshSummary("e2"), status: "pending" }],
+      total: 2,
+    });
+
+    render(<WikiOverviewPanel novelId="novel-1" onClose={vi.fn()} />);
+
+    const refreshStale = screen.getByRole("button", { name: "kb.wiki.refreshStale" });
+    expect(refreshStale).toBeEnabled();
+    fireEvent.click(refreshStale);
+    expect(mockRefreshMutate).toHaveBeenCalledWith({ entityId: "e2" });
+    expect(mockRefreshMutate).not.toHaveBeenCalledWith({ entityId: "e1" });
+  });
+
+  it("collects ALL KB entry ids across pages when generating, beyond the first-page cap", async () => {
+    // Root cause: the mount useKBEntries fetch sends no params → backend
+    // default page_size=50 (le=100). For a >50-entry KB, generate-all must
+    // page the endpoint itself — not silently refresh only the first page.
+    mockWikiIndexData({ total_summaries: 0, fresh_count: 0, stale_count: 0, pending_count: 0 });
+    mockWikiSummariesData({ items: [], total: 0 });
+    // Mount fetch (enablement check) sees only the default first page (50).
+    mockKBEntriesData(Array.from({ length: 50 }, (_, i) => ({ id: `entity-${i + 1}` })));
+
+    // The KB actually holds 120 entries; the endpoint serves them paged.
+    const allIds = Array.from({ length: 120 }, (_, i) => `entity-${i + 1}`);
+    mockListEntries.mockImplementation((_novelId, params) => {
+      const page = params?.page ?? 1;
+      const pageSize = params?.page_size ?? 50;
+      return Promise.resolve({
+        items: allIds.slice((page - 1) * pageSize, page * pageSize).map(kbEntry),
+        total: allIds.length,
+        page,
+        page_size: pageSize,
+      });
+    });
+
+    render(<WikiOverviewPanel novelId="novel-1" onClose={vi.fn()} />);
+
+    const generateAll = await screen.findByRole("button", { name: "kb.wiki.generateAll" });
+    fireEvent.click(generateAll);
+
+    // All 120 entities get a refresh — two pages (100 + 20), not the 50
+    // entries the mount query happened to hold.
+    await waitFor(() => expect(mockRefreshMutate).toHaveBeenCalledTimes(120));
+    expect(mockRefreshMutate).toHaveBeenCalledWith({ entityId: "entity-120" });
   });
 });

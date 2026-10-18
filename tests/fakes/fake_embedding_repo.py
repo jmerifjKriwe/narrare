@@ -75,6 +75,7 @@ class FakeEmbeddingRepository:
         threshold: float = 0.7,
         limit: int = 20,
         model: str | None = None,
+        novel_id: uuid.UUID | None = None,
     ) -> list[SearchRow]:
         """Search for similar embeddings using fake similarity scoring."""
         self.calls.append(
@@ -86,6 +87,7 @@ class FakeEmbeddingRepository:
                     "threshold": threshold,
                     "limit": limit,
                     "model": model,
+                    "novel_id": novel_id,
                 },
             )
         )

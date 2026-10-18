@@ -30,7 +30,8 @@ export interface KBEntry {
   slug: string;
   status: KBEntryStatus;
   tags: string[];
-  metadata: Record<string, unknown>;
+  /** Nullable: pre-fix rows can carry the JSON scalar null (write path now coerces). */
+  metadata: Record<string, unknown> | null;
   body: string;
   template_version: string | null;
   created_at: string;

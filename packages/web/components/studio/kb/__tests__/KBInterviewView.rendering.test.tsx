@@ -59,7 +59,7 @@ const mockSession: KBCreationSession = {
 const mockQuestion: KBInterviewResult = {
   question: "What is this character's name?",
   target_field: "name",
-  context: "",
+  reasoning: null,
 };
 
 // ---------------------------------------------------------------------------

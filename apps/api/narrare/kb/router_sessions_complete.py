@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_kb_session_service
-from narrare.kb.session_schemas import KBSessionCompleteResponse
+from narrare.kb.session_schemas import CompleteSessionRequest, KBSessionCompleteResponse
 from narrare.kb.session_service import KBSessionService
 
 router = APIRouter(tags=["kb-sessions"])
@@ -27,6 +27,7 @@ async def complete_session(
     novel_id: UUID,
     session_id: UUID,
     user_id: CurrentUserIdDep,
+    request: CompleteSessionRequest | None = None,
     service: KBSessionService = Depends(get_kb_session_service),
 ) -> KBSessionCompleteResponse:
     """Complete a KB creation session and create the KB entry.
@@ -34,9 +35,15 @@ async def complete_session(
     Creates a KB entry from the session's collected fields and marks
     the session as complete. Returns the updated session and the
     new entry's ID.
+
+    The body is optional (F9-1): ``{"name": ...}`` supplies the entry
+    name collected by the FE; an absent body or absent name keeps the
+    existing behavior (400 when the session has no name).
     """
     try:
-        session, entry_id = await service.complete_session(session_id, novel_id, UUID(user_id))
+        session, entry_id = await service.complete_session(
+            session_id, novel_id, UUID(user_id), name=request.name if request else None
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

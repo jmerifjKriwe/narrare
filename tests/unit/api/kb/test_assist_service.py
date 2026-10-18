@@ -74,8 +74,6 @@ async def test_run_agent_calls_compose_invocation_mode1(
             user_prompt="Ask the next question.",
             deps=deps,
             intent=LLMIntent.KB_INTERVIEW,
-            entity_type="character",
-            existing_fields={},
         )
 
     mock_compose.assert_awaited_once()

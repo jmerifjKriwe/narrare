@@ -21,6 +21,18 @@ class AnswerFieldRequest(BaseModel):
     value: str = Field(min_length=1)
 
 
+class CompleteSessionRequest(BaseModel):
+    """Optional request body for completing a KB creation session.
+
+    F9-1: the FE collects the entry name at the final step and sends it
+    here. The body itself is optional (absent body or absent name keeps
+    the existing name-required guard in the service/mapper); name
+    constraints mirror ``KBEntryCreate.name``.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=500)
+
+
 class KBSessionCompleteResponse(BaseModel):
     """Response after completing a session and creating the KB entry."""
 

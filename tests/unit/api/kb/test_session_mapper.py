@@ -164,6 +164,19 @@ class TestMapSessionToEntry:
         with pytest.raises(ValueError, match="Session must have a name"):
             map_session_to_entry(session)
 
+    def test_mapped_entry_without_tags_defaults_to_empty_list(self) -> None:
+        """Sessions have no tag concept — mapped entries carry tags=[], never None.
+
+        Regression guard (F10, 2026-10-17): the mapper omitted tags and the
+        schema default was None, so session-created entries persisted null
+        and the FE list crashed on ``entry.tags.length``. The empty list is
+        the honest value; the schema seam (T7 pattern) defaults omission
+        centrally for every KBEntryCreate caller.
+        """
+        entry = map_session_to_entry(_make_session())
+
+        assert entry.tags == []
+
     def test_empty_name_raises_value_error(self) -> None:
         """Session with empty string name raises."""
         session = _make_session(name="")

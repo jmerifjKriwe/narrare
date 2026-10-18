@@ -19,6 +19,7 @@ import structlog
 
 from narrare.kb.session_mapper import map_session_to_entry
 from narrare.kb.session_models import KBCreationSession
+from narrare.kb.session_ops import extract_filled_fields, validate_session_status
 from narrare.kb.template_fields import get_template_fields
 from narrare_core.shared.errors import NotFoundError
 
@@ -104,7 +105,7 @@ class KBSessionService:
     ) -> KBCreationSession:
         """Update a field with a user-provided value (ownership-gated)."""
         session = await self._get_or_raise(session_id, novel_id, user_id)
-        self._validate_status(session, "active")
+        validate_session_status(session, "active")
 
         for field in session.fields:
             if field.field_key == field_key:
@@ -127,9 +128,9 @@ class KBSessionService:
         Returns updated session + suggestion.
         """
         session = await self._get_or_raise(session_id, novel_id, user_id)
-        self._validate_status(session, "active")
+        validate_session_status(session, "active")
 
-        existing = self._extract_existing_fields(session)
+        existing = extract_filled_fields(session)
 
         suggestion = await self._assist.get_suggestion(
             novel_id=session.novel_id,
@@ -160,9 +161,9 @@ class KBSessionService:
     ) -> tuple[KBCreationSession, dict[str, str | None]]:
         """Get next interview question from AI (ownership-gated)."""
         session = await self._get_or_raise(session_id, novel_id, user_id)
-        self._validate_status(session, "active")
+        validate_session_status(session, "active")
 
-        existing = self._extract_existing_fields(session)
+        existing = extract_filled_fields(session)
 
         question = await self._assist.get_interview_question(
             novel_id=session.novel_id,
@@ -184,9 +185,9 @@ class KBSessionService:
     ) -> tuple[KBCreationSession, dict[str, object]]:
         """Request AI enhancement of the entire entry (ownership-gated)."""
         session = await self._get_or_raise(session_id, novel_id, user_id)
-        self._validate_status(session, "active")
+        validate_session_status(session, "active")
 
-        existing = self._extract_existing_fields(session)
+        existing = extract_filled_fields(session)
 
         enhancement = await self._assist.get_enhancement(
             novel_id=session.novel_id,
@@ -216,9 +217,17 @@ class KBSessionService:
         }
 
     async def complete_session(
-        self, session_id: UUID, novel_id: UUID, user_id: UUID
+        self,
+        session_id: UUID,
+        novel_id: UUID,
+        user_id: UUID,
+        name: str | None = None,
     ) -> tuple[KBCreationSession, UUID]:
         """Complete session and create KB entry (ownership-gated).
+
+        The optional ``name`` (complete request body, F9-1) fills
+        ``session.name`` before mapping; absent/None keeps the
+        name-required guard.
 
         Creates the KB entry from session fields BEFORE marking the
         session as complete. If entry creation fails, the session
@@ -233,7 +242,13 @@ class KBSessionService:
             ValueError: Invalid status, name missing, or KB service misconfigured.
         """
         session = await self._get_or_raise(session_id, novel_id, user_id)
-        self._validate_status(session, "active", "review")
+        validate_session_status(session, "active", "review")
+
+        # F9-1: body name applied in memory only — persistence happens
+        # with the STEP 2 store update, so a failed entry creation
+        # leaves the session unchanged.
+        if name:
+            session.name = name
 
         # Fill final_value for any remaining fields
         for field in session.fields:
@@ -273,15 +288,6 @@ class KBSessionService:
         await self._store.update(session)
         await self._store.delete(session_id)
 
-    def _extract_existing_fields(self, session: KBCreationSession) -> dict[str, str]:
-        """Extract filled field values from session as a dict."""
-        result: dict[str, str] = {}
-        for field in session.fields:
-            value = field.final_value or field.user_value or field.ai_suggested_value
-            if value:
-                result[field.field_key] = value
-        return result
-
     async def _get_or_raise(
         self, session_id: UUID, novel_id: UUID, user_id: UUID
     ) -> KBCreationSession:
@@ -290,10 +296,3 @@ class KBSessionService:
         if session is None:
             raise NotFoundError("KB creation session", identifier=str(session_id))
         return session
-
-    def _validate_status(self, session: KBCreationSession, *allowed: str) -> None:
-        """Validate session status is in allowed list."""
-        if session.status not in allowed:
-            raise ValueError(
-                f"Session {session.id} has status '{session.status}', expected one of {allowed}"
-            )

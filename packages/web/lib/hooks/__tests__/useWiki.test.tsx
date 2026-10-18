@@ -21,6 +21,8 @@ vi.mock("@/lib/api/wiki", () => ({
   },
 }));
 
+import { ApiError } from "@/lib/api/core";
+
 import {
   type WikiChapterSummaryResponse,
   type WikiIndexResponse,
@@ -161,6 +163,28 @@ describe("useWikiChapterSummary", () => {
 
     expect(getChapterSummary).toHaveBeenCalledWith("novel-1", "ch-1");
     expect(result.current.data?.chapter_id).toBe("ch-1");
+  });
+
+  it("treats a 404 as 'no summary yet' — data null, no error (N20)", async () => {
+    getChapterSummary.mockRejectedValueOnce(new ApiError("Not found", 404));
+
+    const { result } = renderHook(() => useWikiChapterSummary("novel-1", "chapter-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBeNull();
+    expect(result.current.isError).toBe(false);
+  });
+
+  it("still errors on non-404 failures (N20)", async () => {
+    getChapterSummary.mockRejectedValueOnce(new ApiError("Boom", 500));
+
+    const { result } = renderHook(() => useWikiChapterSummary("novel-1", "chapter-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

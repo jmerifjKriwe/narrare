@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.wiki._session_lifecycle import WikiSessionLifecycle
 from narrare.wiki._system_accessors import WikiSystemAccessors
 from narrare.wiki.chapter_service import ChapterWikiService
 from narrare.wiki.generation_support import (
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
-class APIWikiService(WikiSystemAccessors):
+class APIWikiService(WikiSessionLifecycle, WikiSystemAccessors):
     """Orchestrates wiki generation, persistence, and queries.
 
     Bridges HTTP routes and core WikiService: loads entity data →
@@ -207,7 +208,7 @@ class APIWikiService(WikiSystemAccessors):
     ) -> WikiSummaryListResponse:
         """List wiki summaries, optionally filtered by entity IDs."""
         await self._verify_access(novel_id, user_id)
-        return await list_summaries(self._wiki_repo, entity_ids, novel_id)
+        return await list_summaries(self._wiki_repo, self._kb_repo, entity_ids, novel_id)
 
     async def get_chapter_summary(
         self,

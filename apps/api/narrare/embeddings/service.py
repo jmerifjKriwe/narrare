@@ -182,6 +182,7 @@ class EmbeddingService:
             threshold=threshold,
             limit=search_limit,
             model=model or self._model,
+            novel_id=novel_id,
         )
 
         return await rank_and_maybe_rerank(

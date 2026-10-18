@@ -1,7 +1,4 @@
-"""Knowledge Base Pydantic schemas.
-
-Request/response models for KB entry and relationship endpoints.
-"""
+"""Knowledge Base Pydantic schemas: request/response models for entry/relationship endpoints."""
 
 from __future__ import annotations
 
@@ -9,6 +6,19 @@ import uuid  # noqa: TC003 — needed at runtime for Pydantic model resolution
 from datetime import datetime  # noqa: TC003
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# Re-export (RULE-04 split): the @Name reference-resolution family lives
+# in schemas_references.py; re-exported so every existing
+# ``from narrare.kb.schemas import ...`` path stays byte-compatible.
+from narrare.kb.schemas_references import (
+    ReferenceResolution as ReferenceResolution,
+)
+from narrare.kb.schemas_references import (
+    ResolveReferencesRequest as ResolveReferencesRequest,
+)
+from narrare.kb.schemas_references import (
+    ResolveReferencesResponse as ResolveReferencesResponse,
+)
 
 # ---------------------------------------------------------------------------
 # KB Entry
@@ -22,8 +32,19 @@ class KBEntryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     slug: str | None = Field(default=None, max_length=500)
     status: str = Field(default="draft", max_length=20)
-    tags: list[str] | None = Field(default=None)
-    metadata: dict[str, object] | None = Field(default=None)
+    # Omitted tags default to [] — sessions and extraction have no tag
+    # concept, so the empty list is the honest value. Same centralized
+    # seam pattern as metadata below (T7): every KBEntryCreate caller
+    # (session mapper, extraction apply, REST omission) gets [] instead
+    # of persisting null, which crashed the FE list (F10, 2026-10-17).
+    # Explicit null stays legal (None) — legacy-null reads are guarded
+    # in the FE (KBEntryList / KBEntryDetail).
+    tags: list[str] | None = Field(default_factory=list)
+    # Omitted metadata defaults to {} — the create seams (novel + canon)
+    # must never persist None, which lands as jsonb null and crashes the
+    # FE detail view. Explicit null stays legal (None) so the services'
+    # explicit-null coercion remains the guard for programmatic clients.
+    metadata: dict[str, object] | None = Field(default_factory=dict)
     body: str | None = Field(default=None)
     template_version: str | None = Field(default=None, max_length=20)
     source: str = Field(default="manual", max_length=50)
@@ -124,47 +145,8 @@ class KBRelationshipResponse(BaseModel):
     )
     created_at: datetime
     updated_at: datetime
-    # Enriched names for display
     source_name: str | None = None
     target_name: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Reference Resolution
-# ---------------------------------------------------------------------------
-
-
-class ReferenceResolution(BaseModel):
-    """A single resolved @Name reference in KB body text."""
-
-    mention: str
-    """The text after @ (e.g. "Anna Müller")."""
-
-    entry_id: str | None = None
-    """Resolved entry ID if found in the novel's KB."""
-
-    entry_name: str | None = None
-    """Resolved entry name."""
-
-    entity_type: str | None = None
-    """Entity type if found (character, location, etc.)."""
-
-    slug: str | None = None
-    """Slug for link generation."""
-
-
-class ResolveReferencesRequest(BaseModel):
-    """Request to resolve @Name mentions in text."""
-
-    text: str
-
-
-class ResolveReferencesResponse(BaseModel):
-    """Response with resolved @Name references."""
-
-    resolved: list[ReferenceResolution]
-    html: str | None = None
-    """Text with @mentions replaced by HTML anchor tags."""
 
 
 # ---------------------------------------------------------------------------

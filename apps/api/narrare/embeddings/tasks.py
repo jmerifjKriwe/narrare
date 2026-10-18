@@ -79,6 +79,20 @@ async def run_embed_source(
     delays = retry_delays or _DEFAULT_RETRY_DELAYS
     max_retries = len(delays)
 
+    # Empty content must never be embedded: embed_texts("") returns a ZERO
+    # vector, and a zero-vector row makes every cosine distance NaN — which
+    # Postgres orders ABOVE all real numbers, so the row passes every search
+    # threshold with a NaN similarity (surfaced as a 500 by the response
+    # validation; the search SQL carries a NaN guard as defense in depth).
+    # A zero vector carries no information — skip visibly, idempotently.
+    if not content.strip():
+        logger.info(
+            "embed_source_skipped_empty",
+            source_type=source_type,
+            source_id=str(source_id),
+        )
+        return False
+
     # Step 1: Compute content hash
     content_hash = compute_content_hash(content)
 

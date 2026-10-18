@@ -86,7 +86,7 @@ const mockSuggestion = {
 const mockInterviewResult = {
   question: "What is the name?",
   target_field: "name",
-  context: "",
+  reasoning: null,
 };
 
 const mockEnhancementResults = [

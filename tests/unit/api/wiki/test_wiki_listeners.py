@@ -40,6 +40,8 @@ def _make_listener() -> WikiEventListener:
     """Create a WikiEventListener with a mock service factory."""
     svc = MagicMock(spec=APIWikiService)
     svc.mark_related_stale = AsyncMock(return_value=0)
+    svc.commit = AsyncMock()
+    svc.close = AsyncMock()
     factory = MagicMock(spec=Callable, return_value=svc)
     return WikiEventListener(wiki_service_factory=factory)
 
@@ -72,6 +74,8 @@ class TestOnKbEntryUpdated:
         """After entity generation, marks related summaries stale."""
         svc = MagicMock(spec=APIWikiService)
         svc.mark_related_stale = AsyncMock(return_value=3)
+        svc.commit = AsyncMock()
+        svc.close = AsyncMock()
         factory = MagicMock(spec=Callable, return_value=svc)
         listener = WikiEventListener(wiki_service_factory=factory)
         event = _make_event("kb.entry.updated")
@@ -81,6 +85,8 @@ class TestOnKbEntryUpdated:
             await listener.on_kb_entry_updated(event)
 
             svc.mark_related_stale.assert_called_once_with(entity_id)
+            svc.commit.assert_awaited_once()
+            svc.close.assert_awaited_once()
 
     async def test_skips_on_invalid_payload(self) -> None:
         """Does nothing when entity_id is missing from payload."""
@@ -246,6 +252,8 @@ class TestGracefulFailure:
         """on_kb_entry_updated swallows exceptions from mark_related_stale."""
         svc = MagicMock(spec=APIWikiService)
         svc.mark_related_stale = AsyncMock(side_effect=RuntimeError("DB error"))
+        svc.commit = AsyncMock()
+        svc.close = AsyncMock()
         factory = MagicMock(spec=Callable, return_value=svc)
         listener = WikiEventListener(wiki_service_factory=factory)
         event = _make_event("kb.entry.updated")
