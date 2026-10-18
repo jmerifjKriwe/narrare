@@ -87,11 +87,12 @@ settings, KB worldbuilding, WS ticket, hero flow) are maintained in place.
     chapter-status UI; the `chapter.finalized` event path is the only producer,
     so the spec drives the real chapter PATCH and observes the event-driven
     generation.
-  - **Runner lever gap (follow-up, NOT landed this wave):** `test_kb_ai.py`
-    makes ~7 AI-limited calls under one module user, so live-stack runs need
-    `NARRARE_RATE_LIMIT_ANALYSIS=100` (same precedent as the runner's
-    `NARRARE_RATE_LIMIT_WS=100`); `scripts/run_e2e.sh` does not export the
-    analysis lever yet.
+  - **Runner lever:** `test_kb_ai.py` makes ~7 AI-limited calls under one
+    module user, so `NARRARE_RATE_LIMIT_ANALYSIS=100` is exported by
+    `scripts/run_e2e.sh` as of this commit (2026-10-18) — inert under the
+    runner's own `NARRARE_E2E_TEST` mode (limiter dep + pacer short-circuit)
+    and biting only in live-stack runs without the flag (defensive, same
+    precedent as `NARRARE_RATE_LIMIT_WS=100`).
 - **Carried backlog (unchanged from the ai-writing wave):** the global
   `AI_WS_LIMITER` bucket and the interactive-mode Save-to-Chapter dead path
   stay backlog, documented in the `test_ai_writing_ws.py` module docstring.
