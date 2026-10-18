@@ -352,12 +352,13 @@ jobs:
           # The last-green base can be arbitrarily old; a full clone keeps
           # dorny's local diff possible and fetch-doubling out of the way.
           fetch-depth: 0
-          # dorny must be able to fetch the base commit when it is no
-          # longer locally reachable (force-push/rebase) — without the
-          # token that path would fail CLOSED, violating the fail-open
-          # contract. Same adjudication as the `changes` job's checkout
-          # above (persisted credentials REQUIRED; Task-2 CONCERN 1);
-          # the zizmor baseline carries the entry.
+          # dorny must be able to fetch the base commit when it is no longer
+          # locally reachable (force-push/rebase) — without the token that path
+          # would fail CLOSED, violating the fail-open contract (same
+          # adjudication as the `changes` job, Task-2 CONCERN 1). Explicit
+          # persist-credentials maps to zizmor's auditor persona only —
+          # default-persona runs stay green; a persona escalation surfaces
+          # it as a finding.
           persist-credentials: true
 
       - name: Resolve last successful nightly SHA (fail-open)
@@ -1832,6 +1833,7 @@ jobs:
           repo = os.environ["REPO"]
           total = 0.0
           processed = 0
+          pr_runs = 0  # W1-11: pull_request runs among the processed (§5.9.4)
           suspect = 0  # runs whose jobs data looks empty vs their own wall time
           for page in range(1, 11):  # 10 x 100 runs/month is ample
               data = fetch(f"https://api.github.com/repos/{repo}/actions/runs"
@@ -1845,6 +1847,8 @@ jobs:
                   if processed >= runs_cap:
                       break
                   processed += 1
+                  if run["event"] == "pull_request":
+                      pr_runs += 1
                   # Billing counts each job separately: sum per-job wall
                   # time. per_page=100 covers this repo's ~13-job runs.
                   jobs = fetch(f"https://api.github.com/repos/{repo}/actions"
@@ -1874,6 +1878,10 @@ jobs:
           pct = total / quota
           summary = (f"Month-to-date CI usage: {total:.0f} min of {quota} "
                      f"({pct:.0%}, per-job sum; billing rounds each job up to the minute).")
+          # W1-11 (spec §5.9.4): R1 PR-batching discipline is PO-enforced,
+          # not CI-enforceable — the MTD count makes drift against the
+          # ~50/mo target measurable in the same weekly report.
+          summary += f" | PR runs MTD: {pr_runs} (R1 target ≤50/mo)"
           if suspect:
               summary += (f" WARNING: jobs data missing for {suspect} of "
                           f"{processed} run(s) — figure may undercount.")
@@ -1894,10 +1902,11 @@ jobs:
   # release-please pull request on code nights. This is ONE HALF of the
   # release-please split: this job runs with `skip-github-release: true`
   # (release-PR bookkeeping only), while release-please.yml keeps release
-  # creation + publishing on push with `skip-github-pull-request: true`
-  # (W2-2). Release creation is decided by manifest-version-vs-latest-tag,
-  # so the two invocations are cleanly disjoint. Until W2-2 narrows the
-  # push trigger, BOTH paths run (double coverage by design, spec §11).
+  # creation + publishing for manifest/config pushes to main with
+  # `skip-github-pull-request: true` (W2-2, landed). Release creation is
+  # decided by manifest-version-vs-latest-tag, so the two invocations are
+  # cleanly disjoint: code pushes to main run only this nightly
+  # orchestration — no double coverage (final split state, spec §11).
   # Release-PR latency: ≤1 day (PO-sealed, OQ2 — spec §14).
   #
   # Split semantics (W2-3, spec §6): release creation is decided by

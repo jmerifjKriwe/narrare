@@ -44,10 +44,10 @@ rules:
       # previous head). Persisted credentials REQUIRED — Task-2
       # adjudication (report CONCERN 1).
       - ci.yml:173
-      # ci.yml:1144 `update-coverage-badge` — git-auto-commit pushes the
+      # ci.yml:1145 `update-coverage-badge` — git-auto-commit pushes the
       # README badge commit. Persisted credentials REQUIRED — Task-2
       # documented exception ("git-auto-commit needs the token").
-      - ci.yml:1144
+      - ci.yml:1145
       # vrt-update-baselines.yml:65 — the job runs `git commit &&
       # git push` on regenerated baselines (contents: write, dispatch
       # only). Persisted credentials REQUIRED.
@@ -76,8 +76,8 @@ rules:
       # not attacker-controllable input. zizmor cannot model step-output
       # provenance statically, hence the findings. Fixing them via env
       # indirection is a bulk follow-up, not accepted risk per line.
-      # ci.yml:1334 frontend-tests duration (own step output, numeric)
-      - ci.yml:1334
+      # ci.yml:1335 frontend-tests duration (own step output, numeric)
+      - ci.yml:1335
       - mutation-testing-monthly.yml:108 # scope label (own step output)
       - release-please.yml:97 # VERSION (release-please tag output)
       - release-please.yml:126 # IMAGE name:tag (own step outputs)
@@ -102,7 +102,7 @@ rules:
 
   self-repository:
     ignore:
-      # ci.yml:684 (push-only `quality` job) and ci.yml:788 (folded
+      # ci.yml:685 (push-only `quality` job) and ci.yml:789 (folded
       # test-unit step-group) — local composite action introduced by
       # W1-3, called by both quality call sites since W1-4 (spec §5.8).
       # zizmor 1.30.0+ prefers the July-2026 self-repository syntax
@@ -115,5 +115,5 @@ rules:
       # filesystem state" concern does not apply. Findings are
       # informational. Follow-up: switch both call sites to `$/` once
       # actionlint supports it, then remove these entries.
-      - ci.yml:684
-      - ci.yml:788
+      - ci.yml:685
+      - ci.yml:789
