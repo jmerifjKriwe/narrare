@@ -14,6 +14,12 @@ bandit step's ``-r`` targets, and the ``justfile`` security recipe's ``-r``
 targets must each equal the pinned literal below (and therefore each other).
 Any UNILATERAL target change on any surface fails; a coordinated scope change
 must update this literal together with all three surfaces.
+
+Since the R3 quality split (W1-3/W1-4) the CI Bandit step lives verbatim
+inside the composite ``.github/actions/quality`` (called by ci.yml's
+quality and test-unit jobs), so the CI helper resolves the invocation
+THROUGH the composite — the semantic contract is "the ONE Bandit
+invocation that CI executes", wherever it physically lives.
 """
 
 from __future__ import annotations
@@ -27,6 +33,8 @@ _ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _PRE_COMMIT_CONFIG = _ROOT / ".pre-commit-config.yaml"
 _CI_WORKFLOW = _ROOT / ".github" / "workflows" / "ci.yml"
 _JUSTFILE = _ROOT / "justfile"
+# Local composite actions callable from ci.yml via ``uses:`` (repo-relative).
+_LOCAL_COMPOSITE_PREFIX = "./.github/actions/"
 
 # The pinned bandit scan-target contract of ALL surfaces (production +
 # scripts + evals). These tests fail on any UNILATERAL target change; a
@@ -73,16 +81,56 @@ def _bandit_hook() -> dict[str, Any]:
     return hooks[0]
 
 
-def _ci_bandit_steps() -> list[dict[str, Any]]:
-    """Return the CI workflow steps that invoke bandit (by name or run)."""
-    workflow = yaml.safe_load(_CI_WORKFLOW.read_text(encoding="utf-8"))
+def _bandit_steps_in(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Filter a step list down to those invoking bandit (by name or run)."""
     return [
         step
-        for job in workflow.get("jobs", {}).values()
-        for step in job.get("steps", [])
+        for step in steps
         if "bandit" in str(step.get("name", "")).lower()
         or "bandit" in str(step.get("run", "")).lower()
     ]
+
+
+def _ci_bandit_steps() -> list[dict[str, Any]]:
+    """Return the ONE Bandit invocation definition the CI pipeline executes.
+
+    Since the R3 quality split (W1-3/W1-4) the Bandit step lives verbatim
+    inside the local composite ``.github/actions/quality``, which ci.yml's
+    quality and test-unit jobs call via ``uses:`` — so this resolves the
+    invocation THROUGH the composite instead of parsing ci.yml job steps
+    only. Collected: direct ci.yml job steps plus the steps of every local
+    composite a ci.yml job calls. Each composite counts ONCE per distinct
+    path — multiple call sites of one composite execute one definition,
+    not drift (two call sites of one Bandit definition is the designed
+    fold, not a parity violation).
+
+    Loud-zero guard: finds ZERO bandit steps in BOTH ci.yml and all
+    composites → assertion failure with a teach-the-helper message, never
+    a vacuous pass (the invocation moved elsewhere again and the helper
+    must learn the new location first).
+    """
+    workflow = yaml.safe_load(_CI_WORKFLOW.read_text(encoding="utf-8"))
+    job_steps: list[dict[str, Any]] = [
+        step for job in workflow.get("jobs", {}).values() for step in job.get("steps", [])
+    ]
+    steps = _bandit_steps_in(job_steps)
+    composite_paths = sorted(
+        {
+            str(step["uses"])
+            for step in job_steps
+            if str(step.get("uses", "")).startswith(_LOCAL_COMPOSITE_PREFIX)
+        }
+    )
+    for rel_path in composite_paths:
+        action_file = _ROOT / rel_path.removeprefix("./") / "action.yml"
+        action = yaml.safe_load(action_file.read_text(encoding="utf-8"))
+        steps += _bandit_steps_in(list(action.get("runs", {}).get("steps", [])))
+    assert steps, (
+        "ZERO bandit steps found in ci.yml and .github/actions/**/action.yml — "
+        "the CI Bandit invocation moved to a new location; teach "
+        "_ci_bandit_steps() where it lives now (loud-zero guard, no vacuous pass)"
+    )
+    return steps
 
 
 def _just_security_bandit_lines() -> list[str]:
@@ -115,7 +163,12 @@ class TestBanditScopeParity:
     """The pre-push hook, the CI step, and the just recipe scan one target set."""
 
     def test_exactly_one_ci_bandit_step(self) -> None:
-        """Guards against duplicated or diverged bandit steps in ci.yml."""
+        """Guards against duplicated or vanished Bandit invocations in CI.
+
+        Counts direct ci.yml steps plus each local composite's steps (once
+        per distinct composite). Zero steps fails in the helper (loud-zero
+        guard); two would mean duplicated/diverged invocations.
+        """
         steps = _ci_bandit_steps()
         assert len(steps) == 1
 

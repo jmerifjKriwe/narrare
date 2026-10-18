@@ -3,8 +3,10 @@
 > **Status:** Approved direction (PO-sealed 2026-10-16; **amended in place 2026-10-16**:
 > PO pulled reserve levers R1+R3+R5 into sealed scope, resolved OQ1/OQ2 — §5.8, §5.9,
 > §9.2, §14; **amended in place again 2026-10-16 (2nd)**: PO adopted E2E path-gated on
-> PRs citing the W0-3 diagnosis (§5.10, W1-12); Wave-0 outcomes recorded — §10) —
-> implementation spec, binding
+> PRs citing the W0-3 diagnosis (§5.10, W1-12); Wave-0 outcomes recorded — §10;
+> **amended in place 2026-10-18 (3rd)**: Actions billing outage #3 → November billing
+> mode — local-gate merge criterion for PR #259, deferred-then-resumed formal gates,
+> schedule-noise ruling, W0-2 addendum — §15) — implementation spec, binding
 > **Spec author:** Architecture layer
 > **Partially supersedes:** `docs/superpowers/specs/2026-09-29-ci-minutes-hardening-design.md` (see §2)
 > **Baseline window (measured):** 2026-09-15 .. 2026-10-15, repo `jmerifjKriwe/narrare`
@@ -655,16 +657,29 @@ post-merge as specified per task.
   signature covered by a regression test; 5 consecutive green push runs observed.
   **Status: CLOSED — no repo-side fix exists; converts to a PO one-time action (see
   Wave 0 outcome).**
+  **3rd-amendment addendum (2026-10-18):** W0 round 2
+  (`docs/superpowers/notes/2026-10-18-w0-round2-nightly-diagnosis.md`) diagnosed the
+  post-#258 fail-start cluster (push, nightly, and PR runs alike) as the **SAME billing
+  root cause — third occurrence** (2026-10-01 zero-actions wave · W0-1's 24-run push
+  cluster · round 2). The note's optional repo-side "billing-annotation streak guard"
+  is **REJECTED**: a guard running inside CI cannot observe an outage whose defining
+  property is that CI never starts (fail-before-step-0), and §15's re-entry rule
+  (streak observation restarts at billing return; first post-billing nightly =
+  designed full re-baseline) already delivers the protection with zero LOC.
 - **W0-3 Diagnose nightly Frontend+E2E failure streak (5/7 since PR #256 E2E specs).**
   Same method; explicitly test the #256-correlation hypothesis (spec-vs-implementation
   drift vs environment). Files: 0. Gate: root cause named with log evidence.
   **Status: DONE 2026-10-16 (see Wave 0 outcome).**
 - **W0-4 Root-cause fix + regression tests, nightly streak.** Scoped by W0-3. Gate:
-  3 consecutive green full nightlies (or probe runs) observed post-merge.
-  **Status: EXECUTED — pending landing via `fix/ci-wave-0` + PR; formal gate unchanged
-  (see Wave 0 outcome).**
+  3 consecutive green full nightlies (or probe runs) observed post-merge **(timing,
+  3rd amendment: the streak clock is SUSPENDED while billing is dead — the two
+  post-#258 nightlies fail-started with 0 jobs run and are not streak evidence; the
+  count starts at billing return, §15)**.
+  **Status: EXECUTED — landed as PR #258 (squash `10d9bec6`, merged 2026-10-17T07:00Z);
+  formal gate deferred-to-resume (see Wave 0 outcome + §15).**
 
-> **Wave 0 outcome (2026-10-16, recorded with the 2nd amendment):**
+> **Wave 0 outcome (2026-10-16, recorded with the 2nd amendment; W0-3/4 landing
+> updated by the 3rd — §15):**
 >
 > - **W0-1/W0-2 — resolved; NOT a code defect.** 24/25 failed push runs were GitHub
 >   account billing blocks ("spending limit reached / payments failed") — jobs never
@@ -676,8 +691,11 @@ post-merge as specified per task.
 >   possible (§1). Forecast consequence: §9.1's Wave-0 credit corrected to ~−150 (the
 >   push cluster billed 0 min; the real churn was the nightly streak). Evidence:
 >   `docs/superpowers/notes/2026-10-16-w0-1-push-failure-diagnosis.md`.
-> - **W0-3/W0-4 — diagnosed and executed; pending landing** (branch `fix/ci-wave-0` +
->   PR). **W0-4a**: python pin `python-version: "3.14"` on 7 `setup-uv` sites
+> - **W0-3/W0-4 — diagnosed and executed; landed as PR #258** (squash `10d9bec6`,
+>   merged 2026-10-17T07:00Z; every post-merge run since then fail-starts on the
+>   billing outage — W0 round 2 note — so the fixes have zero executed-CI evidence
+>   yet; formal 3-green-nightly gate suspended until billing returns, §15).
+>   **W0-4a**: python pin `python-version: "3.14"` on 7 `setup-uv` sites
 >   (ci/release-please/mutation) + `.github/zizmor.yml` ignore-baseline re-triage;
 >   `eval-nightly.yml` deliberately NOT pinned (`disabled_manually` — pin on
 >   re-enable). **W0-4b**: hydration-safe waits (foundation/helpers/test_ai_writing +
@@ -750,10 +768,14 @@ each task is an independent revert)**
   missing-file LOUD — fail the check instead of vacuous pass); **W1-9b** ci.yml header
   comment + docstring references in `check_gate_drift.py`. 2–3 files each. Gate:
   check_gate_drift green AND fails loudly with the file temporarily removed.
-- **W1-10 Post-merge observation, 30 days** (checklist doc only): nightly idle/code/
-  probe behavior ×1 week, budget-report trend weekly (incl. the W1-11 PR-run count
-  vs the ~50 target), one backend PR observed end-to-end through the folded
-  tools+unit job, no red-run recurrence; feeds any R4 decision (§9.2). Files: notes.
+- **W1-10 Post-merge observation, 30 days of billable CI activity** (checklist doc
+  only): nightly idle/code/probe behavior ×1 week, budget-report trend weekly (incl.
+  the W1-11 PR-run count vs the ~50 target), one backend PR observed end-to-end
+  through the folded tools+unit job, no red-run recurrence; feeds any R4 decision
+  (§9.2). Files: notes. **Timing (3rd amendment, §15.2): "30 days post-merge" is
+  re-based to 30 days of billable CI activity post-billing-return (November) — the
+  first full nightly after return is the re-baseline, and the billing-dead period
+  (0-minute fail-starts) contributes no observations.**
   Gate: 30-day budget-report total recorded.
 - **W1-11 Budget-report PR-run count** (§5.9 monitoring: tally `event ==
   "pull_request"` runs in the existing inline script; append the count + ~50 target
@@ -797,7 +819,9 @@ coverage), then narrow the push trigger — no release-PR gap at any point)**
   /usr/local/bin, add a cacheable target dir — `ci.yml` + script ≤3 files). Gate:
   cache hit; download step skipped on match.
 - **W3-4 Record measured savings** (compare pre/post job times for the six affected
-  jobs; append to W1-10 notes). Docs only.
+  jobs; append to W1-10 notes). Docs only. **Timing (3rd amendment, §15.2): "pre" =
+  last pre-outage job times; "post" is measured inside W1-10's post-billing-return
+  window — cache-hit effects are invisible while billing is dead.**
 
 Task counts: **W0: 4 (W0-2 closed without code) · W1: 13 (incl. W1-9a/9b as one
 numbered pair) · W2: 3 · W3: 4 — 24 tasks.**
@@ -896,3 +920,76 @@ the prior behavior without cross-task coupling. Notable safety properties:
    weekly-latency and conventional-commit-pre-gate variants rejected).
 
 No open questions remain.
+
+---
+
+## 15. November billing mode (3rd amendment — 2026-10-18, PO directive)
+
+**Context (binding, PO 2026-10-18).** GitHub Actions billing is dead until
+**November 2026** — the third outage. Since 2026-10-17T07:00Z every job in every
+workflow (push, nightly, PR) fail-starts with the account spending-limit annotation:
+0 steps executed, 0 minutes billed (W0 round 2:
+`docs/superpowers/notes/2026-10-18-w0-round2-nightly-diagnosis.md`; occurrence
+history: 2026-10-01 zero-actions wave · W0-1's 2026-10-16 push cluster · this one).
+Repo precedent: the 2026-10-01 wave substituted the full LOCAL gate for CI and used
+`[skip ci]` pushes. PO directive: *"Es muss so weitergehen"* — the program continues
+in **local-verification mode**. This section converts only the merge/observation
+criteria; the Waves 1–3 design, forecasts, and all other rulings are unchanged.
+
+### 15.1 Merge criterion for PR #259 converts to local-gate + review
+
+PR #259 is the in-flight Wave-1 PR (branch head `8de4d5bf` at W0-round-2 diagnosis).
+While GitHub-side PR checks are unavailable they **do not gate**. Merge criterion:
+
+1. **Full local CI-matrix-equivalent gate GREEN on the branch tip** — exact matrix
+   (one row per CI surface; commands are the standing local recipes):
+
+   | CI surface | Local equivalent (exact) |
+   |---|---|
+   | architecture + gate scripts | `just check-architecture` (check_architecture `--prompt-integrity`, exception-baseline, prompt-surface-contract, empty-kb-vars, frontmatter-schema, test-coverage-gaps `--fail-on-missing`, frontend-file-size) **+** `uv run python scripts/check_gate_drift.py` |
+   | quality: ruff/format | `just lint-check` (ruff check + ruff format `--check`) |
+   | quality: pyright ×2 | `just typecheck` (strict, root config) **+** `just typecheck-tests` (basic, `tests/pyrightconfig.json`) |
+   | test-unit | unit suite with coverage threshold parity: `--cov-fail-under=80` (as ci.yml) |
+   | test-integration | `just test-integration` — **including** the schema-mutating (`-m schema_mutating`) and golden (`-m golden_pages`) markers |
+   | frontend (full) | `just test-frontend` (Vitest incl. the VRT-contract preflight) + `just vrt` + production `build` + standalone boot smoke |
+   | test-e2e | `just e2e` — CI-faithful live stack (services up, `ENVIRONMENT=test`, timeout 300) |
+   | zizmor / actionlint | `zizmor --config .github/zizmor.yml .github/workflows/` + `actionlint` (already the per-task §10 discipline) |
+
+   The wider standing local gate (`just verify`, `just security`) remains available
+   practice but is NOT part of the sealed criterion — the table above is.
+
+2. **Independent review APPROVED** — already held; not re-run.
+3. **Squash-merge with `[skip ci]` in the merge-commit subject** — suppresses the
+   otherwise-guaranteed fail-start push run on the merge commit (2026-10-01
+   precedent: `[skip ci]` honored, run-list-verified).
+
+### 15.2 Deferred-then-resumed formal gates — November re-entry is a designed re-baseline
+
+The two observation-based formal gates **start when billing returns (November)**, not
+at merge: W0-4's "3 consecutive green nightlies" and the W1-10/W3-4 30-day
+measurement (task descriptions updated in §10). This is not an accident of timing —
+the nightly-gate design is **self-healing through the outage**:
+
+- Billing-failed nightlies never run jobs, so the "last *successful* schedule run"
+  query (§5.1 step 1) keeps returning the **old green SHA** from before the outage
+  for the entire dead period.
+- The first post-billing nightly therefore compares the then-current HEAD against
+  that old base → the accumulated delta spans the whole outage (or the base is
+  unreachable → fail-open) → **FULL nightly, automatically.**
+
+State it explicitly: **the first post-billing nightly is a designed full
+re-baseline of main**, by construction of §5.1 — no manual `workflow_dispatch`, no
+streak bookkeeping, no special case. (Until PR #259 merges, the pre-W1 nightly is
+unconditionally full anyway — the property holds on both sides of the merge.) The
+3-green streak and the 30-day measurement both count from that re-baseline;
+W0-round-2's recommendation of one recovery `workflow_dispatch` remains available as
+an optional pre-check but is not required by this spec.
+
+### 15.3 Schedule noise — cosmetic red, no action
+
+While billing is dead, the nightly cron (02:37; and the Sunday budget cron once
+W1-7 merges) fires and fail-starts at 0 minutes billed — **cosmetic red only**.
+Ruling: **do NOT disable the schedules.** Disabling and re-enabling would only
+create a November re-entry task that someone can forget; leaving them running costs
+exactly nothing (0 billed minutes) and preserves cadence discipline — the moment
+billing returns, the schedules resume observing without any repo action.

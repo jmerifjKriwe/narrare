@@ -18,8 +18,10 @@
 # validates rendered EPUBs).
 #
 # Install prefix:
-#   root      → /usr/local/{bin,share}
-#   non-root  → ~/.local/{bin,share}   (ensure it is on $PATH)
+#   NARRARE_TOOLCHAIN_DIR set → that dir's {bin,share} (CI cache target;
+#     caller MUST put "$NARRARE_TOOLCHAIN_DIR/bin" on PATH)
+#   otherwise root      → /usr/local/{bin,share}
+#   otherwise non-root  → ~/.local/{bin,share}   (ensure it is on $PATH)
 #
 # Requirements: curl, tar (any), python3 (used for portable extraction of
 # .tar.xz / .tar.gz / .zip so the script needs no xz-utils / unzip).
@@ -44,9 +46,16 @@ EPUBCHECK_VERSION="${EPUBCHECK_VERSION:-5.3.0}"
 INSTALL_EPUBCHECK="${INSTALL_EPUBCHECK:-0}"
 
 # ---------------------------------------------------------------------------
-# Install prefix (root → /usr/local, user → ~/.local)
+# Install prefix (NARRARE_TOOLCHAIN_DIR override → root → /usr/local → ~/.local)
 # ---------------------------------------------------------------------------
-if [ "$(id -u)" -eq 0 ]; then
+if [ -n "${NARRARE_TOOLCHAIN_DIR:-}" ]; then
+    # Explicit target dir (CI cache, W3-3). Every tool below installs
+    # under this one prefix: typst + pandoc + the epubcheck launcher →
+    # $PREFIX/bin, the EPUBCheck jar tree → $PREFIX/share/epubcheck
+    # (launcher resolves lib/ relative to the jar). Unset → unchanged
+    # defaults (local parity, Docker root install).
+    PREFIX="${NARRARE_TOOLCHAIN_DIR}"
+elif [ "$(id -u)" -eq 0 ]; then
     PREFIX="/usr/local"
 else
     PREFIX="${HOME}/.local"

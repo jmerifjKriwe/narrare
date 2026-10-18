@@ -4,11 +4,17 @@ Extracted from check_gate_drift.py for RULE-04 compliance.
 This module contains the "business logic" for detecting drift between
 gate-exceptions.json / the CI workflow and the documented gate baseline.
 
-Authority: ADR-098 — the gate SSOT is the ci.yml header table (G1-G10 + G6a)
-plus CONSTRAINTS.md §6. The retired doc anchor
-quality-gates.md (removed in f11eb44a, retired by ADR-098)
-is no longer compared; ADR-098 is also the process authority for the
-gate-exception registry (scripts/gate-exceptions.json).
+Authority: ADR-098, re-anchored by CI-R1 W1-9a — the gate SSOT is the ci.yml
+header audit table (G1-G10 + G6a) plus CONSTRAINTS.md §6, mirrored in prose by
+docs/development/quality-gates.md (QUALITY_GATES_PATH). The agent-context doc
+anchor retired by ADR-098 (removed in f11eb44a) stays retired. ADR-098 is also
+the process authority for the gate-exception registry
+(scripts/gate-exceptions.json).
+
+A MISSING quality-gates.md is a hard failure (check "ssot-present"), not a vacuous
+pass: the pre-W1-9 design treated the SSOT as optional and silently degraded on
+absence — but a missing SSOT is drift by definition, the exact condition this
+checker exists to catch. The ssot-present item is never exception-eligible.
 """
 
 from __future__ import annotations
@@ -24,6 +30,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CI_YAML_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 EXCEPTIONS_PATH = REPO_ROOT / "scripts" / "gate-exceptions.json"
+QUALITY_GATES_PATH = REPO_ROOT / "docs" / "development" / "quality-gates.md"
 
 
 # ── Data structures ────────────────────────────────────────────
@@ -232,6 +239,33 @@ def check_locale_sync(
     )
 
 
+def check_ssot_present() -> DriftItem:
+    """Check that the quality-gates SSOT doc exists.
+
+    Root cause (W1-9a): the pre-W1-9 read silently degraded to "" when the file
+    was absent — the design assumed an optional SSOT. That was wrong: a missing
+    SSOT is drift by definition, so absence fails loudly here and can never be
+    silenced via the exception registry (``has_exception`` stays False by
+    construction; this check does not consult the registry).
+    """
+    rel_path = QUALITY_GATES_PATH.relative_to(REPO_ROOT)
+    if QUALITY_GATES_PATH.is_file():
+        return DriftItem(
+            check_id="ssot-present",
+            passed=True,
+            detail=f"Quality gates SSOT present at {rel_path}",
+        )
+    return DriftItem(
+        check_id="ssot-present",
+        passed=False,
+        detail=(
+            f"Quality gates SSOT MISSING at {rel_path} — a missing SSOT is drift "
+            "by definition; restore docs/development/quality-gates.md or fix "
+            "QUALITY_GATES_PATH (not exception-eligible)"
+        ),
+    )
+
+
 # ── Orchestration ──────────────────────────────────────────────
 
 
@@ -242,6 +276,7 @@ def run_all_checks() -> DriftReport:
     exception_ids = _get_exception_ids(exceptions_data)
 
     report = DriftReport()
+    report.items.append(check_ssot_present())
     report.items.append(check_coverage_threshold(ci_content, exception_ids))
     report.items.append(check_streaming_compliance(ci_content, exception_ids))
     report.items.append(check_locale_sync(ci_content, exception_ids))

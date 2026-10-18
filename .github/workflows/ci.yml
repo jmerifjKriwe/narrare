@@ -1,48 +1,74 @@
 name: CI
 
 # ---------------------------------------------------------------------------
-# Gate Compliance Audit (as of: 2026-06-03)
+# Gate Compliance Audit (as of: 2026-10-17 — synced with the CI R1
+# event-driven redesign; spec:
+# docs/superpowers/specs/2026-10-16-ci-r1-event-driven-redesign.md)
 # ---------------------------------------------------------------------------
-# Reference: this header table is the CI-gate SSOT.
+# Reference: this header table is the CI-gate SSOT; canonical prose doc:
+# docs/development/quality-gates.md (mirrored content, machine-checked for
+# presence by scripts/check_gate_drift.py — keep the two in sync).
 #
-# | Gate | Tool / Check                          | CI Status   | Notes                              |
-# |------|----------------------------------------|-------------|------------------------------------|
-# | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separate jobs  |
-# | G2   | --cov-fail-under (Coverage)            | ✅ Blocking (≥80%) | Target 80% reached (global 82.51%) |
-# | G3   | check_architecture.py                  | ✅ Blocking  | architecture Job                   |
-# | G3e  | check_type_ignores (RULE-23)           | ✅ Blocking  | architecture Job (ratchet — additions fail) |
-# | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
-# | G3d  | check_prompt_surface_contract.py       | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D) |
-# | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
-# | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
-# | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
-# | G6   | pyright (strict; mypy not required)    | ✅ Blocking  | quality Job                        |
-# | G6a  | pyrefly (additive, ADR-097; 3 kinds off + baseline) | ✅ Blocking  | quality Job                       |
-# | G7   | ruff check + ruff format --check       | ✅ Blocking  | quality Job                        |
-# | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
-# | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |
-# | G9   | check_streaming_compliance.py (RULE-20)| ✅ Blocking  | architecture Job                   |
-# | G10  | check_locale_sync.py                   | ✅ Blocking  | architecture Job (was: warning)    |
-# | --   | check_doc_drift.py                     | ✅ Blocking  | architecture Job                   |
-# | --   | check_registry_drift.py                | ✅ Blocking  | architecture Job                   |
-# | --   | check_quality_metrics.py               | ⚠️ Warning   | architecture Job (opt-in)          |
-# | --   | check_frontend_file_size.py (RULE-04)  | ✅ Blocking  | frontend Job                       |
-# | --   | check_test_coverage_gaps.py (RULE-10)  | ✅ Blocking  | architecture Job                   |
-# | --   | evals smoke (pydantic-evals)            | ✅ Blocking  | architecture Job (secret-free)     |
-# | --   | check_eval_drift.py                     | ✅ Blocking  | architecture Job                   |
-# | --   | check_module_coverage.py (RULE-10)    | ✅ Blocking   | test-unit Job (--fail, ratcheted baselines) |
-# | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
-# | --   | check-vrt-mock-contract.ts (ADR-059)    | ✅ Blocking  | frontend Job (before VRT run)     |
-# | --   | Gitleaks (secret scanning, AUFG-05-09) | ✅ Blocking  | quality Job                        |
-# | --   | bandit + pip-audit                     | ✅ Blocking  | quality Job                        |
-# | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
-# | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
-# | --   | Standalone boot smoke (frontend)       | ✅ Blocking  | frontend-standalone Job (PR-only)  |
-# | --   | check_test_performance.py              | ⚠️ Warning   | frontend Job (WARNING-only)        |
-# | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
-# | --   | check_current_state_facts.py (SSOT)    | ✅ Blocking  | architecture Job                   |
-# | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention) |
-# | MutMut Mutation Score       | mutation-testing-monthly.yml    | 📅 Monthly  | Non-blocking, issue report        |
+# | Gate | Tool / Check                            | CI Status   | Notes                                                          |
+# |------|------------------------------------------|-------------|----------------------------------------------------------------|
+# | G1   | pytest unit + integration + e2e          | ✅ Blocking  | Unit/Integration/E2E in separate jobs                          |
+# | G2   | --cov-fail-under (Coverage)              | ✅ Blocking (≥80%) | Target 80% reached (global 82.51%)                       |
+# | G3   | check_architecture.py                    | ✅ Blocking  | architecture Job                                               |
+# | G3e  | check_type_ignores (RULE-23)             | ✅ Blocking  | architecture Job (ratchet — additions fail)                    |
+# | G3b  | check_exception_baseline.py              | ✅ Blocking  | architecture Job                                               |
+# | G3d  | check_prompt_surface_contract.py         | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D)                   |
+# | G3c  | export_openapi.py --check                | ✅ Blocking  | architecture Job                                               |
+# | G4   | test_fake_conformance.py                 | ✅ Blocking  | test-unit Job (via pytest)                                     |
+# | G5   | Cross-layer contract tests               | ✅ Blocking  | test-unit Job (via pytest)                                     |
+# | G6   | pyright (strict; mypy not required)      | ✅ Blocking  | test-unit pre-block (PR/nightly) + push-only quality Job [1]   |
+# | G6a  | pyrefly (additive, ADR-097; 3 kinds off + baseline) | ✅ Blocking | quality split as G6 [1]                                |
+# | G7   | ruff check + ruff format --check         | ✅ Blocking  | quality split as G6 [1]                                        |
+# | G8   | check_adoption.py                        | ✅ Blocking  | architecture Job                                               |
+# | G9   | check_prompt_structure.py                | ✅ Blocking  | architecture Job                                               |
+# | G9   | check_streaming_compliance.py (RULE-20)  | ✅ Blocking  | architecture Job                                               |
+# | G10  | check_locale_sync.py                     | ✅ Blocking  | architecture Job (was: warning)                                |
+# | --   | check_doc_drift.py                       | ✅ Blocking  | architecture Job                                               |
+# | --   | check_registry_drift.py                  | ✅ Blocking  | architecture Job                                               |
+# | --   | check_quality_metrics.py                 | ⚠️ Warning   | architecture Job (opt-in)                                      |
+# | --   | check_frontend_file_size.py (RULE-04)    | ✅ Blocking  | frontend Job                                                   |
+# | --   | check_test_coverage_gaps.py (RULE-10)    | ✅ Blocking  | architecture Job                                               |
+# | --   | evals smoke (pydantic-evals)             | ✅ Blocking  | architecture Job (secret-free)                                 |
+# | --   | check_eval_drift.py                      | ✅ Blocking  | architecture Job                                               |
+# | --   | check_module_coverage.py (RULE-10)       | ✅ Blocking  | test-unit Job (--fail, ratcheted baselines)                    |
+# | --   | check-testid.ts (data-testid gate)       | ✅ Blocking  | frontend Job                                                   |
+# | --   | check-vrt-mock-contract.ts (ADR-059)     | ✅ Blocking  | frontend Job (before VRT run)                                  |
+# | --   | Gitleaks (secret scanning, AUFG-05-09)   | ✅ Blocking  | quality split as G6 [1] (push path: full history)              |
+# | --   | bandit + pip-audit                       | ✅ Blocking  | quality split as G6 [1]                                        |
+# | --   | biome check (frontend lint/format)       | ✅ Blocking  | frontend Job                                                   |
+# | --   | pnpm test (frontend tests)               | ✅ Blocking  | frontend Job                                                   |
+# | --   | Standalone boot smoke (frontend)         | ✅ Blocking  | frontend Job (post-Build step; PRs + frontend nights, W1-6)    |
+# | --   | check_test_performance.py                | ⚠️ Warning   | frontend Job (WARNING-only)                                    |
+# | --   | check_pytest_collection_performance.py   | ⚠️ Warning   | test-unit Job (WARNING-only)                                   |
+# | --   | check_current_state_facts.py (SSOT)      | ✅ Blocking  | architecture Job                                               |
+# | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention)                     |
+# | --   | budget-report (quota early-warning)      | 📅 Weekly    | Sundays 03:07 UTC, non-blocking (W1-7, spec §5.7)              |
+# | MutMut Mutation Score | mutation-testing-monthly.yml | 📅 Monthly | Non-blocking, issue report                                     |
+#
+# [1] Quality split (R3, spec §5.8, tasks W1-3/W1-4): the tool steps live
+#     once in the local composite .github/actions/quality — run as
+#     test-unit's pre-pytest step-group on the PR/nightly paths and by the
+#     push-only quality Job (code-filtered, spec §5.3) on direct pushes.
+#
+# Composition notes (post-redesign; spec §5):
+# - Nightly (02:37): event-driven/incremental via the nightly-gate Job —
+#   should_run/probe/component gating (e2e = backend ∨ frontend); weekly
+#   full probe Sundays; idle nights skip all expensive jobs. Budget
+#   nights (Sun 03:07) run budget-report only.
+# - PR types: [opened, synchronize, reopened, ready_for_review] (W1-5) —
+#   draft != true jobs rerun when a draft is marked ready.
+# - test-unit (incl. the folded quality tools) runs on backend PRs only
+#   (changes.backend, spec §5.4); docs-/frontend-only PRs skip it.
+# - E2E (W1-12, spec §5.10): nightly + dispatch + path-gated PR branch —
+#   tests/e2e/** only (changes.e2e_specs, draft != true); closes the
+#   W0-3 cluster-A blind spot (new E2E specs' first CI contact was the
+#   post-merge nightly). An E2E-spec PR also trips changes.backend
+#   (tests/** is inside the backend filter), so unit + integration run
+#   on the same PR as well — per the §5.10 cost estimate, not an error.
 # ---------------------------------------------------------------------------
 
 on:
@@ -56,7 +82,16 @@ on:
     # high load at common minutes (our monthly cron saw a 6.8 h delay on
     # Oct 1). Validated executable via workflow_dispatch run 36972990834.
     - cron: "37 2 * * *"
+    # Budget report: weekly, Sundays 03:07 UTC (W1-7, spec §5.7) — off-peak
+    # like the nightly. Jobs discriminate by the exact schedule string
+    # (`github.event.schedule`): on budget nights everything except
+    # budget-report skips.
+    - cron: "7 3 * * 0"
   pull_request:
+    # W1-5 (spec §5.5): default types omit ready_for_review, so jobs that
+    # skip drafts (draft != true guards) never rerun when a draft is marked
+    # ready — with no branch protection (GitHub Free) nothing catches the gap.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "apps/**"
       - "packages/**"
@@ -109,16 +144,31 @@ jobs:
   # Always runs on push (main/develop) so post-merge signal stays complete;
   # on PRs it narrows scope to what the diff actually touches. Nightly and
   # dispatch runs execute this job too — on schedule the filter step is
-  # skipped (no diff base); its outputs are only consulted on PRs.
+  # skipped (no diff base). Budget nights (03:07 Sundays, W1-7 §5.7) skip
+  # the whole job: nothing consumes these outputs there. Outputs are
+  # consulted on PRs (component gates) and, since W1-4, on push: the
+  # `code` output gates the push-only quality job (spec §5.3).
   # -------------------------------------------------------------------------
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # The exact schedule string is the 02:37-nightly vs 03:07-budget
+    # discriminator (W1-7, §5.7): PR/push/dispatch/nightly run exactly as
+    # before, budget nights skip.
+    if: >-
+      github.event_name != 'schedule' ||
+      github.event.schedule == '37 2 * * *'
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       workflows: ${{ steps.filter.outputs.workflows }}
+      code: ${{ steps.filter.outputs.code }}
+      # Gates test-e2e's PR branch (W1-12, §5.10). Consulted on
+      # pull_request only — the schedule/dispatch paths run the full
+      # matrix via nightly-gate (W1-2 empty-output pattern: the gate
+      # skips on PRs, so its outputs are '' and this output decides).
+      e2e_specs: ${{ steps.filter.outputs.e2e_specs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -142,6 +192,10 @@ jobs:
               - 'evals/**'
               - 'pyproject.toml'
               - 'uv.lock'
+              # Tool-input parity (§5.8, W1-4): a gitleaks-config-only PR
+              # still exercises the folded quality tools (same precedent
+              # as pyproject.toml/uv.lock above).
+              - '.gitleaks.toml'
             frontend:
               - 'packages/web/**'
               - 'package.json'
@@ -163,6 +217,273 @@ jobs:
               - '.github/workflows/**'
               - '.github/zizmor.yml'
               - '.github/CODEOWNERS'
+            # Push-only quality gate (R3, spec §5.3, task W1-4): consumed
+            # by the `quality` job's `if`. Sealed exact list — a superset
+            # of every quality-tool input (ruff/pyright/bandit/pip-audit
+            # target exactly these paths; gitleaks scans shallow on push),
+            # so docs/state-only pushes cannot change any tool input and
+            # skip the job. Deliberately job-level (NOT on.push.paths): a
+            # workflow-level filter would suppress changes/architecture on
+            # docs pushes, violating §5.3's "always" requirement.
+            code:
+              - 'apps/api/**'
+              - 'packages/**'
+              - 'scripts/**'
+              - 'evals/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            # E2E spec-suite files (W1-12, spec §5.10) — gates test-e2e's
+            # PR branch. Decision: tests/e2e/** ONLY. The CI E2E job runs
+            # the pytest suite (uv run pytest tests/e2e/); it never reads
+            # packages/web/playwright.config.ts — that config drives the
+            # frontend Job's Node @playwright/test runner (VRT + web e2e),
+            # already PR-gated via the `frontend` filter
+            # (packages/web/**). Shared boot infra (seed_dev_user.py,
+            # justfile, export toolchain) is likewise excluded:
+            # cross-job inputs are validated by the nightly (≤1d) and by
+            # the jobs that own them on the same PR. The PR path
+            # validates the SPECS (the W0-3 cluster-A gap), not the app.
+            # Nightly needs NO duplicate term here: tests/e2e/** ⊂
+            # tests/** ⊂ the backend filter, so spec changes already wake
+            # the nightly and set backend=true — nightly-gate's derived
+            # `e2e` (backend ∨ frontend) covers them. Deliberately
+            # distinct from that derived output: spec files (PR) vs
+            # full-stack delta (nightly).
+            e2e_specs:
+              - 'tests/e2e/**'
+
+  # -------------------------------------------------------------------------
+  # Nightly Gate — event-driven nightly foundation (spec
+  # 2026-10-16-ci-r1-event-driven-redesign §5.1, task W1-1).
+  #
+  # Resolves the last SUCCESSFUL schedule run of this workflow ("last
+  # green") and diffs every nightly-relevant path against it. Every
+  # expensive job consumes these outputs since W1-2 (spec §5.1 table):
+  # the schedule path gates on them, the PR path keeps consulting the
+  # `changes` job, so on PR/push events this job skips entirely and its
+  # outputs stay empty by design (consumer `if`s tolerate that — every
+  # gate-output reference sits behind an explicit event check).
+  #
+  # FAIL-OPEN CONTRACT (spec §5.1, §11): an unresolvable API failure or a
+  # first-ever run without any successful nightly emits should_run=true
+  # plus every component true — a gate bug must degrade to a FULL nightly,
+  # never to a skipped one. should_run=false is reachable ONLY through a
+  # correctly resolved, genuinely empty delta (idle night). dorny with an
+  # explicit base SHA likewise treats an unreachable base (force-push/
+  # rebase, no common ancestor) as "all files added" — same direction.
+  #
+  # workflow_dispatch = full matrix unconditionally (manual run, no base
+  # comparison); `probe` additionally turns true on Sundays (§5.1.4).
+  # -------------------------------------------------------------------------
+  nightly-gate:
+    name: Nightly Gate
+    # PR/push runs skip the whole job: outputs are consulted on the
+    # nightly path only (W1-2's PR branches keep consulting `changes`).
+    # W1-7 (§5.7): the schedule branch additionally discriminates the cron
+    # string, so the gate doesn't run (and bill) on budget nights (03:07
+    # Sundays); dispatch and the 02:37 nightly keep running.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' &&
+       github.event.schedule == '37 2 * * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Last-green lookup calls the Actions API (workflow runs list).
+      actions: read
+    outputs:
+      # Composition: dispatch or fail-open forces every output true;
+      # otherwise the resolved dorny delta decides. All derivation stays
+      # in these expressions — no ${{ }} templating inside run: bodies.
+      # should_run includes the probe term: a probe Sunday forces the
+      # FULL matrix "regardless of deltas" (§5.1.4; §9.2 R4 bills 4.3 ×
+      # ~39 min/mo for exactly that), and the consumer conditions are
+      # sealed as `should_run && (probe ‖ component)` — without the term
+      # here, an idle Sunday would evaluate should_run=false, probe=true
+      # and skip the entire probe. should_run therefore means "the
+      # nightly does anything tonight", not merely "a delta exists".
+      should_run: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.lastgreen.outputs.sunday == 'true' ||
+          steps.filter.outputs.backend == 'true' ||
+          steps.filter.outputs.frontend == 'true' ||
+          steps.filter.outputs.workflows == 'true'
+        }}
+      backend: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.backend == 'true'
+        }}
+      frontend: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.frontend == 'true'
+        }}
+      workflows: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.workflows == 'true'
+        }}
+      # E2E is full-stack (spec §5.1): runs when either side changed.
+      e2e: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.filter.outputs.backend == 'true' ||
+          steps.filter.outputs.frontend == 'true'
+        }}
+      # Weekly full probe: Sundays, UTC (§5.1.4). Dispatch/fail-open
+      # already run the full matrix, which subsumes the probe.
+      probe: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          steps.lastgreen.outputs.failopen == 'true' ||
+          steps.lastgreen.outputs.sunday == 'true'
+        }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The last-green base can be arbitrarily old; a full clone keeps
+          # dorny's local diff possible and fetch-doubling out of the way.
+          fetch-depth: 0
+          # dorny must be able to fetch the base commit when it is no longer
+          # locally reachable (force-push/rebase) — without the token that path
+          # would fail CLOSED, violating the fail-open contract (same
+          # adjudication as the `changes` job, Task-2 CONCERN 1). Explicit
+          # persist-credentials maps to zizmor's auditor persona only —
+          # default-persona runs stay green; a persona escalation surfaces
+          # it as a finding.
+          persist-credentials: true
+
+      - name: Resolve last successful nightly SHA (fail-open)
+        id: lastgreen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python3 - <<'PYEOF'
+          import datetime as dt
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+
+          out_path = os.environ["GITHUB_OUTPUT"]
+
+          def emit(key, value):
+              with open(out_path, "a", encoding="utf-8") as fh:
+                  fh.write(f"{key}={value}\n")
+
+          # Manual dispatch = full matrix by definition; no base lookup.
+          if os.environ["EVENT_NAME"] == "workflow_dispatch":
+              emit("failopen", "true")
+              print("workflow_dispatch: manual run = full matrix (no base)")
+              raise SystemExit(0)
+
+          # Weekly full-probe flag (§5.1.4): Sunday in UTC. (Note: %u
+          # numbers Sunday 7, not 0 — weekday()==6 is the unambiguous form.)
+          now = dt.datetime.now(dt.timezone.utc)
+          emit("sunday", "true" if now.weekday() == 6 else "false")
+
+          url = (
+              "https://api.github.com/repos/"
+              + os.environ["REPO"]
+              + "/actions/workflows/ci.yml/runs"
+              + "?event=schedule&status=success&per_page=1"
+          )
+          data = None
+          try:
+              # Retry with backoff on 429/5xx — budget-report pattern
+              # (§5.1 step 1). Unresolvable failure -> fail-open below.
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request(url, headers={
+                          "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                          "Accept": "application/vnd.github+json",
+                      })
+                      with urllib.request.urlopen(req, timeout=30) as resp:
+                          data = json.load(resp)
+                      break
+                  except urllib.error.HTTPError as exc:
+                      if attempt == 3 or exc.code not in (429, 500, 502, 503, 504):
+                          raise
+                      time.sleep(2 * (attempt + 1))
+          except Exception as exc:
+              # Fail-open contract: degrade to a full nightly, never fail
+              # closed (failure is logged here, RULE-11 satisfied).
+              print(f"last-green lookup failed: {exc!r} -> fail-open")
+
+          runs = (data or {}).get("workflow_runs") or []
+          sha = runs[0].get("head_sha") if runs else ""
+          if sha:
+              emit("sha", sha)
+              emit("failopen", "false")
+              print(f"last successful nightly: {sha[:12]}")
+          else:
+              # First-ever run (no successful nightly yet) or unresolved
+              # API failure — both fail open.
+              emit("failopen", "true")
+              print("no last-green SHA resolved -> fail-open (full nightly)")
+          PYEOF
+
+      - name: Detect nightly-relevant changes since last green
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        # Meaningful only with a resolved base; dispatch and fail-open
+        # short-circuit at the outputs level instead (all forced true).
+        if: steps.lastgreen.outputs.sha != ''
+        with:
+          # Delta against the last green nightly, not the default branch.
+          base: ${{ steps.lastgreen.outputs.sha }}
+          filters: |
+            # NIGHTLY FILTER SYNC: the backend/frontend/workflows path
+            # lists below must stay identical to the `changes` job's
+            # filters above (spec §5.1 reuse-verbatim rule) so the PR-side
+            # and nightly side can never drift; the `.gitleaks.toml`
+            # backend entry (W1-4, §5.8 tool-input parity) is present in
+            # BOTH lists. should_run = the union of the three.
+            backend:
+              - 'apps/api/**'
+              - 'packages/core/**'
+              - 'packages/i18n/**'
+              - 'scripts/**'
+              - '!scripts/check_frontend_file_size.py'
+              - '!scripts/check-testid.ts'
+              - '!scripts/validate-i18n.ts'
+              - '!scripts/testid_baselines.json'
+              - 'tests/**'
+              - 'evals/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              # Tool-input parity (§5.8, W1-4): a gitleaks-config-only PR
+              # still exercises the folded quality tools (same precedent
+              # as pyproject.toml/uv.lock above).
+              - '.gitleaks.toml'
+            frontend:
+              - 'packages/web/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              # Cross-cutting scripts: rationale documented in the
+              # `changes` job's frontend filter (shared baseline module).
+              - 'scripts/check_frontend_file_size.py'
+              - 'scripts/architecture/baselines.py'
+              - 'scripts/check-testid.ts'
+              - 'scripts/check_test_performance.py'
+              - 'scripts/validate-i18n.ts'
+              - 'scripts/testid_baselines.json'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/zizmor.yml'
+              - '.github/CODEOWNERS'
 
   # -------------------------------------------------------------------------
   # Fast fail: architecture constraints (< 30s)
@@ -174,7 +495,16 @@ jobs:
     # Deliberately NOT gated on `changes` — this job is cheap (~3min) and
     # covers cross-cutting drift checks (docs, ADRs, eval smoke, registry)
     # that don't map cleanly to a single path. Keep it as the universal
-    # fast-fail gate; gate only the genuinely expensive jobs below instead.
+    # fast-fail gate on PR/push/dispatch; only the nightly path respects
+    # nightly-gate's should_run so idle nights skip everything
+    # (spec 2026-10-16 §5.1 table). The !cancelled() && !failure() prefix
+    # is load-bearing: nightly-gate SKIPS on PR/push events, and without
+    # an always()-class guard GitHub would skip this dependent too.
+    needs: [nightly-gate]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'schedule' ||
+       needs.nightly-gate.outputs.should_run == 'true')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -296,27 +626,39 @@ jobs:
         run: uv run --no-sync python scripts/check_current_state_facts.py
 
   # -------------------------------------------------------------------------
-  # Quality gate: lint, typecheck, security in ONE job (spec §8 Phase 2) —
-  # a shared checkout + a single `uv sync` save ~2-3 min per run in setup
-  # and per-job minute rounding. Event-agnostic like its predecessors
-  # (lint / typecheck / security ran on every event too).
+  # Quality gate (PUSH-ONLY, R3 decision (a), spec §5.8 + §5.3) — lint,
+  # typecheck, security for direct pushes to main/develop, which bypass
+  # PR gating entirely (§5.3: ~152 direct code pushes/month — this job
+  # is their ONLY quality gate). On the PR and nightly paths the
+  # identical tool set runs as a folded step-group inside test-unit
+  # (backend-gated, §5.4), calling the same composite — tool parity
+  # between the two call sites is structural, not discipline-dependent.
+  # Code-gated (the sealed §5.3 `code` filter): docs/state-only pushes
+  # cannot change any quality-tool input (ruff/pyright/bandit/pip-audit
+  # inputs are exactly the filter's paths; gitleaks scans shallow on
+  # push), so they skip the job.
   # -------------------------------------------------------------------------
   quality:
     name: Lint, Typecheck & Security
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [architecture]
+    needs: [architecture, changes]
+    # Push-only AND code-gated (§5.3, task W1-4): never on PR/schedule/
+    # dispatch — those paths get the tools inside test-unit (§5.8). The
+    # !cancelled() && !failure() prefix keeps the push fast-fail
+    # property: an architecture failure on a code push still skips this
+    # job (unchanged from when the job ran on every event).
+    if: >-
+      !cancelled() && !failure() &&
+      github.event_name == 'push' &&
+      needs.changes.outputs.code == 'true'
     steps:
-      # fetch-depth: full history (0) on pushes to main/develop for the
-      # gitleaks full-history scan; shallow (1) otherwise — PR diffs are
-      # small enough that the default clone covers the changed range.
-      # NOTE: must stay in canonical ternary form `!= 'push' && 1 || 0`.
-      # The previous `== 'push' && 0 || 1` silently always yielded 1 (the
-      # true-branch 0 is falsy, so `|| 1` always won) — zizmor's
-      # unsound-ternary rule guards this pattern now.
+      # Push-only since W1-4: full history (0) for the gitleaks
+      # full-history scan. The old event ternary collapsed to its push
+      # branch once the job stopped running on any other event (§5.8).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: ${{ github.event_name != 'push' && 1 || 0 }}
+          fetch-depth: 0
           # Jobs below execute PR-supplied scripts — do not leave the
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
@@ -334,96 +676,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev --extra embeddings
 
-      # ── Lint & format ─────────────────────────────────────────────────
-      - name: Ruff lint
-        run: uv run ruff check apps/ packages/ scripts/ tests/
-
-      - name: Ruff format check
-        run: uv run ruff format --check apps/ packages/ scripts/ tests/
-
-      # ── Type checking ─────────────────────────────────────────────────
-      # Pyright cache: RESTORE-only here. The write is a separate, explicit
-      # actions/cache/save step at the END of this job, gated to nightly
-      # and main pushes (see "Save Pyright cache" below) — cache writes are
-      # visible and deliberate, never an implicit post-step side effect.
-      - name: Restore Pyright cache
-        id: pyright-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            .pyright/
-            **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
-          restore-keys: |
-            pyright-${{ runner.os }}-
-
-      - name: Pyright
-        run: uv run pyright
-
-      # Mirror the local `just typecheck-tests` gate (and pre-commit
-      # `pyright-tests` hook): the main pyright config (pyproject.toml)
-      # excludes tests/ for performance, so test files are type-checked
-      # separately by tests/pyrightconfig.json (basic mode). Q-015-Q-019
-      # gate-coverage follow-up.
-      - name: Pyright (Tests)
-        run: uv run pyright --project tests/pyrightconfig.json
-
-      # ADR-097: additive fast type check. CI backing for the pre-commit
-      # `pyrefly` hook (local = staged scope, here = whole project).
-      # Error-kind set + baseline live in pyrefly.toml / pyrefly-baseline.json.
-      # pyright above stays the authoritative strict gate (G6).
-      - name: Pyrefly
-        run: uv run pyrefly check
-
-      # ── Security ──────────────────────────────────────────────────────
-      - name: Install Gitleaks
-        env:
-          GITLEAKS_VERSION: "8.30.1"
-        run: |
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | sudo tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
-
-      - name: Secret scanning (Gitleaks) — AUFG-05-09
-        run: uv run python scripts/check_secrets.py
-
-      # Bandit — the -r target set MUST stay set-equal to the pre-push bandit
-      # hook and `just security` (production + scripts + evals); parity is
-      # machine-pinned by tests/unit/scripts/test_bandit_scope_parity.py.
-      - name: Bandit
-        run: |
-          uv run bandit -c pyproject.toml \
-            -r apps/api/narrare packages/core/narrare_core scripts evals
-
-      - name: pip-audit
-        # No vulnerability ignores are currently active (re-evaluated 2026-08).
-        # Previously-ignored advisories — both now resolved, so the ignores
-        # were stale and have been removed:
-        #   - PYSEC-2025-183 (CVE-2025-45768, PyJWT <= 2.10.1): pyjwt is pinned
-        #     at 2.13.0, above the last-affected version, so pip-audit no longer
-        #     flags it.
-        #   - GHSA-rrmf-rvhw-rf47 (CVE-2025-3000, PyTorch torch.jit.script): a
-        #     fix is now published upstream (torch 2.13.0) and torch is locked at
-        #     that version, so the previous "no upstream fix" ignore was stale.
-        # h2 CVE-2026-71554 was resolved by upgrading h2 4.3.0 -> 4.4.1.
-        # If a future advisory genuinely has no upstream fix, add a targeted
-        # --ignore-vuln here with a re-evaluate date and a linked tracking issue.
-        run: uv run pip-audit --skip-editable
-
-      # Pyright cache WRITE — explicit, gated, auditable (TanStack lesson:
-      # cache writes must be visible, not hidden in a post-step). PRs are
-      # restore-only; only the nightly (schedule) and pushes to main write
-      # the cache, so PR-supplied code can never poison a cache consumed by
-      # other workflows. The cache-hit guard skips futile re-saves of an
-      # already-existing immutable key (nightly/main noise).
-      - name: Save Pyright cache
-        if: (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && steps.pyright-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            .pyright/
-            **/.pyc
-          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock', 'tests/pyrightconfig.json') }}
+      # ── Tool steps: shared composite action (R3, spec §5.8) ───────────
+      # ruff → pip-audit + the Pyright cache restore/save live ONCE in
+      # .github/actions/quality; this push-only job and the folded
+      # test-unit step-group both call it, so the tool sequence cannot
+      # drift between call sites. Contract (inputs/outputs, caller
+      # obligations) is documented in that action's header.
+      - uses: ./.github/actions/quality
   # -------------------------------------------------------------------------
   # Workflow security audit (zizmor) — blocking PR check when workflows
   # change + nightly (spec §5.2). Catches: dangerous triggers, template
@@ -433,12 +692,22 @@ jobs:
     name: Workflow Security (zizmor)
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [changes]
+    needs: [changes, nightly-gate]
+    # Nightly path: workflow-relevant nights and the weekly probe only
+    # (§5.1); PR path unchanged (self-exercising via `changes`); push
+    # events keep skipping it. The !cancelled() && !failure() prefix
+    # keeps the PR path alive despite the skipped nightly-gate need
+    # (empty gate outputs are only ever consulted behind the explicit
+    # `schedule` conjunct).
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       needs.changes.outputs.workflows == 'true')
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.workflows == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        needs.changes.outputs.workflows == 'true'))
     permissions:
       contents: read
     steps:
@@ -456,18 +725,35 @@ jobs:
           zizmor --config .github/zizmor.yml .github/workflows/
 
   # -------------------------------------------------------------------------
-  # Unit tests (< 5 min, no Docker)
+  # Unit tests (< 5 min, no Docker) + folded quality tools (R3, §5.8)
   # -------------------------------------------------------------------------
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [quality]
-    # PR-gated full suite; nightly/dispatch run everything (spec §3).
+    # `architecture` replaces the dissolved quality edge as fast-fail
+    # predecessor; `changes` feeds the PR backend gate (§5.4).
+    needs: [architecture, changes, nightly-gate]
+    # PR path: backend PRs only (§5.4, task W1-4) — docs-only, frontend-only
+    # and workflows-only PRs skip unit AND the folded tools (R5 absorbed,
+    # §5.8). The PR branch OR-composes nightly-gate's backend with changes'
+    # backend per the W1-2 empty-output pattern (the gate skips on PR
+    # events, so its output is '' and only `changes` decides). Nightly
+    # path: active nights with a backend delta, or the weekly probe (§5.1)
+    # — the folded tools ride this same gate, so unit nights exercise them
+    # by construction (§5.8). Dispatch = full matrix incl. tools. The
+    # !cancelled() && !failure() prefix keeps the PR/dispatch paths alive
+    # when nightly-gate skips.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.backend == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        (needs.nightly-gate.outputs.backend == 'true' ||
+         needs.changes.outputs.backend == 'true')))
     permissions:
       contents: read
       pull-requests: write
@@ -484,8 +770,47 @@ jobs:
           # World-drift pin — see architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
           python-version: "3.14"
 
+      # The embeddings extra is REQUIRED from W1-4: pyright (folded
+      # below) resolves imports behind it (§5.8 — previously only the
+      # quality job synced it; setup-uv caching keeps the delta at
+      # ~0.1–0.3 min).
       - name: Install dependencies
-        run: uv sync --frozen --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra embeddings
+
+      # ── R3 fold: quality tool steps (spec §5.8, task W1-4) ────────────
+      # ruff → pip-audit + the Pyright cache restore/save run here via
+      # the shared composite — the identical sequence the push-only
+      # quality job runs (drift structurally impossible). Backend-gated
+      # by this job's `if` (R5 absorbed); on the nightly path the cache
+      # save stays schedule-only (the gate `if` lives inside the
+      # composite). A lint/typecheck failure now fails THIS job — the
+      # signal location changed, the isolation effect did not (§5.8
+      # honest trade-off); pytest runs only after the tools pass.
+      - uses: ./.github/actions/quality
+
+      # ── Export toolchain cache (W3-3, spec §7) ────────────────────────
+      # Key = hashFiles of the installer script (its version pins are the
+      # only cache-relevant input) + runner.os, with a `lite` variant
+      # namespace: this job installs WITHOUT EPUBCheck, test-integration/
+      # test-e2e install WITH it — a shared key would let unit hit a
+      # full cache and silently skip the launcher the golden tests need
+      # (or poison a full cache with a launcher-less tree). Exact-key
+      # only, NO restore-keys: a stale fallback would skip the install
+      # of NEWLY pinned tool versions (silent version skew — the one
+      # unacceptable failure mode here).
+      # Hit mechanism: the install step is skipped entirely on exact
+      # hit — the script force-reinstalls by design, so the guard is
+      # what makes the hit a no-op; the cache itself carries identical
+      # binaries (same script hash ⇒ same pins ⇒ same artifacts).
+      # NARRARE_TOOLCHAIN_DIR redirects the installer into the cacheable
+      # dir; the PATH step (always) makes shutil.which() find the
+      # binaries in the pytest steps, exactly like ~/.local/bin did.
+      - name: Restore export toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-lite-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Install export toolchain
         # pandoc is required by the real-binary renderer unit tests in
@@ -499,7 +824,24 @@ jobs:
         # never be exercised in CI. Typst is included for the upcoming PDF
         # renderer tests (Slice 4/5, also tests/unit/). EPUBCheck is skipped —
         # it needs Java and is CI-validation-only (golden tests).
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        env:
+          NARRARE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchain
         run: bash scripts/install_export_toolchain.sh
+
+      - name: Add export toolchain to PATH
+        run: echo "${{ github.workspace }}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # WRITE gate (spec §7 trust boundary): schedule only (nightly/
+      # probe nights are the only writers; test-unit does not run on
+      # push). PRs/dispatch restore-only; cache-hit guard skips futile
+      # re-saves of an existing immutable key.
+      - name: Save export toolchain cache
+        if: github.event_name == 'schedule' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-lite-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Run unit tests
         id: tests
@@ -597,16 +939,27 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [quality, changes]
+    # `architecture` replaces the dissolved quality edge (W1-4, §5.8) —
+    # LOAD-BEARING: with `needs: [quality, …]` left in place this job
+    # would silently skip on every PR/nightly run once quality became
+    # push-only (spec §12 risk row "Missed needs rewires").
+    needs: [architecture, changes, nightly-gate]
     # PR path: skip on draft PRs (WIP iteration doesn't need the
     # Docker+spaCy path — it reruns once marked ready-for-review) and on
-    # PRs whose diff never touched backend code. Nightly/dispatch run all.
+    # PRs whose diff never touched backend code. Nightly path: active
+    # nights with a backend delta, or the weekly probe (§5.1); dispatch
+    # runs all. The !cancelled() && !failure() prefix keeps the PR/
+    # dispatch paths alive when nightly-gate skips.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       needs.changes.outputs.backend == 'true' &&
-       github.event.pull_request.draft != true)
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.backend == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        needs.changes.outputs.backend == 'true' &&
+        github.event.pull_request.draft != true))
 
     services:
       postgres:
@@ -645,6 +998,43 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
+      # ── spaCy model cache (W3-2, spec §7) ─────────────────────────────
+      # `just install-nlp-models` (justfile) does `uv pip install` of three
+      # GitHub-release wheels (de/en/fr_core_news_md-<SPACY_VER>), where
+      # SPACY_VER derives at runtime from the INSTALLED spacy version
+      # (major.minor + ".0" per the recipe) — the model versions are NOT
+      # literals in the justfile, so hashFiles('justfile') would NOT bust
+      # on a spaCy/model bump. The key therefore resolves the same
+      # derivation from the synced venv (uv.lock pins spacy): the most
+      # stable minimal key — changes only when the models change. Tradeoff
+      # vs duplicating the formula: if the recipe's derivation ever
+      # changed, a drifted key would at worst restore models the install
+      # step then correctly replaces (uv pip install compares
+      # name==version, satisfaction always wins) — a saving degradation,
+      # never a correctness risk.
+      # Path: the wheels are pure (py3-none-any) and land as plain
+      # packages in .venv site-packages. Restoring them AFTER `uv sync`
+      # (which would prune foreign packages) makes `uv pip install`
+      # short-circuit as already-satisfied — a wheel-URL requirement
+      # carries name+version in its filename, so on match there is no
+      # download and no relink: the install step becomes a near-no-op.
+      # NO restore-keys: a fallback hit would restore wrong-version
+      # models — stale model versions are useless, not partial (unlike
+      # Playwright's additive browser revisions).
+      - name: Resolve spaCy model version (cache key)
+        id: spacy-version
+        run: echo "version=$(uv run python -c 'import spacy; print(spacy.__version__.rsplit(".", 1)[0] + ".0")')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore spaCy model cache
+        id: spacy-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
+
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
@@ -653,14 +1043,63 @@ jobs:
       - name: Install spaCy NLP models
         run: just install-nlp-models
 
+      # WRITE gate (spec §7 trust boundary): schedule only — nightly/
+      # probe nights are the only writers (test-integration does not run
+      # on push). PRs and dispatch are restore-only; the cache-hit guard
+      # skips futile re-saves of an existing immutable key. (If both
+      # this job and test-e2e miss on the same night, the losing save
+      # logs a benign "cache already exists" warning — job stays green.)
+      - name: Save spaCy model cache
+        if: github.event_name == 'schedule' && steps.spacy-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
+
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
+
+      # ── Export toolchain cache (W3-3, spec §7) — full variant ─────────
+      # `full` namespace: INSTALL_EPUBCHECK=1 (the `lite` cache test-unit
+      # saves must never be hit here, nor poison a full tree). Key =
+      # script hash (pins) + os; exact-key only — no stale-binary
+      # fallback. Hit mechanism: install step skipped on exact hit (the
+      # script force-reinstalls by design); NARRARE_TOOLCHAIN_DIR aims
+      # the installer at the cacheable dir, the PATH step keeps
+      # shutil.which() resolution identical.
+      - name: Restore export toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Install export toolchain
         # Typst + pandoc (render binaries) + EPUBCheck (EPUB validation gate).
         # The Golden-Pages acceptance tests (tests/golden/export/) need all
         # three; the RULE-08 checker runs statically in the architecture job.
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        env:
+          NARRARE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchain
         run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
+
+      - name: Add export toolchain to PATH
+        run: echo "${{ github.workspace }}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # WRITE gate: schedule only (nightly/probe nights are the only
+      # writers; test-integration does not run on push). PRs/dispatch
+      # restore-only; cache-hit guard skips futile re-saves. Shared key
+      # with test-e2e's save: on a shared night the second writer logs a
+      # benign already-exists warning.
+      - name: Save export toolchain cache
+        if: github.event_name == 'schedule' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Run integration tests
         run: |
@@ -692,8 +1131,14 @@ jobs:
     needs: test-unit
     # Nightly-only: test-unit is skipped on push, so no coverage artifact
     # exists there to download (spec §4.1 — push+schedule collapses to
-    # schedule).
-    if: github.event_name == 'schedule'
+    # schedule). With the event-driven nightly, unit ALSO skips on idle
+    # and non-backend nights — without the result guard this job would
+    # fail downloading a nonexistent artifact (spec §5.1 table, fixed in
+    # W1-2). Needs stays `test-unit` only: the condition references no
+    # nightly-gate output, and with no status-check function in the `if`
+    # the implicit success() prefix additionally guarantees the job never
+    # runs after a failed/cancelled unit run.
+    if: github.event_name == 'schedule' && needs.test-unit.result == 'success'
     permissions:
       contents: write
     steps:
@@ -779,14 +1224,23 @@ jobs:
     # rotates OS versions and would drift baselines without warning.
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    needs: [architecture, changes]
+    needs: [architecture, changes, nightly-gate]
+    # Nightly path: frontend/workflow deltas or the weekly probe (§5.1).
+    # PR path unchanged (frontend/workflows filter + draft guard); the
+    # !cancelled() && !failure() prefix keeps the PR/dispatch paths
+    # alive when nightly-gate skips.
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       (needs.changes.outputs.frontend == 'true' ||
-        needs.changes.outputs.workflows == 'true') &&
-       github.event.pull_request.draft != true)
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.frontend == 'true' ||
+         needs.nightly-gate.outputs.workflows == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        (needs.changes.outputs.frontend == 'true' ||
+         needs.changes.outputs.workflows == 'true') &&
+        github.event.pull_request.draft != true))
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -814,6 +1268,36 @@ jobs:
       # --group dev` this job never actually needed.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # ── Playwright Chromium cache (W3-1, spec §7) ─────────────────────
+      # RESTORE early, gated SAVE after the install step — mirrors the
+      # Pyright cache pattern (explicit writes, never implicit post-step
+      # side effects). Key: the resolved @playwright/test version — the
+      # most stable minimal key. @playwright/test, playwright and
+      # playwright-core release in exact lockstep (pnpm-lock.yaml resolves
+      # a single 1.63.0 across all three), and the pinned Chromium build
+      # revision is a pure function of that version — so the key changes
+      # ONLY when the browser itself changes. hashFiles('pnpm-lock.yaml')
+      # would additionally bust on every unrelated frontend dep bump.
+      # runner.os stays in the key: both Playwright jobs pin
+      # ubuntu-22.04, but the runner image (not the pin) ships the OS
+      # libraries the browser needs. npm gets its own key namespace — the
+      # pip ecosystem in test-e2e resolves a DIFFERENT playwright version
+      # (different Chromium revision), so the two never share an entry.
+      - name: Resolve Playwright version (cache key)
+        id: pw-version
+        run: |
+          cd packages/web
+          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright Chromium cache
+        id: pw-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-npm-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+          restore-keys: |
+            playwright-npm-${{ runner.os }}-
 
       - name: Biome lint + format check
         run: cd packages/web && npx biome check .
@@ -874,7 +1358,25 @@ jobs:
         run: cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts
 
       - name: Install Playwright Chromium
+        # Cache-aware (restore above): with a warm ~/.cache/ms-playwright
+        # playwright validates the pinned Chromium revision's completion
+        # marker and skips the download — a near-no-op on exact cache
+        # hit. On a restore-keys fallback (older version) it downloads
+        # only the missing revision.
         run: cd packages/web && pnpm playwright install chromium
+
+      # WRITE gate (spec §7 trust boundary): schedule only — nightly/
+      # probe nights are the only writers (this job does not run on
+      # push, so unlike the Pyright cache there is no push-main writer).
+      # PRs and dispatch are restore-only: PR-supplied code can never
+      # poison a cache other runs consume. The cache-hit guard skips
+      # futile re-saves of an already-existing immutable key.
+      - name: Save Playwright Chromium cache
+        if: github.event_name == 'schedule' && steps.pw-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-npm-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
 
       - name: VRT Screenshot Tests
         id: vrt-tests
@@ -897,57 +1399,17 @@ jobs:
       - name: Build
         run: cd packages/web && pnpm build
 
-      - name: Upload warnings
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: warnings-frontend
-          path: /tmp/warnings/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  # -------------------------------------------------------------------------
-  # Frontend standalone smoke (PR-only blind-spot guard)
-  # -------------------------------------------------------------------------
-  # test-e2e boots the standalone Next server but runs nightly + on dispatch —
-  # the next@16.3.1/@swc/helpers standalone crash (fixed in 5e014943) was
-  # invisible on PR CI. This job builds the standalone tree and verifies it
-  # boots on PRs, cheaply: no Playwright, no screenshots → ubuntu-latest
-  # (no font-rendering sensitivity).
-  frontend-standalone:
-    name: Frontend Standalone Smoke
-    runs-on: ubuntu-latest
-    needs: [changes]
-    # PR-only (nightly runs are covered by test-e2e). workflows==true keeps
-    # the job self-exercising on PRs that modify ci.yml itself.
-    if: >-
-      github.event_name == 'pull_request' &&
-      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflows == 'true')
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          # Jobs below execute PR-supplied scripts — do not leave the
-          # repo token persisted in the workspace (spec §5.4).
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          version: 11.5.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build standalone frontend
-        run: cd packages/web && pnpm build
-
+      # ── Standalone boot smoke (folded from frontend-standalone, W1-6) ──
+      # test-e2e boots the standalone Next server but runs nightly + on
+      # dispatch — the next@16.3.1/@swc/helpers standalone crash (fixed in
+      # 5e014943) was invisible on PR CI. Steps lifted near-verbatim from
+      # the removed frontend-standalone job (spec §5.6): the smoke reuses
+      # this job's Build output and is not font-sensitive (server boot +
+      # curl only), so colocating on ubuntu-22.04 costs nothing. It now
+      # also runs on frontend-active nights and dispatch — harmless:
+      # bounded by the poll loop below plus this job's timeout. Drafts
+      # skip until marked ready (this job's draft guard; W1-5's
+      # ready_for_review type makes the transition rerun).
       - name: Copy static + public into standalone tree
         run: |
           cp -r packages/web/.next/static packages/web/.next/standalone/packages/web/.next/static
@@ -977,8 +1439,17 @@ jobs:
             exit 1
           fi
 
+      - name: Upload warnings
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: warnings-frontend
+          path: /tmp/warnings/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # -------------------------------------------------------------------------
-  # E2E tests (nightly + manual dispatch, full stack)
+  # E2E tests (nightly + manual dispatch + path-gated PRs, full stack)
   # -------------------------------------------------------------------------
   test-e2e:
     name: E2E Tests
@@ -987,12 +1458,33 @@ jobs:
     # divergence between the two browser-driven jobs.
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [quality]
+    # `architecture` replaces the dissolved quality edge (W1-4, §5.8) —
+    # LOAD-BEARING: with `needs: [quality, …]` left in place this job
+    # would silently skip on every PR/nightly run once quality became
+    # push-only (spec §12 risk row "Missed needs rewires"). `changes`
+    # feeds the PR branch's e2e_specs gate (W1-12, §5.10).
+    needs: [architecture, changes, nightly-gate]
     # Full-stack E2E moved from every main-push to nightly + manual
-    # dispatch (spec §3; was 192 min of the Sept 1-14 burn).
+    # dispatch (spec §3; was 192 min of the Sept 1-14 burn). Nightly
+    # path: active nights only — `e2e` is backend ∨ frontend (full-stack),
+    # plus the weekly probe (§5.1). Dispatch = full matrix (the gate
+    # emits all-true). PR path (W1-12, §5.10): path-gated on tests/e2e/**
+    # only, draft != true — the PO-sealed closure of the W0-3 cluster-A
+    # blind spot (new E2E specs' first CI contact was the post-merge
+    # nightly; PRs #253/#256). Accepted cost: +1 ~9-min run per
+    # E2E-spec PR (~2-4/mo = +18..36 min/mo, §5.10/§9.1). The
+    # !cancelled() && !failure() prefix keeps the PR/dispatch paths
+    # alive when nightly-gate skips on other events (W1-2 pattern).
     if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch'
+      !cancelled() && !failure() &&
+      ((github.event_name == 'schedule' &&
+        needs.nightly-gate.outputs.should_run == 'true' &&
+        (needs.nightly-gate.outputs.probe == 'true' ||
+         needs.nightly-gate.outputs.e2e == 'true')) ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.draft != true &&
+        needs.changes.outputs.e2e_specs == 'true'))
 
     services:
       postgres:
@@ -1045,6 +1537,52 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
+      # ── spaCy model cache (W3-2, spec §7) ─────────────────────────────
+      # Same contract as the test-integration cache: `just
+      # install-nlp-models` wheels three de/en/fr_core_news_md-<SPACY_VER>
+      # releases whose version derives from the INSTALLED spacy (not a
+      # justfile literal — hashFiles('justfile') would never bust). Key
+      # resolves the recipe's own derivation from the synced venv.
+      # Restore lands the pure wheels inside .venv site-packages AFTER
+      # `uv sync` (which prunes foreign packages), so `uv pip install`
+      # short-circuits already-satisfied and skips the download.
+      # Restore-only on PRs/dispatch; schedule writes (trust boundary).
+      - name: Resolve spaCy model version (cache key)
+        id: spacy-version
+        run: echo "version=$(uv run python -c 'import spacy; print(spacy.__version__.rsplit(".", 1)[0] + ".0")')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore spaCy model cache
+        id: spacy-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
+
+      # ── Playwright Chromium cache (W3-1, spec §7) — pip twin ──────────
+      # Same design as the frontend job's npm cache, but its own key
+      # namespace: this job installs the browser via the PYTHON
+      # playwright package (uv.lock — 1.61.0), which pins a DIFFERENT
+      # Chromium revision than the npm @playwright/test 1.63.0 the
+      # frontend resolves. Verified: the two package identities differ,
+      # so per the W3-1 contract they get separate keys — a shared key
+      # would leave exactly one job's revision present per save, and the
+      # cache-hit guard would then block the other job's refresh.
+      - name: Resolve Playwright version (cache key)
+        id: pw-version
+        run: echo "version=$(uv run python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright Chromium cache
+        id: pw-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-pip-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+          restore-keys: |
+            playwright-pip-${{ runner.os }}-
+
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
@@ -1053,8 +1591,39 @@ jobs:
       - name: Install spaCy NLP models
         run: just install-nlp-models
 
+      # WRITE gate (spec §7 trust boundary): schedule only — nightly/
+      # probe nights are the only writers (test-e2e does not run on
+      # push). PRs/dispatch restore-only; cache-hit guard skips futile
+      # re-saves. Same key namespace as test-integration's save: on a
+      # shared night the second writer logs a benign "already exists"
+      # warning; on later nights the exact hit makes the install step a
+      # near-no-op for BOTH jobs.
+      - name: Save spaCy model cache
+        if: github.event_name == 'schedule' && steps.spacy-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            .venv/lib/python3*/site-packages/de_core_news_md*/**
+            .venv/lib/python3*/site-packages/en_core_web_md*/**
+            .venv/lib/python3*/site-packages/fr_core_web_md*/**
+          key: spacy-models-${{ runner.os }}-spacy${{ steps.spacy-version.outputs.version }}
+
       - name: Install Playwright Chromium
+        # Cache-aware (restore above): warm cache → pinned revision
+        # validated, download skipped (near-no-op on exact hit; only the
+        # missing revision downloads on a restore-keys fallback).
         run: uv run playwright install chromium
+
+      # WRITE gate: schedule only (nightly/probe nights are the only
+      # writers — test-e2e does not run on push). PRs/dispatch are
+      # restore-only (spec §7 trust boundary); the cache-hit guard skips
+      # futile re-saves of an existing immutable key.
+      - name: Save Playwright Chromium cache
+        if: github.event_name == 'schedule' && steps.pw-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/ms-playwright/
+          key: playwright-pip-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -1065,9 +1634,36 @@ jobs:
       - name: Seed dev user
         run: uv run python scripts/seed_dev_user.py
 
+      # ── Export toolchain cache (W3-3, spec §7) — full variant ─────────
+      # Same contract as test-integration's (`full` key with EPUBCheck;
+      # script-hash key; skip-install-on-exact-hit; NARRARE_TOOLCHAIN_DIR
+      # + PATH step for shutil.which() parity). Restore-only on PRs/
+      # dispatch; schedule writes (trust boundary).
+      - name: Restore export toolchain cache
+        id: toolchain-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
+
       - name: Install export toolchain
         # Typst + pandoc so a real export E2E can run (ADR-081).
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        env:
+          NARRARE_TOOLCHAIN_DIR: ${{ github.workspace }}/.toolchain
         run: INSTALL_EPUBCHECK=1 bash scripts/install_export_toolchain.sh
+
+      - name: Add export toolchain to PATH
+        run: echo "${{ github.workspace }}/.toolchain/bin" >> "$GITHUB_PATH"
+
+      # WRITE gate: schedule only (test-e2e does not run on push);
+      # cache-hit guard skips futile re-saves of an existing key.
+      - name: Save export toolchain cache
+        if: github.event_name == 'schedule' && steps.toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: .toolchain/
+          key: export-toolchain-full-${{ runner.os }}-${{ hashFiles('scripts/install_export_toolchain.sh') }}
 
       - name: Build frontend
         run: cd packages/web && pnpm build
@@ -1189,7 +1785,12 @@ jobs:
   # -------------------------------------------------------------------------
   budget-report:
     name: Quota Budget Report
-    if: github.event_name == 'schedule'
+    # Weekly only (W1-7, §5.7): the Sunday 03:07 schedule entry — the exact
+    # string is the 02:37-vs-03:07 discriminator; the nightly no longer
+    # runs this job. Quota-overrun warning latency 1d → 7d (accepted, §8).
+    if: >-
+      github.event_name == 'schedule' &&
+      github.event.schedule == '7 3 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -1232,6 +1833,7 @@ jobs:
           repo = os.environ["REPO"]
           total = 0.0
           processed = 0
+          pr_runs = 0  # W1-11: pull_request runs among the processed (§5.9.4)
           suspect = 0  # runs whose jobs data looks empty vs their own wall time
           for page in range(1, 11):  # 10 x 100 runs/month is ample
               data = fetch(f"https://api.github.com/repos/{repo}/actions/runs"
@@ -1245,6 +1847,8 @@ jobs:
                   if processed >= runs_cap:
                       break
                   processed += 1
+                  if run["event"] == "pull_request":
+                      pr_runs += 1
                   # Billing counts each job separately: sum per-job wall
                   # time. per_page=100 covers this repo's ~13-job runs.
                   jobs = fetch(f"https://api.github.com/repos/{repo}/actions"
@@ -1274,6 +1878,10 @@ jobs:
           pct = total / quota
           summary = (f"Month-to-date CI usage: {total:.0f} min of {quota} "
                      f"({pct:.0%}, per-job sum; billing rounds each job up to the minute).")
+          # W1-11 (spec §5.9.4): R1 PR-batching discipline is PO-enforced,
+          # not CI-enforceable — the MTD count makes drift against the
+          # ~50/mo target measurable in the same weekly report.
+          summary += f" | PR runs MTD: {pr_runs} (R1 target ≤50/mo)"
           if suspect:
               summary += (f" WARNING: jobs data missing for {suspect} of "
                           f"{processed} run(s) — figure may undercount.")
@@ -1288,3 +1896,67 @@ jobs:
                     "activate reserve levers (spec §8: Phase 2 consolidation, "
                     "weekly nightly).")
           EOF
+
+  # -------------------------------------------------------------------------
+  # Release-PR orchestration (W2-1, spec §6.1): creates/updates the
+  # release-please pull request on code nights. This is ONE HALF of the
+  # release-please split: this job runs with `skip-github-release: true`
+  # (release-PR bookkeeping only), while release-please.yml keeps release
+  # creation + publishing for manifest/config pushes to main with
+  # `skip-github-pull-request: true` (W2-2, landed). Release creation is
+  # decided by manifest-version-vs-latest-tag, so the two invocations are
+  # cleanly disjoint: code pushes to main run only this nightly
+  # orchestration — no double coverage (final split state, spec §11).
+  # Release-PR latency: ≤1 day (PO-sealed, OQ2 — spec §14).
+  #
+  # Split semantics (W2-3, spec §6): release creation is decided by
+  # manifest-version-vs-latest-tag, so the two invocations are cleanly
+  # disjoint — this job only creates/updates the release PR
+  # (skip-github-release: true), release-please.yml (push-side, W2-2)
+  # only tags + publishes (skip-github-pull-request: true) when the
+  # release PR merges — a HUMAN merge, which triggers workflows normally
+  # (the GITHUB_TOKEN no-retrigger restriction applies only to
+  # token-authored commits). A run with nothing to release is an
+  # idempotent no-op (~1.7 min). Settings note (PO one-time manual
+  # action, NOT a task): bot-authored workflow runs on private repos
+  # park at `action_required` — approve the github-actions[bot] runs /
+  # unstick release PR #231 once.
+  # -------------------------------------------------------------------------
+  release-orchestration:
+    name: Release PR Orchestration
+    # Schedule + code-day only: PR/push/dispatch runs skip the job, so the
+    # job-level write token below is never held outside the nightly path.
+    # Budget nights (03:07 Sundays) skip too: nightly-gate skips there, its
+    # outputs stay empty, and `should_run == 'true'` is false. A skipped
+    # nightly-gate (or a failed nightly) also skips this job by default
+    # success() semantics — release-PR latency degrades to the failure
+    # duration (accepted, spec §12).
+    needs: [nightly-gate]
+    if: >-
+      github.event_name == 'schedule' &&
+      needs.nightly-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Job-level escalation (spec §12): release-please must open/update PRs.
+    # NEVER widen the workflow-level permissions for this.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # No git commands follow: the action drives everything through
+          # its own `token:` input (same usage as release-please.yml).
+          persist-credentials: false
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        id: release
+        # Same inputs as release-please.yml's step, PLUS the W2-1 half of
+        # the split: never create/tag the release here (that happens on
+        # the release-PR merge, in release-please.yml, same day).
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: python
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true
