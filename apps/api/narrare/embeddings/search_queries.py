@@ -113,13 +113,31 @@ def build_search_query(
     threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
     limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
     model: str | None = None,
+    novel_id: UUID | None = None,
 ) -> tuple[TextClause, dict[str, object]]:
     """Build the vector similarity search SQL and parameters.
 
     Constructs a ``SELECT`` with cosine distance filtering via
     ``<=>`` operator. Returns ``(sql_text, params_dict)``.
+
+    ``novel_id`` scopes the search to one novel's KB entries (ADR-088
+    anti-enumeration: suggestions must never surface another novel's
+    entries, and orphaned embedding rows — whose source entry is gone —
+    can never match either, because the KB join is required when the
+    scope is set). NaN distances are excluded unconditionally: a
+    zero-vector stored embedding makes ``<=>`` return NaN, and Postgres
+    orders NaN **above** every real number — without the guard such rows
+    pass the threshold with a NaN similarity and poison the response.
     """
-    conditions = ["1 - (embedding <=> CAST(:query_vec AS vector)) >= :threshold"]
+    distance = "embedding <=> CAST(:query_vec AS vector)"
+    conditions = [
+        f"1 - ({distance}) >= :threshold",
+        # NaN = NaN is TRUE in Postgres (unlike IEEE 754), so this filters
+        # exactly the zero-vector rows. CAST form — the ``'NaN'::real``
+        # literal would trip the ``:name::TYPE`` asyncpg bind-param bug
+        # (see TestVectorParamsAreBoundByDialect).
+        f"({distance}) <> CAST('NaN' AS real)",
+    ]
     params: dict[str, object] = {
         "query_vec": query_vec_str,
         "threshold": threshold,
@@ -138,6 +156,12 @@ def build_search_query(
         id_strs = [str(sid) for sid in source_ids]
         conditions.append("source_id = ANY(:source_ids)")
         params["source_ids"] = id_strs
+
+    if novel_id is not None:
+        # Requires the kb_entries join to match — orphaned embedding rows
+        # (source entry deleted) and other source_types are excluded.
+        conditions.append("kb.novel_id = :novel_id")
+        params["novel_id"] = str(novel_id)
 
     where_clause = " AND ".join(conditions)
 

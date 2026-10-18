@@ -77,6 +77,7 @@ class FakeEmbeddingRepo:
         threshold: float = 0.7,
         limit: int = 20,
         model: str | None = None,
+        novel_id: uuid.UUID | None = None,
     ) -> list[SearchRow]:
         raise NotImplementedError
 
@@ -134,6 +135,31 @@ class TestIdempotentSkip:
         )
 
         assert result is False
+        mock_embed.assert_not_called()
+        assert len(repo.upsert_calls) == 0
+
+    @patch("narrare.embeddings.tasks.embed_texts")
+    async def test_skips_empty_content_without_embedding(self, mock_embed: AsyncMock) -> None:
+        """Empty content never reaches embed_texts — no zero-vector rows.
+
+        embed_texts("") returns a ZERO vector; a zero-vector row makes
+        every cosine distance NaN, which Postgres orders above all real
+        numbers — the row passed every search threshold with a NaN
+        similarity and 500-ed the KB suggestions response. A zero vector
+        carries no information, so the write path skips it visibly.
+        """
+        repo = FakeEmbeddingRepo()
+        source_id = uuid.uuid4()
+
+        for empty in ("", "   "):
+            result = await run_embed_source(
+                "kb_entry",
+                source_id,
+                empty,
+                repo=repo,
+            )
+            assert result is False, f"empty content {empty!r} must skip"
+
         mock_embed.assert_not_called()
         assert len(repo.upsert_calls) == 0
 

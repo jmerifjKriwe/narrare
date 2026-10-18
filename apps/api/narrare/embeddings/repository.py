@@ -108,12 +108,17 @@ class EmbeddingRepository(BaseRepository):
         threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
         limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
         model: str | None = None,
+        novel_id: UUID | None = None,
     ) -> list[SearchRow]:
         """Search for similar embeddings using cosine distance.
 
         Returns ``SearchRow`` objects ordered by similarity descending.
         Only results above ``threshold`` are returned. Each row includes
         KB entry metadata (usage_count, last_referenced_at) via LEFT JOIN.
+
+        ``novel_id`` scopes the results to one novel's KB entries (the
+        suggestions contract — ADR-088); when set, orphaned embedding
+        rows and other source_types are excluded.
         """
         vec_str = build_vector_str(query_embedding)
         sql, params = build_search_query(
@@ -123,6 +128,7 @@ class EmbeddingRepository(BaseRepository):
             threshold=threshold,
             limit=limit,
             model=model,
+            novel_id=novel_id,
         )
         result = await self._session.execute(sql, params)
 

@@ -64,6 +64,47 @@ class TestBuildGetBySourceQuery:
 
 
 # ---------------------------------------------------------------------------
+# build_search_query — NaN guard + novel scoping (ADR-088 suggestions)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSearchQueryScoping:
+    """Zero-vector rows and cross-novel rows must never surface.
+
+    A zero-vector stored embedding makes pgvector's ``<=>`` return NaN;
+    Postgres orders NaN ABOVE every real number, so such rows passed the
+    threshold with a NaN similarity and poisoned the KB suggestions
+    response (pydantic ``ge=0.0`` rejected NaN → 500). ``novel_id``
+    scoping closes the suggestions path' cross-novel leak (the store
+    protocol documents it as required; the service dropped it).
+    """
+
+    def test_search_query_always_excludes_nan_distances(self) -> None:
+        """The NaN guard is unconditional (no caller can opt out)."""
+        sql, _params = build_search_query("[0.1]")
+        sql_str = str(sql)
+        assert "CAST('NaN' AS real)" in sql_str
+        # CAST form only — a ``'NaN'::real`` literal trips the
+        # ``:name::TYPE`` asyncpg bind-param bug.
+        assert "::real" not in sql_str
+
+    def test_search_query_without_novel_id_has_no_scope(self) -> None:
+        """Without novel_id, no scope condition is emitted (notes path)."""
+        sql, params = build_search_query("[0.1]")
+        sql_str = str(sql)
+        assert "novel_id" not in sql_str
+        assert "novel_id" not in params
+
+    def test_search_query_with_novel_id_scopes_to_kb_join(self) -> None:
+        """With novel_id, the KB join must match (orphans excluded)."""
+        novel = uuid4()
+        sql, params = build_search_query("[0.1]", novel_id=novel)
+        sql_str = str(sql)
+        assert "kb.novel_id = :novel_id" in sql_str
+        assert params["novel_id"] == str(novel)
+
+
+# ---------------------------------------------------------------------------
 # build_batch_upsert_query
 # ---------------------------------------------------------------------------
 

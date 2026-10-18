@@ -80,6 +80,7 @@ class EmbeddingRepositoryProtocol(Protocol):
         threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
         limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
         model: str | None = None,
+        novel_id: UUID | None = None,
     ) -> list[SearchRow]:
         """Search for similar embeddings using cosine distance.
 
@@ -90,6 +91,9 @@ class EmbeddingRepositoryProtocol(Protocol):
             threshold: Minimum cosine similarity (default 0.7).
             limit: Maximum number of results (default 20).
             model: Optional model filter.
+            novel_id: Optional novel scope — restricts results to that
+                novel's KB entries and excludes orphaned rows (ADR-088;
+                the suggestions path always passes it).
 
         Returns:
             List of SearchRow objects ordered by similarity descending.
