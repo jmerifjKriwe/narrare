@@ -30,7 +30,7 @@ dev = [
   "hypothesis>=6.100",
   "mutmut==3.8.0",
   "pytest-playwright>=0.7",
-   "pydantic-evals==2.53.0",
+   "pydantic-evals==2.57.0",
   "jsonschema>=4.26.0",
   # PyMuPDF — PDF inspection for the Golden-Pages render probes
   # (tests/golden/export/). Pulled forward from Slice 7 for the Slice 5a
