@@ -94,6 +94,19 @@ def test_missing_pricing_key_is_reported(tmp_path: Path) -> None:
     assert _naming(root, "pricing.keys", "groq")
 
 
+def test_extra_pricing_key_is_reported(tmp_path: Path) -> None:
+    root = _sandbox(tmp_path)
+    _mutate(
+        root,
+        PRICING,
+        '    "groq": {"input": 0.5, "output": 1.0},\n',
+        '    "groq": {"input": 0.5, "output": 1.0},\n'
+        '    "perplexity": {"input": 1.0, "output": 2.0},\n',
+    )
+
+    assert _naming(root, "pricing.keys", "perplexity", "extra")
+
+
 def test_disagreeing_pricing_value_is_reported(tmp_path: Path) -> None:
     root = _sandbox(tmp_path)
     _mutate(
@@ -155,6 +168,18 @@ def test_cache_body_disagreeing_with_policy_is_reported(tmp_path: Path) -> None:
     naming = _naming(root, "cache.bodies", "anthropic")
     assert len(naming) == 1 and "cache_control" in naming[0]
     assert "True" in naming[0] and "False" in naming[0]
+
+
+def test_cache_body_with_equal_formatting_is_not_reported(tmp_path: Path) -> None:
+    root = _sandbox(tmp_path)
+    _mutate(
+        root,
+        CACHE,
+        '            return {"cache_control": True}',
+        '            return {  "cache_control" : True }',
+    )
+
+    assert _naming(root, "cache.bodies", "anthropic") == []
 
 
 def test_unknown_mem0_key_is_reported(tmp_path: Path) -> None:

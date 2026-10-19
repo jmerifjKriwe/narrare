@@ -42,7 +42,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import yaml
 from scripts.provider_catalog_parity import PRICING_KEYS, check_parity
-from scripts.provider_catalog_parity import ParityViolation as ParityViolation
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -398,7 +397,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="render in memory and compare with the committed artifacts instead of writing",
+        help=(
+            "render in memory, compare the committed artifacts byte-for-byte, and check the "
+            "parity surfaces instead of writing"
+        ),
     )
     args = parser.parse_args(argv)
 

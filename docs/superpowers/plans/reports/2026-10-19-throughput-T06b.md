@@ -20,8 +20,11 @@ review Minors and the generator's `ParityViolation` re-export are untouched
   `_model_ids`, `_test_call_providers`, `_load_messages`, `_contains`), the
   surface-file constants, and the `check_parity` dispatch + docstring.
 - `tests/unit/scripts/test_generate_provider_catalog_parity.py` — sandbox
-  extended to nine files, 13 new test functions (16 parametrised cases), the
-  `_details`/`_naming` assertion helpers.
+  extended to nine files, 13 new test functions (15 new cases; 24 cases in the
+  module including the pre-existing pristine test), the `_details`/`_naming`
+  assertion helpers. (Corrected in T6d: this said 16 parametrised cases; the
+  committed file at `a93da565` has 22 test functions and one 3-case
+  parametrisation, i.e. 24 cases total, 15 of them new.)
 
 Only `ast`, `json` and `pathlib` were added to the imports; no dependency and no
 suppression.
@@ -31,8 +34,13 @@ suppression.
 All parsing stays AST-only for Python and `json` for messages; nothing is
 imported. `check_parity` is still a pure function of `(specs, repo_root)`,
 returns one `ParityViolation` per fact, sorted by `(surface, detail)`, and every
-`detail` starts with the provider id (plus the expected/actual pair where one
-exists).
+provider-scoped `detail` starts with the provider id (plus the expected/actual
+pair where one exists). The two structural `fallback.keys` details are the
+exception: T6c reworded them to name the offending key or the malformed anchor
+(`_FALLBACK_MODELS key '<key>' is not AIProvider.<MEMBER>` and
+`_FALLBACK_MODELS: '**' unpacking leaves its keys unverified`), because no
+provider owns those facts. (Corrected in T6d; the original claim was that every
+detail starts with a provider id.)
 
 | Surface | Anchor | How it is parsed | Assertion |
 |---|---|---|---|
@@ -74,7 +82,7 @@ once, by `settings.fields`; a missing field is reported by both, and an
 |---|---|---|
 | `settings.fields` | class absent → one violation **per provider with a field**: `<id>: CoreSettings is missing from packages/core/narrare_core/settings.py`; field absent → `<id>: <field> is not declared in CoreSettings` | `read_text`/`ast.parse` raises out of `check_parity` → non-zero exit with a traceback (same fail-fast contract as T06a's four Core surfaces) |
 | `apikeys.cover` | class absent or field absent → `<id>: no declared CoreSettings field named <field>`; catalog has `api_key_env` but no `settings_field` → `<id>: <ENV> has no settings_field in the catalog` | as above |
-| `fallback.keys` | assignment absent or not an `ast.Dict` → one violation per catalog provider: `<id>: _FALLBACK_MODELS is not a dict literal in apps/api/narrare/setup/provider_service.py`; a key that is not `AIProvider.<MEMBER>` → `<unparsed>: is not an AIProvider.<MEMBER> key`; `**` unpacking and duplicate keys are reported too | raises out (as above) |
+| `fallback.keys` | assignment absent or not an `ast.Dict` → one violation per catalog provider: `<id>: _FALLBACK_MODELS is not a dict literal in apps/api/narrare/setup/provider_service.py`; a key that is not `AIProvider.<MEMBER>` → `_FALLBACK_MODELS key '<key>' is not AIProvider.<MEMBER>`; `**` unpacking → `_FALLBACK_MODELS: '**' unpacking leaves its keys unverified`; duplicate key → `<id>: duplicate key in _FALLBACK_MODELS` (structural details name the key/anchor, not a provider — T6c/T6d) | raises out (as above) |
 | `fallback.ids` | when the table itself is absent it stays silent **by design** — `fallback.keys` has already failed on the same anchor and the gate exits 1, so nothing is silently green. When a *value* is not the expected list shape → `<id>: fallback list is not a list of ProviderModel(id=...)`; a partial scan is never compared against a truncated set | raises out (as above) |
 | `testcall.endpoints` | function absent (including renamed) → `<id>: _test_call is missing from …` for every endpoint-selector provider; function present but no comparison for that id → `<id>: no branch in _test_call handles its endpoint selector` | raises out (as above) |
 | `labels.locales` | **every** failure is a violation naming the provider: file unreadable → `<id>: <rel-path> cannot be read (No such file or directory)`; decode/JSON error → `<id>: <rel-path> is not valid UTF-8 JSON (…)`; non-object document → `<id>: <rel-path> is not a JSON object`; absent path (or `null` leaf) → `<id>: <label_key> missing in <rel-path>`; key without a dot → `<id>: label_key <key> is not a <file>.<path> key` | reported as violations (never a pass) |
@@ -342,3 +350,113 @@ to make the gate pass, and no catalog value was changed.
   it is the obvious lever if the hook ever needs to be faster.
 - The nine T06a review Minors and the generator's `ParityViolation` re-export
   remain open, by mandate (T6c).
+
+## Close-out (T6d)
+
+Provider-catalog parity close-out. No behaviour change to the gate: the changes
+remove a convenience re-export, make the `--check` help state both checks,
+remove a dead test argument, harden the ruff lookup, and add the two missing
+negative-half tests.
+
+### Files changed
+
+- `scripts/generate_provider_catalog.py` — removed the `ParityViolation`
+  re-export (the parity module remains the owner); the `--check` help now names
+  both the byte comparison and the parity surfaces.
+- `tests/unit/scripts/test_generate_provider_catalog.py` — imports
+  `ParityViolation` from `scripts.provider_catalog_parity`; the ruff lookup is
+  `shutil.which("ruff")`, else `ruff` beside `sys.executable`, else the test
+  fails with a message naming the missing toolchain (it never skips); the dead
+  `python_text="placeholder"` argument now passes the real render before the
+  CRLF byte rewrite.
+- `tests/unit/scripts/test_generate_provider_catalog_parity.py` — added
+  `test_extra_pricing_key_is_reported` (extra `DEFAULT_RATES` provider reported
+  by `pricing.keys`) and `test_cache_body_with_equal_formatting_is_not_reported`
+  (an equal but differently formatted dict literal produces no `cache.bodies`
+  violation, proving the `ast` comparison is structural).
+
+### Corrected statements
+
+1. **Test counts.** The original "13 new test functions (16 parametrised
+   cases)" is wrong. The committed file at `a93da565` has 22 test functions, of
+   which 9 existed at `f847948e` (including the pristine test) → **13 new
+   functions**. The file has 24 cases (22 functions + the 3-case locale
+   parametrisation replacing its 1 unparametrised function) → **15 new cases**,
+   or 24 total counting the pre-existing pristine test.
+2. **Violation detail prefix.** The original claim that every `detail` starts
+   with a provider id is false for the two structural `fallback.keys` details.
+   T6c reworded them to `_FALLBACK_MODELS key '<key>' is not
+   AIProvider.<MEMBER>` and `_FALLBACK_MODELS: '**' unpacking leaves its keys
+   unverified`; provider-scoped details still start with the provider id.
+
+### Gate raw output
+
+#### Gate 1 — `just test-file tests/unit/scripts/test_generate_provider_catalog_parity.py`
+
+```
+collecting ... collected 33 items
+============================== 33 passed in 3.00s ==============================
+```
+
+(exit 0)
+
+#### Gate 2 — `just test-file tests/unit/scripts/test_generate_provider_catalog.py`
+
+```
+collecting ... collected 26 items
+============================== 26 passed in 2.50s ==============================
+```
+
+(exit 0)
+
+#### Gate 3 — `uv run --all-packages python scripts/generate_provider_catalog.py --check`
+
+```
+provider catalog check: packages/core/narrare_core/llm/_providers/catalog_generated.py is up to date
+provider catalog check: packages/web/lib/providers.generated.ts is up to date
+```
+
+(exit 0)
+
+#### Gate 4 — `uv run --all-packages python scripts/generate_provider_catalog.py --help`
+
+```
+  --check     render in memory, compare the committed artifacts byte-for-byte,
+              and check the parity surfaces instead of writing
+```
+
+#### Gate 5 — `just lint-check` and strict pyright
+
+```
+uv run --all-packages ruff check apps/ packages/ scripts/ tests/ evals/
+All checks passed!
+uv run --all-packages ruff format --check apps/ packages/ scripts/ tests/ evals/
+3374 files already formatted
+```
+
+```
+uv run --all-packages pyright scripts/generate_provider_catalog.py
+0 errors, 0 warnings, 0 informations
+uv run --all-packages pyright --project tests/pyrightconfig.json tests/unit/scripts/test_generate_provider_catalog.py tests/unit/scripts/test_generate_provider_catalog_parity.py
+0 errors, 0 warnings, 0 informations
+```
+
+(exit 0)
+
+#### Gate 6 — RULE-04 line counts
+
+```
+  419 scripts/generate_provider_catalog.py
+  314 tests/unit/scripts/test_generate_provider_catalog.py
+  393 tests/unit/scripts/test_generate_provider_catalog_parity.py
+```
+
+`uv run --all-packages python scripts/check_python_file_size.py`:
+
+```
+✅ All Python files are within hard limits
+Python file-size ratchet: 0 current, 0 baseline, 0 new, 0 resolved
+RESULT: Python file-size debt did not grow
+```
+
+(exit 0; the parity test file is 393/400, the generator 419/600.)
