@@ -41,15 +41,21 @@ format. A pre-commit hook validates the message automatically.
 
 ```
 feat(core): add prompt cascade resolution
+
+User-visible: Prompt cascades can be resolved per project.
 fix(api): resolve session timeout on idle
 docs: update deployment guide
 chore(deps): bump ruff to 0.15
 ```
 
-The type (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `perf`)
-drives the auto-generated changelog and semantic versioning. For the full
-specification and the allowed scope list, see
-[coding-standards.md](docs/development/coding-standards.md).
+The type drives the auto-generated changelog and semantic versioning. `feat`
+and `fix` land in the user-facing changelog and bump the version, so both must
+state what a user can now do: a `User-visible:` line in the commit body,
+validated by the `commit-msg` hook and in CI on the PR title + body. Work no
+user can observe — including internal production code — goes under
+`chore(<scope>): …`. For the full type table, the `User-visible:` rule and the
+scope convention, see
+[coding-standards.md](docs/development/coding-standards.md#git-commit-convention).
 
 ## Before You PR
 
@@ -86,6 +92,7 @@ Beispiel-Keys.
    - [ ] `just check-frontend` passes (if frontend touched)
    - [ ] Tests pass (`just test` and/or `just test-frontend`)
    - [ ] No `--no-verify` was used for any commit
+   - [ ] `feat`/`fix` PR: a `User-visible:` line in the PR body (CI-gated)
    - [ ] Architecture checks are green (CI job "Architecture Constraints")
    - [ ] Neue `packages/web/lib/**`-Dateien haben Unit-Tests (CI-Floor 80% branches — `pnpm test:coverage`)
    - [ ] Neue/Geänderte VRT-Specs folgen dem Mock-Contract (ADR-059 BINDING): `just vrt` lokal grün

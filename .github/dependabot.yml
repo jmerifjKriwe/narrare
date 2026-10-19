@@ -4,6 +4,12 @@ version: 2
 # GitHub Actions minutes. Security detection stays event-driven and schedule-
 # independent — Dependabot alerts and automated security updates still fire
 # immediately on new advisories. Rebases are manual (`@dependabot rebase`).
+#
+# Every entry sets the same commit-message prefix: Dependabot's default
+# `build(deps)` is not an allowed conventional-commit type in this repo, and
+# the PR-time claim gate (ci.yml, architecture job) validates the PR title —
+# which becomes the squash commit on `main`. `chore(deps)` is what manual
+# dependency bumps already use.
 updates:
   # =============================================================================
   # Python — root workspace (dev tools only)
@@ -14,6 +20,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "python"
@@ -42,6 +51,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "python"
@@ -64,6 +76,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "python"
@@ -93,6 +108,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "python"
@@ -115,6 +133,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "npm"
@@ -136,6 +157,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "docker"
@@ -149,6 +173,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "docker"
@@ -162,6 +189,9 @@ updates:
       interval: "monthly"
     rebase-strategy: disabled
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "github-actions"
