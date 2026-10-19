@@ -50,6 +50,7 @@ type ViewState = "idle" | "loading" | "results" | "error";
 
 export function AuthorVoicePanel({ novelId, chapters, onClose }: AuthorVoicePanelProps) {
   const t = useTranslations("analysis");
+  const tStudio = useTranslations("studio");
   const { result, error, run, isLoading, isStreaming, isComplete, isError } = useAuthorVoice();
 
   // Default selection: ALL chapters (matches the backend "null chapter_ids =
@@ -161,7 +162,9 @@ export function AuthorVoicePanel({ novelId, chapters, onClose }: AuthorVoicePane
                   <Info className="h-6 w-6 text-red-500" />
                 </div>
                 <p className="mb-1 text-lg font-medium">{t("authorVoice.analysisFailed")}</p>
-                <p className="mb-4 text-sm text-muted-foreground">{error?.userMessage}</p>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {error ? tStudio(error.i18nKey ?? "aiActions.errorDefault") : null}
+                </p>
                 <button
                   type="button"
                   onClick={handleAnalyze}

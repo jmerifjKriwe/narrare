@@ -334,10 +334,31 @@ describe("ConsistencyPanel", () => {
     render(<ConsistencyPanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Server error")).toBeInTheDocument();
+      expect(screen.getByText("aiActions.errorConnection")).toBeInTheDocument();
     });
     expect(screen.getByText("error")).toBeInTheDocument();
     expect(screen.getByText("aiActions.retry")).toBeInTheDocument();
+  });
+
+  it("renders the localized error key, not the German userMessage (M05)", () => {
+    const error: AIErrorResponse = {
+      kind: "stream",
+      i18nKey: "aiActions.errorConnection",
+      userMessage: "Verbindung verloren. Prüfe deine Internetverbindung.",
+      retryable: true,
+      cause: new Error("stream death"),
+    };
+    mockHook = {
+      isIdle: false,
+      isError: true,
+      error,
+      state: { status: "error", result: null, error, attemptCount: 1 },
+    };
+
+    render(<ConsistencyPanel {...defaultProps} />);
+
+    expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
+    expect(screen.queryByText("Verbindung verloren. Prüfe deine Internetverbindung.")).toBeNull();
   });
 
   it("retry button triggers re-check", async () => {

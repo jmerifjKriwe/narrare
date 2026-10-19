@@ -38,6 +38,7 @@ export function CoreferencePanel({ novelId, chapterIds, onClose }: CoreferencePa
   void novelId;
 
   const t = useTranslations("analysis");
+  const tStudio = useTranslations("studio");
   const chapterId = chapterIds[0] ?? null;
 
   const { result, error, run, isLoading, isStreaming, isComplete, isError } =
@@ -139,7 +140,9 @@ export function CoreferencePanel({ novelId, chapterIds, onClose }: CoreferencePa
                   <Info className="w-6 h-6 text-red-500" />
                 </div>
                 <p className="text-lg font-medium mb-1">{t("coreference.analysisFailed")}</p>
-                <p className="text-sm text-muted-foreground mb-4">{error?.userMessage}</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {error ? tStudio(error.i18nKey ?? "aiActions.errorDefault") : null}
+                </p>
                 <button
                   type="button"
                   onClick={handleRetry}
