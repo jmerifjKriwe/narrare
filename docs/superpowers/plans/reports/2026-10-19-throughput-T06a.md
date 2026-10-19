@@ -298,3 +298,176 @@ needs real AST walking for patterns and arm bodies.
   Slice B must not append its six checks to this file; it needs either a
   separate module (a deliberate scope change from this slice's file list) or a
   refactor that moves the parity code out before adding more.
+
+---
+
+# T06a2 — Parity extraction into its own module (RULE-04)
+
+**Date:** 2026-10-19
+**Branch:** `brave-egret` (base `427c6cb0`)
+**Scope:** pure extraction of the parity gate out of the generator, exactly as
+the T06a "Concerns" above demands. Appended to T06a (same artifact, same task
+family) rather than split into `…-T06a2.md`: it closes a concern the T06a report
+itself raised.
+
+No invariant was added, removed or weakened; no review Minor was closed; no
+parsed surface and no `--check` behaviour changed.
+
+## What moved
+
+Into the new module `scripts/provider_catalog_parity.py` (223 → 224 lines):
+
+- `ParityViolation`
+- `check_parity`
+- the AST helpers: `_parse`, `_value`, `_literal`, `_pattern_ids`,
+  `_return_value`, `_find_match` (and the `_Arm` alias they use)
+- the four invariant checkers: `_check_pricing`, `_check_cache`, `_check_mem0`,
+  `_check_prefixes`
+- the `PRICING_KEYS` constant (renamed from `_PRICING_KEYS`; see below)
+
+The generator keeps the catalog loader/validator, `ProviderSpec`, both
+renderers, `_check` and `main`. `_check` calls `check_parity` (imported
+module-global, so the existing `monkeypatch.setattr(generator, "check_parity", …)`
+test keeps working). `ParityViolation` is re-exported from the generator because
+`tests/unit/scripts/test_generate_provider_catalog.py` imports it there and that
+file is out of this task's scope.
+
+The moved region is byte-for-byte identical to the original except the single
+`_PRICING_KEYS` → `PRICING_KEYS` rename:
+
+```
+$ git show HEAD:scripts/generate_provider_catalog.py | sed -n '269,448p' > old
+$ awk '/^def _parse\(path: Path\) -> ast.Module:$/,0' scripts/provider_catalog_parity.py > new
+$ diff -u old new
+@@ -41,7 +41,7 @@
+     for provider, expected in catalog.items():
+         actual = table.get(provider, {})
+-        for key in _PRICING_KEYS:
++        for key in PRICING_KEYS:
+```
+
+## Dependency direction
+
+**Runtime: generator → parity, one way. Type-only: parity → generator. No
+runtime cycle.**
+
+- `scripts/provider_catalog_parity.py` imports `ProviderSpec` from the generator
+  **under `TYPE_CHECKING` only** — the signature `list[ProviderSpec]` is
+  annotation-only, so `from __future__ import annotations` plus the type-only
+  import means the generator is never imported at run time by the parity module.
+- The generator imports `check_parity` / `ParityViolation` / `PRICING_KEYS` from
+  the parity module at run time.
+
+Two consequences that could not be avoided without changing the mandate
+("`_check` calls `check_parity` imported from the new module"):
+
+1. **A `sys.path` bootstrap in the generator.** A directly executed script gets
+   `sys.path[0] == scripts/`, so `from scripts.provider_catalog_parity import …`
+   raised `ModuleNotFoundError: No module named 'scripts'` (observed on the first
+   run of Gate 3). The repo's established idiom for a directly-executed script
+   that imports `scripts.*` is a one-line repo-root insert — `scripts/check_adoption.py`
+   does exactly this with no `# noqa` (ruff's E402 exempts imports preceded only
+   by `sys.path` modifications). The generator now inserts the repo root before
+   its imports, so the package-qualified name resolves both as a script and when
+   imported as `scripts.generate_provider_catalog` by pytest. **No suppression is
+   used.** This is the only addition beyond the move; it changes no catalog,
+   render or parity semantics.
+2. **`_PRICING_KEYS` → `PRICING_KEYS`, moved to the parity module.** The constant
+   is used by both the generator's `pricing_default` validator and
+   `_check_pricing`. Since the parity module must not import the generator, it
+   cannot stay in the generator; duplicating it would reintroduce exactly the
+   SSOT drift RULE-04 exists to prevent. Kept private, pyright strict rejected
+   the cross-module use (`reportPrivateUsage` on `_PRICING_KEYS`), so the shared
+   constant is public. A third shared module was rejected as out of this task's
+   three-file scope. Same tuple, same behaviour.
+
+## Line counts (RULE-04 `script` limit = 600)
+
+| File | Before | After |
+|---|---|---|
+| `scripts/generate_provider_catalog.py` | 599 | **417** |
+| `scripts/provider_catalog_parity.py` | — (new) | **224** |
+
+Generator is now well clear of the limit; the new module is under it too. Slice
+B's six invariants have room in the parity module.
+
+## Import probes (fresh interpreters, both orders)
+
+```
+##### GATE 6a: generator first
+generator.check_parity.__module__ = scripts.provider_catalog_parity
+parity.check_parity.__module__    = scripts.provider_catalog_parity
+single module instance: True
+ParityViolation identical: True
+no top-level duplicate module: True
+probe1_exit=0
+##### GATE 6b: parity first
+parity.check_parity.__module__    = scripts.provider_catalog_parity
+generator.check_parity.__module__ = scripts.provider_catalog_parity
+single module instance: True
+ParityViolation identical: True
+probe2_exit=0
+```
+
+Both orders import cleanly (no `ImportError`, no partial-initialisation cycle),
+and both names resolve to the *same* module object, so `ParityViolation` is one
+class — no duplicate-module-instance hazard.
+
+## Raw gate output
+
+```
+##### GATE 1
+tests/unit/scripts/test_generate_provider_catalog_parity.py::test_empty_mem0_map_is_reported PASSED [ 88%]
+tests/unit/scripts/test_generate_provider_catalog_parity.py::test_wildcard_before_provider_arms_shadows_them PASSED [100%]
+
+============================== 9 passed in 2.25s ===============================
+gate1_exit=0
+##### GATE 2
+tests/unit/scripts/test_generate_provider_catalog.py::test_rendered_python_passes_ruff_format_and_line PASSED [100%]
+
+============================== 26 passed in 2.43s ==============================
+gate2_exit=0
+##### GATE 3
+provider catalog check: packages/core/narrare_core/llm/_providers/catalog_generated.py is up to date
+provider catalog check: packages/web/lib/providers.generated.ts is up to date
+gate3_exit=0
+##### GATE 4
+uv run --all-packages ruff check apps/ packages/ scripts/ tests/ evals/
+All checks passed!
+uv run --all-packages ruff format --check apps/ packages/ scripts/ tests/ evals/
+3373 files already formatted
+gate4_exit=0
+##### GATE 5
+Python RULE-04 file-size check
+==================================
+✅ All Python files are within hard limits
+Python file-size ratchet: 0 current, 0 baseline, 0 new, 0 resolved
+RESULT: Python file-size debt did not grow
+gate5_exit=0
+  417 scripts/generate_provider_catalog.py
+  224 scripts/provider_catalog_parity.py
+  641 total
+```
+
+Same test counts as before the move (9 and 26), Gate 3 exits 0, `lint-check`
+green, size ratchet unchanged.
+
+## Extra — scoped strict pyright
+
+```
+uv run --all-packages pyright scripts/generate_provider_catalog.py \
+  scripts/provider_catalog_parity.py \
+  tests/unit/scripts/test_generate_provider_catalog_parity.py
+0 errors, 0 warnings, 0 informations
+```
+
+## Files changed
+
+- `scripts/provider_catalog_parity.py` — new.
+- `scripts/generate_provider_catalog.py` — `sys.path` bootstrap, parity imports,
+  removals, `PRICING_KEYS` references, `--check` docstring pointer.
+- `tests/unit/scripts/test_generate_provider_catalog_parity.py` — imports
+  `check_parity` from the new module (still `CATALOG_PATH`/`load_catalog` from the
+  generator).
+
+No git writes were performed.

@@ -11,7 +11,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from scripts.generate_provider_catalog import CATALOG_PATH, check_parity, load_catalog
+from scripts.generate_provider_catalog import CATALOG_PATH, load_catalog
+from scripts.provider_catalog_parity import check_parity
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
