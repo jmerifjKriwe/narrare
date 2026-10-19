@@ -10,6 +10,7 @@ E04 stream death precedes persistence — so drift/check specs seed the
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -20,6 +21,9 @@ if TYPE_CHECKING:
 
 _UI_WAIT_MS: int = 15_000
 
+_URL_PANEL = re.compile(r"[?&]panel=([^&]+)")
+"""The right panel active in the URL (``?panel=<id>``), or ``None``."""
+
 # Toolbar trigger accessible names — packages/i18n/messages/en/analysis.json
 # (verified 2026-10-18 live: every *Trigger.tsx sets
 # ``aria-label={t("<panel>.triggerTooltip")}``, and an aria-label OVERRIDES
@@ -29,12 +33,16 @@ _UI_WAIT_MS: int = 15_000
 ANALYSIS_TRIGGERS: dict[str, str] = {
     "beta_reader": "Get AI-powered feedback as if from a beta reader",
     "sentiment": "Analyze emotional tone and sentiment of your text",
-    "consistency": "Check your text for character, timeline, world, and plot inconsistencies",
+    "consistency": "Consistency",
     "readability": "Analyze text complexity and get readability scores",
     "pov": "Detect POV character, head-hopping, and knowledge leakage",
     "coreference": "Analyze pronoun clarity and resolve character references",
     "character_voice": "Analyze character dialogue to create voice profiles for consistency",
-    "voice_check": "Check if dialogue matches each character's established voice profile",
+    # voice_check: VoiceCheckTrigger.tsx uses the DEDICATED
+    # voiceCheck.triggerAriaLabel ("Check character voices"), NOT its
+    # triggerTooltip; consistency: ConsistencyTrigger.tsx is a label-only
+    # ToolbarButton (ui/toolbar-button.tsx sets aria-label={label}).
+    "voice_check": "Check character voices",
     "voice_drift": "Track how each character's voice drifts across chapters",
     "author_voice": (
         "Analyze your narrative voice and create an author-voice profile for AI generation"
@@ -48,7 +56,18 @@ def open_analysis_panel(page: Page, panel: str) -> None:
 
     Clicks by the button's accessible name (the aria-label tooltip —
     see ``ANALYSIS_TRIGGERS``).
+
+    Already-open guard: the panel state syncs to the URL (``?panel=<id>``,
+    ``useEditorUrlPanelSync``) and SURVIVES ``reload_page`` — so when the
+    requested panel is the one currently active, clicking the trigger
+    again would TOGGLE it closed and the panel wait would time out (both
+    fix-round flakes were exactly this signature; same mechanism as the
+    ``open_generation_panel`` guard). Exact id match — ``author_voice``
+    is a substring of ``author_voice_drift``, so no substring check.
     """
+    url_panel = _URL_PANEL.search(page.url)
+    if url_panel is not None and url_panel.group(1) == panel:
+        return
     page.get_by_role("button", name=ANALYSIS_TRIGGERS[panel], exact=True).click()
     page.get_by_test_id("editor-right-panel").wait_for(state="visible", timeout=_UI_WAIT_MS)
 

@@ -5,7 +5,8 @@ Real backend under TestModel for readability/POV/sentiment (ADR-021
 deterministic or tolerance-loose); the browser-layer catalog for the
 validator-strict beta reader (E04). Pins: B07 (POV kb-supply — FIXED in
 the blocker wave; pinned green), E03 (sentiment model-presence stance,
-D-3), N12 (readability AI phase runs — fixed in-wave), N13 (min-words
+D-3), N12 (readability composes the full response model — fixed in-wave),
+N13 (min-words
 422 machine-readable — fixed in-wave).
 
 Run-affordance calibration (2026-10-18, live panel components): ALL FOUR
@@ -166,7 +167,12 @@ class TestSentiment:
 @pytest.mark.e2e
 class TestReadability:
     def test_metrics_and_ai_phase_on_the_real_path(self, analysis_novel, authed_request) -> None:
-        """N12 pin (fixed in-wave): 200 + metrics + the AI phase RAN."""
+        """N12 pin (fixed in-wave): 200 + metrics + full response model composed.
+
+        This layer pins the composed response model (metrics + the
+        ``sentence_analyses`` field); discriminating AI-phase-ran vs
+        honest-skip is the unit level's job.
+        """
         page = analysis_novel.page
         prepare_ai_chapter(
             page,
@@ -233,4 +239,11 @@ class TestPOV:
         mock_llm(page, "pov")
         open_analysis_panel(page, "pov")
 
-        page.get_by_text("Elara").first.wait_for(state="visible", timeout=20_000)
+        # Catalog-UNIQUE string, scoped to the right panel. The seeded
+        # chapter prose itself contains "Elara", so a bare get_by_text
+        # matched the EDITOR and proved nothing about the panel. The
+        # issue excerpt exists only in the pov catalog fixture (rendered
+        # via pov.quotedExcerpt in POVIssueRow).
+        page.get_by_test_id("editor-right-panel").get_by_text(
+            "The gatekeeper doubted her story."
+        ).first.wait_for(state="visible", timeout=20_000)
