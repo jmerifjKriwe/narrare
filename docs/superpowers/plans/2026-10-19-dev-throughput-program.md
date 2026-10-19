@@ -71,7 +71,7 @@ T12 — with its document). Naming a recipe in this plan file is safe; naming it
   consume. No provider string literal may be introduced outside the catalog, its
   generated artifacts, or a surface named in ADR-099 point 7.
 - **RULE-16 / RULE-17:** provider display labels exist only as i18n keys
-  (`settings.providers.<id>`) resolved in `en`/`de`/`fr`; the TS provider type is
+  (`settings-ai.providers.<id>`) resolved in `en`/`de`/`fr`; the TS provider type is
   derived, never restated.
 - **Gates per task:** Python — `just test-file <paths>`, `just typecheck`,
   `just check-architecture`. Frontend — `just test-frontend`,
@@ -136,7 +136,7 @@ Every task is independently landable; T2, T3, T4, T5 each need only T1.
 # supports. See ADR-099. `label_key` is an i18n key, never a display string.
 providers:
   - id: anthropic
-    label_key: settings.providers.anthropic
+    label_key: settings-ai.providers.anthropic
     api_key_env: ANTHROPIC_API_KEY
     settings_field: anthropic_api_key
     pydantic_ai_extra: anthropic
@@ -147,7 +147,7 @@ providers:
     settings_editable: true
     requires_endpoint_selector: false
   - id: openai
-    label_key: settings.providers.openai
+    label_key: settings-ai.providers.openai
     api_key_env: OPENAI_API_KEY
     settings_field: openai_api_key
     pydantic_ai_extra: openai
@@ -158,7 +158,7 @@ providers:
     settings_editable: true
     requires_endpoint_selector: false
   - id: google
-    label_key: settings.providers.google
+    label_key: settings-ai.providers.google
     api_key_env: GOOGLE_API_KEY
     settings_field: google_api_key  # gemini_api_key is CoreSettings' accepted alias
     pydantic_ai_extra: google
@@ -169,7 +169,7 @@ providers:
     settings_editable: true
     requires_endpoint_selector: false
   - id: groq
-    label_key: settings.providers.groq
+    label_key: settings-ai.providers.groq
     api_key_env: GROQ_API_KEY
     settings_field: groq_api_key
     pydantic_ai_extra: groq
@@ -180,7 +180,7 @@ providers:
     settings_editable: true
     requires_endpoint_selector: false
   - id: ollama
-    label_key: settings.providers.ollama
+    label_key: settings-ai.providers.ollama
     api_key_env: null
     settings_field: null
     pydantic_ai_extra: ollama
@@ -191,7 +191,7 @@ providers:
     settings_editable: true
     requires_endpoint_selector: true
   - id: openrouter
-    label_key: settings.providers.openrouter
+    label_key: settings-ai.providers.openrouter
     api_key_env: OPENROUTER_API_KEY
     settings_field: openrouter_api_key
     pydantic_ai_extra: openrouter
@@ -202,7 +202,7 @@ providers:
     settings_editable: true
     requires_endpoint_selector: false
   - id: zai
-    label_key: settings.providers.zai
+    label_key: settings-ai.providers.zai
     api_key_env: ZAI_API_KEY
     settings_field: zai_api_key
     pydantic_ai_extra: zai
@@ -396,7 +396,7 @@ def test_rendered_typescript_declares_ids_and_label_keys() -> None:
     assert 'export type AIProvider =' in rendered
     assert "export const PROVIDER_IDS" in rendered
     assert "export const PROVIDER_LABEL_KEYS" in rendered
-    assert 'settings.providers.zai' in rendered
+    assert 'settings-ai.providers.zai' in rendered
 
 
 def test_committed_typescript_artifact_matches_a_fresh_render() -> None:
@@ -487,8 +487,8 @@ describe("ProviderForm provider select (Groq/Z.AI defect)", () => {
     const labels = Array.from(
       document.querySelectorAll<HTMLOptionElement>("#provider-name option"),
     ).map((o) => o.textContent);
-    expect(labels).toContain("settings.providers.groq");
-    expect(labels).toContain("settings.providers.zai");
+    expect(labels).toContain("settings-ai.providers.groq");
+    expect(labels).toContain("settings-ai.providers.zai");
   });
 });
 ```
@@ -526,7 +526,7 @@ export function getProviderLabel(
 
 - [ ] **Step 4: Update the existing list tests** — `packages/web/lib/providers.test.ts`
       replaces the seven hardcoded English assertions with key assertions
-      (`getProviderLabel("groq", t) === "settings.providers.groq"` with an identity
+      (`getProviderLabel("groq", t) === "settings-ai.providers.groq"` with an identity
       `t`) and keeps the unknown-provider cases
       (`getProviderLabel("custom", t) === "custom"`). Run
       `cd packages/web && pnpm test -- providers.test` — expect GREEN.
@@ -1455,3 +1455,90 @@ def test_real_tree_has_no_disagreements() -> None:
       program; the wave's pull request then carries the evidence the ADRs and the spec
       require (the architecture job's log showing the provider-catalog, intent-parity,
       tier-pinning and policy-pinning steps green).
+
+---
+
+## Addendum A — T0: worktree-safe commit-message gate (program blocker)
+
+> **Coordinator Ruling CR-1 (2026-10-19).** This task is outside the planned P1–P5
+> scope and was inserted during execution. It is recorded here rather than folded
+> into an existing task, per the "no retroactive plan rewriting" rule. Authorization:
+> it is a hard blocker — *every* task of this program commits from a linked worktree,
+> and with the `commit-msg` hook installed no commit from a linked worktree can
+> succeed. Fixing the hook is therefore a precondition for T1's commit and for all
+> later tasks. Revert freely if the ruling is not accepted: the fix touches one
+> script plus its new test and nothing else.
+
+**Discovered:** 2026-10-19, after T1's implementation, when the T1 commit was refused.
+
+**Evidence (all reproduced in this worktree):**
+- `scripts/check_commit_message.py:86` reads `Path(".git/COMMIT_EDITMSG")` — a
+  **cwd-relative** path. In a linked worktree `.git` is a *file* (65 bytes, the
+  `gitdir:` pointer), so `.git/COMMIT_EDITMSG` can never exist there. The script
+  falls through to `sys.stdin.read()`, which pre-commit leaves empty
+  (`pass_filenames: false`), producing
+  `❌ Commit message rejected: Empty commit message` and exit 1.
+- `git rev-parse --git-path COMMIT_EDITMSG` →
+  `<main>/.git/worktrees/brave-egret/COMMIT_EDITMSG` — exists, holds the real message.
+- Direct reproduction as git invokes it:
+  `bash /home/kiesow/projects/narrare/.git/hooks/commit-msg /tmp/opencode/probe-commitmsg.txt`
+  from the worktree root → exit 1 with the "Empty commit message" error, for a
+  message that is unambiguously valid Conventional Commits.
+- Why the program's first commit (`de576f0c`, 08:46:30) succeeded anyway: the
+  `commit-msg` hook file was created at **08:47:37**, *after* that commit. Only
+  `pre-commit` and `pre-push` were installed before it (main-checkout hooks, mtime
+  16:47:15 the previous day). The commit-msg stage was not yet installed, so that
+  commit never ran it. From the moment it is installed, the defect is live.
+
+**Decision.** Fix the path resolution; do **not** disarm the hook. The hook is
+correct to demand a Conventional Commits subject — it is the gate that keeps
+`de576f0c`-style messages honest. Resolution order becomes: (1) an explicit path in
+`sys.argv[1]` (git's own `commit-msg` protocol), (2) `git rev-parse --git-path
+COMMIT_EDITMSG` — correct in a normal checkout *and* in a linked worktree, (3)
+stdin. `pass_filenames: false` stays; `.pre-commit-config.yaml` is not touched.
+Forbidden, as always: `--no-verify`, `-n`, `core.hooksPath` redirection.
+
+**Files:** Modify `scripts/check_commit_message.py` · Create
+`tests/unit/scripts/test_check_commit_message.py`.
+**Report:** required → `reports/2026-10-19-throughput-T00.md`.
+
+- [ ] **Step 1: Write the regression test first** —
+      `tests/unit/scripts/test_check_commit_message.py`. It must exercise the real
+      worktree shape, not a mock: a fixture that `git init`s a tmp directory, makes an
+      initial commit, `git worktree add`s a second checkout, writes a valid message
+      into that worktree's `COMMIT_EDITMSG`, then runs the script **as a subprocess
+      from the worktree root with no arguments and `stdin=DEVNULL`**, asserting exit
+      0. A second case writes an invalid subject and asserts exit 1 — so the test
+      cannot pass by short-circuiting to success. Pin the message path the same way
+      the defect does: `.git` in that worktree must be a file, asserted explicitly.
+
+- [ ] **Step 2: Run it** — `just test-file tests/unit/scripts/test_check_commit_message.py`.
+      Expect **RED**: exit 1 / "Empty commit message" for the valid message. Capture
+      the output verbatim for the report.
+
+- [ ] **Step 3: Implement the resolution order** — a small
+      `read_commit_message(argv, *, stdin)` helper (`argv` defaults to `sys.argv[1:]`,
+      `stdin` to `sys.stdin`): explicit path if it is a file → `subprocess.run(["git",
+      "rev-parse", "--git-path", "COMMIT_EDITMSG"], capture_output=True, text=True,
+      check=True)` → stdin. A failure of the git call must be reported (RULE-11: no
+      silent `except`) and must fall through to stdin. `main()` keeps its current
+      contract (exit 0 valid / 1 invalid) and its current output.
+
+- [ ] **Step 4: Verify** — the test is GREEN, then both directions of the live hook from
+      the worktree root. **Correction to an earlier draft of this step:** the literal
+      `bash <common>/hooks/commit-msg <scratch-file>` invocation cannot test anything —
+      `pass_filenames: false` means git's message-file argument is dropped before the
+      script runs, so both directions read the same resolved file and a "valid" run
+      would still fail while the fix is only staged (pre-commit stashes unstaged
+      changes). The valid two-directional check is (a) the subprocess regression test,
+      and (b) the installed hook run from a **clean-tree throwaway worktree**, once
+      with a valid message as the pending commit message and once with an invalid one
+      (`Bad subject`): exit 0 and exit 1 respectively. Also verify the recipe path, which
+      feeds the message on stdin: `just check-commit-msg "feat(core): probe"` → exit 0
+      and `just check-commit-msg "Bad subject"` → exit 1. Then
+      `just lint-file scripts/check_commit_message.py`,
+      `just typecheck-file scripts/check_commit_message.py tests/unit/scripts/test_check_commit_message.py`,
+      `just check-architecture`.
+
+- [ ] **Step 5: Commit** `fix(scripts): resolve the commit-message path through git (worktree-safe commit-msg gate)`
+      — report `reports/2026-10-19-throughput-T00.md`.

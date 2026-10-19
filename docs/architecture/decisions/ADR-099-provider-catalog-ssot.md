@@ -189,7 +189,7 @@ Binding sub-decisions:
    | Field | Type | Meaning |
    |-------|------|---------|
    | `id` | string | Canonical identifier — the `AIProvider` member value and the TS union member. Unique, lowercase, `[a-z0-9_]+`. |
-   | `label_key` | string | i18n key resolving the display label, `settings.providers.<id>`. Never a human-readable label (see point 5). |
+   | `label_key` | string | i18n key resolving the display label, `settings-ai.providers.<id>`. Never a human-readable label (see point 5). |
    | `api_key_env` | string \| null | Environment variable name (e.g. `OPENAI_API_KEY`); `null` when the provider takes no key. Verified against ADR-071 §3 and `.env.example:35-50`: `CoreSettings` sets no `env_prefix`, so the provider keys use their plain upper-cased field names — only `NARRARE_*` fields carry a `validation_alias`. |
    | `settings_field` | string \| null | Name of the provider's field on `CoreSettings` (e.g. `openai_api_key`, `google_api_key`); `null` when the provider has none. Added to the mandated field list because point 4's parity gate cannot map provider → settings field without it (the `google` provider is backed by `google_api_key` with `gemini_api_key` as an accepted alias). |
    | `pydantic_ai_extra` | string | The pydantic-ai provider integration the factory reaches the provider through (`anthropic`, `openai`, `google`, `groq`, `ollama`, `openrouter`, `zai` — one per catalog entry, verified against the imports in `_providers/*.py`). Closed literal set; informational for setup docs and the ADR table. |
@@ -217,13 +217,20 @@ Binding sub-decisions:
    of declaring it.
 
 5. **Labels are i18n keys, decided against RULE-16.** The catalog stores
-   `label_key`, never a display string. Labels resolve through
-   `packages/i18n/messages/{en,de,fr}/settings-ai.json` under `providers.<id>`;
-   all seven keys already exist in `en` (`settings-ai.json:3-10`, including both
-   `ollamaLocal` and `ollama`). The naive alternative — deriving labels from the
-   catalog into `PROVIDER_OPTIONS` — would have added two *new* hardcoded English
-   labels ("Groq", "Z.AI") to a component that already held five, deepening the
-   RULE-16 violation while fixing the functional defect. The generator asserts
+   `label_key`, never a display string. The key is fully qualified:
+   `settings-ai.providers.<id>` — `packages/web/lib/i18n/request.ts:65-68` mounts
+   each message file under its own file stem as a top-level key
+   (`messages["settings-ai"] = settings-ai.json`), so the namespace segment is
+   `settings-ai`, not `settings` (`settings.json`'s `providers` entry is the
+   unrelated section *title* string `"Providers"`, not an object — a
+   `settings.providers.<id>` lookup would resolve against a string). Resolution for
+   `--check` therefore reads `packages/i18n/messages/<locale>/settings-ai.json` and
+   indexes `providers.<id>`; all seven keys already exist in `en`, `de` and `fr`
+   (verified: `providers` holds `anthropic, google, groq, ollama, ollamaLocal,
+   openai, openrouter, zai` in all three). The naive alternative — deriving labels
+   from the catalog into `PROVIDER_OPTIONS` — would have added two *new* hardcoded
+   English labels ("Groq", "Z.AI") to a component that already held five, deepening
+   the RULE-16 violation while fixing the functional defect. The generator asserts
    that every `label_key` resolves in all three locales and fails the check
    otherwise.
 
@@ -433,7 +440,7 @@ mechanical ones cannot be forgotten, because the gate fails.
   a translator and resolves the label key, falling back to the raw value for
   unknown providers. `packages/web/lib/providers.test.ts` moves with it: its
   seven hardcoded English assertions become key assertions
-  (`settings.providers.<id>`), and its unknown-provider behaviour is preserved.
+  (`settings-ai.providers.<id>`), and its unknown-provider behaviour is preserved.
 - `packages/web/types/wizard.ts` — `AIProvider` becomes a re-export.
 - `packages/web/components/studio/wizard/WizardStep4.tsx` — option labels resolve
   through the translator against the derived list.
