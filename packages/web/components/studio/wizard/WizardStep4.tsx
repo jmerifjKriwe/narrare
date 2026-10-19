@@ -14,6 +14,9 @@ interface WizardStep4Props {
 
 export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
   const t = useTranslations("studio");
+  // Root translator: provider label keys are fully qualified
+  // (`settings-ai.providers.<id>`); `t` above is namespaced to "studio".
+  const tProviders = useTranslations();
   const tCommon = useTranslations("common");
   const { updateStep4, state } = useWizardStore();
 
@@ -69,7 +72,7 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
           >
             {PROVIDERS.map((p) => (
               <option key={p.value} value={p.value}>
-                {p.label}
+                {tProviders(p.labelKey)}
               </option>
             ))}
           </select>

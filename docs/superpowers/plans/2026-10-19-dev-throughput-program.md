@@ -452,8 +452,11 @@ def test_committed_typescript_artifact_matches_a_fresh_render() -> None:
   - the settings provider `<select id="provider-name">` renders exactly the seven
     canonical ids in order, each option's text from `t(labelKey)`.
 
-- [ ] **Step 1: Write the failing regression test** —
-      `packages/web/components/studio/settings/__tests__/ProviderForm.test.tsx`:
+- [ ] **Step 1: Write the failing regression test** — **extend the existing
+      colocated `packages/web/components/studio/settings/ProviderForm.test.tsx`**; do
+      not create a second file for the same component (coordinator correction: the
+      draft named `…/settings/__tests__/ProviderForm.test.tsx`, which would have
+      duplicated an 11-test file that already exists next to the component):
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -536,6 +539,31 @@ export function getProviderLabel(
       keep the `providerLabel` export name only if it is imported elsewhere — it is
       not, so delete it) render `t(p.labelKey)` as each option's text. No English
       provider label remains in either component (RULE-16).
+
+      **Coordinator ruling T4-R1 — which translator.** The label key is fully
+      qualified (`settings-ai.providers.<id>`), so it must be resolved through a
+      **root translator**: `const tProviders = useTranslations();` with no namespace
+      (precedent: `components/studio/analysis/*`). The translator each component
+      already holds is namespaced — `ProviderForm` receives
+      `useTranslations("studio")` from `AiTab.tsx:13`, and `WizardStep4.tsx:16` builds
+      `useTranslations("studio")` — so calling either with this key resolves
+      `studio.settings-ai.…` and renders a raw dotted string in the real UI. The
+      global test mock is an identity translator (`setupTests.ts:136-146`), so **no
+      component test can observe this**; R2 below is the guard.
+
+      **Coordinator ruling T4-R2 — the locale-resolution test.** `providers.test.ts`
+      must additionally resolve every id's key against the **real**
+      `packages/i18n/messages/{en,de,fr}/settings-ai.json` trees (a small dotted-path
+      lookup built in the test), asserting a human-readable string for all seven ids
+      in all three locales. This is what fails if the key form ever regresses to
+      `settings.providers.<id>` — `settings.json`'s `providers` entry is the section
+      title string `"Providers"`, not an object.
+
+      **Visible change to flag in the report and the commit message:** the settings
+      provider labels stop being hardcoded English ("Anthropic / Claude",
+      "Google / Gemini", "Ollama (Local)") and become the localized i18n values
+      ("Anthropic", "Google AI", "Ollama (local)"; German and French follow). That is
+      intended (RULE-16) and is the only user-visible text change in this task.
 
 - [ ] **Step 6: Verify** — `cd packages/web && pnpm test -- ProviderForm` (**GREEN**,
       seven options), `just test-frontend`, `just typecheck-frontend`,

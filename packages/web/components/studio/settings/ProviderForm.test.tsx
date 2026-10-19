@@ -272,4 +272,46 @@ describe("ProviderForm", () => {
       expect(apiKeyInput).toHaveAttribute("placeholder", "••••••••9876");
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Regression: the settings provider list must be derived from the shared
+  // catalog, not a hand-maintained 5-entry list (Groq/Z.AI were unpickable).
+  // -------------------------------------------------------------------------
+  describe("provider select (Groq/Z.AI defect)", () => {
+    const t = (key: string) => key; // identity translator: labels surface as keys
+
+    function optionValues(): string[] {
+      return Array.from(document.querySelectorAll<HTMLOptionElement>("#provider-name option")).map(
+        (o) => o.value,
+      );
+    }
+
+    it("offers every catalog provider in canonical order", () => {
+      render(
+        <ProviderForm mode="add" onSubmit={vi.fn()} onCancel={vi.fn()} isPending={false} t={t} />,
+      );
+      expect(optionValues()).toEqual([
+        "anthropic",
+        "openai",
+        "google",
+        "groq",
+        "ollama",
+        "openrouter",
+        "zai",
+      ]);
+    });
+
+    it("offers groq and zai specifically (the reported defect)", () => {
+      render(
+        <ProviderForm mode="add" onSubmit={vi.fn()} onCancel={vi.fn()} isPending={false} t={t} />,
+      );
+      expect(optionValues()).toContain("groq");
+      expect(optionValues()).toContain("zai");
+      const labels = Array.from(
+        document.querySelectorAll<HTMLOptionElement>("#provider-name option"),
+      ).map((o) => o.textContent);
+      expect(labels).toContain("settings-ai.providers.groq");
+      expect(labels).toContain("settings-ai.providers.zai");
+    });
+  });
 });
