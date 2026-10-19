@@ -324,3 +324,55 @@ class DialogueParser:
         if first in _NON_NAMES:
             return None
         return name
+
+
+# ---------------------------------------------------------------------------
+# Roster-gated attribution (audit N11)
+# ---------------------------------------------------------------------------
+
+
+def restrict_speakers_to_roster(
+    utterances: list[AttributedUtterance],
+    roster: set[str],
+) -> list[AttributedUtterance]:
+    """Demote attributions whose speaker is not in the KB character roster.
+
+    The action-beat heuristic accepts any capitalized token that is not in
+    the finite ``_NON_NAMES`` list, so sentence-initial prose words ("In
+    order to…") become MEDIUM-confidence "speakers" (audit N11: garbage
+    characters in voice drift / check voice / character voices). The KB
+    roster is the SSOT for who IS a character; a demoted utterance keeps
+    its text/position with ``speaker=None`` at ``CONFIDENCE_LOW`` — the
+    ADR-055 Decision 3 handoff: the agent resolves unattributed quotes
+    inline (rendered ``?`` in the agent prompt).
+
+    Empty *roster* → the input list unchanged (a KB-less novel has no SSOT
+    to gate against; the parser's hint behavior stands). Inputs are never
+    mutated — new utterances are returned for demotions.
+    """
+    if not roster:
+        return utterances
+    roster_cf = {name.casefold() for name in roster}
+    gated: list[AttributedUtterance] = []
+    for utt in utterances:
+        if utt.speaker is not None and utt.speaker.casefold() not in roster_cf:
+            gated.append(
+                AttributedUtterance(
+                    text=utt.text,
+                    speaker=None,
+                    confidence=CONFIDENCE_LOW,
+                    start=utt.start,
+                    end=utt.end,
+                )
+            )
+        else:
+            gated.append(utt)
+    return gated
+
+
+def filter_speaker_names(names: set[str], roster: set[str]) -> set[str]:
+    """Name-set form of :func:`restrict_speakers_to_roster` (drift seam)."""
+    if not roster:
+        return set(names)
+    roster_cf = {name.casefold() for name in roster}
+    return {name for name in names if name.casefold() in roster_cf}
