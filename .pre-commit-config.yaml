@@ -389,7 +389,9 @@ repos:
         entry: uv run python scripts/check_commit_message.py
         language: system
         stages: [commit-msg]
-        pass_filenames: false
+        # git hands the hook the message file as argv[1]; the checker prefers it
+        # over stdin and strips its `#` comment lines (see read_message()).
+        pass_filenames: true
 
 ci:
   # pyright + pyrefly run as full checks in CI (quality job), not per-file

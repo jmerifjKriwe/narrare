@@ -623,8 +623,65 @@ test(auth): add integration tests for token refresh flow
 refactor(core): split writing service into focused sub-services
 ```
 
-Types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `perf`, `ci`
-Scope: domain module name or `core`, `deps`, `infra`
+### What the type decides
+
+The type is not a label for how the work felt. `release-please` derives both
+the version bump and the user-facing `CHANGELOG.md` from it
+(`release-please-config.json`):
+
+| Type | Meaning | User-facing CHANGELOG | Version bump |
+|------|---------|-----------------------|--------------|
+| `feat` | a user can now do or observe something new | ✨ Features | minor |
+| `fix` | a user-facing defect is fixed | 🐛 Bug Fixes | patch |
+| `perf` | performance of existing behaviour | ⚡ Performance | — |
+| `refactor` | behaviour-preserving rebuild | ♻️ Refactoring | — |
+| `docs` | documentation only | 📚 Documentation | — |
+| `chore` | maintenance, and internal production code | hidden | — |
+| `test` | tests only | hidden | — |
+| `ci` | CI/CD only | hidden | — |
+| `style` | formatting only | hidden | — |
+| `revert` | revert of an earlier commit | hidden | — |
+
+### `feat` and `fix` claim a user-visible change
+
+Both land in the user-facing changelog and bump the version, so both must
+carry a claim. The test is one question: **can a user do or observe this
+without reading code, logs or tests?** A UI element, a documented REST/WS
+call, a documented setting. If the answer needs internals — agent, gate,
+eval, resolver, repository, seam — it is not a `feat`; and if it only
+*prepares* a later user-facing feature (a migration, a table, an interface),
+it is not one either.
+
+The claim goes into the commit body:
+
+```
+feat(import): project import v1
+
+User-visible: You can now import an existing Narrare project from a zip
+archive; chapters, knowledge-base entries and settings are restored.
+
+Refs: ADR-091
+```
+
+`User-visible:` starts the line, carries at least 20 characters of value and
+is not a placeholder (`n/a`, `none`, `tbd`). Enforced by
+`scripts/check_commit_message.py`: locally in the `commit-msg` hook, and in CI
+against the PR title + body — PRs are squash-merged, so the squash commit on
+`main` never passes the local hook.
+
+Internal production code no user can observe takes `chore(<scope>):` — hidden
+from the changelog, no version bump:
+
+```
+chore(kb): wire the ADR-090 rerank tier into the context service
+chore(arch): add the factory-resolution gate contract
+```
+
+### Scope
+
+Scope is the domain module name or `core`, `deps`, `infra` — e.g.
+`feat(writing)`, `fix(kb)`, `chore(deps)`, `ci(workflows)`.
+
 Breaking changes: add `!` after type/scope, add `BREAKING CHANGE:` footer
 
 > **Tip:** For rapid local iteration, the pre-commit fast-path can skip the
