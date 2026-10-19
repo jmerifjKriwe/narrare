@@ -56,6 +56,8 @@ async def get_voice_check_service(
     - NovelRepository for access control + language/metadata resolution.
     - ChapterRepository for chapter content fetching.
     - KBRepository-backed VoiceProfileConsumer provider for stored profiles.
+    - KB character-roster provider (``known_character_names``) gating parsed
+      utterances against the novel's KB characters (N11).
     - ModelRegistry + lazy model resolution (ADR-086) for the checker
       agent. The resolved credentials reach the ``registry.prepare``
       resolution point at consumption time.
@@ -101,6 +103,11 @@ async def get_voice_check_service(
         entities = [_entry_to_kb_entity(entry) for entry in entries]
         return make_voice_profile_consumer(entities)
 
+    from narrare.analysis.character_roster import known_character_names
+
+    async def roster_provider(novel_id: UUID) -> set[str]:
+        return await known_character_names(kb_repo, novel_id)
+
     return CharacterVoiceCheckerService(
         novel_repo=novel_repo,
         chapter_repo=chapter_repo,
@@ -110,6 +117,7 @@ async def get_voice_check_service(
         composer=composer,
         relationship_repo=relationship_repo,
         invocation_pipeline=get_invocation_pipeline(),
+        roster_provider=roster_provider,
     )
 
 

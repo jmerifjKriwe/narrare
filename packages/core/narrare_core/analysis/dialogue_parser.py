@@ -349,6 +349,10 @@ def restrict_speakers_to_roster(
     Empty *roster* → the input list unchanged (a KB-less novel has no SSOT
     to gate against; the parser's hint behavior stands). Inputs are never
     mutated — new utterances are returned for demotions.
+
+    Limitation: matching is exact-form (case-insensitive via ``casefold``) —
+    inflected or decorated forms (``"Elara's"``, ``"Lady Elara"``) do not
+    match a roster entry ``"Elara"`` and are demoted like unknown speakers.
     """
     if not roster:
         return utterances
@@ -371,7 +375,13 @@ def restrict_speakers_to_roster(
 
 
 def filter_speaker_names(names: set[str], roster: set[str]) -> set[str]:
-    """Name-set form of :func:`restrict_speakers_to_roster` (drift seam)."""
+    """Name-set form of :func:`restrict_speakers_to_roster` (drift seam).
+
+    Limitation: matching is exact-form (case-insensitive via ``casefold``) —
+    a speaker survives only when its casefolded form equals a roster entry's;
+    inflected or decorated forms (``"Elara's"``, ``"Lady Elara"``) are
+    filtered out like unknown speakers.
+    """
     if not roster:
         return set(names)
     roster_cf = {name.casefold() for name in roster}

@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from uuid import UUID
 
     from narrare.kb.contracts import KBRepositoryProtocol
@@ -50,3 +51,33 @@ async def gate_speakers_to_roster(
 
     roster = await known_character_names(kb_repo, novel_id)
     return restrict_speakers_to_roster(utterances, roster)
+
+
+async def gate_speaker_names(
+    speakers: set[str],
+    roster_provider: Callable[[UUID], Awaitable[set[str]]] | None,
+    novel_id: UUID,
+) -> set[str]:
+    """Provider-form name-set gate (drift seam, N11 half 2).
+
+    ``CharacterVoiceDriftService`` unions parser speakers into the character
+    set (``set(profiles_by_name) | all_speakers``), so every garbage
+    action-beat "speaker" would surface as a ``no_stored_profile`` card
+    (audit N11). When *roster_provider* is wired and returns a non-empty
+    roster, *speakers* are filtered through
+    :func:`narrare_core.analysis.dialogue_parser.filter_speaker_names`;
+    a ``None`` provider or an empty roster keeps the raw set (RULE-11
+    degradation — the service's default ``None`` keeps every existing
+    construction backwards compatible).
+
+    Extracted here for RULE-04: the drift service sits at its line limit, so
+    the gate composition lives with the other roster gates (pt1 precedent).
+    """
+    if roster_provider is None:
+        return speakers
+    roster = await roster_provider(novel_id)
+    if not roster:
+        return speakers
+    from narrare_core.analysis.dialogue_parser import filter_speaker_names
+
+    return filter_speaker_names(speakers, roster)
