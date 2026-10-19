@@ -615,7 +615,7 @@ check-ai-ux:
 # Validate a commit message (for hook/CI use)
 # Usage: just check-commit-msg "feat(core): add new prompt mode"
 check-commit-msg msg:
-    @echo "$$msg" | uv run --all-packages python scripts/check_commit_message.py
+    @printf '%s\n' {{quote(msg)}} | uv run --all-packages python scripts/check_commit_message.py
 
 # Export OpenAPI schema to docs/
 export-openapi:

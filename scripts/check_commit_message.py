@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 """
 Conventional Commits message checker.
-Reads commit message from .git/COMMIT_EDITMSG or stdin.
+Reads the commit message from an explicit path, git's COMMIT_EDITMSG, or stdin.
 """
 
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import TextIO
+
+_GIT: Final[Path | str] = shutil.which("git") or "git"
 
 TYPES = {
     "feat",
@@ -81,13 +90,57 @@ def check_message(message: str) -> list[str]:
     return []
 
 
+def read_commit_message(
+    argv: Sequence[str] | None = None,
+    *,
+    stdin: TextIO | None = None,
+) -> str:
+    """Return the commit message, resolved in this order:
+
+    1. An explicit path in ``argv[0]`` (git's own ``commit-msg`` protocol).
+    2. The message piped on ``stdin``, when stdin is not a TTY and yields a
+       non-empty string. A TTY is never read (``git commit`` from a terminal
+       hands the hook a terminal stdin; reading it would block). An empty
+       non-TTY stdin (pre-commit, non-interactive ``git commit``) falls through.
+    3. ``git rev-parse --git-path COMMIT_EDITMSG`` — correct in a normal
+       checkout *and* in a linked worktree, where ``.git`` is a file.
+    4. Otherwise the empty string (rejected by ``check_message``).
+
+    A failing git call is reported on stderr (RULE-11: never swallowed).
+    """
+    args = list(sys.argv[1:] if argv is None else argv)
+    stream = sys.stdin if stdin is None else stdin
+
+    if args:
+        explicit = Path(args[0])
+        if explicit.is_file():
+            return explicit.read_text(encoding="utf-8")
+
+    if not stream.isatty():
+        piped = stream.read()
+        if piped:
+            return piped
+
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec  # controlled git invocation, fixed argv
+            [_GIT, "rev-parse", "--git-path", "COMMIT_EDITMSG"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        print(f"⚠️  Could not resolve COMMIT_EDITMSG via git: {exc}", file=sys.stderr)
+        return ""
+
+    path = Path(result.stdout.strip())
+    if path.is_file():
+        return path.read_text(encoding="utf-8")
+
+    return ""
+
+
 def main() -> int:
-    # Try to read from .git/COMMIT_EDITMSG first (pre-commit hook)
-    commit_msg_file = Path(".git/COMMIT_EDITMSG")
-    if commit_msg_file.exists():
-        message = commit_msg_file.read_text(encoding="utf-8")
-    else:
-        message = sys.stdin.read()
+    message = read_commit_message()
 
     errors = check_message(message)
 
