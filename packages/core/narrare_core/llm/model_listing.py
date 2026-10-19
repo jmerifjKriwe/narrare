@@ -18,6 +18,7 @@ import structlog
 from pydantic import BaseModel
 
 from narrare_core.llm._model_listing_test_catalog import _test_catalog
+from narrare_core.llm._providers.catalog_generated import PROVIDER_IDS
 from narrare_core.settings import get_core_settings
 
 __all__ = [
@@ -59,9 +60,9 @@ class ModelCatalogError(Exception):
 # Provider registry (internal)
 # ---------------------------------------------------------------------------
 
-SUPPORTED_CATALOG_PROVIDERS: frozenset[str] = frozenset(
-    {"anthropic", "openai", "ollama", "google", "groq", "openrouter", "zai"}
-)
+# Derived from the generated provider catalog SSOT (ADR-099) instead of a
+# hand-maintained literal, so catalog.yaml additions cannot drift here.
+SUPPORTED_CATALOG_PROVIDERS: frozenset[str] = frozenset(PROVIDER_IDS)
 
 # OpenRouter returns hundreds of models; cap to keep the UI usable.
 # The default (30) is configured in ModelCatalogClient.__init__.
