@@ -10,9 +10,11 @@ from enum import StrEnum
 __all__ = ["PROVIDER_IDS", "PROVIDER_LABEL_KEYS", "AIProvider"]
 
 
+# Member order matches the catalog. No class docstring on purpose: pydantic
+# renders a class docstring as the JSON-schema `description` of every
+# component that references the enum, so a docstring here would silently
+# change the public OpenAPI contract when apps/api re-exports it (T2/ADR-099).
 class AIProvider(StrEnum):
-    """Provider identifiers; the order matches the catalog."""
-
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GOOGLE = "google"
