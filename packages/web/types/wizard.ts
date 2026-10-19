@@ -1,13 +1,12 @@
 // Setup Wizard types
 
-export type AIProvider =
-  | "anthropic"
-  | "openai"
-  | "google"
-  | "groq"
-  | "ollama"
-  | "openrouter"
-  | "zai";
+import type { AIProvider } from "@/lib/providers.generated";
+
+// AIProvider is generated from the provider catalog SSOT (ADR-099); this module
+// re-exports it rather than declaring a second copy (RULE-17). The import binds
+// the name locally for `WizardState` below; the re-export keeps `@/types`
+// handing out the same union.
+export type { AIProvider };
 
 export type StarterContent = "blank" | "demo_fantasy" | "demo_scifi" | "demo_german" | "import";
 
