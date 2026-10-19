@@ -20,11 +20,12 @@ this module imports ``ProviderSpec`` from the generator for **typing only**
 from __future__ import annotations
 
 import ast
-import json
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
+
+from scripts.provider_catalog_parity_i18n import check_labels
 
 if TYPE_CHECKING:
     from scripts.generate_provider_catalog import ProviderSpec
@@ -38,12 +39,6 @@ _SETTINGS = Path("packages/core/narrare_core/settings.py")
 
 _PROVIDER_SERVICE = Path("apps/api/narrare/setup/provider_service.py")
 """The setup-phase provider service: the fallback catalog and the test call."""
-
-_I18N_DIR = Path("packages/i18n/messages")
-"""Where the message-file trees live; the file stem is the key's first segment."""
-
-_LOCALES: tuple[str, ...] = ("en", "de", "fr")
-"""Every locale a catalog ``label_key`` must resolve in (RULE-16)."""
 
 
 @dataclass(frozen=True)
@@ -60,13 +55,24 @@ def _parse(path: Path) -> ast.Module:
 
 
 def _value(module: ast.Module, name: str) -> ast.expr | None:
-    """Return the value of the module-level ``name = ...`` assignment."""
+    """The value of the **last** module-level ``name = ...`` binding.
+
+    Runtime last-wins: a later binding shadows an earlier one, and a bare
+    annotation binds nothing, so it does not reset the value.
+    """
+    found: ast.expr | None = None
     for node in module.body:
-        if isinstance(node, (ast.Assign, ast.AnnAssign)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if any(isinstance(target, ast.Name) and target.id == name for target in targets):
-                return node.value
-    return None
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+        if node.value is not None and any(
+            isinstance(target, ast.Name) and target.id == name for target in targets
+        ):
+            found = node.value
+    return found
 
 
 def _literal(path: Path, name: str) -> object | None:
@@ -86,7 +92,7 @@ def _check_pricing(specs: list[ProviderSpec], repo_root: Path) -> list[ParityVio
     rates = _literal(repo_root / "packages/core/narrare_core/llm/model_pricing.py", "DEFAULT_RATES")
     if not isinstance(rates, dict):
         return [ParityViolation(pk, "DEFAULT_RATES is not a literal mapping")]
-    table = cast("dict[str, dict[str, float]]", rates)
+    table = cast("dict[str, dict[str, object]]", rates)
     catalog = {spec.id: spec.pricing_default for spec in specs}
     violations: list[ParityViolation] = []
     for provider in catalog:
@@ -102,12 +108,17 @@ def _check_pricing(specs: list[ProviderSpec], repo_root: Path) -> list[ParityVio
                 violations.append(
                     ParityViolation(pv, f"{provider}: no {key} rate (catalog {expected[key]:g})")
                 )
-            elif float(actual[key]) != expected[key]:
+                continue
+            rate = actual[key]
+            if not isinstance(rate, (int, float)) or isinstance(rate, bool):
+                violations.append(
+                    ParityViolation(pv, f"{provider}: {key} is {type(rate).__name__}, not a number")
+                )
+            elif float(rate) != expected[key]:
                 violations.append(
                     ParityViolation(
                         pv,
-                        f"{provider}: catalog {key} {expected[key]:g} != "
-                        f"DEFAULT_RATES {actual[key]:g}",
+                        f"{provider}: catalog {key} {expected[key]:g} != DEFAULT_RATES {rate:g}",
                     )
                 )
     return violations
@@ -208,52 +219,88 @@ def _check_mem0(specs: list[ProviderSpec], repo_root: Path) -> list[ParityViolat
 
 
 def _check_prefixes(specs: list[ProviderSpec], repo_root: Path) -> list[ParityViolation]:
-    """Every catalog provider appears as a provider in ``_PROVIDER_PREFIXES``."""
+    """Every catalog provider appears as a provider in ``_PROVIDER_PREFIXES``.
+
+    A non-list anchor is **one** structural violation naming the anchor, not one
+    "no entry" detail per provider. Malformed elements are skipped for coverage
+    and reported by their own structural violation, so they never raise.
+    """
+    pc = "prefixes.cover"
     entries = _literal(
         repo_root / "packages/core/narrare_core/llm/_providers/registry.py", "_PROVIDER_PREFIXES"
     )
-    pairs = cast("list[tuple[str, str]]", entries) if isinstance(entries, list) else []
-    covered = {provider for _, provider in pairs}
-    return [
-        ParityViolation("prefixes.cover", f"{spec.id}: no entry in _PROVIDER_PREFIXES maps to it")
+    if not isinstance(entries, list):
+        return [
+            ParityViolation(pc, f"_PROVIDER_PREFIXES must be a list, got {type(entries).__name__}")
+        ]
+    covered: set[str] = set()
+    violations: list[ParityViolation] = []
+    for entry in cast("list[object]", entries):
+        elements = cast("tuple[object, ...]", entry) if isinstance(entry, tuple) else ()
+        prefix, provider = elements if len(elements) == 2 else (None, None)
+        if isinstance(prefix, str) and isinstance(provider, str):
+            covered.add(provider)
+        else:
+            violations.append(ParityViolation(pc, f"{entry!r}: not a (prefix, provider) pair"))
+    violations += [
+        ParityViolation(pc, f"{spec.id}: no entry in _PROVIDER_PREFIXES maps to it")
         for spec in specs
         if spec.id not in covered
     ]
+    return violations
 
 
-def _class_annotations(module: ast.Module, name: str) -> dict[str, ast.expr | None] | None:
-    """The annotated field names of the module-level class ``name``.
+def _class_annotations(
+    module: ast.Module, name: str
+) -> dict[str, tuple[ast.expr, ast.expr | None]] | None:
+    """The annotated fields of the module-level class ``name``.
 
-    Each value is the assignment's right-hand side — the ``Field(...)`` call for
-    an aliased field, ``None`` for a bare annotation. ``None`` is returned when
-    the class itself is absent, so a caller can tell "no such class" from "a
-    class without annotated fields"; both are reported, never ignored.
+    Values are ``(annotation, assignment)`` so an alias in either place is seen.
+    ``None`` means the class is absent; the caller reports that, never ignores it.
     """
     for node in module.body:
         if isinstance(node, ast.ClassDef) and node.name == name:
-            fields: dict[str, ast.expr | None] = {}
+            fields: dict[str, tuple[ast.expr, ast.expr | None]] = {}
             for statement in node.body:
                 if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
-                    fields[statement.target.id] = statement.value
+                    fields[statement.target.id] = (statement.annotation, statement.value)
             return fields
     return None
 
 
-def _env_var(field_name: str, value: ast.expr | None) -> str | None:
+def _field_call(annotation: ast.expr, value: ast.expr | None) -> ast.Call | None:
+    """The ``Field(...)`` call a field declares, on the value or in ``Annotated``."""
+    for candidate in (value, annotation):
+        if isinstance(candidate, ast.Call):
+            return candidate
+        if isinstance(candidate, ast.Subscript):
+            elements = (
+                candidate.slice.elts
+                if isinstance(candidate.slice, ast.Tuple)
+                else [candidate.slice]
+            )
+            for element in elements:
+                if (
+                    isinstance(element, ast.Call)
+                    and isinstance(element.func, ast.Name)
+                    and element.func.id == "Field"
+                ):
+                    return element
+    return None
+
+
+def _env_var(field_name: str, annotation: ast.expr, value: ast.expr | None) -> str | None:
     """The env var a settings field reads.
 
-    A declared ``validation_alias`` (then ``alias``) wins: that is the name
-    pydantic-settings looks up. Without one the env var is the upper-cased field
-    name, ``SettingsConfigDict``'s default. ``None`` means the field declares an
-    alias that is not a string literal, so the env var is *unknown* — the caller
-    reports that rather than assuming the default name.
+    ``validation_alias`` (then ``alias``) wins on a ``Field(...)`` assignment or
+    ``Annotated`` metadata; otherwise the upper-cased field name. ``None`` means
+    a declared alias is not a string literal, so the name is unknown.
     """
-    if not isinstance(value, ast.Call):
+    call = _field_call(annotation, value)
+    if call is None:
         return field_name.upper()
     for keyword_name in ("validation_alias", "alias"):
-        declared = next(
-            (keyword for keyword in value.keywords if keyword.arg == keyword_name), None
-        )
+        declared = next((keyword for keyword in call.keywords if keyword.arg == keyword_name), None)
         if declared is None:
             continue
         if isinstance(declared.value, ast.Constant) and isinstance(declared.value.value, str):
@@ -282,7 +329,7 @@ def _check_settings(specs: list[ProviderSpec], repo_root: Path) -> list[ParityVi
                 )
             )
             continue
-        env_var = _env_var(spec.settings_field, fields[spec.settings_field])
+        env_var = _env_var(spec.settings_field, *fields[spec.settings_field])
         if env_var is None:
             violations.append(
                 ParityViolation(
@@ -353,11 +400,11 @@ def _fallback_entries(repo_root: Path) -> tuple[dict[str, ast.expr], list[str]] 
     problems: list[str] = []
     for key, value in zip(node.keys, node.values, strict=True):
         if key is None:
-            problems.append("**: _FALLBACK_MODELS unpacks another mapping")
+            problems.append("_FALLBACK_MODELS: '**' unpacking leaves its keys unverified")
             continue
         provider = _provider_member(key)
         if provider is None:
-            problems.append(f"{ast.unparse(key)}: is not an AIProvider.<MEMBER> key")
+            problems.append(f"_FALLBACK_MODELS key {ast.unparse(key)!r} is not AIProvider.<MEMBER>")
         elif provider in entries:
             problems.append(f"{provider}: duplicate key in _FALLBACK_MODELS")
         else:
@@ -433,21 +480,26 @@ def _check_fallbacks(specs: list[ProviderSpec], repo_root: Path) -> list[ParityV
 
 
 def _test_call_providers(repo_root: Path) -> set[str] | None:
-    """The providers ``_test_call`` compares against ``AIProvider``.
+    """The providers ``ProviderService._test_call`` branches on.
 
-    ``_test_call`` is an async *method* of ``ProviderService``, so the search
-    walks the whole module and accepts both function node types; searching only
-    ``module.body`` for a plain ``def`` would have missed it and reported a
-    rename that never happened.
-
-    ``None`` when the function is absent, so a renamed or deleted test call is a
-    violation for every affected provider rather than a silent pass.
+    Only the class's own ``_test_call`` counts, and only ``if``/``if``-expression
+    tests are read: a nested helper, lambda, comprehension filter, ``assert`` or
+    earlier look-alike cannot satisfy the gate. ``None`` when the class or method
+    is absent, so a rename is loud, not a silent pass.
     """
     module = _parse(repo_root / _PROVIDER_SERVICE)
+    service = next(
+        (
+            node
+            for node in module.body
+            if isinstance(node, ast.ClassDef) and node.name == "ProviderService"
+        ),
+        None,
+    )
     function = next(
         (
             node
-            for node in ast.walk(module)
+            for node in (service.body if service is not None else [])
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             and node.name == "_test_call"
         ),
@@ -456,13 +508,20 @@ def _test_call_providers(repo_root: Path) -> set[str] | None:
     if function is None:
         return None
     providers: set[str] = set()
-    for node in ast.walk(function):
-        if not isinstance(node, ast.Compare):
+    stack: list[ast.AST] = list(function.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
             continue
-        for operand in [node.left, *node.comparators]:
-            provider = _provider_member(operand)
-            if provider is not None:
-                providers.add(provider)
+        if isinstance(node, (ast.If, ast.IfExp)):
+            providers.update(
+                provider
+                for comparison in ast.walk(node.test)
+                if isinstance(comparison, ast.Compare)
+                for operand in [comparison.left, *comparison.comparators]
+                if (provider := _provider_member(operand)) is not None
+            )
+        stack.extend(ast.iter_child_nodes(node))
     return providers
 
 
@@ -487,69 +546,9 @@ def _check_test_call(specs: list[ProviderSpec], repo_root: Path) -> list[ParityV
     return violations
 
 
-def _load_messages(path: Path) -> tuple[dict[str, object] | None, str]:
-    """Parse a message file; the reason is ``""`` when it parsed.
-
-    A missing file, a decode error and a non-object document each come back as a
-    reason, never as an empty-but-valid mapping: the caller turns every reason
-    into a violation.
-    """
-    try:
-        raw: object = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as error:
-        return None, f"cannot be read ({error.strerror or error})"
-    except ValueError as error:
-        return None, f"is not valid UTF-8 JSON ({error})"
-    if not isinstance(raw, dict):
-        return None, "is not a JSON object"
-    return cast("dict[str, object]", raw), ""
-
-
-def _contains(messages: dict[str, object], path: list[str]) -> bool:
-    """Whether the nested ``path`` holds a value in a parsed message file.
-
-    Only the segments before the last must be mappings; the leaf holds the
-    label, and a ``null`` label counts as absent (it is not a translatable
-    string). Each step re-checks the runtime shape and hands the walk on through
-    an ``object``, so a non-mapping document cannot be mistaken for a hit.
-    """
-    node: object = messages
-    for part in path:
-        if not isinstance(node, dict):
-            return False
-        child: object = dict(node).get(part)
-        if child is None:
-            return False
-        node = child
-    return True
-
-
 def _check_labels(specs: list[ProviderSpec], repo_root: Path) -> list[ParityViolation]:
-    """Every catalog ``label_key`` resolves in every locale (RULE-16)."""
-    ll = "labels.locales"
-    violations: list[ParityViolation] = []
-    loaded: dict[Path, tuple[dict[str, object] | None, str]] = {}
-    for spec in specs:
-        stem, separator, nested = spec.label_key.partition(".")
-        if not stem or not separator or not nested:
-            violations.append(
-                ParityViolation(
-                    ll, f"{spec.id}: label_key {spec.label_key} is not a <file>.<path> key"
-                )
-            )
-            continue
-        for locale in _LOCALES:
-            relative = _I18N_DIR / locale / f"{stem}.json"
-            if relative not in loaded:
-                loaded[relative] = _load_messages(repo_root / relative)
-            messages, reason = loaded[relative]
-            if messages is None:
-                violations.append(ParityViolation(ll, f"{spec.id}: {relative} {reason}"))
-            elif not _contains(messages, nested.split(".")):
-                violations.append(
-                    ParityViolation(ll, f"{spec.id}: {spec.label_key} missing in {relative}")
-                )
-    return violations
+    """Wrap the i18n module's ``(surface, detail)`` pairs as violations."""
+    return [ParityViolation(surface, detail) for surface, detail in check_labels(specs, repo_root)]
 
 
 def check_parity(specs: list[ProviderSpec], repo_root: Path) -> list[ParityViolation]:
@@ -558,10 +557,10 @@ def check_parity(specs: list[ProviderSpec], repo_root: Path) -> list[ParityViola
     One violation per missing or disagreeing fact, ordered by surface then
     provider, so the pre-commit output is stable.
 
-    Every checker fails **loud**: when its anchor (a class, a dict literal, a
-    function, a message file) is absent, renamed or of an unexpected shape, it
-    reports violations naming the affected providers instead of returning an
-    empty list — a silent pass would read as coverage the gate does not have.
+    Every checker fails **loud**: an absent, renamed or malformed anchor reports
+    violations instead of an empty list — a silent pass would read as coverage
+    the gate does not have. Provider facts name the provider; structural facts
+    name the offending anchor or key, because no provider owns them.
     """
     violations = [
         *_check_pricing(specs, repo_root),
