@@ -104,7 +104,16 @@ class SpacyNLPProvider:
             ValueError: If *language* is not in ``supported_languages``.
             NLPProviderError: If the model could not be loaded.
         """
-        import spacy  # pyright: ignore[reportMissingImports] -- optional dependency
+        try:
+            import spacy  # pyright: ignore[reportMissingImports] -- optional dependency
+        except ImportError as exc:
+            # E03 (spec §8): absent package degrades machine-readable —
+            # a raw ModuleNotFoundError escaped as HTTP 500 (audit E03).
+            raise NLPProviderError(
+                "The spaCy NLP package is not installed in this deployment. "
+                "Install with: uv sync --all-packages --group dev --extra nlp "
+                "(plus `just install-nlp-models` for the language models)."
+            ) from exc
 
         if language not in _MODEL_MAP:
             raise ValueError(
