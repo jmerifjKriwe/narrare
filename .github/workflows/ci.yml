@@ -513,7 +513,7 @@ jobs:
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
           # World-drift pin: with no explicit interpreter, uv resolves the
@@ -682,7 +682,7 @@ jobs:
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
           # World-drift pin — see architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
@@ -783,7 +783,7 @@ jobs:
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
           # World-drift pin — see architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
@@ -1008,7 +1008,7 @@ jobs:
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
           # World-drift pin — see architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
@@ -1537,7 +1537,7 @@ jobs:
           # repo token persisted in the workspace (spec §5.4).
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
           # World-drift pin — see architecture job (unpinned uv resolves the newest CPython; psycopg-binary wheel lag).
