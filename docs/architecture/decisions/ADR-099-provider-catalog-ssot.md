@@ -192,7 +192,7 @@ Binding sub-decisions:
    | `label_key` | string | i18n key resolving the display label, `settings-ai.providers.<id>`. Never a human-readable label (see point 5). |
    | `api_key_env` | string \| null | Environment variable name (e.g. `OPENAI_API_KEY`); `null` when the provider takes no key. Verified against ADR-071 §3 and `.env.example:35-50`: `CoreSettings` sets no `env_prefix`, so the provider keys use their plain upper-cased field names — only `NARRARE_*` fields carry a `validation_alias`. |
    | `settings_field` | string \| null | Name of the provider's field on `CoreSettings` (e.g. `openai_api_key`, `google_api_key`); `null` when the provider has none. Added to the mandated field list because point 4's parity gate cannot map provider → settings field without it (the `google` provider is backed by `google_api_key` with `gemini_api_key` as an accepted alias). |
-   | `pydantic_ai_extra` | string | The pydantic-ai provider integration the factory reaches the provider through (`anthropic`, `openai`, `google`, `groq`, `ollama`, `openrouter`, `zai` — one per catalog entry, verified against the imports in `_providers/*.py`). Closed literal set; informational for setup docs and the ADR table. |
+   | `pydantic_ai_extra` | string | The pydantic-ai provider integration the factory reaches the provider through (`anthropic`, `openai`, `google`, `groq`, `ollama`, `openrouter`, `zai`). Closed literal set restated by the generator's validator; informational for setup docs and the ADR table — no `--check` compares it against the imports in `_providers/*.py`. |
    | `listing_strategy` | string | Name of the `ModelCatalogClient._fetch_<listing_strategy>` method that lists this provider's models. |
    | `pricing_default` | object | `{input, output}` USD per 1M tokens, mirroring `DEFAULT_RATES`. |
    | `cache_policy` | string | One of `anthropic_cache_control`, `automatic`, `none` — the prompt-caching behaviour `cache_settings.py` implements. |
@@ -259,13 +259,18 @@ Binding sub-decisions:
    | `ProviderForm.tsx:8-14` `PROVIDER_OPTIONS` | **deleted** — component consumes `PROVIDERS` | regression test |
    | `_model_listing_test_catalog.py:35-57` `_TEST_CATALOG` | **keys derived** at import from `AIProvider` | import, parity test |
    | `registry.py:68-81` `_PROVIDER_PREFIXES` | handwritten | `--check`: `{values} ⊇ {ids}` |
-   | `model_listing.py:207-223` `_dispatch` + `_fetch_*` | handwritten | `--check`: `_fetch_<listing_strategy>` exists for every id |
+   | `model_listing.py:207-223` `_dispatch` + `_fetch_*` | handwritten | `--check` (`scripts/generate_provider_catalog.py:check_fetchers`): `ModelCatalogClient._fetch_<listing_strategy>` exists for every id |
    | `model_pricing.py:14-24` `DEFAULT_RATES` | handwritten (values) | `--check`: key set == ids; values == `pricing_default` |
    | `cache_settings.py:32-42` `match` arms | handwritten | `--check`: arm set == ids; arm body == `cache_policy` |
    | `mem0_client.py:29-34` `_PROVIDER_DEFAULT_MODELS` | handwritten | `--check`: key set ⊆ ids and non-empty |
    | `settings.py:61-68` api_key fields | handwritten | `--check`: `settings_field` is a real field, `api_key_env` matches its `validation_alias`/uppercased name |
    | `provider_service.py:32-78` `_FALLBACK_MODELS` | handwritten (values) | `--check`: key set == ids; IDs == `fallback_models` |
    | `provider_service.py:235-247` `_test_call` | handwritten | `--check`: an endpoint branch exists for every `requires_endpoint_selector: true` provider |
+
+   The gate is one-directional: `requires_endpoint_selector: true → false` is
+   **not** detectable, because the flag removes a requirement instead of breaking
+   one, so no violation is produced. A change in that direction is a review
+   obligation, not a gate failure.
 
 8. **Wiring (exact placement).**
    - pre-commit: a new hook `provider-catalog-check` in `.pre-commit-config.yaml`

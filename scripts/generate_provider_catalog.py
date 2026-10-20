@@ -9,9 +9,10 @@ code, so no surface can restate the provider set by hand:
   generated TypeScript module (``TS_OUTPUT``);
 * ``--check`` renders both in memory, compares **bytes** against the committed
   artifacts (ADR-099 §6) and also runs the parity gate
-  (:func:`scripts.provider_catalog_parity.check_parity`): the hand-written Core
-  surfaces are **parsed** with :mod:`ast` (never imported); every missing or
-  disagreeing fact is printed as ``<surface>: <detail>`` and exits ``1``.
+  (:func:`scripts.provider_catalog_parity.check_parity`) plus the fetcher
+  invariant (:func:`check_fetchers`): the hand-written Core surfaces are
+  **parsed** with :mod:`ast` (never imported); every missing or disagreeing fact
+  is printed as ``<surface>: <detail>`` and exits ``1``.
 
 The catalog is read at **build time only** — nothing loads it at runtime.
 
@@ -24,6 +25,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import json
 import re
@@ -41,7 +43,7 @@ from typing import Any, cast
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import yaml
-from scripts.provider_catalog_parity import PRICING_KEYS, check_parity
+from scripts.provider_catalog_parity import PRICING_KEYS, ParityViolation, check_parity
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -56,6 +58,9 @@ PY_OUTPUT = _PROVIDERS_DIR / "catalog_generated.py"
 
 TS_OUTPUT = _PACKAGES_DIR / "web" / "lib" / "providers.generated.ts"
 """Generated TypeScript artifact; biome-clean as rendered (never post-fixed)."""
+
+_MODEL_LISTING = Path("packages/core/narrare_core/llm/model_listing.py")
+"""The provider catalog adapter; ``ModelCatalogClient`` holds the ``_fetch_*`` methods."""
 
 _FIELD_NAMES: frozenset[str] = frozenset(
     {
@@ -353,12 +358,47 @@ def _display(path: Path) -> str:
         return str(path)
 
 
+def check_fetchers(specs: list[ProviderSpec], repo_root: Path) -> list[ParityViolation]:
+    """Every catalog ``listing_strategy`` names a ``ModelCatalogClient._fetch_*``.
+
+    Only method names are read (with :mod:`ast`, never an import), so a fetcher
+    may change its body freely; the name is the contract (ADR-099 point 7). An
+    absent class or method is a violation, never a silent pass.
+    """
+    fm = "fetch.methods"
+    module = ast.parse((repo_root / _MODEL_LISTING).read_text(encoding="utf-8"))
+    client = next(
+        (
+            node
+            for node in module.body
+            if isinstance(node, ast.ClassDef) and node.name == "ModelCatalogClient"
+        ),
+        None,
+    )
+    if client is None:
+        return [ParityViolation(fm, f"ModelCatalogClient is missing from {_MODEL_LISTING}")]
+    methods = {
+        statement.name
+        for statement in client.body
+        if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef)
+    }
+    return [
+        ParityViolation(
+            fm,
+            f"{spec.id}: listing_strategy {spec.listing_strategy!r} has no "
+            f"_fetch_{spec.listing_strategy} method",
+        )
+        for spec in specs
+        if f"_fetch_{spec.listing_strategy}" not in methods
+    ]
+
+
 def _check(specs: list[ProviderSpec], repo_root: Path) -> int:
     """Verify the generated artifacts (bytes, ADR-099 §6) and the surfaces.
 
     Returns 0 only when both artifacts match byte-for-byte — a decoded-text
-    comparison would be blind to newline drift — and :func:`check_parity` is
-    silent.
+    comparison would be blind to newline drift — and every parity violation,
+    including the fetcher invariant, is silent.
     """
     rendered_python = render_python(specs)
     rendered_typescript = render_typescript(specs)
@@ -384,7 +424,10 @@ def _check(specs: list[ProviderSpec], repo_root: Path) -> int:
             "regenerate with `uv run --all-packages python scripts/generate_provider_catalog.py`"
         )
 
-    violations = check_parity(specs, repo_root)
+    violations = sorted(
+        [*check_parity(specs, repo_root), *check_fetchers(specs, repo_root)],
+        key=lambda violation: (violation.surface, violation.detail),
+    )
     for violation in violations:
         print(f"{violation.surface}: {violation.detail}")
 
