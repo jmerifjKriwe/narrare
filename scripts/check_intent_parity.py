@@ -15,6 +15,11 @@ Compared surfaces and families:
   ``ROUTE_CONFIGS`` (``route_configs``) and ``INTENT_PROFILES`` (``profiles``);
 - category agreement and mode agreement between the two prompt-route surfaces
   (``route_intents`` and ``route_configs``);
+- presence agreement between each lookup table and the route table: an
+  ``INTENT_TO_MODE`` entry exists exactly when ``ROUTE_CONFIGS[i].default_mode``
+  is not ``None`` (likewise ``INTENT_TO_CATEGORY`` and ``default_category``).
+  A removed entry is thus a disagreement, not a silently absent value, and an
+  entry where the route table declares no value is a disagreement too;
 - prompt-template existence for every routed ``(intent, required locale)`` pair,
   using the intent's resolved category and mode (T14b);
 - prompt-surface-manifest agreement: one ``routeable: true`` block per routed
@@ -230,6 +235,19 @@ def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
         for intent, (category, mode) in route_configs.items()
         if _kept(intent, non_routeable)
     }
+    # Presence surfaces: the two lookup tables are kept apart from the merged
+    # ``route_intents`` fact so an absent entry stays distinguishable from a
+    # present entry whose route table value is ``None``.
+    facts["intent_to_category"] = {
+        intent: IntentFact(intent, category, None)
+        for intent, category in route_categories.items()
+        if _kept(intent, non_routeable)
+    }
+    facts["intent_to_mode"] = {
+        intent: IntentFact(intent, None, mode)
+        for intent, mode in route_modes.items()
+        if _kept(intent, non_routeable)
+    }
     facts["profiles"] = {
         intent: IntentFact(intent, None, None)
         for intent in profiles
@@ -284,6 +302,40 @@ def _agreement(
                     f"('{first_value}') and '{surface}' ('{value}')"
                 )
                 break
+    return messages
+
+
+def _presence_disagreements(
+    facts: Mapping[str, Mapping[str, FactLike]],
+    presence_surface: str,
+    field: str,
+    label: str,
+) -> list[str]:
+    """Report lookup-table entries whose existence contradicts the route table.
+
+    Presence is compared explicitly instead of treating a missing entry as a
+    ``None`` value: ``INTENT_TO_MODE`` must have an entry exactly when
+    ``ROUTE_CONFIGS[i].default_mode`` is not ``None``.
+    """
+    if presence_surface not in facts:
+        return []
+    declared = facts[presence_surface]
+    messages: list[str] = []
+    for intent, fact in sorted(facts.get("route_configs", {}).items()):
+        expected = _fact_field(fact, field)
+        entry = declared.get(intent)
+        actual = _fact_field(entry, field) if entry is not None else None
+        if expected is None:
+            if entry is not None:
+                messages.append(
+                    f"{intent}: present in '{label}' surface ('{actual}') "
+                    f"but 'route_configs' declares no {field}"
+                )
+        elif entry is None:
+            messages.append(
+                f"{intent}: missing from '{label}' surface "
+                f"but 'route_configs' declares {field} '{expected}'"
+            )
     return messages
 
 
@@ -374,6 +426,10 @@ def find_disagreements(facts: Mapping[str, Mapping[str, FactLike]]) -> list[str]
             messages.append(f"{intent}: present in '{surface}' surface but missing from 'enums'")
     messages.extend(_agreement(facts, declared, "category", _CATEGORY_VALUE_SURFACES))
     messages.extend(_agreement(facts, declared, "mode", _DECLARED_SURFACES))
+    messages.extend(
+        _presence_disagreements(facts, "intent_to_category", "category", "INTENT_TO_CATEGORY")
+    )
+    messages.extend(_presence_disagreements(facts, "intent_to_mode", "mode", "INTENT_TO_MODE"))
     messages.extend(_prompt_dir_disagreements(facts))
     messages.extend(_manifest_disagreements(facts))
     messages.extend(_adoption_registry_disagreements(facts))

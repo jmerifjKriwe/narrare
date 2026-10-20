@@ -139,6 +139,51 @@ def test_changing_a_mode_is_reported(tmp_path: Path) -> None:
     ), messages
 
 
+def test_deleting_a_mode_entry_is_reported(tmp_path: Path) -> None:
+    """Presence matters: an absent entry is not the same fact as a `None` mode."""
+    root = _mutate(tmp_path, _ROUTE_INTENTS, '    LLMIntent.WRITE: "new_chapter",\n', "")
+    messages = find_disagreements(collect_facts(root))
+    assert any(
+        "WRITE" in message
+        and "INTENT_TO_MODE" in message
+        and "route_configs" in message
+        and "new_chapter" in message
+        for message in messages
+    ), messages
+
+
+def test_adding_a_mode_entry_where_the_route_config_has_none_is_reported(
+    tmp_path: Path,
+) -> None:
+    """KB_CREATE has no default mode, so an `INTENT_TO_MODE` entry contradicts the table."""
+    root = _mutate(
+        tmp_path,
+        _ROUTE_INTENTS,
+        "INTENT_TO_MODE: dict[LLMIntent, str] = {\n",
+        'INTENT_TO_MODE: dict[LLMIntent, str] = {\n    LLMIntent.KB_CREATE: "create",\n',
+    )
+    messages = find_disagreements(collect_facts(root))
+    assert any(
+        "KB_CREATE" in message
+        and "INTENT_TO_MODE" in message
+        and "route_configs" in message
+        and "no mode" in message
+        for message in messages
+    ), messages
+
+
+def test_deleting_a_category_entry_is_reported(tmp_path: Path) -> None:
+    root = _mutate(tmp_path, _ROUTE_INTENTS, '    LLMIntent.WRITE: "writing",\n', "")
+    messages = find_disagreements(collect_facts(root))
+    assert any(
+        "WRITE" in message
+        and "INTENT_TO_CATEGORY" in message
+        and "route_configs" in message
+        and "writing" in message
+        for message in messages
+    ), messages
+
+
 # ── Prompt-directory family ────────────────────────────────────────────────
 
 
