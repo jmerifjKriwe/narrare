@@ -500,6 +500,13 @@ verify-slice +paths:
         cd packages/web && npx biome check "${web[@]}"
     fi
 
+# Scaffold the declaration surfaces of a new feature. Generates only artifacts
+# that are green on arrival — never service/router/repository/component stubs
+# (RULE-20). Layers: core, api, web. Optional: --with-intent NAME.
+# Usage: just new-feature FIND-099 core api web
+new-feature id +layers:
+    uv run --all-packages python scripts/scaffold_feature.py {{id}} {{layers}}
+
 # Run architecture constraint checker — THE architecture surface. `just check`
 # does not restate this list: `scripts/_check_steps.py` runs this recipe, so a
 # new architecture check is added here once. (T8b review F2: the two lists had
