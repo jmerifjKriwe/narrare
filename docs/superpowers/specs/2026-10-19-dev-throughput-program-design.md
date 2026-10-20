@@ -185,11 +185,17 @@ table:
 - `INTENT_TO_CATEGORY[i]` == the `category` of the route block for `i`, and
   `INTENT_TO_MODE[i]` == `ROUTE_CONFIGS[i].mode` for every intent;
 - the prompt directory `_bundled/{category}/{lang}/{mode}/system.md` exists for
-  every (intent, locale) pair, using the intent's own resolved category and mode;
+  every (intent, locale) pair that ADR-026's locale policy requires — `en` for every
+  group, `en`/`de`/`fr` only for meta/universal — using the intent's own resolved
+  category and mode. (Corrected after T14b: a flat three-locale grid describes no
+  real group; `writing/` ships `en` only, and the literal rule emitted 44 violations
+  on the pristine tree.)
 - the manifest has exactly one route block per gateway-routed intent, and each
   block's `category`/`mode`/`intent` agree with the route table;
 - the adoption registry has an entry for every routed intent and **no** entry for a
-  non-existent intent.
+  non-existent intent. The registry is keyed by prompt path
+  (`prompt_path_compliance: {category}/{mode}`), so several intents share one entry:
+  46 entries cover the 24 routed intents (measured in T14b).
 
 The gate is **comparison only**. It does not generate, does not move authority
 out of the manifest or the registry, and does not relax ADR-037/ADR-038/ADR-045.

@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
-"""Intent-contract parity gate — first slice (throughput T14a).
+"""Intent-contract parity gate — the six families (throughput T14a/T14b).
 
-Reads the Python declaration surfaces of a gateway-routed intent and reports every
-disagreement among them as one list. It parses the sources with ``ast`` and imports
-no project code, so it can run in the architecture gate before the packages are
-importable.
+Reads the eight declaration surfaces of a gateway-routed intent and reports every
+disagreement among them as one list. It parses Python with ``ast`` and the two
+governance files with ``yaml``; it imports no project code, so it can run in the
+architecture gate before the packages are importable.
 
-Compared surfaces and families (T14a):
+Compared surfaces and families:
 
 - key-set identity across ``LLMIntent`` (``enums``), ``INTENT_CATEGORY_MAP``
   (``categories``), ``INTENT_TO_CATEGORY``/``INTENT_TO_MODE`` (``route_intents``),
   ``ROUTE_CONFIGS`` (``route_configs``) and ``INTENT_PROFILES`` (``profiles``);
 - category agreement and mode agreement between the two prompt-route surfaces
-  (``route_intents`` and ``route_configs``).
+  (``route_intents`` and ``route_configs``);
+- prompt-template existence for every routed ``(intent, required locale)`` pair,
+  using the intent's resolved category and mode (T14b);
+- prompt-surface-manifest agreement: one ``routeable: true`` block per routed
+  intent, with matching ``category``/``mode`` (T14b);
+- adoption-registry coverage: an entry for every routed intent's prompt path and
+  no entry that no routed intent or context mode resolves (T14b).
 
-**Not yet implemented (T14b seam).** Prompt-directory existence per locale,
-prompt-surface-manifest block agreement and adoption-registry coverage are the
-three remaining families of spec §4. Add them as further checks inside
-:func:`find_disagreements`; the surface extraction in :func:`collect_facts` and
-the exemption below stay as they are.
+Required locales follow ADR-026 Phase 5 and mirror
+``scripts/adoption/scorer._required_locales_for``: ``en``, ``de`` and ``fr`` for
+the localized-required categories (``meta``, ``universal``,
+``universal_rules``), ``en`` for every feature category. Requiring ``de``/``fr``
+for feature prompts would contradict the EN-only policy the tree implements and
+fail on the pristine tree, so the gate compares against the policy, not against
+a literal three-locale grid.
 
 Two domains are deliberately outside the compared universe:
 
@@ -27,6 +35,9 @@ Two domains are deliberately outside the compared universe:
   declared non-routeable there, so they have no route-table entry by design.
   Key-set identity is asserted over the routeable universe; an intent that is not
   listed as non-routeable must appear in every surface.
+- Manifest blocks with ``routeable: false`` — they are the governance declaration
+  of an intentionally unrouted intent (SENTIMENT, GENERATE, …) and are not part
+  of the routed block set.
 
 ``INTENT_CATEGORY_MAP`` groups intents for model selection (ADR-001), while
 ``INTENT_TO_CATEGORY`` names the bundled prompt directory. They are different
@@ -52,7 +63,9 @@ import ast
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+
+import yaml
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -65,14 +78,26 @@ _CATEGORIES = _CORE / "llm" / "intent_categories.py"
 _PROFILES = _CORE / "llm" / "intent_profiles.py"
 _ROUTE_INTENTS = _CORE / "prompts" / "route_table_intents.py"
 _ROUTE_TABLE = _CORE / "prompts" / "route_table.py"
+_BUNDLED = _CORE / "prompts" / "_bundled"
+_MANIFEST = Path("scripts/architecture/prompt-surface-manifest.yaml")
+_ADOPTION_REGISTRY = Path("scripts/architecture/adoption-registry.yaml")
+
+_MANIFEST_LABEL = "prompt-surface-manifest.yaml"
+_REGISTRY_LABEL = "adoption-registry.yaml"
+
+_LOCALES = ("en", "de", "fr")
+# ADR-026 Phase 5, mirrored from scripts/adoption/scorer._required_locales_for.
+_LOCALIZED_REQUIRED_CATEGORIES = frozenset({"meta", "universal", "universal_rules"})
 
 # ADR-025: EMBED is an embedding operation, deliberately not gateway-routed.
 EXEMPT_INTENTS: set[str] = {"EMBED"}
 
-_SURFACES = ("enums", "categories", "route_intents", "route_configs", "profiles")
+_DECLARED_SURFACES = ("enums", "categories", "route_intents", "route_configs", "profiles")
 # `categories` declares the model-selection grouping (ADR-001), not the prompt
 # route category; it participates in key-set identity only.
-_CATEGORY_VALUE_SURFACES = tuple(surface for surface in _SURFACES if surface != "categories")
+_CATEGORY_VALUE_SURFACES = tuple(
+    surface for surface in _DECLARED_SURFACES if surface != "categories"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,6 +199,100 @@ def _route_config(node: ast.expr) -> tuple[str | None, str | None]:
     return category, mode
 
 
+def _allowed_context_modes(node: ast.expr) -> tuple[str, ...]:
+    """Extract ``allowed_context_modes`` from a ``PromptRouteConfig(...)`` call."""
+    if not isinstance(node, ast.Call):
+        return ()
+    for keyword in node.keywords:
+        if keyword.arg != "allowed_context_modes":
+            continue
+        value = keyword.value
+        if isinstance(value, ast.Call) and value.args:
+            value = value.args[0]
+        if not isinstance(value, ast.Set | ast.Tuple | ast.List):
+            return ()
+        return tuple(mode for element in value.elts if (mode := _string_value(element)) is not None)
+    return ()
+
+
+def _load_yaml(path: Path) -> dict[str, object]:
+    """Load a governance YAML mapping, raising ``RuntimeError`` rather than passing silently."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError(f"cannot read governance surface {path}: {exc}") from exc
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise RuntimeError(f"cannot parse governance surface {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"governance surface {path} is not a YAML mapping")
+    return cast("dict[str, object]", data)
+
+
+def _mapping_entries(value: object) -> list[dict[str, object]]:
+    """Return the dict members of a YAML sequence (other members are ignored)."""
+    if not isinstance(value, list):
+        return []
+    entries = cast("list[object]", value)
+    return [cast("dict[str, object]", item) for item in entries if isinstance(item, dict)]
+
+
+def _text(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _required_locales(category: str) -> tuple[str, ...]:
+    """Return the locales a category's prompts must provide (ADR-026 Phase 5)."""
+    return _LOCALES if category in _LOCALIZED_REQUIRED_CATEGORIES else ("en",)
+
+
+def _manifest_facts(root: Path) -> tuple[dict[str, IntentFact], dict[str, IntentFact]]:
+    """Return ``(routeable blocks, duplicate blocks)`` from the manifest."""
+    blocks = _mapping_entries(_load_yaml(root / _MANIFEST).get("routes"))
+    facts: dict[str, IntentFact] = {}
+    duplicates: dict[str, IntentFact] = {}
+    for block in blocks:
+        if block.get("routeable") is not True:
+            continue
+        intent = _text(block.get("intent"))
+        if intent is None:
+            continue
+        fact = IntentFact(intent, _text(block.get("category")), _text(block.get("mode")))
+        if intent in facts:
+            duplicates[intent] = fact
+        else:
+            facts[intent] = fact
+    return facts, duplicates
+
+
+def _registry_facts(root: Path) -> dict[str, IntentFact]:
+    """Return the registry's ``{category}/{mode}`` compliance entries."""
+    compliance = _load_yaml(root / _ADOPTION_REGISTRY).get("prompt_path_compliance")
+    if not isinstance(compliance, dict):
+        return {}
+    facts: dict[str, IntentFact] = {}
+    for key in cast("dict[object, object]", compliance):
+        if not isinstance(key, str):
+            continue
+        category, separator, mode = key.partition("/")
+        facts[key] = IntentFact(key, category if separator else None, mode if separator else None)
+    return facts
+
+
+def _prompt_dir_facts(root: Path, route_configs: Mapping[str, IntentFact]) -> dict[str, IntentFact]:
+    """Return one fact per ``(intent, locale)`` whose template file exists."""
+    facts: dict[str, IntentFact] = {}
+    for intent, fact in route_configs.items():
+        if fact.category is None or fact.mode is None:
+            continue
+        for locale in _required_locales(fact.category):
+            path = root / _BUNDLED / fact.category / locale / fact.mode / "system.md"
+            if path.is_file():
+                facts[f"{intent}:{locale}"] = IntentFact(intent, fact.category, fact.mode)
+    return facts
+
+
 def _kept(intent: str, non_routeable: set[str]) -> bool:
     return intent not in EXEMPT_INTENTS and intent not in non_routeable
 
@@ -202,14 +321,12 @@ def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
     route_modes = _string_dict(route_assignments.get("INTENT_TO_MODE"))
 
     route_table_assignments = _module_assignments(route_table_tree)
-    route_configs = {
-        intent: _route_config(value)
-        for intent, value in _attribute_dict(route_table_assignments.get("ROUTE_CONFIGS")).items()
-    }
+    route_config_nodes = _attribute_dict(route_table_assignments.get("ROUTE_CONFIGS"))
+    route_configs = {intent: _route_config(value) for intent, value in route_config_nodes.items()}
     non_routeable = set(_attribute_dict(route_table_assignments.get("NON_ROUTEABLE_INTENTS")))
     profiles = set(_attribute_dict(_module_assignments(profiles_tree).get("INTENT_PROFILES")))
 
-    facts: dict[str, dict[str, IntentFact]] = {name: {} for name in _SURFACES}
+    facts: dict[str, dict[str, IntentFact]] = {name: {} for name in _DECLARED_SURFACES}
     facts["enums"] = {
         intent: IntentFact(intent, None, None)
         for intent in enum_members
@@ -235,6 +352,15 @@ def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
         for intent in profiles
         if _kept(intent, non_routeable)
     }
+    facts["route_context_modes"] = {
+        f"{intent}:{mode}": IntentFact(intent, category, mode)
+        for intent, node in route_config_nodes.items()
+        if _kept(intent, non_routeable) and (category := _route_config(node)[0]) is not None
+        for mode in _allowed_context_modes(node)
+    }
+    facts["manifest"], facts["manifest_duplicates"] = _manifest_facts(root)
+    facts["adoption_registry"] = _registry_facts(root)
+    facts["prompt_dirs"] = _prompt_dir_facts(root, facts["route_configs"])
     return facts
 
 
@@ -278,21 +404,96 @@ def _agreement(
     return messages
 
 
+def _prompt_dir_disagreements(facts: Mapping[str, Mapping[str, FactLike]]) -> list[str]:
+    """Report routed intents whose required-locale prompt template is absent."""
+    if "prompt_dirs" not in facts:
+        return []
+    present = facts["prompt_dirs"]
+    messages: list[str] = []
+    for intent, fact in sorted(facts.get("route_configs", {}).items()):
+        category = _fact_field(fact, "category")
+        mode = _fact_field(fact, "mode")
+        if category is None or mode is None:
+            continue
+        for locale in _required_locales(category):
+            if f"{intent}:{locale}" in present:
+                continue
+            path = _BUNDLED / category / locale / mode / "system.md"
+            messages.append(f"{intent}: missing prompt template for locale '{locale}' at '{path}'")
+    return messages
+
+
+def _manifest_disagreements(facts: Mapping[str, Mapping[str, FactLike]]) -> list[str]:
+    """Report manifest block coverage and value disagreement against the route table."""
+    if "manifest" not in facts:
+        return []
+    manifest = facts["manifest"]
+    routed = facts.get("route_configs", {})
+    messages: list[str] = []
+    for intent in sorted(set(routed) - set(manifest)):
+        messages.append(f"{intent}: missing block in {_MANIFEST_LABEL} for a routed intent")
+    for intent in sorted(set(manifest) - set(routed)):
+        messages.append(f"{intent}: block in {_MANIFEST_LABEL} has no route entry")
+    for intent in sorted(set(routed) & set(manifest)):
+        for field in ("category", "mode"):
+            expected = _fact_field(routed[intent], field)
+            actual = _fact_field(manifest[intent], field)
+            if expected != actual:
+                messages.append(
+                    f"{intent}: {field} disagreement between 'route_configs' "
+                    f"('{expected}') and {_MANIFEST_LABEL} ('{actual}')"
+                )
+    for intent in sorted(facts.get("manifest_duplicates", {})):
+        messages.append(f"{intent}: duplicate block in {_MANIFEST_LABEL}")
+    return messages
+
+
+def _adoption_registry_disagreements(facts: Mapping[str, Mapping[str, FactLike]]) -> list[str]:
+    """Report missing registry entries for routed intents and entries nothing resolves."""
+    if "adoption_registry" not in facts:
+        return []
+    registry = facts["adoption_registry"]
+    required: dict[str, str] = {}
+    resolvable: set[str] = set()
+    for intent, fact in facts.get("route_configs", {}).items():
+        category = _fact_field(fact, "category")
+        mode = _fact_field(fact, "mode")
+        if category is None or mode is None:
+            continue
+        key = f"{category}/{mode}"
+        required[key] = intent
+        resolvable.add(key)
+    for fact in facts.get("route_context_modes", {}).values():
+        category = _fact_field(fact, "category")
+        mode = _fact_field(fact, "mode")
+        if category is not None and mode is not None:
+            resolvable.add(f"{category}/{mode}")
+    messages: list[str] = []
+    for key in sorted(set(required) - set(registry)):
+        messages.append(f"{required[key]}: missing entry '{key}' in {_REGISTRY_LABEL}")
+    for key in sorted(set(registry) - resolvable):
+        messages.append(f"{key}: entry in {_REGISTRY_LABEL} matches no routed intent or mode")
+    return messages
+
+
 def find_disagreements(facts: Mapping[str, Mapping[str, FactLike]]) -> list[str]:
     """Return every cross-surface disagreement, naming the intent and both surfaces."""
     surface_intents = {
         surface: {intent for intent in facts.get(surface, {}) if intent not in EXEMPT_INTENTS}
-        for surface in _SURFACES
+        for surface in _DECLARED_SURFACES
     }
     declared = surface_intents["enums"]
     messages: list[str] = []
-    for surface in _SURFACES[1:]:
+    for surface in _DECLARED_SURFACES[1:]:
         for intent in sorted(declared - surface_intents[surface]):
             messages.append(f"{intent}: missing from '{surface}' surface (declared in 'enums')")
         for intent in sorted(surface_intents[surface] - declared):
             messages.append(f"{intent}: present in '{surface}' surface but missing from 'enums'")
     messages.extend(_agreement(facts, declared, "category", _CATEGORY_VALUE_SURFACES))
-    messages.extend(_agreement(facts, declared, "mode", _SURFACES))
+    messages.extend(_agreement(facts, declared, "mode", _DECLARED_SURFACES))
+    messages.extend(_prompt_dir_disagreements(facts))
+    messages.extend(_manifest_disagreements(facts))
+    messages.extend(_adoption_registry_disagreements(facts))
     return messages
 
 
