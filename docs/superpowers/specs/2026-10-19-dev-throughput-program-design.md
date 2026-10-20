@@ -158,7 +158,7 @@ Adding one intent requires hand edits in **eight** surfaces:
 4. `packages/core/narrare_core/prompts/route_table.py` — `ROUTE_CONFIGS`
 5. `packages/core/narrare_core/prompts/route_table_intents.py` — `INTENT_TO_CATEGORY` and `INTENT_TO_MODE`
 6. `packages/core/narrare_core/prompts/_bundled/{category}/{lang}/{mode}/system.md` — one directory per locale
-7. `scripts/architecture/prompt-surface-manifest.yaml` — the ADR-037 route block (29 blocks today)
+7. `scripts/architecture/prompt-surface-manifest.yaml` — the ADR-037 route block (29 blocks today, of which 24 are `routeable: true`)
 8. `scripts/architecture/adoption-registry.yaml` — the ADR-025/038 adoption entry (`version: "2.0.0"`)
 
 Existing checks cover parts of this (`check_prompt_surface_contract.py` reads the
@@ -177,8 +177,13 @@ table:
 
 - `LLMIntent` members ↔ `INTENT_CATEGORY_MAP` keys ↔ `INTENT_TO_CATEGORY` keys
   ↔ `INTENT_TO_MODE` keys ↔ `INTENT_PROFILES` keys ↔ `ROUTE_CONFIGS` keys;
-- `INTENT_TO_CATEGORY[i]` == `INTENT_CATEGORY_MAP[i].value` for every intent;
-- `INTENT_TO_MODE[i]` == `ROUTE_CONFIGS[i].mode` for every intent;
+- `INTENT_TO_CATEGORY[i]` keys exist in `INTENT_CATEGORY_MAP` (key-set only; the
+  two are **different taxonomies** — model routing (ADR-001) vs prompt category —
+  and disagree by design for CHAT, SUMMARIZE, EXTRACT, FACT_EXTRACT and SUGGEST).
+  Corrected after T14a measured the surfaces: the earlier "values are equal" claim
+  was false and would have made the gate demand a rename of one taxonomy.
+- `INTENT_TO_CATEGORY[i]` == the `category` of the route block for `i`, and
+  `INTENT_TO_MODE[i]` == `ROUTE_CONFIGS[i].mode` for every intent;
 - the prompt directory `_bundled/{category}/{lang}/{mode}/system.md` exists for
   every (intent, locale) pair, using the intent's own resolved category and mode;
 - the manifest has exactly one route block per gateway-routed intent, and each
@@ -199,7 +204,9 @@ ADR-037/038 built — a much larger decision than a throughput fix justifies.
 ### Acceptance criteria
 
 1. `scripts/check_intent_parity.py` exits 0 on the pristine tree and prints a
-   one-line summary (`30 intents, 29 routed, 0 disagreements`).
+   one-line summary (`30 intents, 24 routed, 0 disagreements`; the earlier 29 counted
+   every manifest block including the 5 marked `routeable: false` — corrected after
+   T14a measured the real surfaces).
 2. Each of the six relationship families above has at least one test that mutates a
    surface and asserts a non-zero exit with a message naming the intent and the two
    surfaces that disagree.
