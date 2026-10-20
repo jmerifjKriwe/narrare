@@ -15,6 +15,10 @@ A MISSING quality-gates.md is a hard failure (check "ssot-present"), not a vacuo
 pass: the pre-W1-9 design treated the SSOT as optional and silently degraded on
 absence — but a missing SSOT is drift by definition, the exact condition this
 checker exists to catch. The ssot-present item is never exception-eligible.
+
+"ci-table-mirror" (T17b2) additionally compares the two gate tables row by row:
+the ci.yml header table and the quality-gates.md mirror must carry the same
+tool/check set, so a row added to one side can no longer go missing silently.
 """
 
 from __future__ import annotations
@@ -31,6 +35,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CI_YAML_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 EXCEPTIONS_PATH = REPO_ROOT / "scripts" / "gate-exceptions.json"
 QUALITY_GATES_PATH = REPO_ROOT / "docs" / "development" / "quality-gates.md"
+
+# Gate-table row detection for the ci-table-mirror check. A data row starts
+# with "|" (optionally behind the ci.yml comment prefix) and its first cell is
+# a gate id (G1, G3e, G6a, ...) or the "--" placeholder. Header and separator
+# rows are excluded because their first cell is not a gate id.
+GATE_TABLE_LINE_RE = re.compile(r"^\s*#?\s*\|")
+GATE_ID_RE = re.compile(r"^(?:G\d+[a-z]*|--)$")
 
 
 # ── Data structures ────────────────────────────────────────────
@@ -239,6 +250,88 @@ def check_locale_sync(
     )
 
 
+def extract_gate_rows(content: str) -> list[str]:
+    """Extract the normalised Tool / Check cell of every gate-table data row.
+
+    Works for both the ci.yml header comment table (lines prefixed with "#")
+    and the prose mirror in quality-gates.md. Normalisation collapses internal
+    whitespace and ignores trailing spaces, so column padding differences do
+    not register as drift.
+    """
+    rows: list[str] = []
+    for line in content.splitlines():
+        if not GATE_TABLE_LINE_RE.match(line):
+            continue
+        stripped = line.lstrip()
+        if stripped.startswith("#"):
+            stripped = stripped[1:].lstrip()
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) < 2 or not GATE_ID_RE.match(cells[0]):
+            continue
+        rows.append(" ".join(cells[1].split()))
+    return rows
+
+
+def compare_gate_rows(ci_content: str, doc_content: str) -> tuple[set[str], set[str]]:
+    """Return (rows only in ci.yml, rows only in quality-gates.md)."""
+    ci_rows = set(extract_gate_rows(ci_content))
+    doc_rows = set(extract_gate_rows(doc_content))
+    return ci_rows - doc_rows, doc_rows - ci_rows
+
+
+def check_ci_table_mirror(
+    ci_content: str,
+    doc_content: str | None,
+    exception_ids: set[str],
+) -> DriftItem:
+    """Check that both gate tables carry the same tool/check rows.
+
+    Root cause (T17b2): the ci.yml header table is declared the CI-gate SSOT
+    and quality-gates.md its prose mirror, but nothing compared the two
+    tables — four rows added to ci.yml alone left the mirror silently
+    incomplete. This check makes the mirror a mechanical contract.
+
+    Severity: blocking. The tables are identical after the T17b2 repair, and
+    the module's convention is that checks are blocking by default (an
+    exception in gate-exceptions.json is the only downgrade path, and none is
+    registered for this check). No "warning without exception" state exists
+    in DriftItem, so a warning would be unimplementable without editing the
+    registry — the wrong lever for a check that is clean today.
+    """
+    check_id = "ci-table-mirror"
+    if not doc_content:
+        # ssot-present reports the missing mirror as a hard failure; skip here
+        # to avoid double-reporting the same root cause.
+        return DriftItem(
+            check_id=check_id,
+            passed=True,
+            detail="Skipped — quality-gates.md unreadable (see ssot-present)",
+        )
+
+    ci_only, doc_only = compare_gate_rows(ci_content, doc_content)
+    if not ci_only and not doc_only:
+        count = len(set(extract_gate_rows(ci_content)))
+        return DriftItem(
+            check_id=check_id,
+            passed=True,
+            detail=f"Both gate tables carry the same {count} tool/check rows",
+        )
+
+    parts: list[str] = []
+    if ci_only:
+        parts.append("only in ci.yml: " + ", ".join(sorted(ci_only)))
+    if doc_only:
+        parts.append("only in quality-gates.md: " + ", ".join(sorted(doc_only)))
+
+    return DriftItem(
+        check_id=check_id,
+        passed=False,
+        detail="Gate table rows differ — " + "; ".join(parts),
+        has_exception=check_id in exception_ids,
+        exception_id=check_id if check_id in exception_ids else None,
+    )
+
+
 def check_ssot_present() -> DriftItem:
     """Check that the quality-gates SSOT doc exists.
 
@@ -272,11 +365,13 @@ def check_ssot_present() -> DriftItem:
 def run_all_checks() -> DriftReport:
     """Run all drift checks and return the aggregated report."""
     ci_content = _read_file(CI_YAML_PATH) or ""
+    doc_content = _read_file(QUALITY_GATES_PATH)
     exceptions_data = _load_exceptions()
     exception_ids = _get_exception_ids(exceptions_data)
 
     report = DriftReport()
     report.items.append(check_ssot_present())
+    report.items.append(check_ci_table_mirror(ci_content, doc_content, exception_ids))
     report.items.append(check_coverage_threshold(ci_content, exception_ids))
     report.items.append(check_streaming_compliance(ci_content, exception_ids))
     report.items.append(check_locale_sync(ci_content, exception_ids))

@@ -20,6 +20,8 @@ it is missing — an absent SSOT is drift by definition. Gate semantics are gove
 | G3e  | check_type_ignores (RULE-23)             | ✅ Blocking  | architecture Job (ratchet — additions fail)                    |
 | G3b  | check_exception_baseline.py              | ✅ Blocking  | architecture Job                                               |
 | G3d  | check_prompt_surface_contract.py         | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D)                   |
+| --   | generate_provider_catalog.py --check (ADR-099) | ✅ Blocking  | architecture Job                                               |
+| --   | check_intent_parity.py (ADR-025/037/038) | ✅ Blocking  | architecture Job                                               |
 | G3c  | export_openapi.py --check                | ✅ Blocking  | architecture Job                                               |
 | G4   | test_fake_conformance.py                 | ✅ Blocking  | test-unit Job (via pytest)                                     |
 | G5   | Cross-layer contract tests               | ✅ Blocking  | test-unit Job (via pytest)                                     |
@@ -49,6 +51,8 @@ it is missing — an absent SSOT is drift by definition. Gate semantics are gove
 | --   | check_pytest_collection_performance.py   | ⚠️ Warning   | test-unit Job (WARNING-only)                                   |
 | --   | check_current_state_facts.py (SSOT)      | ✅ Blocking  | architecture Job                                               |
 | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention)                     |
+| --   | check_pre_commit_gate_tiers.py (ADR-098) | ✅ Blocking  | architecture Job (hook-tier ratchet)                           |
+| --   | check_review_policy_consistency.py (ADR-093) | ✅ Blocking  | architecture Job (policy caps + pointers)                      |
 | --   | budget-report (quota early-warning)      | 📅 Weekly    | Sundays 03:07 UTC, non-blocking (W1-7, spec §5.7)              |
 | MutMut Mutation Score | mutation-testing-monthly.yml | 📅 Monthly | Non-blocking, issue report                                     |
 
