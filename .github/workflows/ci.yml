@@ -552,6 +552,9 @@ jobs:
       - name: Check provider catalog (ADR-099)
         run: uv run --no-sync python scripts/generate_provider_catalog.py --check
 
+      - name: Check intent contract parity (ADR-025/037/038)
+        run: uv run --no-sync python scripts/check_intent_parity.py
+
       - name: Check version consistency (workspace drift)
         run: uv run --no-sync python scripts/check_version_consistency.py
 

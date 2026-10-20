@@ -531,6 +531,9 @@ check-architecture:
     # its normative block and the pointer-only AGENTS/coordinator surfaces must
     # agree; no numeric restatement may creep back into the pointing docs.
     uv run --all-packages python scripts/check_review_policy_consistency.py
+    # Intent contract parity (throughput T15) — the commit hook, this recipe and
+    # the CI architecture job run the same gate against the same eight surfaces.
+    uv run --all-packages python scripts/check_intent_parity.py
     uv run --all-packages python scripts/check_empty_kb_vars.py
     uv run --all-packages python scripts/check_frontmatter_schema.py
     # Mutation-inert convention (moved here from `_check_steps.py`, T8b F2) —

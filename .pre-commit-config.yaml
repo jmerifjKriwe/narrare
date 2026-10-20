@@ -135,6 +135,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Intent contract parity — ADR-025/037/038. Compares the eight intent
+      # declaration surfaces against one another (enum, category map, profiles,
+      # route table + intents, prompt directories, manifest, adoption registry).
+      # Comparison only: it moves no authority out of the manifest or the registry.
+      - id: intent-parity
+        name: Intent Contract Parity (ADR-025/037/038)
+        entry: uv run --no-sync python scripts/check_intent_parity.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Streaming Compliance — RULE-20 enforcement
       - id: streaming-compliance
         name: Streaming Compliance (RULE-20)
