@@ -451,6 +451,7 @@ check-architecture:
     uv run --all-packages python scripts/check_architecture.py --prompt-integrity
     uv run --all-packages python scripts/check_exception_baseline.py
     uv run --all-packages python scripts/check_prompt_surface_contract.py
+    uv run --all-packages python scripts/generate_provider_catalog.py --check
     uv run --all-packages python scripts/check_empty_kb_vars.py
     uv run --all-packages python scripts/check_frontmatter_schema.py
     # RULE-10 test-existence gate — mirrors the CI architecture job's step

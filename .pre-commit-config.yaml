@@ -122,6 +122,19 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Provider catalog — ADR-099. Fails when catalog.yaml and either generated
+      # artifact disagree, or when a handwritten surface (pricing, cache, mem0,
+      # prefixes, settings, fallback catalog, test catalog, labels) drifts from it.
+      # always_run: the gate must also fire when a handwritten surface changes
+      # without the catalog changing, so a `files:` filter would miss the point.
+      - id: provider-catalog-check
+        name: Provider Catalog (ADR-099, generated + parity)
+        entry: uv run --no-sync python scripts/generate_provider_catalog.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Streaming Compliance — RULE-20 enforcement
       - id: streaming-compliance
         name: Streaming Compliance (RULE-20)

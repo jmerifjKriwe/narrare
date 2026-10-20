@@ -549,6 +549,9 @@ jobs:
       - name: Check prompt surface contract (ADR-037 + ADR-049 Phase D)
         run: uv run --no-sync python scripts/check_prompt_surface_contract.py
 
+      - name: Check provider catalog (ADR-099)
+        run: uv run --no-sync python scripts/generate_provider_catalog.py --check
+
       - name: Check version consistency (workspace drift)
         run: uv run --no-sync python scripts/check_version_consistency.py
 
