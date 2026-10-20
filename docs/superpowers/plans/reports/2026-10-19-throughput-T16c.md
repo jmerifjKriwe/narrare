@@ -140,3 +140,10 @@ pre-commit validate-config .pre-commit-config.yaml -> valid (exit 0)
   non-blocking and unrelated to this change.
 - No gate compares the hook prose to the YAML; the new table is derived and
   accurate today, but a future stage move must update it manually.
+
+## Commit
+
+Committed as `0402cb14` — `docs(dev): describe the hook tiers as they are`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

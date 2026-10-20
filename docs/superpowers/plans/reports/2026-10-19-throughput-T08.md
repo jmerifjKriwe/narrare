@@ -630,3 +630,10 @@ catalog); both runs are recorded there, including the pre-existing Typecheck red
    slice that names a whole-tree path (e.g. `just verify-slice "$PWD"`) does. Out
    of scope for these three findings, recorded so the next reviewer does not
    rediscover it as fallout from this round.
+
+## Commit
+
+Committed as `c4ec637a` — `chore(dev): push-tier the two whole-project hooks, add verify-slice`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

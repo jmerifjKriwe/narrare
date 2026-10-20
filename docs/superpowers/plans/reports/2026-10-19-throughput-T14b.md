@@ -191,3 +191,10 @@ Two more spec sentences described a repo that does not exist:
 
 Both are corrections of the *document*, not relaxations of the gate: the gate checks
 what the policy actually requires, and the report names the measurement.
+
+## Commit
+
+Committed as `15f79cae` — `feat(scripts): complete the intent parity gate (prompt dirs, manifest, registry)`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

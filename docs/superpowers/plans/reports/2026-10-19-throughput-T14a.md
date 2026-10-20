@@ -196,3 +196,10 @@ CHAT         model=chat        prompt=writing
 
 Both corrections are the kind of thing this gate exists to surface: the design
 document asserted an invariant the code never had, and no check compared them.
+
+## Commit
+
+Committed as `08ccf552` — `feat(scripts): intent-contract parity gate, core families`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

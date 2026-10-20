@@ -193,3 +193,10 @@ exit=0
 - **Index staging.** `.pre-commit-config.yaml` had to be staged because
   pre-commit refuses to run with an unstaged config. No commit/branch/tag
   operation was performed in this worktree.
+
+## Commit
+
+Committed as `2c8e6028` — `ci: gate intent parity on commit, local and CI surfaces`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

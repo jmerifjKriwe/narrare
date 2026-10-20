@@ -171,3 +171,10 @@ Summary: 45 services checked, 0 missing test files, 0 low coverage
   pass it; the singular fields stay empty until implementation.
 - Generated files outside the repository are not exercised by this repo's
   gates during the unit test; the dry run above is the end-to-end evidence.
+
+## Commit
+
+Committed as `db48bbe3` — `feat(scripts): feature scaffolder core, emitting only gate-green declarations`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

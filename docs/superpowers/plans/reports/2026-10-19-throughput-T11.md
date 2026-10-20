@@ -180,3 +180,10 @@ also reports `0 errors, 0 warnings, 0 informations`.
 - The pre-existing T10 report still records `report=3/80` and `≥3 authored files`; the
   live document and this gate follow the coordinator's CR-3 ruling (`2/80`). Reconciling
   that report was outside this task's authored-file scope.
+
+## Commit
+
+Committed as `232f0dc3` — `feat(scripts): pin the review/report policy numbers`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

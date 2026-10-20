@@ -296,3 +296,10 @@ Also adjusted during review of this task: the `AGENTS.md` bullet keeps the revie
 obligation — "Review non-trivial changes and apply the report thresholds" — instead
 of replacing it with a thresholds-only pointer. A pointer must not delete the duty
 it points into.
+
+## Commit
+
+Committed as `dd077fc8` — `docs(process): normative review and report thresholds`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

@@ -405,20 +405,20 @@ memorize raw `pnpm exec playwright` flags:
 
 | Command | Purpose |
 |---------|---------|
-| `just vrt` | Standard VRT run. Kapselt Port- und Browser-Dependency-Checks (baut fehlende Chromium-Binaries bei, prüft, dass der Dev-Port frei ist) und führt den `vrt`-Playwright-Projekt aus. Der kanonische Aufruf vor jedem PR, der UI berührt. |
-| `just vrt-update` | Regeneriert die Baselines via `--update-snapshots` nach visueller Verifikation. **Nie blind ausführen** — jeder Diff muss vom Verfasser geprüft worden sein (sonst verfestigt sich ein visueller Bug als neue Wahrheit). |
+| `just vrt` | Standard VRT run. Wraps port and browser-dependency checks (builds missing Chromium binaries, verifies that the dev port is free) and runs the `vrt` Playwright project. The canonical invocation before any PR that touches UI. |
+| `just vrt-update` | Regenerates the baselines via `--update-snapshots` after visual verification. **Never run blind** — every diff must have been reviewed by the author (otherwise a visual bug becomes the new truth). |
 
-**Fehlende Dependencies:** Wenn Chromium oder andere Playwright-Browser-Binaries
-fehlen, gibt `just vrt` eine kopierbare Installationsanleitung aus (z. B. den
-`pnpm exec playwright install chromium`-Aufruf plus ggf. System-Pakete), statt
-stumm einen kryptischen Fehler zu werfen. Führe sie aus und starte `just vrt`
-erneut.
+**Missing dependencies:** If Chromium or other Playwright browser binaries are
+missing, `just vrt` prints a copy-pasteable installation instruction (e.g. the
+`pnpm exec playwright install chromium` invocation plus any system packages that
+may be required) instead of silently throwing a cryptic error. Run it and retry
+`just vrt`.
 
-**Mock Contract (BINDING, ADR-059):** Jede Spec MUSS jeden API-Endpoint, den die
-gescreente Komponente aufruft, explizit mocken — abgesichert durch eine
-Catch-all-Route (`**/api/v1/**`) plus `expect.poll(() => unmockedApiCalls).toEqual([])`
-vor dem Screenshot. Details und Boilerplate: ADR-059 §"Mock Contract (BINDING)"
-und `packages/web/tests/screenshots/README.md`.
+**Mock Contract (BINDING, ADR-059):** Every spec MUST explicitly mock every API
+endpoint that the component under test calls — enforced by a catch-all route
+(`**/api/v1/**`) plus `expect.poll(() => unmockedApiCalls).toEqual([])` before the
+screenshot. Details and boilerplate: ADR-059 §"Mock Contract (BINDING)" and
+`packages/web/tests/screenshots/README.md`.
 
 ## Justfile Command Catalog
 

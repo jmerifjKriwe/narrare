@@ -389,3 +389,11 @@ Per ruling 3, no git write command was run. The working tree holds the same five
 Concern C2 (`TS_OUTPUT` unused by design), C3 (gate wiring is a later task), C4 (`ProviderSpec` not
 hashable in use) and C6 (`just verify` halves run separately) are unchanged; C5 (pre-existing
 `sentence_transformers` typecheck errors in `embeddings/rerank.py`) is unchanged and unrelated.
+
+## Commit
+
+Committed as `00c743ef` — `feat(core): provider catalog SSOT + generated AIProvider enum`.
+
+Status correction: the report's header says "Commits: none" and its "not committed"
+heading refers to ad-hoc validation paths, both describing the task at hand-off; this
+section records the commit that landed the work.

@@ -222,3 +222,10 @@ With T7, ADR-099's locally producible completeness items are done:
 
 ADR-099's status remains 🔄 until the wave's PR run of the architecture job is
 green — that is the remaining step, and it needs a push.
+
+## Commit
+
+Committed as `d8a844c3` — `ci: gate the provider catalog at commit, local and CI surfaces`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

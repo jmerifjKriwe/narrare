@@ -184,3 +184,10 @@ $ uv run --all-packages pyright scripts/check_pre_commit_gate_tiers.py
    That is intentional for a governed single-repo config, but a future multi-repo
    split would have to relax rule 5 to `repo + id`.
 4. The report itself is docs-only and not gated.
+
+## Commit
+
+Committed as `f011ee28` — `feat(scripts): pin pre-commit hook tiering`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

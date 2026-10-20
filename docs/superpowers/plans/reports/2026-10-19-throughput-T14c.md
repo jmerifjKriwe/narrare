@@ -140,3 +140,10 @@ All checks passed!
 - **T15 wiring untouched.** `.github/workflows/ci.yml`, `.pre-commit-config.yaml`
   and `justfile` remain as T15 left them; the gate is exercised only through the
   existing `just check-architecture` path and the test file.
+
+## Commit
+
+Committed as `30025b52` — `fix(scripts): catch a deleted mode entry in the intent parity gate`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.

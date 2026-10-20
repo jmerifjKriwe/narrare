@@ -147,3 +147,10 @@ mistake the gate for coverage it does not have.
 - Placement is a compromise forced by the 600-line limit; moving the checker to
   `provider_catalog_parity.py` should happen when that module is next
   modularized, and this report records the intent.
+
+## Commit
+
+Committed as `2771f82b` — `fix(scripts): enforce the fetcher invariant ADR-099 already claimed`.
+
+Status correction: the "not committed" line above describes the report at the time
+it was written; this section records the commit that landed it.
