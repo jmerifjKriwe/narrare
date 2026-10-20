@@ -520,6 +520,10 @@ check-architecture:
     # pre-push / manual / commit-msg so a whole-project hook cannot drift back
     # into the commit path (or be deleted) unnoticed.
     uv run --all-packages python scripts/check_pre_commit_gate_tiers.py
+    # Review/report policy pin (throughput T11) — the marker in quality-gates.md,
+    # its normative block and the pointer-only AGENTS/coordinator surfaces must
+    # agree; no numeric restatement may creep back into the pointing docs.
+    uv run --all-packages python scripts/check_review_policy_consistency.py
     uv run --all-packages python scripts/check_empty_kb_vars.py
     uv run --all-packages python scripts/check_frontmatter_schema.py
     # Mutation-inert convention (moved here from `_check_steps.py`, T8b F2) —
