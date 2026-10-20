@@ -28,9 +28,10 @@ Compared surfaces and families:
 - adoption-registry coverage: an entry for every routed intent's prompt path and
   no entry that no routed intent or context mode resolves (T14b).
 
-Known scope limit of the presence family: the invariant is enforced for
-declarations written inside the dict literals; a post-literal assignment such as
-``INTENT_TO_MODE[X] = ...`` is outside what the AST reader sees.
+The presence family sees the whole module-level mapping, not only its dict
+literal: the reader applies ``INTENT_TO_MODE[X] = ...`` writes and
+``del INTENT_TO_MODE[X]`` deletions that follow the literal, in source order,
+so a declaration added, changed or removed after the literal is compared too.
 
 Required locales follow ADR-026 Phase 5 and mirror
 ``scripts/adoption/scorer._required_locales_for``: ``en``, ``de`` and ``fr`` for
@@ -77,6 +78,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    import ast
     from collections.abc import Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -127,6 +129,16 @@ type FactLike = IntentFact | Mapping[str, object]
 
 def _text(value: object) -> str | None:
     return value if isinstance(value, str) else None
+
+
+def _string_entries(entries: Mapping[str, ast.expr]) -> dict[str, str]:
+    """Keep the string-valued entries of a mapping read from the AST."""
+    values: dict[str, str] = {}
+    for intent, node in entries.items():
+        text = surfaces.string_value(node)
+        if text is not None:
+            values[intent] = text
+    return values
 
 
 def _required_locales(category: str) -> tuple[str, ...]:
@@ -194,30 +206,24 @@ def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
 
     enum_members = surfaces.class_members(enums_tree, "LLMIntent")
     category_names = surfaces.class_members(categories_tree, "IntentCategory")
-    category_entries = surfaces.attribute_dict(
-        surfaces.module_assignments(categories_tree).get("INTENT_CATEGORY_MAP")
-    )
+    category_entries = surfaces.dict_entries(categories_tree, "INTENT_CATEGORY_MAP")
     model_categories = {
         intent: category_names.get(attribute, attribute)
         for intent, value in category_entries.items()
         if (attribute := surfaces.attribute_name(value)) is not None
     }
 
-    route_assignments = surfaces.module_assignments(route_intents_tree)
-    route_categories = surfaces.string_dict(route_assignments.get("INTENT_TO_CATEGORY"))
-    route_modes = surfaces.string_dict(route_assignments.get("INTENT_TO_MODE"))
+    route_categories = _string_entries(
+        surfaces.dict_entries(route_intents_tree, "INTENT_TO_CATEGORY")
+    )
+    route_modes = _string_entries(surfaces.dict_entries(route_intents_tree, "INTENT_TO_MODE"))
 
-    route_table_assignments = surfaces.module_assignments(route_table_tree)
-    route_config_nodes = surfaces.attribute_dict(route_table_assignments.get("ROUTE_CONFIGS"))
+    route_config_nodes = surfaces.dict_entries(route_table_tree, "ROUTE_CONFIGS")
     route_configs = {
         intent: surfaces.route_config(value) for intent, value in route_config_nodes.items()
     }
-    non_routeable = set(
-        surfaces.attribute_dict(route_table_assignments.get("NON_ROUTEABLE_INTENTS"))
-    )
-    profiles = set(
-        surfaces.attribute_dict(surfaces.module_assignments(profiles_tree).get("INTENT_PROFILES"))
-    )
+    non_routeable = set(surfaces.dict_entries(route_table_tree, "NON_ROUTEABLE_INTENTS"))
+    profiles = set(surfaces.dict_entries(profiles_tree, "INTENT_PROFILES"))
 
     facts: dict[str, dict[str, IntentFact]] = {name: {} for name in _DECLARED_SURFACES}
     facts["enums"] = {

@@ -101,6 +101,52 @@ def string_dict(node: ast.expr | None) -> dict[str, str]:
     return entries
 
 
+def _entry_key(node: ast.expr) -> str | None:
+    """Return the intent key of ``LLMIntent.X`` or of a string literal."""
+    name = attribute_name(node)
+    return name if name is not None else string_value(node)
+
+
+def dict_entries(tree: ast.Module, variable_name: str) -> dict[str, ast.expr]:
+    """Return a module-level mapping including writes after its dict literal.
+
+    Starts from the literal bound to *variable_name* (enum-member and string
+    keys) and then walks the module body in source order: a single-target
+    ``NAME[key] = value`` assignment overwrites the key (last write wins) and
+    ``del NAME[key]`` removes it. Keys in any other form are skipped, exactly as
+    the literal reader skips them, so the caller's key-set comparison still
+    reports the resulting absence.
+    """
+    entries: dict[str, ast.expr] = {}
+    literal = module_assignments(tree).get(variable_name)
+    if isinstance(literal, ast.Dict):
+        for key, value in zip(literal.keys, literal.values, strict=True):
+            name = _entry_key(key) if key is not None else None
+            if name is not None:
+                entries[name] = value
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            if len(node.targets) != 1:
+                continue
+            target = node.targets[0]
+            if not isinstance(target, ast.Subscript) or not _subscripts(target, variable_name):
+                continue
+            if (name := _entry_key(target.slice)) is not None:
+                entries[name] = node.value
+        elif isinstance(node, ast.Delete):
+            for target in node.targets:
+                if not isinstance(target, ast.Subscript) or not _subscripts(target, variable_name):
+                    continue
+                if (name := _entry_key(target.slice)) is not None:
+                    entries.pop(name, None)
+    return entries
+
+
+def _subscripts(node: ast.Subscript, variable_name: str) -> bool:
+    """Return whether *node* subscripts the module-level name *variable_name*."""
+    return isinstance(node.value, ast.Name) and node.value.id == variable_name
+
+
 def route_config(node: ast.expr) -> tuple[str | None, str | None]:
     """Extract ``(category, mode)`` from a ``PromptRouteConfig(...)`` call."""
     if not isinstance(node, ast.Call):
