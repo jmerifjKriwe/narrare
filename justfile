@@ -445,6 +445,41 @@ verify: check test-all
 # no `check`). Use for fast iteration between slices. Full gate is `just verify`.
 verify-quick: test-unit test-frontend
 
+# Scoped slice gate for one change set. NOT a substitute for `just verify`:
+# it runs only the given paths and adds the scoped frontend check when a path
+# is under packages/web/. Integration and E2E tests never run here.
+# Python paths: ruff (`lint-file`) → pyright with the correct config
+# (`typecheck-file`), then pytest (`test-file`) only for paths under tests/ —
+# pytest exits 5 on a source module because it collects no tests.
+# Frontend paths skip the Python tools (ruff/pyright cannot parse TypeScript)
+# and run scoped Biome instead. A slice may mix both kinds.
+# Usage: just verify-slice packages/core/narrare_core/llm/model_listing.py
+#        just verify-slice tests/unit/core/llm/test_gateway.py packages/web/lib/providers.ts
+verify-slice +paths:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    py=()
+    tests=()
+    web=()
+    for p in {{paths}}; do
+        case "$p" in
+            packages/web|packages/web/) web+=("packages/web/.") ;;
+            packages/web/*) web+=("$p") ;;
+            tests|tests/*|./tests|./tests/*) py+=("$p"); tests+=("$p") ;;
+            *) py+=("$p") ;;
+        esac
+    done
+    if [ "${#py[@]}" -gt 0 ]; then
+        just lint-file "${py[@]}"
+        just typecheck-file "${py[@]}"
+    fi
+    if [ "${#tests[@]}" -gt 0 ]; then
+        just test-file "${tests[@]}"
+    fi
+    if [ "${#web[@]}" -gt 0 ]; then
+        cd packages/web && npx biome check "${web[@]/#packages\/web\//}"
+    fi
+
 # Run architecture constraint checker
 check-architecture:
     @echo "🏛️  Checking architecture constraints..."

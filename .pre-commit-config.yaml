@@ -165,15 +165,21 @@ repos:
         files: ^tests/unit/(core|api)/.*\.py$
         stages: [pre-commit]
 
-      # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
-      # Uses --no-sync to rely on the already-synced venv (deterministic-venv contract;
-      # see ci.yml architecture job). Run from repo root so the script path is canonical.
+      # OpenAPI spec auto-regeneration — mutates docs/reference/openapi.json when
+      # the API surface changes. PUSH-TIERED (throughput T8): the export rewrites
+      # the whole spec regardless of which files changed, so at commit time a
+      # one-file edit paid for a whole-project export. CI remains the authority:
+      # the architecture job runs `scripts/export_openapi.py --check` and fails on
+      # drift. Uses --no-sync to rely on the already-synced venv (deterministic-venv
+      # contract; see ci.yml architecture job). Run from repo root so the script
+      # path is canonical.
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)
         entry: uv run --no-sync python scripts/export_openapi.py
         language: system
         pass_filenames: false
         files: ^(apps/api/|packages/core/)
+        stages: [pre-push]
 
       # ADR naming convention — every ADR file must follow `ADR-XXX-*.md`
       # (review-04 AUFG-04-10 / Strategie 5). Fast, only relevant when
@@ -369,7 +375,11 @@ repos:
         types_or: [tsx, python, json]
         files: ^(packages/web/.*\.tsx|apps/api/.*\.py|packages/i18n/messages/.*\.json)
 
-      # TypeScript type check — consider moving to stages: [pre-push] or CI-only if slow
+      # TypeScript type check — PUSH-TIERED (throughput T8): `tsc --noEmit` checks
+      # the whole packages/web project on every run, so at commit time a one-file
+      # change paid for a whole-project typecheck. CI remains the authority: the
+      # frontend job runs the project's TypeScript step on every push/PR. The
+      # scoped, commit-cheap frontend check (Biome) is `just verify-slice`.
       - id: typecheck-frontend
         name: TypeScript Check (Frontend)
         entry: bash -c 'cd packages/web && npx tsc --noEmit'
@@ -377,7 +387,7 @@ repos:
         types: [tsx]
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [pre-push]
 
   # Standard hooks for file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
