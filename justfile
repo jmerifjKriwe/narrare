@@ -516,6 +516,10 @@ check-architecture:
     uv run --all-packages python scripts/check_python_file_size.py
     uv run --all-packages python scripts/check_prompt_surface_contract.py
     uv run --all-packages python scripts/generate_provider_catalog.py --check
+    # Hook-tiering ratchet (throughput T8/T9) — machine-pins which hooks run at
+    # pre-push / manual / commit-msg so a whole-project hook cannot drift back
+    # into the commit path (or be deleted) unnoticed.
+    uv run --all-packages python scripts/check_pre_commit_gate_tiers.py
     uv run --all-packages python scripts/check_empty_kb_vars.py
     uv run --all-packages python scripts/check_frontmatter_schema.py
     # Mutation-inert convention (moved here from `_check_steps.py`, T8b F2) —
