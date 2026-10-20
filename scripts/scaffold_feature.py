@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
+import subprocess  # nosec B404 - scoped gate scripts via sys.executable, fixed argv
 import sys
 from datetime import UTC, datetime
 from pathlib import Path

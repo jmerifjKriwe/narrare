@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - git rev-parse --git-path, fixed argv, no shell
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
