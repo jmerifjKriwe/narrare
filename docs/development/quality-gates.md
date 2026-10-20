@@ -20,6 +20,8 @@ it is missing — an absent SSOT is drift by definition. Gate semantics are gove
 | G3e  | check_type_ignores (RULE-23)             | ✅ Blocking  | architecture Job (ratchet — additions fail)                    |
 | G3b  | check_exception_baseline.py              | ✅ Blocking  | architecture Job                                               |
 | G3d  | check_prompt_surface_contract.py         | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D)                   |
+| --   | generate_provider_catalog.py --check (ADR-099) | ✅ Blocking  | architecture Job                                               |
+| --   | check_intent_parity.py (ADR-025/037/038) | ✅ Blocking  | architecture Job                                               |
 | G3c  | export_openapi.py --check                | ✅ Blocking  | architecture Job                                               |
 | G4   | test_fake_conformance.py                 | ✅ Blocking  | test-unit Job (via pytest)                                     |
 | G5   | Cross-layer contract tests               | ✅ Blocking  | test-unit Job (via pytest)                                     |
@@ -50,6 +52,8 @@ it is missing — an absent SSOT is drift by definition. Gate semantics are gove
 | --   | check_current_state_facts.py (SSOT)      | ✅ Blocking  | architecture Job                                               |
 | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention)                     |
 | --   | check_commit_message.py (claim gate)     | ✅ Blocking  | architecture Job (pull_request only: PR title + body)          |
+| --   | check_pre_commit_gate_tiers.py (ADR-098) | ✅ Blocking  | architecture Job (hook-tier ratchet)                           |
+| --   | check_review_policy_consistency.py (ADR-093) | ✅ Blocking | architecture Job (policy caps + pointers)                      |
 | --   | budget-report (quota early-warning)      | 📅 Weekly    | Sundays 03:07 UTC, non-blocking (W1-7, spec §5.7)              |
 | MutMut Mutation Score | mutation-testing-monthly.yml | 📅 Monthly | Non-blocking, issue report                                     |
 
@@ -74,6 +78,28 @@ The authoritative trigger composition lives in `.github/workflows/ci.yml`
 - **Weekly** — budget-report, Sundays 03:07 UTC (W1-7, spec §5.7), non-blocking.
 - **Monthly** — mutation testing (`mutation-testing-monthly.yml`), non-blocking,
   issue report.
+
+## Review & report policy
+
+<!-- review-policy: caps=3/250 report=2/80 -->
+
+Normative text. `AGENTS.md` and `.opencode/agents/NarrareDevCoordinator.md`
+reference this section; they do not restate its numbers.
+
+- **Package caps:** ≤3 authored files and ≤250 new production LOC per delegated
+  unit. Test files, machine-generated artifacts and single-row documentation edits
+  do not count. Sub-slice rather than exceed.
+- **Per-task report file — required** when a task changes ≥2 production files, adds
+  ≥80 new production LOC, crosses a layer boundary, or changes a governed surface
+  (`docs/_shared/CONSTRAINTS.md`, an ADR, `scripts/architecture/*`,
+  `.github/workflows/ci.yml`, `justfile`, `.pre-commit-config.yaml`). Otherwise the
+  commit message body is the record.
+- **Batch review — allowed** when the tasks share a layer and a file cluster and at
+  least one of them met the report threshold; the batch report names every covered
+  task.
+- **Per-task review — mandatory, never batched** when a task adds or renames a
+  Protocol/contract, changes a manifest or registry, changes the public shape of an
+  API response, or edits a governed surface.
 
 ## Exception registry
 

@@ -17,6 +17,8 @@ name: CI
 # | G3e  | check_type_ignores (RULE-23)             | ✅ Blocking  | architecture Job (ratchet — additions fail)                    |
 # | G3b  | check_exception_baseline.py              | ✅ Blocking  | architecture Job                                               |
 # | G3d  | check_prompt_surface_contract.py         | ✅ Blocking  | architecture Job (ADR-037 + ADR-049 Phase D)                   |
+# | --   | generate_provider_catalog.py --check (ADR-099) | ✅ Blocking | architecture Job                                          |
+# | --   | check_intent_parity.py (ADR-025/037/038) | ✅ Blocking  | architecture Job                                               |
 # | G3c  | export_openapi.py --check                | ✅ Blocking  | architecture Job                                               |
 # | G4   | test_fake_conformance.py                 | ✅ Blocking  | test-unit Job (via pytest)                                     |
 # | G5   | Cross-layer contract tests               | ✅ Blocking  | test-unit Job (via pytest)                                     |
@@ -47,6 +49,8 @@ name: CI
 # | --   | check_current_state_facts.py (SSOT)      | ✅ Blocking  | architecture Job                                               |
 # | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention)                     |
 # | --   | check_commit_message.py (claim gate)     | ✅ Blocking  | architecture Job (pull_request only: PR title + body)          |
+# | --   | check_pre_commit_gate_tiers.py (ADR-098) | ✅ Blocking  | architecture Job (hook-tier ratchet)                           |
+# | --   | check_review_policy_consistency.py (ADR-093) | ✅ Blocking | architecture Job (policy caps + pointers)                   |
 # | --   | budget-report (quota early-warning)      | 📅 Weekly    | Sundays 03:07 UTC, non-blocking (W1-7, spec §5.7)              |
 # | MutMut Mutation Score | mutation-testing-monthly.yml | 📅 Monthly | Non-blocking, issue report                                     |
 #
@@ -567,6 +571,18 @@ jobs:
 
       - name: Check prompt surface contract (ADR-037 + ADR-049 Phase D)
         run: uv run --no-sync python scripts/check_prompt_surface_contract.py
+
+      - name: Check provider catalog (ADR-099)
+        run: uv run --no-sync python scripts/generate_provider_catalog.py --check
+
+      - name: Check intent contract parity (ADR-025/037/038)
+        run: uv run --no-sync python scripts/check_intent_parity.py
+
+      - name: Check pre-commit gate tiers (ADR-098)
+        run: uv run --no-sync python scripts/check_pre_commit_gate_tiers.py
+
+      - name: Check review/report policy consistency (ADR-093)
+        run: uv run --no-sync python scripts/check_review_policy_consistency.py
 
       - name: Check version consistency (workspace drift)
         run: uv run --no-sync python scripts/check_version_consistency.py

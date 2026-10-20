@@ -1,21 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { PROVIDERS } from "@/lib/providers";
 import type { CreateProviderRequest, UpdateProviderRequest } from "@/types";
-
-// --- Provider label map ---
-
-const PROVIDER_OPTIONS: { value: string; label: string }[] = [
-  { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic / Claude" },
-  { value: "google", label: "Google / Gemini" },
-  { value: "ollama", label: "Ollama (Local)" },
-  { value: "openrouter", label: "OpenRouter" },
-];
-
-export function providerLabel(name: string): string {
-  return PROVIDER_OPTIONS.find((p) => p.value === name)?.label ?? name;
-}
 
 // --- Provider Form ---
 
@@ -42,6 +30,9 @@ export function ProviderForm({
   isPending,
   t,
 }: ProviderFormProps) {
+  // Root translator: provider label keys are fully qualified
+  // (`settings-ai.providers.<id>`); the `t` prop is namespaced to "studio".
+  const tProviders = useTranslations();
   const [providerName, setProviderName] = useState(initialProviderName ?? "openai");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl ?? "");
@@ -74,9 +65,9 @@ export function ProviderForm({
             onChange={(e) => setProviderName(e.target.value)}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
           >
-            {PROVIDER_OPTIONS.map((opt) => (
+            {PROVIDERS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {tProviders(opt.labelKey)}
               </option>
             ))}
           </select>

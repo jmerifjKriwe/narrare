@@ -55,7 +55,7 @@ the graph does not have the answer. `sed -n` is allowed to read specific lines.
 2. **Plan non-trivial changes.** Root cause (≥2× "why?"), alternatives, sustainability.
 3. **Follow existing patterns.** New patterns only with justification.
 4. **Verify.** Tests, lint, typecheck, `scripts/check_architecture.py`.
-5. **Review non-trivial changes** (Reviewer subagent, edit: deny).
+5. **Review non-trivial changes** and apply the report thresholds: see `docs/development/quality-gates.md` §Review & report policy (normative; numbers are not restated here).
 
 ### Prohibitions (absolute)
 

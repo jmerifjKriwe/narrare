@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from narrare_core.llm._providers.catalog_generated import PROVIDER_IDS
+
 __all__ = ["_test_catalog"]
 
 # ---------------------------------------------------------------------------
@@ -31,8 +33,12 @@ __all__ = ["_test_catalog"]
 # Raw catalog data: provider -> list of (id, name, context_window|None).
 # Kept as plain tuples so this module does not need to import
 # ``ModelCatalogEntry`` at load time (avoids a circular import with
-# ``model_listing.py``).
-_TEST_CATALOG: dict[str, list[tuple[str, str, int | None]]] = {
+# ``model_listing.py``). The provider keys are not restated here: the
+# canonical set comes from the generated provider catalog SSOT (ADR-099),
+# and the public ``_TEST_CATALOG`` below is assembled from it so a provider
+# without an entry is a ``KeyError`` at import rather than a silently
+# absent key.
+_TEST_MODELS: dict[str, list[tuple[str, str, int | None]]] = {
     "anthropic": [
         ("claude-test-model", "Claude (Test)", 200000),
     ],
@@ -54,6 +60,10 @@ _TEST_CATALOG: dict[str, list[tuple[str, str, int | None]]] = {
     "zai": [
         ("glm-test-model", "GLM (Test)", None),
     ],
+}
+
+_TEST_CATALOG: dict[str, list[tuple[str, str, int | None]]] = {
+    provider: _TEST_MODELS[provider] for provider in PROVIDER_IDS
 }
 
 

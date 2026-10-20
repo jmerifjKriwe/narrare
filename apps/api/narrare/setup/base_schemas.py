@@ -6,8 +6,17 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
+# Re-export of the generated catalog enum (ADR-099, provider SSOT in Core).
+# The `as AIProvider` form marks it as an explicit re-export so pyright's
+# reportUnusedImport stays quiet while it remains a public name of this module.
+from narrare_core.llm._providers.catalog_generated import AIProvider as AIProvider
+
 # ---------------------------------------------------------------------------
 # Enums — extensible via adding values
+#
+# AIProvider is NOT declared here: it is the generated catalog enum
+# (narrare_core.llm._providers.catalog_generated, ADR-099), imported at the
+# top of this module and re-exported. The provider set has exactly one SSOT.
 # ---------------------------------------------------------------------------
 
 
@@ -40,16 +49,6 @@ class StarterContent(StrEnum):
     DEMO_SCIFI = "demo_scifi"
     DEMO_GERMAN = "demo_german"
     IMPORT = "import"
-
-
-class AIProvider(StrEnum):
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
-    GOOGLE = "google"
-    GROQ = "groq"
-    OLLAMA = "ollama"
-    OPENROUTER = "openrouter"
-    ZAI = "zai"
 
 
 # ---------------------------------------------------------------------------

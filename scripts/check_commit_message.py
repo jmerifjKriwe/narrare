@@ -5,7 +5,9 @@ Conventional Commits message checker.
 Reads the commit message from, in order:
   1. argv[1]              — pre-commit `commit-msg` hook (git passes the message file)
   2. stdin                — CI and `just check-commit-msg` (non-tty)
-  3. .git/COMMIT_EDITMSG  — interactive local runs
+  3. git rev-parse --git-path COMMIT_EDITMSG
+                          — interactive local runs; correct in a normal checkout
+                            *and* in a linked worktree, where `.git` is a file
 
 `feat` and `fix` claim a user-facing change: they bump the version
 (`feat` → minor, `fix` → patch) and land in the user-facing CHANGELOG.
@@ -17,8 +19,16 @@ Internal production code that no user can observe belongs under
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess  # nosec B404 - git rev-parse --git-path, fixed argv, no shell
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from typing import TextIO
+
+_GIT: Final[Path | str] = shutil.which("git") or "git"
 
 TYPES = {
     "feat",
@@ -52,21 +62,54 @@ USER_VISIBLE_RE = re.compile(r"^User-visible:[ \t]*(\S.*)$", re.MULTILINE)
 
 PLACEHOLDERS = {"-", "n/a", "none", "tbd", "todo", "see above"}
 
-COMMIT_EDITMSG = Path(".git/COMMIT_EDITMSG")
 
+def read_message(argv: list[str], *, stdin: TextIO | None = None) -> str:
+    """Return the commit message from the hook file, stdin, or git's editor file.
 
-def read_message(argv: list[str]) -> str:
-    """Return the commit message from the hook file, stdin, or the editor file.
+    Resolution order:
 
-    `#`-prefixed lines are git's comment syntax and only occur in the
-    message file git hands us — never in CI-supplied text (a PR body may
+    1. An explicit path in ``argv[1]`` (git's own ``commit-msg`` protocol).
+    2. The message piped on ``stdin``, when stdin is not a TTY. That stream is
+       authoritative **even when it is empty**: an empty non-TTY stdin yields
+       ``""``, which ``check_message`` rejects as "Empty commit message". It
+       never falls through to a message file, whose stale content would
+       otherwise be validated instead. A TTY is never read (``git commit`` from
+       a terminal hands the hook a terminal stdin; reading it would block).
+    3. ``git rev-parse --git-path COMMIT_EDITMSG`` — the manual/TTY case, where
+       no message arrives on stdin. Correct in a normal checkout *and* in a
+       linked worktree, where ``.git`` is a file.
+    4. Otherwise the empty string (rejected by ``check_message``).
+
+    ``#``-prefixed lines are git's comment syntax and only occur in the
+    message files git hands us — never in CI-supplied text (a PR body may
     legitimately contain Markdown headings).
+
+    A failing git call is reported on stderr (RULE-11: never swallowed).
     """
+    stream = sys.stdin if stdin is None else stdin
+
     if len(argv) > 1:
         return _strip_comments(Path(argv[1]).read_text(encoding="utf-8"))
-    if not sys.stdin.isatty():
-        return sys.stdin.read()
-    return _strip_comments(COMMIT_EDITMSG.read_text(encoding="utf-8"))
+
+    if not stream.isatty():
+        return stream.read()
+
+    try:
+        result = subprocess.run(  # noqa: S603  # nosec  # controlled git invocation, fixed argv
+            [_GIT, "rev-parse", "--git-path", "COMMIT_EDITMSG"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        print(f"⚠️  Could not resolve COMMIT_EDITMSG via git: {exc}", file=sys.stderr)
+        return ""
+
+    path = Path(result.stdout.strip())
+    if path.is_file():
+        return _strip_comments(path.read_text(encoding="utf-8"))
+
+    return ""
 
 
 def _strip_comments(raw: str) -> str:

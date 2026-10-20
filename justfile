@@ -449,14 +449,102 @@ verify: check test-all
 # no `check`). Use for fast iteration between slices. Full gate is `just verify`.
 verify-quick: test-unit test-frontend
 
-# Run architecture constraint checker
+# Scoped slice gate for one change set. NOT a substitute for `just verify`:
+# it runs only the given paths and adds the scoped frontend check when a path
+# is under packages/web/.
+# Every path is normalised once before routing — a leading `./` is stripped and
+# an absolute path under the repository root is made repo-relative — so each arm
+# matches one canonical form and no arm can miss a variant of its own kind. A
+# path that cannot be normalised to a repo-relative form aborts the recipe with
+# a message instead of being handed to a tool that cannot parse it.
+# Python paths: ruff (`lint-file`) → pyright with the correct config
+# (`typecheck-file`), then pytest (`test-file`) only for paths under tests/ —
+# pytest exits 5 on a source module because it collects no tests.
+# Frontend paths skip the Python tools (ruff/pyright cannot parse TypeScript)
+# and run scoped Biome instead. A slice may mix both kinds.
+# Tests run only for the `tests/` paths the caller names: a source-only slice
+# runs no tests at all, and naming e.g. `tests/integration/…` or `tests/e2e/…`
+# sends that path to plain pytest (`test-file`: no `-m e2e` selection, no
+# service/container boot) — the recipe provisions nothing beyond what is named.
+# Usage: just verify-slice packages/core/narrare_core/llm/model_listing.py
+#        just verify-slice ./tests/unit/core/llm/test_gateway.py packages/web/lib/providers.ts
+verify-slice +paths:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="$PWD"
+    py=()
+    tests=()
+    web=()
+    for p in {{paths}}; do
+        case "$p" in
+            ./*) p="${p#./}"; [ -n "$p" ] || p="." ;;
+            "$root") p="." ;;
+            "$root"/*) p="${p#"$root"/}" ;;
+            /*)
+                echo "verify-slice: cannot route '$p' — absolute and outside" \
+                    "the repository root ($root)" >&2
+                exit 2
+                ;;
+        esac
+        case "$p" in
+            packages/web|packages/web/) web+=(".") ;;
+            packages/web/*) web+=("${p#packages/web/}") ;;
+            tests|tests/*) py+=("$p"); tests+=("$p") ;;
+            *) py+=("$p") ;;
+        esac
+    done
+    if [ "${#py[@]}" -gt 0 ]; then
+        just lint-file "${py[@]}"
+        just typecheck-file "${py[@]}"
+    fi
+    if [ "${#tests[@]}" -gt 0 ]; then
+        just test-file "${tests[@]}"
+    fi
+    if [ "${#web[@]}" -gt 0 ]; then
+        cd packages/web && npx biome check "${web[@]}"
+    fi
+
+# Scaffold the declaration surfaces of a new feature. Generates only artifacts
+# that are green on arrival — never service/router/repository/component stubs
+# (RULE-20). Layers: core, api, web. Optional: --with-intent NAME.
+# Usage: just new-feature FIND-099 core api web
+new-feature id +layers:
+    uv run --all-packages python scripts/scaffold_feature.py {{id}} {{layers}}
+
+# Run architecture constraint checker — THE architecture surface. `just check`
+# does not restate this list: `scripts/_check_steps.py` runs this recipe, so a
+# new architecture check is added here once. (T8b review F2: the two lists had
+# already drifted — `generate_provider_catalog.py --check` was here and in CI
+# but not in the `_check_steps.py` step, so `just check`/`just verify` went
+# green on a stale provider catalog. The Python file-size and mutation-inert
+# checks moved in from that step in the same round, so delegating cannot drop
+# a check.)
 check-architecture:
     @echo "🏛️  Checking architecture constraints..."
     uv run --all-packages python scripts/check_architecture.py --prompt-integrity
     uv run --all-packages python scripts/check_exception_baseline.py
+    # RULE-04 Python file-size gate (moved here from `_check_steps.py`, T8b F2)
+    uv run --all-packages python scripts/check_python_file_size.py
     uv run --all-packages python scripts/check_prompt_surface_contract.py
+    uv run --all-packages python scripts/generate_provider_catalog.py --check
+    # Hook-tiering ratchet (throughput T8/T9) — machine-pins which hooks run at
+    # pre-push / manual / commit-msg so a whole-project hook cannot drift back
+    # into the commit path (or be deleted) unnoticed.
+    uv run --all-packages python scripts/check_pre_commit_gate_tiers.py
+    # Review/report policy pin (throughput T11) — the marker in quality-gates.md,
+    # its normative block and the pointer-only AGENTS/coordinator surfaces must
+    # agree; no numeric restatement may creep back into the pointing docs.
+    uv run --all-packages python scripts/check_review_policy_consistency.py
+    # Intent contract parity (throughput T15) — the commit hook, this recipe and
+    # the CI architecture job run the same gate against the same eight surfaces.
+    uv run --all-packages python scripts/check_intent_parity.py
     uv run --all-packages python scripts/check_empty_kb_vars.py
     uv run --all-packages python scripts/check_frontmatter_schema.py
+    # Mutation-inert convention (moved here from `_check_steps.py`, T8b F2) —
+    # prevents the MutMut sandbox crash class documented in issue #146
+    # (asset-reading tests reached via parents[N] must carry
+    # @pytest.mark.mutation_inert).
+    uv run --all-packages python scripts/checks/check_mutation_inert_assets.py
     # RULE-10 test-existence gate — mirrors the CI architecture job's step
     # (ci.yml: `check_test_coverage_gaps.py --fail-on-missing`, same flags)
     # so the local gate can no longer go green while CI goes red on it
@@ -619,7 +707,7 @@ check-ai-ux:
 # Validate a commit message (same check as the commit-msg hook and CI)
 # Usage: just check-commit-msg "feat(core): add new prompt mode"
 check-commit-msg msg:
-    @echo "{{msg}}" | uv run --all-packages python scripts/check_commit_message.py
+    @printf '%s\n' {{quote(msg)}} | uv run --all-packages python scripts/check_commit_message.py
 
 # Export OpenAPI schema to docs/
 export-openapi:

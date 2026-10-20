@@ -1,17 +1,16 @@
-import type { AIProvider } from "@/types";
+import { type AIProvider, PROVIDER_IDS, PROVIDER_LABEL_KEYS } from "@/lib/providers.generated";
 
-/** Shared provider list with display labels — single source of truth. */
-export const PROVIDERS: { value: AIProvider; label: string }[] = [
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
-  { value: "google", label: "Google AI" },
-  { value: "groq", label: "Groq" },
-  { value: "ollama", label: "Ollama (local)" },
-  { value: "openrouter", label: "OpenRouter" },
-  { value: "zai", label: "Z.AI" },
-];
+export type { AIProvider };
+export { PROVIDER_IDS, PROVIDER_LABEL_KEYS };
 
-/** Return the display label for a provider value, or the raw value if unknown. */
-export function getProviderLabel(value: AIProvider | string): string {
-  return PROVIDERS.find((p) => p.value === value)?.label ?? value;
+/** Shared provider list with i18n label keys — derived from the generated catalog. */
+export const PROVIDERS: { value: AIProvider; labelKey: string }[] = PROVIDER_IDS.map((value) => ({
+  value,
+  labelKey: PROVIDER_LABEL_KEYS[value],
+}));
+
+/** Resolve a provider's display label through the translator; raw value if unknown. */
+export function getProviderLabel(value: AIProvider | string, t: (key: string) => string): string {
+  const entry = PROVIDERS.find((p) => p.value === value);
+  return entry ? t(entry.labelKey) : value;
 }

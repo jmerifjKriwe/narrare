@@ -221,10 +221,10 @@ permissions:
 - **Async**: all I/O async, never sync DB calls.
 - **File size (RULE-04)**: router ≤150, service ≤300, repo ≤200 lines. When exceeded,
   **modularize** — never delete comments/docstrings to fit.
-- **Package cap**: a single assigned package is ≤3 files / ≤250 new LOC / one logical
-  unit with its own test cycle. Scope above that → STOP and report
-  `PACKAGE_TOO_LARGE: <files/LOC>` — the coordinator re-slices. Never silently expand
-  scope or batch several units.
+- **Package cap**: one logical unit with its own test cycle; the numeric caps are
+  normative in `docs/development/quality-gates.md` §Review & report policy and are not
+  restated here. Scope above them → STOP and report `PACKAGE_TOO_LARGE: <files/LOC>` —
+  the coordinator re-slices. Never silently expand scope or batch several units.
 - **No `--no-verify`** on commits (git is owned by Platform).
 
 ## File map

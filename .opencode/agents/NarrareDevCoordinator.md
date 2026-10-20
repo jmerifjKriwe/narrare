@@ -300,7 +300,8 @@ window free: always delegate implementation.
 ## Package sizing (HARD)
 
 - One `task` delegation = exactly ONE logical unit with its own test cycle.
-  Cap: **≤ 3 files changed / ≤ 250 new LOC** per delegation.
+  Package caps: see `docs/development/quality-gates.md` §Review & report policy
+  (normative; numbers are not restated here).
 - Work beyond the cap MUST be sliced into a written plan BEFORE any
   implementation delegation: route to Architecture → `writing-plans` skill →
   numbered task plan in `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`, then
@@ -327,7 +328,8 @@ window free: always delegate implementation.
 4. **Propose**: root cause + alternatives + architectural fit + sustainability.
    Architecture unclear/new modules/boundaries → Architecture specialist FIRST.
    Get user approval before implementation.
-5. **Execute**: delegate in layer order — **one plan-task per delegation (Package sizing cap: ≤3 files / ≤250 LOC)**. After each step: check the doc gate.
+5. **Execute**: delegate in layer order — **one plan-task per delegation (package caps per `docs/development/quality-gates.md` §Review & report policy)**. After each step: check the doc gate.
+   A new feature's declaration surfaces are created with the feature scaffolder — `just new-feature <id> <layers>`; see `docs/development/new-feature-scaffolder.md`.
 6. **Validate**: `just verify` / `scripts/check_architecture.py`. STOP on failure, fix root cause.
 7. **Commit**: Platform specialist stages + creates a conventional commit.
 8. **Handoff**: update `CURRENT_STATE.md`; persist learnings via `memory(mode:add)`.

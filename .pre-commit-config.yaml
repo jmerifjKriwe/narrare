@@ -122,6 +122,34 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Provider catalog — ADR-099. Fails when catalog.yaml and either generated
+      # artifact disagree, or when a handwritten surface (pricing, cache, mem0,
+      # prefixes, settings, fallback catalog, test catalog, labels) drifts from it.
+      # always_run: the gate must also fire when a handwritten surface changes
+      # without the catalog changing, so a `files:` filter would miss the point.
+      - id: provider-catalog-check
+        name: Provider Catalog (ADR-099, generated + parity)
+        entry: uv run --no-sync python scripts/generate_provider_catalog.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Intent contract parity — ADR-025/037/038. Compares the eight intent
+      # declaration surfaces against one another (enum, category map, profiles,
+      # route table + intents, prompt directories, manifest, adoption registry).
+      # Comparison only: it moves no authority out of the manifest or the registry.
+      # always_run with no `files:` filter: the gate's inputs are a closed set
+      # (five Python modules, two governance YAMLs and `_bundled`), so a filter
+      # was defensible, but `always_run` avoids missing a future ninth surface.
+      - id: intent-parity
+        name: Intent Contract Parity (ADR-025/037/038)
+        entry: uv run --no-sync python scripts/check_intent_parity.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Streaming Compliance — RULE-20 enforcement
       - id: streaming-compliance
         name: Streaming Compliance (RULE-20)
@@ -152,15 +180,21 @@ repos:
         files: ^tests/unit/(core|api)/.*\.py$
         stages: [pre-commit]
 
-      # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
-      # Uses --no-sync to rely on the already-synced venv (deterministic-venv contract;
-      # see ci.yml architecture job). Run from repo root so the script path is canonical.
+      # OpenAPI spec auto-regeneration — mutates docs/reference/openapi.json when
+      # the API surface changes. PUSH-TIERED (throughput T8): the export rewrites
+      # the whole spec regardless of which files changed, so at commit time a
+      # one-file edit paid for a whole-project export. CI remains the authority:
+      # the architecture job runs `scripts/export_openapi.py --check` and fails on
+      # drift. Uses --no-sync to rely on the already-synced venv (deterministic-venv
+      # contract; see ci.yml architecture job). Run from repo root so the script
+      # path is canonical.
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)
         entry: uv run --no-sync python scripts/export_openapi.py
         language: system
         pass_filenames: false
         files: ^(apps/api/|packages/core/)
+        stages: [pre-push]
 
       # ADR naming convention — every ADR file must follow `ADR-XXX-*.md`
       # (review-04 AUFG-04-10 / Strategie 5). Fast, only relevant when
@@ -356,7 +390,12 @@ repos:
         types_or: [tsx, python, json]
         files: ^(packages/web/.*\.tsx|apps/api/.*\.py|packages/i18n/messages/.*\.json)
 
-      # TypeScript type check — consider moving to stages: [pre-push] or CI-only if slow
+      # TypeScript type check — PUSH-TIERED (throughput T8): `tsc --noEmit` checks
+      # the whole packages/web project on every run, so at commit time a one-file
+      # change paid for a whole-project typecheck. CI remains the authority: the
+      # frontend job runs the project's TypeScript step on every push/PR. The
+      # commit-time Biome check is the `biome-frontend` hook; `just verify-slice`
+      # is the manual, path-scoped recipe that runs Biome for named web paths.
       - id: typecheck-frontend
         name: TypeScript Check (Frontend)
         entry: bash -c 'cd packages/web && npx tsc --noEmit'
@@ -364,7 +403,7 @@ repos:
         types: [tsx]
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [pre-push]
 
   # Standard hooks for file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -251,10 +251,13 @@ pre-commit run --all-files
 ```
 
 Hooks are configured in `.pre-commit-config.yaml`; that file is the canonical
-source for exact hook commands and stages. Important behavior:
+source for exact hook commands and stages. `docs/development/pre-commit-gate-tiers.md`
+explains the commit/push split and the scoped `just verify-slice` recipe.
+Important behavior:
 
-- Architecture, prompt, adoption, OpenAPI, Python, frontend, i18n, TypeScript,
-  security, hygiene, and commit-message checks run locally where applicable.
+- Architecture, prompt, governance, OpenAPI, Python, frontend, i18n, TypeScript,
+  security, hygiene, and commit-message checks run locally; the table below names
+  the stage each group actually runs at.
 - Some hooks intentionally mutate files (`openapi-regenerate`, `ruff-lint`,
   `ruff-format`, `biome-frontend`, file hygiene fixers).
 - Type checks are full-project checks where the hook declares `pass_filenames:
@@ -264,39 +267,53 @@ source for exact hook commands and stages. Important behavior:
 
 Current hook groups:
 
-| Hook | Stage | Command |
-|------|-------|---------|
-| Architecture/setup | pre-commit | Constraint, prompt structure, adoption score, and OpenAPI drift checks |
-| Python quality | pre-commit | Ruff lint/format, pyright, bandit |
-| Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
-| File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
+| Hook group | Stage | Hooks |
+|------------|-------|-------|
+| Architecture and governance | pre-commit | `architecture-constraints`, `prompt-structure`, `frontmatter-schema`, `ai-interaction-compliance`, `exception-baseline`, `python-file-size`, `frontend-file-size`, `feature-path-accuracy`, `prompt-surface-contract`, `provider-catalog-check`, `intent-parity`, `streaming-compliance`, `locale-sync`, `mutation-inert-assets`, `stub-variables` |
+| Adoption score | manual | `adoption-score` — run explicitly (`just check-adoption`), not on commit or push |
+| Python lint/format | all stages | `ruff-lint`, `ruff-format` (no `stages` key) |
+| Python types (staged) | pre-commit | `pyright-tests-staged` (staged test files), `pyrefly` (staged production code, ADR-097) |
+| Python types (full project) | pre-push | `pyright` (production code), `pyright-tests` (full test suite) |
+| Python security | pre-push | `bandit` |
+| OpenAPI spec | pre-push | `openapi-regenerate` (mutating; the CI architecture job runs `scripts/export_openapi.py --check`) |
+| Frontend lint/format | all stages | `biome-frontend` (no `stages` key) |
+| Frontend i18n | all stages | `validate-i18n` (no `stages` key) |
+| Frontend types | pre-push | `typecheck-frontend` (`tsc --noEmit`, whole `packages/web` project) |
+| Frontend markers | pre-commit | `check-testid`, `check-vrt-mock-contract` |
+| File hygiene | all stages | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks (standard hooks, no `stages` key) |
+| Documentation/config | all stages | `doc-drift`, `adr-naming`, `version-consistency` (no `stages` key) |
 | SSOT consistency | pre-commit | check_current_state_facts.py — CURRENT_STATE.md volatility policy (always_run, ADR-076) |
 | Secret scanning | pre-commit | check_secrets.py --staged (Gitleaks wrapper, AUFG-05-09) — scans staged file contents only (no history); the CI quality job ("Lint, Typecheck & Security") runs the full-history audit |
 | Commit message | commit-msg | Conventional commit validation |
 
-Die Hooks `ssot-consistency` und `secrets-gitleaks` laufen mit `always_run: true`
-bei **jedem** Commit. `ssot-consistency` liest `CURRENT_STATE.md` repo-wide
-(auch wenn die Datei nicht angerührt wurde — ADR-076); `secrets-gitleaks`
-scannt die **gestageten Dateiinhalte** (keine Git-Historie) für schnelles
-Pre-Commit-Feedback. Das umfassende repo-weite Full-History-Audit übernimmt der
-CI-Security-Job (AUFG-05-09).
+Hooks marked "all stages" declare no `stages` key, so pre-commit's built-in
+default applies: they run at every hook stage, including `pre-commit` and
+`pre-push`.
+
+The `ssot-consistency` and `secrets-gitleaks` hooks run with `always_run: true`
+on **every** commit. `ssot-consistency` reads `CURRENT_STATE.md` repo-wide (even
+when the file was not touched — ADR-076); `secrets-gitleaks` scans the **staged
+file contents** (no Git history) for fast pre-commit feedback. The comprehensive
+repo-wide full-history audit is handled by the CI security job (AUFG-05-09).
 
 ### Fast-Path for Quick Iterations
 
-The full pre-commit suite runs architecture, prompt, adoption, pyright,
-TypeScript, Biome, and bandit checks on every commit. That is intentional —
-it catches regressions early. During rapid local iteration, however, the full
-gate can slow you down.
+The commit stage runs the architecture, prompt, governance, Ruff, Biome, i18n,
+and staged type checks; the whole-project checks — pyright, bandit, the OpenAPI
+export, and the frontend TypeScript check — run at `pre-push`. That is
+intentional — it catches regressions early. During rapid local iteration,
+however, the commit-stage governance checks can still slow you down.
 
-**Fast-path option — skip heavy hooks:**
+**Fast-path option — skip broad governance hooks:**
 
 ```bash
-SKIP=pyright,architecture-constraints,adoption-score,prompt-structure git commit -m "feat(core): …"
+SKIP=architecture-constraints,prompt-structure,provider-catalog-check,intent-parity git commit -m "feat(core): …"
 ```
 
-This skips the four slowest hooks (type checker, architecture constraints,
-adoption score, prompt structure) while keeping lint, format, file hygiene,
-and commit-message checks active.
+This skips four whole-repository governance hooks (architecture constraints,
+prompt structure, provider catalog, intent parity) while keeping lint, format,
+file hygiene, staged type checks, and commit-message checks active. The full
+type checks run at `pre-push` regardless.
 
 **Rules for using the fast-path:**
 
@@ -388,20 +405,20 @@ memorize raw `pnpm exec playwright` flags:
 
 | Command | Purpose |
 |---------|---------|
-| `just vrt` | Standard VRT run. Kapselt Port- und Browser-Dependency-Checks (baut fehlende Chromium-Binaries bei, prüft, dass der Dev-Port frei ist) und führt den `vrt`-Playwright-Projekt aus. Der kanonische Aufruf vor jedem PR, der UI berührt. |
-| `just vrt-update` | Regeneriert die Baselines via `--update-snapshots` nach visueller Verifikation. **Nie blind ausführen** — jeder Diff muss vom Verfasser geprüft worden sein (sonst verfestigt sich ein visueller Bug als neue Wahrheit). |
+| `just vrt` | Standard VRT run. Wraps port and browser-dependency checks (builds missing Chromium binaries, verifies that the dev port is free) and runs the `vrt` Playwright project. The canonical invocation before any PR that touches UI. |
+| `just vrt-update` | Regenerates the baselines via `--update-snapshots` after visual verification. **Never run blind** — every diff must have been reviewed by the author (otherwise a visual bug becomes the new truth). |
 
-**Fehlende Dependencies:** Wenn Chromium oder andere Playwright-Browser-Binaries
-fehlen, gibt `just vrt` eine kopierbare Installationsanleitung aus (z. B. den
-`pnpm exec playwright install chromium`-Aufruf plus ggf. System-Pakete), statt
-stumm einen kryptischen Fehler zu werfen. Führe sie aus und starte `just vrt`
-erneut.
+**Missing dependencies:** If Chromium or other Playwright browser binaries are
+missing, `just vrt` prints a copy-pasteable installation instruction (e.g. the
+`pnpm exec playwright install chromium` invocation plus any system packages that
+may be required) instead of silently throwing a cryptic error. Run it and retry
+`just vrt`.
 
-**Mock Contract (BINDING, ADR-059):** Jede Spec MUSS jeden API-Endpoint, den die
-gescreente Komponente aufruft, explizit mocken — abgesichert durch eine
-Catch-all-Route (`**/api/v1/**`) plus `expect.poll(() => unmockedApiCalls).toEqual([])`
-vor dem Screenshot. Details und Boilerplate: ADR-059 §"Mock Contract (BINDING)"
-und `packages/web/tests/screenshots/README.md`.
+**Mock Contract (BINDING, ADR-059):** Every spec MUST explicitly mock every API
+endpoint that the component under test calls — enforced by a catch-all route
+(`**/api/v1/**`) plus `expect.poll(() => unmockedApiCalls).toEqual([])` before the
+screenshot. Details and boilerplate: ADR-059 §"Mock Contract (BINDING)" and
+`packages/web/tests/screenshots/README.md`.
 
 ## Justfile Command Catalog
 
