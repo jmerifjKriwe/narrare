@@ -12,12 +12,19 @@ artifacts, orchestration and the CLI.
 
 Writes are atomic; a duplicate intent exits 1 untouched, invalid input or a
 failed write exits 2 after restoring every touched file.
+
+A successful write is not a successful scaffold: the post-condition runs before
+returning. The intent parity gate always runs (it works on a mirror tree too),
+and the four scoped architecture checks run when *root* is this repository.
+Any failure exits 2 after restoring every file written by the run, so a
+scaffold either arrives gate-green or leaves the tree exactly as it was.
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,6 +34,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts.check_intent_parity import collect_facts, find_disagreements  # noqa: E402
 from scripts.scaffold_intent import (  # noqa: E402
     EXISTING_ID_EXIT,
     GATE_FAILURE_EXIT,
@@ -40,6 +48,16 @@ if TYPE_CHECKING:
 __all__ = ["EXISTING_ID_EXIT", "GATE_FAILURE_EXIT", "main", "scaffold_feature"]
 
 LAYERS: tuple[str, ...] = ("core", "api", "web")
+
+# Scoped architecture checks, run only when writing into this repository. They
+# resolve their own paths from the invoked script, so running ``root/<script>``
+# under ``cwd=root`` points them at *root*.
+_SCOPED_CHECKS: tuple[str, ...] = (
+    "scripts/check_prompt_structure.py",
+    "scripts/check_prompt_surface_contract.py",
+    "scripts/check_locale_sync.py",
+    "scripts/check_feature_path_accuracy.py",
+)
 
 _FEATURE_ID_RE = re.compile(r"^[A-Z][A-Z0-9]*-[0-9]+$")
 
@@ -114,8 +132,30 @@ def _refuse_existing(paths: list[Path], root: Path) -> None:
         raise SystemExit(EXISTING_ID_EXIT)
 
 
-def _write_all(contents: dict[Path, str], root: Path) -> list[Path]:
-    """Write every file or restore all touched files and exit 2."""
+def _restore(snapshots: dict[Path, str | None]) -> None:
+    """Return every snapshotted file to its pre-run state.
+
+    A failing restore is reported rather than raised: the caller is already on
+    the failure path and must keep its exit code.
+    """
+    failures: list[str] = []
+    for target, original in snapshots.items():
+        try:
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_text(original, encoding="utf-8")
+        except OSError as exc:
+            failures.append(f"{target}: {exc}")
+    if failures:
+        print(
+            "scaffold_feature: could not restore every file:\n  " + "\n  ".join(failures),
+            file=sys.stderr,
+        )
+
+
+def _write_all(contents: dict[Path, str], root: Path) -> tuple[list[Path], dict[Path, str | None]]:
+    """Write every file, returning the written paths and their pre-run snapshots."""
     snapshots: dict[Path, str | None] = {}
     written: list[Path] = []
     try:
@@ -126,13 +166,40 @@ def _write_all(contents: dict[Path, str], root: Path) -> list[Path]:
             target.write_text(text, encoding="utf-8")
             written.append(target)
     except OSError as exc:
-        for target, original in snapshots.items():
-            if original is None:
-                target.unlink(missing_ok=True)
-            else:
-                target.write_text(original, encoding="utf-8")
+        _restore(snapshots)
         fail(f"write failed ({exc}); restored {len(snapshots)} file(s)")
-    return written
+    return written, snapshots
+
+
+def _run_check(script: str, root: Path) -> subprocess.CompletedProcess[str]:
+    """Run one scoped architecture check against *root* and capture its output."""
+    return subprocess.run(  # noqa: S603  # nosec B603 — fixed repository script, no shell
+        [sys.executable, str(root / script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _post_condition(root: Path) -> None:
+    """Refuse a scaffold the gates reject; the caller restores on exit 2."""
+    try:
+        disagreements = find_disagreements(collect_facts(root))
+    except RuntimeError as exc:
+        fail(f"post-condition could not read the declaration surfaces: {exc}")
+    if disagreements:
+        listing = "\n  ".join(disagreements)
+        fail(f"intent parity gate rejected the scaffold:\n  {listing}")
+    if root.resolve() != _ROOT:
+        return
+    for script in _SCOPED_CHECKS:
+        result = _run_check(script, root)
+        if result.returncode == 0:
+            continue
+        # Enough of the check's own report to name the offending prompt or path.
+        tail = "\n".join((result.stdout + result.stderr).strip().splitlines()[-8:])
+        fail(f"{script} failed (exit {result.returncode}) after scaffolding:\n{tail}")
 
 
 def _feature_document(
@@ -248,8 +315,8 @@ def scaffold_feature(
     """Write the declaration surfaces for *feature_id* under *root*.
 
     Returns the written paths; exits ``1`` without writing when a target or the
-    intent already exists, and ``2`` on invalid input or a failed write (after
-    restoring every touched file).
+    intent already exists, and ``2`` on invalid input, a failed write or a failed
+    post-condition (after restoring every file the run touched).
     """
     _require_valid_feature_id(feature_id)
     normalized = _normalize_layers(layers)
@@ -278,7 +345,17 @@ def scaffold_feature(
     contents[planned[-1]] = _report_stub(feature_id, normalized, report_date)
     contents.update(intent_writes)
     contents[planned[0]] = _feature_document(feature_id, normalized, planned, root, report_date)
-    return _write_all(contents, root)
+    written, snapshots = _write_all(contents, root)
+    try:
+        _post_condition(root)
+    except SystemExit:
+        _restore(snapshots)
+        print(
+            f"scaffold_feature: restored {len(snapshots)} file(s) after the post-condition failed",
+            file=sys.stderr,
+        )
+        raise
+    return written
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
