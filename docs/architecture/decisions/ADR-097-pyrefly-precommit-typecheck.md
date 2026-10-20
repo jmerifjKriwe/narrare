@@ -11,6 +11,18 @@
 
 ---
 
+## Status note (2026-10-20)
+
+T8 of the throughput program moved `typecheck-frontend` and
+`openapi-regenerate` from `pre-commit` to `pre-push`: both inspect the whole
+project regardless of which file changed, so the commit stage paid a
+whole-project cost for a one-file edit. `pyrefly` remains at `pre-commit` with
+its staged scope. The decision recorded here — pyrefly as an additive
+commit-time type check — stands, and its budget argument is unaffected. Current
+stage details: `docs/development/pre-commit-gate-tiers.md`.
+
+---
+
 ## Context
 
 ### The gap D1 left
@@ -331,9 +343,10 @@ CI by construction in this repo.
 - `.pre-commit-config.yaml` — new `pyrefly` hook next to the pyright block
   (~lines 228–268), mirroring `pyright-tests-staged` (~line 261):
   `stages: [pre-commit]`, `pass_filenames: true`, `types: [python]`, staged
-  scope. Note the `typecheck-frontend` precedent (~lines 343–351):
-  whole-project tsc runs at pre-commit when it is cheap enough — pyrefly's
-  staged mode is the same argument, one epoch earlier.
+  scope. Note the `typecheck-frontend` precedent (~lines 343–351): at the time
+  of this decision whole-project tsc ran at pre-commit (T8 later moved it to
+  `pre-push`; see Status note) — pyrefly's staged mode is the same argument,
+  one epoch earlier.
 - `pyrefly.toml` (new) — contents per Decision 3.
 - `.github/workflows/ci.yml` — pyrefly step in the quality job + gate-matrix
   row in the header table (currently G1–G10; line ~19 "G6 pyright (strict;
