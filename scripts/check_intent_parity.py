@@ -2,9 +2,11 @@
 """Intent-contract parity gate — the six families (throughput T14a/T14b).
 
 Reads the eight declaration surfaces of a gateway-routed intent and reports every
-disagreement among them as one list. It parses Python with ``ast`` and the two
-governance files with ``yaml``; it imports no project code, so it can run in the
-architecture gate before the packages are importable.
+disagreement among them as one list. The reading layer (``ast`` for the Python
+surfaces, ``yaml`` for the two governance files) lives in
+:mod:`scripts._intent_surface_reader`, shared with the feature scaffolder; this
+module holds the intent facts and the comparisons. It imports no project package,
+so it can run in the architecture gate before the packages are importable.
 
 Compared surfaces and families:
 
@@ -59,18 +61,19 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import ast
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-import yaml
-
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts import _intent_surface_reader as surfaces  # noqa: E402
 
 _CORE = Path("packages/core/narrare_core")
 _ENUMS = _CORE / "llm" / "intents" / "_enums.py"
@@ -112,132 +115,6 @@ class IntentFact:
 type FactLike = IntentFact | Mapping[str, object]
 
 
-def _parse_module(path: Path) -> ast.Module:
-    """Parse *path*, raising ``RuntimeError`` so a broken surface never passes silently."""
-    try:
-        return ast.parse(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise RuntimeError(f"cannot read declaration surface {path}: {exc}") from exc
-    except SyntaxError as exc:
-        raise RuntimeError(f"cannot parse declaration surface {path}: {exc}") from exc
-
-
-def _module_assignments(tree: ast.Module) -> dict[str, ast.expr]:
-    """Return top-level ``NAME = value`` / ``NAME: type = value`` assignments."""
-    assignments: dict[str, ast.expr] = {}
-    for node in tree.body:
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            if node.value is not None:
-                assignments[node.target.id] = node.value
-        elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    assignments[target.id] = node.value
-    return assignments
-
-
-def _class_members(tree: ast.Module, class_name: str) -> dict[str, str]:
-    """Return ``{MEMBER: "value"}`` for a ``StrEnum``-style class."""
-    for node in tree.body:
-        if not isinstance(node, ast.ClassDef) or node.name != class_name:
-            continue
-        members: dict[str, str] = {}
-        for item in node.body:
-            if not isinstance(item, ast.Assign | ast.AnnAssign) or item.value is None:
-                continue
-            if not isinstance(item.value, ast.Constant) or not isinstance(item.value.value, str):
-                continue
-            targets = item.targets if isinstance(item, ast.Assign) else [item.target]
-            for target in targets:
-                if isinstance(target, ast.Name):
-                    members[target.id] = item.value.value
-        return members
-    return {}
-
-
-def _attribute_name(node: ast.expr) -> str | None:
-    return node.attr if isinstance(node, ast.Attribute) else None
-
-
-def _string_value(node: ast.expr) -> str | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    return None
-
-
-def _attribute_dict(node: ast.expr | None) -> dict[str, ast.expr]:
-    """Return ``{LLMIntent.X: value}`` entries from a dict literal."""
-    if not isinstance(node, ast.Dict):
-        return {}
-    entries: dict[str, ast.expr] = {}
-    for key, value in zip(node.keys, node.values, strict=True):
-        if key is not None and (intent := _attribute_name(key)) is not None:
-            entries[intent] = value
-    return entries
-
-
-def _string_dict(node: ast.expr | None) -> dict[str, str]:
-    entries: dict[str, str] = {}
-    for intent, value in _attribute_dict(node).items():
-        text = _string_value(value)
-        if text is not None:
-            entries[intent] = text
-    return entries
-
-
-def _route_config(node: ast.expr) -> tuple[str | None, str | None]:
-    """Extract ``(category, mode)`` from a ``PromptRouteConfig(...)`` call."""
-    if not isinstance(node, ast.Call):
-        return None, None
-    category = _string_value(node.args[0]) if node.args else None
-    mode = _string_value(node.args[1]) if len(node.args) > 1 else None
-    for keyword in node.keywords:
-        if keyword.arg == "category":
-            category = _string_value(keyword.value)
-        elif keyword.arg == "mode":
-            mode = _string_value(keyword.value)
-    return category, mode
-
-
-def _allowed_context_modes(node: ast.expr) -> tuple[str, ...]:
-    """Extract ``allowed_context_modes`` from a ``PromptRouteConfig(...)`` call."""
-    if not isinstance(node, ast.Call):
-        return ()
-    for keyword in node.keywords:
-        if keyword.arg != "allowed_context_modes":
-            continue
-        value = keyword.value
-        if isinstance(value, ast.Call) and value.args:
-            value = value.args[0]
-        if not isinstance(value, ast.Set | ast.Tuple | ast.List):
-            return ()
-        return tuple(mode for element in value.elts if (mode := _string_value(element)) is not None)
-    return ()
-
-
-def _load_yaml(path: Path) -> dict[str, object]:
-    """Load a governance YAML mapping, raising ``RuntimeError`` rather than passing silently."""
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise RuntimeError(f"cannot read governance surface {path}: {exc}") from exc
-    try:
-        data = yaml.safe_load(text)
-    except yaml.YAMLError as exc:
-        raise RuntimeError(f"cannot parse governance surface {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise RuntimeError(f"governance surface {path} is not a YAML mapping")
-    return cast("dict[str, object]", data)
-
-
-def _mapping_entries(value: object) -> list[dict[str, object]]:
-    """Return the dict members of a YAML sequence (other members are ignored)."""
-    if not isinstance(value, list):
-        return []
-    entries = cast("list[object]", value)
-    return [cast("dict[str, object]", item) for item in entries if isinstance(item, dict)]
-
-
 def _text(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
@@ -249,7 +126,7 @@ def _required_locales(category: str) -> tuple[str, ...]:
 
 def _manifest_facts(root: Path) -> tuple[dict[str, IntentFact], dict[str, IntentFact]]:
     """Return ``(routeable blocks, duplicate blocks)`` from the manifest."""
-    blocks = _mapping_entries(_load_yaml(root / _MANIFEST).get("routes"))
+    blocks = surfaces.mapping_entries(surfaces.load_yaml(root / _MANIFEST).get("routes"))
     facts: dict[str, IntentFact] = {}
     duplicates: dict[str, IntentFact] = {}
     for block in blocks:
@@ -268,7 +145,7 @@ def _manifest_facts(root: Path) -> tuple[dict[str, IntentFact], dict[str, Intent
 
 def _registry_facts(root: Path) -> dict[str, IntentFact]:
     """Return the registry's ``{category}/{mode}`` compliance entries."""
-    compliance = _load_yaml(root / _ADOPTION_REGISTRY).get("prompt_path_compliance")
+    compliance = surfaces.load_yaml(root / _ADOPTION_REGISTRY).get("prompt_path_compliance")
     if not isinstance(compliance, dict):
         return {}
     facts: dict[str, IntentFact] = {}
@@ -299,32 +176,38 @@ def _kept(intent: str, non_routeable: set[str]) -> bool:
 
 def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
     """Read the five Python declaration surfaces under *root* into intent facts."""
-    enums_tree = _parse_module(root / _ENUMS)
-    categories_tree = _parse_module(root / _CATEGORIES)
-    profiles_tree = _parse_module(root / _PROFILES)
-    route_intents_tree = _parse_module(root / _ROUTE_INTENTS)
-    route_table_tree = _parse_module(root / _ROUTE_TABLE)
+    enums_tree = surfaces.parse_module(root / _ENUMS)
+    categories_tree = surfaces.parse_module(root / _CATEGORIES)
+    profiles_tree = surfaces.parse_module(root / _PROFILES)
+    route_intents_tree = surfaces.parse_module(root / _ROUTE_INTENTS)
+    route_table_tree = surfaces.parse_module(root / _ROUTE_TABLE)
 
-    enum_members = _class_members(enums_tree, "LLMIntent")
-    category_names = _class_members(categories_tree, "IntentCategory")
-    category_entries = _attribute_dict(
-        _module_assignments(categories_tree).get("INTENT_CATEGORY_MAP")
+    enum_members = surfaces.class_members(enums_tree, "LLMIntent")
+    category_names = surfaces.class_members(categories_tree, "IntentCategory")
+    category_entries = surfaces.attribute_dict(
+        surfaces.module_assignments(categories_tree).get("INTENT_CATEGORY_MAP")
     )
     model_categories = {
         intent: category_names.get(attribute, attribute)
         for intent, value in category_entries.items()
-        if (attribute := _attribute_name(value)) is not None
+        if (attribute := surfaces.attribute_name(value)) is not None
     }
 
-    route_assignments = _module_assignments(route_intents_tree)
-    route_categories = _string_dict(route_assignments.get("INTENT_TO_CATEGORY"))
-    route_modes = _string_dict(route_assignments.get("INTENT_TO_MODE"))
+    route_assignments = surfaces.module_assignments(route_intents_tree)
+    route_categories = surfaces.string_dict(route_assignments.get("INTENT_TO_CATEGORY"))
+    route_modes = surfaces.string_dict(route_assignments.get("INTENT_TO_MODE"))
 
-    route_table_assignments = _module_assignments(route_table_tree)
-    route_config_nodes = _attribute_dict(route_table_assignments.get("ROUTE_CONFIGS"))
-    route_configs = {intent: _route_config(value) for intent, value in route_config_nodes.items()}
-    non_routeable = set(_attribute_dict(route_table_assignments.get("NON_ROUTEABLE_INTENTS")))
-    profiles = set(_attribute_dict(_module_assignments(profiles_tree).get("INTENT_PROFILES")))
+    route_table_assignments = surfaces.module_assignments(route_table_tree)
+    route_config_nodes = surfaces.attribute_dict(route_table_assignments.get("ROUTE_CONFIGS"))
+    route_configs = {
+        intent: surfaces.route_config(value) for intent, value in route_config_nodes.items()
+    }
+    non_routeable = set(
+        surfaces.attribute_dict(route_table_assignments.get("NON_ROUTEABLE_INTENTS"))
+    )
+    profiles = set(
+        surfaces.attribute_dict(surfaces.module_assignments(profiles_tree).get("INTENT_PROFILES"))
+    )
 
     facts: dict[str, dict[str, IntentFact]] = {name: {} for name in _DECLARED_SURFACES}
     facts["enums"] = {
@@ -355,8 +238,8 @@ def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
     facts["route_context_modes"] = {
         f"{intent}:{mode}": IntentFact(intent, category, mode)
         for intent, node in route_config_nodes.items()
-        if _kept(intent, non_routeable) and (category := _route_config(node)[0]) is not None
-        for mode in _allowed_context_modes(node)
+        if _kept(intent, non_routeable) and (category := surfaces.route_config(node)[0]) is not None
+        for mode in surfaces.allowed_context_modes(node)
     }
     facts["manifest"], facts["manifest_duplicates"] = _manifest_facts(root)
     facts["adoption_registry"] = _registry_facts(root)
@@ -366,7 +249,7 @@ def collect_facts(root: Path) -> dict[str, dict[str, IntentFact]]:
 
 def count_declared_intents(root: Path) -> int:
     """Return the number of ``LLMIntent`` members (including exempt intents)."""
-    return len(_class_members(_parse_module(root / _ENUMS), "LLMIntent"))
+    return len(surfaces.class_members(surfaces.parse_module(root / _ENUMS), "LLMIntent"))
 
 
 def _fact_field(fact: FactLike, field: str) -> str | None:

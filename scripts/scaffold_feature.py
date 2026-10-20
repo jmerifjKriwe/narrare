@@ -1,27 +1,17 @@
 #!/usr/bin/env python3
 """Feature scaffolder — declaration surfaces that are green on arrival.
 
-``scaffold_feature()`` writes only artifacts the architecture gates accept:
-the feature document (frontmatter ``paths:`` listing only paths that already
-exist or that the same run creates), one test skeleton per named layer, a
-Protocol contract stub when ``core`` is named, and a task-report stub. It never
-writes ``service.py``, ``router.py``, ``repository.py`` or a frontend
-component — those are half-implementations (RULE-20).
+``scaffold_feature()`` writes only artifacts the architecture gates accept
+(feature document, per-layer test skeletons, a core Protocol stub and a report
+stub), never service/router/repository/component stubs (RULE-20).
 
-Deterministic naming for ``FIND-099``:
+``with_intent=NAME`` (with ``category`` and ``mode``) also writes the eight
+intent declaration surfaces. Their planning, parsers and renderers live in
+:mod:`scripts.scaffold_intent` (RULE-04 split); this module keeps the feature
+artifacts, orchestration and the CLI.
 
-* document      ``docs/features/FIND-099.md``
-* slug          ``find_099``
-* test skeleton ``tests/unit/<layer>/test_find_099.py``
-* contract      ``packages/core/narrare_core/find_099/contracts.py`` (core only)
-* report        ``docs/superpowers/plans/reports/<UTC date>-find_099.md``
-
-Exit codes: ``0`` written, ``1`` a target path already exists (nothing is
-written), ``2`` invalid input or an unwired surface.
-
-``with_intent`` is part of the public signature but raises
-``NotImplementedError`` until the intent-surface task (T12b) fills it; it is
-never silently ignored.
+Writes are atomic; a duplicate intent exits 1 untouched, invalid input or a
+failed write exits 2 after restoring every touched file.
 """
 
 from __future__ import annotations
@@ -33,11 +23,21 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from scripts.scaffold_intent import (  # noqa: E402
+    EXISTING_ID_EXIT,
+    GATE_FAILURE_EXIT,
+    fail,
+    plan_intent,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-EXISTING_ID_EXIT = 1
-GATE_FAILURE_EXIT = 2
+__all__ = ["EXISTING_ID_EXIT", "GATE_FAILURE_EXIT", "main", "scaffold_feature"]
 
 LAYERS: tuple[str, ...] = ("core", "api", "web")
 
@@ -49,25 +49,35 @@ def _slug(feature_id: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", feature_id.lower()).strip("_")
 
 
-def _protocol_name(feature_id: str) -> str:
-    """Return the contract Protocol name derived from the feature id."""
-    return "".join(part.capitalize() for part in _slug(feature_id).split("_")) + "Protocol"
+def _contract_stub(feature_id: str) -> str:
+    """Render a Protocol-only contract stub (RULE-03)."""
+    name = "".join(part.capitalize() for part in _slug(feature_id).split("_")) + "Protocol"
+    return f'''"""Contract stub for {feature_id} (RULE-03).
+
+The Protocol is the boundary the feature's service implements and the router
+consumes. Declare methods here before the implementation exists so neither
+side depends on a concrete repository.
+"""
+
+from __future__ import annotations
+
+from typing import Protocol, runtime_checkable
 
 
-def _utc_date() -> str:
-    """Return today's UTC date in ISO form, used in the report file name."""
-    return datetime.now(UTC).date().isoformat()
+@runtime_checkable
+class {name}(Protocol):
+    """Boundary for the {feature_id} feature.
+
+    Add the feature's method signatures here first; the service and the router
+    then depend on this Protocol rather than on each other.
+    """
+'''
 
 
 def _require_valid_feature_id(feature_id: str) -> None:
     """Reject ids that cannot map onto the documented naming scheme."""
-    if _FEATURE_ID_RE.fullmatch(feature_id):
-        return
-    print(
-        f"scaffold_feature: invalid feature id '{feature_id}' — expected an id such as FIND-099",
-        file=sys.stderr,
-    )
-    raise SystemExit(GATE_FAILURE_EXIT)
+    if not _FEATURE_ID_RE.fullmatch(feature_id):
+        fail(f"invalid feature id '{feature_id}' — expected an id such as FIND-099")
 
 
 def _normalize_layers(layers: tuple[str, ...]) -> tuple[str, ...]:
@@ -75,13 +85,8 @@ def _normalize_layers(layers: tuple[str, ...]) -> tuple[str, ...]:
     unique = tuple(dict.fromkeys(layers))
     unknown = [layer for layer in unique if layer not in LAYERS]
     if not unique or unknown:
-        known = ", ".join(LAYERS)
         shown = ", ".join(unknown) if unknown else "<none>"
-        print(
-            f"scaffold_feature: unsupported layer(s): {shown} — choose from {known}",
-            file=sys.stderr,
-        )
-        raise SystemExit(GATE_FAILURE_EXIT)
+        fail(f"unsupported layer(s): {shown} — choose from {', '.join(LAYERS)}")
     return unique
 
 
@@ -100,36 +105,43 @@ def _planned_paths(feature_id: str, layers: tuple[str, ...], report_date: str) -
 def _refuse_existing(paths: list[Path], root: Path) -> None:
     """Exit before writing anything when any target path already exists."""
     existing = [path for path in paths if (root / path).exists()]
-    if not existing:
-        return
-    listing = "\n  ".join(path.as_posix() for path in existing)
-    print(
-        "scaffold_feature: refusing to write — these paths already exist:\n  " + listing,
-        file=sys.stderr,
-    )
-    raise SystemExit(EXISTING_ID_EXIT)
+    if existing:
+        listing = "\n  ".join(path.as_posix() for path in existing)
+        print(
+            "scaffold_feature: refusing to write — these paths already exist:\n  " + listing,
+            file=sys.stderr,
+        )
+        raise SystemExit(EXISTING_ID_EXIT)
 
 
-def _write(root: Path, relative: Path, text: str) -> Path:
-    """Write one generated file, creating parent directories as needed."""
-    target = root / relative
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8")
-    return target
+def _write_all(contents: dict[Path, str], root: Path) -> list[Path]:
+    """Write every file or restore all touched files and exit 2."""
+    snapshots: dict[Path, str | None] = {}
+    written: list[Path] = []
+    try:
+        for relative, text in contents.items():
+            target = root / relative
+            snapshots[target] = target.read_text(encoding="utf-8") if target.exists() else None
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+            written.append(target)
+    except OSError as exc:
+        for target, original in snapshots.items():
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_text(original, encoding="utf-8")
+        fail(f"write failed ({exc}); restored {len(snapshots)} file(s)")
+    return written
 
 
 def _feature_document(
-    feature_id: str,
-    layers: tuple[str, ...],
-    paths: list[Path],
-    root: Path,
-    report_date: str,
+    feature_id: str, layers: tuple[str, ...], paths: list[Path], root: Path, report_date: str
 ) -> str:
     """Render the feature document with a verified frontmatter path list."""
     document = paths[0]
     existing = [path for path in paths if path == document or (root / path).exists()]
     path_lines = "\n".join(f"  - {path.as_posix()}" for path in existing)
-    layer_list = ", ".join(layers)
     return f"""---
 id: {feature_id}
 title: "{feature_id} — feature scaffold"
@@ -152,7 +164,7 @@ Name the friction this removes and what changes for the writer.
 
 ## How it works (Technical)
 
-**Layers scaffolded:** {layer_list}
+**Layers scaffolded:** {", ".join(layers)}
 
 Record the entry point, service boundary and contract methods; depend on the
 contract, never a concrete repository.
@@ -173,36 +185,6 @@ Record unresolved design questions here; remove this section once answered.
 
 - {report_date} — Added by the feature scaffolder.
 """
-
-
-def _package_init(feature_id: str) -> str:
-    """Render the feature package initialiser."""
-    return f'"""{feature_id} feature package (scaffolded)."""\n'
-
-
-def _contract_stub(feature_id: str) -> str:
-    """Render a Protocol-only contract stub (RULE-03)."""
-    name = _protocol_name(feature_id)
-    return f'''"""Contract stub for {feature_id} (RULE-03).
-
-The Protocol is the boundary the feature's service implements and the router
-consumes. Declare methods here before the implementation exists so neither
-side depends on a concrete repository.
-"""
-
-from __future__ import annotations
-
-from typing import Protocol, runtime_checkable
-
-
-@runtime_checkable
-class {name}(Protocol):
-    """Boundary for the {feature_id} feature.
-
-    Add the feature's method signatures here first; the service and the router
-    then depend on this Protocol rather than on each other.
-    """
-'''
 
 
 def _test_skeleton(feature_id: str, layer: str) -> str:
@@ -260,55 +242,66 @@ def scaffold_feature(
     root: Path,
     *,
     with_intent: str | None = None,
+    category: str | None = None,
+    mode: str | None = None,
 ) -> list[Path]:
     """Write the declaration surfaces for *feature_id* under *root*.
 
-    Returns the written paths; exits with ``EXISTING_ID_EXIT`` without writing
-    when a target exists. ``with_intent`` is reserved for T12b.
+    Returns the written paths; exits ``1`` without writing when a target or the
+    intent already exists, and ``2`` on invalid input or a failed write (after
+    restoring every touched file).
     """
-    if with_intent is not None:
-        raise NotImplementedError(
-            "scaffold_feature(with_intent=...) lands with T12b; no intent surface was written"
-        )
     _require_valid_feature_id(feature_id)
     normalized = _normalize_layers(layers)
-    report_date = _utc_date()
+    if with_intent is None and (category is not None or mode is not None):
+        fail("--category and --mode are only valid together with --with-intent")
+    intent_writes = plan_intent(with_intent, category, mode, root) if with_intent else {}
+    report_date = datetime.now(UTC).date().isoformat()
     planned = _planned_paths(feature_id, normalized, report_date)
-    _refuse_existing(planned, root)
+    # Existing surfaces are edited in place by plan_intent; only new prompt files
+    # are targets that must not exist yet.
+    new_intent = [
+        path for path in intent_writes if path not in planned and not (root / path).exists()
+    ]
+    _refuse_existing(planned + new_intent, root)
 
     slug = _slug(feature_id)
     contents: dict[Path, str] = {}
     if "core" in normalized:
         package = Path("packages") / "core" / "narrare_core" / slug
-        contents[package / "__init__.py"] = _package_init(feature_id)
+        contents[package / "__init__.py"] = f'"""{feature_id} feature package (scaffolded)."""\n'
         contents[package / "contracts.py"] = _contract_stub(feature_id)
     for layer in normalized:
         contents[Path("tests") / "unit" / layer / f"test_{slug}.py"] = _test_skeleton(
             feature_id, layer
         )
     contents[planned[-1]] = _report_stub(feature_id, normalized, report_date)
-
-    written = [_write(root, relative, text) for relative, text in contents.items()]
-    document = _feature_document(feature_id, normalized, planned, root, report_date)
-    written.append(_write(root, planned[0], document))
-    return written
+    contents.update(intent_writes)
+    contents[planned[0]] = _feature_document(feature_id, normalized, planned, root, report_date)
+    return _write_all(contents, root)
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
-    """Parse the CLI contract ``<id> <layer...> [--with-intent NAME] [--root PATH]``."""
+    """Parse ``<id> <layer...> [--with-intent NAME --category C --mode M] [--root PATH]``."""
     parser = argparse.ArgumentParser(
         description="Scaffold the declaration surfaces of a new feature.",
         epilog="Green on arrival — never service, router, repository or component stubs (RULE-20).",
     )
     parser.add_argument("feature_id", metavar="id", help="feature id, e.g. FIND-099")
     parser.add_argument(
-        "layers",
-        nargs="+",
-        choices=LAYERS,
-        metavar="layer",
-        help="layer(s) to scaffold: core, api, web",
+        "layers", nargs="+", choices=LAYERS, metavar="layer", help="layer(s): core, api, web"
     )
-    parser.add_argument("--with-intent", metavar="NAME", help="reserved for T12b")
+    parser.add_argument(
+        "--with-intent",
+        metavar="NAME",
+        help="also declare the eight intent surfaces for NAME (requires --category and --mode)",
+    )
+    parser.add_argument(
+        "--category",
+        metavar="CATEGORY",
+        help="model category for --with-intent: writing, analysis, kb, planning, …",
+    )
+    parser.add_argument("--mode", metavar="MODE", help="prompt mode name for --with-intent")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     return parser.parse_args(argv)
 
@@ -316,16 +309,14 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI, printing each written path and returning the exit code."""
     args = _parse_args(argv)
-    try:
-        written = scaffold_feature(
-            args.feature_id,
-            tuple(args.layers),
-            args.root,
-            with_intent=args.with_intent,
-        )
-    except NotImplementedError as exc:
-        print(f"scaffold_feature: {exc}", file=sys.stderr)
-        return GATE_FAILURE_EXIT
+    written = scaffold_feature(
+        args.feature_id,
+        tuple(args.layers),
+        args.root,
+        with_intent=args.with_intent,
+        category=args.category,
+        mode=args.mode,
+    )
     for path in written:
         print(f"created {path}")
     return 0
