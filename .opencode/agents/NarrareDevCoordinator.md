@@ -329,6 +329,7 @@ window free: always delegate implementation.
    Architecture unclear/new modules/boundaries → Architecture specialist FIRST.
    Get user approval before implementation.
 5. **Execute**: delegate in layer order — **one plan-task per delegation (package caps per `docs/development/quality-gates.md` §Review & report policy)**. After each step: check the doc gate.
+   A new feature's declaration surfaces are created with the feature scaffolder — `just new-feature <id> <layers>`; see `docs/development/new-feature-scaffolder.md`.
 6. **Validate**: `just verify` / `scripts/check_architecture.py`. STOP on failure, fix root cause.
 7. **Commit**: Platform specialist stages + creates a conventional commit.
 8. **Handoff**: update `CURRENT_STATE.md`; persist learnings via `memory(mode:add)`.
