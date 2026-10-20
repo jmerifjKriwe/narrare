@@ -1,233 +1,188 @@
-"""Regression tests for scripts/check_commit_message.py.
+"""Unit and regression tests for scripts/check_commit_message.py.
 
-The `commit-msg` gate must work from a linked git worktree, where `.git` is a
-*file* (the `gitdir:` pointer) rather than a directory. Reading the message from
-the cwd-relative `.git/COMMIT_EDITMSG` silently fails there, so the script must
-resolve the real path through git.
+Two concerns share this module:
 
-The regression cases below therefore build a genuine worktree shape (a tmp
-repository plus `git worktree add`) and invoke the script exactly as git does:
-as a subprocess from the worktree root, with no arguments and an empty stdin.
+* the commit-claim gate — `feat`/`fix` must state a `User-visible:` effect;
+* the message-source order, at the level that needs no repository: `argv[1]`
+  beats stdin, and comment lines are stripped from message files.
+
+The repository-level resolution — the linked-worktree proof (where `.git` is a
+*file*) and the TTY fall-through to `git rev-parse --git-path COMMIT_EDITMSG` —
+lives in `test_check_commit_message_input_resolution.py` (RULE-04 split).
 """
 
 from __future__ import annotations
 
 import io
-import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import scripts.check_commit_message as check_commit_message
-from scripts.check_commit_message import check_message, read_commit_message
+import scripts.check_commit_message as checker
 
 if TYPE_CHECKING:
     import pytest
 
-_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_ROOT = Path(__file__).resolve().parents[3]
 _SCRIPT = _ROOT / "scripts" / "check_commit_message.py"
 
 
-def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
-    """Run a git command in ``cwd`` and fail loudly if it does not succeed."""
-    return subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+def _run(monkeypatch: pytest.MonkeyPatch, message: str) -> int:
+    """Run the CLI on `message` as stdin (the CI / `just` path)."""
+    monkeypatch.setattr(sys, "stdin", io.StringIO(message))
+    return checker.main([str(_SCRIPT)])
 
 
-def _worktree_with_commit_message(tmp_path: Path) -> tuple[Path, Path]:
-    """Create a linked worktree; return (worktree_root, commit_message_path).
-
-    The worktree's `.git` is asserted to be a file, because that is the shape the
-    defect depends on: the cwd-relative `.git/COMMIT_EDITMSG` does not exist.
-    """
-    main = tmp_path / "main"
-    main.mkdir()
-    _git("init", "-b", "main", cwd=main)
-    _git("config", "user.email", "test@example.com", cwd=main)
-    _git("config", "user.name", "Test User", cwd=main)
-    _git("config", "commit.gpgsign", "false", cwd=main)
-    (main / "README.md").write_text("hello\n", encoding="utf-8")
-    _git("add", "README.md", cwd=main)
-    _git("commit", "-m", "chore: initial commit", cwd=main)
-
-    worktree = tmp_path / "worktree"
-    _git("worktree", "add", "-b", "worktree-branch", str(worktree), cwd=main)
-
-    assert (worktree / ".git").is_file(), "linked worktree .git must be a file"
-    assert not (worktree / ".git" / "COMMIT_EDITMSG").exists()
-
-    raw = _git("rev-parse", "--git-path", "COMMIT_EDITMSG", cwd=worktree).stdout.strip()
-    msg_path = Path(raw)
-    if not msg_path.is_absolute():
-        msg_path = worktree / msg_path
-    return worktree, msg_path
+_CLAIM = "User-visible: You can now import a project from a zip archive."
 
 
-def _run_script_from(
-    worktree: Path, stdin_text: str | None = None
-) -> subprocess.CompletedProcess[str]:
-    """Run the checker as git invokes it, from the worktree root.
-
-    ``stdin_text=None`` emulates pre-commit's empty, non-interactive stdin
-    (``DEVNULL``); a string pipes that message on stdin instead.
-    """
-    cmd = [sys.executable, str(_SCRIPT)]
-    if stdin_text is None:
-        return subprocess.run(
-            cmd,
-            cwd=worktree,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    return subprocess.run(
-        cmd,
-        cwd=worktree,
-        input=stdin_text,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+# ── The claim rule ──────────────────────────────────────────────
 
 
-class _TtyStdin(io.StringIO):
-    """A TTY-like stdin whose ``read()`` must never be called."""
+def test_feat_without_claim_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`feat` claims a user-facing change and must state it."""
+    message = "feat(kb): wire the rerank tier into the context service"
+    errors = checker.check_message(message)
+    assert errors
+    assert any("User-visible" in error for error in errors)
+    assert any("chore(<scope>)" in error for error in errors)
+    assert _run(monkeypatch, message + "\n") == 1
 
-    def isatty(self) -> bool:
-        return True
 
-    def read(self, *args: object, **kwargs: object) -> str:
-        raise AssertionError("stdin must not be read when it is a TTY")
+def test_feat_with_claim_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A stated user-visible effect satisfies the gate."""
+    message = f"feat(import): project import v1\n\n{_CLAIM}\n"
+    assert checker.check_message(message) == []
+    assert _run(monkeypatch, message) == 0
 
 
-def test_valid_message_in_worktree_commit_editmsg_is_accepted(tmp_path: Path) -> None:
-    """A valid Conventional Commits message in a worktree must exit 0."""
-    worktree, msg_path = _worktree_with_commit_message(tmp_path)
-    msg_path.write_text(
-        "feat(scripts): resolve the commit-message path\n",
+def test_fix_without_claim_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`fix` bumps the patch version and is gated the same way."""
+    message = "fix(gates): retire the phantom doc anchor"
+    assert any("User-visible" in error for error in checker.check_message(message))
+    assert _run(monkeypatch, message + "\n") == 1
+
+
+def test_fix_with_claim_passes() -> None:
+    message = f"fix(editor): keep the caret after an undo\n\n{_CLAIM}\n"
+    assert checker.check_message(message) == []
+
+
+def test_placeholder_claim_is_rejected() -> None:
+    """A placeholder is not a claim."""
+    for placeholder in ("n/a", "none", "tbd", "-"):
+        message = f"feat(import): project import v1\n\nUser-visible: {placeholder}\n"
+        errors = checker.check_message(message)
+        assert errors, placeholder
+        assert any("placeholder" in error for error in errors)
+
+
+def test_short_claim_is_rejected() -> None:
+    """The claim must carry at least 20 characters of value."""
+    message = "feat(import): project import v1\n\nUser-visible: import\n"
+    assert any("User-visible" in error for error in checker.check_message(message))
+
+
+def test_internal_work_uses_chore_without_claim(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Internal production code passes as `chore(<scope>)`, no claim needed."""
+    message = "chore(kb): wire the rerank tier into the context service\n"
+    assert checker.check_message(message) == []
+    assert _run(monkeypatch, message) == 0
+
+
+def test_claim_is_taken_from_the_body_not_the_subject() -> None:
+    """A claim in the subject is not a body line (subject is capped at 100 chars)."""
+    message = "feat(import): User-visible: You can now import a project from a zip\n"
+    assert any("User-visible" in error for error in checker.check_message(message))
+
+
+# ── PR path: title + body composition (the CI input) ────────────
+
+
+def test_pr_title_and_body_composition_passes() -> None:
+    """CI composes `<PR title>\\n\\n<PR body>`; the claim lives in the body."""
+    title = "feat(import): project import v1"
+    body = f"Adds the import wizard.\n\n{_CLAIM}\n\nCloses #236"
+    assert checker.check_message(f"{title}\n\n{body}") == []
+
+
+def test_pr_title_only_is_rejected() -> None:
+    """A `feat` PR with an empty body cannot carry the claim."""
+    assert checker.check_message("feat(import): project import v1\n\n\n") != []
+
+
+def test_markdown_heading_in_body_survives(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`#` is a Markdown heading in a PR body, not a git comment — keep it."""
+    message = f"feat(import): project import v1\n\n# Import\n\n{_CLAIM}\n"
+    monkeypatch.setattr(sys, "stdin", io.StringIO(message))
+    assert checker.read_message([str(_SCRIPT)]) == message
+    assert checker.check_message(message) == []
+
+
+# ── Input resolution ────────────────────────────────────────────
+
+
+def test_file_argument_wins_over_stdin(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The pre-commit hook passes the message file; that must beat stdin."""
+    hook_file = tmp_path / "COMMIT_EDITMSG"
+    hook_file.write_text(f"feat(import): project import v1\n\n{_CLAIM}\n", encoding="utf-8")
+    monkeypatch.setattr(sys, "stdin", io.StringIO("fix(gates): wrong message\n"))
+    assert checker.read_message([str(_SCRIPT), str(hook_file)]).startswith("feat(import)")
+
+
+def test_comment_lines_are_stripped_from_the_message_file(tmp_path: Path) -> None:
+    """git's `#` comments belong to the message file only."""
+    hook_file = tmp_path / "COMMIT_EDITMSG"
+    hook_file.write_text(
+        f"feat(import): project import v1\n\n# Please enter the commit message\n\n{_CLAIM}\n",
         encoding="utf-8",
     )
-
-    result = _run_script_from(worktree)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
-def test_invalid_message_in_worktree_commit_editmsg_is_rejected(tmp_path: Path) -> None:
-    """An invalid subject in a worktree must still exit 1 (no false accept)."""
-    worktree, msg_path = _worktree_with_commit_message(tmp_path)
-    msg_path.write_text("Bad subject\n", encoding="utf-8")
-
-    result = _run_script_from(worktree)
-
-    assert result.returncode == 1, result.stdout + result.stderr
+    message = checker.read_message([str(_SCRIPT), str(hook_file)])
+    assert "# Please enter" not in message
+    assert checker.check_message(message) == []
 
 
-def test_piped_message_overrides_stale_commit_editmsg(tmp_path: Path) -> None:
-    """A message piped on stdin wins over a stale COMMIT_EDITMSG (just recipe).
+# ── Existing behaviour (regression) ─────────────────────────────
 
-    `just check-commit-msg "<msg>"` feeds the candidate on stdin while a valid
-    leftover sits in the repo's COMMIT_EDITMSG. Resolving the git path first
-    would validate the stale file and accept an invalid piped message.
-    """
-    worktree, msg_path = _worktree_with_commit_message(tmp_path)
-    msg_path.write_text("feat(scripts): stale leftover message\n", encoding="utf-8")
 
-    result = _run_script_from(worktree, stdin_text="Bad subject\n")
+def test_merge_and_revert_subjects_pass() -> None:
+    assert checker.check_message("Merge pull request #260 from x/y\n") == []
+    assert checker.check_message('Revert "feat(import): project import v1"\n') == []
 
-    assert result.returncode == 1, result.stdout + result.stderr
+
+def test_uppercase_description_is_rejected() -> None:
+    errors = checker.check_message("docs: Update the deployment guide\n")
+    assert errors
+    assert any("lowercase" in error for error in errors)
+
+
+def test_unknown_type_is_rejected_with_chore_hint() -> None:
+    errors = checker.check_message("build(deps): bump next from 16.3.6 to 16.3.8\n")
+    assert errors
+    assert any("Unknown commit type" in error for error in errors)
+    assert any("chore(<scope>)" in error for error in errors)
+
+
+def test_empty_message_is_rejected() -> None:
+    assert checker.check_message("") == ["Empty commit message"]
+    assert checker.check_message("\n\n") == ["Empty subject line"]
+
+
+# ── Input resolution (repository-level cases live in the sibling module) ─
 
 
 def test_check_message_still_rejects_empty_message() -> None:
     """The pure validator keeps its behaviour (guard against a weakened fix)."""
-    assert check_message("") == ["Empty commit message"]
+    assert checker.check_message("") == ["Empty commit message"]
 
 
-def test_read_commit_message_prefers_explicit_argv_path(tmp_path: Path) -> None:
+def test_read_message_prefers_explicit_argv_path(tmp_path: Path) -> None:
     """Git's own commit-msg argument is the first resolution source."""
     explicit = tmp_path / "COMMIT_EDITMSG"
     explicit.write_text("feat(core): explicit path\n", encoding="utf-8")
 
-    message = read_commit_message([str(explicit)], stdin=io.StringIO("chore: stdin\n"))
+    message = checker.read_message(
+        [str(_SCRIPT), str(explicit)], stdin=io.StringIO("chore: stdin\n")
+    )
 
-    assert message == "feat(core): explicit path\n"
-
-
-def test_read_commit_message_resolves_git_path_without_argv(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """With an empty (non-TTY) stdin the message comes from git's path."""
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    _git("init", "-b", "main", cwd=repo)
-    raw = _git("rev-parse", "--git-path", "COMMIT_EDITMSG", cwd=repo).stdout.strip()
-    msg_path = Path(raw)
-    if not msg_path.is_absolute():
-        msg_path = repo / msg_path
-    msg_path.write_text("fix(api): via git\n", encoding="utf-8")
-    monkeypatch.chdir(repo)
-
-    message = read_commit_message([], stdin=io.StringIO(""))
-
-    assert message == "fix(api): via git\n"
-
-
-def test_read_commit_message_prefers_piped_stdin_over_git_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A non-empty piped message outranks an existing COMMIT_EDITMSG."""
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    _git("init", "-b", "main", cwd=repo)
-    raw = _git("rev-parse", "--git-path", "COMMIT_EDITMSG", cwd=repo).stdout.strip()
-    msg_path = Path(raw)
-    if not msg_path.is_absolute():
-        msg_path = repo / msg_path
-    msg_path.write_text("feat(scripts): stale leftover message\n", encoding="utf-8")
-    monkeypatch.chdir(repo)
-
-    message = read_commit_message([], stdin=io.StringIO("Bad subject\n"))
-
-    assert message == "Bad subject\n"
-
-
-def test_read_commit_message_skips_stdin_when_tty(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An interactive (TTY) stdin must never be read; git's path is used."""
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    _git("init", "-b", "main", cwd=repo)
-    raw = _git("rev-parse", "--git-path", "COMMIT_EDITMSG", cwd=repo).stdout.strip()
-    msg_path = Path(raw)
-    if not msg_path.is_absolute():
-        msg_path = repo / msg_path
-    msg_path.write_text("feat(core): from git path\n", encoding="utf-8")
-    monkeypatch.chdir(repo)
-
-    message = read_commit_message([], stdin=_TtyStdin("chore: must be ignored\n"))
-
-    assert message == "feat(core): from git path\n"
-
-
-def test_read_commit_message_reports_git_failure(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A failing git call is reported on stderr, never swallowed (RULE-11)."""
-
-    def _failing_git(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        raise subprocess.CalledProcessError(returncode=128, cmd=["git"])
-
-    monkeypatch.setattr(check_commit_message.subprocess, "run", _failing_git)
-
-    message = read_commit_message([], stdin=io.StringIO(""))
-
-    captured = capsys.readouterr()
-    assert message == ""
-    assert "Could not resolve COMMIT_EDITMSG via git" in captured.err
+    assert message == "feat(core): explicit path"

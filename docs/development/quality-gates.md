@@ -51,8 +51,9 @@ it is missing — an absent SSOT is drift by definition. Gate semantics are gove
 | --   | check_pytest_collection_performance.py   | ⚠️ Warning   | test-unit Job (WARNING-only)                                   |
 | --   | check_current_state_facts.py (SSOT)      | ✅ Blocking  | architecture Job                                               |
 | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention)                     |
+| --   | check_commit_message.py (claim gate)     | ✅ Blocking  | architecture Job (pull_request only: PR title + body)          |
 | --   | check_pre_commit_gate_tiers.py (ADR-098) | ✅ Blocking  | architecture Job (hook-tier ratchet)                           |
-| --   | check_review_policy_consistency.py (ADR-093) | ✅ Blocking  | architecture Job (policy caps + pointers)                      |
+| --   | check_review_policy_consistency.py (ADR-093) | ✅ Blocking | architecture Job (policy caps + pointers)                      |
 | --   | budget-report (quota early-warning)      | 📅 Weekly    | Sundays 03:07 UTC, non-blocking (W1-7, spec §5.7)              |
 | MutMut Mutation Score | mutation-testing-monthly.yml | 📅 Monthly | Non-blocking, issue report                                     |
 

@@ -48,6 +48,7 @@ name: CI
 # | --   | check_pytest_collection_performance.py   | ⚠️ Warning   | test-unit Job (WARNING-only)                                   |
 # | --   | check_current_state_facts.py (SSOT)      | ✅ Blocking  | architecture Job                                               |
 # | --   | check_adr_naming.py (review-04 AUFG-04-10) | ✅ Blocking | architecture Job (ADR-XXX-*.md convention)                     |
+# | --   | check_commit_message.py (claim gate)     | ✅ Blocking  | architecture Job (pull_request only: PR title + body)          |
 # | --   | check_pre_commit_gate_tiers.py (ADR-098) | ✅ Blocking  | architecture Job (hook-tier ratchet)                           |
 # | --   | check_review_policy_consistency.py (ADR-093) | ✅ Blocking | architecture Job (policy caps + pointers)                   |
 # | --   | budget-report (quota early-warning)      | 📅 Weekly    | Sundays 03:07 UTC, non-blocking (W1-7, spec §5.7)              |
@@ -528,6 +529,24 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev
+
+      # ── Conventional-commit claim gate (pull_request only) ───────────
+      # `main` receives squash commits (CONTRIBUTING §Branch Model), which
+      # never pass the local `commit-msg` hook — so the type that drives the
+      # version bump and the user-facing CHANGELOG would otherwise be
+      # ungated. This validates the PR title + body that become that commit
+      # message: `feat`/`fix` must state a `User-visible:` claim.
+      # The PR fields travel via env and are never interpolated into the
+      # script (template injection — zizmor).
+      # ─────────────────────────────────────────────────────────────────
+      - name: Check conventional commit claim (PR title + body)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" \
+            | uv run --no-sync python scripts/check_commit_message.py
 
       # ── Deterministic venv contract ──────────────────────────────────
       # The venv is synced ONCE above via `uv sync --all-packages`. Every

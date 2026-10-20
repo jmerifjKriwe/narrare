@@ -97,13 +97,15 @@ _psql-shell db:
 # First-time setup: install all dev + NLP dependencies, create .env, run migrations
 # NOTE: existing devs (pre-2026-08-13) must re-run `just dev-setup-min`
 # or `pre-commit install --hook-type pre-push` once to activate the
-# pre-push stage. New clones get it automatically.
+# pre-push stage; the commit-msg stage (conventional-commit gate) needs
+# `pre-commit install --hook-type commit-msg`. New clones get all stages
+# automatically.
 dev-setup:
     @echo "🚀 Setting up Narrare..."
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
     uv sync --frozen --all-packages --group dev --extra nlp
     just install-nlp-models
-    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
+    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push --hook-type commit-msg
     pnpm install
     @echo "⏳ Starting services..."
     just _ensure-services
@@ -114,12 +116,14 @@ dev-setup:
 # Lightweight setup: dev deps without NLP models (~200 MB smaller). Use for frontend/core work.
 # NOTE: existing devs (pre-2026-08-13) must re-run `just dev-setup-min`
 # or `pre-commit install --hook-type pre-push` once to activate the
-# pre-push stage. New clones get it automatically.
+# pre-push stage; the commit-msg stage (conventional-commit gate) needs
+# `pre-commit install --hook-type commit-msg`. New clones get all stages
+# automatically.
 dev-setup-min:
     @echo "🚀 Setting up Narrare (lightweight — no NLP models)..."
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
     uv sync --frozen --all-packages --group dev
-    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
+    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push --hook-type commit-msg
     pnpm install
     @echo "⏳ Starting services..."
     just _ensure-services
@@ -700,7 +704,7 @@ check-ai-ux:
     @echo "🤖 Checking ADR-043 AI interaction compliance..."
     uv run --all-packages python scripts/checks/check_ai_interaction_compliance.py
 
-# Validate a commit message (for hook/CI use)
+# Validate a commit message (same check as the commit-msg hook and CI)
 # Usage: just check-commit-msg "feat(core): add new prompt mode"
 check-commit-msg msg:
     @printf '%s\n' {{quote(msg)}} | uv run --all-packages python scripts/check_commit_message.py
