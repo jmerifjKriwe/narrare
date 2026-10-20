@@ -228,10 +228,10 @@ permissions:
 - **Performance/composition**: follow React 19 patterns (load skills on demand).
 - **A11y**: semantic HTML, ARIA where needed. See `@docs/development/ui-principles.md`.
 - **File size (RULE-04)**: modularize, do not compress.
-- **Package cap**: a single assigned package is ≤3 files / ≤250 new LOC / one logical
-  unit with its own test cycle. Scope above that → STOP and report
-  `PACKAGE_TOO_LARGE: <files/LOC>` — the coordinator re-slices. Never silently expand
-  scope or batch several units.
+- **Package cap**: one logical unit with its own test cycle; the numeric caps are
+  normative in `docs/development/quality-gates.md` §Review & report policy and are not
+  restated here. Scope above them → STOP and report `PACKAGE_TOO_LARGE: <files/LOC>` —
+  the coordinator re-slices. Never silently expand scope or batch several units.
 
 ## Stack
 
