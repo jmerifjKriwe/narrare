@@ -65,8 +65,10 @@ if TYPE_CHECKING:
     import requests as http_requests
     from playwright.sync_api import Page
 
-# Validated voice_analysis block (mirrors the catalog fixture, which the
-# §10 ratchet validates against the real VoiceAnalysis model).
+# Ratcheted twin of _CHARACTER_VOICE_RESULT["voice_analysis"]
+# (tests/e2e/mocks/catalog_analysis.py) — the §10 ratchet validates that
+# constant against the real VoiceAnalysis model; this copy feeds the REAL
+# KB-PATCH seeding path.
 _VOICE_ANALYSIS = {
     "formality": 0.3,
     "vocabulary_level": "moderate",
@@ -178,9 +180,10 @@ class TestAuthorVoice:
         assert caught.value.status == 200
         body = caught.value.text()
         assert _ERROR_STRINGS["author_voice"] not in body
-        # The result event carries the assembled profile; persistence (ADR-074)
-        # precedes the yield, so this doubles as the profile-stored pin.
-        assert '"result"' in body
+        # The "result" EVENT arrived — the assembled profile streamed, not
+        # just progress/done. (The envelope serializes "result": null on
+        # every event, so the bare string would be a vacuous pin.)
+        assert '"event": "result"' in body
         page.get_by_test_id("editor-right-panel").get_by_text("Voice Profile").first.wait_for(
             state="visible", timeout=30_000
         )
@@ -202,6 +205,10 @@ class TestAuthorVoiceDrift:
         # pytest-randomly forbids relying on TestAuthorVoice having run first
         # (live-verified: drift without a stored profile answers a graceful
         # no_profile, which renders "No author-voice profile", not a trend).
+        # The probe proves only that the write path RAN (persistence, ADR-074,
+        # precedes the stream's "result" yield); that the stored profile is
+        # actually readable is proven by the drift leg's
+        # '"event": "no_profile"' NEGATIVE below.
         probe = authed_request(
             "POST",
             f"/api/v1/analysis/author-voice/{voice_novel.novel_id}",
@@ -210,7 +217,7 @@ class TestAuthorVoiceDrift:
         assert probe.status_code == 200
         probe_body = probe.text
         assert _ERROR_STRINGS["author_voice"] not in probe_body
-        assert '"result"' in probe_body
+        assert '"event": "result"' in probe_body
 
         open_analysis_panel(page, "author_voice_drift")
         with page.expect_response(
@@ -221,10 +228,13 @@ class TestAuthorVoiceDrift:
         body = caught.value.text()
         assert _ERROR_STRINGS["author_voice_drift"] not in body
         # The trend branch, not the graceful no-profile skip — pin the EVENT
-        # name, not the bare string: the SSE envelope serializes
-        # "no_profile": null on every event of every stream (live-verified).
+        # names, not the bare strings: the SSE envelope serializes
+        # "no_profile": null AND "result": null on every event of every
+        # stream (live-verified), so bare-string pins are vacuous in BOTH
+        # directions. This result-positive is also the seed proof: a stored
+        # profile is the service's precondition for the trend branch.
         assert '"event": "no_profile"' not in body
-        assert '"result"' in body
+        assert '"event": "result"' in body
         panel = page.get_by_test_id("editor-right-panel")
         panel.get_by_text(re.compile("chapters analyzed")).first.wait_for(
             state="visible", timeout=30_000
@@ -287,8 +297,8 @@ class TestVoiceCheck:
         raises ModelRetry when no entry carries a non-empty character_name,
         the one invariant TestModel's synthesized output cannot satisfy — so
         the agent phase ALWAYS dies in-band ("Voice-check analysis failed.",
-        ModelRetryExhaustedError — live-verified twice) BEFORE the result
-        events. The leg therefore pins the panel's honest degradation
+        ModelRetryExhaustedError — live-verified three times) BEFORE the
+        result events. The leg therefore pins the panel's honest degradation
         instead of a result card — which also live-pins this panel's M05 EN
         error copy.
         """
