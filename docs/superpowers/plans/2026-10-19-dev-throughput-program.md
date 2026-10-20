@@ -47,7 +47,7 @@ T12 — with its document). Naming a recipe in this plan file is safe; naming it
   `providers.generated.ts` — nobody authors them), and single-row documentation
   edits (`docs/architecture/decisions/INDEX.md`). Sub-slice (a/b) rather than exceed.
 - **Report requirement (the P4 threshold, T10; applied to this plan from the start):**
-  a per-task report file is required when the task changes ≥3 authored files, **or**
+  a per-task report file is required when the task changes ≥2 production files, **or**
   adds ≥80 new production LOC, **or** crosses a layer boundary, **or** touches a
   governed surface (ADR, `docs/_shared/CONSTRAINTS.md`, `scripts/architecture/*`,
   `.github/workflows/ci.yml`, `justfile`, `.pre-commit-config.yaml`). Each task below
@@ -1031,7 +1031,7 @@ def test_real_config_is_clean() -> None:
 **Interfaces:**
 - Consumes: the spec's §6 decision.
 - Produces: the normative text block that T11's checker reads, carrying the
-  machine-readable markers `<!-- review-policy: caps=3/250 report=3/80 -->` in
+  machine-readable markers `<!-- review-policy: caps=3/250 report=2/80 -->` in
   `docs/development/quality-gates.md` and a referenced (not restated) pointer in
   `AGENTS.md` and in `.opencode/agents/NarrareDevCoordinator.md`.
 
@@ -1040,7 +1040,7 @@ def test_real_config_is_clean() -> None:
 ```markdown
 ## Review & report policy
 
-<!-- review-policy: caps=3/250 report=3/80 -->
+<!-- review-policy: caps=3/250 report=2/80 -->
 
 Normative text. `AGENTS.md` and `.opencode/agents/NarrareDevCoordinator.md`
 reference this section; they do not restate its numbers.
@@ -1048,7 +1048,7 @@ reference this section; they do not restate its numbers.
 - **Package caps:** ≤3 authored files and ≤250 new production LOC per delegated
   unit. Test files, machine-generated artifacts and single-row documentation edits
   do not count. Sub-slice rather than exceed.
-- **Per-task report file — required** when a task changes ≥3 authored files, adds
+- **Per-task report file — required** when a task changes ≥2 production files, adds
   ≥80 new production LOC, crosses a layer boundary, or changes a governed surface
   (`docs/_shared/CONSTRAINTS.md`, an ADR, `scripts/architecture/*`,
   `.github/workflows/ci.yml`, `justfile`, `.pre-commit-config.yaml`). Otherwise the
@@ -1096,7 +1096,7 @@ reference this section; they do not restate its numbers.
 - Create: `tests/unit/scripts/test_review_policy_consistency.py`
 
 **Interfaces:**
-- Consumes: the `<!-- review-policy: caps=3/250 report=3/80 -->` marker and its
+- Consumes: the `<!-- review-policy: caps=3/250 report=2/80 -->` marker and its
   normative block in `docs/development/quality-gates.md`.
 - Produces: `parse_policy(text: str) -> dict[str, str]` and
   `find_policy_violations(root: Path) -> list[str]`.
@@ -1113,7 +1113,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def test_policy_marker_is_parseable() -> None:
     text = (ROOT / "docs/development/quality-gates.md").read_text(encoding="utf-8")
-    assert parse_policy(text) == {"caps": "3/250", "report": "3/80"}
+    assert parse_policy(text) == {"caps": "3/250", "report": "2/80"}
 
 
 def test_normative_block_exists() -> None:

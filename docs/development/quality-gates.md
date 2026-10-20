@@ -74,6 +74,28 @@ The authoritative trigger composition lives in `.github/workflows/ci.yml`
 - **Monthly** — mutation testing (`mutation-testing-monthly.yml`), non-blocking,
   issue report.
 
+## Review & report policy
+
+<!-- review-policy: caps=3/250 report=2/80 -->
+
+Normative text. `AGENTS.md` and `.opencode/agents/NarrareDevCoordinator.md`
+reference this section; they do not restate its numbers.
+
+- **Package caps:** ≤3 authored files and ≤250 new production LOC per delegated
+  unit. Test files, machine-generated artifacts and single-row documentation edits
+  do not count. Sub-slice rather than exceed.
+- **Per-task report file — required** when a task changes ≥2 production files, adds
+  ≥80 new production LOC, crosses a layer boundary, or changes a governed surface
+  (`docs/_shared/CONSTRAINTS.md`, an ADR, `scripts/architecture/*`,
+  `.github/workflows/ci.yml`, `justfile`, `.pre-commit-config.yaml`). Otherwise the
+  commit message body is the record.
+- **Batch review — allowed** when the tasks share a layer and a file cluster and at
+  least one of them met the report threshold; the batch report names every covered
+  task.
+- **Per-task review — mandatory, never batched** when a task adds or renames a
+  Protocol/contract, changes a manifest or registry, changes the public shape of an
+  API response, or edits a governed surface.
+
 ## Exception registry
 
 Accepted drift between this table and CI reality is registered in
