@@ -139,6 +139,9 @@ repos:
       # declaration surfaces against one another (enum, category map, profiles,
       # route table + intents, prompt directories, manifest, adoption registry).
       # Comparison only: it moves no authority out of the manifest or the registry.
+      # always_run with no `files:` filter: the gate's inputs are a closed set
+      # (five Python modules, two governance YAMLs and `_bundled`), so a filter
+      # was defensible, but `always_run` avoids missing a future ninth surface.
       - id: intent-parity
         name: Intent Contract Parity (ADR-025/037/038)
         entry: uv run --no-sync python scripts/check_intent_parity.py
@@ -391,7 +394,8 @@ repos:
       # the whole packages/web project on every run, so at commit time a one-file
       # change paid for a whole-project typecheck. CI remains the authority: the
       # frontend job runs the project's TypeScript step on every push/PR. The
-      # scoped, commit-cheap frontend check (Biome) is `just verify-slice`.
+      # commit-time Biome check is the `biome-frontend` hook; `just verify-slice`
+      # is the manual, path-scoped recipe that runs Biome for named web paths.
       - id: typecheck-frontend
         name: TypeScript Check (Frontend)
         entry: bash -c 'cd packages/web && npx tsc --noEmit'

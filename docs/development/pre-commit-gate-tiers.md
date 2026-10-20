@@ -21,8 +21,9 @@ unchanged and remains the pre-merge gate.
 
 ## Stage census
 
-Derived from `.pre-commit-config.yaml` on 2026-10-20 (before: `HEAD` `d8a844c3`;
-after: the working tree of throughput task T8). Counting method:
+Derived from `.pre-commit-config.yaml` on 2026-10-20. The **before** column is
+the historical snapshot at `d8a844c3` (the tree the T8 tiering change started
+from); the **after** column is the current tree at `2771f82b`. Counting method:
 
 - Every hook is counted once per stage it **explicitly** declares in `stages`.
 - A hook with **no** `stages` key inherits the top-level `default_stages`. This
@@ -32,20 +33,33 @@ after: the working tree of throughput task T8). Counting method:
 - The **reach** rows therefore report what actually runs on `git commit` and
   `git push`: explicit stage hooks plus the unrestricted hooks.
 
-| Effective stage | Before | After |
+| Effective stage | Before (`d8a844c3`) | After (`2771f82b`) |
 |---|---:|---:|
-| `pre-commit` (explicit) | 22 | 21 |
+| `pre-commit` (explicit) | 22 | 22 |
 | `pre-push` (explicit) | 3 | 5 |
 | `manual` (explicit) | 1 | 1 |
 | `commit-msg` (explicit) | 1 | 1 |
 | unrestricted (no `stages` key) | 15 | 14 |
-| **hooks defined** | **42** | **42** |
-| runs at `git commit` (explicit + unrestricted) | 37 | 35 |
+| **hooks defined** | **42** | **43** |
+| runs at `git commit` (explicit + unrestricted) | 37 | 36 |
 | runs at `git push` (explicit + unrestricted) | 18 | 19 |
 
 The numbers are derived, not copied: the counts above are what the YAML actually
-declares. Before this task `openapi-regenerate` had no `stages` key, so it was
-unrestricted; it is now explicitly `pre-push`.
+declares. Before the T8 tiering change `openapi-regenerate` had no `stages` key,
+so it was unrestricted; it is now explicitly `pre-push`. Since the `d8a844c3`
+snapshot the tree has gained exactly one hook: T15 added `intent-parity` at
+`pre-commit`, which is why the current tree defines 43 hooks and 22 explicit
+commit-stage hooks. T16a changed no stages, so it moved neither column.
+
+## What the T9 ratchet does and does not pin
+
+`scripts/check_pre_commit_gate_tiers.py` pins **tier membership** for the hooks it
+names: every id in its `PUSH_ONLY`, `MANUAL_ONLY` and `COMMIT_MSG_ONLY` sets must
+declare exactly that stage, and no unnamed hook may declare `pre-push`. It does
+**not** pin counts. A new hook added at the commit stage is therefore accepted
+silently — the ratchet has no opinion on how many hooks run at commit or push.
+The census above is documentation of the current tree; the ratchet is the
+mechanism that keeps the named tiers from drifting.
 
 ## The two hooks that moved
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Intent-contract parity gate — the six families (throughput T14a/T14b).
+"""Intent-contract parity gate — the seven families (throughput T14a/T14b).
 
 Reads the eight declaration surfaces of a gateway-routed intent and reports every
 disagreement among them as one list. The reading layer (``ast`` for the Python
@@ -13,11 +13,12 @@ Compared surfaces and families:
 - key-set identity across ``LLMIntent`` (``enums``), ``INTENT_CATEGORY_MAP``
   (``categories``), ``INTENT_TO_CATEGORY``/``INTENT_TO_MODE`` (``route_intents``),
   ``ROUTE_CONFIGS`` (``route_configs``) and ``INTENT_PROFILES`` (``profiles``);
-- category agreement and mode agreement between the two prompt-route surfaces
-  (``route_intents`` and ``route_configs``);
+- category agreement between the two prompt-route surfaces (``route_intents`` and
+  ``route_configs``);
+- mode agreement between the same two prompt-route surfaces;
 - presence agreement between each lookup table and the route table: an
   ``INTENT_TO_MODE`` entry exists exactly when ``ROUTE_CONFIGS[i].default_mode``
-  is not ``None`` (likewise ``INTENT_TO_CATEGORY`` and ``default_category``).
+  is not ``None`` (likewise ``INTENT_TO_CATEGORY`` and ``category``).
   A removed entry is thus a disagreement, not a silently absent value, and an
   entry where the route table declares no value is a disagreement too;
 - prompt-template existence for every routed ``(intent, required locale)`` pair,
@@ -26,6 +27,10 @@ Compared surfaces and families:
   intent, with matching ``category``/``mode`` (T14b);
 - adoption-registry coverage: an entry for every routed intent's prompt path and
   no entry that no routed intent or context mode resolves (T14b).
+
+Known scope limit of the presence family: the invariant is enforced for
+declarations written inside the dict literals; a post-literal assignment such as
+``INTENT_TO_MODE[X] = ...`` is outside what the AST reader sees.
 
 Required locales follow ADR-026 Phase 5 and mirror
 ``scripts/adoption/scorer._required_locales_for``: ``en``, ``de`` and ``fr`` for
