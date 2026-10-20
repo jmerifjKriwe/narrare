@@ -81,16 +81,31 @@ just verify-slice tests/unit/core/llm/test_gateway.py packages/web/lib/providers
 Contract:
 
 - Takes one or more paths (variadic `+paths`) and touches **only** those paths.
+- Every path is normalised once before routing: a leading `./` is stripped, and
+  an absolute path under the repository root is made repo-relative. So
+  `packages/web/lib/providers.ts`, `./packages/web/lib/providers.ts` and
+  `"$PWD"/packages/web/lib/providers.ts` take the same arm — an arm cannot be
+  missed because of how the caller spelled the path. A path that cannot be
+  normalised to a repo-relative form (absolute and outside the repository root)
+  aborts the recipe with a message and exit 2; it is never handed to a tool that
+  cannot parse it.
 - Python paths: `just lint-file` (ruff check + format check) → `just
   typecheck-file` (pyright with the path-aware config: root strict for production,
   `tests/pyrightconfig.json` for test files).
-- Pytest runs via `just test-file` **only for paths under `tests/`**. A source
-  module has no pytest target and pytest exits 5 on it, so source paths stop after
-  lint and typecheck; pass the test file alongside the source file to run both.
+- Tests reach pytest **only through `tests/` paths the caller names**: exactly
+  those go to `just test-file`, and nothing else does. A source module has no
+  pytest target and pytest exits 5 on it, so a **source-only slice runs no tests
+  at all** — pass the test file alongside the source file to run both.
+- `just test-file` is `pytest <paths> -v`: plain pytest over the named paths, no
+  `-m` selection and no service or container boot. A named
+  `tests/integration/…` or `tests/e2e/…` path therefore *does* run — pytest
+  collects it like any other file — but it runs with nothing provisioned by this
+  recipe. Integration and E2E tests execute only when the caller names such a
+  path; they are never an implicit consequence of a slice, and a slice that names
+  one inherits whatever that test needs from the surrounding environment.
 - Paths under `packages/web/`: the Python tools are skipped (ruff and pyright
   cannot parse TypeScript) and scoped Biome runs instead:
   `cd packages/web && npx biome check <paths relative to packages/web>`.
-- Integration and E2E tests never run here.
 - **Not a substitute for `just verify`.** It is for fast iteration on a slice;
   the pre-merge gate is still `just verify`.
 

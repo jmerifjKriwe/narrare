@@ -158,8 +158,13 @@ Unrestricted hook ids **before** (15): `version-consistency`, `openapi-regenerat
 **After** (14): the same list without `openapi-regenerate`.
 
 The brief's `36 / 3 / 1 / 1` was not copied; the derived numbers are above. The
-difference is the treatment of the no-`stages` hooks and of `openapi-regenerate`,
-which had no stage restriction before this change.
+difference is **not** the treatment of the no-`stages` hooks — both counts use
+explicit + unrestricted identically. The brief's `36` is the commit-reach of the
+tree the brief was written against (`6ea06114`): 41 hooks, 21 explicit `pre-commit`
++ 15 unrestricted = 36. The "before" column above is `d8a844c3`, i.e. **after T7
+added `provider-catalog-check`**: 42 hooks, 22 + 15 = 37. The delta is T7's hook,
+and the review round that produced this paragraph is what corrected the
+attribution (review finding F5).
 
 ## 5. `verify-slice`
 
@@ -326,3 +331,302 @@ hook) **Passed** in the `--files` run, so no extra registration was needed.
 4. **`just verify` proof format.** `just --show verify` prints the doc comment plus
    `verify: check test-all`; the recipe line itself is unchanged.
 5. **No commit.** Per task constraints, all changes remain in the working tree.
+
+## Review round (T8b)
+
+An independent review of `d8a844c3` (T7) and `c4ec637a` (T8) raised three defects in
+the committed work. This round closes exactly those three. Files touched: `justfile`,
+`scripts/_check_steps.py`, `docs/development/pre-commit-gate-tiers.md`, and this
+section — nothing else. No gate was relaxed, nothing was suppressed, and no git write
+happened.
+
+### F3 — `verify-slice` misrouted prefixed and absolute web paths
+
+**Defect (reproduced before the fix).** `./packages/web/lib/providers.ts` and any
+absolute path under `packages/web/` matched none of the web arms and fell into
+`*) py+=("$p")`, so ruff and pyright parsed TypeScript as Python:
+
+```text
+$ just verify-slice ./packages/web/lib/providers.ts
+uv run --all-packages ruff check ./packages/web/lib/providers.ts
+...
+Found 61 errors.
+error: recipe `lint-file` failed on line 516 with exit code 1
+error: recipe `verify-slice` failed with exit code 1
+```
+
+**Root cause.** The `case` matched on the caller's *spelling* of the path, and only
+some arms enumerated a `./` variant (`tests` did, `packages/web` did not). The
+asymmetry was the defect: any arm added later could repeat it, and adding a
+`./packages/web/*` arm would have been the workaround the brief forbids.
+
+**Fix (root cause, not an arm).** Each path is normalised **once**, before the
+`case`, so every arm matches one canonical repo-relative form:
+
+- a leading `./` is stripped (`./` alone stays `.`);
+- `"$PWD"` itself becomes `.`;
+- an absolute path under the repository root becomes repo-relative;
+- a path that cannot be normalised (absolute and outside the repository root) aborts
+  the recipe with a message and exit 2 — it is never handed to a tool that cannot
+  parse it.
+
+Biome receives paths already relative to `packages/web`, so the prefix-stripping is
+unchanged in effect, including the `packages/web` → `.` case (whole-project check).
+
+**Evidence, both directions (after the fix).**
+
+```text
+$ just verify-slice ./packages/web/lib/providers.ts        # was 61 ruff errors
+Checked 1 file in 4ms. No fixes applied.
+EXIT=0
+
+$ just verify-slice packages/web/lib/providers.ts          # no regression
+Checked 1 file in 4ms. No fixes applied.
+EXIT=0
+
+$ just verify-slice packages/core/narrare_core/llm/model_listing.py
+uv run --all-packages ruff check packages/core/narrare_core/llm/model_listing.py
+All checks passed!
+uv run --all-packages ruff format --check packages/core/narrare_core/llm/model_listing.py
+1 file already formatted
+0 errors, 0 warnings, 0 informations
+EXIT=0
+
+$ just verify-slice tests/unit/core/llm/test_model_listing.py packages/web/lib/providers.ts
+...
+============================== 21 passed in 2.26s ==============================
+Checked 1 file in 5ms. No fixes applied.
+EXIT=0
+```
+
+No ruff and no pyright line appears in either web run — only the Biome line, which is
+the routing contract. Additional directions:
+
+```text
+$ just verify-slice "$PWD/packages/web/lib/providers.ts"
+Checked 1 file in 4ms. No fixes applied.
+EXIT=0
+
+$ just verify-slice packages/web                          # biome target `.`
+Checked 1313 files in 1797ms. No fixes applied.
+Found 1 warning.
+Found 1 info.
+EXIT=0
+
+$ just verify-slice /etc/hosts
+verify-slice: cannot route '/etc/hosts' — absolute and outside the repository root (<repo>)
+error: recipe `verify-slice` failed with exit code 2
+EXIT=2
+```
+
+The two Biome observations on the whole-project run (config schema 2.5.8 vs CLI
+2.5.14, one unused suppression) are pre-existing and exit 0; they are not produced by
+this change.
+
+### F2 — the documented local gate did not reach the catalog check
+
+**Duplication found: yes.** `just check-architecture` (justfile) and the
+`_check_steps.py` Architecture step were two parallel lists of the same family of
+checks, overlapping on 5 of 8 scripts, each holding entries the other lacked:
+
+- only in the recipe at `c4ec637a`: `check_architecture.py --prompt-integrity`,
+  `generate_provider_catalog.py --check`, `check_frontend_file_size.py`;
+- only in `_check_steps.py`: `check_python_file_size.py`,
+  `checks/check_mutation_inert_assets.py`.
+
+That is drift, not different scope — and it had already produced two instances of the
+same defect: `generate_provider_catalog.py --check` (T7) was reachable from the commit
+hook and CI but not from `just check` / `just verify`, and
+`check_architecture.py --prompt-integrity` was in the recipe and CI but not in the
+`just check` step (the commit hook is deliberately flag-free for latency, which does
+not excuse the pre-merge gate).
+
+**Root-cause choice (dedup, not a 32nd line).** The `just check-architecture` recipe
+is now the single source of the architecture surface; the `_check_steps.py` step is
+one command, `["just", "check-architecture"]`. So that delegating cannot drop a
+check, the two scripts that lived only in the step moved into the recipe. Net effect
+on the gate:
+
+- `just check` / `just verify` now run every check they ran before, plus
+  `check_architecture.py --prompt-integrity` — a strictness increase, and exactly
+  what CI's architecture job runs;
+- a future architecture check is added in one place (the recipe) and reaches both
+  surfaces;
+- `check_frontend_file_size.py` now runs twice per gate — once inside the delegated
+  recipe, once in its own numbered `Frontend Size` step, which is kept because it is
+  what gives size drift its labeled summary line (cost: one extra run of that
+  script). This is duplicated *execution* of one script, not a duplicated list;
+- `just` is the documented entry point for the runner (`just check` →
+  `uv run --all-packages python scripts/run_checks.py`), and no CI job invokes
+  `run_checks.py` directly, so the subprocess adds no new runtime requirement.
+
+No test or document asserted the old step list (checked: no `build_steps` /
+`_check_steps` references under `tests/` or in `docs/`; `just check-architecture` is
+referenced only as a command name).
+
+**Evidence — the gate fails on a stale catalog.** Mutation: one provider's
+`label_key` suffix (`zai` → `zai_stale`), exactly one occurrence asserted before
+editing, file backed up to `/tmp/opencode/` and restored with `cp` afterwards.
+
+```text
+$ grep -c '^    label_key: settings-ai\.providers\.zai$' .../catalog.yaml
+1
+$ sed -i 's/^    label_key: settings-ai\.providers\.zai$/    label_key: settings-ai.providers.zai_stale/' ...
+$ grep -n zai_stale .../catalog.yaml
+71:    label_key: settings-ai.providers.zai_stale
+```
+
+Baseline first (same tree, unmutated), so the failure below is attributable:
+
+```text
+$ just check
+  [1/11] Architecture       ✓  3362 files, 13 exception(s)
+  ...
+  [3/11] Typecheck          ✗  5 error(s)          <- pre-existing, see below
+  ...
+  ✗ 1 check(s) failed
+EXIT=1
+```
+
+(The Typecheck red is this worktree's pre-existing state — 5 errors in
+`packages/core/narrare_core/embeddings/rerank.py` because the
+`sentence_transformers` extra is not installed; recorded in the T5 ledger. It is
+unrelated to this round and was not touched.)
+
+With the stale catalog:
+
+```text
+$ just check
+  [1/11] Architecture       ✗  issues found
+  [2/11] Lint & Format      ✓  clean
+  [3/11] Typecheck          ✗  5 error(s)
+  ...
+  ✗ 2 check(s) failed
+
+  ── Architecture ──────────────────────────────────────
+    ...
+    +++ packages/core/narrare_core/llm/_providers/catalog_generated.py (fresh render)
+    -    AIProvider.ZAI: "settings-ai.providers.zai",
+    +    AIProvider.ZAI: "settings-ai.providers.zai_stale",
+    provider catalog check FAILED: .../catalog_generated.py is stale — regenerate with
+    `uv run --all-packages python scripts/generate_provider_catalog.py`
+    +++ packages/web/lib/providers.generated.ts (fresh render)
+    -  zai: "settings-ai.providers.zai",
+    +  zai: "settings-ai.providers.zai_stale",
+    provider catalog check FAILED: .../providers.generated.ts is stale — regenerate with
+    `uv run --all-packages python scripts/generate_provider_catalog.py`
+    labels.locales: zai: settings-ai.providers.zai_stale missing in .../de/settings-ai.json
+    labels.locales: zai: settings-ai.providers.zai_stale missing in .../en/settings-ai.json
+    labels.locales: zai: settings-ai.providers.zai_stale missing in .../fr/settings-ai.json
+    error: recipe `check-architecture` failed on line 518 with exit code 1
+EXIT=1
+```
+
+The pre-fix step could not have caught this: `git show HEAD:scripts/_check_steps.py`
+contains zero `generate_provider_catalog` references, while `git show
+HEAD:justfile` contains one. The second failing step is therefore the only delta
+between the two runs.
+
+```text
+$ git show HEAD:scripts/_check_steps.py | grep -c generate_provider_catalog
+0
+$ git show HEAD:justfile | grep -c generate_provider_catalog
+1
+```
+
+Restore verified:
+
+```text
+$ cp /tmp/opencode/catalog.yaml.bak packages/core/narrare_core/llm/_providers/catalog.yaml
+$ git diff --stat -- packages/core/narrare_core/llm/_providers/catalog.yaml
+(no output)
+$ git diff -- packages/core/narrare_core/llm/_providers/catalog.yaml | wc -l
+0
+$ grep -c '^    label_key: settings-ai\.providers\.zai$' .../catalog.yaml
+1
+```
+
+### F4 — the tiering document overstated `verify-slice`
+
+**Defect.** "Integration and E2E tests never run here." The `tests|tests/*` arm sends
+any named `tests/integration/…` or `tests/e2e/…` path to `just test-file` → plain
+`pytest <paths> -v`: no `-m e2e` selection and no service boot, but the file does
+run. The sentence was true only for implicit runs, i.e. slices that name no `tests/`
+path.
+
+**Fix (document and recipe comment aligned, no guard).** In
+`docs/development/pre-commit-gate-tiers.md` the claim was replaced by the actual
+contract:
+
+- tests reach pytest only through `tests/` paths the caller names; nothing else does;
+- a source-only slice runs no tests at all;
+- `just test-file` is `pytest <paths> -v` — plain pytest, no `-m` selection, no
+  service or container boot; a named `tests/integration/…` or `tests/e2e/…` path
+  therefore does run, with nothing provisioned by the recipe;
+- a path-normalisation bullet was added for F3 (one canonical form before routing;
+  non-normalisable paths abort).
+
+The `justfile` comment above `verify-slice` carried the same overstatement and now
+carries the same correction. **Deviation from the brief: none** — no guard was added;
+named paths still run as named.
+
+### Gates re-run in this round
+
+```text
+$ just check-architecture
+...
+✅ All TS/TSX files are within hard limits
+Frontend file-size ratchet: 0 current, 0 baseline, 0 new, 0 resolved
+RESULT: Frontend file-size debt did not grow
+EXIT=0 ELAPSED=21s
+```
+
+```text
+$ just verify-quick
+================= 14132 passed, 3 skipped in 153.44s (0:02:33) =================
+ Test Files  461 passed (461)
+      Tests  3932 passed (3932)
+EXIT=0 ELAPSED=337s
+```
+
+```text
+$ pre-commit run --files justfile scripts/_check_steps.py \
+    docs/development/pre-commit-gate-tiers.md \
+    docs/superpowers/plans/reports/2026-10-19-throughput-T08.md
+...
+Provider Catalog (ADR-099, generated + parity).......................................Passed
+Documentation Drift (just commands + ADR + spec + agent names).......................Passed
+Ruff Lint............................................................................Passed
+Ruff Format..........................................................................Passed
+Pyrefly Type Check (staged)..........................................................Passed
+trim trailing whitespace.............................................................Passed
+fix end of files.....................................................................Passed
+EXIT=0 ELAPSED=11s
+```
+
+`just check` itself was run twice for the F2 proof above (baseline and stale
+catalog); both runs are recorded there, including the pre-existing Typecheck red.
+
+### Concerns (this round)
+
+1. **`just check` is red in this worktree for a pre-existing reason.** The 5
+   `rerank.py` pyright errors (missing `sentence_transformers` extra) are unchanged
+   by this round and were already recorded in the T5 ledger. The F2 proof isolates
+   the delta by comparing the same gate before and after the catalog mutation.
+2. **The runner now depends on `just` being on PATH.** `scripts/run_checks.py`
+   invoked *directly* (not through `just check`) would fail the Architecture step
+   with `not found: just`. `just check` / `just verify` are the documented entry
+   points and no CI job calls the runner directly, so this is declared rather than
+   hidden; the step comment states it.
+3. **Failure output is noisier.** The Architecture step now prints the recipe's
+   echoed command lines in the compact failure block (just's normal echo). Only
+   cosmetic; success output is unchanged and the compact summary still reads
+   `N files, N exception(s)`.
+4. **One script runs twice per gate** (`check_frontend_file_size.py`, see F2).
+5. **Observation, not changed:** repo-wide `ruff format --check .` is red in this
+   worktree — 116 `docs/**.md` files with embedded Python would be reformatted by
+   the pinned ruff 0.16.9. The runner's Lint step scans only `apps/ packages/
+   scripts/ tests/ evals/` (3374 files, clean), so `just check` does not hit it; a
+   slice that names a whole-tree path (e.g. `just verify-slice "$PWD"`) does. Out
+   of scope for these three findings, recorded so the next reviewer does not
+   rediscover it as fallout from this round.

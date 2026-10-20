@@ -34,99 +34,26 @@ def build_steps() -> list[Step]:
     web = ROOT / "packages" / "web"
     # Every command uses `uv run --all-packages`: the repo root is a virtual
     # uv workspace, so a plain `uv run` only syncs the root dev-group closure
-    # and can leave workspace-member deps stale (see justfile gate note).
+    # and can leave workspace-member deps stale (see justfile gate note). The
+    # exception is the Architecture step, which runs the `just check-architecture`
+    # recipe; that recipe passes the same flag on every one of its lines.
     steps: list[Step] = [
         Step(
             "Architecture",
             [
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_architecture.py",
-                    ],
-                    None,
-                ),
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_exception_baseline.py",
-                    ],
-                    None,
-                ),
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_python_file_size.py",
-                    ],
-                    None,
-                ),
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_prompt_surface_contract.py",
-                    ],
-                    None,
-                ),
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_empty_kb_vars.py",
-                    ],
-                    None,
-                ),
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_frontmatter_schema.py",
-                    ],
-                    None,
-                ),
-                # Mutation-inert convention — prevents the MutMut sandbox crash
-                # class documented in issue #146 (asset-reading tests reached
-                # via parents[N] must carry @pytest.mark.mutation_inert).
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/checks/check_mutation_inert_assets.py",
-                    ],
-                    None,
-                ),
-                # RULE-10 test-existence gate — same script + `--fail-on-missing`
-                # flags as the CI architecture job (and `just check-architecture`),
-                # so `just check`/`just verify` catch missing-test-file drift
-                # locally instead of only in CI (PR #236 run 37032595571).
-                (
-                    [
-                        "uv",
-                        "run",
-                        "--all-packages",
-                        "python",
-                        "scripts/check_test_coverage_gaps.py",
-                        "--fail-on-missing",
-                    ],
-                    None,
-                ),
+                # Single source of the architecture surface: the canonical
+                # `just check-architecture` recipe (its own entry point, also
+                # what `just verify`'s `check` step reaches). This step used to
+                # restate the same scripts and the two lists drifted apart —
+                # the recipe and CI gained `generate_provider_catalog.py
+                # --check` (throughput T7) while this step did not, so the
+                # documented local gate stayed green on a stale provider
+                # catalog (T8b review F2). Running the recipe means a future
+                # architecture check is added in exactly one place. `just` is
+                # the documented entry point for this gate (`just check` is
+                # `uv run --all-packages python scripts/run_checks.py`), so the
+                # binary is present whenever the runner is used as documented.
+                (["just", "check-architecture"], None),
             ],
         ),
         Step(
@@ -276,6 +203,10 @@ def build_steps() -> list[Step]:
                 # `just check-architecture`, the pre-commit hook and the CI
                 # frontend job. Own step (before lint, mirroring CI order) so
                 # size drift is reported as size, not mislabeled as lint.
+                # It also runs inside the delegated Architecture step above
+                # (the recipe owns the script); the own step is kept so drift
+                # still gets its labeled summary line, at the cost of one extra
+                # run of that script per gate.
                 Step(
                     "Frontend Size",
                     [

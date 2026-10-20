@@ -161,9 +161,10 @@ run rather than merely present in the recipe:
 
 ---
 
-## 5. Full-suite verification
+## 5. Test suite (unit + frontend only)
 
-`just verify-quick` → **exit 0**:
+`just verify-quick` (which is `test-unit test-frontend`, not the full `just verify`)
+→ **exit 0**:
 
 ```
  Test Files  461 passed (461)
