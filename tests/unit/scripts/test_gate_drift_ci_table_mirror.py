@@ -96,6 +96,29 @@ class TestCompareGateRows:
         assert "only in quality-gates.md: test_fake_conformance.py" in item.detail
         assert item.is_ok is False
 
+    def test_duplicated_row_on_one_side_is_a_count_mismatch(self, tmp_path: Path) -> None:
+        ci = tmp_path / "ci.yml"
+        doc = tmp_path / "quality-gates.md"
+        ci.write_text(
+            _table(("G1", "pytest"), ("G1", "pytest"), ("G3", "check_architecture.py")),
+            encoding="utf-8",
+        )
+        doc.write_text(_table(("G1", "pytest"), ("G3", "check_architecture.py")), encoding="utf-8")
+
+        ci_content = ci.read_text(encoding="utf-8")
+        doc_content = doc.read_text(encoding="utf-8")
+        ci_only, doc_only = compare_gate_rows(ci_content, doc_content)
+        assert ci_only == set()
+        assert doc_only == set()
+
+        item = check_ci_table_mirror(ci_content, doc_content, exception_ids=set())
+
+        assert item.check_id == "ci-table-mirror"
+        assert item.passed is False
+        assert item.is_ok is False
+        assert "row counts differ: pytest (ci.yml 2, quality-gates.md 1)" in item.detail
+        assert "only in" not in item.detail
+
     def test_equal_tables_pass(self) -> None:
         ci = _table(("G1", "pytest"), ("G3", "check_architecture.py"))
         item = check_ci_table_mirror(ci, ci, exception_ids=set())

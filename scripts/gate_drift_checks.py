@@ -18,13 +18,16 @@ checker exists to catch. The ssot-present item is never exception-eligible.
 
 "ci-table-mirror" (T17b2) additionally compares the two gate tables row by row:
 the ci.yml header table and the quality-gates.md mirror must carry the same
-tool/check set, so a row added to one side can no longer go missing silently.
+tool/check rows, counted rather than set-compared, so a row added to one side
+can no longer go missing silently and a row pasted twice on one side cannot be
+mistaken for an identical table.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -272,11 +275,21 @@ def extract_gate_rows(content: str) -> list[str]:
     return rows
 
 
+def count_gate_rows(content: str) -> Counter[str]:
+    """Count every gate-table occurrence of each normalised Tool / Check cell.
+
+    Rows are counted, not deduplicated: a row pasted twice into one table is a
+    real difference from the other table's single row, even though both
+    contain that row.
+    """
+    return Counter(extract_gate_rows(content))
+
+
 def compare_gate_rows(ci_content: str, doc_content: str) -> tuple[set[str], set[str]]:
     """Return (rows only in ci.yml, rows only in quality-gates.md)."""
-    ci_rows = set(extract_gate_rows(ci_content))
-    doc_rows = set(extract_gate_rows(doc_content))
-    return ci_rows - doc_rows, doc_rows - ci_rows
+    ci_rows = count_gate_rows(ci_content)
+    doc_rows = count_gate_rows(doc_content)
+    return set(ci_rows) - set(doc_rows), set(doc_rows) - set(ci_rows)
 
 
 def check_ci_table_mirror(
@@ -284,12 +297,18 @@ def check_ci_table_mirror(
     doc_content: str | None,
     exception_ids: set[str],
 ) -> DriftItem:
-    """Check that both gate tables carry the same tool/check rows.
+    """Check that both gate tables carry the same tool/check rows, counted.
 
     Root cause (T17b2): the ci.yml header table is declared the CI-gate SSOT
     and quality-gates.md its prose mirror, but nothing compared the two
     tables — four rows added to ci.yml alone left the mirror silently
     incomplete. This check makes the mirror a mechanical contract.
+
+    Root cause (T18c): the first version compared the tool/check column as a
+    ``set``. A row pasted twice on one side vanished into the dedup, so the
+    check reported "identical" for tables that are not, a weaker promise than
+    its own message made. Counting rows reports both one-sided rows and rows
+    whose occurrence counts differ.
 
     Severity: blocking. The tables are identical after the T17b2 repair, and
     the module's convention is that checks are blocking by default (an
@@ -308,13 +327,19 @@ def check_ci_table_mirror(
             detail="Skipped — quality-gates.md unreadable (see ssot-present)",
         )
 
-    ci_only, doc_only = compare_gate_rows(ci_content, doc_content)
-    if not ci_only and not doc_only:
-        count = len(set(extract_gate_rows(ci_content)))
+    ci_counts = count_gate_rows(ci_content)
+    doc_counts = count_gate_rows(doc_content)
+    ci_only = set(ci_counts) - set(doc_counts)
+    doc_only = set(doc_counts) - set(ci_counts)
+    count_mismatches = sorted(
+        row for row in set(ci_counts) & set(doc_counts) if ci_counts[row] != doc_counts[row]
+    )
+
+    if not ci_only and not doc_only and not count_mismatches:
         return DriftItem(
             check_id=check_id,
             passed=True,
-            detail=f"Both gate tables carry the same {count} tool/check rows",
+            detail=(f"Both gate tables carry the same {sum(ci_counts.values())} tool/check rows"),
         )
 
     parts: list[str] = []
@@ -322,6 +347,14 @@ def check_ci_table_mirror(
         parts.append("only in ci.yml: " + ", ".join(sorted(ci_only)))
     if doc_only:
         parts.append("only in quality-gates.md: " + ", ".join(sorted(doc_only)))
+    if count_mismatches:
+        parts.append(
+            "row counts differ: "
+            + ", ".join(
+                f"{row} (ci.yml {ci_counts[row]}, quality-gates.md {doc_counts[row]})"
+                for row in count_mismatches
+            )
+        )
 
     return DriftItem(
         check_id=check_id,
