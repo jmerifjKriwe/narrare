@@ -1,6 +1,6 @@
 packages:
-  - "packages/web"
   - "web"
+
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
@@ -8,61 +8,13 @@ allowBuilds:
   msw: true
   sharp: true
   unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - vite@8.3.5
+
 overrides:
-  brace-expansion: ">=5.0.12"
-  undici: "^7.29.1"
-  hono: ">=4.12.34"
-  postcss: ">=8.5.23"
-  # Dependabot alert #133 / GHSA-2v37-7h3g-55p8 (CVE-2026-67213): infinite loop
-  # in customAlphabet/customRandom when called with size=0 (DoS). Transitive via
-  # postcss (declares ^3.3.7; lockfile had 3.3.17). First patched: 3.3.18.
-  # Floor is major-bounded (<4): nanoid 4+ is ESM-only and would break postcss's
-  # CJS require; consistent with the #116-class drift-prevention pattern.
-  nanoid: ">=3.3.18 <4"
-  js-yaml: ">=4.3.1 <5"
-  ip-address: ">=10.7.1 <11"
-  # GHSA-hrr3-gc8f-f4qj: inconsistent host case normalization via
-  # percent-encoded octets (host allowlist bypass). Transitive via
-  # ajv -> @hookform/resolvers (web runtime graph); ajv declares
-  # ^3.0.0, lockfile had 3.1.7. First patched: 3.1.8. Floor is
-  # major-bounded (<4): prevents drift to a future 4.x major,
-  # consistent with the #116-class drift-prevention pattern
-  # (undici/js-yaml/ip-address).
-  fast-uri: ">=3.1.8 <4"
-  qs: ">=6.15.2"
-  sharp: ">=0.35.0"
-  # Forced to 2.x: GHSA-frvp-7c67-39w9 (Windows path-traversal in serve-static,
-  # published 2026-07-21) has NO 1.x patch — only fix is 2.0.5. Latest 1.x
-  # (1.19.17) is flagged, so any 1.x resolution reopens `pnpm audit` (verified
-  # 2026-08-07). MCP SDK declares ^1.19.9; this major override is intentional.
-  # Floor 2.0.10 also covers GHSA-9mqv-5hh9-4cgg (WebSocket mem-leak DoS, <2.0.10).
-  # Floor is major-bounded (<3) to prevent drift (#116-class: an open floor would
-  # pull a future 3.x major), consistent with undici/js-yaml/ip-address.
-  "@hono/node-server": ">=2.0.10 <3"
-  # Dependabot alert #191 / GHSA-p6vx-979v-rg4c (critical): fromJSON() Promise
-  # thenable assimilation invokes plugin-produced callables (>= 0.12.0, <= 1.6.0),
-  # plus alert #190 / GHSA-jp82-f5mq-hwhp (high): memory exhaustion via unchecked
-  # TypedArray length in JSON deserialization (<= 1.6.2). Transitive via solid-js
-  # (@tanstack/query-devtools; seroval-plugins declares seroval ^1.0 — floor
-  # stays within 1.x). First patched: 1.6.3 (#191) / 1.6.3 (#190); one floor
-  # covers both alerts.
-  seroval: ">=1.6.3"
-  # Dependabot alert #189 / GHSA-68fv-2mgg-jv7q (high): event-loop denial of
-  # service through indexed source-map section offsets (>= 1.0.0, < 1.2.2).
-  # Transitive via postcss / css-tree / magicast / @tailwindcss/node —
-  # build-time tooling only. First patched: 1.2.2 (current latest).
-  source-map-js: ">=1.2.2"
-  # Dependabot alert #188 / GHSA-vfj7-8cjw-p6xm (CVE-2026-93687, high): braces
-  # stack-exhaustion DoS through deeply nested patterns (<= 3.0.3). NO upstream
-  # fix exists (3.0.3 is the latest release) — no override is possible. Exposure
-  # is dev/build-time only: transitive via micromatch (chokidar/glob chain);
-  # glob patterns are developer-defined, no attacker-controlled input reaches
-  # braces at runtime. Alert deliberately left open; revisit on upstream release.
-  # Dependabot alert #193 / CVE-2026-104850: vulnerability in
-  # @modelcontextprotocol/sdk (<= 1.30.1). Transitive via shadcn (devDep,
-  # packages/web) — shadcn 4.21.0 is the latest release and still resolves the
-  # SDK to 1.30.1, so a devDep bump cannot move it (verified 2026-10-08). First
-  # patched: 1.31.0. Floor follows the open-floor pattern (seroval/
-  # source-map-js): the SDK's 1.x line is the current stable major; revisit if
-  # a future major lands.
-  "@modelcontextprotocol/sdk": ">=1.31.0"
+  # GHSA-r825-w8mm-5pxw: vite 8.3.0-8.3.2, reached through vitest. 8.3.5 is the
+  # first patched release the minimum-release-age guard lets through, which is
+  # why it is pinned exactly and listed in minimumReleaseAgeExclude above.
+  # Drop the pin when vitest's own range resolves a patched vite on its own.
+  vite: "8.3.5"

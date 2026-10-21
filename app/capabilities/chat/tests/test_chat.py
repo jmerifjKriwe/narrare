@@ -5,13 +5,14 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.api.main import app
 from app.capabilities.chat.service import ChatService
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.embeddings import FakeEmbeddingProvider
-from httpx import ASGITransport, AsyncClient
 
 pytestmark = pytest.mark.timeout(60)
 

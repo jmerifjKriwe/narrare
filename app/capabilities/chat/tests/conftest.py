@@ -3,11 +3,11 @@
 import os
 
 import pytest
+from alembic import command
 from alembic.config import Config
-from app.kernel.db.testsupport import ensure_database, url_for
 from sqlalchemy import text
 
-from alembic import command
+from app.kernel.db.testsupport import ensure_database, url_for
 
 # Set before the session module is imported: it reads its URL once, at import.
 DATABASE = "narrare_v2_test"

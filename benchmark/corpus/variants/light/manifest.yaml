@@ -1,4 +1,0 @@
-variant: light
-base: clean
-registry: errors.yaml
-chapters_touched: [ch-01, ch-02, ch-04, ch-06, ch-08, ch-09, ch-11, ch-12]

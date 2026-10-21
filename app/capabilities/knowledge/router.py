@@ -3,13 +3,14 @@
 from typing import Annotated
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.capabilities.knowledge.schemas import DocumentRead, SearchHit, SearchRequest
 from app.capabilities.knowledge.service import EmptyDocumentError, KnowledgeService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 

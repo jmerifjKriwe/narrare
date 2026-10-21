@@ -8,7 +8,7 @@ the instruction above it and ignores the marker.
 from collections.abc import Sequence  # noqa: TC003
 
 from app.kernel.llm import SOURCE_PREFIX
-from app.kernel.retrieval import Passage  # noqa: TC002
+from app.kernel.retrieval import Passage  # noqa: RUF100, TC001, TC002
 
 
 def chat_prompt(*, question: str, passages: Sequence[Passage]) -> str:

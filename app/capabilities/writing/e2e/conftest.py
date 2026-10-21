@@ -7,6 +7,7 @@ same ports.
 from collections.abc import Iterator  # noqa: TC003
 
 import pytest
+
 from app.kernel.testing.stack import run_stack
 
 

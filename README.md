@@ -5,109 +5,75 @@
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-<!-- Pytest Coverage Comment:Begin -->
-<a href="https://github.com/jmerifjKriwe/narrare/blob/main/README.md"><img alt="Coverage" src="https://img.shields.io/badge/Coverage-95%25-brightgreen.svg" /></a>
-<!-- Pytest Coverage Comment:End -->
+> Local-first, AI-assisted creative writing.
 
-> AI-assisted creative writing environment — local-first, fully customizable.
+Four capabilities, one folder each under `app/capabilities/`: writing (novel, chapter,
+editor, continuation), knowledge (upload, chunk, embed, search), chat (question over
+the knowledge base, streamed answer with sources) and setup (first run). Shared domain
+lives in `app/kernel/`; the web app is `web/`.
 
 ## Requirements
 
-- [Python 3.14+](https://www.python.org/downloads/)
-- [Node.js 24+](https://nodejs.org/) + [pnpm](https://pnpm.io/installation)
-- [Docker](https://docs.docker.com/get-docker/) + Docker Compose (provides PostgreSQL + pgvector and Redis via `docker-compose.dev.yml`)
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- [just](https://just.systems/man/en/chapter_4.html)
+- [Python 3.14+](https://www.python.org/downloads/) and [uv](https://docs.astral.sh/uv/)
+- [Node.js 22+](https://nodejs.org/) and [pnpm](https://pnpm.io/)
+- [Docker](https://docs.docker.com/get-docker/) with Compose (Postgres + pgvector)
+- [just](https://just.systems/)
 
-## Quick Start
-
-```bash
-git clone https://github.com/your-org/narrare.git
-cd narrare
-
-# First-time setup — choose one:
-just dev-setup       # Full setup: dev deps + NLP models (~200 MB spaCy). ~10 min.
-just dev-setup-min   # Lightweight: dev deps without NLP (~200 MB smaller). ~5 min.
-                      # Add NLP later with: just install-nlp-models
-
-# Edit .env and add your AI provider API key, then:
-just dev
-```
-
-> **Which setup?** Use `just dev-setup` if you work on analysis/NLP features.
-> Use `just dev-setup-min` for frontend, core, or agent work — it skips the
-> ~200 MB spaCy download. You can always install the models later.
-
-> **Note:** If you run `uv sync` manually instead of `just dev-setup`, use
-> `uv sync --frozen --all-packages --group dev --extra nlp`. See
-> [deployment-guide.md](docs/development/deployment-guide.md) for details.
-
-Open [http://localhost:3000](http://localhost:3000) and complete the Setup Wizard.
-
-**Dev login** (created automatically):
-- Email: `dev@narrare.dev`
-- Password: `narrare-dev`
-
-## Development Commands
+## Quick start
 
 ```bash
-just --list          # Show all available commands
-
-just dev             # Start all services
-just dev-api         # API only (port 8000)
-just dev-frontend    # Frontend only (port 3000)
-just dev-worker      # TaskIQ worker only
-
-just test            # Run all tests
-just test-unit       # Unit tests only (fast)
-just check           # All checks (architecture + lint + types + security)
-
-just db-migrate      # Run migrations
-just db-revision "description"  # Create new migration
+just dev-setup     # python env, web deps, git hooks, Postgres, schema
+just dev           # API on :8000, web on :3100
 ```
 
-## Project Structure
+Open <http://localhost:3100>. A fresh database lands on `/setup`.
+
+## Commands
+
+`just --list` shows all 22. The ones used daily:
+
+```bash
+just check              # fast gate: ruff + pyright
+just test               # every integration test
+just test-file <path>   # one file or one node
+just test-e2e           # capability E2E: browser, API, Postgres
+just test-frontend      # web unit tests
+just verify             # check + all suites + web build
+just build              # production build of the web app
+just dev-services       # Postgres on :5432 (dev) and :5433 (tests)
+just db-migrate         # apply migrations
+just db-revision "x"    # autogenerate one
+just db-reset           # drop and rebuild the dev database
+just db-shell           # psql on the dev database
+just generate           # write the OpenAPI document the web app reads
+just new-capability x   # scaffold the test fixtures for a new capability
+```
+
+## Structure
 
 ```
-narrare/
-├── apps/
-│   ├── api/          ← FastAPI backend (Python 3.14)
-│   └── mcp/          ← MCP adapter (planned; calls Service Layer when built)
-├── packages/
-│   ├── core/         ← Shared domain logic
-│   ├── i18n/         ← Translations
-│   └── web/          ← Next.js frontend
-├── docs/
-│   ├── agents/       ← AI agent definitions + architectural docs
-│   └── features/     ← Feature specifications
-├── scripts/          ← Dev tooling
-└── tests/            ← Test suite
+app/
+├── api/            ← FastAPI app, mounts the capability routers
+├── capabilities/   ← one folder per capability: router, service, repository, tests, e2e
+└── kernel/         ← contracts, db, auth, llm and embedding boundaries, retrieval, testing
+web/                ← Next.js app
+i18n/               ← en, de, fr; typing makes a missing key a build error
+docs/               ← the design record
 ```
 
-## Dev Container (VS Code)
+The authority for structure and boundaries is
+[`docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md).
 
-For a fully configured environment (recommended when using a remote VM):
+## Testing
 
-1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-2. Open the repository in VS Code
-3. When prompted, click "Reopen in Container"
+A capability is done only with a green E2E that drives the real browser, the real API
+and the real Postgres. The only fake is the provider at its boundary, and it is a
+catalog entry chosen by configuration (`NARRE_LLM_PROVIDER`, `NARRE_EMBEDDING_PROVIDER`),
+not a test branch.
 
-The container includes Python 3.14, Node.js, uv, just, and all VS Code extensions pre-configured.
-
-## Architecture
-
-See [`docs/_shared/CONSTRAINTS.md`](docs/_shared/CONSTRAINTS.md) for architectural rules.
-
-See [`docs/_shared/TECH_STACK.md`](docs/_shared/TECH_STACK.md) for technology decisions.
-
-MCP and A2A are roadmap adapters, not implemented product surfaces. Under
-RULE-12, future adapters call the existing Service Layer; Q-001 (MCP auth) and
-Q-002 (A2A streaming) remain open until adapter-specific specs are written.
-
-## Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup
-instructions, branch model, commit conventions, and the PR process.
+The integration suites share `narrare_v2_test`; each E2E capability owns a database and
+a module-scoped stack, so `just test-e2e` runs suites one after another on the same
+ports.
 
 ## License
 

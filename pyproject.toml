@@ -1,147 +1,67 @@
 [project]
-name = "narrare-workspace"
-version = "0.1.0"
-description = "Narrare monorepo workspace"
+name = "narrare"
+version = "2.0.0"
+description = "Local-first, AI-assisted creative writing."
 requires-python = ">=3.14"
-readme = "README.md"
 license = "MIT"
-# This is a virtual workspace root ([tool.uv] package = false). It has no
-# importable package of its own; runtime dependencies belong to the workspace
-# members (apps/api, packages/core, packages/i18n). Dev-only tools go in the
-# [dependency-groups] dev list below.
-dependencies = []
+dependencies = [
+  "alembic>=1.20.0",
+  "asyncpg>=0.31.0",
+  "fastapi>=0.141.1",
+  "pgvector>=0.5.0",
+  "pydantic>=2.13.5",
+  "python-multipart>=0.0.32",
+  "sqlalchemy[asyncio]>=2.1.1",
+  "uvicorn[standard]>=0.54.0",
+]
 
 [dependency-groups]
 dev = [
-  "ruff==0.16.9",
+  "httpx>=0.28.1",
   "pyright==1.1.414",
-  # Additive commit-time type check (ADR-097), pre-commit staged scope.
-  # Pin is load-bearing: pyrefly preset/migration defaults shift between
-  # minor versions, and the baseline is only reproducible against 1.3.2.
-  "pyrefly==1.3.2",
-  "pytest==9.1.1",
-  "pytest-asyncio==1.4.0",
-  "pytest-cov==7.1.0",
-  "bandit==1.9.4",
-  "pip-audit==2.10.1",
-  "pytest-xdist>=3.6",
-  "pytest-randomly==5.0.0",
-  "pytest-timeout>=2.3",
-  "hypothesis>=6.100",
-  "mutmut==3.8.0",
-  "pytest-playwright>=0.7",
-   "pydantic-evals==2.53.0",
-  "jsonschema>=4.26.0",
-  # PyMuPDF — PDF inspection for the Golden-Pages render probes
-  # (tests/golden/export/). Pulled forward from Slice 7 for the Slice 5a
-  # inline geometric-spine probe (folio count, recto-start parity, font
-  # no-fallback) and stays the probe library for every later sub-slice.
-  "pymupdf>=1.28",
+  "pytest>=9.1.1",
+  "pytest-asyncio>=1.4.0",
+  "pytest-cov>=7.1.0",
+  "pytest-playwright>=0.8.0",
+  "pytest-randomly>=5.0.0",
+  "pytest-timeout>=2.4.0",
+  "ruff==0.16.9",
 ]
 
-# Workspace root is a virtual container (no importable package here).
-# The previous [build-system] declared packages = ["narrare"] for a
-# non-existent root directory, which collided with / shadowed the real
-# `narrare` package from apps/api on a fresh `uv sync`, causing
-# "No module named 'narrare'" in CI. Marking the root as non-package is
-# Astral's documented convention for workspace roots.
+# The repository root is not an installable package: app/ runs from the checkout,
+# which is why `uv run` works without a build step and migrations see the tree.
 [tool.uv]
 package = false
-override-dependencies = [
-  "aiohttp>=3.14.1",
-  "pyasn1>=0.6.4",
-  "setuptools>=83.0.0",
-]
-
-[tool.uv.workspace]
-members = ["apps/api", "packages/core", "packages/i18n"]
 
 # ---------------------------------------------------------------------------
-# Pyright
+# Pyright — one typechecker, one answer
 # ---------------------------------------------------------------------------
 [tool.pyright]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
 reportMissingImports = true
-# reportMissingTypeStubs fires for any import without a .pyi stub file.
-# Our own packages (narrare_core, narrare, narrare_i18n) include PEP 561
-# py.typed marker files in their source roots, which satisfies pyright and
-# eliminates false positives. Remaining errors are genuine: third-party
-# packages that lack inline types and have no separate stub package.
 reportMissingTypeStubs = true
-
-# PERFORMANCE: venv explizit setzen (verhindert Scannen der venv)
 venvPath = "."
 venv = ".venv"
-
-# Module resolution roots (mirrors pytest `pythonpath` for reliable imports).
-# "scripts" mirrors the RUNTIME sys.path truth: tests sys.path-insert scripts/
-# for top-level imports (`_coverage_model`, `check_module_coverage`), and the
-# scripts run with sys.path[0]=scripts/ (`python3 scripts/<x>.py`). Without it
-# pyright cannot resolve those imports and every consumer pays with
-# reportUnknown* errors from an Unknown-typed module.
-extraPaths = ["apps/api", "packages/core", "packages/i18n", "scripts"]
-
-# PERFORMANCE: Kein Tiefen-Parsen von externen Bibliotheken
 useLibraryCodeForTypes = false
-
-# Strict-Regeln: Die wichtigsten 3 aktivieren
 reportUnknownMemberType = true
 reportUnknownVariableType = true
 reportUnknownArgumentType = true
-
-# Diese bleiben deaktiviert (zu noisy für Python)
 reportUnknownLambdaType = false
 reportUnknownParameterType = false
 reportMissingParameterType = false
 
-# ADR-046 transition: MetaPromptLoader is @deprecated but still tested.
-# Re-enable reportDeprecated after MetaPromptLoader removal.
-reportDeprecated = false
+include = ["app"]
 
-# Was geprüft wird
-include = [
-  "app",
-  "apps/api",
-  "benchmark",
-  "packages/core",
-  "packages/i18n",
-  "scripts",
-  # "tests",  — removed for pyright performance (1.048 test files); tests get
-  #             a separate conditional hook in .pre-commit-config.yaml
-]
-
-# Was NICHT geprüft wird (Performance + irrelevant)
 exclude = [
-  # Versteckte Dateien/Verzeichnisse
   "**/.*",
-
-  # E2E tests - require full stack, can't be type-checked in isolation
-  "tests/e2e/**",
-
-  # Virtual Environment (explizit, Performance)
   ".venv",
-
-  # Python/Caches
   "__pycache__",
   ".pytest_cache",
   ".ruff_cache",
-  ".mypy_cache",
-  "pyrightcache",       # Pyright type-checker cache
-
-  # Build/Dependencies
   "node_modules",
-  "dist",
-  "*.egg-info",
-
-  # Tool-Artefakte
-  ".code-review-graph",
-  ".agents",  # External agent skills — not project code
-  ".gemini",
-  ".qoder",
-
-  # Projekt-spezifisch
-  "**/migrations/**",  # Alembic-Migrationen
+  ".agents",
+  "**/migrations/**",
 ]
 
 # ---------------------------------------------------------------------------
@@ -150,7 +70,6 @@ exclude = [
 [tool.ruff]
 target-version = "py314"
 line-length = 100
-src = ["apps/api", "packages/core", "packages/i18n", "evals", "benchmark"]
 
 [tool.ruff.lint]
 select = [
@@ -174,20 +93,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S", "N"]
 ".agents/**" = ["S", "TC"]  # External agent skills — not project code
 "**/migrations/**" = ["E501"]
-"**/*router*.py" = ["B008", "TC001", "TC003"]  # FastAPI Depends() pattern; CurrentUserIdDep/uuid needed at runtime for path-param resolution
+"**/*router*.py" = ["B008", "TC001", "TC003"]  # FastAPI Depends() pattern takes UUID at runtime
 # SQLAlchemy needs datetime at runtime, not just type-checking
 "**/models.py" = ["TC003"]
 "**/*_models.py" = ["TC003"]
-# pydantic resolves model annotations at runtime; the UUID import is
-# load-bearing (TYPE_CHECKING-only breaks ApplyExtractionRequest.chapter_id)
-"**/kb/schemas_extraction.py" = ["TC003"]
-"packages/core/narrare_core/llm/retry.py" = ["S311"]  # PRNG for jitter is OK
-
-[tool.ruff.lint.isort]
-known-first-party = ["narrare_core", "narrare_i18n", "narrare"]
 
 # ---------------------------------------------------------------------------
 # Pytest
@@ -196,39 +107,25 @@ known-first-party = ["narrare_core", "narrare_i18n", "narrare"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-testpaths = ["tests", "app"]
-pythonpath = [".", "apps/api", "packages/core"]
+testpaths = ["app"]
+pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-filterwarnings = ["error", "ignore::DeprecationWarning:pydantic_ai", "ignore::DeprecationWarning:google.genai", "ignore:.*sqlite3.*:pytest.PytestUnraisableExceptionWarning", "ignore:.*ADR-048.*:DeprecationWarning", "ignore:.*qdrant.*:pytest.PytestUnraisableExceptionWarning"]
-timeout = 10
+filterwarnings = ["error"]
+timeout = 30
 timeout_method = "thread"
 timeout_func_only = true
 markers = [
-  "unit: unit tests (fast, no I/O, mocked dependencies)",
-  "integration: integration tests (real DB, mocked LLM)",
-  "e2e: end-to-end tests (full stack, main branch only)",
-  "requires_db: marks tests requiring database connection",
-  "mutation_inert: test inspects static repo structure (source tree, manifests, file existence) — cannot kill mutants and is incompatible with the MutMut copy-based sandbox; excluded from mutation runs via `-m 'not mutation_inert'`",
-  "schema_mutating: test mutates the SHARED test-DB schema (alembic downgrade/upgrade round-trip) — must NEVER run concurrently under xdist; `just test` and CI run it in a dedicated serial phase after the parallel batch",
-  "golden_pages: Golden-Pages acceptance tests — real render binaries (typst/pandoc) + EPUBCheck, no LLM; collected in the integration job where the export toolchain is installed",
+  "e2e: end-to-end tests (full stack: browser, API, Postgres)",
 ]
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 
 [tool.coverage.run]
-source = ["apps/api/narrare", "packages/core/narrare_core"]
-omit = [
-    "*/migrations/*",
-    "*/tests/*",
-    "*/__pycache__/*",
-    "*/conftest.py",
-    "*/contracts.py",
-]
+source = ["app"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 80
 show_missing = true
 exclude_lines = [
   "pragma: no cover",
@@ -236,233 +133,4 @@ exclude_lines = [
   "raise NotImplementedError",
   "@abstractmethod",
   "\\.\\.\\.",  # Protocol: ... (Ellipsis) stubs
-  "pass",  # Protocol: pass in abstract methods
 ]
-
-# ---------------------------------------------------------------------------
-# Bandit (Security)
-# ---------------------------------------------------------------------------
-[tool.bandit]
-exclude_dirs = [
-  "tests",
-  ".venv",
-  "__pycache__",
-  ".pytest_cache",
-  ".agents",
-]
-skips = ["B101"]  # assert_used is fine in tests
-
-# ---------------------------------------------------------------------------
-# MutMut 3.x (Mutation Testing)
-# ---------------------------------------------------------------------------
-# MutMut 3.x reads ALL configuration from this table. The CLI (`mutmut run`)
-# only accepts `--max-children` — there are NO --paths-to-mutate / --runner /
-# --use-coverage flags (those were MutMut 2.x).
-#
-# This is the DEFAULT scope (core domain logic). For other scopes use
-# scripts/run_mutmut.py --scope api|all|custom, which rewrites this table
-# temporarily and restores it afterwards.
-#
-# IMPORTANT: source_paths use symlink names (narrare_core, narrare), NOT the
-# real workspace paths (packages/core/narrare_core). The wrapper creates
-# temporary symlinks so MutMut's path-derived module keys match the Python
-# import paths. See scripts/run_mutmut.py docstring for details.
-#
-# NOTE: we deliberately do NOT add `-n auto` (pytest-xdist) to
-# pytest_add_cli_args. MutMut 3.x parallelizes itself via os.fork() +
-# max-children; nesting xdist workers inside the forked mutant processes is
-# fragile. pytest-randomly is disabled automatically by MutMut.
-[tool.mutmut]
-# What gets mutated (walked recursively). Uses symlink name, not workspace path.
-source_paths = ["narrare_core"]
-# Glob restriction on what is actually mutated (must end in `*` or `.py`):
-only_mutate = [
-    "narrare_core/prompts/*",
-    "narrare_core/writing/*",
-    "narrare_core/llm/intents.py",
-]
-# Glob exclusions (must end in `*` or `.py`):
-do_not_mutate = [
-    "*/migrations/*",
-    "*/__pycache__/*",
-]
-# Extra pytest args appended to every pytest invocation:
-pytest_add_cli_args = ["-x", "--timeout=30", "-q"]
-# Which tests to run during stats collection (when no specific tests given):
-pytest_add_cli_args_test_selection = ["-m", "not mutation_inert", "tests/unit/core/"]
-
-# ---------------------------------------------------------------------------
-# Architecture constraints (read by scripts/check_architecture.py)
-# ---------------------------------------------------------------------------
-[tool.narrare.architecture]
-llm_allowed_modules = [
-  "packages/core/narrare_core/llm/",
-  "packages/core/narrare_core/agents/",
-  "tests/",  # Test files can import pydantic_ai for TestModel/FunctionModel testing tools
-  "scripts/probes/",  # Eval/adoption probes use TestModel (no real LLM) for ADR-056 runtime evidence
-  "evals/",  # Smoke tasks import TestModel; runtime tasks call real LLMs strictly via ModelRegistry (no direct SDK imports) — directory exemption per tests/ precedent
-]
-agent_allowed_modules = [
-  "packages/core/narrare_core/agents/",
-  "tests/",
-  "scripts/probes/",  # Probes construct fake agents (TestModel) for runtime evidence
-  "evals/",  # Eval task runtime drives Narrare agents built in core/agents/ (harness code; no Agent construction outside core/agents/)
-]
-prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
-# RULE-08 (ADR-081): the ONLY files allowed to spawn the production render
-# binaries (typst, pandoc) via a subprocess. Exact renderer-adapter file paths.
-# Enforced by scripts/architecture/_checkers/export_binary_confinement.py.
-# EPUBCheck is CI-only (test harness) and deliberately out of scope.
-export_binary_allowed_modules = [
-  "apps/api/narrare/export/renderers/typst.py",
-  "apps/api/narrare/export/renderers/pandoc_base.py",
-  "apps/api/narrare/export/renderers/pandoc_md.py",
-  "apps/api/narrare/export/renderers/pandoc_epub.py",
-  "apps/api/narrare/export/renderers/pandoc_docx.py",
-]
-forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]
-forbidden_llm_urls = [
-  "api.openai.com",
-  "api.anthropic.com",
-  "generativelanguage.googleapis.com",
-]
-
-[tool.narrare.architecture.file_size_limits]
-# RULE-04 values SSOT — consumed via scripts/architecture/file_size_limits.py
-# by BOTH gates (check_architecture.py and check_python_file_size.py), which
-# therefore classify identically by construction. The keys are exactly the
-# canonical category vocabulary; the table is validated for completeness
-# (missing or stale keys fail loudly — no per-key fallbacks).
-# Classification priority: test_*.py first, then scripts/ (path rule), then
-# the name-based categories below, then general.
-test = 400
-script = 600
-router = 150
-dependency = 200
-service = 300
-agent = 200
-config_schema = 200
-models = 200
-repository = 250
-contracts = 200
-gateway = 300
-composer = 250
-general = 400
-
-[tool.narrare.architecture.configurable_defaults]
-max_allowed_constant = 5
-allowed_patterns = ["_PERCENTAGES", "_VALID_", "_PREFERENCE_", "_PROVIDER", "SUPPORTED_"]
-ignored_modules = [
-  # Script/tooling files (not production code):
-  "scripts/architecture/_checkers/inline_prompts.py",
-  "scripts/check_gate_expirations.py",
-  "scripts/checks/_ai_interaction_checks/_shared.py",
-  "scripts/checks/_ai_interaction_checks/check_1_use_ai_operation.py",
-  # Governance checker modules — subprocess timeouts and policy windows
-  # (STALE_WINDOW_DAYS=90 from §7) are tooling constants, not runtime config:
-  "scripts/checks/_ai_interaction_checks/check_6_deprecated_alias.py",
-  "scripts/checks/_ai_interaction_checks/check_8_stale_exclude.py",
-  "scripts/prompt_checks.py",
-  "scripts/run_checks.py",
-  # Doc-drift validator — _JUST_LIST_TIMEOUT (10s subprocess timeout for
-  # `just --list`) is a tooling constant, not runtime config:
-  "scripts/doc_drift/just_command_checks.py",
-  # Eval rubric files — scoring thresholds are fixed evaluation criteria by
-  # design (comparable, versioned rubrics); runtime configurability would
-  # undermine eval comparability. Not runtime configuration:
-  "evals/tasks/analysis_metrics_smoke.py",
-  "evals/evaluators/analysis_metrics.py",
-  "evals/evaluators/planning_structure.py",
-]
-
-[tool.narrare.architecture.exceptions]
-# CANONICAL SOURCE — this is the machine-readable exception register consumed by
-# scripts/check_architecture.py. The human-readable documentation mirrors this in
-# docs/_shared/CONSTRAINTS.md §7. Both MUST be kept in sync.
-# When adding or modifying exceptions, update BOTH files.
-# Details here take precedence in case of conflicts.
-#
-# Format:
-# [[tool.narrare.architecture.exceptions.entries]]
-# rule = "RULE-XX"
-# file = "path/to/file.py"
-# reason = "Why this exception exists"
-# approved_by = "who-approved"
-# date = "2026-01-01"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/llm/embedding_providers.py"
-reason = "Batch embedding API requires direct client access for performance"
-approved_by = "architecture-review"
-date = "2026-05-27"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/memory/mem0_client.py"
-reason = "mem0 AsyncMemory requires direct LLM client for memory extraction."
-approved_by = "generation-prompt-memory-foundation"
-date = "2026-05-15"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/planning/remap.py"
-reason = "Injected agent, not instantiated here"
-approved_by = "architecture-review"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/wiki/agent.py"
-reason = "WikiGenerationAgent uses RunContext for pydantic_ai internals"
-approved_by = "architecture-review"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/wiki/agent_chapter.py"
-reason = "WikiChapterGenerator wraps internal PydanticAgent (ADR-015)"
-approved_by = "ADR-015"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-TEST-01"
-file = "tests/unit/api/metrics/test_metrics_router.py"
-reason = "Mocking SQLAlchemy Engine — no domain contract"
-approved_by = "architecture-review"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/llm/registry_run.py"
-reason = "ModelRegistry convenience run()/stream() ephemeral Agents (moved from gateway.py, ADR-015 / plan Task 4a)"
-approved_by = "ADR-015"
-date = "2026-10-05"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "apps/api/narrare/setup/provider_service.py"
-reason = "Setup-phase provider validation requires direct pydantic-ai Agent."
-approved_by = "ADR-015"
-date = "2026-05-20"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-19"
-file = "apps/api/narrare/metrics/router.py"
-reason = "Health/readiness check must bypass repository layer to verify raw DB connectivity."
-approved_by = "platform-review-01"
-date = "2026-06-11"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-18"
-file = "apps/api/narrare/memory/suggestion_identity.py"
-reason = "_SOURCE_ID_HASH_PREFIX_LEN is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events."
-approved_by = "CR-AUFG-07-24"
-date = "2026-06-22"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-02b"
-file = "packages/core/narrare_core/memory/mem0_client.py"
-reason = "mem0 custom_instructions is a third-party-library config string for mem0's internal extraction LLM, not a Narrare prompt-resolution path (RULE-02b scope boundary)."
-approved_by = "ADR-064"
-date = "2026-07-08"

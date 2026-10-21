@@ -5,10 +5,11 @@ creates that row and the first novel in one transaction, so a crash leaves eithe
 an untouched instance or a finished one.
 """
 
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
+
 from app.capabilities.setup.repository import NovelRepository
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Novel, User
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 
 class AlreadySetUpError(Exception):

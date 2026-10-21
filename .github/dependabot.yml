@@ -1,19 +1,13 @@
 version: 2
 
-# Budget policy: routine dependency PRs run on a monthly cadence to conserve
-# GitHub Actions minutes. Security detection stays event-driven and schedule-
-# independent — Dependabot alerts and automated security updates still fire
-# immediately on new advisories. Rebases are manual (`@dependabot rebase`).
+# Monthly cadence keeps Actions minutes down; security advisories still fire
+# immediately and independently of this schedule. Rebases are manual.
 #
-# Every entry sets the same commit-message prefix: Dependabot's default
-# `build(deps)` is not an allowed conventional-commit type in this repo, and
-# the PR-time claim gate (ci.yml, architecture job) validates the PR title —
-# which becomes the squash commit on `main`. `chore(deps)` is what manual
-# dependency bumps already use.
+# Every entry uses the `chore` prefix with a scope: Dependabot's default
+# `build(deps)` is not a conventional-commit type this repo allows, and the PR
+# title becomes the squash commit.
+
 updates:
-  # =============================================================================
-  # Python — root workspace (dev tools only)
-  # =============================================================================
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -23,112 +17,15 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "python"
-    groups:
-      # pydantic-evals pins pydantic-ai-slim to the exact same version —
-      # both must move in lockstep (see PR #176). Keep them out of the
-      # generic groups so they land in a dedicated, clearly-labelled PR.
-      pydantic:
-        patterns:
-          - "pydantic-ai-slim"
-          - "pydantic-evals"
-      minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-      major-updates:
-        update-types:
-          - "major"
-
-  # =============================================================================
-  # Python — API package (~30 deps)
-  # =============================================================================
-  - package-ecosystem: "pip"
-    directory: "/apps/api"
-    schedule:
-      interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "python"
-      - "api"
+    labels: ["dependencies", "python"]
     groups:
       minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+        update-types: ["minor", "patch"]
       major-updates:
-        update-types:
-          - "major"
+        update-types: ["major"]
 
-  # =============================================================================
-  # Python — core package (shared domain logic, no HTTP/DB)
-  # =============================================================================
-  - package-ecosystem: "pip"
-    directory: "/packages/core"
-    schedule:
-      interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "python"
-      - "core"
-    groups:
-      # pydantic-ai-slim must move in lockstep with pydantic-evals (root dev
-      # group) — pydantic-evals pins pydantic-ai-slim exactly (see PR #176).
-      # Keep it out of the generic groups so it lands in a dedicated PR.
-      pydantic:
-        patterns:
-          - "pydantic-ai-slim"
-          - "pydantic-evals"
-      minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-      major-updates:
-        update-types:
-          - "major"
-
-  # =============================================================================
-  # Python — i18n package
-  # =============================================================================
-  - package-ecosystem: "pip"
-    directory: "/packages/i18n"
-    schedule:
-      interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "python"
-      - "i18n"
-    groups:
-      minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-      major-updates:
-        update-types:
-          - "major"
-
-  # =============================================================================
-  # npm — root workspace (dev scripts: ts-morph, tsx)
-  # =============================================================================
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/web"
     schedule:
       interval: "monthly"
     rebase-strategy: disabled
@@ -136,37 +33,13 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "npm"
+    labels: ["dependencies", "npm"]
     groups:
       minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+        update-types: ["minor", "patch"]
       major-updates:
-        update-types:
-          - "major"
+        update-types: ["major"]
 
-  # =============================================================================
-  # Docker — production image
-  # =============================================================================
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
-
-  # =============================================================================
-  # Docker — devcontainer image
-  # =============================================================================
   - package-ecosystem: "docker"
     directory: "/.devcontainer"
     schedule:
@@ -176,13 +49,8 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
+    labels: ["dependencies", "docker"]
 
-  # =============================================================================
-  # GitHub Actions
-  # =============================================================================
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -192,6 +60,4 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "github-actions"
+    labels: ["dependencies", "github-actions"]

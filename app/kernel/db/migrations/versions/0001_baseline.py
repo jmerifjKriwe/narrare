@@ -8,7 +8,6 @@ Create Date: 2026-10-21
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
-
 from alembic import op
 
 if TYPE_CHECKING:

@@ -1,12 +1,13 @@
 """First run against the real database: empty, then installed, then closed."""
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
+
 from app.api.main import app
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Novel, User
 from app.kernel.db.session import Session
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import func, select
 
 pytestmark = pytest.mark.timeout(60)
 

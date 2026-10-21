@@ -16,7 +16,7 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Iterator  # noqa: TC003
+from collections.abc import Generator  # noqa: TC003
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from os import environ
@@ -24,11 +24,11 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
 
+from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from alembic import command
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.testsupport import ensure_database, url_for
 
@@ -85,7 +85,7 @@ def _prepare(database: str, seed_user: bool) -> None:
 
 
 @contextmanager
-def run_stack(*, database: str, seed_user: bool) -> Iterator[None]:
+def run_stack(*, database: str, seed_user: bool) -> Generator[None]:
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 

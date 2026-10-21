@@ -3,12 +3,12 @@
 from asyncio import run
 from typing import TYPE_CHECKING
 
+from alembic import context
+from sqlalchemy.ext.asyncio import create_async_engine
+
 from app.kernel.contracts import models  # noqa: F401  registers the tables
 from app.kernel.db.base import Base
 from app.kernel.db.session import DATABASE_URL
-from sqlalchemy.ext.asyncio import create_async_engine
-
-from alembic import context
 
 if TYPE_CHECKING:
     from sqlalchemy import Connection

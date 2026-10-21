@@ -1,438 +1,50 @@
+# Six hooks, and each names a failure that has happened: unformatted code,
+# lint findings, type errors that only show up across files, a leaked secret,
+# and the two gates a developer should not push past.
 repos:
   - repo: local
     hooks:
-      # Architecture constraints — must pass before anything else
-      - id: architecture-constraints
-        name: Architecture Constraints
-        entry: uv run python scripts/check_architecture.py --incremental
-        language: system
-        pass_filenames: true
-        always_run: true
-        stages: [pre-commit]
-
-      # Workspace version consistency — catches Dependabot drift across pyproject.toml files
-      - id: version-consistency
-        name: Version Consistency (Workspace Drift)
-        entry: uv run python scripts/check_version_consistency.py
-        language: system
-        pass_filenames: false
-        files: pyproject\.toml$
-
-      # Prompt structure validation — catches missing variables, locale gaps, security issues
-      - id: prompt-structure
-        name: Prompt Structure Check
-        entry: uv run python scripts/check_prompt_structure.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Frontmatter schema validation (CR-AUFG-04-03) — WARNING-only ratchet gate
-      # that catches typos (e.g. prompt_typ) and unknown fields via the shared
-      # runtime parse_frontmatter(). Fails only on new violations beyond baseline.
-      - id: frontmatter-schema
-        name: Frontmatter Schema (CR-AUFG-04-03)
-        entry: uv run python scripts/check_frontmatter_schema.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Feature adoption score — ensures all features adopt core infrastructure
-      - id: adoption-score
-        name: Feature Adoption Score
-        entry: uv run python scripts/check_adoption.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [manual]
-        # ADR-056 — runtime-evidence-aware: reads committed .evidence/*.json markers,
-        # consistent with `just check-adoption` and CI. CI remains the authoritative
-        # regenerator (run_all_probes.py → markers → check); the hook only reads.
-        args: ["--evidence-dir", ".evidence"]
-
-      # AI Interaction Standards (ADR-043) — §16 compliance for frontend AI components
-      - id: ai-interaction-compliance
-        name: AI Interaction Compliance (ADR-043)
-        entry: uv run python scripts/checks/check_ai_interaction_compliance.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Exception Baseline — no-growth gate for new exception types
-      - id: exception-baseline
-        name: Exception Baseline (no-growth gate)
-        entry: uv run python scripts/check_exception_baseline.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Type-Ignore Discipline — RULE-23 staged-files ratchet. Fast scope:
-      # scans only staged .py files against the per-file baseline counts
-      # (git-index content, via --staged). The full-scan baseline compare
-      # is the CI architecture job's step; both fail on any growth
-      # (production violations exit 2, budget growth exit 1). Baseline
-      # updates are deliberate: --update-baseline (disappearing keys must
-      # be named via --allow-removed).
-      - id: type-ignore-discipline
-        name: Type-Ignore Discipline (RULE-23, staged)
-        entry: uv run --no-sync python -m scripts.check_type_ignores --staged
-        language: system
-        pass_filenames: false
-        types: [python]
-        stages: [pre-commit]
-
-      # Python File Size — RULE-04 enforcement
-      - id: python-file-size
-        name: Python File Size (RULE-04)
-        entry: uv run python scripts/check_python_file_size.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Frontend File Size — RULE-04 enforcement (mirrors python-file-size;
-      # closes the pre-commit gap that surfaced recurring CI-only failures)
-      - id: frontend-file-size
-        name: Frontend File Size (RULE-04)
-        entry: uv run python scripts/check_frontend_file_size.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Feature-File Path Accuracy — prevents "documented ≠ implemented" drift
-      # (AUFG-03-03 / RC8): phantom paths in feature frontmatter.
-      - id: feature-path-accuracy
-        name: Feature Path Accuracy (AUFG-03-03)
-        entry: uv run python scripts/check_feature_path_accuracy.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Prompt Surface Contract — ADR-037 enforcement
-      - id: prompt-surface-contract
-        name: Prompt Surface Contract (ADR-037)
-        entry: uv run python scripts/check_prompt_surface_contract.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Provider catalog — ADR-099. Fails when catalog.yaml and either generated
-      # artifact disagree, or when a handwritten surface (pricing, cache, mem0,
-      # prefixes, settings, fallback catalog, test catalog, labels) drifts from it.
-      # always_run: the gate must also fire when a handwritten surface changes
-      # without the catalog changing, so a `files:` filter would miss the point.
-      - id: provider-catalog-check
-        name: Provider Catalog (ADR-099, generated + parity)
-        entry: uv run --no-sync python scripts/generate_provider_catalog.py --check
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Intent contract parity — ADR-025/037/038. Compares the eight intent
-      # declaration surfaces against one another (enum, category map, profiles,
-      # route table + intents, prompt directories, manifest, adoption registry).
-      # Comparison only: it moves no authority out of the manifest or the registry.
-      # always_run with no `files:` filter: the gate's inputs are a closed set
-      # (five Python modules, two governance YAMLs and `_bundled`), so a filter
-      # was defensible, but `always_run` avoids missing a future ninth surface.
-      - id: intent-parity
-        name: Intent Contract Parity (ADR-025/037/038)
-        entry: uv run --no-sync python scripts/check_intent_parity.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Streaming Compliance — RULE-20 enforcement
-      - id: streaming-compliance
-        name: Streaming Compliance (RULE-20)
-        entry: uv run python scripts/check_streaming_compliance.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Locale Sync — i18n drift detection for prompts
-      - id: locale-sync
-        name: Locale Sync (i18n drift)
-        entry: uv run python scripts/check_locale_sync.py
-        language: system
-        pass_filenames: false
-        files: ^packages/core/narrare_core/prompts/
-        stages: [pre-commit]
-
-      # Mutation-inert convention — asset-reading tests (parents[N] + repo-root
-      # asset) must carry @pytest.mark.mutation_inert so MutMut's
-      # -m "not mutation_inert" filter excludes them. Prevents the sandbox
-      # crash class that aborted the August 2026 monthly mutation run (#146).
-      - id: mutation-inert-assets
-        name: Mutation-inert convention (asset-reading tests)
-        entry: uv run --no-sync python scripts/checks/check_mutation_inert_assets.py
-        language: system
-        pass_filenames: false
-        files: ^tests/unit/(core|api)/.*\.py$
-        stages: [pre-commit]
-
-      # OpenAPI spec auto-regeneration — mutates docs/reference/openapi.json when
-      # the API surface changes. PUSH-TIERED (throughput T8): the export rewrites
-      # the whole spec regardless of which files changed, so at commit time a
-      # one-file edit paid for a whole-project export. CI remains the authority:
-      # the architecture job runs `scripts/export_openapi.py --check` and fails on
-      # drift. Uses --no-sync to rely on the already-synced venv (deterministic-venv
-      # contract; see ci.yml architecture job). Run from repo root so the script
-      # path is canonical.
-      - id: openapi-regenerate
-        name: OpenAPI Spec (auto-regenerate)
-        entry: uv run --no-sync python scripts/export_openapi.py
-        language: system
-        pass_filenames: false
-        files: ^(apps/api/|packages/core/)
-        stages: [pre-push]
-
-      # ADR naming convention — every ADR file must follow `ADR-XXX-*.md`
-      # (review-04 AUFG-04-10 / Strategie 5). Fast, only relevant when
-      # the decisions directory changes.
-      - id: adr-naming
-        name: ADR Naming Convention
-        entry: uv run --no-sync python scripts/check_adr_naming.py
-        language: system
-        pass_filenames: false
-        files: ^docs/architecture/decisions/
-
-      # SSOT consistency — CURRENT_STATE.md volatility policy (ADR-076).
-      # always_run: a violation can be introduced by editing CURRENT_STATE.md
-      # OR by code changes that make its claims stale, and the check is a
-      # cheap single-file regex pass — so it runs on every commit (matches the
-      # blocking CI architecture job).
-      - id: ssot-consistency
-        name: SSOT Consistency (CURRENT_STATE)
-        entry: uv run --no-sync python scripts/check_current_state_facts.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      # Documentation drift — validates just-recipe references, ADR
-      # cross-refs, spec/RULE alignment, and checker terminology.
-      # Runs when docs or the justfile change (review-04 AUFG-04-02/04).
-      - id: doc-drift
-        name: Documentation Drift (just commands + ADR + spec + agent names)
-        entry: uv run --no-sync python scripts/check_doc_drift.py --governance-only
-        language: system
-        pass_filenames: false
-        files: ^(docs/|justfile$|AGENTS\.md$|\.opencode/agents/)
-
-      # §7 Stub-Variable Detector — architectural-discipline §7 ("documented
-      # ≠ implemented"): catches a registered prompt variable assigned a
-      # literal "" in service code at commit time, not only in CI. Scoped to
-      # source files (apps/api + core) so a source-level stub regression is
-      # caught pre-commit; runs ONLY the stub-variable governance check
-      # (critical/CI-blocking). The detector scans the whole service tree
-      # (apps/api/narrare); the 7 RULE-11 allowlist entries stay absorbed.
-      - id: stub-variables
-        name: §7 Stub Variables (source)
-        entry: uv run --no-sync python scripts/check_doc_drift.py --governance-only --checks stub_variable
-        language: system
-        pass_filenames: false
-        files: ^(apps/api/narrare|packages/core/narrare_core)/.*\.py$
-        stages: [pre-commit]
-
-      # Ruff lint + fix
-      - id: ruff-lint
-        name: Ruff Lint
-        entry: uv run ruff check --fix
-        language: system
-        types: [python]
-        require_serial: false
-
-      # Ruff format
       - id: ruff-format
-        name: Ruff Format
-        entry: uv run ruff format
+        name: Ruff format
+        entry: uv run ruff format --check
         language: system
         types: [python]
-        require_serial: false
+        stages: [pre-commit]
 
-      # Pyright — full-project type check (production code only); filenames are ignored
-      - id: pyright
-        name: Pyright Type Check
+      - id: ruff-check
+        name: Ruff check
+        entry: uv run ruff check --force-exclude
+        language: system
+        types: [python]
+        stages: [pre-commit]
+
+      - id: pyright-changed
+        name: Pyright (changed files)
         entry: uv run pyright
         language: system
         types: [python]
-        pass_filenames: false
-        stages: [pre-push]
-
-      # Pyright — light type check for tests (FULL test suite, pre-push only:
-      # D1 latency decision in docs/development/plans/
-      # 2026-08-13-pre-commit-runtime-optimization.md — pre-commit keeps only
-      # fast hooks). The commit-time counterpart for test files is the
-      # `pyright-tests-staged` hook below (staged files only).
-      # Uses tests/pyrightconfig.json with basic mode (less strict, faster)
-      - id: pyright-tests
-        name: Pyright Type Check (Tests)
-        entry: uv run pyright --project tests/pyrightconfig.json
-        language: system
-        types: [python]
-        pass_filenames: false
-        files: ^tests/
-        stages: [pre-push]
-
-      # Pyright — STAGED test files at commit time (cheap subset). Before this
-      # hook, test-file type errors surfaced only at pre-push / verify / CI
-      # (61f39c9b gate-fix). Full-suite pyright is deliberately NOT moved into
-      # pre-commit (D1 latency decision, 2026-08-13 pre-commit runtime plan —
-      # ~1k test files); scoped to the staged paths the run costs ~2s
-      # (measured: single file 2.0s cold and warm — startup dominates), well
-      # inside the 120s pre-commit budget, and the pre-push `pyright-tests`
-      # hook above remains the complete-suite gate.
-      - id: pyright-tests-staged
-        name: Pyright Type Check (Tests, staged)
-        entry: uv run pyright --project tests/pyrightconfig.json
-        language: system
-        types: [python]
-        pass_filenames: true
-        files: ^tests/
         stages: [pre-commit]
 
-      # Pyrefly — additive commit-time type check (ADR-097), staged scope.
-      # Restores the commit-time type coverage D1 (2026-08-13 runtime plan)
-      # moved to pre-push for latency: pyright costs 47.2s whole-project,
-      # pyrefly ~0.35s per staged file. pyright strict stays the authoritative
-      # gate (pre-push + CI); pyrefly's kind set starts narrow (3 artifact-
-      # heavy kinds disabled) with a residual baseline — see pyrefly.toml +
-      # pyrefly-baseline.json. Scope mirrors pyright's include list.
-      - id: pyrefly
-        name: Pyrefly Type Check (staged)
-        entry: uv run --no-sync pyrefly check --progress-bar no
-        language: system
-        types: [python]
-        files: ^(apps/api|packages/core|packages/i18n|scripts|benchmark)/.*\.py$
-        pass_filenames: true
-        stages: [pre-commit]
-
-      # Security — pass_filenames: false + a fixed -r target set makes the
-      # push gate scope-identical to `just security` and the CI security job
-      # by construction (production + scripts + evals; no history-dependent
-      # outgoing-range scan sets). Parity is machine-pinned by
-      # tests/unit/scripts/test_bandit_scope_parity.py.
-      - id: bandit
-        name: Security (Bandit)
-        entry: uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core scripts evals
-        language: system
-        pass_filenames: false
-        types: [python]
-        require_serial: false
-        stages: [pre-push]
-
-      # Secret scanning — Gitleaks gate (AUFG-05-09). The wrapper is
-      # stdlib-only and locates the gitleaks binary on PATH, so it runs with
-      # system python3 (no venv dependency — the security gate must not depend
-      # on the project venv being synced). --staged scopes the scan to the
-      # currently staged file contents (added/copied/modified/renamed) with NO
-      # git history, so it stays fast regardless of repo age. always_run
-      # ensures a secret staged in ANY file (code, docs, config) trips the gate
-      # — not only when .gitleaks.toml changes. --timeout 90 plus a
-      # machine-wide flock guarantee the gitleaks process group is always
-      # reaped (no orphan pile-up / VM overload). The CI security job runs the
-      # same wrapper in full-history mode for the comprehensive repo-wide audit.
-      - id: secrets-gitleaks
-        name: Secrets (Gitleaks)
-        entry: python3 scripts/check_secrets.py --staged --timeout 90
+      - id: secrets
+        name: Secrets (gitleaks)
+        entry: python3 scripts/check_secrets.py --staged
         language: system
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
 
-      # ── Frontend checks ────────────────────────────────────────────
-
-      # Biome lint + format — mutating hook that writes safe frontend fixes
-      - id: biome-frontend
-        name: Biome (Frontend)
-        entry: bash -c 'cd packages/web && npx biome check --write "${@/#packages\/web\//}"' --
+      - id: pyright-full
+        name: Pyright (whole project)
+        entry: uv run pyright
         language: system
-        types_or: [ts, tsx]
-        files: ^packages/web/
-
-      # data-testid / aria-label marker gate — E2E test stability (mirrors CI frontend job)
-      - id: check-testid
-        name: Component Markers (data-testid)
-        entry: bash -c 'cd packages/web && npx tsx scripts/check-testid.ts --strict --fail --ratchet-baseline scripts/testid_baselines.json' --
-        language: system
-        types_or: [ts, tsx]
-        files: ^packages/web/
-        pass_filenames: false
-        stages: [pre-commit]
-
-      # VRT Mock Contract — ADR-059 BINDING enforcement (mirrors CI frontend job).
-      # Ensures every VRT spec has catch-all route + expect.poll guard + timezoneId.
-      # Scoped to spec files only — cheap, runs only when a VRT spec changes.
-      - id: check-vrt-mock-contract
-        name: VRT Mock Contract (ADR-059)
-        entry: bash -c 'cd packages/web && npx tsx scripts/check-vrt-mock-contract.ts' --
-        language: system
-        types_or: [ts, tsx]
-        files: ^packages/web/tests/screenshots/.*\.spec\.ts$
-        pass_filenames: false
-        stages: [pre-commit]
-
-      # i18n validation — catches hardcoded user-facing strings
-      - id: validate-i18n
-        name: i18n Validation
-        entry: bash -c 'npx tsx scripts/validate-i18n.ts "$@"' --
-        language: system
-        types_or: [tsx, python, json]
-        files: ^(packages/web/.*\.tsx|apps/api/.*\.py|packages/i18n/messages/.*\.json)
-
-      # TypeScript type check — PUSH-TIERED (throughput T8): `tsc --noEmit` checks
-      # the whole packages/web project on every run, so at commit time a one-file
-      # change paid for a whole-project typecheck. CI remains the authority: the
-      # frontend job runs the project's TypeScript step on every push/PR. The
-      # commit-time Biome check is the `biome-frontend` hook; `just verify-slice`
-      # is the manual, path-scoped recipe that runs Biome for named web paths.
-      - id: typecheck-frontend
-        name: TypeScript Check (Frontend)
-        entry: bash -c 'cd packages/web && npx tsc --noEmit'
-        language: system
-        types: [tsx]
         pass_filenames: false
         always_run: true
         stages: [pre-push]
 
-  # Standard hooks for file hygiene
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-toml
-      - id: check-json
-      - id: check-merge-conflict
-      - id: check-added-large-files
-        args: ["--maxkb=1000"]
-      # - id: no-commit-to-branch
-      #   args: ["--branch", "main"]
-
-  # Conventional commits
-  - repo: local
-    hooks:
-      - id: conventional-commits
-        name: Conventional Commits
-        entry: uv run python scripts/check_commit_message.py
+      - id: pytest
+        name: Tests
+        entry: uv run pytest app -q
         language: system
-        stages: [commit-msg]
-        # git hands the hook the message file as argv[1]; the checker prefers it
-        # over stdin and strips its `#` comment lines (see read_message()).
-        pass_filenames: true
-
-ci:
-  # pyright + pyrefly run as full checks in CI (quality job), not per-file
-  # in CI (pre-commit.ci)
-  skip: [pyright, pyrefly]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

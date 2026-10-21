@@ -8,9 +8,8 @@ Create Date: 2026-10-21
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
-from pgvector.sqlalchemy import Vector
-
 from alembic import op
+from pgvector.sqlalchemy import Vector
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

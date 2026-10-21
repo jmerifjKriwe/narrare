@@ -4,8 +4,9 @@ Local-first, AI-assisted creative writing tool. Python 3.14 · FastAPI · SQLAlc
 async · PostgreSQL + pgvector · Next.js · TipTap · Tailwind.
 
 The v2 architecture spec is the single authority for structure and boundaries:
-`docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`. The old app
-under `apps/` and `packages/` is a porting reference; it is not extended.
+`docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`. The old app is
+gone; git history is its archive. `docs/` keeps the design record, not a second set of
+rules.
 
 ## Rules
 
@@ -27,8 +28,7 @@ under `apps/` and `packages/` is a porting reference; it is not extended.
 `just check` (fast) · `just test-file <path>` (inner loop) · `just verify` (full gate) ·
 the capability's E2E. A gate counts only when its output was read.
 
-Review and report thresholds are normative in
-`docs/development/quality-gates.md` §Review & report policy.
+`just --list` is the whole command surface: 22 recipes, no hidden gates.
 
 ## Agents
 

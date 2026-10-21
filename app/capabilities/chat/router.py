@@ -5,16 +5,17 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 from uuid import UUID
 
-from app.capabilities.chat.schemas import ChatRequest  # noqa: TC002
+from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.capabilities.chat.schemas import ChatRequest  # noqa: RUF100, TC002
 from app.capabilities.chat.service import ChatService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm import TextProvider, get_provider
-from app.kernel.retrieval import Passage  # noqa: TC002
-from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.kernel.retrieval import Passage  # noqa: RUF100, TC002
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 

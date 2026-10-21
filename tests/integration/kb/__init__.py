@@ -1,1 +1,0 @@
-"""KB integration tests."""

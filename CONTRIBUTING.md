@@ -88,15 +88,11 @@ Beispiel-Keys.
 2. Fill in the PR template (see `.github/PULL_REQUEST_TEMPLATE/`). For
    AI-powered UI changes, complete the **UX Review Checklist** (`ux_review.md`).
 3. **PR checklist:**
-   - [ ] `just check` passes (architecture + lint + typecheck + security)
-   - [ ] `just check-frontend` passes (if frontend touched)
-   - [ ] Tests pass (`just test` and/or `just test-frontend`)
-   - [ ] No `--no-verify` was used for any commit
-   - [ ] `feat`/`fix` PR: a `User-visible:` line in the PR body (CI-gated)
-   - [ ] Architecture checks are green (CI job "Architecture Constraints")
-   - [ ] Neue `packages/web/lib/**`-Dateien haben Unit-Tests (CI-Floor 80% branches — `pnpm test:coverage`)
-   - [ ] Neue/Geänderte VRT-Specs folgen dem Mock-Contract (ADR-059 BINDING): `just vrt` lokal grün
-4. CI runs the full pipeline on every PR — all applicable jobs must be green.
+   - [ ] `just check` passes (lint + types)
+   - [ ] Tests pass (`just test`, `just test-frontend`, and the capability E2E)
+   - [ ] Conventional commit, and a `User-visible:` line for `feat` and `fix`
+   - [ ] No bypass of the hooks was used for any commit
+4. CI runs the pipeline on every PR: lint and types, tests, E2E, build, coverage.
    There is no bypass.
 5. Address review feedback with new commits; the merge will squash them.
 

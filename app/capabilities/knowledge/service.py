@@ -3,12 +3,13 @@
 from collections.abc import Sequence  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
+
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.repository import ChunkRepository, DocumentRepository
-from app.kernel.contracts.models import Document  # noqa: TC002
-from app.kernel.embeddings import EmbeddingProvider  # noqa: TC002
+from app.kernel.contracts.models import Document  # noqa: RUF100, TC001, TC002
+from app.kernel.embeddings import EmbeddingProvider  # noqa: RUF100, TC001, TC002
 from app.kernel.retrieval import Passage, PassageRepository
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 
 class EmptyDocumentError(Exception):

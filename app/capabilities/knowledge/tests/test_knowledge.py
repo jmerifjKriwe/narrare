@@ -3,13 +3,14 @@
 from uuid import UUID
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text as sql
+
 from app.api.main import app
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.db.session import Session
 from app.kernel.embeddings import FakeEmbeddingProvider
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text as sql
 
 pytestmark = pytest.mark.timeout(60)
 

@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.capabilities.setup.schemas import SetupRequest, SetupResult, SetupStatus
 from app.capabilities.setup.service import AlreadySetUpError, SetupService
 from app.kernel.db.session import get_session
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/setup", tags=["setup"])
 

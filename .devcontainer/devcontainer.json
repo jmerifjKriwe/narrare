@@ -30,9 +30,7 @@
         "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
         "python.analysis.typeCheckingMode": "strict",
         "python.analysis.extraPaths": [
-          "/workspace/packages/core",
-          "/workspace/packages/i18n",
-          "/workspace/apps/api"
+          "/workspace"
         ],
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
@@ -62,11 +60,11 @@
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
 
-  "forwardPorts": [3000, 8000, 5432, 6379],
+  "forwardPorts": [3100, 8000, 5432, 5433],
   "portsAttributes": {
-    "3000": { "label": "Frontend (Next.js)", "onAutoForward": "notify" },
+    "3100": { "label": "Web (Next.js)", "onAutoForward": "notify" },
     "8000": { "label": "API (FastAPI)", "onAutoForward": "notify" },
-    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
-    "6379": { "label": "Redis", "onAutoForward": "silent" }
+    "5432": { "label": "PostgreSQL (dev)", "onAutoForward": "silent" },
+    "5433": { "label": "PostgreSQL (tests)", "onAutoForward": "silent" }
   }
 }
