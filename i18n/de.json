@@ -2,5 +2,12 @@
   "app.title": "Narrare",
   "novels.heading": "Romane",
   "novels.titleLabel": "Titel",
-  "novels.create": "Anlegen"
+  "novels.create": "Anlegen",
+  "chapters.heading": "Kapitel",
+  "chapters.new": "Neues Kapitel",
+  "chapters.empty": "Noch kein Kapitel",
+  "save.saving": "Speichert…",
+  "save.saved": "Gespeichert",
+  "nav.back": "Alle Romane",
+  "chapters.defaultTitle": "Kapitel {n}"
 }

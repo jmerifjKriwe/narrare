@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { t } from "../lib/i18n";
@@ -43,7 +44,9 @@ export default function NovelsPage() {
       </form>
       <ul>
         {novels.map((novel) => (
-          <li key={novel.id}>{novel.title}</li>
+          <li key={novel.id}>
+            <Link href={`/novels/${novel.id}`}>{novel.title}</Link>
+          </li>
         ))}
       </ul>
     </main>

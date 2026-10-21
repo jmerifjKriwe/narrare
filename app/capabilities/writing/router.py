@@ -35,6 +35,15 @@ async def list_novels(service: ServiceDep) -> list[NovelRead]:
     return [NovelRead.model_validate(novel) for novel in await service.list_novels()]
 
 
+@router.get("/novels/{novel_id}", response_model=NovelRead)
+async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
+    try:
+        novel = await service.get_novel(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return NovelRead.model_validate(novel)
+
+
 @router.post("/novels", response_model=NovelRead, status_code=201)
 async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
     return NovelRead.model_validate(await service.create_novel(payload.title))

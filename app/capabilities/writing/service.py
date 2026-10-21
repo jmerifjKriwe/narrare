@@ -29,6 +29,12 @@ class WritingService:
     async def list_novels(self) -> Sequence[Novel]:
         return await self.novels.list()
 
+    async def get_novel(self, novel_id: UUID) -> Novel:
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        return novel
+
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         if await self.novels.get(novel_id) is None:
             raise NotFoundError

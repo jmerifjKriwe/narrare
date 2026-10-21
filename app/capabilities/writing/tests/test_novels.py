@@ -39,3 +39,30 @@ async def test_another_users_novel_is_not_listed() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         listed = await client.get("/api/writing/novels")
         assert listed.json() == []
+
+
+async def test_get_novel_returns_the_novel() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
+        novel_id = created.json()["id"]
+
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.status_code == 200
+        assert fetched.json()["title"] == "Der Nebel"
+
+
+async def test_another_users_novel_is_not_found() -> None:
+    novel_id = uuid4()
+    async with Session() as session:
+        await session.execute(
+            text(
+                "INSERT INTO novels (id, user_id, title, created_at) "
+                "VALUES (:id, :user_id, :title, now())"
+            ),
+            {"id": novel_id, "user_id": OTHER_USER, "title": "Fremd"},
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.status_code == 404

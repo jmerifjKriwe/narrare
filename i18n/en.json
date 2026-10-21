@@ -2,5 +2,12 @@
   "app.title": "Narrare",
   "novels.heading": "Novels",
   "novels.titleLabel": "Title",
-  "novels.create": "Create"
+  "novels.create": "Create",
+  "chapters.heading": "Chapters",
+  "chapters.new": "New chapter",
+  "chapters.empty": "No chapters yet",
+  "save.saving": "Saving…",
+  "save.saved": "Saved",
+  "nav.back": "All novels",
+  "chapters.defaultTitle": "Chapter {n}"
 }
