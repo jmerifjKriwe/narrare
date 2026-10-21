@@ -71,6 +71,13 @@ and the real Postgres. The only fake is the provider at its boundary, and it is 
 catalog entry chosen by configuration (`NARRE_LLM_PROVIDER`, `NARRE_EMBEDDING_PROVIDER`),
 not a test branch.
 
+`fake` is the default and needs no key. Setting `NARRE_LLM_PROVIDER=openai-compatible`
+switches generations to a real model through one fetch strategy for the chat
+completions SSE shape — OpenAI, OpenRouter, DeepSeek, Groq and local servers (Ollama,
+llama.cpp, vLLM) all speak it, so `NARRE_LLM_BASE_URL`, `NARRE_LLM_MODEL` and
+`NARRE_LLM_API_KEY` are all that change. Startup logs which providers serve and refuses
+to start on a half-configured one.
+
 The integration suites share `narrare_v2_test`; each E2E capability owns a database and
 a module-scoped stack, so `just test-e2e` runs suites one after another on the same
 ports.

@@ -11,7 +11,6 @@ import hashlib
 import math
 import re
 from collections.abc import Sequence  # noqa: TC003
-from logging import getLogger
 from os import environ
 from typing import Protocol
 
@@ -55,27 +54,6 @@ class FakeEmbeddingProvider:
 
 
 EMBEDDING_PROVIDERS = {"fake": FakeEmbeddingProvider}
-
-
-def validate_configuration() -> None:
-    """One observable line about the providers, and a hard stop on drift.
-
-    Called once at startup. A silent fallback to the fake providers would be
-    indistinguishable from a configured one, and a dimension change without a
-    migration would otherwise fail at the first insert, far from its cause.
-    """
-    dimensions = int(environ.get("NARRE_EMBEDDING_DIMENSIONS", str(SCHEMA_DIMENSIONS)))
-    if dimensions != SCHEMA_DIMENSIONS:
-        raise RuntimeError(
-            f"NARRE_EMBEDDING_DIMENSIONS={dimensions} does not match the applied schema"
-            f" ({SCHEMA_DIMENSIONS}); changing the width needs a migration"
-        )
-    getLogger("narrare").info(
-        "providers llm=%s embedding=%s dimensions=%d",
-        environ.get("NARRE_LLM_PROVIDER", "fake"),
-        environ.get("NARRE_EMBEDDING_PROVIDER", "fake"),
-        dimensions,
-    )
 
 
 def get_embedding_provider() -> EmbeddingProvider:
