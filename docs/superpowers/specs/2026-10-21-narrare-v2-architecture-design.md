@@ -1,0 +1,382 @@
+# Narrare v2 — Architecture Design
+
+> **Status:** Proposed — awaiting product-owner review, 2026-10-21
+> **Type:** Design spec (decisions and consequences, not a rulebook)
+> **Supersedes in scope:** the governance layer described in §2; ADR-025, ADR-037,
+> ADR-038, ADR-045, ADR-097, ADR-098 lose their subject matter (see §11)
+> **Implementation plan:** separate artefact, not this document
+> **Baseline measured:** 2026-10-21, this worktree, re-counted from disk
+
+---
+
+## 1. Status, context, question
+
+Narrare is not in production and has no real users. That fact removes every
+constraint that normally favours incremental change: no compatibility surface, no
+data to migrate, no dual maintenance, no strangler pattern. The new architecture is
+built beside the old code, capabilities are ported one at a time, and the old
+application is deleted at the end (§11, D16).
+
+The question this document answers:
+
+> Why is every feature expensive, and what removes that cost?
+
+The measured answer has four parts, and each has a decision attached:
+
+1. **Declaration spread.** One fact is written in many places by hand — providers
+   were declared 15 times, one intent in 8 surfaces. → *Facts live in the capability
+   folder, views are generated* (D2, §3, §4).
+2. **Governance mass.** 100 ADRs, 43 hooks, 33 check scripts, 95 recipes, 17 CI
+   jobs — a tax paid on every change, mostly catching what a compiler catches
+   better. → *Governance budget with a proposal-only rule* (D8, §8).
+3. **Scope.** Fifteen capability areas, half of them speculative. → *Four core
+   capabilities now; everything else re-decided on merit later* (D4, §11).
+4. **Verification that does not prove the product works.** → *A green E2E through
+   the real UI is the definition of done* (D7, §7).
+
+The document records decisions already taken after a long design dialogue. It does
+not re-open them, and it is not a rulebook: the standing rules of the repository are
+a separate, much smaller artefact (§8).
+
+---
+
+## 2. Measured baseline
+
+All numbers below were counted in this worktree on 2026-10-21 unless marked
+otherwise. Two numbers from the design dialogue had moved and are corrected here.
+
+| Surface | Measured now | Dialogue value | Target |
+|---|---|---|---|
+| ADRs (`docs/architecture/decisions/*.md`, excl. index/template) | **100** | 100 | ≤ 15 |
+| Architecture rules (`docs/_shared/CONSTRAINTS.md`) | **23 numbered, 27 IDs, 1,389 lines** | 23 / 1,389 | ≤ 5 |
+| Pre-commit hook ids in `.pre-commit-config.yaml` | **43** | 43 | ≤ 10 (6 planned) |
+| `scripts/check_*.py` | **33** | 33 | ≤ 3 |
+| Source LOC (`.py/.ts/.tsx` under `apps/` + `packages/`, incl. tests) | **321,912** | 318k | — (not a target) |
+| Documentation | **406 files / 160,689 lines** | 406 / 161k | editorial only |
+| Intent declaration surfaces | **8** — cited from the 2026-10-19 throughput spec, *not re-counted* | 8 | 0 hand-edited |
+| Provider declaration surfaces | **1 hand-edited** (`llm/_providers/catalog.yaml`) + 2 generated; was 15 | 15 → 1 | 1 catalog entry |
+| `justfile` public recipes | **95** | 95 | 22 |
+| CI jobs | **17 across 5 workflows (13 in `ci.yml`)** | 15 | ≤ 5 |
+| Hand-written TS API type modules (`packages/web/lib/api/*.ts`) | **64** | — | 0 |
+
+Corrections and notes:
+
+- **ADRs: 100, matching the dialogue.** The dialogue value was right; a broader count
+  that included INDEX/TEMPLATE produced the wrong 102.
+- **CI jobs: 17, not 15.** `ci.yml` holds 13; `eval-nightly`, `mutation-testing-monthly`,
+  `release-please`, `vrt-update-baselines` hold 4 more.
+- **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
+  `packages/`, tests included. The old value is stale, not wrong in method.
+- **Provider surfaces: the 15 → 1 consolidation is already banked** (ADR-099). One
+  hand-edited catalog feeds two generated artefacts (Python, TypeScript). The design
+  therefore treats provider declaration as solved and only generalises the pattern.
+- **Intent surfaces: 8 is inherited, not verified today.** Marked *unverified*; the
+  design removes the surfaces entirely, so the exact count does not change a decision.
+
+The point of the table is not the absolute size. It is the ratio: roughly 1,600 lines
+of architecture rules and 33 check scripts to protect a 322k-line codebase, while
+the failures that actually reached users were integration failures the checks did not
+model.
+
+---
+
+## 3. Target structure
+
+```
+app/
+  kernel/
+    db/          session factory, scoped repository base, Alembic tree
+    auth/        auth boundary interface + fixed local-user implementation
+    jobs/        jobs table + the single worker
+    contracts/   shared domain types: Novel, Chapter, Scene, User
+    events/      post-response recording (usage, statistics, memory writes)
+    llm/         provider catalog, fetch strategies, fake provider
+    prompts/     composition primitives shared by capabilities
+  capabilities/
+    writing/          capability.yaml, prompt, api/service/repository, tests, web/, e2e/
+    knowledge-base/   same shape
+    chat/             same shape
+    setup/            same shape
+  api/           FastAPI app: mounts capability routers, emits OpenAPI
+web/             Next.js shell: routes, layout, generated client
+i18n/            message catalogs (en, de, fr); user docs are generated from here
+generated/       capability registry (Python + TypeScript), docs index, TS client
+docs/
+  adr/           ≤ 15 decisions
+  user/          generated user documentation (en, de, fr)
+scripts/         generate · migrate · dev  (three, not 84)
+```
+
+The Next.js shell in `web/` imports each capability's `web/` components through the
+generated route table, so the frontend of a capability still lives in that capability's
+folder.
+
+Two rules make this tree do work. **Dependencies point one way**: `api/ → capabilities/
+→ kernel/`. A capability never imports another capability. **There is no central
+registry**: the four capability folders and the files under `generated/` are the only
+places a capability is named.
+
+`kernel/` holds what two or more capabilities need. Today that is a short list —
+novel, chapter, scene, user, sessions, jobs, events, provider routing, prompt
+composition. Anything else belongs in the capability that uses it.
+
+---
+
+## 4. The capability contract
+
+A capability is one folder. Nothing outside that folder is edited to add it.
+
+A folder contains: its `capability.yaml` facts file; the prompt text it owns; a
+router that delegates immediately, a service that holds the logic, and a repository
+that owns its tables; its schemas; its tests; and an `e2e/` spec that drives the real
+UI (§7). Its frontend lives in a subfolder of the same capability folder and is
+composed into the Next.js app by the generated route table.
+
+`capability.yaml` holds facts only: id, user-visible label key, category, mode,
+budget profile, locales, and the provider/model requirement. It has no behaviour, no
+schema, no prompt body. Its fields exist because at least two generated views read
+them; a field nobody reads is deleted.
+
+The generator aggregates all capability files into views that are never hand-edited:
+the Python registry and types, the TypeScript types, the docs index, and any
+provider-catalog-derived artefacts a capability needs. Generated files carry a
+"DO NOT EDIT" header and a named source. Where a view is simply derivable from
+OpenAPI, there is no capability field for it at all.
+
+New capability: one folder, its facts file, prompt, code, tests, `e2e/`. New
+provider: one catalog entry, plus one fetch strategy only if it is a new API shape.
+New capability *field*: a change to the generator and every reading view — which is
+why fields are added rarely and removed readily.
+
+---
+
+## 5. Knowledge model
+
+Four kinds of knowledge, each in exactly one place, each written at the moment it
+changes.
+
+**Product text** — labels, tooltips, hints, errors — lives in the i18n catalog and is
+rendered by the UI. A missing key is a type or build error, not the job of a check
+script, so the locale-sync checker has nothing left to verify.
+
+**User documentation** is generated from that catalog for short texts, with editorial
+long-form kept in one location. There is no per-feature mandatory document and no
+status history.
+
+**Developer knowledge** is colocated with the code it describes, so it appears in the
+same diff as the change it explains. A note about the job worker sits in `kernel/jobs/`.
+Architecture prose that spans modules is the only thing that lives centrally.
+
+**Decisions** are ADRs, and only for irreversible or expensive-to-reverse choices.
+Target ≤ 15, not 100. Reversible choices are made and recorded in the diff.
+
+Languages: source code and documentation in English; user-facing text and user
+documentation in **en, de, fr**.
+
+Consequence: reviewing a change means reading its diff, not cross-checking it against
+four documents that were updated separately.
+
+---
+
+## 6. Gates and their justification
+
+The governing principle: **a gate survives only if the compiler cannot catch the
+failure and the failure has actually happened.** Everything else is deleted, and new
+gates fall under §8.
+
+**Local — pre-commit, target under 10 s, four hooks:** format, lint, typecheck of
+changed files, secrets. Format and lint work on changed files only; the typecheck is
+scoped to changed paths.
+
+**Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
+
+**CI — at most five jobs:** lint + types; tests; e2e for affected capabilities; build;
+coverage badge. Runs on PR, plus the nightly schedule on the e2e job and on release.
+
+**`justfile` keeps 22 public recipes:**
+
+```text
+dev, dev-api, dev-web, dev-services, dev-services-stop, dev-setup,
+check, verify, lint, typecheck, format,
+test, test-file, test-e2e, test-frontend,
+build, db-migrate, db-revision, db-reset, db-shell,
+generate, new-capability
+```
+
+`check` is the fast gate on changed files; `verify` is the full gate and composes it.
+`test-file` runs one file, because that is the loop a developer lives in.
+
+Removed: eval-nightly, mutation-testing, warnings-summary, budget-report, the
+architecture CI job, and the changes-detection maze. The second typechecker (pyrefly)
+is removed; one typechecker, one answer. VRT and golden-baseline machinery is removed —
+visual similarity to a baseline nobody reviews does not catch a product defect.
+Kept: release-please, CHANGELOG, coverage badge.
+
+Consequence: a developer can run the full local gate in under a minute and a half, and
+every remaining gate names a failure that has occurred.
+
+---
+
+## 7. E2E defines "done"
+
+A capability is done when its `e2e/` spec drives the **real UI** against the **real
+backend and real database** and is green. Unit and integration tests support that
+claim; they never replace it.
+
+**The only fake sits at the outermost boundary: the LLM provider** — and any other
+external, paid or non-deterministic service. The fake provider is a first-class
+provider-catalog entry with the same interface as the real ones, so routing, prompt
+composition, streaming and persistence all execute the production code path. Choosing
+it is a configuration value, not a test branch.
+
+**No internal mocks.** Services, repositories, prompt builders and routers are never
+mocked. A test that needs a fake repository is testing the wrong layer.
+
+Preconditions — a user, a novel, a chapter — may be prepared directly. The tested
+flow itself runs through the UI: click, type, stream, observe the result that was
+persisted.
+
+Scheduling: affected capabilities on PR, all of them nightly and at merge. A real LLM
+provider is never used at any test level. Anything a test would pay for is faked at
+the boundary.
+
+Consequence: an E2E failure means the product is broken, not that a schema changed.
+The suite is the only place where "works" has a definition.
+
+---
+
+## 8. Governance budget
+
+Binding, quoted verbatim:
+
+> **Governance budget.** New rules, registries, check scripts, hooks, required fields or mandatory documents are forbidden by default. An agent may only *propose* them, never implement them, and only with three statements: (1) which concrete failure it prevents, (2) what effort it creates for **every** future change, (3) which cheaper alternative exists (types, generation, colocation). Implementation only after explicit approval by the product owner. Existing rules are judged by the same standard and deleted when they serve no purpose.
+
+Enforcement is social, not technical. An agent that believes a new gate is needed
+stops and reports `NEEDS-APPROVAL` with the three statements, and builds nothing.
+There is no checker that enforces the governance budget — that would be the failure
+mode it prevents.
+
+End-state targets: **rules ≤ 5, ADRs ≤ 15, hooks ≤ 10, check scripts ≤ 3** (only what
+the compiler cannot do: secrets and licences), and **no mandatory per-feature
+documents**.
+
+The 16 decisions in this document are one-time architecture decisions, not standing
+rules. The standing rules are the ≤ 5 that survive in `docs/_shared/CONSTRAINTS.md`.
+
+---
+
+## 9. Tenancy, auth, jobs, database
+
+**Tenancy seam now, auth mechanism later (D9).** There is a 75 % likelihood that
+Narrare will be hosted, so every user-owned row carries `user_id` from day one and all
+data access goes through one scoped repository base. The auth boundary exists as a
+single kernel interface with a fixed local-user implementation behind it. Login,
+password reset, roles, invitations and hosting operations are deferred until the
+operating model is decided.
+
+The cost asymmetry is the whole argument: **the tenancy seam is cheap now and
+expensive to retrofit across fifteen capabilities later; the auth mechanism is
+additive whenever it arrives.** Adding `user_id` to a schema under construction costs
+one column. Adding it later costs a migration, a repository rewrite and a query audit
+in every capability.
+
+**Jobs in Postgres (D10).** A `jobs` table with status, user, progress, error and retry
+count; one worker claiming rows with `FOR UPDATE SKIP LOCKED`. No broker, no Redis, no
+RabbitMQ. Jobs survive restarts, and the worker hides behind an interface so it can be
+swapped if throughput ever demands it.
+
+**Database (D11).** One baseline schema, Alembic from day one. Every schema change is
+a migration even though the database may be rebuilt at any time; the migration is the
+record of the change, not archaeology to be replayed.
+
+**Side effects never in the request path (D14).** Usage, statistics and memory writes
+are recorded after the response, through the jobs table where durability matters. The
+measured example: a per-chapter statistics recorder added roughly two seconds to every
+create in the current code. The response returns when the user's data is safe, not
+when the bookkeeping is.
+
+---
+
+## 10. Generated client and cross-capability rule
+
+**The TypeScript API client and its types are generated from the OpenAPI schema
+(D12).** There are no hand-maintained `lib/api/*.ts` type declarations — 64 such
+modules exist today, and hand-editing them is how the frontend and backend drifted.
+
+**Capabilities do not import each other (D13).** Anything two capabilities need — novel,
+chapter, scene, user — lives in the kernel and exists once. A capability folder is
+self-contained: it can be read, changed, tested and deleted without opening another
+capability.
+
+Consequence: the import graph stays a tree, the shared domain vocabulary is small and
+explicit, and deleting a capability in a later round removes exactly one folder.
+
+---
+
+## 11. Deletion list and cutover
+
+**Core scope for the new build (D4):** writing (novel, chapter, editor), knowledge
+base, chat, setup.
+
+**Not ported, and why.** Each of these is a standing obligation whose value has not
+been demonstrated on a working kernel:
+
+| Area | Why it is not ported now |
+|---|---|
+| analytics, statistics, budgets | reporting on writing that does not yet exist |
+| series, volumes | structural complexity before the single-novel path is proven |
+| notes, wiki, evidence | knowledge surfaces the KB may subsume |
+| consistency checking | an LLM feature whose product value is unmeasured |
+| adaptive, coaching | a second behaviour on top of an unproven first |
+| events, metrics | observability for a system with no users |
+| templates, prompt customisation | configuration before the prompts are stable |
+| importing/export | data movement for data that does not exist |
+| advanced auth | deferred with the hosting model (§9) |
+
+Each returns only after the kernel works, one area at a time, on the criterion: **does
+this feature earn the effort it permanently creates?** That question is asked in the
+same form for every candidate, and a "later" answer is a decision, not a backlog item.
+
+Also deleted outright, not deferred: the second typechecker, VRT/golden machinery,
+and every gate listed in §6. Tests are not ported (D15) — each capability brings its
+own, and only behaviour is tested, not the existence of wiring. No coverage threshold.
+
+**Cutover (D16).** The old application stays runnable until the last core capability is
+ported, then is deleted in one change. Work happens on a dedicated branch and worktree;
+git history is the archive of the old system, so no compatibility shim, no feature
+flag, no dual-write and no legacy adapter is written at any point.
+
+---
+
+## 12. Success criteria
+
+The design succeeds when all of these are true, and they are checked by doing the work,
+not by a document:
+
+1. **Adding a capability touches only its folder** plus generated output. A reviewer
+   can confirm this from the diff alone.
+2. **Adding a provider is one catalog entry** — and a fetch strategy only for a new API
+   shape.
+3. **A capability is done only with a green E2E** through the real UI, real backend and
+   real database, with the fake provider at the boundary.
+4. **The §2 numbers reach their targets**: ADRs ≤ 15, rules ≤ 5, hooks ≤ 10, check
+   scripts ≤ 3, recipes 22, CI jobs ≤ 5, zero hand-written API type modules.
+5. **The local gate runs in under 10 s and under 60 s**, and a capability port is a
+   folder plus a test, not a tour of the repository.
+
+---
+
+## 13. Open decisions
+
+| Decision | Trigger that resolves it |
+|---|---|
+| Hosting model: self-hosted single-tenant vs multi-tenant service | early in the build, before the auth UI is designed; the tenancy seam (§9) is already in place either way |
+| Auth mechanism (sessions, OIDC, magic link) | after the hosting model — it follows from single- vs multi-tenant, not the reverse |
+| pydantic-ai: keep or replace | prove-it list (D3): name the effort it saves against a thin client over the provider interfaces; outcome recorded in the kernel PR that first needs agent orchestration |
+| mem0: keep or replace | prove-it test during the knowledge-base port; if pgvector plus a small retrieval layer covers the same ground, mem0 goes |
+| pgvector, Alembic, TanStack Query | same prove-it test, at first use; all three are expected to pass, none is exempt |
+| Capability inventory for the port and its order | the implementation plan, separate artefact — deliberately not fixed here |
+
+The prove-it test is a written sentence in the PR that introduces the dependency, not
+a document: *what it saves, what it costs, what smaller thing would replace it.* A
+dependency that cannot answer is removed.
