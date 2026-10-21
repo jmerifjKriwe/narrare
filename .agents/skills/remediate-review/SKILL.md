@@ -3,6 +3,8 @@ name: remediate-review
 description: End-to-end remediation of a single audit review file (technical or content) — analyze findings (including prose without an existing task), triage which gaps genuinely warrant a task, create tasks for those (with confirmation), implement each task, commit with meaningful conventional-commit messages, mark resolved with Implementation+Enforcement evidence, open a PR, and drive CI green. Use when the user says "analysiere/bearbeite review-NN", "audit-datei durchgehen", "AUFG-Aufgaben umsetzen", "Lücken im Review finden", or references a file under _audit/results/technical-review/ or _audit/results/content-review/.
 argument-hint: "[path to review file under _audit/results/]"
 user-invocable: true
+metadata:
+  opencode/autoinvoke: false
 ---
 
 The user wants to remediate a review file end-to-end. Target: `$ARGUMENTS`

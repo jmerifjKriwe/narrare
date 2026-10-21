@@ -1,115 +1,51 @@
-# Narrare — Open Code Instructions
+# Narrare
 
-> **SSOT:** Architectural rules live in `docs/_shared/CONSTRAINTS.md` (23 RULE-XX).
-> If anything below contradicts CONSTRAINTS.md, CONSTRAINTS wins. Load it on demand.
+Local-first, AI-assisted creative writing tool. Python 3.14 · FastAPI · SQLAlchemy
+async · PostgreSQL + pgvector · Next.js · TipTap · Tailwind.
 
-## Project
+## Authority
 
-Narrare is an AI-assisted, local-first creative writing tool. Stack:
-Python 3.14 · FastAPI · SQLAlchemy 2.0 async · pydantic-ai · PostgreSQL+pgvector ·
-mem0 OSS · Next.js 16 · TipTap v3 · TypeScript · Tailwind v4.
-Background jobs run in-process (asyncio), no Redis/TaskIQ (see @docs/_shared/TECH_STACK.md).
+The v2 architecture spec is the single authority for structure and boundaries:
+`docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`.
+The old application under `apps/` and `packages/` is a porting reference; it is not
+extended.
 
-```
-apps/api/        FastAPI Backend        packages/core/   Domain logic (LLM, Prompts, KB)
-packages/web/    Next.js Frontend       packages/i18n/    Translations
-docs/            Documentation (SSOT)   scripts/          Dev tooling
-```
+## Boundaries
 
-## Tools: Code Graph & Memory
+- One capability is one folder under `app/capabilities/<name>/`. A capability never
+  imports another capability; shared domain lives in `app/kernel/`.
+- Facts live in the capability's `capability.yaml`; every other view of them is
+  generated and never hand-edited.
+- A capability is done only with a green E2E that drives the real UI, the real backend
+  and the real database. The only permitted fake is the LLM provider at its boundary.
+- No side effect in the request path beyond the request's own transaction.
+- Every user-owned row carries `user_id`; data access goes through the scoped
+  repository base.
+- Never add a rule, registry, check script, hook, required field or mandatory document.
+  Report `NEEDS-APPROVAL` with (1) the failure it prevents, (2) the effort it creates
+  per change, (3) the cheaper alternative.
 
-**graphify** (code knowledge graph) — use it BEFORE Read/Glob/Grep for code questions:
-- Find code / understand relationships → `graphify query "<question>"` (MCP tool `query_graph` or CLI)
-- Path between two symbols → `graphify path A B` / MCP `shortest_path`
-- Explain a symbol → `graphify explain "<name>"` / MCP `get_node` + `get_neighbors`
-- Broad architecture overview → `graphify-out/GRAPH_REPORT.md` (if present)
-- Graph stale? → `/graph-update` (incremental rebuild, local, no API key for code)
+## Language
 
-**opencode-mem** (cross-session memory) — project decisions, bug patterns, and preferences
-relevant across sessions:
-- Store/search immediately → `memory` tool (`mode: add|search|profile|list`)
-- Auto-capture runs in the background (no manual call needed)
-- Web UI: `http://127.0.0.1:4747`
+Source code, comments, tests and developer documentation in English. User-visible
+text in en, de and fr through the i18n catalog; a missing key is a build error, not a
+review comment.
 
-Read/Glob/Grep are allowed for: string literals, non-code files, config values, or when
-the graph does not have the answer. `sed -n` is allowed to read specific lines.
+## Verify
 
-## Hard rules (always)
+`just check` (fast, changed files) · `just test-file <path>` (inner loop) ·
+`just verify` (full gate) · the capability's E2E spec. A gate counts only when its
+output was read.
 
-- **Project language: English.** Write source code, comments, docstrings, tests, `docs/`,
-  and `scripts/` in English — regardless of the language you (the dev) use to talk to your
-  AI. When you encounter German/other formulations, convert them to English on the fly.
-  Exception: i18n message files (`packages/i18n/`). See `@docs/development/coding-standards.md`
-  § Project Language.
-- **RULE-01b** Agents/ModelRegistry; no direct `import openai` outside `core/llm/`,
-  no `pydantic_ai.Agent` outside `core/agents/`.
-- **RULE-02/02a/02b** Prompts only in `core/prompts/`, no f-strings in services.
-- **RULE-03** Contract (Protocol) before implementation.
-- **RULE-04** Modularize instead of compressing (hard limits → new module).
-- **RULE-06** One responsibility per file. Router delegates immediately, no logic in the router.
-- All 23 rules: `@docs/_shared/CONSTRAINTS.md`
+## Agents
 
-## Working principles
+`NarrareBuilder` implements. `NarrareReviewer` independently re-runs the gates on a
+different model family. `NarrareOperator` owns git and GitHub writes exclusively.
+`NarrareArchitect` writes specs and ADRs for irreversible decisions only.
+Implementer and reviewer are never the same model.
 
-1. **Understand before modifying.** Read code / trace the graph before writing.
-2. **Plan non-trivial changes.** Root cause (≥2× "why?"), alternatives, sustainability.
-3. **Follow existing patterns.** New patterns only with justification.
-4. **Verify.** Tests, lint, typecheck, `scripts/check_architecture.py`.
-5. **Review non-trivial changes** and apply the report thresholds: see `docs/development/quality-gates.md` §Review & report policy (normative; numbers are not restated here).
+## Git
 
-### Prohibitions (absolute)
-
-- `git commit --no-verify` / `-n` is FORBIDDEN (unless the user approves explicitly + actively).
-- Quick fixes, workarounds, symptomatic patches. Every change needs root-cause analysis.
-- `git reset --hard`, `git clean -fd`, `git push --force`, `sudo`, `rm -rf /` — blocked in general.
-- Implementation without a prior architecture spec for new modules/boundaries.
-
-### Git & escalation
-
-- Git/gh writes (add, commit, push, tag, rebase, `gh *`) **only via NarrarePlatformSpecialist**.
-- Command blocked? Coordinator routes to Platform (NOT to `General`).
-- `General` is the last-resort escape hatch on `ask` (user approval), not a default path.
-
-## Subagents (via `task`)
-
-| Role | subagent_type | Model |
-|------|---------------|-------|
-| Coordinator (primary) | `NarrareDevCoordinator` | zai-coding-plan/glm-5.3 |
-| Architecture | `NarrareArchitectureSpecialist` | zai-coding-plan/glm-5.3 |
-| Core | `NarrareCoreSpecialist` | zai-coding-plan/glm-5.3 |
-| Backend | `NarrareBackendSpecialist` | zai-coding-plan/glm-5.3-flash |
-| Frontend | `NarrareFrontendSpecialist` | zai-coding-plan/glm-5.3-flash |
-| Platform (Git/CI) | `NarrarePlatformSpecialist` | zai-coding-plan/glm-5.3-flash |
-| Docs | `NarrareDocsSpecialist` | zai-coding-plan/glm-5.3-flash |
-| Reviewer (edit: deny) | `NarrareReviewerSpecialist` | zai-coding-plan/glm-5.3 |
-
-Layer order: Architecture → Core → Backend → Frontend → Platform (Tests/CI) → Docs.
-Each subagent loads its layer standards via the delegation prompt.
-
-## Knowledge (lazy load on demand)
-
-Load these files only when the task needs them — not preemptively:
-
-- Current state: @docs/_shared/CURRENT_STATE.md
-- All architecture rules: @docs/_shared/CONSTRAINTS.md
-- Tech stack: @docs/_shared/TECH_STACK.md
-- Glossary: @docs/_shared/GLOSSARY.md
-- Coding Standards: @docs/development/coding-standards.md
-- Testing Standards: @docs/development/testing-standards.md
-- UI Principles: @docs/development/ui-principles.md
-- Deployment: @docs/development/deployment-guide.md
-- ADR index: @docs/architecture/decisions/INDEX.md
-- Open Questions: @docs/architecture/questions/INDEX.md
-- Feature index: @docs/features/INDEX.md
-- Sub-AGENTS: @apps/api/AGENTS.md · @packages/core/AGENTS.md · @tests/AGENTS.md
-
-## Slash commands
-
-`/check-constraints` `/graph-update` `/debug-issue` `/review-changes` `/refactor-safely`
-`/verify` `/skills-update` (in `.opencode/commands/`).
-
-## Skills
-
-Process skills (TDD, systematic-debugging, verification, …) live in `.opencode/skills/`
-(vendored). Technology skills in `.agents/skills/`. Load them on demand via the `skill`
-tool when the task fits — not preemptively.
+Only `NarrareOperator` stages, commits and pushes. `--no-verify` is forbidden.
+Conventional commits; internal work is `chore(<scope>)`; `feat`/`fix` require a real
+`User-visible:` line that the task provides.

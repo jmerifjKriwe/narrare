@@ -11,6 +11,8 @@ tags:
   - tracking
   - dependencies
   - cli
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # Task Management Skill
