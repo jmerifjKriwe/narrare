@@ -1,6 +1,0 @@
-[
- {
-  "url": "http://localhost:3001/api/v1/novels/ff974a55-4b50-404e-bae7-51849f976a78",
-  "err": "net::ERR_ABORTED"
- }
-]

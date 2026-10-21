@@ -52,8 +52,9 @@ Read the **entire** file: the header blockquote (context, author role, "do not
 reopen these" list), every `## N.` Befunde section, root-cause paragraphs, all
 tables (Checks, Re-Check status, refactoring candidates), the closing summary
 paragraphs (`Gesamtbewertung`, `Zusammenfassung` — these often carry the
-sharpest root-cause language), `## Aufgaben`, and `## Abschluss-Status`. Also
-skim `docs/development/finding-lifecycle.md` for the resolution vocabulary.
+sharpest root-cause language), `## Aufgaben`, and `## Abschluss-Status`. The
+resolution vocabulary of the v1 era is archived in git history
+(`docs/development/finding-lifecycle.md` at `48e7d7d4^`).
 
 Build a task inventory. For every `(?:CR-)?AUFG-NN-MM`, record:
 - the ID, title, and section it lives in;
@@ -235,7 +236,7 @@ For each resolved AUFG, update the review file in its native format:
 - both: the evidence must be **concrete** — file paths that exist on disk, the
   checker name and its PASS result, test counts. No "now works" / "fixed".
 
-**Resolution guardrail (from `docs/development/finding-lifecycle.md`):**
+**Resolution guardrail (v1 vocabulary, archived in git history):**
 `✅ Resolved` requires **Implementation + Enforcement**. These anti-patterns are
 forbidden and must not be claimed as resolved:
 - "ADR proposed → resolved" (an ADR alone caps a finding at `accepted`);

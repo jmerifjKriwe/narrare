@@ -21,9 +21,6 @@ Both commands create your `.env`, install dependencies, start Docker services
 "Reopen in Container" — the container includes Python 3.14, Node.js, uv, just,
 and all extensions pre-configured.
 
-For the full setup walkthrough and troubleshooting, see
-[deployment-guide.md](docs/development/deployment-guide.md).
-
 ## Branch Model
 
 - All work happens on **feature branches** created from `main`.
@@ -51,36 +48,28 @@ chore(deps): bump ruff to 0.15
 The type drives the auto-generated changelog and semantic versioning. `feat`
 and `fix` land in the user-facing changelog and bump the version, so both must
 state what a user can now do: a `User-visible:` line in the commit body,
-validated by the `commit-msg` hook and in CI on the PR title + body. Work no
-user can observe — including internal production code — goes under
-`chore(<scope>): …`. For the full type table, the `User-visible:` rule and the
-scope convention, see
-[coding-standards.md](docs/development/coding-standards.md#git-commit-convention).
+checked in review. Work no user can observe — including internal production
+code — goes under `chore(<scope>): …`. The `User-visible:` rule and the scope
+convention live in [`AGENTS.md`](AGENTS.md).
 
 ## Before You PR
 
-Pre-commit hooks are mandatory and are installed automatically by
-`just dev-setup` / `just dev-setup-min`. They enforce architecture constraints,
-linting, formatting, and commit-message format.
+Git hooks are installed by `just dev-setup`: format, lint, types and secrets on
+every commit; full types and the test suite on every push.
 
-Before opening a PR, run the full check suite locally:
+Before opening a PR, run the full gate locally:
 
 ```bash
-just check           # architecture + lint + typecheck + security
-just check-frontend  # frontend lint + typecheck + test
+just verify          # check, both test suites, the capability E2E, the web build
 ```
 
-Both must pass cleanly.
+It must pass cleanly.
 
-**Was bei jedem Commit läuft:** Neben den Architektur-/Lint-/Format-Checks führt
-jeder Commit zwei Repo-weite Gates aus: (1) **SSOT-Check**
-(`check_current_state_facts.py`) — prüft `CURRENT_STATE.md` auf verbotene
-volatile Count-Claims; (2) **Secret-Scan** (Gitleaks) — scannt das gesamte Repo
-inkl. History auf Secrets. Beide blocken den Commit. Wenn Gitleaks einen
-dokumentierten Example-Key markiert (z. B. `openai_api_key="test-key"` aus
-ADR-071), wird der Key in `.gitleaks.toml` explizit allowlisted — siehe
-`.gitleaks.toml` für die Allowlist-Regel und ADR-071 für die Herkunft des
-Beispiel-Keys.
+**Was bei jedem Commit läuft:** Der Secret-Scan (Gitleaks, `scripts/check_secrets.py`)
+scannt das gesamte Repo inklusive History und blockt den Commit. Einige
+dokumentierte Example-Keys alter v1-Docs (nur noch in der git history vorhanden)
+sind in `.gitleaks.toml` allowlisted; die Allowlist muss bleiben, solange der
+Scan die History sieht.
 
 ## PR Process
 
@@ -104,9 +93,11 @@ constructive in all interactions.
 
 ## Need Help?
 
-- **Project structure & docs:** browse the [`docs/`](docs/) directory —
-  [`docs/_shared/CONSTRAINTS.md`](docs/_shared/CONSTRAINTS.md) for architecture
-  rules, [`docs/development/`](docs/development/) for coding and testing standards.
+- **Project structure & docs:** [`docs/_shared/CONSTRAINTS.md`](docs/_shared/CONSTRAINTS.md)
+  for the standing rules, the
+  [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
+  for structure and boundaries, and [`docs/features/`](docs/features/) for the
+  product history of the v1 era.
 - **AI-assisted development:** [`AGENTS.md`](AGENTS.md) documents the agent
   skills, subagents, and conventions for working with AI coding tools on this
   project.

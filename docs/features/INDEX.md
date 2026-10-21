@@ -1,6 +1,11 @@
 # Feature Registry — Index
 
-> **The canonical list of all Narrare features.**
+> **Historical corpus (v1 era).** These feature records describe the pre-v2
+> application and are kept as product-history reference. Their links to ADRs and
+> process docs point into git history; the current architecture authority is the
+> v2 spec. Nothing here binds the v2 tree.
+>
+> **The canonical list of all v1 Narrare features.**
 > Each feature has its own file in `docs/features/`.
 > This index is the overview — load individual feature files only when needed.
 >

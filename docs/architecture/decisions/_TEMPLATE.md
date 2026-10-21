@@ -82,13 +82,9 @@ What tradeoffs are we consciously accepting?]
 [Anything a developer needs to know to implement this correctly.
 Links to relevant files, patterns, or examples.]
 
-**ADR Implementation Completeness:** An ADR is not implemented until it is
-fully wired, tested, consumed, and documented. Each ADR states its own
-binding completeness checklist in §Implementation Notes and names the
-evidence that cannot be produced locally (typically: a green CI run of the
-gating job) — the flip to "✅ Implemented" happens only after that evidence
-exists. (ADR-098 retired the former pointer to a quality-gates.md checklist;
-that path no longer exists.)
+**ADR status:** ✅ Accepted once the decision is in force; the record is a
+one-time decision, not a standing rule. Evidence belongs in the commit that
+implements the decision, not in the record itself.
 
 ---
 

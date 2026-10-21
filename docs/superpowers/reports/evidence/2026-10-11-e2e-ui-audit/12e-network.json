@@ -1,6 +1,0 @@
-[
- {
-  "url": "http://localhost:3001/api/v1/notes/98c865f4-e77e-4edb-8c5d-55aa980c2077",
-  "err": "net::ERR_ABORTED"
- }
-]
