@@ -264,8 +264,8 @@ Same file, same machine, `-n 4`; only the budget changed:
 
 | `--timeout` | crashing runs |
 |---|---|
-| 1 s | 5 |
-| 3 s | 4 |
+| 1 s | 5/8 |
+| 3 s | 4/8 |
 | 10 s (configured) | 5/8 |
 | 30 s | 0/4 |
 | 600 s | 0/4 |

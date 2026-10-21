@@ -88,6 +88,30 @@ def test_available_mb_unreadable_path_falls_back_to_sysctl(
     assert available_mb(missing) == 0
 
 
+def test_available_mb_unreadable_path_uses_sysctl_total(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = tmp_path / "does-not-exist"
+
+    def fake_run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="17179869184", stderr="")
+
+    monkeypatch.setattr("scripts.xdist_workers.subprocess.run", fake_run)
+
+    # 17179869184 bytes // 1048576 == 16384 MB
+    assert available_mb(missing) == 16384
+
+
+def test_available_mb_default_reads_module_meminfo_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    meminfo = tmp_path / "meminfo"
+    meminfo.write_text("MemAvailable:    2097152 kB\n", encoding="utf-8")
+    monkeypatch.setattr("scripts.xdist_workers.MEMINFO_PATH", meminfo)
+
+    assert available_mb() == 2048
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------

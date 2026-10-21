@@ -16,10 +16,12 @@ Decision table (``choose_workers``)::
     otherwise             -> "auto"
     unknown (<= 0)        -> "auto"
 
-The 12288 MB threshold is RULE-18 / Q-019 (measured ~2.4 GB/worker headroom
-on 9.6 GB with 4 workers). Detection measures *available* RAM on Linux
-(``/proc/meminfo``) but *total* RAM on macOS (``sysctl hw.memsize``), because
-macOS has no portable available-memory metric; total is an overestimate.
+The 12288 MB threshold is a resource guard from Q-019 (measured ~2.4 GB per
+worker headroom on 9.6 GB with 4 workers); the 2026-10-20 worker-crash class
+it was once blamed for turned out to be ``pytest-timeout`` (T21a). Detection
+measures *available* RAM on Linux (``/proc/meminfo``) but *total* RAM on macOS
+(``sysctl hw.memsize``), because macOS has no portable available-memory metric;
+total is an overestimate.
 
 Usage:
     uv run --no-sync python scripts/xdist_workers.py
@@ -33,10 +35,10 @@ from pathlib import Path
 
 
 class _RamTierLimits:
-    """Memory tier boundaries in MB (configuration, not inline call-site values).
+    """Memory tier boundaries in MB, named so the tiers stay testable.
 
-    RULE-18 treats ``*Limits`` classes as the configuration home for numeric
-    policy values, so the tiers stay named and testable.
+    These are policy constants of the contention guard (Q-019 / T21a); naming
+    them keeps the boundaries out of the ``choose_workers`` call site.
     """
 
     LOW_MEMORY_MB = 4096
@@ -81,8 +83,9 @@ def _meminfo_available_mb(path: Path) -> int:
 def _sysctl_total_mb() -> int:
     """Total physical memory in MB via macOS ``sysctl``; 0 when unavailable."""
     try:
-        result = subprocess.run(  # nosec B603  # fixed argv, no shell
-            ["sysctl", "-n", "hw.memsize"],  # noqa: S607  # nosec B607  # macOS PATH lookup
+        # Fixed argv, no shell; macOS resolves `sysctl` via PATH by design.
+        result = subprocess.run(  # nosec B603 B607
+            ["sysctl", "-n", "hw.memsize"],  # noqa: S607  # PATH lookup intended
             capture_output=True,
             check=True,
             text=True,
@@ -96,10 +99,11 @@ def _sysctl_total_mb() -> int:
         return 0
 
 
-def available_mb(meminfo_path: Path = MEMINFO_PATH) -> int:
+def available_mb(meminfo_path: Path | None = None) -> int:
     """Available memory in MB, or 0 when the platform has no readable source."""
-    if meminfo_path.is_file():
-        return _meminfo_available_mb(meminfo_path)
+    path = MEMINFO_PATH if meminfo_path is None else meminfo_path
+    if path.is_file():
+        return _meminfo_available_mb(path)
     return _sysctl_total_mb()
 
 

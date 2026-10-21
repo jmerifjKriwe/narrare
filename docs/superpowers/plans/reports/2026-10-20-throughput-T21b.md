@@ -31,19 +31,20 @@ named config rather than inline call-site literals.
 
 ## 3. Changes
 
-- `scripts/xdist_workers.py` (112 lines): `choose_workers`,
-  `available_mb(meminfo_path=MEMINFO_PATH)`, `_meminfo_available_mb`,
-  `_sysctl_total_mb`, `main`. `/proc/meminfo` → `MemAvailable` on Linux,
-  `sysctl -n hw.memsize` on macOS, `0` (→ `auto`) when neither is readable.
+- `scripts/xdist_workers.py` (116 lines): `choose_workers`,
+  `available_mb(meminfo_path=None → MEMINFO_PATH read at call time)`,
+  `_meminfo_available_mb`, `_sysctl_total_mb`, `main`. `/proc/meminfo` →
+  `MemAvailable` on Linux, `sysctl -n hw.memsize` on macOS, `0` (→ `auto`)
+  when neither is readable.
   Import is side-effect free. `sysctl` subprocess carries the repo's justified
   `# nosec B404` / `# nosec B603 B607` comments.
-- `justfile` (859 lines): `_xdist-workers` body is now
+- `justfile` (864 lines): `_xdist-workers` body is now
   `uv run --all-packages --no-sync python scripts/xdist_workers.py`; recipe
   name, callers (`test`, `test-unit`) and platform behaviour unchanged.
-- `tests/unit/scripts/test_xdist_workers.py` (104 lines, 13 tests): the 7-case
+- `tests/unit/scripts/test_xdist_workers.py` (128 lines, 15 tests): the 7-case
   table, negative/unknown guard, meminfo parser against temp files (boundary,
-  missing key, invalid value, unreadable path + sysctl fallback), and the CLI
-  token check.
+  missing key, invalid value, unreadable path + sysctl fallback), the sysctl
+  success path, the default `MEMINFO_PATH` path, and the CLI token check.
 
 ## 4. Evidence
 
@@ -51,7 +52,7 @@ named config rather than inline call-site literals.
   `12287 -> 2`, `12288 -> auto`, `65536 -> auto`.
 - `just _xdist-workers` → `2`; machine `MemAvailable` 4284604 kB
   (≈ 4184 MB) → tier `2`, matches.
-- `pytest tests/unit/scripts/test_xdist_workers.py -q` → 13 passed.
+- `pytest tests/unit/scripts/test_xdist_workers.py -q` → 15 passed.
 - `pyright` → 0 errors; `ruff check` / `ruff format --check` → clean.
 - `just check-architecture` → exit 0 (new script inside the gate).
 - `pre-commit run --files justfile scripts/xdist_workers.py

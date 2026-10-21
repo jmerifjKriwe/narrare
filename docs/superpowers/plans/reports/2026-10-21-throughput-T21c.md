@@ -85,7 +85,7 @@ stay in force, and no `timeout_func_only` change was made.
   `worker 'gw0' crashed while running 'test_timeout_probe.py::test_sleeps_past_the_budget'`
   — still a crash, no Timeout traceback. Residual, as expected: the marker
   fixes this test, the mechanism remains for any future slow test.
-- `just test-file tests/unit/scripts/test_xdist_workers.py` → 13 passed.
+- `just test-file tests/unit/scripts/test_xdist_workers.py` → 15 passed.
 - `uv run --all-packages pyright scripts/xdist_workers.py` → 0 errors.
 - `just check-architecture` → GREEN.
 - `pre-commit run --files …` → green.

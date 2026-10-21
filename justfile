@@ -281,9 +281,12 @@ db-shell:
 # ---------------------------------------------------------------------------
 
 # Shared RAM-aware xdist worker selection (contention guard, Q-019).
-# Echoes "1" below 4 GB available, "2" below the 12 GB threshold, else
-# "auto". Used by the `test` and `test-unit` recipes so both share the same
-# guard. Logic lives in scripts/xdist_workers.py so it is unit-testable.
+# Echoes "1" below 4096 MB available, "2" below 12288 MB, else "auto".
+# Used by the `test` and `test-unit` recipes so both share the same guard.
+# Logic lives in scripts/xdist_workers.py so it is unit-testable.
+# This is a contention guard, not memory-crash protection: the 2026-10-20
+# worker-crash class was `pytest-timeout` calling `os._exit(1)`, not an OOM
+# kill (Q-019 / T21a).
 # NOTE: detection measures AVAILABLE RAM on Linux (/proc/meminfo) but
 # TOTAL RAM on macOS (sysctl hw.memsize) — macOS lacks a portable
 # "available" metric; total is an overestimate there.
@@ -292,9 +295,11 @@ db-shell:
 _xdist-workers:
     uv run --all-packages --no-sync python scripts/xdist_workers.py
 
-# Run all tests. Worker count is RAM-aware via `_xdist-workers`: < 12 GB
-# available → -n 2 (Q-019 OOM mitigation); otherwise -n auto. CI runs pytest
-# directly (not this recipe) and is unaffected.
+# Run all tests. Worker count is RAM-aware via `_xdist-workers`, a contention
+# guard (not memory-crash protection): < 4096 MB available → -n 1,
+# < 12288 MB → -n 2, else -n auto. The 2026-10-20 worker-crash class was
+# `pytest-timeout`, not OOM (Q-019). CI runs pytest directly (not this recipe)
+# and is unaffected.
 # See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test:
     #!/usr/bin/env bash
@@ -304,8 +309,8 @@ test:
     uv run --all-packages pytest tests/integration/ -v -m schema_mutating
 
 # Run all tests with forced `-n 2` (explicit override; rarely needed now).
-# The default `just test` is RAM-aware: it auto-selects `-n 2` on machines with
-# < 12 GB available RAM and `-n auto` otherwise. Use this recipe only to force
+# The default `just test` is RAM-aware: it selects -n 1 below 4096 MB
+# available, -n 2 below 12288 MB, else -n auto. Use this recipe only to force
 # `-n 2` regardless of RAM detection (e.g., a large machine where you still want
 # reduced parallelism, or if detection misfires).
 # See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
@@ -314,8 +319,8 @@ test-lowmem:
     uv run --all-packages pytest tests/integration/ -v -m schema_mutating
 
 # Run unit tests only (fast, no Docker needed). Parallelism is RAM-aware via
-# `_xdist-workers` — same guard as `just test` (Q-019: `-n auto` on < 12 GB
-# machines can OOM-kill a worker).
+# `_xdist-workers` — the same contention guard as `just test` (Q-019); it does
+# not protect against memory crashes.
 test-unit:
     #!/usr/bin/env bash
     set -euo pipefail
