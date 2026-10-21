@@ -16,3 +16,23 @@ class NovelRead(BaseModel):
     id: UUID
     title: str
     created_at: datetime
+
+
+class ChapterCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+
+class ChapterUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    body: str | None = None
+
+
+class ChapterRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    novel_id: UUID
+    title: str
+    position: int
+    body: str
+    created_at: datetime

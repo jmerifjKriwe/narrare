@@ -1,16 +1,17 @@
 """Writing logic. Routers delegate here; this module knows the unit of work."""
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence  # noqa: TC003
+from uuid import UUID  # noqa: TC003
 
-from app.capabilities.writing.repository import NovelRepository
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from uuid import UUID
+from app.capabilities.writing.repository import ChapterRepository, NovelRepository
+from app.capabilities.writing.schemas import ChapterUpdate  # noqa: TC001
+from app.kernel.contracts.models import Chapter, Novel  # noqa: TC001
 
-    from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.kernel.contracts.models import Novel
+class NotFoundError(Exception):
+    """The row does not exist or belongs to another user; the two are one answer."""
 
 
 class WritingService:
@@ -18,6 +19,7 @@ class WritingService:
         self.session = session
         self.user_id = user_id
         self.novels = NovelRepository(session, user_id)
+        self.chapters = ChapterRepository(session, user_id)
 
     async def create_novel(self, title: str) -> Novel:
         novel = await self.novels.create(title)
@@ -26,3 +28,28 @@ class WritingService:
 
     async def list_novels(self) -> Sequence[Novel]:
         return await self.novels.list()
+
+    async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
+        if await self.novels.get(novel_id) is None:
+            raise NotFoundError
+        chapter = await self.chapters.create(novel_id, title)
+        await self.session.commit()
+        return chapter
+
+    async def list_chapters(self, novel_id: UUID) -> Sequence[Chapter]:
+        if await self.novels.get(novel_id) is None:
+            raise NotFoundError
+        return await self.chapters.list_for_novel(novel_id)
+
+    async def get_chapter(self, chapter_id: UUID) -> Chapter:
+        chapter = await self.chapters.get(chapter_id)
+        if chapter is None:
+            raise NotFoundError
+        return chapter
+
+    async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
+        chapter = await self.get_chapter(chapter_id)
+        for field, value in changes.model_dump(exclude_none=True).items():
+            setattr(chapter, field, value)
+        await self.session.commit()
+        return chapter
