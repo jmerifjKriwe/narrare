@@ -15,5 +15,14 @@
   "setup.titleLabel": "Titel des Romans",
   "setup.submit": "Los geht's",
   "setup.failed": "Die Einrichtung ist fehlgeschlagen.",
-  "chapters.continue": "Weiterschreiben"
+  "chapters.continue": "Weiterschreiben",
+  "knowledge.heading": "Wissen",
+  "knowledge.fileLabel": "Dokument",
+  "knowledge.titleLabel": "Titel (optional)",
+  "knowledge.upload": "Hochladen",
+  "knowledge.empty": "Noch keine Dokumente",
+  "knowledge.queryLabel": "Suchbegriff",
+  "knowledge.search": "Suchen",
+  "knowledge.noResults": "Keine Treffer",
+  "nav.knowledge": "Wissen"
 }

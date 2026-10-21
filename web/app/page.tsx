@@ -57,6 +57,9 @@ export default function NovelsPage() {
   return (
     <main>
       <h1>{t("novels.heading")}</h1>
+      <p>
+        <Link href="/knowledge">{t("nav.knowledge")}</Link>
+      </p>
       <form onSubmit={create}>
         <label>
           {t("novels.titleLabel")}

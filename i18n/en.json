@@ -15,5 +15,14 @@
   "setup.titleLabel": "Novel title",
   "setup.submit": "Get started",
   "setup.failed": "Setup failed.",
-  "chapters.continue": "Continue writing"
+  "chapters.continue": "Continue writing",
+  "knowledge.heading": "Knowledge",
+  "knowledge.fileLabel": "Document",
+  "knowledge.titleLabel": "Title (optional)",
+  "knowledge.upload": "Upload",
+  "knowledge.empty": "No documents yet",
+  "knowledge.queryLabel": "Search term",
+  "knowledge.search": "Search",
+  "knowledge.noResults": "No results",
+  "nav.knowledge": "Knowledge"
 }

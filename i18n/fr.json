@@ -15,5 +15,14 @@
   "setup.titleLabel": "Titre du roman",
   "setup.submit": "Commencer",
   "setup.failed": "L'installation a échoué.",
-  "chapters.continue": "Continuer l'écriture"
+  "chapters.continue": "Continuer l'écriture",
+  "knowledge.heading": "Savoir",
+  "knowledge.fileLabel": "Document",
+  "knowledge.titleLabel": "Titre (facultatif)",
+  "knowledge.upload": "Téléverser",
+  "knowledge.empty": "Aucun document",
+  "knowledge.queryLabel": "Terme de recherche",
+  "knowledge.search": "Rechercher",
+  "knowledge.noResults": "Aucun résultat",
+  "nav.knowledge": "Savoir"
 }

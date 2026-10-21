@@ -1,0 +1,91 @@
+"""Knowledge base against the real database: ingest, chunk, embed, search."""
+
+from uuid import UUID
+
+import pytest
+from app.api.main import app
+from app.capabilities.knowledge.chunking import chunk_text
+from app.capabilities.knowledge.service import KnowledgeService
+from app.kernel.db.session import Session
+from app.kernel.embeddings import FakeEmbeddingProvider
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text as sql
+
+pytestmark = pytest.mark.timeout(60)
+
+OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
+
+TEXT = "\n\n".join(["Wort " * 100, "Leuchtturm " * 41, "Nebel " * 100])
+
+
+def _upload(title: str | None, text: str) -> dict[str, str] | None:
+    return {"title": title} if title else None
+
+
+async def _post_document(
+    client: AsyncClient, text: str, title: str | None = None
+) -> tuple[int, dict[str, object]]:
+    response = await client.post(
+        "/api/knowledge/documents",
+        files={"file": ("notizen.txt", text.encode("utf-8"), "text/plain")},
+        data=_upload(title, text),
+    )
+    return response.status_code, response.json()
+
+
+async def test_upload_chunks_a_document() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        status, body = await _post_document(client, TEXT, "Notizen")
+        assert status == 201
+        assert body["title"] == "Notizen"
+
+        listed = await client.get("/api/knowledge/documents")
+        assert [document["title"] for document in listed.json()] == ["Notizen"]
+
+    async with Session() as session:
+        count = await session.scalar(sql("SELECT count(*) FROM chunks"))
+    assert count == 3
+
+
+async def test_search_returns_the_passage_with_the_term() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await _post_document(client, TEXT, "Notizen")
+
+        response = await client.post("/api/knowledge/search", json={"query": "Leuchtturm"})
+        assert response.status_code == 200
+        hits = response.json()
+        assert hits, "search returned nothing"
+        assert "Leuchtturm" in hits[0]["text"]
+        assert hits[0]["document_title"] == "Notizen"
+
+
+async def test_another_users_document_is_not_searchable() -> None:
+    async with Session() as session:
+        await KnowledgeService(session, OTHER_USER, FakeEmbeddingProvider()).ingest(
+            "Fremd", "Leuchtturm am Horizont, ganz allein."
+        )
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/knowledge/search", json={"query": "Leuchtturm"})
+        assert response.status_code == 200
+        assert response.json() == []
+
+
+async def test_empty_document_is_rejected() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        status, body = await _post_document(client, "   \n\n  ")
+        assert status == 422
+        assert body["detail"] == "document is empty"
+
+
+async def test_title_falls_back_to_the_filename() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        status, body = await _post_document(client, "Ein einzelner Absatz.")
+        assert status == 201
+        assert body["title"] == "notizen.txt"
+
+
+def test_chunking_keeps_paragraphs_whole() -> None:
+    assert chunk_text("eins\n\nzwei", size=8) == ["eins", "zwei"]
+    assert chunk_text("eins zwei drei", size=800) == ["eins zwei drei"]
+    assert chunk_text("   \n\n ") == []

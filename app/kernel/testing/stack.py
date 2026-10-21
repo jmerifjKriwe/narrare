@@ -56,7 +56,9 @@ def _wait_for(url: str, timeout: float = 180.0) -> None:
 async def _reset(database: str, seed_user: bool) -> None:
     engine = create_async_engine(url_for(database))
     async with engine.begin() as connection:
-        await connection.execute(text("TRUNCATE novels, chapters, users CASCADE"))
+        await connection.execute(
+            text("TRUNCATE chunks, documents, novels, chapters, users CASCADE")
+        )
         if seed_user:
             # An installed instance: setup only asks whether the local user exists.
             await connection.execute(
