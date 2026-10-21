@@ -2,9 +2,14 @@
 
 The tail of the chapter is the context: enough to pick up voice and situation,
 bounded so a long chapter does not grow the request without limit.
+
+NARRE_CONTEXT_CHARS reads at import, like the database URL: the process decides
+its configuration once.
 """
 
-MAX_CONTEXT_CHARS = 4000
+from os import environ
+
+MAX_CONTEXT_CHARS = int(environ.get("NARRE_CONTEXT_CHARS", "4000"))
 
 
 def continuity_prompt(*, novel_title: str, chapter_title: str, body: str) -> str:

@@ -41,8 +41,10 @@ from scripts.check_python_file_size import (  # noqa: E402
 # together with both gates. ``benchmark`` joined 2026-08-27 (kb-benchmark
 # runner Task 1 — RULE-04 limits apply to benchmark code per plan Global
 # Constraints; the ADR-083 manually-only carve-out governs CI test jobs,
-# not the size/architecture gates).
+# not the size/architecture gates). ``app`` joined with the v2 tree: it is
+# production code and gets the same limits and AST checkers as apps/.
 EXPECTED_GATE_SCAN_ROOTS: tuple[str, ...] = (
+    "app",
     "apps",
     "packages",
     "scripts",

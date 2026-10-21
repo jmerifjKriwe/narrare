@@ -33,7 +33,15 @@ from scripts.architecture.types import CheckResult
 # but the repo's Python standards (incl. RULE-04 size limits and the AST
 # checker set) DO apply to benchmark code per the plan's Global
 # Constraints — coordinated with the python-size gate + the parity test.
-DEFAULT_SCAN_ROOTS: tuple[str, ...] = ("apps", "packages", "scripts", "tests", "evals", "benchmark")
+DEFAULT_SCAN_ROOTS: tuple[str, ...] = (
+    "app",
+    "apps",
+    "packages",
+    "scripts",
+    "tests",
+    "evals",
+    "benchmark",
+)
 
 
 @runtime_checkable

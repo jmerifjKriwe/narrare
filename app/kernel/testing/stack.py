@@ -19,6 +19,7 @@ import time
 from collections.abc import Iterator  # noqa: TC003
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from os import environ
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
@@ -32,8 +33,12 @@ from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.testsupport import ensure_database, url_for
 
 ROOT = Path(__file__).resolve().parents[3]
-API_PORT = 8000
-WEB_PORT = 3100
+
+# Ports and shutdown grace are configuration: a second stack, or a busy port on
+# this machine, must not need a code edit. The defaults are the ones the docs use.
+API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000"))
+WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100"))
+SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
 def _wait_for(url: str, timeout: float = 180.0) -> None:
@@ -107,4 +112,4 @@ def run_stack(*, database: str, seed_user: bool) -> Iterator[None]:
         # port stays bound after the test run.
         for process in (web, api):
             os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-            process.wait(timeout=15)
+            process.wait(timeout=SHUTDOWN_TIMEOUT)

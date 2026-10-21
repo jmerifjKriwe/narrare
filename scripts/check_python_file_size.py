@@ -86,6 +86,7 @@ _SKIP_PATH_FRAGMENTS: frozenset[str] = frozenset(
 # Task 1; RULE-04 size limits DO apply to benchmark code per plan
 # Global Constraints — coordinated with scanner.py + the parity test).
 PYTHON_SIZE_SCAN_ROOTS: tuple[str, ...] = (
+    "app",
     "apps",
     "packages",
     "scripts",
