@@ -230,7 +230,13 @@ jobs:
             # skip the job. Deliberately job-level (NOT on.push.paths): a
             # workflow-level filter would suppress changes/architecture on
             # docs pushes, violating §5.3's "always" requirement.
+            # v2 lives under app/ and web/. It is deliberately NOT in
+            # `backend`/`frontend`: those filters wake jobs that run the
+            # legacy suites under tests/ and packages/web, which would cost
+            # minutes and say nothing about app/. `code` covers it with the
+            # quality job (ruff, pyright, bandit, pip-audit, gitleaks).
             code:
+              - 'app/**'
               - 'apps/api/**'
               - 'packages/**'
               - 'scripts/**'

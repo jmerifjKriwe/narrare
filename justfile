@@ -295,25 +295,20 @@ db-shell:
 _xdist-workers:
     uv run --all-packages --no-sync python scripts/xdist_workers.py
 
-# Run all tests. Worker count is RAM-aware via `_xdist-workers`, a contention
-# guard (not memory-crash protection): < 4096 MB available → -n 1,
-# < 12288 MB → -n 2, else -n auto. The 2026-10-20 worker-crash class was
-# `pytest-timeout`, not OOM (Q-019). CI runs pytest directly (not this recipe)
-# and is unaffected.
-# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
+# Run the v2 tests under app/. Serial on purpose: the capability suites share
+# one throwaway database and truncate it before every test, so parallel workers
+# would delete each other's rows. The suite is small enough that parallelism
+# buys nothing. The legacy suite under tests/ is frozen reference material, not
+# part of this loop; it is deleted at cutover. CI runs pytest directly (not this
+# recipe) and is unaffected.
 test:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    workers=$(just _xdist-workers)
-    uv run --all-packages pytest tests/ app/ -v -n "$workers" -m "not schema_mutating"
-    uv run --all-packages pytest tests/integration/ -v -m schema_mutating
+    uv run --all-packages pytest app/ -v
 
-# Run all tests with forced `-n 2` (explicit override; rarely needed now).
-# The default `just test` is RAM-aware: it selects -n 1 below 4096 MB
-# available, -n 2 below 12288 MB, else -n auto. Use this recipe only to force
-# `-n 2` regardless of RAM detection (e.g., a large machine where you still want
-# reduced parallelism, or if detection misfires).
-# See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
+# Run the legacy suite under tests/ at forced `-n 2`. Rarely needed: the legacy
+# tree is frozen reference material and is deleted at cutover. `just test` runs
+# the v2 suite under app/. `_xdist-workers` is still used by `test-unit`, whose
+# RAM-aware worker count is documented in
+# docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 test-lowmem:
     uv run --all-packages pytest tests/ -v -n 2 -m "not schema_mutating"
     uv run --all-packages pytest tests/integration/ -v -m schema_mutating
@@ -367,7 +362,7 @@ test-match pattern:
 # For the CI-faithful wrapper (starts services, ENVIRONMENT=test, --timeout=300),
 # prefer:  just e2e
 test-e2e:
-    uv run --all-packages pytest tests/e2e/ app/capabilities/*/e2e/ -v -m e2e --timeout=60
+    uv run --all-packages pytest app/capabilities/*/e2e/ -v -m e2e --timeout=60
 
 # Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
 e2e:
