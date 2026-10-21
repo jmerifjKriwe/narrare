@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 
 target_metadata = Base.metadata
 
+# The caller may target another database than the app default (the E2E harness
+# does, one stack per capability).
+URL = context.config.get_main_option("sqlalchemy.url") or DATABASE_URL
+
 
 def _migrate(connection: Connection) -> None:
     context.configure(
@@ -27,14 +31,14 @@ def _migrate(connection: Connection) -> None:
 
 
 async def _run() -> None:
-    engine = create_async_engine(DATABASE_URL)
+    engine = create_async_engine(URL)
     async with engine.connect() as connection:
         await connection.run_sync(_migrate)
     await engine.dispose()
 
 
 if context.is_offline_mode():
-    context.configure(url=DATABASE_URL, target_metadata=target_metadata, literal_binds=True)
+    context.configure(url=URL, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 else:

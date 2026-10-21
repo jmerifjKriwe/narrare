@@ -1,24 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { t } from "../lib/i18n";
 
 type Novel = { id: string; title: string; created_at: string };
 
 export default function NovelsPage() {
+  const router = useRouter();
   const [novels, setNovels] = useState<Novel[]>([]);
   const [title, setTitle] = useState("");
-
-  const load = useCallback(async () => {
-    const response = await fetch("/api/writing/novels");
-    setNovels(await response.json());
-  }, []);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    void (async () => {
+      const statusResponse = await fetch("/api/setup/status");
+      const status: { complete: boolean } = await statusResponse.json();
+      if (cancelled) return;
+      if (!status.complete) {
+        // Nothing to list yet: an uninstalled instance starts at setup.
+        router.replace("/setup");
+        return;
+      }
+      const novelsResponse = await fetch("/api/writing/novels");
+      if (cancelled) return;
+      setNovels(await novelsResponse.json());
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  async function reload() {
+    const response = await fetch("/api/writing/novels");
+    setNovels(await response.json());
+  }
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
@@ -29,8 +49,10 @@ export default function NovelsPage() {
       body: JSON.stringify({ title }),
     });
     setTitle("");
-    await load();
+    await reload();
   }
+
+  if (!ready) return null;
 
   return (
     <main>

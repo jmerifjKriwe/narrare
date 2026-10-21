@@ -9,5 +9,10 @@
   "save.saving": "Speichert…",
   "save.saved": "Gespeichert",
   "nav.back": "Alle Romane",
-  "chapters.defaultTitle": "Kapitel {n}"
+  "chapters.defaultTitle": "Kapitel {n}",
+  "setup.welcome": "Willkommen bei Narrare",
+  "setup.intro": "Lege deinen ersten Roman an.",
+  "setup.titleLabel": "Titel des Romans",
+  "setup.submit": "Los geht's",
+  "setup.failed": "Die Einrichtung ist fehlgeschlagen."
 }

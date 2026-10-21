@@ -9,5 +9,10 @@
   "save.saving": "Saving…",
   "save.saved": "Saved",
   "nav.back": "All novels",
-  "chapters.defaultTitle": "Chapter {n}"
+  "chapters.defaultTitle": "Chapter {n}",
+  "setup.welcome": "Welcome to Narrare",
+  "setup.intro": "Create your first novel.",
+  "setup.titleLabel": "Novel title",
+  "setup.submit": "Get started",
+  "setup.failed": "Setup failed."
 }

@@ -9,5 +9,10 @@
   "save.saving": "Enregistrement…",
   "save.saved": "Enregistré",
   "nav.back": "Tous les romans",
-  "chapters.defaultTitle": "Chapitre {n}"
+  "chapters.defaultTitle": "Chapitre {n}",
+  "setup.welcome": "Bienvenue dans Narrare",
+  "setup.intro": "Créez votre premier roman.",
+  "setup.titleLabel": "Titre du roman",
+  "setup.submit": "Commencer",
+  "setup.failed": "L'installation a échoué."
 }
