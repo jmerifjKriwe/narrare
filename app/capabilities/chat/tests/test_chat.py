@@ -130,4 +130,4 @@ async def test_a_model_switch_after_ingest_answers_with_the_refusal() -> None:
     finally:
         app.dependency_overrides.clear()
     assert response.status_code == 409
-    assert "re-upload" in str(response.json()["detail"])
+    assert response.json()["detail"]["code"] == "embedding-mismatch"

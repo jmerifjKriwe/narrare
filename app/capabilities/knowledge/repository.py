@@ -24,6 +24,13 @@ class DocumentRepository(ScopedRepository[Document]):
 class ChunkRepository(ScopedRepository[Chunk]):
     model = Chunk
 
+    async def of_document(self, document_id: UUID) -> Sequence[Chunk]:
+        """The document's chunks, in reading order."""
+        result = await self.session.scalars(
+            self.query().where(Chunk.document_id == document_id).order_by(Chunk.position)
+        )
+        return result.all()
+
     async def create_many(
         self,
         document_id: UUID,

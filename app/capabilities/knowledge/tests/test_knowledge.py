@@ -142,7 +142,7 @@ async def test_search_refuses_when_the_corpus_was_embedded_at_another_width() ->
             await service.search("Leuchtturm", 5)
 
 
-async def test_the_refusal_names_the_fix_through_the_api() -> None:
+async def test_the_refusal_is_machine_readable_through_the_api() -> None:
     await _ingest("Leuchtturm am Horizont.")
     app.dependency_overrides[get_embedding_provider] = lambda: _OtherModel()
     try:
@@ -151,4 +151,37 @@ async def test_the_refusal_names_the_fix_through_the_api() -> None:
     finally:
         app.dependency_overrides.clear()
     assert response.status_code == 409
-    assert "re-upload" in response.json()["detail"]
+    # The UI localizes this error, so it needs a code, not the English sentence.
+    assert response.json()["detail"] == {
+        "code": "embedding-mismatch",
+        "stored": 384,
+        "found": 768,
+    }
+
+
+async def test_reembed_rebuilds_the_corpus_at_the_new_width() -> None:
+    await _ingest("Leuchtturm am Horizont.", "Erstes")
+    await _ingest("Nebel über dem See.", "Zweites")
+    app.dependency_overrides[get_embedding_provider] = lambda: _OtherModel()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/api/knowledge/reembed")
+            assert response.status_code == 200
+            assert response.json() == {"documents": 2, "chunks": 2}
+
+            # The corpus answers in the new model's width: search works again.
+            searched = await client.post("/api/knowledge/search", json={"query": "Leuchtturm"})
+    finally:
+        app.dependency_overrides.clear()
+    assert searched.status_code == 200
+    assert searched.json() != []
+    async with Session() as session:
+        widths = await session.scalars(sql("SELECT DISTINCT embedding_width FROM documents"))
+    assert list(widths) == [768]
+
+
+async def test_reembed_on_an_empty_corpus_is_a_no_op() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/knowledge/reembed")
+    assert response.status_code == 200
+    assert response.json() == {"documents": 0, "chunks": 0}

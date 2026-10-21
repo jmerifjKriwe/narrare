@@ -34,5 +34,10 @@
   "nav.chat": "Discussion",
   "chapters.editorLabel": "Texte du chapitre",
   "chapters.continueError": "La suite a échoué.",
-  "chat.error": "La réponse a échoué."
+  "chat.error": "La réponse a échoué.",
+  "knowledge.errorUpload": "Le téléversement a échoué.",
+  "knowledge.errorSearch": "La recherche a échoué.",
+  "knowledge.modelChanged": "Le modèle d'embeddings a changé. Ré-encodez les documents.",
+  "knowledge.reembed": "Ré-encoder les documents",
+  "chat.modelChanged": "Le modèle d'embeddings a changé ; ré-encodez d'abord la base de connaissances."
 }

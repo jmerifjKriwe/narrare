@@ -73,7 +73,11 @@ async def ask(
     try:
         prompt, passages = await service.prepare(payload.question, payload.limit)
     except EmbeddingMismatchError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from None
+        # A dict, not a sentence: the UI localizes this error and needs a code.
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+        ) from None
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.
     await service.session.close()

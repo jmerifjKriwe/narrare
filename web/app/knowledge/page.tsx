@@ -14,6 +14,14 @@ type Hit = {
   score: number;
 };
 
+/** The mismatch refusal is the one failure the user can fix from this page. */
+async function isModelChange(response: Response): Promise<boolean> {
+  const body: { detail?: { code?: string } } | null = await response
+    .json()
+    .catch(() => null);
+  return body?.detail?.code === "embedding-mismatch";
+}
+
 export default function KnowledgePage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [title, setTitle] = useState("");
@@ -21,6 +29,9 @@ export default function KnowledgePage() {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [ready, setReady] = useState(false);
+  const [uploadError, setUploadError] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [modelChanged, setModelChanged] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +58,14 @@ export default function KnowledgePage() {
     body.append("file", file);
     if (title.trim() !== "") body.append("title", title);
     const response = await fetch("/api/knowledge/documents", { method: "POST", body });
-    if (!response.ok) return;
+    if (!response.ok) {
+      const changed = await isModelChange(response);
+      setUploadError(!changed);
+      setModelChanged(changed);
+      return;
+    }
+    setUploadError(false);
+    setModelChanged(false);
     setTitle("");
     await reload();
   }
@@ -60,7 +78,22 @@ export default function KnowledgePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),
     });
+    if (!response.ok) {
+      const changed = await isModelChange(response);
+      setSearchError(!changed);
+      setModelChanged(changed);
+      return;
+    }
+    setSearchError(false);
+    setModelChanged(false);
     setHits(await response.json());
+  }
+
+  async function reembed() {
+    const response = await fetch("/api/knowledge/reembed", { method: "POST" });
+    if (!response.ok) return;
+    setModelChanged(false);
+    await reload();
   }
 
   if (!ready) return null;
@@ -82,6 +115,17 @@ export default function KnowledgePage() {
         </label>
         <button type="submit">{t("knowledge.upload")}</button>
       </form>
+      {modelChanged ? (
+        <p role="alert">
+          {t("knowledge.modelChanged")}{" "}
+          <button type="button" onClick={() => void reembed()}>
+            {t("knowledge.reembed")}
+          </button>
+        </p>
+      ) : null}
+      {uploadError ? (
+        <p role="alert">{t("knowledge.errorUpload")}</p>
+      ) : null}
       {documents.length === 0 ? (
         <p>{t("knowledge.empty")}</p>
       ) : (
@@ -98,6 +142,7 @@ export default function KnowledgePage() {
         </label>
         <button type="submit">{t("knowledge.search")}</button>
       </form>
+      {searchError ? <p role="alert">{t("knowledge.errorSearch")}</p> : null}
       {hits === null ? null : hits.length === 0 ? (
         <p>{t("knowledge.noResults")}</p>
       ) : (

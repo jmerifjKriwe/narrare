@@ -6,7 +6,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.capabilities.knowledge.schemas import DocumentRead, SearchHit, SearchRequest
+from app.capabilities.knowledge.schemas import (
+    DocumentRead,
+    ReembedResult,
+    SearchHit,
+    SearchRequest,
+)
 from app.capabilities.knowledge.service import (
     DocumentTooLargeError,
     EmptyDocumentError,
@@ -56,8 +61,21 @@ async def upload_document(
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
     except EmbeddingMismatchError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from None
+        # A dict, not a sentence: the UI localizes this error and needs a code.
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+        ) from None
     return DocumentRead.model_validate(document)
+
+
+@router.post("/reembed", response_model=ReembedResult)
+async def reembed(service: ServiceDep) -> ReembedResult:
+    """Re-embed the corpus through the configured model: the mismatch fix."""
+    try:
+        return await service.reembed()
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
 
 
 @router.post("/search", response_model=list[SearchHit])
@@ -65,7 +83,10 @@ async def search(payload: SearchRequest, service: ServiceDep) -> list[SearchHit]
     try:
         hits = await service.search(payload.query, payload.limit)
     except EmbeddingMismatchError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from None
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+        ) from None
     return [
         SearchHit(
             chunk_id=hit.chunk_id,

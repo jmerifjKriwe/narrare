@@ -83,11 +83,15 @@ def _prepare(database: str, seed_user: bool) -> None:
 
 
 @contextmanager
-def run_stack(*, database: str, seed_user: bool) -> Generator[None]:
+def run_stack(
+    *, database: str, seed_user: bool, env: dict[str, str] | None = None
+) -> Generator[None]:
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 
-    environment = {**os.environ, "NARRE_DATABASE_URL": url_for(database)}
+    # Extra environment reaches the API only: a stack may point a provider at a
+    # test-owned stand-in (the one boundary a fake may hold).
+    environment = {**os.environ, "NARRE_DATABASE_URL": url_for(database), **(env or {})}
     api = subprocess.Popen(  # noqa: S603  fixed argument list, this interpreter
         [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(API_PORT)],
         cwd=ROOT,

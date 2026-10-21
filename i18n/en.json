@@ -34,5 +34,10 @@
   "nav.chat": "Chat",
   "chapters.editorLabel": "Chapter text",
   "chapters.continueError": "The continuation failed.",
-  "chat.error": "The answer failed."
+  "chat.error": "The answer failed.",
+  "knowledge.errorUpload": "Upload failed.",
+  "knowledge.errorSearch": "Search failed.",
+  "knowledge.modelChanged": "The embedding model changed. Re-embed the documents.",
+  "knowledge.reembed": "Re-embed documents",
+  "chat.modelChanged": "The embedding model changed; re-embed the knowledge base first."
 }

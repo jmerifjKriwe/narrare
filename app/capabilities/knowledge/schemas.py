@@ -25,3 +25,10 @@ class SearchHit(BaseModel):
     document_title: str
     text: str
     score: float
+
+
+class ReembedResult(BaseModel):
+    """What a re-embed rebuilt: every document, every chunk of it."""
+
+    documents: int
+    chunks: int

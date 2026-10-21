@@ -34,5 +34,10 @@
   "nav.chat": "Chat",
   "chapters.editorLabel": "Kapiteltext",
   "chapters.continueError": "Die Fortsetzung ist fehlgeschlagen.",
-  "chat.error": "Die Antwort ist fehlgeschlagen."
+  "chat.error": "Die Antwort ist fehlgeschlagen.",
+  "knowledge.errorUpload": "Hochladen fehlgeschlagen.",
+  "knowledge.errorSearch": "Suche fehlgeschlagen.",
+  "knowledge.modelChanged": "Das Embedding-Modell hat sich geändert. Bette die Dokumente neu ein.",
+  "knowledge.reembed": "Dokumente neu einbetten",
+  "chat.modelChanged": "Das Embedding-Modell hat sich geändert; bette zuerst das Wissensarchiv neu ein."
 }

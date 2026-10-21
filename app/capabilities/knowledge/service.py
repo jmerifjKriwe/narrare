@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.repository import ChunkRepository, DocumentRepository
+from app.capabilities.knowledge.schemas import ReembedResult
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import Document, User
 from app.kernel.embeddings import EmbeddingProvider  # noqa: TC001
@@ -58,3 +59,26 @@ class KnowledgeService:
     async def search(self, query: str, limit: int) -> Sequence[Passage]:
         [vector] = await self.embeddings.embed([query])
         return await self.passages.search(vector, limit)
+
+    async def reembed(self) -> ReembedResult:
+        """Re-embed every chunk through the configured model.
+
+        The fix the mismatch refusal asks for: chunk texts are stored, so this is
+        a pure data operation — no upload, no schema change. The corpus ends at
+        one width again, the one the configured model answers with.
+        """
+        if await self.session.get(User, self.user_id) is None:
+            raise SetupRequiredError
+        documents = await self.documents.list()
+        chunk_count = 0
+        for document in documents:
+            chunks = await self.chunks.of_document(document.id)
+            if not chunks:
+                continue
+            vectors = await self.embeddings.embed([chunk.text for chunk in chunks])
+            for chunk, vector in zip(chunks, vectors, strict=True):
+                chunk.embedding = list(vector)
+            document.embedding_width = len(vectors[0])
+            chunk_count += len(chunks)
+        await self.session.commit()
+        return ReembedResult(documents=len(documents), chunks=chunk_count)

@@ -77,8 +77,9 @@ llama.cpp, vLLM) all speak it, so `NARRE_LLM_BASE_URL`, `NARRE_LLM_MODEL` and
 `NARRE_LLM_API_KEY` are all that change. `NARRE_EMBEDDING_PROVIDER=openai-compatible`
 does the same for retrieval through the `/embeddings` JSON shape. The vector column
 takes whatever width the model answers with; one knowledge base stays with one model,
-and a model switch is refused with a clear message until its documents are re-uploaded.
-Startup logs which providers serve and refuses to start on a half-configured one.
+and a model switch is refused with a clear message until the corpus is re-embedded —
+one click on the knowledge page. Startup logs which providers serve and refuses to
+start on a half-configured one.
 
 The integration suites share `narrare_v2_test`; each E2E capability owns a database and
 a module-scoped stack, so `just test-e2e` runs suites one after another on the same

@@ -12,6 +12,7 @@ export default function ChatPage() {
   const [sources, setSources] = useState<Source[] | null>(null);
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [modelChanged, setModelChanged] = useState(false);
 
   async function ask(event: React.FormEvent) {
     event.preventDefault();
@@ -20,6 +21,7 @@ export default function ChatPage() {
     setAnswer("");
     setSources(null);
     setFailed(false);
+    setModelChanged(false);
     try {
       const response = await fetch("/api/chat/ask", {
         method: "POST",
@@ -27,6 +29,11 @@ export default function ChatPage() {
         body: JSON.stringify({ question }),
       });
       if (!response.ok) {
+        // The mismatch refusal names its fix; every other failure stays generic.
+        const body: { detail?: { code?: string } } | null = await response
+          .json()
+          .catch(() => null);
+        setModelChanged(body?.detail?.code === "embedding-mismatch");
         setFailed(true);
         return;
       }
@@ -62,7 +69,11 @@ export default function ChatPage() {
       </form>
       <section aria-label={t("chat.answerLabel")}>
         <p>{answer}</p>
-        {failed ? <p role="alert">{t("chat.error")}</p> : null}
+        {failed ? (
+          <p role="alert">
+            {modelChanged ? t("chat.modelChanged") : t("chat.error")}
+          </p>
+        ) : null}
       </section>
       {sources === null ? null : (
         <section aria-label={t("chat.sources")}>
