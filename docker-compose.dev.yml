@@ -31,29 +31,5 @@ services:
       timeout: 5s
       retries: 10
 
-  # pgBouncer — connection pooling for production-like testing.
-  # NOT started by default. Activate with: docker compose --profile production up
-  pgbouncer:
-    image: edoburu/pgbouncer:v1.23
-    profiles:
-      - production
-    environment:
-      DATABASE_URL: "postgres://narrare:narrare@postgres:5432/narrare_dev"
-      POOL_MODE: "transaction"
-      MAX_CLIENT_CONN: 100
-      DEFAULT_POOL_SIZE: 20
-      RESERVE_POOL_SIZE: 5
-      RESERVE_POOL_TIMEOUT: 3
-    ports:
-      - "6432:6432"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "pgbouncer", "-u", "nobody", "-q", "show", "help"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   postgres_data:

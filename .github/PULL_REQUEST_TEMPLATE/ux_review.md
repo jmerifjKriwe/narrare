@@ -1,6 +1,6 @@
 ---
 name: UX Review
-about: PR template for AI-powered features requiring UX review (Stage 3.5)
+about: PR template for AI-powered UI changes (chat, continuation)
 title: ''
 labels: ux-review
 ---
@@ -8,42 +8,27 @@ labels: ux-review
 ## Description
 <!-- What does this PR change? -->
 
-## UX Review Checklist (Stage 3.5)
+## UX Checklist
 
 ### Streaming
-- [ ] SSE used where backend provides SSE endpoint
-- [ ] No REST-only fallback for SSE-capable endpoints
+- [ ] Text arrives incrementally; the frame renders each chunk as it lands
+- [ ] The sources of an answer are visible with or before the answer
 
 ### User Controls
-- [ ] Cancel/Abort present for operations >2s
-- [ ] Accept/Reject flow from `studio.aiActions.*`
-- [ ] No auto-apply without user confirmation
+- [ ] A running generation can be cancelled
+- [ ] Generated text is applied only on user confirmation
 
-### Loading States
-- [ ] Visual feedback <200ms after AI action
-- [ ] Three-state lifecycle: Idle → Loading → Streaming → Complete
+### Feedback
+- [ ] Visible state change under 200 ms after the action starts
+- [ ] Idle → working → streaming → done is distinguishable
 
-### Action Labels
-- [ ] Canonical `studio.aiActions.*` vocabulary used
-- [ ] No deprecated key references (`aiModal.*`, `generation.stop`, `annotation.keep`, etc.)
-- [ ] 3-locale parity (de/en/fr)
-
-### Error Handling
-- [ ] Actionable error messages (what happened + what to do)
-- [ ] Retry available after errors
-
-### Connection Resilience
-- [ ] Connection loss preserves partial output
-- [ ] Retry offered via `ConnectionLostBanner`
-
-### Onboarding
-- [ ] Feature discoverable from logical location
-- [ ] Tooltip present if non-obvious pattern
-- [ ] Keyboard shortcuts documented in SettingsView
+### Copy
+- [ ] All user-visible strings through the i18n catalog (en, de, fr)
+- [ ] Errors say what happened and what to do next
 
 ### Accessibility
-- [ ] ARIA labels on AI indicators
-- [ ] Focus management after AI output
+- [ ] AI activity announced to assistive tech (aria-live or equivalent)
+- [ ] Focus lands sensibly after output arrives
 
 ## Items marked N/A
 <!-- List any checklist items marked N/A with justification -->

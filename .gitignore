@@ -76,7 +76,6 @@ logs/
 
 # Local tool state
 .mcp.json
-opencode.json
 .tmp/
 skills-lock.json
 clawpatch-report.md
