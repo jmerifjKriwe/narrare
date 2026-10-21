@@ -341,6 +341,20 @@ Also deleted outright, not deferred: the second typechecker, VRT/golden machiner
 and every gate listed in §6. Tests are not ported (D15) — each capability brings its
 own, and only behaviour is tested, not the existence of wiring. No coverage threshold.
 
+**The feature corpus is an input, not the scope.** `docs/features/` registers 92
+features. On 2026-10-21 the index says 72 stable, 15 planned, 3 idea and 2
+deprecated or retired — and the per-file status lines are free text, so the index is
+the only consistent source. That status is a claim, not evidence. The port scope is
+behaviour that exists, is reachable through the UI and has a runnable path in the old
+code; every registered feature inside a core area is therefore triaged once — doc
+status, code evidence (router, service, exercised path), verdict — and only a `port`
+verdict enters the build. Exactly three registered features in the four core areas
+were never built: WRITE-008 (multi-draft generation), WRITE-013 (writing workflows)
+and KB-010 (editor-integrated knowledge graph). They are parked with the other
+unbuilt candidates, never ported silently. The feature files themselves are not
+migrated: a capability's user-visible documentation is generated (D5), and git
+history keeps the old corpus.
+
 **Cutover (D16).** The old application stays runnable until the last core capability is
 ported, then is deleted in one change. Work happens on a dedicated branch and worktree;
 git history is the archive of the old system, so no compatibility shim, no feature
