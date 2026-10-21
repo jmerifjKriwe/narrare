@@ -53,11 +53,11 @@ async def search(payload: SearchRequest, service: ServiceDep) -> list[SearchHit]
     hits = await service.search(payload.query, payload.limit)
     return [
         SearchHit(
-            chunk_id=chunk.id,
-            document_id=chunk.document_id,
-            document_title=title,
-            text=chunk.text,
-            score=score,
+            chunk_id=hit.chunk_id,
+            document_id=hit.document_id,
+            document_title=hit.document_title,
+            text=hit.text,
+            score=hit.score,
         )
-        for chunk, title, score in hits
+        for hit in hits
     ]

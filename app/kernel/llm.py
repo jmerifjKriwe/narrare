@@ -25,8 +25,36 @@ class TextProvider(Protocol):
         ...
 
 
+# A prompt that wants its answer to quote a supplied passage marks it with this
+# prefix, one passage per line. The fake reads it; a real provider reads the
+# sentence above it. The marker is a kernel constant because the prompt builder
+# and the fake must agree on it and live in different trees.
+SOURCE_PREFIX = "SOURCE: "
+
+
+def _first_source(prompt: str) -> str | None:
+    for line in prompt.splitlines():
+        if line.startswith(SOURCE_PREFIX):
+            return line.removeprefix(SOURCE_PREFIX)
+    return None
+
+
+def _pieces(text: str) -> tuple[str, ...]:
+    """Split into small pieces so the stream stays visible on the wire."""
+    words = text.split()
+    return tuple(
+        " ".join(words[index : index + 4]) + (" " if index + 4 < len(words) else "")
+        for index in range(0, len(words), 4)
+    )
+
+
 class FakeProvider:
-    """Deterministic prose, three pieces, so streaming is visible end to end."""
+    """Deterministic prose, streamed in pieces, so the wire is visible end to end.
+
+    Two shapes, because the pipeline has two: a prompt without sources gets a fixed
+    continuation; a prompt with sources gets the first one quoted back. The second
+    shape is what lets a test see that retrieval reached the model boundary.
+    """
 
     CHUNKS = (
         "Der Nebel hob sich ",
@@ -35,7 +63,8 @@ class FakeProvider:
     )
 
     async def stream(self, prompt: str) -> AsyncIterator[str]:
-        for chunk in self.CHUNKS:
+        source = _first_source(prompt)
+        for chunk in _pieces(source) if source else self.CHUNKS:
             # Yield to the loop between pieces: the server flushes each event
             # instead of collapsing the whole completion into one write.
             await asyncio.sleep(0)

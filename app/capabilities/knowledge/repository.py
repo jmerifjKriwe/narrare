@@ -41,22 +41,3 @@ class ChunkRepository(ScopedRepository[Chunk]):
                 )
             )
         await self.session.flush()
-
-    async def search(
-        self, vector: Sequence[float], limit: int
-    ) -> Sequence[tuple[Chunk, str, float]]:
-        """Nearest chunks by cosine distance, with their document title.
-
-        The ordering happens in the database, where the vector lives; this method
-        only names the distance once so the score cannot drift from the order.
-        """
-        distance = Chunk.embedding.cosine_distance(list(vector)).label("distance")
-        statement = (
-            self.query()
-            .add_columns(Document.title, distance)
-            .join(Document, Document.id == Chunk.document_id)
-            .order_by(distance)
-            .limit(limit)
-        )
-        result = await self.session.execute(statement)
-        return [(chunk, title, 1.0 - score) for chunk, title, score in result.all()]

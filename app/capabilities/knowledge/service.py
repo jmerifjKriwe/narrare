@@ -5,8 +5,9 @@ from uuid import UUID  # noqa: TC003
 
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.repository import ChunkRepository, DocumentRepository
-from app.kernel.contracts.models import Chunk, Document  # noqa: TC002
+from app.kernel.contracts.models import Document  # noqa: TC002
 from app.kernel.embeddings import EmbeddingProvider  # noqa: TC002
+from app.kernel.retrieval import Passage, PassageRepository
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 
@@ -20,6 +21,7 @@ class KnowledgeService:
         self.embeddings = embeddings
         self.documents = DocumentRepository(session, user_id)
         self.chunks = ChunkRepository(session, user_id)
+        self.passages = PassageRepository(session, user_id)
 
     async def list_documents(self) -> Sequence[Document]:
         return await self.documents.list()
@@ -34,6 +36,6 @@ class KnowledgeService:
         await self.session.commit()
         return document
 
-    async def search(self, query: str, limit: int) -> Sequence[tuple[Chunk, str, float]]:
+    async def search(self, query: str, limit: int) -> Sequence[Passage]:
         [vector] = await self.embeddings.embed([query])
-        return await self.chunks.search(vector, limit)
+        return await self.passages.search(vector, limit)

@@ -58,7 +58,8 @@ export default function NovelsPage() {
     <main>
       <h1>{t("novels.heading")}</h1>
       <p>
-        <Link href="/knowledge">{t("nav.knowledge")}</Link>
+        <Link href="/knowledge">{t("nav.knowledge")}</Link>{" · "}
+        <Link href="/chat">{t("nav.chat")}</Link>
       </p>
       <form onSubmit={create}>
         <label>

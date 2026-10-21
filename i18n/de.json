@@ -24,5 +24,12 @@
   "knowledge.queryLabel": "Suchbegriff",
   "knowledge.search": "Suchen",
   "knowledge.noResults": "Keine Treffer",
-  "nav.knowledge": "Wissen"
+  "nav.knowledge": "Wissen",
+  "chat.heading": "Chat",
+  "chat.questionLabel": "Frage",
+  "chat.ask": "Fragen",
+  "chat.answerLabel": "Antwort",
+  "chat.sources": "Quellen",
+  "chat.noSources": "Keine Quelle gefunden",
+  "nav.chat": "Chat"
 }
