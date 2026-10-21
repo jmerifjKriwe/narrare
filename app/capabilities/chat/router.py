@@ -6,7 +6,7 @@ from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,7 @@ from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm import TextProvider, get_provider
-from app.kernel.retrieval import Passage
+from app.kernel.retrieval import EmbeddingMismatchError, Passage
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -70,7 +70,10 @@ async def _events(
 async def ask(
     payload: ChatRequest, service: ServiceDep, provider: ProviderDep
 ) -> StreamingResponse:
-    prompt, passages = await service.prepare(payload.question, payload.limit)
+    try:
+        prompt, passages = await service.prepare(payload.question, payload.limit)
+    except EmbeddingMismatchError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.
     await service.session.close()

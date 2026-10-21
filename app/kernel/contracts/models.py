@@ -8,7 +8,6 @@ from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.kernel.db.base import Base, UserOwned
-from app.kernel.embeddings import EmbeddingSettings
 
 
 class User(Base):
@@ -51,6 +50,10 @@ class Document(UserOwned):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(String(200))
+    # The width the configured model answered with at ingest time. All of one
+    # user's documents share it — the corpus guard refuses a mix — because
+    # vectors from two models are not comparable.
+    embedding_width: Mapped[int]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
@@ -65,7 +68,7 @@ class Chunk(UserOwned):
     document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"))
     position: Mapped[int]
     text: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[list[float]] = mapped_column(Vector(EmbeddingSettings.dimensions))
+    embedding: Mapped[list[float]] = mapped_column(Vector())
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -15,6 +15,7 @@ from app.capabilities.knowledge.service import (
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
+from app.kernel.retrieval import EmbeddingMismatchError
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
@@ -54,12 +55,17 @@ async def upload_document(
         raise HTTPException(status_code=413, detail="document too large") from None
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
+    except EmbeddingMismatchError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     return DocumentRead.model_validate(document)
 
 
 @router.post("/search", response_model=list[SearchHit])
 async def search(payload: SearchRequest, service: ServiceDep) -> list[SearchHit]:
-    hits = await service.search(payload.query, payload.limit)
+    try:
+        hits = await service.search(payload.query, payload.limit)
+    except EmbeddingMismatchError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     return [
         SearchHit(
             chunk_id=hit.chunk_id,

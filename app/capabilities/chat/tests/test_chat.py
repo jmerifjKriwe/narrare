@@ -1,6 +1,7 @@
 """Chat over the knowledge base: real database, catalog's fake provider."""
 
 import json
+from collections.abc import Sequence  # noqa: TC003
 from typing import Any
 from uuid import UUID
 
@@ -13,7 +14,7 @@ from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chunk, Document
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.embeddings import FakeEmbeddingProvider
+from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -31,7 +32,7 @@ async def _seed(user_id: UUID, title: str, passage: str) -> None:
     await seed_user(user_id)
     [vector] = await FakeEmbeddingProvider().embed([passage])
     async with Session() as session:
-        document = Document(user_id=user_id, title=title)
+        document = Document(user_id=user_id, title=title, embedding_width=len(vector))
         session.add(document)
         await session.flush()
         session.add(
@@ -105,3 +106,28 @@ async def test_an_empty_question_is_rejected() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/chat/ask", json={"question": ""})
         assert response.status_code == 422
+
+
+class _OtherModel:
+    """A second model at another width: same contract, other answer."""
+
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        return [[0.25] * 768 for _ in texts]
+
+    def describe(self) -> str:
+        return "test-other-width"
+
+    def configuration_problems(self) -> list[str]:
+        return []
+
+
+async def test_a_model_switch_after_ingest_answers_with_the_refusal() -> None:
+    await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
+    app.dependency_overrides[get_embedding_provider] = lambda: _OtherModel()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/api/chat/ask", json={"question": "Leuchtturm?"})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 409
+    assert "re-upload" in str(response.json()["detail"])

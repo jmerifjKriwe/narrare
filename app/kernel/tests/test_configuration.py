@@ -5,7 +5,6 @@ import logging
 import pytest
 
 from app.kernel.configuration import validate_configuration
-from app.kernel.embeddings import SCHEMA_DIMENSIONS
 
 
 def test_the_active_providers_are_logged(caplog: pytest.LogCaptureFixture) -> None:
@@ -13,15 +12,6 @@ def test_the_active_providers_are_logged(caplog: pytest.LogCaptureFixture) -> No
         validate_configuration()
     assert "llm=fake" in caplog.text
     assert "embedding=fake" in caplog.text
-    assert f"dimensions={SCHEMA_DIMENSIONS}" in caplog.text
-
-
-def test_a_dimension_change_without_a_migration_fails_fast(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("NARRE_EMBEDDING_DIMENSIONS", str(SCHEMA_DIMENSIONS * 2))
-    with pytest.raises(RuntimeError, match="migration"):
-        validate_configuration()
 
 
 def test_a_half_configured_real_provider_fails_fast(
@@ -65,4 +55,3 @@ def test_the_catalog_builds_every_entry_it_advertises() -> None:
         embeddings = build()
         assert isinstance(embeddings.describe(), str), name
         assert isinstance(embeddings.configuration_problems(), list), name
-        assert embeddings.dimensions == SCHEMA_DIMENSIONS, name

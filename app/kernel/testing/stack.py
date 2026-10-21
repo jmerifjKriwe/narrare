@@ -28,7 +28,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.db.init import init_schema
+from app.kernel.db.init import reset_schema
 from app.kernel.db.testsupport import ensure_database, url_for
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -76,7 +76,9 @@ def _prepare(database: str, seed_user: bool) -> None:
     ensure_database(database)
     # Explicit URL per stack: the process environment is set once, but several
     # capability stacks run one after another in the same pytest process.
-    asyncio.run(init_schema(url_for(database)))
+    # Reset, not just create: an E2E database is throwaway, and rebuilding it
+    # from the models is what proves the schema the tests run against.
+    asyncio.run(reset_schema(url_for(database)))
     asyncio.run(_reset(database, seed_user))
 
 

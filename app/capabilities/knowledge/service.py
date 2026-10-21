@@ -10,7 +10,7 @@ from app.capabilities.knowledge.repository import ChunkRepository, DocumentRepos
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import Document, User
 from app.kernel.embeddings import EmbeddingProvider  # noqa: TC001
-from app.kernel.retrieval import Passage, PassageRepository
+from app.kernel.retrieval import EmbeddingMismatchError, Passage, PassageRepository
 
 MAX_UPLOAD_BYTES = 1_000_000
 """One document, at most. Ingestion embeds in-request; an unbounded upload would
@@ -46,7 +46,11 @@ class KnowledgeService:
         if not chunks:
             raise EmptyDocumentError
         vectors = await self.embeddings.embed(chunks)
-        document = await self.documents.create(title)
+        width = len(vectors[0])
+        stored = await self.passages.stored_width()
+        if stored is not None and stored != width:
+            raise EmbeddingMismatchError(stored, width)
+        document = await self.documents.create(title, width)
         await self.chunks.create_many(document.id, chunks, vectors)
         await self.session.commit()
         return document

@@ -14,8 +14,8 @@ class DocumentRepository(ScopedRepository[Document]):
         result = await self.session.scalars(self.query().order_by(Document.created_at.desc()))
         return result.all()
 
-    async def create(self, title: str) -> Document:
-        document = Document(user_id=self.user_id, title=title)
+    async def create(self, title: str, embedding_width: int) -> Document:
+        document = Document(user_id=self.user_id, title=title, embedding_width=embedding_width)
         self.session.add(document)
         await self.session.flush()
         return document
