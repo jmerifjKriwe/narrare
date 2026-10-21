@@ -3,6 +3,11 @@
   "default_agent": "NarrareBuilder",
   "instructions": ["AGENTS.md"],
   "formatter": true,
+  "agents": {
+    "explore": {
+      "model": "zai-coding-plan/glm-5.3-flash"
+    }
+  },
   "permissions": [
     { "action": "external_directory", "resource": "*", "effect": "ask" },
     { "action": "external_directory", "resource": "/tmp/opencode/*", "effect": "allow" },

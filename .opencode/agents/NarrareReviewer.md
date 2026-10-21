@@ -2,6 +2,13 @@
 description: Reads a change, runs the gates, reports what is wrong. Does not edit.
 mode: subagent
 model: opencode/deepseek-v4.1-flash-free#high
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "git push *"
+    effect: deny
 ---
 
 # NarrareReviewer

@@ -32,8 +32,10 @@ the capability's E2E. A gate counts only when its output was read.
 
 ## Agents
 
-`NarrareBuilder` builds and commits. `NarrareReviewer` checks it on a different model.
-That is the whole layer.
+`NarrareBuilder` builds and commits; broad research it delegates to the built-in
+`explore` subagent, the only agent it may launch. `NarrareReviewer` checks the result
+on a different model; it is dispatched from outside, never by the builder, and edits
+nothing. That is the whole layer.
 
 ## Git
 
