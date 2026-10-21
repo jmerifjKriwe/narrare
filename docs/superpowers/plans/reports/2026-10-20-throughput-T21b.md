@@ -3,7 +3,7 @@
 - **Date:** 2026-10-20
 - **Branch:** `brave-egret`
 - **Base commit:** `ac3b573f`
-- **Status:** done, verified (no commit, per task constraints)
+- **Status:** done, verified (committed as `ddd74e23`)
 - **Scope:** contention guard only — **not** the fix for the worker-crash class
 
 ## 1. Why
