@@ -5,6 +5,7 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
+from app.capabilities.writing.prompts import continuity_prompt
 from app.capabilities.writing.repository import ChapterRepository, NovelRepository
 from app.capabilities.writing.schemas import ChapterUpdate  # noqa: TC001
 from app.kernel.contracts.models import Chapter, Novel  # noqa: TC001
@@ -52,6 +53,20 @@ class WritingService:
         if chapter is None:
             raise NotFoundError
         return chapter
+
+    async def continuation_prompt(self, chapter_id: UUID) -> str:
+        """The prompt for a continuation, or NotFoundError if the chapter is not ours.
+
+        Read-only: the streamed answer comes back to the editor, whose autosave
+        writes it. The request that streams has no side effect of its own (D14).
+        """
+        chapter = await self.get_chapter(chapter_id)
+        novel = await self.novels.get(chapter.novel_id)
+        return continuity_prompt(
+            novel_title=novel.title if novel else "",
+            chapter_title=chapter.title,
+            body=chapter.body,
+        )
 
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
         chapter = await self.get_chapter(chapter_id)

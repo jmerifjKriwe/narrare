@@ -14,5 +14,6 @@
   "setup.intro": "Create your first novel.",
   "setup.titleLabel": "Novel title",
   "setup.submit": "Get started",
-  "setup.failed": "Setup failed."
+  "setup.failed": "Setup failed.",
+  "chapters.continue": "Continue writing"
 }

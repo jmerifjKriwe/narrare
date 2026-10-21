@@ -14,5 +14,6 @@
   "setup.intro": "Lege deinen ersten Roman an.",
   "setup.titleLabel": "Titel des Romans",
   "setup.submit": "Los geht's",
-  "setup.failed": "Die Einrichtung ist fehlgeschlagen."
+  "setup.failed": "Die Einrichtung ist fehlgeschlagen.",
+  "chapters.continue": "Weiterschreiben"
 }

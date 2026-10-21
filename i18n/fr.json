@@ -14,5 +14,6 @@
   "setup.intro": "Créez votre premier roman.",
   "setup.titleLabel": "Titre du roman",
   "setup.submit": "Commencer",
-  "setup.failed": "L'installation a échoué."
+  "setup.failed": "L'installation a échoué.",
+  "chapters.continue": "Continuer l'écriture"
 }

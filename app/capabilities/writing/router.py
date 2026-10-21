@@ -1,9 +1,12 @@
 """HTTP surface. Parses, delegates to the service, returns; no logic here."""
 
+import json
+from collections.abc import AsyncIterator
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.writing.schemas import (
@@ -16,6 +19,7 @@ from app.capabilities.writing.schemas import (
 from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
+from app.kernel.llm import TextProvider, get_provider
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
 
@@ -28,6 +32,13 @@ def _service(session: SessionDep, user_id: UserDep) -> WritingService:
 
 
 ServiceDep = Annotated[WritingService, Depends(_service)]
+ProviderDep = Annotated[TextProvider, Depends(get_provider)]
+
+
+async def _continuation_events(provider: TextProvider, prompt: str) -> AsyncIterator[str]:
+    async for delta in provider.stream(prompt):
+        yield f"data: {json.dumps({'delta': delta})}\n\n"
+    yield "event: done\ndata: {}\n\n"
 
 
 @router.get("/novels", response_model=list[NovelRead])
@@ -87,3 +98,14 @@ async def update_chapter(
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
     return ChapterRead.model_validate(chapter)
+
+
+@router.post("/chapters/{chapter_id}/continue")
+async def continue_chapter(
+    chapter_id: UUID, service: ServiceDep, provider: ProviderDep
+) -> StreamingResponse:
+    try:
+        prompt = await service.continuation_prompt(chapter_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+    return StreamingResponse(_continuation_events(provider, prompt), media_type="text/event-stream")
