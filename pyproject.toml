@@ -5,7 +5,6 @@ description = "Local-first, AI-assisted creative writing."
 requires-python = ">=3.14"
 license = "MIT"
 dependencies = [
-  "alembic>=1.20.0",
   "asyncpg>=0.31.0",
   "fastapi>=0.141.1",
   "pgvector>=0.5.0",

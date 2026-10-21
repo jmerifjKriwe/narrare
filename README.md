@@ -41,8 +41,7 @@ just test-frontend      # web unit tests
 just verify             # check + all suites + web build
 just build              # production build of the web app
 just dev-services       # Postgres on :5432 (dev) and :5433 (tests)
-just db-migrate         # apply migrations
-just db-revision "x"    # autogenerate one
+just db-init            # create the schema directly from the models
 just db-reset           # drop and rebuild the dev database
 just db-shell           # psql on the dev database
 just generate           # write the OpenAPI document (no consumer yet)

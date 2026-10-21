@@ -104,7 +104,7 @@ generated/       capability registry (Python + TypeScript), docs index, TS clien
 docs/
   adr/           ≤ 15 decisions
   user/          generated user documentation (en, de, fr)
-scripts/         generate · migrate · dev  (three, not 84)
+scripts/         generate · new-capability  (two, not 84)
 ```
 
 The Next.js shell in `web/` imports each capability's `web/` components through the
@@ -193,18 +193,21 @@ scoped to changed paths.
 **CI — at most five jobs:** lint + types; tests; e2e for affected capabilities; build;
 coverage badge. Runs on PR, plus the nightly schedule on the e2e job and on release.
 
-**`justfile` keeps 22 public recipes:**
+**`justfile` keeps 21 public recipes:**
 
 ```text
 dev, dev-api, dev-web, dev-services, dev-services-stop, dev-setup,
 check, verify, lint, typecheck, format,
 test, test-file, test-e2e, test-frontend,
-build, db-migrate, db-revision, db-reset, db-shell,
+build, db-init, db-reset, db-shell,
 generate, new-capability
 ```
 
 `check` is the fast gate on changed files; `verify` is the full gate and composes it.
 `test-file` runs one file, because that is the loop a developer lives in.
+`db-init` creates the schema directly from the models — there are no migrations
+while the product is not live; a schema change lands in the models and the
+database is recreated.
 
 Removed: eval-nightly, mutation-testing, warnings-summary, budget-report, the
 architecture CI job, and the changes-detection maze. The second typechecker (pyrefly)
@@ -285,9 +288,10 @@ count; one worker claiming rows with `FOR UPDATE SKIP LOCKED`. No broker, no Red
 RabbitMQ. Jobs survive restarts, and the worker hides behind an interface so it can be
 swapped if throughput ever demands it.
 
-**Database (D11).** One baseline schema, Alembic from day one. Every schema change is
-a migration even though the database may be rebuilt at any time; the migration is the
-record of the change, not archaeology to be replayed.
+**Database (D11).** One schema, one source: the models. While the product is not live
+there are no migrations — `db-init` creates the schema directly from the models, and a
+schema change lands in the models and recreates the database. When the product goes
+live, this is where a migration story would begin, not before.
 
 **Side effects never in the request path (D14).** Usage, statistics and memory writes
 are recorded after the response, through the jobs table where durability matters. The

@@ -1,10 +1,9 @@
 """Setup suite fixtures, pointing at the shared throwaway database."""
 
 import os
+from asyncio import run
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import text
 
 from app.kernel.db.testsupport import ensure_database, url_for
@@ -17,9 +16,10 @@ os.environ["NARRE_DATABASE_URL"] = url_for(DATABASE)
 
 @pytest.fixture(scope="session", autouse=True)
 def schema() -> None:
-    config = Config("app/kernel/db/alembic.ini")
-    config.set_main_option("script_location", "app/kernel/db/migrations")
-    command.upgrade(config, "head")
+    """Rebuild the schema from the models: what the tests see is the source."""
+    from app.kernel.db.init import reset_schema
+
+    run(reset_schema(url_for(DATABASE)))
 
 
 @pytest.fixture(autouse=True)

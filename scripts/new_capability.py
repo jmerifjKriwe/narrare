@@ -14,16 +14,15 @@ CAPABILITIES = Path("app/capabilities")
 
 INTEGRATION_FIXTURE = '''"""Fixtures for the {name} suite.
 
-Shared test database, schema from the migrations.
+Shared test database, schema from the models.
 """
 
 import os
+from asyncio import run
 
 import pytest
-from alembic.config import Config
 from sqlalchemy import text
 
-from alembic import command
 from app.kernel.db.testsupport import ensure_database, url_for
 
 os.environ["NARRE_DATABASE_URL"] = url_for("narrare_v2_test")
@@ -32,9 +31,9 @@ ensure_database("narrare_v2_test")
 
 @pytest.fixture(scope="session", autouse=True)
 def schema() -> None:
-    config = Config("app/kernel/db/alembic.ini")
-    config.set_main_option("script_location", "app/kernel/db/migrations")
-    command.upgrade(config, "head")
+    from app.kernel.db.init import reset_schema
+
+    run(reset_schema(url_for("narrare_v2_test")))
 
 
 @pytest.fixture(autouse=True)

@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 22 public recipes; private helpers start with `_`.
+# 21 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -35,7 +35,7 @@ dev-setup:
     pnpm install
     pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
     just dev-services
-    just db-migrate
+    just db-init
 
 # Fast gate: lint and types. The under-ten-seconds one.
 check:
@@ -84,15 +84,13 @@ test-frontend:
 build:
     pnpm --dir web build
 
-# Apply the schema migrations.
-db-migrate:
-    uv run alembic -c app/kernel/db/alembic.ini upgrade head
+# Create the schema directly from the models. No migrations: the product is
+# not live, so a schema change lands in the models and the database is
+# recreated — `just db-reset` does that for the development database.
+db-init:
+    uv run python -m app.kernel.db.init
 
-# A new migration from the model diff: just db-revision "add x"
-db-revision message:
-    uv run alembic -c app/kernel/db/alembic.ini revision --autogenerate -m "{{message}}"
-
-# Recreate the development database and migrate it.
+# Recreate the development database and its schema.
 db-reset:
     @echo "This drops narrare_v2_dev. Ctrl+C to cancel."
     @sleep 3
@@ -100,7 +98,7 @@ db-reset:
         psql -U narrare -d postgres -c "DROP DATABASE IF EXISTS narrare_v2_dev WITH (FORCE)"
     docker compose -f docker-compose.dev.yml exec -T postgres \
         psql -U narrare -d postgres -c "CREATE DATABASE narrare_v2_dev"
-    just db-migrate
+    just db-init
 
 # A psql shell on the development database.
 db-shell:

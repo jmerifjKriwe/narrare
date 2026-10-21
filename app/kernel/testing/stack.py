@@ -24,12 +24,11 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.db.init import init_schema
 from app.kernel.db.testsupport import ensure_database, url_for
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -69,18 +68,15 @@ async def _reset(database: str, seed_user: bool) -> None:
 
 
 def _prepare(database: str, seed_user: bool) -> None:
-    """Schema from the migration, then clean tables.
+    """Schema from the models, then clean tables.
 
     Runs in a worker thread: pytest-asyncio keeps a session loop running, and
     ``asyncio.run`` refuses to start a second one in the same thread.
     """
     ensure_database(database)
-    config = Config(str(ROOT / "app/kernel/db/alembic.ini"))
-    config.set_main_option("script_location", str(ROOT / "app/kernel/db/migrations"))
     # Explicit URL per stack: the process environment is set once, but several
     # capability stacks run one after another in the same pytest process.
-    config.set_main_option("sqlalchemy.url", url_for(database))
-    command.upgrade(config, "head")
+    asyncio.run(init_schema(url_for(database)))
     asyncio.run(_reset(database, seed_user))
 
 
