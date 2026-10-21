@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = ROOT / ".gitleaks.toml"
@@ -258,7 +258,7 @@ def _run_command_with_timeout(command: list[str], cwd: Path, timeout: float) -> 
 
 
 @contextmanager
-def _machine_lock() -> Iterator[None]:
+def _machine_lock() -> Generator[None]:
     """Hold a machine-wide non-blocking flock for the duration of the scan.
 
     Non-blocking is intentional: staged scans are bounded (<=90s in

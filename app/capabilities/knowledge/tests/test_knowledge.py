@@ -10,6 +10,7 @@ from app.api.main import app
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider
 
 pytestmark = pytest.mark.timeout(60)
@@ -61,6 +62,7 @@ async def test_search_returns_the_passage_with_the_term() -> None:
 
 
 async def test_another_users_document_is_not_searchable() -> None:
+    await seed_user(OTHER_USER)
     async with Session() as session:
         await KnowledgeService(session, OTHER_USER, FakeEmbeddingProvider()).ingest(
             "Fremd", "Leuchtturm am Horizont, ganz allein."

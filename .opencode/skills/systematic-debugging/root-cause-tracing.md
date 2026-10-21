@@ -33,7 +33,7 @@ digraph when_to_use {
 
 ### 1. Observe the Symptom
 ```
-Error: git init failed in ~/project/packages/core
+Error: git init failed in ~/project/the kernel
 ```
 
 ### 2. Find Immediate Cause
@@ -108,7 +108,7 @@ Runs tests one-by-one, stops at first polluter. See script for usage.
 
 ## Real Example: Empty projectDir
 
-**Symptom:** `.git` created in `packages/core/` (source code)
+**Symptom:** `.git` created in `the kernel/` (source code)
 
 **Trace chain:**
 1. `git init` runs in `process.cwd()` ← empty cwd parameter

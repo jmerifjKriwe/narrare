@@ -34,13 +34,12 @@ export default function NovelPage() {
   }, [load]);
 
   async function createChapter() {
-    const number = chapters.length + 1;
     const response = await fetch(`/api/writing/novels/${novelId}/chapters`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: t("chapters.defaultTitle").replace("{n}", String(number)),
-      }),
+      // No title: the placeholder is a display concern, and storing it would
+      // freeze one locale's wording into the database.
+      body: JSON.stringify({}),
     });
     const chapter: Chapter = await response.json();
     setChapters((previous) => [...previous, chapter]);
@@ -73,7 +72,8 @@ export default function NovelPage() {
                 aria-pressed={chapter.id === active}
                 onClick={() => setActive(chapter.id)}
               >
-                {chapter.title}
+                {chapter.title ||
+                  t("chapters.defaultTitle").replace("{n}", String(chapter.position + 1))}
               </button>
             </li>
           ))}

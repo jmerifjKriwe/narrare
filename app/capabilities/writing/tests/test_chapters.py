@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from app.api.main import app
 from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -59,6 +60,7 @@ async def test_saving_the_body_persists_it() -> None:
 
 
 async def test_a_chapter_cannot_be_added_to_another_users_novel() -> None:
+    await seed_user(OTHER_USER)
     async with Session() as session:
         novel_id = uuid4()
         await session.execute(
@@ -78,6 +80,7 @@ async def test_a_chapter_cannot_be_added_to_another_users_novel() -> None:
 
 
 async def test_another_users_chapter_cannot_be_saved() -> None:
+    await seed_user(OTHER_USER)
     async with Session() as session:
         novel_id, chapter_id = uuid4(), uuid4()
         await session.execute(

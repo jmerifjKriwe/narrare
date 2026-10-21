@@ -1,14 +1,27 @@
-"""The FastAPI app. Mounts capability routers; holds no domain logic."""
+"""The FastAPI app: startup validation and every capability router, found by
+convention. Adding a capability touches only its folder (spec §12.1): every
+``app/capabilities/<name>/router.py`` is mounted, in alphabetical order.
+"""
+
+from collections.abc import AsyncGenerator  # noqa: TC003
+from contextlib import asynccontextmanager
+from importlib import import_module
+from pathlib import Path
 
 from fastapi import FastAPI
 
-from app.capabilities.chat.router import router as chat_router
-from app.capabilities.knowledge.router import router as knowledge_router
-from app.capabilities.setup.router import router as setup_router
-from app.capabilities.writing.router import router as writing_router
+from app.kernel.embeddings import validate_configuration
 
-app = FastAPI(title="Narrare", version="2.0.0")
-app.include_router(setup_router)
-app.include_router(writing_router)
-app.include_router(knowledge_router)
-app.include_router(chat_router)
+CAPABILITIES = Path(__file__).resolve().parent.parent / "capabilities"
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+    validate_configuration()
+    yield
+
+
+app = FastAPI(title="Narrare", version="2.0.0", lifespan=lifespan)
+
+for folder in sorted(path for path in CAPABILITIES.iterdir() if (path / "router.py").exists()):
+    app.include_router(import_module(f"app.capabilities.{folder.name}.router").router)

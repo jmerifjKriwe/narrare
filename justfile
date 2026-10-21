@@ -106,7 +106,7 @@ db-reset:
 db-shell:
     docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d narrare_v2_dev
 
-# Write the OpenAPI document the web app reads.
+# Write the OpenAPI document; nothing consumes it yet.
 generate:
     uv run python -m scripts.export_openapi
 

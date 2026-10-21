@@ -9,6 +9,10 @@ from uuid import UUID
 LOCAL_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
+class SetupRequiredError(Exception):
+    """The local user does not exist yet. Setup creates it; writes refuse."""
+
+
 async def current_user_id() -> UUID:
     """FastAPI dependency: the requesting user.
 

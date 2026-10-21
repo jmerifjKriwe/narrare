@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import AsyncIterator
+from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
@@ -17,11 +18,15 @@ from app.capabilities.writing.schemas import (
     NovelRead,
 )
 from app.capabilities.writing.service import NotFoundError, WritingService
-from app.kernel.auth import current_user_id
+from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.llm import TextProvider, get_provider
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
+
+logger = getLogger("narrare")
+
+SSE_HEADERS = {"Cache-Control": "no-cache"}
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 UserDep = Annotated[UUID, Depends(current_user_id)]
@@ -36,8 +41,18 @@ ProviderDep = Annotated[TextProvider, Depends(get_provider)]
 
 
 async def _continuation_events(provider: TextProvider, prompt: str) -> AsyncIterator[str]:
-    async for delta in provider.stream(prompt):
-        yield f"data: {json.dumps({'delta': delta})}\n\n"
+    """Deltas, then done — or an error frame if the provider dies mid-stream.
+
+    The editor appends what arrived and autosaves it; a silent close would look
+    like a finished continuation.
+    """
+    try:
+        async for delta in provider.stream(prompt):
+            yield f"data: {json.dumps({'delta': delta})}\n\n"
+    except Exception:
+        logger.exception("continuation stream failed")
+        yield "event: error\ndata: {}\n\n"
+        return
     yield "event: done\ndata: {}\n\n"
 
 
@@ -57,7 +72,11 @@ async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
 
 @router.post("/novels", response_model=NovelRead, status_code=201)
 async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
-    return NovelRead.model_validate(await service.create_novel(payload.title))
+    try:
+        novel = await service.create_novel(payload.title)
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return NovelRead.model_validate(novel)
 
 
 @router.get("/novels/{novel_id}/chapters", response_model=list[ChapterRead])
@@ -77,6 +96,8 @@ async def create_chapter(
         chapter = await service.create_chapter(novel_id, payload.title)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
     return ChapterRead.model_validate(chapter)
 
 
@@ -108,4 +129,11 @@ async def continue_chapter(
         prompt = await service.continuation_prompt(chapter_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
-    return StreamingResponse(_continuation_events(provider, prompt), media_type="text/event-stream")
+    # The pooled connection goes back before the provider stream holds the
+    # response open: nothing reads the database during the stream.
+    await service.session.close()
+    return StreamingResponse(
+        _continuation_events(provider, prompt),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )

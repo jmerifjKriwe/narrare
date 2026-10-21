@@ -31,5 +31,8 @@
   "chat.answerLabel": "Antwort",
   "chat.sources": "Quellen",
   "chat.noSources": "Keine Quelle gefunden",
-  "nav.chat": "Chat"
+  "nav.chat": "Chat",
+  "chapters.editorLabel": "Kapiteltext",
+  "chapters.continueError": "Die Fortsetzung ist fehlgeschlagen.",
+  "chat.error": "Die Antwort ist fehlgeschlagen."
 }

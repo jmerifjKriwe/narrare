@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import AsyncIterator
+from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
@@ -9,15 +10,19 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.capabilities.chat.schemas import ChatRequest  # noqa: RUF100, TC002
+from app.capabilities.chat.schemas import ChatRequest
 from app.capabilities.chat.service import ChatService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm import TextProvider, get_provider
-from app.kernel.retrieval import Passage  # noqa: RUF100, TC002
+from app.kernel.retrieval import Passage
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+logger = getLogger("narrare")
+
+SSE_HEADERS = {"Cache-Control": "no-cache"}
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 UserDep = Annotated[UUID, Depends(current_user_id)]
@@ -38,7 +43,9 @@ async def _events(
     """Sources first, then the answer, then done.
 
     The sources go out before the first token so the reader can show what the
-    answer was built from while it is still arriving.
+    answer was built from while it is still arriving. A provider that dies
+    mid-stream ends with an error frame instead of done: the reader cannot see
+    a traceback, and a silent close would look like a finished answer.
     """
     sources = [
         {
@@ -49,8 +56,13 @@ async def _events(
         for passage in passages
     ]
     yield f"data: {json.dumps({'sources': sources})}\n\n"
-    async for delta in provider.stream(prompt):
-        yield f"data: {json.dumps({'delta': delta})}\n\n"
+    try:
+        async for delta in provider.stream(prompt):
+            yield f"data: {json.dumps({'delta': delta})}\n\n"
+    except Exception:
+        logger.exception("chat stream failed")
+        yield "event: error\ndata: {}\n\n"
+        return
     yield "event: done\ndata: {}\n\n"
 
 
@@ -59,4 +71,11 @@ async def ask(
     payload: ChatRequest, service: ServiceDep, provider: ProviderDep
 ) -> StreamingResponse:
     prompt, passages = await service.prepare(payload.question, payload.limit)
-    return StreamingResponse(_events(provider, prompt, passages), media_type="text/event-stream")
+    # The pooled connection goes back before the provider stream holds the
+    # response open: nothing reads the database during the stream.
+    await service.session.close()
+    return StreamingResponse(
+        _events(provider, prompt, passages),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )

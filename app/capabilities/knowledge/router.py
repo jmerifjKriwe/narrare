@@ -7,8 +7,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import DocumentRead, SearchHit, SearchRequest
-from app.capabilities.knowledge.service import EmptyDocumentError, KnowledgeService
-from app.kernel.auth import current_user_id
+from app.capabilities.knowledge.service import (
+    DocumentTooLargeError,
+    EmptyDocumentError,
+    KnowledgeService,
+)
+from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 
@@ -46,6 +50,10 @@ async def upload_document(
         document = await service.ingest(resolved, text)
     except EmptyDocumentError:
         raise HTTPException(status_code=422, detail="document is empty") from None
+    except DocumentTooLargeError:
+        raise HTTPException(status_code=413, detail="document too large") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
     return DocumentRead.model_validate(document)
 
 

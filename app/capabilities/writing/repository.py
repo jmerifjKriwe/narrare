@@ -40,9 +40,7 @@ class ChapterRepository(ScopedRepository[Chapter]):
 
     async def next_position(self, novel_id: UUID) -> int:
         current = await self.session.scalar(
-            select(func.max(Chapter.position)).where(
-                Chapter.novel_id == novel_id, Chapter.user_id == self.user_id
-            )
+            select(func.max(Chapter.position)).where(Chapter.novel_id == novel_id, self.owned())
         )
         return 0 if current is None else current + 1
 

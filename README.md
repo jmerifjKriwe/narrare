@@ -45,7 +45,7 @@ just db-migrate         # apply migrations
 just db-revision "x"    # autogenerate one
 just db-reset           # drop and rebuild the dev database
 just db-shell           # psql on the dev database
-just generate           # write the OpenAPI document the web app reads
+just generate           # write the OpenAPI document (no consumer yet)
 just new-capability x   # scaffold the test fixtures for a new capability
 ```
 

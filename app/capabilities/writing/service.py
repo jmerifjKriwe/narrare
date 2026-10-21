@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.capabilities.writing.prompts import continuity_prompt
 from app.capabilities.writing.repository import ChapterRepository, NovelRepository
 from app.capabilities.writing.schemas import ChapterUpdate  # noqa: TC001
-from app.kernel.contracts.models import Chapter, Novel  # noqa: TC001
+from app.kernel.auth import SetupRequiredError
+from app.kernel.contracts.models import Chapter, Novel, User
 
 
 class NotFoundError(Exception):
@@ -22,7 +23,15 @@ class WritingService:
         self.novels = NovelRepository(session, user_id)
         self.chapters = ChapterRepository(session, user_id)
 
+    async def _require_user(self) -> None:
+        """Writes belong to a user that setup created; without one there is
+        nothing to own the row, and the foreign key would say so at the worst
+        possible time. The guard says it in the response instead."""
+        if await self.session.get(User, self.user_id) is None:
+            raise SetupRequiredError
+
     async def create_novel(self, title: str) -> Novel:
+        await self._require_user()
         novel = await self.novels.create(title)
         await self.session.commit()
         return novel
@@ -37,6 +46,7 @@ class WritingService:
         return novel
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
+        await self._require_user()
         if await self.novels.get(novel_id) is None:
             raise NotFoundError
         chapter = await self.chapters.create(novel_id, title)

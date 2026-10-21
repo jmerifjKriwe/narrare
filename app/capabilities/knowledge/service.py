@@ -7,18 +7,28 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.repository import ChunkRepository, DocumentRepository
-from app.kernel.contracts.models import Document  # noqa: RUF100, TC001, TC002
-from app.kernel.embeddings import EmbeddingProvider  # noqa: RUF100, TC001, TC002
+from app.kernel.auth import SetupRequiredError
+from app.kernel.contracts.models import Document, User
+from app.kernel.embeddings import EmbeddingProvider  # noqa: TC001
 from app.kernel.retrieval import Passage, PassageRepository
+
+MAX_UPLOAD_BYTES = 1_000_000
+"""One document, at most. Ingestion embeds in-request; an unbounded upload would
+hold the worker and, with a paid provider, bill without limit."""
 
 
 class EmptyDocumentError(Exception):
     """The upload carries no text to embed."""
 
 
+class DocumentTooLargeError(Exception):
+    """The upload is larger than MAX_UPLOAD_BYTES."""
+
+
 class KnowledgeService:
     def __init__(self, session: AsyncSession, user_id: UUID, embeddings: EmbeddingProvider) -> None:
         self.session = session
+        self.user_id = user_id
         self.embeddings = embeddings
         self.documents = DocumentRepository(session, user_id)
         self.chunks = ChunkRepository(session, user_id)
@@ -28,6 +38,10 @@ class KnowledgeService:
         return await self.documents.list()
 
     async def ingest(self, title: str, text: str) -> Document:
+        if len(text.encode("utf-8")) > MAX_UPLOAD_BYTES:
+            raise DocumentTooLargeError
+        if await self.session.get(User, self.user_id) is None:
+            raise SetupRequiredError
         chunks = chunk_text(text)
         if not chunks:
             raise EmptyDocumentError

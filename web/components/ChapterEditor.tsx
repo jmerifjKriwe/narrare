@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { t } from "../lib/i18n";
 import { SaveIndicator, useAutosave } from "../lib/save";
-import { readDeltas } from "../lib/stream";
+import { readFrames } from "../lib/stream";
 
 export function ChapterEditor({
   chapterId,
@@ -19,29 +19,41 @@ export function ChapterEditor({
 }) {
   const { status, schedule } = useAutosave(chapterId, onSaved);
   const [continuing, setContinuing] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const editor = useEditor({
     extensions: [StarterKit],
     content: body,
     immediatelyRender: false,
     onUpdate: ({ editor: instance }) => schedule(instance.getHTML()),
-    editorProps: { attributes: { class: "prose", "aria-label": "chapter" } },
+    editorProps: { attributes: { class: "prose", "aria-label": t("chapters.editorLabel") } },
   });
 
   async function continueWriting() {
     if (!editor) return;
     setContinuing(true);
+    setFailed(false);
     try {
       const response = await fetch(
         `/api/writing/chapters/${chapterId}/continue`,
         { method: "POST" },
       );
-      if (!response.ok) return;
-      for await (const delta of readDeltas(response)) {
+      if (!response.ok) {
+        setFailed(true);
+        return;
+      }
+      for await (const frame of readFrames(response)) {
+        // An error frame replaces the done frame: the provider died, and a
+        // silent end would look like a finished continuation.
+        if (frame.error) {
+          setFailed(true);
+          return;
+        }
+        if (!frame.delta) continue;
         // Append at the end: the continuation belongs after what is written.
         // Each insertion raises `onUpdate`, so the autosave persists the
         // finished text without a second endpoint writing to the chapter.
-        editor.chain().focus("end").insertContent(delta).run();
+        editor.chain().focus("end").insertContent(frame.delta).run();
       }
     } finally {
       setContinuing(false);
@@ -56,6 +68,9 @@ export function ChapterEditor({
         </button>
         <SaveIndicator status={status} />
       </div>
+      {failed ? (
+        <p role="alert">{t("chapters.continueError")}</p>
+      ) : null}
       <EditorContent editor={editor} />
     </div>
   );

@@ -7,6 +7,7 @@ export type Source = {
 export type Frame = {
   delta?: string;
   sources?: Source[];
+  error?: string;
 };
 
 /** Read a text/event-stream response and yield its parsed data payloads, in order. */

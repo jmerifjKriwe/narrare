@@ -9,9 +9,10 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.main import app
 from app.capabilities.chat.service import ChatService
-from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.contracts.models import Chunk, Document
 from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider
 
 pytestmark = pytest.mark.timeout(60)
@@ -22,6 +23,27 @@ PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
 
 def _frames(body: str) -> list[dict[str, Any]]:
     return [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+
+
+async def _seed(user_id: UUID, title: str, passage: str) -> None:
+    """One document, one chunk, through the kernel models — chat's own tests do
+    not reach into the knowledge capability for their fixtures."""
+    await seed_user(user_id)
+    [vector] = await FakeEmbeddingProvider().embed([passage])
+    async with Session() as session:
+        document = Document(user_id=user_id, title=title)
+        session.add(document)
+        await session.flush()
+        session.add(
+            Chunk(
+                user_id=user_id,
+                document_id=document.id,
+                position=0,
+                text=passage,
+                embedding=vector,
+            )
+        )
+        await session.commit()
 
 
 async def _upload(client: AsyncClient, text: str, title: str) -> None:
@@ -49,10 +71,7 @@ async def test_answer_comes_back_with_the_passage_as_source() -> None:
 
 
 async def test_prompt_carries_the_question_and_the_passage() -> None:
-    async with Session() as session:
-        await KnowledgeService(session, LOCAL_USER_ID, FakeEmbeddingProvider()).ingest(
-            "Notizen", PASSAGE
-        )
+    await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
 
     async with Session() as session:
         prompt, passages = await ChatService(
@@ -65,10 +84,7 @@ async def test_prompt_carries_the_question_and_the_passage() -> None:
 
 
 async def test_another_users_passage_is_not_a_source() -> None:
-    async with Session() as session:
-        await KnowledgeService(session, OTHER_USER, FakeEmbeddingProvider()).ingest(
-            "Fremd", PASSAGE
-        )
+    await _seed(OTHER_USER, "Fremd", PASSAGE)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})

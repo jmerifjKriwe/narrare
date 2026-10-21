@@ -4,13 +4,13 @@ services:
     environment:
       POSTGRES_USER: narrare
       POSTGRES_PASSWORD: narrare
-      POSTGRES_DB: narrare_dev
+      POSTGRES_DB: narrare_v2_dev
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U narrare -d narrare_dev"]
+      test: ["CMD-SHELL", "pg_isready -U narrare -d narrare_v2_dev"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -20,13 +20,13 @@ services:
     environment:
       POSTGRES_USER: narrare
       POSTGRES_PASSWORD: narrare
-      POSTGRES_DB: narrare_test
+      POSTGRES_DB: narrare_v2_test
     ports:
       - "5433:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U narrare -d narrare_test"]
+      test: ["CMD-SHELL", "pg_isready -U narrare -d narrare_v2_test"]
       interval: 5s
       timeout: 5s
       retries: 10

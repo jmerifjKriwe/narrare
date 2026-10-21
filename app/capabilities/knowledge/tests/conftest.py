@@ -26,8 +26,13 @@ def schema() -> None:
 @pytest.fixture(autouse=True)
 async def empty_tables() -> None:
     # Imported here: the module reads its URL once, at import.
+    from app.kernel.auth import LOCAL_USER_ID
+    from app.kernel.contracts.models import User
     from app.kernel.db.session import Session
 
     async with Session() as session:
         await session.execute(text("TRUNCATE chunks, documents, novels, chapters, users CASCADE"))
+        # The local user exists: these tests exercise a set-up instance. The
+        # guard test deletes it again to see the refusal.
+        session.add(User(id=LOCAL_USER_ID))
         await session.commit()

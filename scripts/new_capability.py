@@ -85,8 +85,8 @@ def main() -> None:
     (root / "e2e" / "conftest.py").write_text(E2E_FIXTURE.format(name=name), encoding="utf-8")
 
     print(f"created {root}")
-    print("next: router.py, service.py, schemas.py, a test, an E2E spec,")
-    print("      and app.include_router(...) in app/api/main.py")
+    print("next: router.py (auto-mounted by app/api/main.py), service.py,")
+    print("      schemas.py, a test, an E2E spec")
 
 
 if __name__ == "__main__":

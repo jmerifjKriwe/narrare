@@ -31,5 +31,8 @@
   "chat.answerLabel": "Answer",
   "chat.sources": "Sources",
   "chat.noSources": "No source found",
-  "nav.chat": "Chat"
+  "nav.chat": "Chat",
+  "chapters.editorLabel": "Chapter text",
+  "chapters.continueError": "The continuation failed.",
+  "chat.error": "The answer failed."
 }

@@ -6,8 +6,10 @@ has a ``users`` table and its own Alembic history, so it cannot be shared.
 
 import asyncio
 from contextlib import suppress
+from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import create_async_engine
 
 SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
@@ -15,6 +17,16 @@ SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
 
 def url_for(database: str) -> str:
     return f"{SERVER}/{database}"
+
+
+async def seed_user(user_id: UUID) -> None:
+    """The users row a user-owned test row needs: the key reaches users."""
+    from app.kernel.contracts.models import User
+    from app.kernel.db.session import Session
+
+    async with Session() as session:
+        await session.execute(insert(User).values(id=user_id).on_conflict_do_nothing())
+        await session.commit()
 
 
 async def _ensure(database: str) -> None:

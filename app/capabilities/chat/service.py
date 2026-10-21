@@ -5,12 +5,13 @@ from uuid import UUID  # noqa: TC003
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.chat.prompts import chat_prompt
-from app.kernel.embeddings import EmbeddingProvider  # noqa: RUF100, TC001, TC002
+from app.kernel.embeddings import EmbeddingProvider  # noqa: TC001
 from app.kernel.retrieval import Passage, PassageRepository
 
 
 class ChatService:
     def __init__(self, session: AsyncSession, user_id: UUID, embeddings: EmbeddingProvider) -> None:
+        self.session = session
         self.embeddings = embeddings
         self.passages = PassageRepository(session, user_id)
 

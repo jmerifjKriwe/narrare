@@ -19,7 +19,9 @@ class NovelRead(BaseModel):
 
 
 class ChapterCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
+    # Empty is the honest default: the database stores no locale, the chapter
+    # list shows the localized placeholder for an untitled chapter.
+    title: str = Field(default="", max_length=200)
 
 
 class ChapterUpdate(BaseModel):

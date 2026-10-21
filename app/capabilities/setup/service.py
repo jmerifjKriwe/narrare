@@ -27,6 +27,9 @@ class SetupService:
         if await self.is_complete():
             raise AlreadySetUpError
         self.session.add(User(id=LOCAL_USER_ID))
+        # Flush the user first: the novel's key reaches it, and the insert
+        # order is a fact of this transaction, not of the unit of work's sort.
+        await self.session.flush()
         novel = await NovelRepository(self.session, LOCAL_USER_ID).create(novel_title)
         await self.session.commit()
         return novel

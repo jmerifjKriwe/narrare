@@ -11,6 +11,7 @@ export default function ChatPage() {
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<Source[] | null>(null);
   const [asking, setAsking] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function ask(event: React.FormEvent) {
     event.preventDefault();
@@ -18,16 +19,26 @@ export default function ChatPage() {
     setAsking(true);
     setAnswer("");
     setSources(null);
+    setFailed(false);
     try {
       const response = await fetch("/api/chat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        setFailed(true);
+        return;
+      }
       for await (const frame of readFrames(response)) {
         if (frame.sources) setSources(frame.sources);
         if (frame.delta) setAnswer((current) => current + frame.delta);
+        // An error frame replaces the done frame: the provider died, and a
+        // silent end would look like a complete answer.
+        if (frame.error) {
+          setFailed(true);
+          return;
+        }
       }
     } finally {
       setAsking(false);
@@ -51,6 +62,7 @@ export default function ChatPage() {
       </form>
       <section aria-label={t("chat.answerLabel")}>
         <p>{answer}</p>
+        {failed ? <p role="alert">{t("chat.error")}</p> : null}
       </section>
       {sources === null ? null : (
         <section aria-label={t("chat.sources")}>

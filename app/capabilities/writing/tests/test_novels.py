@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from app.api.main import app
 from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -26,6 +27,7 @@ async def test_create_then_list_novel() -> None:
 
 
 async def test_another_users_novel_is_not_listed() -> None:
+    await seed_user(OTHER_USER)
     async with Session() as session:
         await session.execute(
             text(
@@ -53,6 +55,7 @@ async def test_get_novel_returns_the_novel() -> None:
 
 async def test_another_users_novel_is_not_found() -> None:
     novel_id = uuid4()
+    await seed_user(OTHER_USER)
     async with Session() as session:
         await session.execute(
             text(

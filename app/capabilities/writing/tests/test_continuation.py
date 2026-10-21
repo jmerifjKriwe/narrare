@@ -10,6 +10,7 @@ from sqlalchemy import text
 from app.api.main import app
 from app.capabilities.writing.prompts import continuity_prompt
 from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 from app.kernel.llm import FakeProvider
 
 pytestmark = pytest.mark.timeout(60)
@@ -57,6 +58,7 @@ async def test_the_continuation_streams_the_provider_chunks() -> None:
 
 
 async def test_another_users_chapter_cannot_be_continued() -> None:
+    await seed_user(OTHER_USER)
     async with Session() as session:
         novel_id, chapter_id = uuid4(), uuid4()
         await session.execute(
