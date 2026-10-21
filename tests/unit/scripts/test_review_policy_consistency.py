@@ -6,7 +6,7 @@ from scripts.check_review_policy_consistency import find_policy_violations, pars
 
 ROOT = Path(__file__).resolve().parents[3]
 POLICY_DOC = "docs/development/quality-gates.md"
-POINTING_DOCS = ("AGENTS.md", ".opencode/agents/NarrareDevCoordinator.md")
+POINTING_DOCS = ("AGENTS.md",)
 
 
 def _mirror_tree(tmp_path: Path) -> Path:
@@ -46,8 +46,6 @@ def test_missing_marker_is_reported(tmp_path: Path) -> None:
         "# Quality Gates\n", encoding="utf-8"
     )
     (tmp_path / "AGENTS.md").write_text("x\n", encoding="utf-8")
-    (tmp_path / ".opencode/agents").mkdir(parents=True)
-    (tmp_path / ".opencode/agents/NarrareDevCoordinator.md").write_text("x\n", encoding="utf-8")
     assert any("marker" in v for v in find_policy_violations(tmp_path))
 
 

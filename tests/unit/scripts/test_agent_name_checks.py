@@ -76,14 +76,10 @@ class TestGetRealNames:
     """Subagent name extraction from agent definition file names."""
 
     def test_real_names_from_repo(self, checker) -> None:
-        """The real repo should yield all six specialists."""
+        """The real repo should yield the two role agents."""
         names = checker.get_real_subagent_names()
-        assert "NarrareArchitectureSpecialist" in names
-        assert "NarrareBackendSpecialist" in names
-        assert "NarrareCoreSpecialist" in names
-        assert "NarrareFrontendSpecialist" in names
-        assert "NarrarePlatformSpecialist" in names
-        assert "NarrareDocsSpecialist" in names
+        assert "NarrareBuilder" in names
+        assert "NarrareReviewer" in names
 
     def test_coordinator_primary_excluded(self, checker) -> None:
         """The coordinator is a primary agent, not a dispatchable subagent."""

@@ -9,17 +9,7 @@
 
     { "action": "edit", "resource": "**/*.env*", "effect": "deny" },
     { "action": "edit", "resource": "**/*.key", "effect": "deny" },
-    { "action": "edit", "resource": ".git/**", "effect": "deny" },
 
-    { "action": "shell", "resource": "*", "effect": "allow" },
-    { "action": "shell", "resource": "sudo *", "effect": "deny" },
-    { "action": "shell", "resource": "rm -rf ~*", "effect": "deny" },
-    { "action": "shell", "resource": "rm -rf /*", "effect": "deny" },
-    { "action": "shell", "resource": "git push --force*", "effect": "deny" },
-    { "action": "shell", "resource": "git push -f*", "effect": "deny" },
-    { "action": "shell", "resource": "git reset --hard*", "effect": "deny" },
-    { "action": "shell", "resource": "git clean -fd*", "effect": "deny" },
-    { "action": "shell", "resource": "git clean -fdx*", "effect": "deny" },
     { "action": "shell", "resource": "*--no-verify*", "effect": "deny" }
   ]
 }

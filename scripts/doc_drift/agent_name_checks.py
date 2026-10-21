@@ -11,15 +11,14 @@ Approach:
        ``.opencode/agents/*.md`` file. OpenCode derives the agent id from
        the file path, *not* from a frontmatter field — there is no
        ``name:`` key in the v2 agent schema. A file named
-       ``NarrareBackendSpecialist.md`` registers as exactly
-       ``NarrareBackendSpecialist``. Files with ``mode: primary`` (the
-       coordinator) are excluded because they are not ``subagent_type``
-       values.
+       ``NarrareBuilder.md`` registers as exactly
+       ``NarrareBuilder``. Files with ``mode: primary`` are excluded
+       because they are not ``subagent_type`` values.
     2. Scan ``AGENTS.md`` and ``docs/**/*.md`` for:
        a. ``subagent_type="..."`` — any value not in the real set is flagged.
        b. Backtick-wrapped `` `narrare-<word>` `` identifiers — kebab-case
           narrare identifiers are never valid ``subagent_type`` values
-          (real names are PascalCase like ``NarrareArchitectureSpecialist``).
+          (real names are PascalCase like ``NarrareBuilder``).
     3. Report findings as critical.
 
 Exclusions:
@@ -271,7 +270,7 @@ def _scan_file(
                             f"[AGENT-NAME-DRIFT] Line {line_num}: references "
                             f"`{name}`, which is a kebab-case identifier. "
                             f"Real subagent names are PascalCase (e.g. "
-                            f"NarrareArchitectureSpecialist) defined in "
+                            f"NarrareBuilder) defined in "
                             f"{_AGENTS_DIR_DISPLAY}. "
                             f"Replace with the correct subagent_type value."
                         ),

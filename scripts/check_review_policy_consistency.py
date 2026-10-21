@@ -31,10 +31,7 @@ import sys
 from pathlib import Path
 
 POLICY_DOC = Path("docs/development/quality-gates.md")
-POINTING_DOCS: tuple[Path, ...] = (
-    Path("AGENTS.md"),
-    Path(".opencode/agents/NarrareDevCoordinator.md"),
-)
+POINTING_DOCS: tuple[Path, ...] = (Path("AGENTS.md"),)
 EXPECTED_POLICY: dict[str, str] = {"caps": "3/250", "report": "2/80"}
 HEADING = "## Review & report policy"
 POINTER = "§Review & report policy"
