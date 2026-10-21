@@ -13,7 +13,7 @@ findings (`docs/superpowers/reports/2026-10-11-e2e-ui-audit.md`).
 | test_kb_ai.py | KB-002/003/004 | B03 B05 B06 | ✅ done (2026-10-18) — 7 specs incl. both former xfail legs flipped green (F10 tags crash fixed upstream; Q2 interview via the `kb_assist_question` catalog capability, the designed E04 answer); D-1 pinned on the REAL orchestrator (panel-dispatch capture + wire refresh) |
 | test_kb_ai_bulk.py | KB-007 + corpus | — | ✅ done (2026-10-18) — 2 specs; estimate → start → status → results on the REAL server-side job, incl. terminal-`cancelled` status and per-chapter results asserts |
 | test_wiki.py | WIKI-001 | M11 N20 | ✅ done (2026-10-18) — 4 specs; N20 covered (fixed in Task 5, pinned graceful-empty green — no xfail rows this batch); staleness lifecycle + D-8 finalize path via the REAL event producer (see honest-gap notes) |
-| test_analysis.py (+ `_streams`, `_voice` split per RULE-04 400-line cap) | ANAL-001..005/007/008/009 | B07 E03 N11 N12 N13 | ✅ done (2026-10-20) — 15 specs in three files; B07 pinned green (blocker-wave fix holds); E03 fixed in-wave (503 `NLP_NOT_CONFIGURED` + `NLPProviderError` handler; sentiment happy leg skipif-guarded on model presence — CI installs the models); N11 fixed in-wave (roster-gated attribution; REAL-stream prefix + panel pins, RED-discriminated by inverted probes); N12 fixed in-wave (readability AI phase composes the full response model; graceful-skip seam integration-pinned); N13 fixed in-wave (422 `WORD_COUNT_BELOW_MINIMUM` wire pin). Honest gaps: see analysis wave notes |
+| test_analysis.py (+ `_streams`, `_voice` split per RULE-04 400-line cap) | ANAL-001..005/007/008/009 | B07 E03 N11 N12 N13 | ✅ done (2026-10-20) — 15 specs in three files; B07 pinned green (blocker-wave fix holds); E03 fixed in-wave (503 `NLP_NOT_CONFIGURED` + `NLPProviderError` handler; sentiment happy leg skipif-guarded on model presence — CI installs the models); N11 fixed in-wave (roster-gated attribution; REAL-stream prefix + panel pins, RED-discriminated by inverted probes); N12 fixed in-wave (readability AI phase composes the full response model; graceful-skip seam unit-pinned); N13 fixed in-wave (422 `WORD_COUNT_BELOW_MINIMUM` wire pin). Honest gaps: see analysis wave notes |
 | test_import_export.py | SETUP-003, export | N18 | pending |
 | test_stats_budget.py | STATS-001/002 | M02 | pending |
 | test_volumes_scenes.py | WRITE-011, PLAN-001 | M09 M10 | pending |
@@ -120,7 +120,7 @@ settings, KB worldbuilding, WS ticket, hero flow) are maintained in place.
 - **Product fixes landed in-slice and pinned green** (6 fix commits): N12
   readability kb-supply (the AI sentence phase never composed — live-probed
   `PromptVariableError` swallowed by graceful-skip; compose path now runs
-  and the skip seam is integration-pinned); N13 beta-reader min-words 422
+  and the skip seam is unit-pinned); N13 beta-reader min-words 422
   `WORD_COUNT_BELOW_MINIMUM` (was a silent 500-escape; wire body pinned);
   E03 spaCy provider 503 `NLP_NOT_CONFIGURED` (error-class contract +
   `NLPProviderError` handler, integration-pinned); N11 pt1 character-voice
