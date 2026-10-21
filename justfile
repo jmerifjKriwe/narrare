@@ -280,33 +280,17 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Shared RAM-aware xdist worker selection (Q-019 OOM mitigation).
-# Echoes "2" when RAM < 12 GB threshold, "auto" otherwise. Used by the
-# `test` and `test-unit` recipes so both share the same guard.
+# Shared RAM-aware xdist worker selection (contention guard, Q-019).
+# Echoes "1" below 4 GB available, "2" below the 12 GB threshold, else
+# "auto". Used by the `test` and `test-unit` recipes so both share the same
+# guard. Logic lives in scripts/xdist_workers.py so it is unit-testable.
 # NOTE: detection measures AVAILABLE RAM on Linux (/proc/meminfo) but
 # TOTAL RAM on macOS (sysctl hw.memsize) — macOS lacks a portable
 # "available" metric; total is an overestimate there.
 # See docs/architecture/questions/resolved/Q-019-xdist-worker-crash-oom.md.
 [private]
 _xdist-workers:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Detect RAM (MB). Linux: /proc/meminfo (available). macOS: sysctl (total).
-    if [ -f /proc/meminfo ]; then
-        avail_mb=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
-    elif command -v sysctl >/dev/null 2>&1; then
-        avail_mb=$(( $(sysctl -n hw.memsize) / 1048576 ))
-    else
-        avail_mb=0
-    fi
-    # RULE-18: 12288 MB = 12 GB threshold (Q-019 measured ~2.4 GB/worker headroom
-    # on 9.6 GB / 4 workers; 12 GB gives ~3 GB/worker with -n auto on 4 cores).
-    _RAM_THRESHOLD_MB=12288
-    if [ "$avail_mb" -gt 0 ] && [ "$avail_mb" -lt "$_RAM_THRESHOLD_MB" ]; then
-        echo 2
-    else
-        echo auto
-    fi
+    uv run --all-packages --no-sync python scripts/xdist_workers.py
 
 # Run all tests. Worker count is RAM-aware via `_xdist-workers`: < 12 GB
 # available → -n 2 (Q-019 OOM mitigation); otherwise -n auto. CI runs pytest
