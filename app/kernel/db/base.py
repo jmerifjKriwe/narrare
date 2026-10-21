@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 
 
 class UserOwned(Base):
-    """Every row a user can see carries the owning user from its first migration.
+    """Every row a user can see carries the owning user from its first version.
 
     The key reaches the users table, so a row cannot outlive its user or be
     created for one that setup never made."""

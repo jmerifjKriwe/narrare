@@ -1,7 +1,7 @@
 """Throwaway databases for tests that run against a real Postgres.
 
-Each suite gets its own database: the old application's ``narrare_test`` already
-has a ``users`` table and its own Alembic history, so it cannot be shared.
+Each suite gets its own database: they are created and dropped per run, and a
+shared database would carry one suite's rows into the next.
 """
 
 import asyncio
