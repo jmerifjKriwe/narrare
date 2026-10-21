@@ -11,6 +11,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+import pytest
 from sqlalchemy import select
 
 from narrare.chapters.models import Chapter
@@ -18,6 +19,11 @@ from narrare.chapters.models import Chapter
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
+
+# The endpoint is fast; each content-bearing chapter create blocks ~2 s on the
+# writing-stats recorder's separate session (FK check vs. uncommitted test rows),
+# so the call needs ~7 s serially and >10 s under -n 4. Perf slice owed.
+pytestmark = pytest.mark.timeout(30)
 
 
 async def _create_novel(client: AsyncClient, auth_headers: dict[str, str]) -> str:

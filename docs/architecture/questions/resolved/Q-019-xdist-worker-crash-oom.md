@@ -226,3 +226,68 @@ CI is unaffected — it runs `pytest` directly in `ci.yml` and never invokes
 > add `just test-lowmem` (`-n 2`) for < 16 GB RAM machines; **default
 > `just test` is now RAM-aware** (auto `-n 2` on < 12 GB available RAM).
 > Options B/D are non-fixes; C-only is rejected (a working mitigation exists).
+
+---
+
+## Second mechanism (2026-10-20) — a timeout reported as a crash
+
+The 2026-08-08 diagnosis above stands for its own incident. A second, unrelated
+mechanism produces an **identical symptom** and was mistaken for it during the
+T21a/T21b throughput work.
+
+### The symptom that misled
+
+```
+[gw3] node down: Not properly terminated
+worker 'gw3' crashed while running
+    'tests/integration/chapters/test_chapter_plan_context_api.py::TestPlanContextHappyPath::test_middle_chapter_returns_both_neighbors_summary_only'
+```
+
+No Python traceback, no assertion, no signal; the file passes 6/6 serially; the
+victim moved between workers/reruns. Every observable matched the OOM signature —
+except the memory evidence: the cgroup `oom_kill` counter stayed **0** across all
+runs and `strace` showed `exit_group(1)` (a normal exit syscall), not a kill
+signal.
+
+### Root cause
+
+`pytest-timeout` with `timeout_method = "thread"` runs the check in a timer
+thread. On expiry it does not raise: `timeout_timer()` in `pytest_timeout.py`
+dumps the stacks and then calls `os._exit(1)` — the process dies inside the test,
+so no exception can reach pytest. xdist only observes a worker that stopped
+answering and reports "worker crashed", exactly as it would for SIGKILL. The
+message is therefore *not* evidence of OOM.
+
+### Dose-response
+
+Same file, same machine, `-n 4`; only the budget changed:
+
+| `--timeout` | crashing runs |
+|---|---|
+| 1 s | 5 |
+| 3 s | 4 |
+| 10 s (configured) | 5/8 |
+| 30 s | 0/4 |
+| 600 s | 0/4 |
+
+A monotone response to the timeout budget, flat `oom_kill` counter, and no
+signal in `strace` identify the trigger. The test itself is DB-bound: each
+content-bearing chapter create blocks ~2 s on the writing-stats recorder's
+separate session (its FK check cannot see the test transaction's uncommitted
+rows), so the call needs ~6.2–7.1 s serially and 8.3–10.6 s under `-n 4` —
+straddling a 10 s budget depending on load.
+
+### Rule for next time
+
+**Before blaming OOM, check `--timeout` (and `timeout_method`) and the cgroup
+`oom_kill` counter.** A non-zero `oom_kill` plus no traceback means memory; a
+flat `oom_kill` plus `exit_group(1)` in `strace` means the timeout fired — read
+the per-phase durations (`--durations`) before touching workers or RAM tiers.
+
+### Local mitigation
+
+`tests/integration/chapters/test_chapter_plan_context_api.py` carries a
+file-level `pytestmark = pytest.mark.timeout(30)` with the reason inline. This
+fixes *this* test only; the crash mechanism remains for any future slow test
+(verified with a 2 s scratch test under `--timeout=1 -n 2`, which still reports
+"worker crashed"). The underlying ~2 s per create is a perf slice still owed.
