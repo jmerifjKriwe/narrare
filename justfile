@@ -305,7 +305,7 @@ test:
     #!/usr/bin/env bash
     set -euo pipefail
     workers=$(just _xdist-workers)
-    uv run --all-packages pytest tests/ -v -n "$workers" -m "not schema_mutating"
+    uv run --all-packages pytest tests/ app/ -v -n "$workers" -m "not schema_mutating"
     uv run --all-packages pytest tests/integration/ -v -m schema_mutating
 
 # Run all tests with forced `-n 2` (explicit override; rarely needed now).
@@ -367,7 +367,7 @@ test-match pattern:
 # For the CI-faithful wrapper (starts services, ENVIRONMENT=test, --timeout=300),
 # prefer:  just e2e
 test-e2e:
-    uv run --all-packages pytest tests/e2e/ -v -m e2e --timeout=60
+    uv run --all-packages pytest tests/e2e/ app/capabilities/*/e2e/ -v -m e2e --timeout=60
 
 # Run E2E tests against full stack — CI-faithful (starts API+frontend with ENVIRONMENT=test, narrare_test DB on :5433, --timeout=300; cleans up on exit). Requires: docker compose -f docker-compose.dev.yml up -d postgres_test. Frontend mode override: E2E_FRONTEND_MODE=build just e2e. See scripts/run_e2e.sh, .github/workflows/ci.yml (test-e2e job), tests/AGENTS.md.
 e2e:
