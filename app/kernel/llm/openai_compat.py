@@ -16,11 +16,9 @@ from os import environ
 
 import httpx
 
-DEFAULT_BASE_URL = "https://api.openai.com/v1"
+from app.kernel.vendor import needs_api_key
 
-LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1", "host.docker.internal")
-"""A server on this machine needs no key; anything else does, or the first
-request comes back 401 far from the configuration mistake that caused it."""
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
 TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
 """Reading waits: a completion streams for as long as the model takes."""
@@ -49,12 +47,9 @@ class OpenAISettings:
         problems: list[str] = []
         if not self.model:
             problems.append("NARRE_LLM_MODEL is not set")
-        if not self.api_key and not self._is_local():
+        if not self.api_key and needs_api_key(self.base_url):
             problems.append("NARRE_LLM_API_KEY is not set (a remote endpoint needs one)")
         return problems
-
-    def _is_local(self) -> bool:
-        return httpx.URL(self.base_url).host in LOCAL_HOSTS
 
 
 class OpenAICompatibleProvider:
@@ -70,7 +65,7 @@ class OpenAICompatibleProvider:
 
     def describe(self) -> str:
         return (
-            f"llm=openai-compatible model={self.settings.model or '(unset)'}"
+            f"openai-compatible model={self.settings.model or '(unset)'}"
             f" base_url={self.settings.base_url}"
         )
 

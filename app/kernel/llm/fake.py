@@ -42,7 +42,7 @@ class FakeProvider:
     )
 
     def describe(self) -> str:
-        return "llm=fake"
+        return "fake"
 
     def configuration_problems(self) -> list[str]:
         return []

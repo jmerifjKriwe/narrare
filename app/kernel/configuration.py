@@ -9,7 +9,7 @@ configured — that one would otherwise fail with the user's first prompt instea
 from logging import getLogger
 from os import environ
 
-from app.kernel.embeddings import SCHEMA_DIMENSIONS
+from app.kernel.embeddings import SCHEMA_DIMENSIONS, get_embedding_provider
 from app.kernel.llm import get_provider
 
 
@@ -20,13 +20,17 @@ def validate_configuration() -> None:
             f"NARRE_EMBEDDING_DIMENSIONS={dimensions} does not match the applied schema"
             f" ({SCHEMA_DIMENSIONS}); changing the width needs a migration"
         )
-    provider = get_provider()
-    problems = provider.configuration_problems()
-    if problems:
-        raise RuntimeError(f"{provider.describe()} is not configured: {'; '.join(problems)}")
+    text = get_provider()
+    embeddings = get_embedding_provider()
+    for boundary, provider in (("llm", text), ("embedding", embeddings)):
+        problems = provider.configuration_problems()
+        if problems:
+            raise RuntimeError(
+                f"{boundary}={provider.describe()} is not configured: {'; '.join(problems)}"
+            )
     getLogger("narrare").info(
-        "providers %s embedding=%s dimensions=%d",
-        provider.describe(),
-        environ.get("NARRE_EMBEDDING_PROVIDER", "fake"),
+        "providers llm=%s embedding=%s dimensions=%d",
+        text.describe(),
+        embeddings.describe(),
         dimensions,
     )
