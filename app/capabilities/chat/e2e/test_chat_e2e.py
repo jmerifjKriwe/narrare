@@ -6,16 +6,20 @@ the real ones; the provider and the embedding model are the catalog's fakes.
 """
 
 from pathlib import Path  # noqa: TC003
+from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
+
+if TYPE_CHECKING:
+    from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
 
 
-def test_answer_quotes_the_uploaded_passage(page: Page, stack: None, tmp_path: Path) -> None:
+def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: Path) -> None:
     source = tmp_path / "notizen.txt"
     source.write_text(PASSAGE, encoding="utf-8")
 

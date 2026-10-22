@@ -13,21 +13,36 @@ export default function NovelsPage() {
   const [novels, setNovels] = useState<Novel[]>([]);
   const [title, setTitle] = useState("");
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { data: status } = await client.GET("/api/setup/status");
-      if (cancelled) return;
-      if (status && !status.complete) {
-        // Nothing to list yet: an uninstalled instance starts at setup.
-        router.replace("/setup");
-        return;
+      try {
+        const status = await client.GET("/api/setup/status");
+        if (cancelled) return;
+        if (!status.response.ok) {
+          // An answer that is not "ok" means no usable state. Showing an empty
+          // list here would claim the instance holds nothing; say what failed.
+          setFailed(true);
+        } else if (status.data && !status.data.complete) {
+          // Nothing to list yet: an uninstalled instance starts at setup.
+          router.replace("/setup");
+          return;
+        } else {
+          const loaded = await client.GET("/api/writing/novels");
+          if (cancelled) return;
+          if (loaded.response.ok) {
+            setNovels(loaded.data ?? []);
+          } else {
+            setFailed(true);
+          }
+        }
+      } catch {
+        // The local service is not answering at all and the proxy refuses.
+        if (!cancelled) setFailed(true);
       }
-      const { data: loaded } = await client.GET("/api/writing/novels");
-      if (cancelled) return;
-      setNovels(loaded ?? []);
-      setReady(true);
+      if (!cancelled) setReady(true);
     })();
     return () => {
       cancelled = true;
@@ -35,14 +50,31 @@ export default function NovelsPage() {
   }, [router]);
 
   async function reload() {
-    const { data } = await client.GET("/api/writing/novels");
-    setNovels(data ?? []);
+    try {
+      const { data, response } = await client.GET("/api/writing/novels");
+      if (!response.ok) {
+        setFailed(true);
+        return;
+      }
+      setNovels(data ?? []);
+    } catch {
+      setFailed(true);
+    }
   }
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
     if (title.trim() === "") return;
-    await client.POST("/api/writing/novels", { body: { title } });
+    try {
+      const { response } = await client.POST("/api/writing/novels", { body: { title } });
+      if (!response.ok) {
+        setFailed(true);
+        return;
+      }
+    } catch {
+      setFailed(true);
+      return;
+    }
     setTitle("");
     await reload();
   }
@@ -62,34 +94,42 @@ export default function NovelsPage() {
           </span>
         ))}
       </p>
-      <form onSubmit={create} className="mt-6 flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("novels.titleLabel")}
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-        >
-          {t("novels.create")}
-        </button>
-      </form>
-      <ul className="mt-8 flex flex-col gap-2">
-        {novels.map((novel) => (
-          <li key={novel.id} className="rounded-lg border border-border bg-card">
-            <Link
-              href={`/novels/${novel.id}`}
-              className="block px-4 py-3 underline-offset-4 hover:underline"
+      {failed ? (
+        <p role="alert" className="mt-6 text-sm text-danger">
+          {t("novels.errorLoad")}
+        </p>
+      ) : (
+        <>
+          <form onSubmit={create} className="mt-6 flex flex-col gap-2">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              {t("novels.titleLabel")}
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
+              />
+            </label>
+            <button
+              type="submit"
+              className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
             >
-              {novel.title}
-            </Link>
-          </li>
-        ))}
-      </ul>
+              {t("novels.create")}
+            </button>
+          </form>
+          <ul className="mt-8 flex flex-col gap-2">
+            {novels.map((novel) => (
+              <li key={novel.id} className="rounded-lg border border-border bg-card">
+                <Link
+                  href={`/novels/${novel.id}`}
+                  className="block px-4 py-3 underline-offset-4 hover:underline"
+                >
+                  {novel.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </main>
   );
 }

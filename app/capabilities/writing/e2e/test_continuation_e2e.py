@@ -1,12 +1,17 @@
 """Click once: the provider streams into the editor and the text survives reload."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 from playwright.sync_api import Page, expect
+
+if TYPE_CHECKING:
+    from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 
-def test_the_continuation_arrives_in_the_editor_and_is_saved(page: Page, stack: None) -> None:
+def test_the_continuation_arrives_in_the_editor_and_is_saved(page: Page, stack: Stack) -> None:
     page.goto("http://127.0.0.1:3100/")
     page.get_by_label("Titel").fill("Der Nebel")
     page.get_by_role("button", name="Anlegen").click()

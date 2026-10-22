@@ -1,14 +1,18 @@
 """A fresh database must open on setup and end on the novel it created."""
 
 import re
+from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
 
+if TYPE_CHECKING:
+    from app.kernel.testing.stack import Stack
+
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 
-def test_a_fresh_database_opens_on_setup(page: Page, stack: None) -> None:
+def test_a_fresh_database_opens_on_setup(page: Page, stack: Stack) -> None:
     page.goto("http://127.0.0.1:3100/")
 
     # The root sends an uninstalled instance to setup instead of showing an empty list.

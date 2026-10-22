@@ -3,6 +3,7 @@
   "novels.heading": "Romane",
   "novels.titleLabel": "Titel",
   "novels.create": "Anlegen",
+  "novels.errorLoad": "Deine Romane konnten nicht geladen werden. Läuft der lokale Dienst?",
   "chapters.heading": "Kapitel",
   "chapters.new": "Neues Kapitel",
   "chapters.empty": "Noch kein Kapitel",

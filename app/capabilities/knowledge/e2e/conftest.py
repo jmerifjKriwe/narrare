@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.kernel.testing.stack import run_stack
+from app.kernel.testing.stack import Stack, run_stack
 from app.kernel.testing.vendor import EmbeddingsVendor, embeddings_vendor
 
 DATABASE = "narrare_v2_knowledge_e2e"
@@ -40,7 +40,7 @@ def vendor() -> Iterator[EmbeddingsVendor]:
 
 
 @pytest.fixture(scope="module")
-def stack(vendor: EmbeddingsVendor) -> Iterator[None]:
+def stack(vendor: EmbeddingsVendor) -> Iterator[Stack]:
     with run_stack(
         database=DATABASE,
         seed_user=True,
@@ -49,8 +49,8 @@ def stack(vendor: EmbeddingsVendor) -> Iterator[None]:
             "NARRE_EMBEDDING_BASE_URL": f"{vendor.base_url}/v1",
             "NARRE_EMBEDDING_MODEL": "stand-in-model",
         },
-    ):
-        yield
+    ) as running:
+        yield running
 
 
 @pytest.fixture(autouse=True)

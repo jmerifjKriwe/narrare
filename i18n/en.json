@@ -3,6 +3,7 @@
   "novels.heading": "Novels",
   "novels.titleLabel": "Title",
   "novels.create": "Create",
+  "novels.errorLoad": "Your novels could not be loaded. Is the local service running?",
   "chapters.heading": "Chapters",
   "chapters.new": "New chapter",
   "chapters.empty": "No chapters yet",

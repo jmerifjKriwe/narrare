@@ -12,6 +12,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 if TYPE_CHECKING:
+    from app.kernel.testing.stack import Stack
     from app.kernel.testing.vendor import EmbeddingsVendor
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
@@ -19,7 +20,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 TEXT = "Der Leuchtturm am Horizont war seit Jahren dunkel.\n\nNiemand im Dorf sprach noch über ihn."
 
 
-def test_uploaded_passage_is_returned_by_search(page: Page, stack: None, tmp_path: Path) -> None:
+def test_uploaded_passage_is_returned_by_search(page: Page, stack: Stack, tmp_path: Path) -> None:
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")
 
@@ -35,7 +36,7 @@ def test_uploaded_passage_is_returned_by_search(page: Page, stack: None, tmp_pat
 
 
 def test_a_model_change_is_refused_and_reembedding_restores_search(
-    page: Page, vendor: EmbeddingsVendor, stack: None, tmp_path: Path
+    page: Page, vendor: EmbeddingsVendor, stack: Stack, tmp_path: Path
 ) -> None:
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")

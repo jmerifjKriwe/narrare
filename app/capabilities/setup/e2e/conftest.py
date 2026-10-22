@@ -8,10 +8,10 @@ from collections.abc import Iterator  # noqa: TC003
 
 import pytest
 
-from app.kernel.testing.stack import run_stack
+from app.kernel.testing.stack import Stack, run_stack
 
 
 @pytest.fixture(scope="module")
-def stack() -> Iterator[None]:
-    with run_stack(database="narrare_v2_setup_e2e", seed_user=False):
-        yield
+def stack() -> Iterator[Stack]:
+    with run_stack(database="narrare_v2_setup_e2e", seed_user=False) as running:
+        yield running

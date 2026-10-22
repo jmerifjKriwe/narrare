@@ -19,6 +19,7 @@ import time
 from collections.abc import Generator  # noqa: TC003
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from dataclasses import dataclass
 from os import environ
 from pathlib import Path
 from urllib.error import URLError
@@ -82,38 +83,74 @@ def _prepare(database: str, seed_user: bool) -> None:
     asyncio.run(_reset(database, seed_user))
 
 
+def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
+    return subprocess.Popen(  # noqa: S603  fixed argument list, this interpreter
+        [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(API_PORT)],
+        cwd=ROOT,
+        env=environment,
+        start_new_session=True,
+    )
+
+
+def _stop(process: subprocess.Popen[bytes]) -> None:
+    """End a whole process group: Next runs its server as a child."""
+    if process.poll() is not None:
+        return
+    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+    process.wait(timeout=SHUTDOWN_TIMEOUT)
+
+
+@dataclass
+class Stack:
+    """The running pieces, so a test can take one down and bring it back.
+
+    An unreachable backend is a real condition of this product (a local service
+    the user has not started). Stopping the real API is how a test produces it;
+    nothing is simulated.
+    """
+
+    environment: dict[str, str]
+    api: subprocess.Popen[bytes]
+    web: subprocess.Popen[bytes]
+
+    def stop_api(self) -> None:
+        _stop(self.api)
+
+    def start_api(self) -> None:
+        self.api = _spawn_api(self.environment)
+        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json")
+
+
 @contextmanager
 def run_stack(
     *, database: str, seed_user: bool, env: dict[str, str] | None = None
-) -> Generator[None]:
+) -> Generator[Stack]:
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 
     # Extra environment reaches the API only: a stack may point a provider at a
     # test-owned stand-in (the one boundary a fake may hold).
     environment = {**os.environ, "NARRE_DATABASE_URL": url_for(database), **(env or {})}
-    api = subprocess.Popen(  # noqa: S603  fixed argument list, this interpreter
-        [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(API_PORT)],
-        cwd=ROOT,
-        env=environment,
-        start_new_session=True,
-    )
     pnpm = shutil.which("pnpm")
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")
-    web = subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
-        [pnpm, "dev"],
-        cwd=ROOT / "web",
-        env=environment,
-        start_new_session=True,
+    stack = Stack(
+        environment=environment,
+        api=_spawn_api(environment),
+        web=subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
+            [pnpm, "dev"],
+            cwd=ROOT / "web",
+            env=environment,
+            start_new_session=True,
+        ),
     )
     try:
         _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json")
         _wait_for(f"http://127.0.0.1:{WEB_PORT}")
-        yield
+        yield stack
     finally:
         # Next runs its server in a child process; kill the whole group or the
-        # port stays bound after the test run.
-        for process in (web, api):
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-            process.wait(timeout=SHUTDOWN_TIMEOUT)
+        # port stays bound after the test run. A test may have stopped the API
+        # itself and failed before bringing it back: skip what is already gone.
+        _stop(stack.web)
+        _stop(stack.api)
