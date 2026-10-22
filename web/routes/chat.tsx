@@ -2,11 +2,12 @@ import { createRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { client, isModelChange } from "../lib/api/client";
-import { t } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
 import { readFrames, type Source } from "../lib/stream";
 import { rootRoute } from "./__root";
 
 function ChatPage() {
+  const t = useTranslation();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<Source[] | null>(null);

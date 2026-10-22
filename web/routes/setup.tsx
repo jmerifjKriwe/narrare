@@ -2,10 +2,11 @@ import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { client } from "../lib/api/client";
-import { t } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
 import { rootRoute } from "./__root";
 
 function SetupPage() {
+  const t = useTranslation();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [failed, setFailed] = useState(false);

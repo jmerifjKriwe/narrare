@@ -3,10 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ChapterEditor } from "../components/ChapterEditor";
 import { client, type Chapter, type Novel } from "../lib/api/client";
-import { t } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
 import { rootRoute } from "./__root";
 
 function NovelPage() {
+  const t = useTranslation();
   const { id: novelId } = novelRoute.useParams();
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);

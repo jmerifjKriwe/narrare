@@ -2,10 +2,11 @@ import { createRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { client, isModelChange, type Hit, type KnowledgeDocument } from "../lib/api/client";
-import { t } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
 import { rootRoute } from "./__root";
 
 function KnowledgePage() {
+  const t = useTranslation();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);

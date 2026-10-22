@@ -44,5 +44,8 @@
   "docs.table.path": "Chemin",
   "docs.table.needs": "Nécessite",
   "needs.llm": "un modèle de texte",
-  "needs.embeddings": "un modèle d'embeddings"
+  "needs.embeddings": "un modèle d'embeddings",
+  "settings.language": "Langue",
+  "settings.automatic": "Automatique",
+  "settings.errorSave": "La langue n'a pas pu être enregistrée."
 }

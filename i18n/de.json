@@ -44,5 +44,8 @@
   "docs.table.path": "Pfad",
   "docs.table.needs": "Benötigt",
   "needs.llm": "ein Textmodell",
-  "needs.embeddings": "ein Embedding-Modell"
+  "needs.embeddings": "ein Embedding-Modell",
+  "settings.language": "Sprache",
+  "settings.automatic": "Automatisch",
+  "settings.errorSave": "Die Sprache konnte nicht gespeichert werden."
 }

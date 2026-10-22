@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { client } from "./api/client";
-import { t } from "./i18n";
+import { useTranslation } from "./i18n";
 
 export type SaveStatus = "idle" | "saving" | "saved";
 
@@ -68,6 +68,7 @@ export function useAutosave(
 }
 
 export function SaveIndicator({ status }: { status: SaveStatus }) {
+  const t = useTranslation();
   if (status === "idle") return null;
   return (
     <span role="status" className="text-sm text-muted">

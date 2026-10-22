@@ -2,7 +2,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
 
-import { t } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
 import { client } from "../lib/api/client";
 import { SaveIndicator, useAutosave } from "../lib/save";
 import { readFrames } from "../lib/stream";
@@ -16,6 +16,7 @@ export function ChapterEditor({
   body: string;
   onSaved?: (chapterId: string, body: string) => void;
 }) {
+  const t = useTranslation();
   const { status, schedule } = useAutosave(chapterId, onSaved);
   const [continuing, setContinuing] = useState(false);
   const [failed, setFailed] = useState(false);

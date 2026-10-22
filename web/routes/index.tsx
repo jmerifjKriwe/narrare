@@ -2,11 +2,12 @@ import { createRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { client, type Novel } from "../lib/api/client";
-import { t } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
 import { rootRoute } from "./__root";
 
 function NovelsPage() {
+  const t = useTranslation();
   const navigate = useNavigate();
   const [novels, setNovels] = useState<Novel[]>([]);
   const [title, setTitle] = useState("");
