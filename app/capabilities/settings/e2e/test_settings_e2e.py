@@ -52,3 +52,15 @@ def test_a_chosen_language_survives_a_fresh_browser(
         expect(other.locator("html")).to_have_attribute("lang", "de")
     finally:
         other_context.close()
+
+
+def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
+    page.goto("http://127.0.0.1:3100/")
+    # The shell paints only after the settings query answers — the locale
+    # gate — so the Tab below must wait for the bar to exist.
+    expect(page.locator("header")).to_be_visible()
+    body = page.locator("body")
+    body.press("Tab")  # first Tab reaches the skip link
+    expect(page.get_by_role("link", name="Zum Inhalt springen")).to_be_focused()
+    body.press("Enter")
+    expect(page.locator("#main")).to_be_focused()

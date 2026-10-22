@@ -56,7 +56,7 @@ function NovelPage() {
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-4 py-10">
       <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
         {t("nav.back")}
       </Link>
@@ -98,7 +98,7 @@ function NovelPage() {
           onSaved={remember}
         />
       ) : null}
-    </main>
+    </div>
   );
 }
 

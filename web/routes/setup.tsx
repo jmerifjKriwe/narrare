@@ -25,7 +25,7 @@ function SetupPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
       <div className="rounded-lg border border-border bg-card p-8">
         <h1 className="text-2xl font-semibold tracking-tight">{t("setup.welcome")}</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">{t("setup.intro")}</p>
@@ -51,7 +51,7 @@ function SetupPage() {
           </button>
         </form>
       </div>
-    </main>
+    </div>
   );
 }
 

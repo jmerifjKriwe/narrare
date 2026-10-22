@@ -12,9 +12,17 @@
   --foreground: oklch(0.25 0.01 85);
   --muted: oklch(0.55 0.01 85);
   --card: oklch(1 0 0);
+  /* Quiet surfaces between the page and a card: the top bar today, rails and
+   * docks later. Raised, but not raised enough to be a card. */
+  --panel: oklch(0.995 0.004 85);
   --border: oklch(0.88 0.005 85);
   --primary: oklch(0.42 0.09 45);
   --primary-foreground: oklch(0.98 0.005 85);
+  /* The keyboard's pointer: primary's family one step brighter, so the ring
+   * reads against text, surfaces and both themes. */
+  --focus: oklch(0.48 0.11 45);
+  --success: oklch(0.5 0.12 150);
+  --warning: oklch(0.6 0.13 75);
   --danger: oklch(0.5 0.16 25);
 }
 
@@ -24,9 +32,13 @@
     --foreground: oklch(0.9 0.005 85);
     --muted: oklch(0.62 0.01 85);
     --card: oklch(0.24 0.01 85);
+    --panel: oklch(0.215 0.01 85);
     --border: oklch(0.32 0.01 85);
     --primary: oklch(0.72 0.1 60);
     --primary-foreground: oklch(0.2 0.02 60);
+    --focus: oklch(0.8 0.11 60);
+    --success: oklch(0.68 0.13 150);
+    --warning: oklch(0.78 0.13 80);
     --danger: oklch(0.68 0.15 25);
   }
 }
@@ -46,9 +58,13 @@ body {
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-card: var(--card);
+  --color-panel: var(--panel);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-danger: var(--danger);
 }
 
