@@ -63,16 +63,16 @@ async def test_another_users_chapter_cannot_be_continued() -> None:
         novel_id, chapter_id = uuid4(), uuid4()
         await session.execute(
             text(
-                "INSERT INTO novels (id, user_id, title, created_at) "
-                "VALUES (:id, :user_id, :title, now())"
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
             ),
             {"id": novel_id, "user_id": OTHER_USER, "title": "Fremd"},
         )
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now())"
+                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
             ),
             {
                 "id": chapter_id,

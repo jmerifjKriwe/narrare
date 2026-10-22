@@ -261,6 +261,11 @@ export interface components {
             position: number;
             /** Title */
             title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ChapterUpdate */
         ChapterUpdate: {
@@ -301,16 +306,24 @@ export interface components {
         };
         /** NovelCreate */
         NovelCreate: {
+            /** Blurb */
+            blurb?: string | null;
+            /** Genre */
+            genre?: string | null;
             /** Title */
             title: string;
         };
         /** NovelRead */
         NovelRead: {
+            /** Blurb */
+            blurb: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Genre */
+            genre: string | null;
             /**
              * Id
              * Format: uuid
@@ -318,6 +331,11 @@ export interface components {
             id: string;
             /** Title */
             title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * ReembedResult
