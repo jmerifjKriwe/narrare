@@ -7,4 +7,5 @@
 
 | ADR | Decision | Status | Date |
 |-----|----------|--------|------|
+| [ADR-101](ADR-101-local-service.md) | Local-first means a local service on Postgres + pgvector — single-tenant, fixed local user, packaging ladder; SQLite+sqlite-vec is the last resort | ✅ | 2026-10-22 |
 | [ADR-100](ADR-100-v2-greenfield-rebuild.md) | v2 greenfield rebuild — old app, tests and gates deleted in one cutover; the spec is the authority; supersedes ADR-001–099 | ✅ | 2026-10-21 |
