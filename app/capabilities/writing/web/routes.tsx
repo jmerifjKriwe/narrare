@@ -21,6 +21,18 @@ const indexRoute = createRoute({
   component: NovelsPage,
 });
 
+// Focus depth, same convention as rail: the value is URL state, validated
+// tolerantly because the router's default parser hands typed values (a
+// linked `?focus=2` arrives as the number 2) while hand-written links may
+// arrive as strings. Anything that is not a step is the workbench.
+const FOCUS_STEPS = [0, 1, 2] as const;
+export type FocusStep = (typeof FOCUS_STEPS)[number];
+
+function focusStep(value: unknown): FocusStep {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return FOCUS_STEPS.find((step) => step === parsed) ?? 0;
+}
+
 const novelRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/novels/$id",
@@ -31,10 +43,18 @@ const novelRoute = createRoute({
   // encoding is listed, so a shared link and the toggle agree — and the dock
   // params of later phases extend the same convention. The output is optional:
   // links that don't care open expanded without naming the param, and no new
-  // panel param ever makes them name the old ones.
-  validateSearch: (search: { rail?: unknown }): { rail?: boolean } => ({
-    rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
-  }),
+  // panel param ever makes them name the old ones. Focus follows suit: it is
+  // omitted at the workbench depth so ordinary novel URLs stay clean.
+  validateSearch: (search: {
+    rail?: unknown;
+    focus?: unknown;
+  }): { rail?: boolean; focus?: FocusStep } => {
+    const focus = focusStep(search.focus);
+    return {
+      rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
+      ...(focus > 0 ? { focus } : {}),
+    };
+  },
 });
 
 // The capability route contract: every route this capability mounts under the

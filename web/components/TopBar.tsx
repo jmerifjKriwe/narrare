@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { client } from "../lib/api/client";
 import { nav } from "../lib/generated/capabilities";
@@ -78,9 +78,35 @@ function LanguageSwitcher() {
   );
 }
 
+/**
+ * True while a page asked the shell for a chrome-free surface: the page
+ * publishes `data-focus="2"` on <body>, the bar subscribes. An observer, not
+ * an event: attribute writes fire no events, and the bar must react whether
+ * it mounted before or after the page.
+ */
+function useChromeless(): boolean {
+  const [chromeless, setChromeless] = useState(
+    () => document.body.dataset.focus === "2",
+  );
+  useEffect(() => {
+    const sync = () => setChromeless(document.body.dataset.focus === "2");
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-focus"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return chromeless;
+}
+
 /** The shell's chrome: the skip link, the capability navigation, the language. */
 export function TopBar() {
   const t = useTranslation();
+  // The novel workbench's deepest focus step hides the bar: only the text
+  // remains. Scoped by the body attribute, so no other page can lose chrome.
+  const chromeless = useChromeless();
+  if (chromeless) return null;
 
   return (
     <header className="border-b border-border bg-panel text-sm">

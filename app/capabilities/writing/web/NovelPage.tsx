@@ -5,6 +5,12 @@ import { client, type Chapter, type Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 
 import { ChapterEditor } from "./ChapterEditor";
+import type { FocusStep } from "./routes";
+
+// The step machine as data: no arithmetic on the union, and the ends are
+// their own neighbours so a stray call cannot walk off the scale.
+const DEEPEN: Record<FocusStep, FocusStep> = { 0: 1, 1: 2, 2: 2 };
+const RELEASE: Record<FocusStep, FocusStep> = { 0: 0, 1: 0, 2: 1 };
 
 /** The novel workbench: the chapter rail beside the editor, panel state in the URL. */
 export function NovelPage() {
@@ -12,10 +18,12 @@ export function NovelPage() {
   // By route id, not the route object: the page stands apart from
   // routes.tsx, and the registered router still types `id` from the string.
   const { id: novelId } = useParams({ from: "/novels/$id" });
-  const { rail } = useSearch({ from: "/novels/$id" });
+  const { rail, focus: focusParam } = useSearch({ from: "/novels/$id" });
   // Absent means expanded: only an explicit collapsed encoding (validated to
   // false in routes.tsx) hides the rail.
   const collapsed = rail === false;
+  // Absent means the workbench: the URL names a depth only once it deepens.
+  const focus: FocusStep = focusParam ?? 0;
   const navigate = useNavigate();
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -59,6 +67,51 @@ export function NovelPage() {
     });
   }, [navigate, novelId, collapsed]);
 
+  // Focus depth is URL state too, so it shares rail's properties: linkable,
+  // back-button-true. The updater takes the function form on purpose — it
+  // receives the current search and spreads it, so deepening or releasing
+  // focus preserves ?rail instead of clobbering it.
+  const step = useCallback(
+    (next: FocusStep) => {
+      if (next === focus) return; // the ends are no-ops, not new history entries
+      void navigate({
+        to: "/novels/$id",
+        params: { id: novelId },
+        search: (prev) => ({ ...prev, focus: next }),
+      });
+    },
+    [focus, navigate, novelId],
+  );
+
+  // The keyboard contract. Phase 5's ghost text layers ABOVE this: its Esc
+  // discards a suggestion first and marks the event handled, and only an Esc
+  // that arrives unhandled here steps the focus back. F9 has no such tenant.
+  useEffect(() => {
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "F9") {
+        event.preventDefault();
+        step(DEEPEN[focus]);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        step(RELEASE[focus]);
+      }
+    };
+    window.addEventListener("keydown", onKeydown);
+    return () => window.removeEventListener("keydown", onKeydown);
+  }, [focus, step]);
+
+  // The shell cannot be imported here (capabilities never reach across), so
+  // the deepest step is published as a body attribute the shell subscribes
+  // to. Cleanup on unmount: leaving the workbench restores chrome everywhere.
+  useEffect(() => {
+    if (focus !== 2) return;
+    document.body.dataset.focus = "2";
+    return () => {
+      delete document.body.dataset.focus;
+    };
+  }, [focus]);
+
   async function createChapter() {
     // An explicit empty title: the placeholder is a display concern, and
     // storing a title would freeze one locale's wording into the database.
@@ -82,18 +135,28 @@ export function NovelPage() {
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
+  // Panels yield to focus before their own URL state: at depth 1 the rail is
+  // hidden whatever ?rail says, and its toggles hide with it — they would be
+  // no-ops while focus suppresses the panel. The page's own header goes at
+  // depth 2: chrome-free means only the writing surface remains.
+  const showRail = focus === 0 && !collapsed;
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
-      <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
-        {t("nav.back")}
-      </Link>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
+      {focus < 2 ? (
+        <>
+          <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
+            {t("nav.back")}
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
+        </>
+      ) : null}
 
       {/* The workbench: the rail beside the editor, so writing never scrolls
           past the chapter list. Collapsed, the rail unmounts and the editor
           takes the full width. */}
       <div className="mt-6 flex items-start gap-6">
-        {!collapsed ? (
+        {showRail ? (
           <aside className="w-56 shrink-0" aria-label={t("chapters.heading")}>
             <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
             <button
@@ -133,13 +196,25 @@ export function NovelPage() {
         <section className="min-w-0 flex-1">
           {/* The way back when the rail is gone: the toggle lives in the rail
               while it exists, so the collapsed page needs its own handle. */}
-          {collapsed ? (
+          {collapsed && focus === 0 ? (
             <button
               type="button"
               onClick={toggleRail}
               className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
             >
               {t("workspace.expandRail")}
+            </button>
+          ) : null}
+          {/* The focus affordance, mouse's one step in and out. At depth 2 it
+              is deliberately absent: the deepest step is left by keyboard,
+              which is what makes the mode distraction-free. */}
+          {focus < 2 ? (
+            <button
+              type="button"
+              onClick={() => step(focus === 0 ? 1 : 0)}
+              className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+            >
+              {focus === 0 ? t("workspace.focus") : t("workspace.unfocus")}
             </button>
           ) : null}
           {current ? (

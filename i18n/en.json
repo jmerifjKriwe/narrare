@@ -41,6 +41,8 @@
   "chapters.editorLabel": "Chapter text",
   "workspace.collapseRail": "Hide the chapter rail",
   "workspace.expandRail": "Show the chapter rail",
+  "workspace.focus": "Hide distractions",
+  "workspace.unfocus": "Show distractions",
   "chapters.continueError": "The continuation failed.",
   "chat.error": "The answer failed.",
   "knowledge.errorUpload": "Upload failed.",
