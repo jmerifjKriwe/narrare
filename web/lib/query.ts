@@ -1,6 +1,12 @@
-import { QueryClient, useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  QueryClient,
+  useMutation,
+  useQuery,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 
-import { client } from "./api/client";
+import { client, type Novel, type NovelCreate } from "./api/client";
 
 /**
  * The one query client. `retry: false` because the backend is a local
@@ -28,6 +34,12 @@ export const queryClient = new QueryClient({
 export function useSettingsQuery(): UseQueryResult<{ locale: string | null }> {
   return useQuery({
     queryKey: ["settings"],
+    // No refetch on window focus: the queryFn answers an outage with
+    // `{ locale: null }`, and a focus refetch while the service is down
+    // would feed that answer to the shell, erasing the locale adopted at
+    // boot. The row changes only through the switcher, which invalidates
+    // this key itself.
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       try {
         const { data } = await client.GET("/api/settings");
@@ -35,6 +47,42 @@ export function useSettingsQuery(): UseQueryResult<{ locale: string | null }> {
       } catch {
         return { locale: null };
       }
+    },
+  });
+}
+
+/**
+ * The library list, cached under the writing capability's `["novels"]` key.
+ * An answer that is not ok throws, so the cache holds either the list or
+ * the failure — never a half-current list.
+ */
+export function useNovelsQuery(): UseQueryResult<Novel[]> {
+  return useQuery({
+    queryKey: ["novels"],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/novels");
+      if (!response.ok) throw new Error(`novels unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * Creating a novel: the first mutation under the spec 5.10 convention. The
+ * write invalidates `["novels"]` instead of patching the cached list by
+ * hand, so every view of the key refetches from the row that changed. The
+ * list updates when that refetch lands; the caller's own state (the form)
+ * does not wait for it.
+ */
+export function useCreateNovel(): UseMutationResult<Novel, Error, NovelCreate> {
+  return useMutation({
+    mutationFn: async (input: NovelCreate) => {
+      const { data, response } = await client.POST("/api/writing/novels", { body: input });
+      if (!response.ok || !data) throw new Error(`create refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
     },
   });
 }

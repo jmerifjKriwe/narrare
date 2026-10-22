@@ -6,6 +6,7 @@ import type { components, paths } from "./schema";
 export const client = createClient<paths>({ baseUrl: "" });
 
 export type Novel = components["schemas"]["NovelRead"];
+export type NovelCreate = components["schemas"]["NovelCreate"];
 export type Chapter = components["schemas"]["ChapterRead"];
 export type KnowledgeDocument = components["schemas"]["DocumentRead"];
 export type Hit = components["schemas"]["SearchHit"];

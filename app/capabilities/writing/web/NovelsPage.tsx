@@ -1,19 +1,24 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { client, type Novel } from "@shell/lib/api/client";
+import { client } from "@shell/lib/api/client";
 import { nav } from "@shell/lib/generated/capabilities";
 import { useTranslation } from "@shell/lib/i18n";
+import { useCreateNovel, useNovelsQuery } from "@shell/lib/query";
 
 /** The novels page: the library, and the one field that starts a new novel. */
 export function NovelsPage() {
   const t = useTranslation();
   const navigate = useNavigate();
-  const [novels, setNovels] = useState<Novel[]>([]);
+  const novels = useNovelsQuery();
+  const createNovel = useCreateNovel();
   const [title, setTitle] = useState("");
-  const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
+  // The setup gate decides whether there is a library to list at all. Only
+  // the novels themselves go through the query cache; this check cannot,
+  // because its answer is "go somewhere else", not data.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -28,14 +33,6 @@ export function NovelsPage() {
           // Nothing to list yet: an uninstalled instance starts at setup.
           void navigate({ to: "/setup", replace: true });
           return;
-        } else {
-          const loaded = await client.GET("/api/writing/novels");
-          if (cancelled) return;
-          if (loaded.response.ok) {
-            setNovels(loaded.data ?? []);
-          } else {
-            setFailed(true);
-          }
         }
       } catch {
         // The local service is not answering at all and the proxy refuses.
@@ -48,37 +45,26 @@ export function NovelsPage() {
     };
   }, [navigate]);
 
-  async function reload() {
-    try {
-      const { data, response } = await client.GET("/api/writing/novels");
-      if (!response.ok) {
-        setFailed(true);
-        return;
-      }
-      setNovels(data ?? []);
-    } catch {
-      setFailed(true);
-    }
-  }
-
   async function create(event: React.FormEvent) {
     event.preventDefault();
     if (title.trim() === "") return;
     try {
-      const { response } = await client.POST("/api/writing/novels", { body: { title } });
-      if (!response.ok) {
-        setFailed(true);
-        return;
-      }
+      // The list refreshes through the ["novels"] invalidation, not through
+      // a reload here: the mutation owns that side of the contract.
+      await createNovel.mutateAsync({ title });
     } catch {
       setFailed(true);
       return;
     }
     setTitle("");
-    await reload();
   }
 
-  if (!ready) return null;
+  // Nothing renders until the gate has answered and the list query has
+  // settled: the page appears complete or reports the failure, never an
+  // empty library that has not asked yet.
+  if (!ready || novels.isPending) return null;
+
+  const failedNow = failed || novels.isError;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
@@ -93,7 +79,7 @@ export function NovelsPage() {
           </span>
         ))}
       </p>
-      {failed ? (
+      {failedNow ? (
         <p role="alert" className="mt-6 text-sm text-danger">
           {t("novels.errorLoad")}
         </p>
@@ -116,7 +102,7 @@ export function NovelsPage() {
             </button>
           </form>
           <ul className="mt-8 flex flex-col gap-2">
-            {novels.map((novel) => (
+            {(novels.data ?? []).map((novel) => (
               <li key={novel.id} className="rounded-lg border border-border bg-card">
                 <Link
                   to="/novels/$id"

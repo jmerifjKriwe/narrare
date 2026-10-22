@@ -11,6 +11,7 @@ import {
   subscribeLocale,
   type Locale,
 } from "../lib/locale";
+import { queryClient } from "../lib/query";
 
 /**
  * One focus treatment for everything interactive in the bar: the ring is the
@@ -34,6 +35,11 @@ function LanguageSwitcher() {
     try {
       const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
       if (!response.ok) throw new Error(`refused: ${response.status}`);
+      // The row changed, so the cached answer about it is stale. Invalidate
+      // instead of writing the cache by hand (spec 5.10): the refetch brings
+      // back exactly what was just persisted, so cache and row cannot
+      // disagree.
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
     } catch {
       // The write did not happen, so the display must not pretend it did.
       applyLocale(previous);
