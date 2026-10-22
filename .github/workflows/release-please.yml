@@ -1,26 +1,18 @@
 name: Release Please
 
-# Release + publish half of the release-please split (W2-2, spec §6.2):
-# the push trigger is path-filtered to the manifest/config, which the
-# manifest version bump of a merged release PR always touches. That merge
-# is a HUMAN push to main, so it triggers workflows normally (the
-# GITHUB_TOKEN no-retrigger restriction applies only to token-authored
-# commits, not human merges) — release + publish therefore still run
-# same-day. Code-only pushes to main no longer fire this workflow (the
-# ~60×/mo mostly-no-op runs from the measured baseline are gone); the
-# release PR itself is now created/updated nightly by ci.yml's
-# `release-orchestration` job (W2-1).
+# Tag half of the release-please split (v2 line, 2026-10-22).
 #
-# Split semantics (W2-3, spec §6): release creation is decided by
-# manifest-version-vs-latest-tag, so the two invocations are cleanly
-# disjoint — the nightly ci.yml `release-orchestration` job only
-# creates/updates the release PR (skip-github-release: true), this
-# workflow only tags + publishes (skip-github-pull-request: true) when
-# the release PR merges. A filtered push that does not advance the
-# manifest past the latest tag is an idempotent no-op (~1.7 min, no
-# release). Settings note (PO one-time manual action, NOT a task):
-# bot-authored workflow runs on private repos park at `action_required`
-# — approve the github-actions[bot] runs / unstick release PR #231 once.
+# The push trigger is path-filtered to the manifest and the config, so only
+# a version bump moves this workflow. The v2 ci.yml has no nightly
+# `release-orchestration` job (the v1 one had; v2's does not), so the
+# version bump is a human edit of .release-please-manifest.json - until
+# that happens, this workflow does not run at all.
+#
+# The publish half - image build, GHCR push, SBOM, release bundle - is
+# disabled: the v2 tree has no Dockerfile and no docker-compose.release.yml,
+# so the build would fail on the first missing file. The tag is therefore
+# created without a GitHub Release. Both halves return when the container
+# image returns to the tree.
 
 on:
   push:
@@ -56,10 +48,18 @@ jobs:
           # itself is decided by manifest-version-vs-latest-tag and still
           # happens here, on the release-PR merge push.
           skip-github-pull-request: true
+          # The v2 tree ships no container image and no release bundle, so
+          # the tag is created without a GitHub Release. Drop this line
+          # when the publish job below comes back.
+          skip-github-release: true
 
   publish:
     needs: release-please
-    if: needs.release-please.outputs.release_created
+    # Disabled on the v2 line (2026-10-22): the tree has no Dockerfile and no
+    # docker-compose.release.yml, so the image build and the release bundle
+    # would fail on their first missing file. Restore the condition below
+    # when the container image returns to the tree.
+    if: false
     runs-on: ubuntu-latest
     # Docker build + GHCR push + SBOM can legitimately run long — bounded, not unbounded (spec §4.2).
     timeout-minutes: 30
