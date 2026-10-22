@@ -408,9 +408,10 @@ dependency that cannot answer is removed.
 
 ## 14. As built, 2026-10-22
 
-The four capabilities are built. These are the places the code is simpler than
-§3–§6 describe, recorded here so the authority and the tree cannot disagree
-silently. Each entry names the trigger that would build the missing piece.
+The five capabilities — writing, knowledge, chat, setup, settings — are built.
+These are the places the code is simpler than §3–§6 describe, recorded here so
+the authority and the tree cannot disagree silently. Each entry names the
+trigger that would build the missing piece.
 
 - **Registration is by convention, mounting by folder; the facts live in
   `capability.yaml`.** `app/api/main.py` mounts every
@@ -423,10 +424,12 @@ silently. Each entry names the trigger that would build the missing piece.
   `docs/user/INDEX.md`. Fields, each read by at least two views: `id`,
   `title`, `path`, `needs`, `nav`. A new capability is one folder plus
   `just generate`.
-- **A capability's frontend lives in `web/app/<name>/`, not in its folder.** A
-  feature costs its backend folder, one page folder, and one key in each of the
-  three i18n catalogs. The generated route table (§3) is not built: with one
-  page per capability there is nothing to compose.
+- **A capability's frontend lives in `web/routes/<name>.tsx`, not in its
+  folder.** A feature costs its backend folder, one route file, and one key in
+  each of the three i18n catalogs. The generated route table (§3) is not
+  built: listing the routes by hand in `web/router.tsx` is a few lines, and a
+  generated view of them would have no second consumer; it returns when
+  capabilities own many routes of their own.
 - **`kernel/jobs`, `kernel/events` and `kernel/prompts` are not built.** No
   feature needs background work yet, so standing rule 3 holds trivially; the
   jobs table and worker arrive with the first capability that needs them (§13).
@@ -441,7 +444,7 @@ silently. Each entry names the trigger that would build the missing piece.
   capabilities it touched — everything when kernel, api, the generated views,
   web, i18n or the tooling moved. The nightly runs only when `main` carries a
   commit the last successful nightly did not test; an unchanged `main` skips
-  every job through one guard. 7 tests, ~34 s at four capabilities.
+  every job through one guard. 9 tests, ~29 s at five capabilities.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
 - **The web shell is a Vite SPA, not Next.js.** §3's "Next.js shell" is read as
