@@ -49,24 +49,42 @@ export default function NovelsPage() {
   if (!ready) return null;
 
   return (
-    <main>
-      <h1>{t("novels.heading")}</h1>
-      <p>
-        <Link href="/knowledge">{t("nav.knowledge")}</Link>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
+      <p className="mt-2 text-sm text-muted">
+        <Link href="/knowledge" className="underline-offset-4 hover:underline">
+          {t("nav.knowledge")}
+        </Link>
         <span aria-hidden="true"> · </span>
-        <Link href="/chat">{t("nav.chat")}</Link>
+        <Link href="/chat" className="underline-offset-4 hover:underline">
+          {t("nav.chat")}
+        </Link>
       </p>
-      <form onSubmit={create}>
-        <label>
+      <form onSubmit={create} className="mt-6 flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           {t("novels.titleLabel")}
-          <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
+          />
         </label>
-        <button type="submit">{t("novels.create")}</button>
+        <button
+          type="submit"
+          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+        >
+          {t("novels.create")}
+        </button>
       </form>
-      <ul>
+      <ul className="mt-8 flex flex-col gap-2">
         {novels.map((novel) => (
-          <li key={novel.id}>
-            <Link href={`/novels/${novel.id}`}>{novel.title}</Link>
+          <li key={novel.id} className="rounded-lg border border-border bg-card">
+            <Link
+              href={`/novels/${novel.id}`}
+              className="block px-4 py-3 underline-offset-4 hover:underline"
+            >
+              {novel.title}
+            </Link>
           </li>
         ))}
       </ul>

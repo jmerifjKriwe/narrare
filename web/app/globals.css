@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/*
+ * One design surface, owned by the shell: the tokens. Pages and components
+ * consume them through utilities; capabilities never carry their own palette.
+ * Dark mode follows the system (prefers-color-scheme) — night writing needs
+ * no toggle to be dark.
+ */
+
+:root {
+  --background: oklch(0.985 0.005 85);
+  --foreground: oklch(0.25 0.01 85);
+  --muted: oklch(0.55 0.01 85);
+  --card: oklch(1 0 0);
+  --border: oklch(0.88 0.005 85);
+  --primary: oklch(0.42 0.09 45);
+  --primary-foreground: oklch(0.98 0.005 85);
+  --danger: oklch(0.5 0.16 25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.19 0.01 85);
+    --foreground: oklch(0.9 0.005 85);
+    --muted: oklch(0.62 0.01 85);
+    --card: oklch(0.24 0.01 85);
+    --border: oklch(0.32 0.01 85);
+    --primary: oklch(0.72 0.1 60);
+    --primary-foreground: oklch(0.2 0.02 60);
+    --danger: oklch(0.68 0.15 25);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+}
+
+/* The editor's prose: the one place long-form text is read, so it gets a
+ * serif voice and a comfortable measure. TipTap manages the DOM; only the
+ * surface it writes on is styled here. */
+.ProseMirror {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  max-width: 34rem;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}

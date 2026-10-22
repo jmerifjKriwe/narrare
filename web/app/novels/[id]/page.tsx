@@ -58,20 +58,25 @@ export default function NovelPage() {
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
   return (
-    <main>
-      <Link href="/">{t("nav.back")}</Link>
-      <h1>{novel?.title}</h1>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <Link href="/" className="text-sm text-muted underline-offset-4 hover:underline">
+        {t("nav.back")}
+      </Link>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
 
-      <section>
-        <h2>{t("chapters.heading")}</h2>
-        {chapters.length === 0 ? <p>{t("chapters.empty")}</p> : null}
-        <ul>
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
+        {chapters.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">{t("chapters.empty")}</p>
+        ) : null}
+        <ul className="mt-3 flex flex-col gap-2">
           {chapters.map((chapter) => (
             <li key={chapter.id}>
               <button
                 type="button"
                 aria-pressed={chapter.id === active}
                 onClick={() => setActive(chapter.id)}
+                className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
               >
                 {chapter.title ||
                   t("chapters.defaultTitle").replace("{n}", String(chapter.position + 1))}
@@ -79,7 +84,11 @@ export default function NovelPage() {
             </li>
           ))}
         </ul>
-        <button type="button" onClick={createChapter}>
+        <button
+          type="button"
+          onClick={createChapter}
+          className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium"
+        >
           {t("chapters.new")}
         </button>
       </section>

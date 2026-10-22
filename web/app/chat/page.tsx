@@ -52,38 +52,48 @@ export default function ChatPage() {
   }
 
   return (
-    <main>
-      <h1>{t("chat.heading")}</h1>
-      <p>
-        <Link href="/">{t("nav.back")}</Link>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("chat.heading")}</h1>
+      <p className="mt-2 text-sm text-muted">
+        <Link href="/" className="underline-offset-4 hover:underline">
+          {t("nav.back")}
+        </Link>
       </p>
-      <form onSubmit={ask}>
-        <label>
+      <form onSubmit={ask} className="mt-6 flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           {t("chat.questionLabel")}
-          <input value={question} onChange={(event) => setQuestion(event.target.value)} />
+          <input
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
+          />
         </label>
-        <button type="submit" disabled={asking}>
+        <button
+          type="submit"
+          disabled={asking}
+          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        >
           {t("chat.ask")}
         </button>
       </form>
-      <section aria-label={t("chat.answerLabel")}>
-        <p>{answer}</p>
+      <section aria-label={t("chat.answerLabel")} className="mt-8">
+        <p className="whitespace-pre-wrap leading-relaxed">{answer}</p>
         {failed ? (
-          <p role="alert">
+          <p role="alert" className="mt-2 text-sm text-danger">
             {modelChanged ? t("chat.modelChanged") : t("chat.error")}
           </p>
         ) : null}
       </section>
       {sources === null ? null : (
-        <section aria-label={t("chat.sources")}>
+        <section aria-label={t("chat.sources")} className="mt-8">
           {sources.length === 0 ? (
-            <p>{t("chat.noSources")}</p>
+            <p className="text-sm text-muted">{t("chat.noSources")}</p>
           ) : (
-            <ul>
+            <ul className="flex flex-col gap-3">
               {sources.map((source) => (
-                <li key={source.chunk_id}>
-                  <strong>{source.document_title}</strong>
-                  <p>{source.text}</p>
+                <li key={source.chunk_id} className="rounded-lg border border-border bg-card p-4">
+                  <strong className="text-sm font-semibold">{source.document_title}</strong>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{source.text}</p>
                 </li>
               ))}
             </ul>

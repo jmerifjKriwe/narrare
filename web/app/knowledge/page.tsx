@@ -87,58 +87,97 @@ export default function KnowledgePage() {
   if (!ready) return null;
 
   return (
-    <main>
-      <h1>{t("knowledge.heading")}</h1>
-      <p>
-        <Link href="/">{t("nav.back")}</Link>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("knowledge.heading")}</h1>
+      <p className="mt-2 text-sm text-muted">
+        <Link href="/" className="underline-offset-4 hover:underline">
+          {t("nav.back")}
+        </Link>
       </p>
-      <form onSubmit={upload}>
-        <label>
+      <form onSubmit={upload} className="mt-6 flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           {t("knowledge.fileLabel")}
-          <input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+          <input
+            type="file"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-normal file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
+          />
         </label>
-        <label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
           {t("knowledge.titleLabel")}
-          <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
+          />
         </label>
-        <button type="submit">{t("knowledge.upload")}</button>
+        <button
+          type="submit"
+          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+        >
+          {t("knowledge.upload")}
+        </button>
       </form>
       {modelChanged ? (
-        <p role="alert">
+        <p role="alert" className="mt-4 flex flex-wrap items-center gap-2 text-sm text-danger">
           {t("knowledge.modelChanged")}{" "}
-          <button type="button" onClick={() => void reembed()}>
+          <button
+            type="button"
+            onClick={() => void reembed()}
+            className="rounded-md border border-danger px-2 py-1 font-medium"
+          >
             {t("knowledge.reembed")}
           </button>
         </p>
       ) : null}
       {uploadError ? (
-        <p role="alert">{t("knowledge.errorUpload")}</p>
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {t("knowledge.errorUpload")}
+        </p>
       ) : null}
       {documents.length === 0 ? (
-        <p>{t("knowledge.empty")}</p>
+        <p className="mt-6 text-sm text-muted">{t("knowledge.empty")}</p>
       ) : (
-        <ul>
+        <ul className="mt-6 flex flex-col gap-2">
           {documents.map((document) => (
-            <li key={document.id}>{document.title}</li>
+            <li
+              key={document.id}
+              className="rounded-lg border border-border bg-card px-4 py-3 text-sm"
+            >
+              {document.title}
+            </li>
           ))}
         </ul>
       )}
-      <form onSubmit={search}>
-        <label>
+      <form onSubmit={search} className="mt-8 flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           {t("knowledge.queryLabel")}
-          <input value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
+          />
         </label>
-        <button type="submit">{t("knowledge.search")}</button>
+        <button
+          type="submit"
+          className="self-start rounded-md border border-border px-3 py-2 text-sm font-medium"
+        >
+          {t("knowledge.search")}
+        </button>
       </form>
-      {searchError ? <p role="alert">{t("knowledge.errorSearch")}</p> : null}
+      {searchError ? (
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {t("knowledge.errorSearch")}
+        </p>
+      ) : null}
       {hits === null ? null : hits.length === 0 ? (
-        <p>{t("knowledge.noResults")}</p>
+        <p className="mt-6 text-sm text-muted">{t("knowledge.noResults")}</p>
       ) : (
-        <ul>
+        <ul className="mt-6 flex flex-col gap-3">
           {hits.map((hit) => (
-            <li key={hit.chunk_id}>
-              <strong>{hit.document_title}</strong>
-              <p>{hit.text}</p>
+            <li key={hit.chunk_id} className="rounded-lg border border-border bg-card p-4">
+              <strong className="text-sm font-semibold">{hit.document_title}</strong>
+              <p className="mt-1 text-sm leading-relaxed text-muted">{hit.text}</p>
             </li>
           ))}
         </ul>

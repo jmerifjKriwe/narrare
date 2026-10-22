@@ -71,5 +71,9 @@ export function useAutosave(
 
 export function SaveIndicator({ status }: { status: SaveStatus }) {
   if (status === "idle") return null;
-  return <span role="status">{t(status === "saving" ? "save.saving" : "save.saved")}</span>;
+  return (
+    <span role="status" className="text-sm text-muted">
+      {t(status === "saving" ? "save.saving" : "save.saved")}
+    </span>
+  );
 }

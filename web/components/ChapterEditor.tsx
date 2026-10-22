@@ -64,17 +64,24 @@ export function ChapterEditor({
   }
 
   return (
-    <div>
-      <div>
-        <button type="button" onClick={continueWriting} disabled={continuing}>
+    <div className="mt-8">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={continueWriting}
+          disabled={continuing}
+          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        >
           {t("chapters.continue")}
         </button>
         <SaveIndicator status={status} />
       </div>
       {failed ? (
-        <p role="alert">{t("chapters.continueError")}</p>
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {t("chapters.continueError")}
+        </p>
       ) : null}
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="mt-6" />
     </div>
   );
 }
