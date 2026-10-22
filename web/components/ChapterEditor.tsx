@@ -5,6 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
 
 import { t } from "../lib/i18n";
+import { client } from "../lib/api/client";
 import { SaveIndicator, useAutosave } from "../lib/save";
 import { readFrames } from "../lib/stream";
 
@@ -34,9 +35,11 @@ export function ChapterEditor({
     setContinuing(true);
     setFailed(false);
     try {
-      const response = await fetch(
-        `/api/writing/chapters/${chapterId}/continue`,
-        { method: "POST" },
+      // parseAs "stream": the frames are read from the body while they arrive,
+      // so the client must not buffer the response first.
+      const { response } = await client.POST(
+        "/api/writing/chapters/{chapter_id}/continue",
+        { params: { path: { chapter_id: chapterId } }, parseAs: "stream" },
       );
       if (!response.ok) {
         setFailed(true);

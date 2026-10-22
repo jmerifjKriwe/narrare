@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { client, type Novel } from "../lib/api/client";
 import { t } from "../lib/i18n";
-
-type Novel = { id: string; title: string; created_at: string };
 
 export default function NovelsPage() {
   const router = useRouter();
@@ -17,17 +16,16 @@ export default function NovelsPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const statusResponse = await fetch("/api/setup/status");
-      const status: { complete: boolean } = await statusResponse.json();
+      const { data: status } = await client.GET("/api/setup/status");
       if (cancelled) return;
-      if (!status.complete) {
+      if (status && !status.complete) {
         // Nothing to list yet: an uninstalled instance starts at setup.
         router.replace("/setup");
         return;
       }
-      const novelsResponse = await fetch("/api/writing/novels");
+      const { data: loaded } = await client.GET("/api/writing/novels");
       if (cancelled) return;
-      setNovels(await novelsResponse.json());
+      setNovels(loaded ?? []);
       setReady(true);
     })();
     return () => {
@@ -36,18 +34,14 @@ export default function NovelsPage() {
   }, [router]);
 
   async function reload() {
-    const response = await fetch("/api/writing/novels");
-    setNovels(await response.json());
+    const { data } = await client.GET("/api/writing/novels");
+    setNovels(data ?? []);
   }
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
     if (title.trim() === "") return;
-    await fetch("/api/writing/novels", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
+    await client.POST("/api/writing/novels", { body: { title } });
     setTitle("");
     await reload();
   }

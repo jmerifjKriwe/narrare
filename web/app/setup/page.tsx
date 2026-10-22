@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { client } from "../../lib/api/client";
 import { t } from "../../lib/i18n";
 
 export default function SetupPage() {
@@ -13,17 +14,14 @@ export default function SetupPage() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (title.trim() === "") return;
-    const response = await fetch("/api/setup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ novel_title: title }),
+    const { data, response } = await client.POST("/api/setup", {
+      body: { novel_title: title },
     });
-    if (!response.ok) {
+    if (!response.ok || !data) {
       setFailed(true);
       return;
     }
-    const result: { novel_id: string } = await response.json();
-    router.push(`/novels/${result.novel_id}`);
+    router.push(`/novels/${data.novel_id}`);
   }
 
   return (

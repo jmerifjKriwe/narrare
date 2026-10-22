@@ -5,10 +5,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ChapterEditor } from "../../../components/ChapterEditor";
+import { client, type Chapter, type Novel } from "../../../lib/api/client";
 import { t } from "../../../lib/i18n";
-
-type Novel = { id: string; title: string };
-type Chapter = { id: string; title: string; position: number; body: string };
 
 export default function NovelPage() {
   const params = useParams();
@@ -18,13 +16,16 @@ export default function NovelPage() {
   const [active, setActive] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [novelResponse, chaptersResponse] = await Promise.all([
-      fetch(`/api/writing/novels/${novelId}`),
-      fetch(`/api/writing/novels/${novelId}/chapters`),
+    const [novelResult, chaptersResult] = await Promise.all([
+      client.GET("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      }),
+      client.GET("/api/writing/novels/{novel_id}/chapters", {
+        params: { path: { novel_id: novelId } },
+      }),
     ]);
-    const loadedNovel: Novel = await novelResponse.json();
-    const loadedChapters: Chapter[] = await chaptersResponse.json();
-    setNovel(loadedNovel);
+    setNovel(novelResult.data ?? null);
+    const loadedChapters = chaptersResult.data ?? [];
     setChapters(loadedChapters);
     setActive((previous) => previous ?? loadedChapters[0]?.id ?? null);
   }, [novelId]);
@@ -34,14 +35,14 @@ export default function NovelPage() {
   }, [load]);
 
   async function createChapter() {
-    const response = await fetch(`/api/writing/novels/${novelId}/chapters`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // No title: the placeholder is a display concern, and storing it would
-      // freeze one locale's wording into the database.
-      body: JSON.stringify({}),
-    });
-    const chapter: Chapter = await response.json();
+    // An explicit empty title: the placeholder is a display concern, and
+    // storing a title would freeze one locale's wording into the database.
+    // The server treats an empty title exactly like an omitted one.
+    const { data: chapter } = await client.POST(
+      "/api/writing/novels/{novel_id}/chapters",
+      { params: { path: { novel_id: novelId } }, body: { title: "" } },
+    );
+    if (!chapter) return;
     setChapters((previous) => [...previous, chapter]);
     setActive(chapter.id);
   }

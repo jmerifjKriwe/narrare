@@ -3,27 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { client, isModelChange, type Hit, type KnowledgeDocument } from "../../lib/api/client";
 import { t } from "../../lib/i18n";
 
-type Document = { id: string; title: string; created_at: string };
-type Hit = {
-  chunk_id: string;
-  document_id: string;
-  document_title: string;
-  text: string;
-  score: number;
-};
-
-/** The mismatch refusal is the one failure the user can fix from this page. */
-async function isModelChange(response: Response): Promise<boolean> {
-  const body: { detail?: { code?: string } } | null = await response
-    .json()
-    .catch(() => null);
-  return body?.detail?.code === "embedding-mismatch";
-}
-
 export default function KnowledgePage() {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [query, setQuery] = useState("");
@@ -36,9 +20,9 @@ export default function KnowledgePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const response = await fetch("/api/knowledge/documents");
+      const { data } = await client.GET("/api/knowledge/documents");
       if (cancelled) return;
-      setDocuments(await response.json());
+      setDocuments(data ?? []);
       setReady(true);
     })();
     return () => {
@@ -47,8 +31,8 @@ export default function KnowledgePage() {
   }, []);
 
   async function reload() {
-    const response = await fetch("/api/knowledge/documents");
-    setDocuments(await response.json());
+    const { data } = await client.GET("/api/knowledge/documents");
+    setDocuments(data ?? []);
   }
 
   async function upload(event: React.FormEvent) {
@@ -57,9 +41,14 @@ export default function KnowledgePage() {
     const body = new FormData();
     body.append("file", file);
     if (title.trim() !== "") body.append("title", title);
-    const response = await fetch("/api/knowledge/documents", { method: "POST", body });
+    // openapi-typescript renders the binary part as `string`, which a real
+    // FormData is not — one cast. The runtime contract (multipart/form-data,
+    // browser sets the boundary) is exactly what the endpoint speaks.
+    const { error, response } = await client.POST("/api/knowledge/documents", {
+      body: body as unknown as { file: string; title?: string },
+    });
     if (!response.ok) {
-      const changed = await isModelChange(response);
+      const changed = isModelChange(error);
       setUploadError(!changed);
       setModelChanged(changed);
       return;
@@ -73,24 +62,23 @@ export default function KnowledgePage() {
   async function search(event: React.FormEvent) {
     event.preventDefault();
     if (query.trim() === "") return;
-    const response = await fetch("/api/knowledge/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+    const limit = 5; // the server's own default, pinned here by the request type
+    const { data, error, response } = await client.POST("/api/knowledge/search", {
+      body: { query, limit },
     });
     if (!response.ok) {
-      const changed = await isModelChange(response);
+      const changed = isModelChange(error);
       setSearchError(!changed);
       setModelChanged(changed);
       return;
     }
     setSearchError(false);
     setModelChanged(false);
-    setHits(await response.json());
+    setHits(data ?? []);
   }
 
   async function reembed() {
-    const response = await fetch("/api/knowledge/reembed", { method: "POST" });
+    const { response } = await client.POST("/api/knowledge/reembed");
     if (!response.ok) return;
     setModelChanged(false);
     await reload();

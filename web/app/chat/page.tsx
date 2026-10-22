@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { client, isModelChange } from "../../lib/api/client";
 import { t } from "../../lib/i18n";
 import { readFrames, type Source } from "../../lib/stream";
 
@@ -23,17 +24,15 @@ export default function ChatPage() {
     setFailed(false);
     setModelChanged(false);
     try {
-      const response = await fetch("/api/chat/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+      // parseAs "stream": the answer arrives as frames while it is written.
+      const limit = 5; // the server's own default, pinned here by the request type
+      const { error, response } = await client.POST("/api/chat/ask", {
+        body: { question, limit },
+        parseAs: "stream",
       });
       if (!response.ok) {
         // The mismatch refusal names its fix; every other failure stays generic.
-        const body: { detail?: { code?: string } } | null = await response
-          .json()
-          .catch(() => null);
-        setModelChanged(body?.detail?.code === "embedding-mismatch");
+        setModelChanged(isModelChange(error));
         setFailed(true);
         return;
       }

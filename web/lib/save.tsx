@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { client } from "./api/client";
 import { t } from "./i18n";
 
 export type SaveStatus = "idle" | "saving" | "saved";
@@ -34,10 +35,9 @@ export function useAutosave(
     if (body === null || target === null) return;
     pending.current = null;
     setStatus("saving");
-    await fetch(`/api/writing/chapters/${target}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body }),
+    await client.PUT("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: target } },
+      body: { body },
     });
     setStatus("saved");
     saved.current?.(target, body);
