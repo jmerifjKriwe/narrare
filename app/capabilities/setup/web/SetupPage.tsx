@@ -1,11 +1,11 @@
-import { createRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { client } from "../lib/api/client";
-import { useTranslation } from "../lib/i18n";
-import { rootRoute } from "./__root";
+import { client } from "@shell/lib/api/client";
+import { useTranslation } from "@shell/lib/i18n";
 
-function SetupPage() {
+/** The setup page: the first novel's title, then straight into the editor. */
+export function SetupPage() {
   const t = useTranslation();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
@@ -54,9 +54,3 @@ function SetupPage() {
     </div>
   );
 }
-
-export const setupRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/setup",
-  component: SetupPage,
-});

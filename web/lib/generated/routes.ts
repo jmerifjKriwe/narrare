@@ -7,7 +7,11 @@
 // each route's literal path into addChildren, which keeps a wrong
 // `to=` a build error.
 import { routes as chat } from "../../../app/capabilities/chat/web/routes";
+import { routes as knowledge } from "../../../app/capabilities/knowledge/web/routes";
+import { routes as setup } from "../../../app/capabilities/setup/web/routes";
 
 export const capabilityRoutes = [
   ...chat,
+  ...knowledge,
+  ...setup,
 ] as const;
