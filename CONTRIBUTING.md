@@ -7,11 +7,12 @@ more.
 
 ## Getting Started
 
-The requirements are the ones in the [README](README.md): Python 3.14+ with
-[uv](https://docs.astral.sh/uv/), Node.js 22+ with pnpm, Docker with Compose,
-and [just](https://just.systems/). One command sets everything else up — the
-Python environment, web dependencies, git hooks, the Postgres services and the
-schema:
+You need [Python 3.14+](https://www.python.org/downloads/) with
+[uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
+[pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with
+Compose, and [just](https://just.systems/). One command sets everything else
+up — the Python environment, web dependencies, git hooks, the Postgres
+services and the schema:
 
 ```bash
 just dev-setup
