@@ -1,17 +1,15 @@
-"""Writing suite fixtures: the suite's own database, schema from the models."""
+"""Writing suite fixtures: the shared test database, rebuilt from the models."""
 
-import os
 from asyncio import run
 
 import pytest
 from sqlalchemy import text
 
-from app.kernel.db.testsupport import ensure_database, url_for
+from app.kernel.db.testsupport import url_for
 
-# Set before the session module is imported: it reads its URL once, at import.
+# app/conftest.py names the database and the app binds it; this file says what
+# to rebuild and what a test starts from.
 DATABASE = "narrare_v2_test"
-ensure_database(DATABASE)
-os.environ["NARRE_DATABASE_URL"] = url_for(DATABASE)
 
 
 @pytest.fixture(scope="session", autouse=True)
