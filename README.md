@@ -30,7 +30,7 @@ Open <http://localhost:3100>. A fresh database lands on `/setup`.
 
 ## Commands
 
-`just --list` shows all 22. The ones used daily:
+`just --list` shows all 21. The ones used daily:
 
 ```bash
 just check              # fast gate: ruff + pyright

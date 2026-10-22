@@ -1,6 +1,7 @@
 # Narrare v2 — Architecture Design
 
-> **Status:** Proposed — awaiting product-owner review, 2026-10-21
+> **Status:** Accepted — the authority for the v2 build (ADR-100); §14 records
+> where the built system is simpler than this document describes
 > **Type:** Design spec (decisions and consequences, not a rulebook)
 > **Supersedes in scope:** the governance layer described in §2; ADR-025, ADR-037,
 > ADR-038, ADR-045, ADR-097, ADR-098 lose their subject matter (see §11)
@@ -55,7 +56,7 @@ otherwise. Two numbers from the design dialogue had moved and are corrected here
 | Documentation | **406 files / 160,689 lines** | 406 / 161k | editorial only |
 | Intent declaration surfaces | **8** — cited from the 2026-10-19 throughput spec, *not re-counted* | 8 | 0 hand-edited |
 | Provider declaration surfaces | **1 hand-edited** (`llm/_providers/catalog.yaml`) + 2 generated; was 15 | 15 → 1 | 1 catalog entry |
-| `justfile` public recipes | **95** | 95 | 22 |
+| `justfile` public recipes | **95** | 95 | 21 |
 | CI jobs | **17 across 5 workflows (13 in `ci.yml`)** | 15 | ≤ 5 |
 | Hand-written TS API type modules (`packages/web/lib/api/*.ts`) | **64** | — | 0 |
 
@@ -65,6 +66,8 @@ Corrections and notes:
   that included INDEX/TEMPLATE produced the wrong 102.
 - **CI jobs: 17, not 15.** `ci.yml` holds 13; `eval-nightly`, `mutation-testing-monthly`,
   `release-please`, `vrt-update-baselines` hold 4 more.
+- **Recipes: the target is 21, not 22.** The §6 list has 21 entries; the 22 that
+  stood here and in §12 was a miscount, corrected 2026-10-22.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
   `packages/`, tests included. The old value is stale, not wrong in method.
 - **Provider surfaces: the 15 → 1 consolidation is already banked** (ADR-099). One
@@ -378,7 +381,7 @@ not by a document:
 3. **A capability is done only with a green E2E** through the real UI, real backend and
    real database, with the fake provider at the boundary.
 4. **The §2 numbers reach their targets**: ADRs ≤ 15, rules ≤ 5, hooks ≤ 10, check
-   scripts ≤ 3, recipes 22, CI jobs ≤ 5, zero hand-written API type modules.
+   scripts ≤ 3, recipes 21, CI jobs ≤ 5, zero hand-written API type modules.
 5. **The local gate runs in under 10 s and under 60 s**, and a capability port is a
    folder plus a test, not a tour of the repository.
 
@@ -394,7 +397,42 @@ not by a document:
 | mem0: keep or replace | prove-it test during the knowledge-base port; if pgvector plus a small retrieval layer covers the same ground, mem0 goes |
 | pgvector, Alembic, TanStack Query | same prove-it test, at first use; all three are expected to pass, none is exempt |
 | Capability inventory for the port and its order | the implementation plan, separate artefact — deliberately not fixed here |
+| Migration story (Alembic or equivalent) | going live with a user's data — until then the models are the schema (§6, §9 D11; `app/kernel/db/init.py` carries the ruling) |
+| `kernel/jobs` table and the single worker (§9 D10) | the first capability whose side effect must outlive its request — none exists today |
 
 The prove-it test is a written sentence in the PR that introduces the dependency, not
 a document: *what it saves, what it costs, what smaller thing would replace it.* A
 dependency that cannot answer is removed.
+
+---
+
+## 14. As built, 2026-10-22
+
+The four capabilities are built. These are the places the code is simpler than
+§3–§6 describe, recorded here so the authority and the tree cannot disagree
+silently. Each entry names the trigger that would build the missing piece.
+
+- **Registration is by convention, not by facts file.** `app/api/main.py` mounts
+  every `app/capabilities/<name>/router.py` it finds; a capability is named
+  nowhere else. There is no `capability.yaml` and no `generated/` (§3, §4): no
+  view reads capability facts yet, and a field nobody reads is deleted. Both
+  return when a real consumer exists — a generated docs index, a startup check
+  of per-capability provider requirements — not before.
+- **A capability's frontend lives in `web/app/<name>/`, not in its folder.** A
+  feature costs its backend folder, one page folder, and one key in each of the
+  three i18n catalogs. The generated route table (§3) is not built for the same
+  reason as above: with one page per capability there is nothing to compose.
+- **`kernel/jobs`, `kernel/events` and `kernel/prompts` are not built.** No
+  feature needs background work yet, so standing rule 3 holds trivially; the
+  jobs table and worker arrive with the first capability that needs them (§13).
+  Prompts live in the two capabilities that have them, joined only by
+  `SOURCE_PREFIX` in the provider contract.
+- **Prove-it outcomes:** pydantic-ai removed (a streaming completion over a
+  fixed prompt needs one async method), mem0 removed (pgvector plus
+  `kernel/retrieval.py` covers the ground), pgvector kept, Alembic removed
+  (§6). TanStack Query never entered: the generated client was enough.
+- **CI runs every capability's E2E on each PR** (§6 says "affected"): 7 tests,
+  ~34 s at four capabilities. The split is a `ci.yml` edit when the wall time
+  says so. There is no nightly schedule yet.
+- **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
+  miscount (see §2's corrections).

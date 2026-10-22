@@ -28,7 +28,7 @@ rules.
 `just check` (fast) · `just test-file <path>` (inner loop) · `just verify` (full gate) ·
 the capability's E2E. A gate counts only when its output was read.
 
-`just --list` is the whole command surface: 22 recipes, no hidden gates.
+`just --list` is the whole command surface: 21 recipes, no hidden gates.
 
 ## Agents
 
