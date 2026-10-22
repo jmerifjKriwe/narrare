@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { client, type Chapter, type Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { queryClient } from "@shell/lib/query";
 
 import { ChapterEditor } from "./ChapterEditor";
 import type { FocusStep } from "./routes";
@@ -121,6 +122,10 @@ export function NovelPage() {
       { params: { path: { novel_id: novelId } }, body: { title: "" } },
     );
     if (!chapter) return;
+    // The bookshelf hero names the last-touched book, and its truth is the
+    // novel row's updated_at — a chapter write is the most common way that
+    // changes, so the shelf's ["novels"] cache must not outlive this POST.
+    void queryClient.invalidateQueries({ queryKey: ["novels"] });
     setChapters((previous) => [...previous, chapter]);
     setActive(chapter.id);
   }
@@ -131,6 +136,9 @@ export function NovelPage() {
         chapter.id === chapterId ? { ...chapter, body } : chapter,
       ),
     );
+    // Same truth as the create path above: a settled save advanced the
+    // novel's updated_at, and the hero reads it through ["novels"].
+    void queryClient.invalidateQueries({ queryKey: ["novels"] });
   }, []);
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;

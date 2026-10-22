@@ -71,8 +71,11 @@ export function NovelsPage() {
       // a reload here: the mutation owns that side of the contract.
       await createNovel.mutateAsync(input);
     } catch {
-      // Closing lets the page's own error report take over; the typed text
-      // stays, so nothing the user wrote is lost to the failure.
+      // Closing lets the page's own error report take over; the typed
+      // values survive only in state — reopening the dialog returns them
+      // to the user, a reload loses them.
+      // Phase 5: keep the dialog open and show novels.errorCreate there
+      // instead, with phase 5's RAC-validation touch.
       close();
       setFailed(true);
       return;

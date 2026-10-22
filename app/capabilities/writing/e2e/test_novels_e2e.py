@@ -1,4 +1,4 @@
-"""The bookshelf: dialog-created books, a continue-hero over the last-touched.
+"""The bookshelf: the new-book dialog, a continue-hero over the last-touched.
 
 Every flow drives the real stack — browser, API, Postgres — and ends on the
 accessibility floor. One test runs that floor with the new-book dialog open,
@@ -62,6 +62,50 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
     # The hero's link opens the book it names.
     hero.get_by_role("link", name="Weiterschreiben").click()
     expect(page.get_by_role("heading", name="Der Sturm")).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_writing_a_chapter_makes_its_book_the_hero(page: Page, stack: Stack) -> None:
+    """A chapter write is the most common way the hero's truth changes.
+
+    The books come from the API, not the new-book dialog: the dialog's
+    mutation invalidates the ["novels"] cache itself, which would mask the
+    gap this test pins — the workbench's chapter writes must invalidate it
+    too, or the hero names a stale last-touched book for the 30 s staleTime.
+    """
+    older = page.request.post(
+        "http://127.0.0.1:8000/api/writing/novels", data={"title": "Die Halligen"}
+    )
+    assert older.ok, older.text()
+    newer = page.request.post(
+        "http://127.0.0.1:8000/api/writing/novels", data={"title": "Der Strandwall"}
+    )
+    assert newer.ok, newer.text()
+
+    # The shelf loads, the cache settles: the hero names the newer book.
+    # This is the cached truth a returning writer carries in memory.
+    page.goto("http://127.0.0.1:3100/")
+    hero = page.get_by_role("region", name="Mach weiter")
+    expect(hero).to_contain_text("Der Strandwall")
+
+    # Write in the older book through the real workbench: a chapter
+    # created, a body typed, the autosave settled.
+    page.get_by_role("link", name="Die Halligen").click()
+    page.get_by_role("button", name="Neues Kapitel").click()
+    editor = page.locator(".ProseMirror")
+    editor.click()
+    page.keyboard.type("Nebel über dem Watt.")
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+    # Back through the app's own link: a client-side navigation, so the
+    # query cache is exactly the one the writes above must have
+    # invalidated — a page load would destroy it and hide the gap.
+    page.get_by_role("link", name="Alle Romane").click()
+
+    # Well inside the 30 s staleTime, the hero names the book written in.
+    expect(hero).to_contain_text("Die Halligen")
+    expect(hero.get_by_text("Der Strandwall")).to_have_count(0)
 
     assert_accessible(page)
 
