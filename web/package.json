@@ -12,6 +12,7 @@
     "generate": "pnpm dlx --package=openapi-typescript@7.13.0 --package=typescript@5.9.3 openapi-typescript lib/api/openapi.json -o lib/api/schema.d.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.104.5",
     "@tanstack/react-router": "^1.170.45",
     "@tiptap/pm": "3.31.3",
     "@tiptap/react": "3.31.3",

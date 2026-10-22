@@ -11,6 +11,7 @@ import {
   subscribeLocale,
   type Locale,
 } from "../lib/locale";
+import { useSettingsQuery } from "../lib/query";
 import "../globals.css";
 
 /** The language control. It lives in the shell, so it exists on every page. */
@@ -74,26 +75,13 @@ function Shell() {
   // Rendering first and switching after would flash the wrong language on
   // every load, which is the one visible artefact this gate prevents.
   const [ready, setReady] = useState(false);
+  const settings = useSettingsQuery();
 
   useEffect(() => {
-    let live = true;
-    void (async () => {
-      let stored: string | null = null;
-      try {
-        const { data } = await client.GET("/api/settings");
-        stored = data?.locale ?? null;
-      } catch {
-        // An unreachable service: the browser's language is the best answer,
-        // and each page reports the outage in its own words.
-      }
-      if (!live) return;
-      adoptServerLocale(stored);
-      setReady(true);
-    })();
-    return () => {
-      live = false;
-    };
-  }, []);
+    if (!settings.isSuccess) return;
+    adoptServerLocale(settings.data.locale);
+    setReady(true);
+  }, [settings.data, settings.isSuccess]);
 
   useEffect(() => {
     document.title = t("app.title");
