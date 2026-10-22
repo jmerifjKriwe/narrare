@@ -29,9 +29,13 @@ export function ChapterEditor({
     editorProps: {
       attributes: {
         class: "prose",
-        // Explicit, not inferred from contenteditable: axe's role table
-        // maps the bare div to "generic", where an aria-label is prohibited
-        // while the editor is empty. "textbox" is nameable in every state.
+        // @tiptap/core injects role="textbox" in createView, but the React
+        // binding strips it again: EditorContent.init() re-parents the view
+        // and setOptions({element}) re-props it from the raw editorProps.
+        // The explicit role keeps aria-label valid here — axe computes
+        // "generic" for the roleless div and flags aria-prohibited-attr
+        // deterministically while the editor is empty (it defers the rule
+        // once text exists).
         role: "textbox",
         "aria-label": t("chapters.editorLabel"),
       },
