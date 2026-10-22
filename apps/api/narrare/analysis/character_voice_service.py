@@ -42,6 +42,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analysis.character_roster import gate_speakers_to_roster
 from narrare.analysis.character_voice_agent_runner import run_character_voice_agent
 from narrare.analysis.character_voice_kb_writer import (
     load_selected_chapters,
@@ -188,9 +189,9 @@ class CharacterVoiceService:
 
         # 3-4. Parse dialogue + compute deterministic per-character metrics.
         parser = self._make_dialogue_parser()
-        analyzer = self._make_voice_metrics_analyzer(language)
         utterances = parser.parse(chapter_text)
-        metrics = analyzer.analyze(utterances)
+        utterances = await gate_speakers_to_roster(self._kb_repo, novel_id, utterances)
+        metrics = self._make_voice_metrics_analyzer(language).analyze(utterances)
         character_names = sorted(metrics.keys())
 
         # RULE-11 graceful degradation: no attributed dialogue → empty result

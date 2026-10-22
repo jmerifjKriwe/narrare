@@ -186,6 +186,44 @@ class TestBetaReaderAnalyze:
 
 
 # ---------------------------------------------------------------------------
+# N13: word-count business rule → 422 machine-readable
+# ---------------------------------------------------------------------------
+
+
+class TestBetaReaderWordCountContract:
+    """N13: the min-words business rule must answer 422 machine-readable."""
+
+    async def test_below_minimum_answers_422_with_code(
+        self, app: FastAPI, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        from narrare.analysis.errors import InsufficientWordCountError
+
+        async def _raise(**kwargs):
+            raise InsufficientWordCountError(
+                "Chapter is too short for meaningful analysis (412 words, minimum 1000)."
+            )
+
+        service = MagicMock(spec=BetaReaderService)
+        service.analyze = AsyncMock(side_effect=_raise)
+        app_dependency = get_beta_reader_service
+        app.dependency_overrides[app_dependency] = lambda: service
+        try:
+            resp = await client.post(
+                "/api/v1/analysis/beta-reader",
+                params={"novel_id": str(uuid4())},
+                json={"chapter_ids": [str(uuid4())]},
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.pop(app_dependency, None)
+
+        assert resp.status_code == 422, resp.text[:300]
+        body = resp.json()
+        assert body["code"] == "WORD_COUNT_BELOW_MINIMUM"
+        assert "1000" in body["detail"]
+
+
+# ---------------------------------------------------------------------------
 # POST /api/v1/analysis/beta-reader/deep-dive
 # ---------------------------------------------------------------------------
 

@@ -118,7 +118,7 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
 
   // --- Error message ---
 
-  const errorMessage = error?.userMessage || t("error");
+  const errorMessage = error ? tStudio(error.i18nKey ?? "aiActions.errorDefault") : t("error");
 
   // --- Render ---
 

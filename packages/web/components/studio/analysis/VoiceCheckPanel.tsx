@@ -40,6 +40,7 @@ type ViewState = "idle" | "loading" | "results" | "error";
 
 export function VoiceCheckPanel({ chapterId, onClose }: VoiceCheckPanelProps) {
   const t = useTranslations("analysis");
+  const tStudio = useTranslations("studio");
 
   const { results, error, progress, run, isLoading, isStreaming, isComplete, isError } =
     useCharacterVoiceCheck();
@@ -135,7 +136,9 @@ export function VoiceCheckPanel({ chapterId, onClose }: VoiceCheckPanelProps) {
                   <Info className="w-6 h-6 text-red-500" />
                 </div>
                 <p className="text-lg font-medium mb-1">{t("voiceCheck.analysisFailed")}</p>
-                <p className="text-sm text-muted-foreground mb-4">{error?.userMessage}</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {error ? tStudio(error.i18nKey ?? "aiActions.errorDefault") : null}
+                </p>
                 <button
                   type="button"
                   onClick={handleRun}

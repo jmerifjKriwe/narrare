@@ -37,6 +37,7 @@ from uuid import UUID
 
 import structlog
 
+from narrare.analysis.character_roster import gate_speaker_names
 from narrare.analysis.schemas_voice_drift import (
     VoiceDriftCharacterResult,
     VoiceDriftEvent,
@@ -92,6 +93,7 @@ class CharacterVoiceDriftService:
             classifier distinguish ``context`` drift from ``inconsistency``).
             When ``None``, degrades gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional invocation governance pipeline.
+        roster_provider: Optional KB character-roster gate for parser speakers (N11).
     """
 
     def __init__(
@@ -105,6 +107,7 @@ class CharacterVoiceDriftService:
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        roster_provider: Callable[[UUID], Awaitable[set[str]]] | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -115,6 +118,7 @@ class CharacterVoiceDriftService:
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
+        self._roster_provider = roster_provider
 
     async def ensure_resolved(self) -> ResolvedModel:
         """Resolve the per-user model routing once; idempotent (ADR-086)."""
@@ -205,10 +209,11 @@ class CharacterVoiceDriftService:
 
         profiles_by_name = {p.name: p for p in profiles}
 
-        # 5. Collect all speakers across the selected chapters (parse once).
+        # 5. Collect KB-roster-gated speakers across the selected chapters (N11).
         parser = make_dialogue_parser()
         analyzer = make_voice_metrics_analyzer(language)
         all_speakers = collect_speakers(chapters, parser)
+        all_speakers = await gate_speaker_names(all_speakers, self._roster_provider, novel_id)
 
         # 6. Determine the character set to iterate.
         if request.character_id is not None:

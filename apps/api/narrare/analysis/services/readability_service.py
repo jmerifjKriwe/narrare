@@ -12,12 +12,15 @@ Model routing resolves lazily at first use, after body validation (ADR-086).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 import structlog
 
 from narrare.analysis._invocation_compose import compose_analysis_invocation_prompt
-from narrare.analysis.services._readability_helpers import build_deps
+from narrare.analysis.services._readability_helpers import (
+    build_deps,
+    fetch_kb_prompt_variables,
+    prepare_readability_agent,
+)
 from narrare_core.analysis.readability import FormulaReadabilityAnalyzer
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
 
     from narrare._app.dependencies_services import ModelResolution
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.context_contracts import KBContextProviderProtocol
     from narrare.novels.repository import NovelRepository
     from narrare_core.agents.readability_agent import ReadabilityAgent
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -60,6 +64,8 @@ class ReadabilityService:
             assembly (ADR-048). Builds the feature-specific readability
             system prompt from the bundled ``analysis/{lang}/readability``
             template.
+        kb_context_provider: Canonical KB-context source (ADR-067) for the
+            template's ``kb_*`` slots; ``None`` degrades to empty (RULE-11).
         invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
@@ -71,6 +77,7 @@ class ReadabilityService:
         model_registry: ModelRegistry,
         model_resolution: ModelResolution,
         composer: PromptComposer,
+        kb_context_provider: KBContextProviderProtocol | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
         run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
@@ -79,6 +86,7 @@ class ReadabilityService:
         self._model_registry = model_registry
         self._model_resolution = model_resolution
         self._composer = composer
+        self._kb_context_provider = kb_context_provider
         self._formula_analyzer = FormulaReadabilityAnalyzer()
         self._invocation_pipeline = invocation_pipeline
         self._run_limit_resolver = run_limit_resolver or DefaultRunLimitResolver()
@@ -196,6 +204,10 @@ class ReadabilityService:
                 # 3a. Compose prompt via Mode 1 (composer-driven, ADR-048)
                 # with correlated evidence + enrichment. Falls back to direct
                 # composition on pipeline failure.
+                #
+                # KB-context {{kb_*}} slots (audit N12, ADR-067; ``None``
+                # provider degrades to empty slots, RULE-11).
+                kb_vars = await fetch_kb_prompt_variables(self._kb_context_provider, novel_id)
                 composed = await compose_analysis_invocation_prompt(
                     composer=self._composer,
                     invocation_pipeline=self._invocation_pipeline,
@@ -205,6 +217,7 @@ class ReadabilityService:
                     user_id=user_id,
                     language=language,
                     mode="readability",
+                    extra=kb_vars,
                 )
 
                 agent, prepared = await self._prepare_agent(
@@ -251,32 +264,16 @@ class ReadabilityService:
     ) -> tuple[ReadabilityAgent, PreparedModelCall]:
         """Prepare the model call and construct a ``ReadabilityAgent``.
 
-        Args:
-            system_prompt: Composed feature-specific system prompt (Mode 1,
-                ADR-048). When ``None`` the agent falls back to Capabilities only.
-            resolved_model: Routing-cascade resolution (ADR-086) threaded
-                from first use in ``analyze``.
-
-        Returns:
-            A fresh agent per call — agents are lightweight wrappers
-            around the model — plus the coherent ``PreparedModelCall``
-            triple (Task 6a-2 single assembly point): the agent's
-            ``run`` must receive ``prepared.model_settings`` and
-            ``prepared.usage_limits``.
+        Delegates to :func:`_readability_helpers.prepare_readability_agent`
+        (RULE-04 split); kept as a method so tests can replace this
+        instance attribute to intercept agent construction.
         """
-        from narrare_core.agents.readability_agent import ReadabilityAgent
-
-        resolved = self._run_limit_resolver.resolve(
-            config=resolved_model.config, budget=None, invocation_id=uuid4()
+        return await prepare_readability_agent(
+            model_registry=self._model_registry,
+            run_limit_resolver=self._run_limit_resolver,
+            system_prompt=system_prompt,
+            resolved_model=resolved_model,
         )
-        prepared = await self._model_registry.prepare(
-            resolved_model.config,
-            intent=LLMIntent.ANALYSE,
-            usage_limits=resolved.usage_limits,
-            api_key=resolved_model.api_key,
-            base_url=resolved_model.base_url,
-        )
-        return ReadabilityAgent(model=prepared.model, system_prompt=system_prompt), prepared
 
     @staticmethod
     def _merge_agent_result(

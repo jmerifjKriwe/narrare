@@ -49,11 +49,32 @@ from tests.e2e.helpers.kb_world import (
     track_posts,
 )
 from tests.e2e.helpers.novel_factory import complete_wizard
+from tests.e2e.test_helpers import goto_with_retry
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     import requests as http_requests
+    from playwright.sync_api import Page
+
+
+def _close_extraction_panel(page: Page) -> None:
+    """Close the single-extract ExtractionPanel modal (header close, "Cancel").
+
+    Module-page hygiene (test_kb_ai_bulk._close_bulk_panel pattern): the
+    panel's overlay is ``fixed inset-0`` — leaving it mounted intercepts
+    every successor's clicks on the shared module-scoped page (shuffle
+    triage 2026-10-20: 5 downstream failures when the extract tests ran
+    first). The single panel's shell carries no ``role="dialog"``
+    (unlike BulkExtractionPanel), so the header close is scoped to the
+    overlay directly; in the tests' done/error end-phases the footer
+    (with its own Cancel) is unmounted and the header button is the only
+    visible "Cancel". The ``:has(h3)`` guard keeps the locator unique to
+    the extraction panels (ExtractionHeader renders the title as h3).
+    """
+    overlay = page.locator(r"div.fixed.inset-0.z-50.bg-black\/50:has(h3)")
+    overlay.get_by_role("button", name="Cancel", exact=True).click()
+    overlay.wait_for(state="detached", timeout=15_000)
 
 
 @pytest.fixture(scope="module")
@@ -121,11 +142,16 @@ class TestKBEntryCrud:
         seed_kb_entity(authed_request, kb_novel.novel_id, name="Doomed Entry")
         open_worldbuilding(page)
         # The API-side seed never reaches the SPA's react-query cache by
-        # itself — the list only refetches on mount/invalidation. Reload
-        # after navigating (the suite's prepare_ai_chapter pattern) so the
-        # seeded card is deterministically rendered.
-        page.reload()
-        page.wait_for_load_state("domcontentloaded")
+        # itself — the list only refetches on mount/invalidation. Re-enter
+        # the view via a CLEAN URL goto (the suite's prepare_ai_chapter
+        # pattern). A same-URL reload is racy here: graph_empty leaves
+        # ?mode=graph in the URL, the sidebar soft-nav clears the query
+        # asynchronously, and a reload that reads the URL mid-transition
+        # boots straight into graph mode — which renders NO entry list
+        # (WorldBuildingLayout: {!showGraph && <KBEntryList/>}), so the
+        # card can never appear (shuffle triage 2026-10-20: seed=4 RED
+        # twice on an order seed=1 passes; 30s card-wait signature).
+        goto_with_retry(page, f"{BASE_URL}/novel/{kb_novel.novel_id}/worldbuilding")
         page.locator('[data-testid="kb-responsive-layout"]').wait_for(state="visible")
 
         page.get_by_text("Doomed Entry").first.click()
@@ -171,6 +197,14 @@ class TestKBGraph:
             "guards",
         )
         open_worldbuilding(page)
+        # The graph's data fetch runs on the view's mount. If an earlier
+        # test already mounted the graph (graph_empty does), the re-entered
+        # graph can render the CACHED pre-seed set (0 edges) — the seeded
+        # relationship then never reaches the stats bar within budget
+        # (shuffle triage 2026-10-20: seed=5 order RED twice, incl. warm).
+        # Re-enter via a CLEAN URL goto (delete test's SPA-cache pattern;
+        # also dodges the ?mode= residue a same-URL reload can preserve).
+        goto_with_retry(page, f"{BASE_URL}/novel/{kb_novel.novel_id}/worldbuilding")
         open_kb_mode(page, "graph")
 
         # N14: with REAL relationships the graph ships edges — the audit's
@@ -246,6 +280,9 @@ class TestKBExtractSingle:
             f"extract request storm: {len(single_posts)} posts: {single_posts}"
         )
 
+        # Close the panel — module-page hygiene (see _close_extraction_panel).
+        _close_extraction_panel(page)
+
     def test_extract_error_renders_retry_not_storm(self, kb_novel, authed_request) -> None:
         page = kb_novel.page
         extract_posts = track_posts(page, "/kb/extract/")
@@ -268,3 +305,6 @@ class TestKBExtractSingle:
         single_posts = [u for u in extract_posts if "/bulk" not in u and "/apply" not in u]
         assert len(single_posts) == 1, f"error path also storms: {len(single_posts)} posts"
         assert retry_button.is_visible()
+
+        # Close the panel — module-page hygiene (see _close_extraction_panel).
+        _close_extraction_panel(page)

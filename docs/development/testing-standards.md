@@ -1355,6 +1355,13 @@ default runs; the nightly + manual-dispatch CI `test-e2e` job runs the suite.
   the Next.js proxy verifies `narrare_auth` with it. The runner exports it;
   standalone web starts do not inherit it (every navigation bounces to
   /login). Pinned by `tests/e2e/test_environment_smoke.py`.
+- Sentiment (ANAL-002): the sentiment specs run the REAL deterministic
+  pipeline, which requires the spaCy language models — `just
+  install-nlp-models` (CI's `test-e2e` job installs them). Without the
+  models the sentiment specs skip with the documented reason (the skip
+  message names this recipe), and the API answers 503
+  `NLP_NOT_CONFIGURED` — the E03 contract, integration-pinned in
+  `tests/integration/analysis/test_sentiment_degradation.py`.
 
 ### Live-stack manual verification (:3001 recipe)
 

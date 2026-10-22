@@ -26,7 +26,7 @@ from narrare_core.profiles.models import CharacterVoiceProfile
 from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterator
+    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 
     from pydantic_ai.usage import UsageLimits
 
@@ -282,6 +282,7 @@ def make_service(
     composer: FakeComposer | None = None,
     relationship_repo: RelationshipRepository | None = None,
     model_resolution: ModelResolution | None = None,
+    roster_provider: Callable[[uuid.UUID], Awaitable[set[str]]] | None = None,
 ) -> CharacterVoiceDriftService:
     """Build a CharacterVoiceDriftService with fakes and casts at the boundary.
 
@@ -310,6 +311,7 @@ def make_service(
         model_resolution=model_resolution or StaticModelResolution(_resolved_model(config)),
         composer=cast("PromptComposer", composer or FakeComposer()),
         relationship_repo=relationship_repo,
+        roster_provider=roster_provider,
     )
 
 

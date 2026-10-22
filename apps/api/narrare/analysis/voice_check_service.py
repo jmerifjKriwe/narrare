@@ -62,6 +62,7 @@ class CharacterVoiceCheckerService:
             evaluate dialogue-tone consistency). When ``None``, degrades
             gracefully to an empty string (RULE-11).
         invocation_pipeline: Optional invocation governance pipeline.
+        roster_provider: Optional KB character-roster gate for parsed utterances (N11).
     """
 
     def __init__(
@@ -75,6 +76,7 @@ class CharacterVoiceCheckerService:
         relationship_repo: RelationshipRepository | None = None,
         *,
         invocation_pipeline: InvocationPipeline | None = None,
+        roster_provider: Callable[[UUID], Awaitable[set[str]]] | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -85,6 +87,7 @@ class CharacterVoiceCheckerService:
         self._composer = composer
         self._relationship_repo = relationship_repo
         self._invocation_pipeline = invocation_pipeline
+        self._roster_provider = roster_provider
 
     async def ensure_resolved(self) -> ResolvedModel:
         """Resolve the per-user model routing once; idempotent (ADR-086)."""
@@ -137,6 +140,15 @@ class CharacterVoiceCheckerService:
         parser = self._make_dialogue_parser()
         analyzer = self._make_voice_metrics_analyzer(language)
         utterances = parser.parse(chapter.content or "")
+        # N11: gate parsed attributions against the KB character roster
+        # before metrics — garbage action-beat "speakers" otherwise flow
+        # into checkable/result events (audit N11).
+        if self._roster_provider is not None:
+            roster = await self._roster_provider(chapter.novel_id)
+            if roster:
+                from narrare_core.analysis.dialogue_parser import restrict_speakers_to_roster
+
+                utterances = restrict_speakers_to_roster(utterances, roster)
         current_metrics = analyzer.analyze(utterances)
         speaking = sorted(current_metrics.keys())
 

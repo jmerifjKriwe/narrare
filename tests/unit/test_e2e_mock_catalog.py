@@ -120,6 +120,25 @@ class TestAnalysisEntries:
         assert events[0]["type"] == "stage"
         assert events[-1]["type"] == "result"
 
+    def test_pov_happy_validates_against_real_model_and_matches_query_string(self) -> None:
+        from narrare_core.analysis.types import POVResult
+
+        spec = entries_for("pov", "happy")[0]
+        assert spec.method == "POST"
+        result = POVResult.model_validate_json(spec.body)
+        assert result.scenes[0].pov_character == "Elara"
+        assert result.issues[0].type.value == "head_hop"
+        # router_pov.py takes novel_id as a QUERY param and the FE sends
+        # "?novel_id=…" — the trailing '*' must let the glob match the full
+        # URL including the query string.
+        assert spec.pattern.endswith("pov*"), spec.pattern
+        assert _playwright_route_matches(
+            spec.pattern, "http://localhost:3000/api/v1/analysis/pov?novel_id=e2e-mock-novel"
+        ), f"{spec.pattern} must match POST /analysis/pov with its query string"
+
+    def test_pov_has_error_variant(self) -> None:
+        assert entries_for("pov", "error")[0].status == 500
+
 
 class TestKbWikiEntries:
     def test_extraction_and_improve_exclude_sibling_routes(self) -> None:

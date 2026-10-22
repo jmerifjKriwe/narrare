@@ -39,6 +39,14 @@ Calibration (live in-tree, recorded per the brief):
   intercepts pointer events — observed RED). Both tests therefore close
   the panel via the header close button (``kb.extractionCancel`` =
   "Cancel", unique in both progress and review mode) before finishing.
+- Chapters are seeded via API (out-of-band), but ``corpus-pass-btn``
+  renders only when the client-cached chapter list (``hasNovelChapters``)
+  includes them. If the sidebar's mount-fetch resolved BEFORE the API
+  write, no refetch fires and the button never renders (wave triage
+  2026-10-20: count=0 for the whole 30s window under suite conditions,
+  instant render after one reload). ``_start_corpus_pass_from_ui``
+  therefore reloads before clicking — the ``prepare_ai_chapter`` pattern,
+  via the hardened ``reload_page`` (domcontentloaded + retry).
 """
 
 from __future__ import annotations
@@ -52,6 +60,7 @@ from tests.e2e.config import BASE_URL
 from tests.e2e.foundation import NovelContext, make_authed_request
 from tests.e2e.helpers.kb_world import capture_json_response
 from tests.e2e.helpers.novel_factory import complete_wizard, create_chapter_via_api
+from tests.e2e.test_helpers import reload_page
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -95,11 +104,22 @@ def _close_bulk_panel(page: Page) -> None:
 def _start_corpus_pass_from_ui(page: Page) -> dict:
     """Drive estimate dialog → start; return the START POST's job view.
 
+    Reloads FIRST (prepare_ai_chapter pattern): the chapters are seeded
+    via API out-of-band, but ``corpus-pass-btn`` renders only when the
+    SPA's client-cached chapter list (``hasNovelChapters``) knows about
+    them. A sidebar mount-fetch that resolved before the API write never
+    refetches, so without the reload the button may not render at all
+    (wave triage 2026-10-20: count=0 across the whole window under suite
+    conditions; instant render after one reload). Uses the hardened
+    ``reload_page`` (domcontentloaded + one retry) — a bare ``reload``
+    stalls 30s on dev-proxy stalls (see tests/e2e/test_helpers.py).
+
     The response listener is attached AFTER the estimate line rendered:
     the needle ``/kb/extract/bulk/corpus`` also matches the estimate GET
     (``…/corpus/estimate``), so attaching earlier would bind the capture
     to the estimate instead of the start POST.
     """
+    reload_page(page)
     page.get_by_test_id("corpus-pass-btn").click()
     page.get_by_test_id("corpus-estimate-line").wait_for(state="visible", timeout=30_000)
     get_job = capture_json_response(page, "/kb/extract/bulk/corpus")

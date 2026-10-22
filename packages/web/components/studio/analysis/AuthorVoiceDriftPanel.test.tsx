@@ -284,8 +284,31 @@ describe("AuthorVoiceDriftPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("authorVoiceDrift.analysisFailed")).toBeInTheDocument();
     });
-    expect(screen.getByText("Network error")).toBeInTheDocument();
+    expect(screen.getByText("aiActions.errorConnection")).toBeInTheDocument();
     expect(screen.getByText("authorVoiceDrift.retry")).toBeInTheDocument();
+  });
+
+  it("renders the localized error key, not the German userMessage (M05)", () => {
+    setState({
+      result: null,
+      noProfile: null,
+      error: {
+        kind: "stream",
+        i18nKey: "aiActions.errorConnection",
+        userMessage: "Verbindung verloren. Prüfe deine Internetverbindung.",
+        retryable: true,
+        cause: new Error("stream death"),
+      },
+      isLoading: false,
+      isStreaming: false,
+      isComplete: false,
+      isError: true,
+    });
+
+    render(<AuthorVoiceDriftPanel {...defaultProps} />);
+
+    expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
+    expect(screen.queryByText("Verbindung verloren. Prüfe deine Internetverbindung.")).toBeNull();
   });
 
   it("retry button triggers re-analysis", async () => {

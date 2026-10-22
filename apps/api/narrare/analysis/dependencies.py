@@ -88,6 +88,7 @@ async def get_readability_service(
     - ModelRegistry + lazy ModelResolution (ADR-086) for the
       ReadabilityAgent (AI-powered sentence analysis).
     - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
+    - Canonical KB-context provider (ADR-067) for the kb_* slots (audit N12).
     - InvocationPipeline for invocation evidence (ADR-040).
 
     Phase 1 (deterministic metrics) requires no LLM calls.
@@ -101,6 +102,9 @@ async def get_readability_service(
     )
     from narrare.analysis.services.readability_service import ReadabilityService
     from narrare.chapters.repository import ChapterRepository
+    from narrare.kb._context_provider import KBContextProvider
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
 
     resolver = get_model_routing_resolver(session)
@@ -113,12 +117,18 @@ async def get_readability_service(
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
 
+    # Canonical KB-context provider (ADR-067) — same supply as get_pov_service (B07).
+    kb_provider = KBContextProvider(
+        kb_repo=KBRepository(session), relationship_repo=RelationshipRepository(session)
+    )
+
     return ReadabilityService(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         model_registry=registry,
         model_resolution=model_resolution,
         composer=get_composer(),
+        kb_context_provider=kb_provider,
         invocation_pipeline=get_invocation_pipeline(),
     )
 

@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from narrare._app.dependencies_services import ModelResolution
     from narrare.analysis.character_voice_service import CharacterVoiceService
     from narrare.analysis.schemas_character_voice import CharacterVoiceStreamEvent
+    from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare_core.llm.intents import LLMIntent
 
@@ -228,7 +229,7 @@ def make_service(
     composer: FakeComposer,
     config: ResolvedModelConfig,
     *,
-    kb_repo: MagicMock | None = None,
+    kb_repo: KBRepositoryProtocol | MagicMock | None = None,
     relationship_repo: RelationshipRepository | None = None,
     model_resolution: ModelResolution | None = None,
 ) -> CharacterVoiceService:
@@ -251,10 +252,18 @@ def make_service(
 
     novel_repo = AsyncMock()
     chapter_repo = AsyncMock()
+    if kb_repo is None:
+        kb_repo = AsyncMock()
+    if isinstance(kb_repo, AsyncMock):
+        # N11 roster gate: the service reads the KB character roster via
+        # ``list_entries`` before metrics. Default the mock KB to an empty
+        # roster (gate no-op) so attributions pass through exactly as the
+        # pre-N11 tests pin them; tests needing a roster set their own.
+        kb_repo.list_entries = AsyncMock(return_value=([], 0))
     return CharacterVoiceService(
         novel_repo=novel_repo,  # type: ignore[arg-type]
         chapter_repo=chapter_repo,  # type: ignore[arg-type]
-        kb_repo=kb_repo or AsyncMock(),  # type: ignore[arg-type]
+        kb_repo=kb_repo,  # type: ignore[arg-type]
         relationship_repo=relationship_repo,  # type: ignore[arg-type]
         model_registry=FakeModelRegistry(),  # type: ignore[arg-type]
         model_resolution=model_resolution or StaticModelResolution(_resolved_model(config)),

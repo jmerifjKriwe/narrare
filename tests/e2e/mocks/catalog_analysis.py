@@ -14,6 +14,9 @@ Wire formats mirror the REAL endpoints (verified 2026-10-12):
   the non-stream POST /consistency/check answers JSON directly.
   Stage vocabulary mirrors consistency_orchestrator.py:
   ``extracting_facts`` → ``checking_consistency`` → ``complete``.
+- POST /api/v1/analysis/pov?novel_id=… — JSON POVResult
+  (narrare_core.analysis.types); the panel's error branch maps 5xx to
+  ``aiActions.errorConnection``.
 Severity/category enums are REAL values (FeedbackSeverity/FeedbackCategory).
 """
 
@@ -186,6 +189,38 @@ CONSISTENCY_ERROR_SSE = _sse(
     ),
 )
 
+# Mirrors POVResult (narrare_core.analysis.types — field names verified
+# in-tree 2026-10-18: POVScene.scene_index/start_position/end_position/
+# pov_character/confidence; POVIssue.type/location/text/explanation/
+# suggestion/severity; POVIssueType values are snake_case strings).
+_POV_RESULT = {
+    "scenes": [
+        {
+            "scene_index": 0,
+            "start_position": 0,
+            "end_position": 220,
+            "pov_character": "Elara",
+            "confidence": 0.93,
+        }
+    ],
+    "issues": [
+        {
+            "type": "head_hop",
+            "location": "chapter 1, paragraph 4",
+            "text": "The gatekeeper doubted her story.",
+            "explanation": "Mid-scene slip into the gatekeeper's interiority.",
+            "suggestion": "Keep the gatekeeper externally observed.",
+            "severity": "warning",
+        }
+    ],
+    "pov_distribution": {"first_person": 1},
+    "switch_count": 0,
+    "analysis_type": "single_pov",
+}
+
+POV_HAPPY = json.dumps(_POV_RESULT)
+POV_ERROR = json.dumps({"detail": "e2e-mock: pov agent failed"})
+
 SPECS: tuple[RouteSpec, ...] = (
     RouteSpec(
         capability="beta_reader",
@@ -251,6 +286,21 @@ SPECS: tuple[RouteSpec, ...] = (
         body=json.dumps(_CONSISTENCY_RESULT),
         url_exclude="/stream",
     ),
+    RouteSpec(
+        capability="pov",
+        variant="happy",
+        pattern="**/api/v1/analysis/pov*",
+        method="POST",
+        body=POV_HAPPY,
+    ),
+    RouteSpec(
+        capability="pov",
+        variant="error",
+        pattern="**/api/v1/analysis/pov*",
+        method="POST",
+        status=500,
+        body=POV_ERROR,
+    ),
 )
 
 
@@ -261,9 +311,11 @@ def validate() -> None:
     from narrare.analysis.schemas_coreference import CoreferenceStreamEvent
     from narrare.consistency.schemas import ConsistencyResponse
     from narrare.consistency.stage_schemas import ConsistencyStageEvent
+    from narrare_core.analysis.types import POVResult
 
     BetaReaderResponse.model_validate_json(BETA_READER_HAPPY)
     ConsistencyResponse.model_validate_json(json.dumps(_CONSISTENCY_RESULT))
+    POVResult.model_validate_json(POV_HAPPY)
 
     for body in (COREFERENCE_HAPPY_SSE, COREFERENCE_ERROR_SSE):
         for event in assert_sse_body_wellformed(body):

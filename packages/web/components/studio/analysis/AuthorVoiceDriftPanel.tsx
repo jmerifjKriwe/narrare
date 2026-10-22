@@ -37,6 +37,7 @@ type ViewState = "idle" | "loading" | "results" | "error";
 
 export function AuthorVoiceDriftPanel({ novelId, onClose }: AuthorVoiceDriftPanelProps) {
   const t = useTranslations("analysis");
+  const tStudio = useTranslations("studio");
   const { result, noProfile, error, progress, run, isLoading, isStreaming, isComplete, isError } =
     useAuthorVoiceDrift();
 
@@ -151,7 +152,9 @@ export function AuthorVoiceDriftPanel({ novelId, onClose }: AuthorVoiceDriftPane
                   <Info className="h-6 w-6 text-red-500" />
                 </div>
                 <p className="mb-1 text-lg font-medium">{t("authorVoiceDrift.analysisFailed")}</p>
-                <p className="mb-4 text-sm text-muted-foreground">{error?.userMessage}</p>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {error ? tStudio(error.i18nKey ?? "aiActions.errorDefault") : null}
+                </p>
                 <button
                   type="button"
                   onClick={handleRun}
