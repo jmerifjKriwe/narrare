@@ -1,14 +1,12 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { client } from "../../lib/api/client";
-import { t } from "../../lib/i18n";
+import { client } from "../lib/api/client";
+import { t } from "../lib/i18n";
+import { rootRoute } from "./__root";
 
-export default function SetupPage() {
-  const router = useRouter();
+function SetupPage() {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [failed, setFailed] = useState(false);
 
@@ -22,7 +20,7 @@ export default function SetupPage() {
       setFailed(true);
       return;
     }
-    router.push(`/novels/${data.novel_id}`);
+    void navigate({ to: "/novels/$id", params: { id: data.novel_id } });
   }
 
   return (
@@ -55,3 +53,9 @@ export default function SetupPage() {
     </main>
   );
 }
+
+export const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  component: SetupPage,
+});

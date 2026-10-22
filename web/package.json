@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3100",
-    "build": "next build",
-    "start": "next start --port 3100",
+    "dev": "vite",
+    "build": "vite build",
+    "start": "vite preview --port 3100",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "generate": "pnpm dlx --package=openapi-typescript@7.13.0 --package=typescript@5.9.3 openapi-typescript lib/api/openapi.json -o lib/api/schema.d.ts"
   },
   "dependencies": {
+    "@tanstack/react-router": "^1.170.45",
     "@tiptap/pm": "3.31.3",
     "@tiptap/react": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
-    "next": "16.3.8",
     "openapi-fetch": "^0.17.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -23,8 +24,10 @@
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }
 }

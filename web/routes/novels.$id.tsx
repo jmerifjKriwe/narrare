@@ -1,16 +1,13 @@
-"use client";
-
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { createRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
-import { ChapterEditor } from "../../../components/ChapterEditor";
-import { client, type Chapter, type Novel } from "../../../lib/api/client";
-import { t } from "../../../lib/i18n";
+import { ChapterEditor } from "../components/ChapterEditor";
+import { client, type Chapter, type Novel } from "../lib/api/client";
+import { t } from "../lib/i18n";
+import { rootRoute } from "./__root";
 
-export default function NovelPage() {
-  const params = useParams();
-  const novelId = String(params.id);
+function NovelPage() {
+  const { id: novelId } = novelRoute.useParams();
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [active, setActive] = useState<string | null>(null);
@@ -59,7 +56,7 @@ export default function NovelPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <Link href="/" className="text-sm text-muted underline-offset-4 hover:underline">
+      <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
         {t("nav.back")}
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
@@ -104,3 +101,9 @@ export default function NovelPage() {
     </main>
   );
 }
+
+export const novelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/novels/$id",
+  component: NovelPage,
+});

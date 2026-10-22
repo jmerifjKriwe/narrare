@@ -1,12 +1,11 @@
-"use client";
-
-import Link from "next/link";
+import { createRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { client, isModelChange, type Hit, type KnowledgeDocument } from "../../lib/api/client";
-import { t } from "../../lib/i18n";
+import { client, isModelChange, type Hit, type KnowledgeDocument } from "../lib/api/client";
+import { t } from "../lib/i18n";
+import { rootRoute } from "./__root";
 
-export default function KnowledgePage() {
+function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -90,7 +89,7 @@ export default function KnowledgePage() {
     <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">{t("knowledge.heading")}</h1>
       <p className="mt-2 text-sm text-muted">
-        <Link href="/" className="underline-offset-4 hover:underline">
+        <Link to="/" className="underline-offset-4 hover:underline">
           {t("nav.back")}
         </Link>
       </p>
@@ -185,3 +184,9 @@ export default function KnowledgePage() {
     </main>
   );
 }
+
+export const knowledgeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/knowledge",
+  component: KnowledgePage,
+});

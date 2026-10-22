@@ -29,7 +29,7 @@ def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -
     stack.stop_api()
     try:
         page.reload()
-        # Next keeps an (empty) route announcer with role=alert on every page.
+        # The alert is the page's own error message; nothing else claims the role.
         expect(page.get_by_role("alert").filter(has_text="nicht geladen")).to_be_visible()
     finally:
         stack.start_api()

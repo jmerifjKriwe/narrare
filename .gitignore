@@ -35,7 +35,7 @@ pyrightcache/
 .env.local
 .env.*.local
 
-# Node / Next.js
+# Node / Vite
 node_modules/
 web/.next*
 web/out/

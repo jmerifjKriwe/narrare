@@ -31,6 +31,16 @@
   }
 }
 
+/* The page surface. Explicit rather than a utility on <body>: the shell is the
+ * only place the app's background and text colour are set, and a class in
+ * index.html would depend on the scanner finding that file. */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

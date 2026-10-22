@@ -1,4 +1,4 @@
-"""A real stack for capability E2E tests: own database, real API, real Next.js.
+"""A real stack for capability E2E tests: own database, real API, real web app.
 
 Nothing here is a fake. The browser, the HTTP API and Postgres are the ones the
 product runs; only the LLM provider will ever be replaced, and only at its own
@@ -93,7 +93,7 @@ def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
 
 
 def _stop(process: subprocess.Popen[bytes]) -> None:
-    """End a whole process group: Next runs its server as a child."""
+    """End a whole process group: pnpm runs the dev server as a child."""
     if process.poll() is not None:
         return
     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
@@ -149,7 +149,7 @@ def run_stack(
         _wait_for(f"http://127.0.0.1:{WEB_PORT}")
         yield stack
     finally:
-        # Next runs its server in a child process; kill the whole group or the
+        # pnpm runs its server in a child process; kill the whole group or the
         # port stays bound after the test run. A test may have stopped the API
         # itself and failed before bringing it back: skip what is already gone.
         _stop(stack.web)

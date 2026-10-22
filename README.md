@@ -55,7 +55,7 @@ app/
 ├── api/            ← FastAPI app, mounts the capability routers
 ├── capabilities/   ← one folder per capability: router, service, repository, tests, e2e
 └── kernel/         ← contracts, db, auth, llm and embedding boundaries, retrieval, testing
-web/                ← Next.js app
+web/                ← Vite + React app
 i18n/               ← en, de, fr; typing makes a missing key a build error
 docs/               ← the design record
 ```

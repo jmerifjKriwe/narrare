@@ -1,15 +1,13 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { createRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { client, type Novel } from "../lib/api/client";
 import { t } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
+import { rootRoute } from "./__root";
 
-export default function NovelsPage() {
-  const router = useRouter();
+function NovelsPage() {
+  const navigate = useNavigate();
   const [novels, setNovels] = useState<Novel[]>([]);
   const [title, setTitle] = useState("");
   const [ready, setReady] = useState(false);
@@ -27,7 +25,7 @@ export default function NovelsPage() {
           setFailed(true);
         } else if (status.data && !status.data.complete) {
           // Nothing to list yet: an uninstalled instance starts at setup.
-          router.replace("/setup");
+          void navigate({ to: "/setup", replace: true });
           return;
         } else {
           const loaded = await client.GET("/api/writing/novels");
@@ -47,7 +45,7 @@ export default function NovelsPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [navigate]);
 
   async function reload() {
     try {
@@ -88,7 +86,7 @@ export default function NovelsPage() {
         {nav.map((entry, index) => (
           <span key={entry.id}>
             {index > 0 && <span aria-hidden="true"> · </span>}
-            <Link href={entry.path} className="underline-offset-4 hover:underline">
+            <Link to={entry.path} className="underline-offset-4 hover:underline">
               {t(entry.titleKey)}
             </Link>
           </span>
@@ -120,7 +118,8 @@ export default function NovelsPage() {
             {novels.map((novel) => (
               <li key={novel.id} className="rounded-lg border border-border bg-card">
                 <Link
-                  href={`/novels/${novel.id}`}
+                  to="/novels/$id"
+                  params={{ id: novel.id }}
                   className="block px-4 py-3 underline-offset-4 hover:underline"
                 >
                   {novel.title}
@@ -133,3 +132,9 @@ export default function NovelsPage() {
     </main>
   );
 }
+
+export const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: NovelsPage,
+});

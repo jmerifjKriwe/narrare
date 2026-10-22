@@ -444,3 +444,12 @@ silently. Each entry names the trigger that would build the missing piece.
   every job through one guard. 7 tests, ~34 s at four capabilities.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
+- **The web shell is a Vite SPA, not Next.js.** §3's "Next.js shell" is read as
+  "the web shell": every page was a client component, so Next contributed a
+  file router and a dev proxy while costing a third runtime in the packaging
+  ladder (ADR-101) and a `next start` process in production. `just build` now
+  emits `web/dist`, FastAPI serves it (`app/api/main.py`), and the routes are
+  TanStack Router's — typed, so a `to=` naming no route is a build error. The
+  TypeScript gate moved from `next build` to an explicit `tsc --noEmit` in
+  `just typecheck`, keeping `just check`'s coverage unchanged. i18n stays
+  framework-free JSON: the compiler, not a library, checks the catalogs.

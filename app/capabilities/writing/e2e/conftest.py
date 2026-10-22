@@ -1,4 +1,4 @@
-"""Full stack for the writing E2E: own database, real API, real Next.js.
+"""Full stack for the writing E2E: own database, real API, real web app.
 
 Module scope: the stack must be gone before the next capability's stack binds the
 same ports.

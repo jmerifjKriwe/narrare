@@ -1,7 +1,7 @@
 # Narrare
 
 Local-first, AI-assisted creative writing tool. Python 3.14 · FastAPI · SQLAlchemy
-async · PostgreSQL + pgvector · Next.js · TipTap · Tailwind.
+async · PostgreSQL + pgvector · Vite + React · TanStack Router · TipTap · Tailwind.
 
 The v2 architecture spec is the single authority for structure and boundaries:
 `docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`. The old app is

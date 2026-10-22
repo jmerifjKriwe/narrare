@@ -45,7 +45,7 @@ async def empty_tables() -> None:
         await session.commit()
 '''
 
-E2E_FIXTURE = '''"""Full stack for the {name} E2E: own database, real API, real Next.js.
+E2E_FIXTURE = '''"""Full stack for the {name} E2E: own database, real API, real web app.
 
 Module scope: the stack must be gone before the next capability's stack binds the
 same ports.

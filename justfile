@@ -55,9 +55,10 @@ lint:
     uv run ruff check app scripts
     uv run ruff format --check app scripts
 
-# Pyright, whole project.
+# Pyright for the backend, tsc for the web app.
 typecheck:
     uv run pyright
+    pnpm --dir web typecheck
 
 # Apply formatting and the import fixes ruff can make.
 format:

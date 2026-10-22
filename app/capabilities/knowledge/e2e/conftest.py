@@ -1,4 +1,4 @@
-"""Full stack for the knowledge E2E: own database, real API, real Next.js.
+"""Full stack for the knowledge E2E: own database, real API, real web app.
 
 The embedding provider is the real openai-compatible strategy pointed at a local
 stand-in whose width a test can flip — that is the one boundary a fake may hold
