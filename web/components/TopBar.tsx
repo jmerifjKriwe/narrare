@@ -86,7 +86,8 @@ export function TopBar() {
     <header className="border-b border-border bg-panel text-sm">
       {/* Hidden from sight until focused, and first in the bar so the first
           Tab finds it. Transform and opacity, not sr-only: the reveal then
-          needs no second utility to undo the hiding. */}
+          needs no second utility to undo the hiding. The ring is pre-applied
+          rather than focus-visible-gated because reveal and focus coincide. */}
       <a
         href="#main"
         className="fixed left-4 top-4 z-20 -translate-y-24 rounded-md bg-card px-3 py-2 text-sm text-foreground opacity-0 outline-none ring-2 ring-focus transition focus:translate-y-0 focus:opacity-100"

@@ -26,7 +26,16 @@ export function ChapterEditor({
     content: body,
     immediatelyRender: false,
     onUpdate: ({ editor: instance }) => schedule(instance.getHTML()),
-    editorProps: { attributes: { class: "prose", "aria-label": t("chapters.editorLabel") } },
+    editorProps: {
+      attributes: {
+        class: "prose",
+        // Explicit, not inferred from contenteditable: axe's role table
+        // maps the bare div to "generic", where an aria-label is prohibited
+        // while the editor is empty. "textbox" is nameable in every state.
+        role: "textbox",
+        "aria-label": t("chapters.editorLabel"),
+      },
+    },
   });
 
   async function continueWriting() {

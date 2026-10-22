@@ -25,6 +25,16 @@ const novelRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/novels/$id",
   component: NovelPage,
+  // Panel state is URL state. The default search parser hands validateSearch
+  // typed values, not raw strings: a linked `?rail=0` arrives as the number 0,
+  // and the page's own toggle writes booleans (`?rail=false`). Every collapsed
+  // encoding is listed, so a shared link and the toggle agree — and the dock
+  // params of later phases extend the same convention. The output is optional:
+  // links that don't care open expanded without naming the param, and no new
+  // panel param ever makes them name the old ones.
+  validateSearch: (search: { rail?: unknown }): { rail?: boolean } => ({
+    rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
+  }),
 });
 
 // The capability route contract: every route this capability mounts under the

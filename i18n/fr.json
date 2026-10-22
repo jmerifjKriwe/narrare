@@ -39,6 +39,8 @@
   "chat.sources": "Sources",
   "chat.noSources": "Aucune source trouvée",
   "chapters.editorLabel": "Texte du chapitre",
+  "workspace.collapseRail": "Masquer la liste des chapitres",
+  "workspace.expandRail": "Afficher la liste des chapitres",
   "chapters.continueError": "La suite a échoué.",
   "chat.error": "La réponse a échoué.",
   "knowledge.errorUpload": "Le téléversement a échoué.",

@@ -39,6 +39,8 @@
   "chat.sources": "Sources",
   "chat.noSources": "No source found",
   "chapters.editorLabel": "Chapter text",
+  "workspace.collapseRail": "Hide the chapter rail",
+  "workspace.expandRail": "Show the chapter rail",
   "chapters.continueError": "The continuation failed.",
   "chat.error": "The answer failed.",
   "knowledge.errorUpload": "Upload failed.",

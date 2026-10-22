@@ -39,6 +39,8 @@
   "chat.sources": "Quellen",
   "chat.noSources": "Keine Quelle gefunden",
   "chapters.editorLabel": "Kapiteltext",
+  "workspace.collapseRail": "Kapitelleiste ausblenden",
+  "workspace.expandRail": "Kapitelleiste einblenden",
   "chapters.continueError": "Die Fortsetzung ist fehlgeschlagen.",
   "chat.error": "Die Antwort ist fehlgeschlagen.",
   "knowledge.errorUpload": "Hochladen fehlgeschlagen.",
