@@ -85,9 +85,11 @@ muss bleiben, solange der Scan die History sieht.
    - [ ] Tests pass (`just test`, `just test-frontend`, and the capability E2E)
    - [ ] Conventional commit, and a `User-visible:` line for `feat` and `fix`
    - [ ] No bypass of the hooks was used for any commit
-4. CI runs on every PR: lint and types, the integration tests, the capability
-   E2E (real browser, real API, real Postgres) and the web build; coverage is
-   measured on `main`. There is no bypass.
+4. CI runs on every PR: lint and types, the integration tests, the web build
+   and the E2E of the capabilities the change touches — all of them when
+   kernel, web or tooling change. A nightly run tests everything, but only
+   when `main` moved since the last one; coverage is measured on `main`.
+   There is no bypass.
 5. Address review feedback with new commits.
 
 ## Code of Conduct

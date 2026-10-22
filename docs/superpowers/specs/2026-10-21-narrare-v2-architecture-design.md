@@ -436,8 +436,11 @@ silently. Each entry names the trigger that would build the missing piece.
   fixed prompt needs one async method), mem0 removed (pgvector plus
   `kernel/retrieval.py` covers the ground), pgvector kept, Alembic removed
   (§6). TanStack Query never entered: the generated client was enough.
-- **CI runs every capability's E2E on each PR** (§6 says "affected"): 7 tests,
-  ~34 s at four capabilities. The split is a `ci.yml` edit when the wall time
-  says so. There is no nightly schedule yet.
+- **CI runs the E2E of the affected capabilities on each PR** and all of them
+  on `main` pushes and nightly (§6): a `changes` job narrows a PR to the
+  capabilities it touched — everything when kernel, api, the generated views,
+  web, i18n or the tooling moved. The nightly runs only when `main` carries a
+  commit the last successful nightly did not test; an unchanged `main` skips
+  every job through one guard. 7 tests, ~34 s at four capabilities.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).

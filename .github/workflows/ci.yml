@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    # Nightly: every capability, every suite — but only when main moved since
+    # the last successful nightly (the guard job decides). 03:17 UTC.
+    - cron: "17 3 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,7 +17,37 @@ permissions:
   contents: read
 
 jobs:
+  # One cheap job every other job waits for. On a nightly it answers the
+  # only question that matters first: is main still where the last
+  # successful nightly left it? Then nothing below runs, because the same
+  # commit has already been tested — no runner minutes, no credits, and
+  # every job below reports skipped. On PRs and pushes it always proceeds.
+  nightly-guard:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+    steps:
+      - id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != schedule ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last=$(gh api "actions/workflows/ci.yml/runs?event=schedule&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          echo "last successful nightly tested: ${last:-none}"
+          if [ -n "$last" ] && [ "$last" = "$GITHUB_SHA" ]; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nightly skipped: main is unchanged since the last successful nightly."
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   lint-types:
+    needs: nightly-guard
+    if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -28,7 +62,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Which E2E suites a change owes: the capabilities it touches, or all of
+  # them when a shared surface moved (spec §6 "affected capabilities"; the
+  # shared surfaces are kernel, api, the generated views, web, i18n and the
+  # tooling). Pushes and nightly runs take everything.
+  changes:
+    needs: nightly-guard
+    if: needs.nightly-guard.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      suites: ${{ steps.suites.outputs.suites }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: suites
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            echo "suites=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch origin main
+          changed=$(git diff --name-only origin/main...HEAD)
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(app/(kernel|api|generated)/|web/|i18n/|justfile|pyproject\.toml|uv\.lock|pnpm-lock\.yaml|\.github/workflows/ci\.yml)'; then
+            echo "suites=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          capabilities=$(echo "$changed" | grep -oP '^app/capabilities/\K[^/]+' | sort -u)
+          if [ -z "$capabilities" ]; then
+            echo "suites=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          suites=""
+          for name in $capabilities; do suites="$suites app/capabilities/$name/e2e/"; done
+          echo "suites=$suites" >> "$GITHUB_OUTPUT"
+
   tests:
+    needs: nightly-guard
+    if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -55,7 +127,8 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    needs: [lint-types]
+    needs: [lint-types, changes]
+    if: needs.changes.outputs.suites != 'none'
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -86,9 +159,17 @@ jobs:
       - run: uv sync
       - run: uv run playwright install --with-deps chromium
       - run: pnpm install --frozen-lockfile
-      - run: just test-e2e
+      # The same invocation `just test-e2e` makes; the suites come from the
+      # changes job, so a PR pays for what it touches.
+      - name: E2E
+        run: |
+          suites="${{ needs.changes.outputs.suites }}"
+          [ "$suites" = all ] && suites="app/capabilities/*/e2e/"
+          uv run pytest $suites -v -m e2e --timeout=60
 
   build:
+    needs: nightly-guard
+    if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
