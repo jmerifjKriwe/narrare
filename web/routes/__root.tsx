@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { TopBar } from "../components/TopBar";
 import { useTranslation } from "../lib/i18n";
@@ -39,7 +39,13 @@ function Shell() {
           hold focus — fragment navigation focuses a target only if it can —
           and -1 keeps it out of the tab order. */}
       <main id="main" tabIndex={-1}>
-        <Outlet />
+        {/* Capability pages load lazily, each as its own bundle chunk; the
+            one boundary lives in the shell so no capability needs one. The
+            fallback is null on purpose — the shell's own pre-paint gate is
+            quiet, and the gap while a chunk arrives is the same quiet. */}
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </main>
     </>
   );

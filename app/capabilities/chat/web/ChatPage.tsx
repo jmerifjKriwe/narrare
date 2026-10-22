@@ -1,12 +1,12 @@
-import { createRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { client, isModelChange } from "../lib/api/client";
-import { useTranslation } from "../lib/i18n";
-import { readFrames, type Source } from "../lib/stream";
-import { rootRoute } from "./__root";
+import { client, isModelChange } from "@shell/lib/api/client";
+import { useTranslation } from "@shell/lib/i18n";
+import { readFrames, type Source } from "@shell/lib/stream";
 
-function ChatPage() {
+/** The chat page: one question, one streamed answer, the sources it cites. */
+export function ChatPage() {
   const t = useTranslation();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -103,9 +103,3 @@ function ChatPage() {
     </div>
   );
 }
-
-export const chatRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/chat",
-  component: ChatPage,
-});

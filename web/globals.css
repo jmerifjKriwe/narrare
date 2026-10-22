@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 /*
+ * Capability pages live outside web/, under each capability's own web
+ * folder, beyond the scanner's own reach; this names the places their
+ * utilities come from. The shell's tokens stay the one design surface:
+ * these folders carry utilities only, never a palette of their own.
+ */
+@source "../app/capabilities";
+
+/*
  * One design surface, owned by the shell: the tokens. Pages and components
  * consume them through utilities; capabilities never carry their own palette.
  * Dark mode follows the system (prefers-color-scheme) — night writing needs

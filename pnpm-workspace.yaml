@@ -1,6 +1,21 @@
 packages:
   - "web"
 
+# Capability web folders (app/capabilities/*/web) live outside web/, so their
+# bare imports cannot walk up to web/node_modules. The packages a capability
+# may import directly — the React and router stack, the editor's TipTap — are
+# hoisted to the workspace root, where tsc, vitest, the vite dev server and
+# the production build resolve them from anywhere. The list is the boundary:
+# capabilities import the shell through @shell/* and the framework through
+# these, nothing else.
+publicHoistPattern:
+  - react
+  - react-dom
+  - "@types/react"
+  - "@types/react-dom"
+  - "@tanstack/*"
+  - "@tiptap/*"
+
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
