@@ -38,5 +38,11 @@
   "knowledge.errorSearch": "La recherche a échoué.",
   "knowledge.modelChanged": "Le modèle d'embeddings a changé. Ré-encodez les documents.",
   "knowledge.reembed": "Ré-encoder les documents",
-  "chat.modelChanged": "Le modèle d'embeddings a changé ; ré-encodez d'abord la base de connaissances."
+  "chat.modelChanged": "Le modèle d'embeddings a changé ; ré-encodez d'abord la base de connaissances.",
+  "locale.name": "Français",
+  "docs.table.capability": "Fonction",
+  "docs.table.path": "Chemin",
+  "docs.table.needs": "Nécessite",
+  "needs.llm": "un modèle de texte",
+  "needs.embeddings": "un modèle d'embeddings"
 }

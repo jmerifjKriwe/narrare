@@ -38,5 +38,11 @@
   "knowledge.errorSearch": "Suche fehlgeschlagen.",
   "knowledge.modelChanged": "Das Embedding-Modell hat sich geändert. Bette die Dokumente neu ein.",
   "knowledge.reembed": "Dokumente neu einbetten",
-  "chat.modelChanged": "Das Embedding-Modell hat sich geändert; bette zuerst das Wissensarchiv neu ein."
+  "chat.modelChanged": "Das Embedding-Modell hat sich geändert; bette zuerst das Wissensarchiv neu ein.",
+  "locale.name": "Deutsch",
+  "docs.table.capability": "Funktion",
+  "docs.table.path": "Pfad",
+  "docs.table.needs": "Benötigt",
+  "needs.llm": "ein Textmodell",
+  "needs.embeddings": "ein Embedding-Modell"
 }

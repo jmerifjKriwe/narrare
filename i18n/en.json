@@ -38,5 +38,11 @@
   "knowledge.errorSearch": "Search failed.",
   "knowledge.modelChanged": "The embedding model changed. Re-embed the documents.",
   "knowledge.reembed": "Re-embed documents",
-  "chat.modelChanged": "The embedding model changed; re-embed the knowledge base first."
+  "chat.modelChanged": "The embedding model changed; re-embed the knowledge base first.",
+  "locale.name": "English",
+  "docs.table.capability": "Capability",
+  "docs.table.path": "Path",
+  "docs.table.needs": "Needs",
+  "needs.llm": "a text model",
+  "needs.embeddings": "an embedding model"
 }

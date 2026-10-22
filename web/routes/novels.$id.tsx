@@ -75,8 +75,7 @@ function NovelPage() {
                 onClick={() => setActive(chapter.id)}
                 className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
               >
-                {chapter.title ||
-                  t("chapters.defaultTitle").replace("{n}", String(chapter.position + 1))}
+                {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
               </button>
             </li>
           ))}

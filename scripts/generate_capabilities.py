@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""Write every generated view of the capability facts.
+"""Write every generated view of the capability facts and the language list.
 
-Source of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4).
-Three views, none hand-edited, all committed:
+Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4) —
+and ``i18n/*.json``, whose *filenames* are the set of languages. Nothing declares
+a language twice. Five views, none hand-edited, all committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
 * ``web/lib/generated/capabilities.ts`` — the nav entries the home page renders,
   with title keys the TypeScript compiler checks against the i18n catalog;
-* ``docs/user/INDEX.md`` — one row per capability per locale, titles resolved
-  from the i18n catalogs.
+* ``app/generated/locales.py`` — the languages, for anything server-side that
+  validates one;
+* ``web/lib/generated/catalogs.ts`` — the imports, the ``Locale`` union and the
+  catalog map, so a new ``i18n/<code>.json`` needs no TypeScript edit;
+* ``docs/user/INDEX.md`` — one row per capability per locale, with the table's
+  own words read from the catalogs.
 
-A field no view reads is deleted from the Facts schema; a view no consumer
-reads is deleted with it. ``just generate`` runs this after the facts change.
+Adding a language is therefore one file plus ``just generate``. A field no view
+reads is deleted from the Facts schema; a view no consumer reads is deleted with
+it. ``just generate`` runs this after the facts change.
 """
 
 import json
@@ -21,18 +27,20 @@ from pathlib import Path
 
 import yaml
 
-LOCALES = ("en", "de", "fr")
-NEEDS_WORDS = {
-    "en": {"llm": "a text model", "embeddings": "an embedding model"},
-    "de": {"llm": "ein Textmodell", "embeddings": "ein Embedding-Modell"},
-    "fr": {"llm": "un modèle de texte", "embeddings": "un modèle d'embeddings"},
-}
-TABLE_HEADERS = {
-    "en": ("Capability", "Path", "Needs"),
-    "de": ("Funktion", "Pfad", "Benötigt"),
-    "fr": ("Fonction", "Chemin", "Nécessite"),
-}
-SECTION_TITLES = {"en": "English", "de": "Deutsch", "fr": "Français"}
+# The source language leads the docs and the switcher; the rest follow in a
+# stable order so the generated diff does not shuffle when a file appears.
+SOURCE_LOCALE = "en"
+
+# Keys the generated views read by name. A catalog missing one stops generation
+# instead of rendering an empty table header.
+REQUIRED_DOC_KEYS = (
+    "locale.name",
+    "docs.table.capability",
+    "docs.table.path",
+    "docs.table.needs",
+    "needs.llm",
+    "needs.embeddings",
+)
 
 
 @dataclass(frozen=True)
@@ -46,13 +54,31 @@ class Facts:
     nav: bool
 
 
-def facts(root: Path) -> tuple[Facts, ...]:
+def locales(root: Path) -> tuple[str, ...]:
+    """Every language the catalog carries, discovered from the files."""
+    found = sorted(path.stem for path in (root / "i18n").glob("*.json"))
+    if SOURCE_LOCALE not in found:
+        raise SystemExit(f"i18n/{SOURCE_LOCALE}.json is missing: it is the type source")
+    return tuple([SOURCE_LOCALE] + [locale for locale in found if locale != SOURCE_LOCALE])
+
+
+def catalogs(root: Path, known: tuple[str, ...]) -> dict[str, dict[str, str]]:
+    """Load every catalog and check the keys the generated views use."""
+    loaded: dict[str, dict[str, str]] = {}
+    for locale in known:
+        source = root / "i18n" / f"{locale}.json"
+        loaded[locale] = json.loads(source.read_text(encoding="utf-8"))
+        missing = [key for key in REQUIRED_DOC_KEYS if key not in loaded[locale]]
+        if missing:
+            raise SystemExit(f"{source}: missing keys {missing}")
+    return loaded
+
+
+def facts(
+    root: Path, known: tuple[str, ...], loaded: dict[str, dict[str, str]]
+) -> tuple[Facts, ...]:
     """Load every capability.yaml, validating what the views rely on."""
-    loaded: list[Facts] = []
-    catalogs = {
-        locale: json.loads((root / "i18n" / f"{locale}.json").read_text(encoding="utf-8"))
-        for locale in LOCALES
-    }
+    entries: list[Facts] = []
     for folder in sorted((root / "app" / "capabilities").iterdir()):
         source = folder / "capability.yaml"
         if not source.exists():
@@ -73,15 +99,51 @@ def facts(root: Path) -> tuple[Facts, ...]:
         unknown_needs = set(entry.needs) - {"llm", "embeddings"}
         if unknown_needs:
             raise SystemExit(f"{source}: unknown needs {sorted(unknown_needs)}")
-        for locale in LOCALES:
-            if entry.title not in catalogs[locale]:
+        for locale in known:
+            if entry.title not in loaded[locale]:
                 raise SystemExit(
                     f"{source}: title key {entry.title!r} missing from i18n/{locale}.json"
                 )
-        loaded.append(entry)
-    if not loaded:
+        entries.append(entry)
+    if not entries:
         raise SystemExit("no capability.yaml found under app/capabilities/")
-    return tuple(loaded)
+    return tuple(entries)
+
+
+def python_locales(known: tuple[str, ...]) -> str:
+    """The server-side view: what a locale value is validated against."""
+    literal = ", ".join(f'"{locale}"' for locale in known)
+    trailing = "," if len(known) == 1 else ""
+    return (
+        '"""Generated by scripts/generate_capabilities.py from i18n/*.json — DO NOT EDIT.\n'
+        "\n"
+        "The languages the catalog carries, discovered from its files. A new\n"
+        "i18n/<code>.json appears here on the next `just generate`.\n"
+        '"""\n'
+        "\n"
+        f"LOCALES: tuple[str, ...] = ({literal}{trailing})\n"
+        f'SOURCE_LOCALE = "{SOURCE_LOCALE}"\n'
+    )
+
+
+def typescript_catalogs(known: tuple[str, ...]) -> str:
+    """The web-side view: imports, the locale union and the catalog map."""
+    imports = "".join(f'import {locale} from "../../../i18n/{locale}.json";\n' for locale in known)
+    union = ", ".join(f'"{locale}"' for locale in known)
+    mapping = ", ".join(known)
+    return (
+        "// Generated by scripts/generate_capabilities.py from i18n/*.json — DO NOT EDIT.\n"
+        "// Adding a language is i18n/<code>.json plus `just generate`: the union and\n"
+        "// the map below are written from the files that exist.\n"
+        f"{imports}"
+        "\n"
+        f"export const locales = [{union}] as const;\n"
+        "export type Locale = (typeof locales)[number];\n"
+        "\n"
+        "// Typed against the source catalog: a key missing in any locale is a build\n"
+        "// error at this assignment, not a blank label at runtime.\n"
+        f"export const catalogs: Record<Locale, typeof {SOURCE_LOCALE}> = {{ {mapping} }};\n"
+    )
 
 
 def python_registry(entries: tuple[Facts, ...]) -> str:
@@ -153,26 +215,30 @@ def typescript_nav(entries: tuple[Facts, ...]) -> str:
     )
 
 
-def docs_index(entries: tuple[Facts, ...], root: Path) -> str:
+def docs_index(
+    entries: tuple[Facts, ...], known: tuple[str, ...], loaded: dict[str, dict[str, str]]
+) -> str:
     """The reader-side view: one row per capability per locale."""
     sections: list[str] = []
-    for locale in LOCALES:
-        catalog = json.loads((root / "i18n" / f"{locale}.json").read_text(encoding="utf-8"))
-        capability, path_column, needs_column = TABLE_HEADERS[locale]
+    for locale in known:
+        catalog = loaded[locale]
+        capability = catalog["docs.table.capability"]
+        path_column = catalog["docs.table.path"]
+        needs_column = catalog["docs.table.needs"]
         rows = "".join(
             f"| {catalog[entry.title]} | {entry.path} | "
-            + (", ".join(NEEDS_WORDS[locale][need] for need in entry.needs) or "—")
+            + (", ".join(catalog[f"needs.{need}"] for need in entry.needs) or "—")
             + " |\n"
             for entry in entries
         )
         sections.append(
-            f"## {SECTION_TITLES[locale]}\n\n| {capability} | {path_column} | {needs_column} |\n"
+            f"## {catalog['locale.name']}\n\n| {capability} | {path_column} | {needs_column} |\n"
             "| --- | --- | --- |\n" + rows
         )
     return (
         "<!-- Generated by scripts/generate_capabilities.py from"
         " app/capabilities/*/capability.yaml — DO NOT EDIT. -->\n"
-        "<!-- Titles come from i18n/{en,de,fr}.json. Regenerate with `just generate`. -->\n"
+        "<!-- Titles and table words come from i18n/*.json. Regenerate with `just generate`. -->\n"
         "\n"
         "# Narrare — the app's surfaces\n"
         "\n"
@@ -184,11 +250,15 @@ def docs_index(entries: tuple[Facts, ...], root: Path) -> str:
 
 def main() -> None:
     root = Path(".")
-    loaded = facts(root)
-    outputs = {
-        "app/generated/capabilities.py": python_registry(loaded),
-        "web/lib/generated/capabilities.ts": typescript_nav(loaded),
-        "docs/user/INDEX.md": docs_index(loaded, root),
+    known = locales(root)
+    loaded = catalogs(root, known)
+    loaded_facts: tuple[Facts, ...] = facts(root, known, loaded)
+    outputs: dict[str, str] = {
+        "app/generated/capabilities.py": python_registry(loaded_facts),
+        "app/generated/locales.py": python_locales(known),
+        "web/lib/generated/capabilities.ts": typescript_nav(loaded_facts),
+        "web/lib/generated/catalogs.ts": typescript_catalogs(known),
+        "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded),
     }
     for target, content in outputs.items():
         path = root / target
