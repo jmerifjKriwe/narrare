@@ -1,0 +1,8 @@
+# Facts only (spec §4): every field is read by at least two generated views —
+# app/generated/capabilities.py, web/lib/generated/capabilities.ts and
+# docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
+id: writing
+title: novels.heading # i18n key; must exist in en, de and fr
+path: /
+needs: [llm]
+nav: false # the home page is the writing surface; it does not link to itself

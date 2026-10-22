@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { client, type Novel } from "../lib/api/client";
 import { t } from "../lib/i18n";
+import { nav } from "../lib/generated/capabilities";
 
 export default function NovelsPage() {
   const router = useRouter();
@@ -52,13 +53,14 @@ export default function NovelsPage() {
     <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
       <p className="mt-2 text-sm text-muted">
-        <Link href="/knowledge" className="underline-offset-4 hover:underline">
-          {t("nav.knowledge")}
-        </Link>
-        <span aria-hidden="true"> · </span>
-        <Link href="/chat" className="underline-offset-4 hover:underline">
-          {t("nav.chat")}
-        </Link>
+        {nav.map((entry, index) => (
+          <span key={entry.id}>
+            {index > 0 && <span aria-hidden="true"> · </span>}
+            <Link href={entry.path} className="underline-offset-4 hover:underline">
+              {t(entry.titleKey)}
+            </Link>
+          </span>
+        ))}
       </p>
       <form onSubmit={create} className="mt-6 flex flex-col gap-2">
         <label className="flex flex-col gap-1 text-sm font-medium">

@@ -22,3 +22,19 @@ def test_every_capability_with_a_router_is_mounted() -> None:
         assert any(path.startswith(f"/api/{folder.name}") for path in mounted), (
             f"{folder.name} has a router.py but no mounted route"
         )
+
+
+def test_the_generated_registry_names_exactly_the_mounted_capabilities() -> None:
+    # The facts files and the routers are two hands writing one truth; the
+    # startup cross-check in main.py refuses to boot on a disagreement, and
+    # this test keeps that disagreement from ever reaching a boot.
+    from app.generated import capabilities as generated
+
+    mounted = {
+        folder.name
+        for folder in CAPABILITIES.iterdir()
+        if folder.is_dir() and (folder / "router.py").exists()
+    }
+    assert {capability.id for capability in generated.CAPABILITIES} == mounted, (
+        "capability folders and capability.yaml disagree: run `just generate`"
+    )

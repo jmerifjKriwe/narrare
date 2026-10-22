@@ -63,6 +63,16 @@ def stack() -> Iterator[None]:
         yield
 '''
 
+FACTS_FILE = """# Facts only (spec §4): every field is read by at least two generated views —
+# app/generated/capabilities.py, web/lib/generated/capabilities.ts and
+# docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
+id: {name}
+title: {name}.heading # i18n key; add it to i18n/en.json, de.json and fr.json
+path: /{name}
+needs: []
+nav: false
+"""
+
 
 def main() -> None:
     if len(sys.argv) != 2:
@@ -78,14 +88,17 @@ def main() -> None:
     (root / "tests").mkdir(parents=True)
     (root / "e2e").mkdir()
     (root / "__init__.py").write_text("", encoding="utf-8")
+    (root / "capability.yaml").write_text(FACTS_FILE.format(name=name), encoding="utf-8")
     (root / "tests" / "conftest.py").write_text(
         INTEGRATION_FIXTURE.format(name=name), encoding="utf-8"
     )
     (root / "e2e" / "conftest.py").write_text(E2E_FIXTURE.format(name=name), encoding="utf-8")
 
     print(f"created {root}")
-    print("next: router.py (auto-mounted by app/api/main.py), service.py,")
-    print("      schemas.py, a test, an E2E spec")
+    print("next: the title key in i18n/en.json, de.json and fr.json, then")
+    print("      `just generate` (the registry must name the new capability before")
+    print("      the app boots), router.py (auto-mounted), service.py, schemas.py,")
+    print("      a test, an E2E spec")
 
 
 if __name__ == "__main__":

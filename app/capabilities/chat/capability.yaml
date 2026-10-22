@@ -1,0 +1,8 @@
+# Facts only (spec §4): every field is read by at least two generated views —
+# app/generated/capabilities.py, web/lib/generated/capabilities.ts and
+# docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
+id: chat
+title: chat.heading # i18n key; must exist in en, de and fr
+path: /chat
+needs: [llm, embeddings]
+nav: true # listed in the home page navigation

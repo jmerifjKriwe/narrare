@@ -412,16 +412,21 @@ The four capabilities are built. These are the places the code is simpler than
 §3–§6 describe, recorded here so the authority and the tree cannot disagree
 silently. Each entry names the trigger that would build the missing piece.
 
-- **Registration is by convention, not by facts file.** `app/api/main.py` mounts
-  every `app/capabilities/<name>/router.py` it finds; a capability is named
-  nowhere else. There is no `capability.yaml` and no `generated/` (§3, §4): no
-  view reads capability facts yet, and a field nobody reads is deleted. Both
-  return when a real consumer exists — a generated docs index, a startup check
-  of per-capability provider requirements — not before.
+- **Registration is by convention, mounting by folder; the facts live in
+  `capability.yaml`.** `app/api/main.py` mounts every
+  `app/capabilities/<name>/router.py` it finds and cross-checks, at startup,
+  that the generated registry (`app/generated/capabilities.py`) names exactly
+  those capabilities — a router without a facts file stops the boot. Three
+  views are generated, none hand-edited: the Python registry, the TypeScript
+  nav data (`web/lib/generated/capabilities.ts`, rendered by the home page,
+  title keys checked against the i18n catalog by the compiler) and
+  `docs/user/INDEX.md`. Fields, each read by at least two views: `id`,
+  `title`, `path`, `needs`, `nav`. A new capability is one folder plus
+  `just generate`.
 - **A capability's frontend lives in `web/app/<name>/`, not in its folder.** A
   feature costs its backend folder, one page folder, and one key in each of the
-  three i18n catalogs. The generated route table (§3) is not built for the same
-  reason as above: with one page per capability there is nothing to compose.
+  three i18n catalogs. The generated route table (§3) is not built: with one
+  page per capability there is nothing to compose.
 - **`kernel/jobs`, `kernel/events` and `kernel/prompts` are not built.** No
   feature needs background work yet, so standing rule 3 holds trivially; the
   jobs table and worker arrive with the first capability that needs them (§13).

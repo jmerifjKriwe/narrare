@@ -44,7 +44,7 @@ just dev-services       # Postgres on :5432 (dev) and :5433 (tests)
 just db-init            # create the schema directly from the models
 just db-reset           # drop and rebuild the dev database
 just db-shell           # psql on the dev database
-just generate           # write the OpenAPI document (no consumer yet)
+just generate           # write the OpenAPI document, the capability views and the typed client
 just new-capability x   # scaffold the test fixtures for a new capability
 ```
 

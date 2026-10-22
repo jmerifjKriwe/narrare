@@ -104,9 +104,10 @@ db-reset:
 db-shell:
     docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d narrare_v2_dev
 
-# Write the OpenAPI document and the typed web client derived from it.
+# Write the OpenAPI document, the capability views and the typed web client.
 generate:
     uv run python -m scripts.export_openapi
+    uv run python -m scripts.generate_capabilities
     pnpm --dir web generate
 
 # Scaffold a capability folder: just new-capability notes
