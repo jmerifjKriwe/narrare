@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
@@ -29,3 +31,5 @@ def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:
 
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Der Nebel kam von See.")
+
+    assert_accessible(page)

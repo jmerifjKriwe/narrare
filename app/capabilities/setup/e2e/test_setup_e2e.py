@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
@@ -29,3 +31,5 @@ def test_a_fresh_database_opens_on_setup(page: Page, stack: Stack) -> None:
     # Setup is closed: the root now lists the novel instead of redirecting.
     page.goto("http://127.0.0.1:3100/")
     expect(page.get_by_role("link", name="Der Nebel")).to_be_visible()
+
+    assert_accessible(page)

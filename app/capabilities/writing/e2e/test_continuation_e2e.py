@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
@@ -33,3 +35,5 @@ def test_the_continuation_arrives_in_the_editor_and_is_saved(page: Page, stack: 
     page.wait_for_timeout(1500)
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")
+
+    assert_accessible(page)

@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
@@ -53,6 +55,8 @@ def test_a_chosen_language_survives_a_fresh_browser(
     finally:
         other_context.close()
 
+    assert_accessible(page)
+
 
 def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     page.goto("http://127.0.0.1:3100/")
@@ -64,3 +68,5 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     expect(page.get_by_role("link", name="Zum Inhalt springen")).to_be_focused()
     body.press("Enter")
     expect(page.locator("#main")).to_be_focused()
+
+    assert_accessible(page)

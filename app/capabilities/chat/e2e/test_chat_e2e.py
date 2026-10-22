@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
@@ -35,3 +37,5 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
 
     expect(page.get_by_role("region", name="Antwort")).to_contain_text(PASSAGE)
     expect(page.get_by_role("region", name="Quellen")).to_contain_text("Notizen")
+
+    assert_accessible(page)
