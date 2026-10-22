@@ -9,9 +9,11 @@
 import { routes as chat } from "../../../app/capabilities/chat/web/routes";
 import { routes as knowledge } from "../../../app/capabilities/knowledge/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
+import { routes as writing } from "../../../app/capabilities/writing/web/routes";
 
 export const capabilityRoutes = [
   ...chat,
   ...knowledge,
   ...setup,
+  ...writing,
 ] as const;

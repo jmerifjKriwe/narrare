@@ -2,10 +2,10 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
 
-import { useTranslation } from "../lib/i18n";
-import { client } from "../lib/api/client";
-import { SaveIndicator, useAutosave } from "../lib/save";
-import { readFrames } from "../lib/stream";
+import { useTranslation } from "@shell/lib/i18n";
+import { client } from "@shell/lib/api/client";
+import { SaveIndicator, useAutosave } from "@shell/lib/save";
+import { readFrames } from "@shell/lib/stream";
 
 export function ChapterEditor({
   chapterId,

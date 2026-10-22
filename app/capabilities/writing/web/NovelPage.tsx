@@ -1,14 +1,17 @@
-import { createRoute, Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
-import { ChapterEditor } from "../components/ChapterEditor";
-import { client, type Chapter, type Novel } from "../lib/api/client";
-import { useTranslation } from "../lib/i18n";
-import { rootRoute } from "./__root";
+import { client, type Chapter, type Novel } from "@shell/lib/api/client";
+import { useTranslation } from "@shell/lib/i18n";
 
-function NovelPage() {
+import { ChapterEditor } from "./ChapterEditor";
+
+/** The novel page: its chapter list, and the editor of the open chapter. */
+export function NovelPage() {
   const t = useTranslation();
-  const { id: novelId } = novelRoute.useParams();
+  // By route id, not the route object: the page stands apart from
+  // routes.tsx, and the registered router still types `id` from the string.
+  const { id: novelId } = useParams({ from: "/novels/$id" });
   const [novel, setNovel] = useState<Novel | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [active, setActive] = useState<string | null>(null);
@@ -101,9 +104,3 @@ function NovelPage() {
     </div>
   );
 }
-
-export const novelRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/novels/$id",
-  component: NovelPage,
-});

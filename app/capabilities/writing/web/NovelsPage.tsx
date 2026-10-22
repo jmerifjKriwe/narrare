@@ -1,12 +1,12 @@
-import { createRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { client, type Novel } from "../lib/api/client";
-import { useTranslation } from "../lib/i18n";
-import { nav } from "../lib/generated/capabilities";
-import { rootRoute } from "./__root";
+import { client, type Novel } from "@shell/lib/api/client";
+import { nav } from "@shell/lib/generated/capabilities";
+import { useTranslation } from "@shell/lib/i18n";
 
-function NovelsPage() {
+/** The novels page: the library, and the one field that starts a new novel. */
+export function NovelsPage() {
   const t = useTranslation();
   const navigate = useNavigate();
   const [novels, setNovels] = useState<Novel[]>([]);
@@ -133,9 +133,3 @@ function NovelsPage() {
     </div>
   );
 }
-
-export const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  component: NovelsPage,
-});
