@@ -34,6 +34,17 @@ service and finishes with `.devcontainer/post-create.sh` (dependencies, hooks).
   (e.g. `feat/kb-versioning`, `fix/login-timeout`).
 - Keep branches focused — one logical change per branch makes review faster.
 
+**Merging:** a pull request whose branch meets the commit standard —
+conventional commits, green at every commit — is merged with a **merge
+commit**: the commits land on `main` unchanged, commit references stay
+valid, and release-please sees every conventional commit. A pull request
+that does not meet the standard (typical for drive-by contributions) is
+**squashed**, with a conventional-commit title that becomes the changelog
+entry. Auto-merge is enabled for green CI. Direct pushes to `main` are
+fine for documentation-only changes (`*.md`); everything else goes through
+a pull request, because only CI runs the E2E and the web build before the
+merge.
+
 ## Conventional Commits
 
 Every commit message follows the [Conventional Commits](https://www.conventionalcommits.org/)
