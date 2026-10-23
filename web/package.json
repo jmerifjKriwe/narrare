@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-notices.mjs",
     "start": "vite preview --port 3100",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
