@@ -90,8 +90,8 @@ muss bleiben, solange der Scan die History sieht.
 ## PR Process
 
 1. Push your feature branch and open a Pull Request against `main`.
-2. Fill in the PR template (see `.github/PULL_REQUEST_TEMPLATE/`). For
-   AI-powered UI changes, complete the **UX Review Checklist** (`ux_review.md`).
+2. Fill in the PR template (`.github/PULL_REQUEST_TEMPLATE.md`). For UI or
+   AI-touching changes, complete the **UX review** section; delete it otherwise.
 3. **PR checklist:**
    - [ ] `just check` passes (lint + types)
    - [ ] Tests pass (`just test`, `just test-frontend`, and the capability E2E)
