@@ -8,6 +8,7 @@ cancellation, so a handler mid-flight always gets to record its outcome.
 
 import asyncio
 from contextlib import suppress
+from logging import getLogger
 from typing import TYPE_CHECKING
 
 from sqlalchemy import update
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 IDLE_SLEEP = 0.5  # seconds between empty polls — off the database's back when idle
+ERROR_BACKOFF = 1.0  # seconds before re-probing a failed database, not a tight loop
 
 
 async def reset_stuck_running(session_factory: async_sessionmaker[AsyncSession]) -> int:
@@ -32,6 +34,9 @@ async def reset_stuck_running(session_factory: async_sessionmaker[AsyncSession])
     The retry_count keeps its history — the reset itself increments nothing; a
     row that already failed once before the crash fails permanently on its next
     failure, because that failure is its second attempt.
+
+    Assumes one live lane per database: a second process starting while a
+    handler still runs would requeue that live row.
     """
     async with session_factory() as session:
         requeued = (
@@ -79,9 +84,23 @@ async def _lane(worker: Worker, stopping: asyncio.Event) -> None:
     A claimed row may not be the last one, so a busy lane never sleeps; an
     idle lane wakes on the stop signal immediately and re-polls at IDLE_SLEEP
     otherwise.
+
+    Handler errors are the row's problem — the Worker records them; what the
+    Worker cannot survive is its own I/O dying (a database restart under a live
+    lane, a dropped connection). Those the lane absorbs: it logs at failure
+    time and backs off before the next claim, because a dead task would leave
+    every queued job sitting forever with nothing anywhere saying why.
+    CancelledError is not Exception and is not caught: shutdown is shutdown.
     """
     while not stopping.is_set():
-        if await worker.run_once():
+        try:
+            claimed = await worker.run_once()
+        except Exception:
+            getLogger("narrare").exception("the jobs lane hit an infrastructure failure")
+            with suppress(TimeoutError):
+                await asyncio.wait_for(stopping.wait(), ERROR_BACKOFF)
             continue
+        if claimed:
+            continue  # a claimed row may not be the last queued one
         with suppress(TimeoutError):
             await asyncio.wait_for(stopping.wait(), IDLE_SLEEP)

@@ -7,6 +7,7 @@ restart recovery — plus the enqueue seam the first capability boards (Task 3).
 """
 
 import asyncio
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -18,7 +19,12 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user, url_for
 from app.kernel.jobs import Job, enqueue
 from app.kernel.jobs.models import DONE, FAILED, QUEUED, RUNNING
-from app.kernel.jobs.runtime import reset_stuck_running, start_worker, stop_worker
+from app.kernel.jobs.runtime import (
+    _lane,  # pyright: ignore[reportPrivateUsage]  the loop itself is the unit under test
+    reset_stuck_running,
+    start_worker,
+    stop_worker,
+)
 from app.kernel.jobs.worker import Worker
 
 pytestmark = pytest.mark.usefixtures("schema", "empty_tables")
@@ -233,3 +239,42 @@ async def test_the_runtime_lane_drains_jobs_and_stops_cleanly(a_user: None) -> N
 
     assert attempts == ["flaky", "flaky", "good"]  # FIFO, one re-run, then the next
     assert task.done()  # graceful: the lane finished and exited
+
+
+async def test_the_lane_survives_a_transient_infrastructure_failure(a_user: None) -> None:
+    job = await _enqueue("kind")
+
+    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+        return {"ran": True}
+
+    class FlakyFactory:
+        """The first claim meets a dead database; the lane must outlive it.
+
+        Not a handler failure — the connection I/O itself dies before any
+        session exists, which is exactly the gap handler isolation leaves.
+        """
+
+        def __init__(self) -> None:
+            self.blipped = False
+
+        def __call__(self) -> AsyncSession:
+            if not self.blipped:
+                self.blipped = True
+                raise ConnectionError("the database went away")
+            return Session()
+
+    # One deliberate type fib: the wrapper has to behave like the maker, not be it.
+    flaky = cast("async_sessionmaker[AsyncSession]", FlakyFactory())
+    stopping = asyncio.Event()
+    task = asyncio.create_task(_lane(Worker(flaky, {"kind": handler}), stopping))
+    try:
+        for _ in range(200):  # 10 s ceiling on a lane that backs off a second
+            if (await _job(job.id)).status == DONE:
+                break
+            await asyncio.sleep(0.05)
+        else:
+            pytest.fail("the lane never completed the job after the blip")
+        assert not task.done()  # the failure did not end the task
+    finally:
+        stopping.set()
+        await task  # and it still stops cleanly
