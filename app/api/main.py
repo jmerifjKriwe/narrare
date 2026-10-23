@@ -15,12 +15,17 @@ from importlib import import_module
 from logging import INFO, basicConfig, getLogger
 from os import environ
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from app.generated.capabilities import CAPABILITIES as REGISTERED
 from app.kernel.configuration import validate_configuration
+from app.kernel.jobs.runtime import start_worker, stop_worker
+
+if TYPE_CHECKING:
+    from app.kernel.jobs.worker import JobHandler
 
 CAPABILITIES = Path(__file__).resolve().parent.parent / "capabilities"
 DEFAULT_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
@@ -31,10 +36,30 @@ DEFAULT_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 basicConfig(level=INFO)
 
 
+def _job_handlers() -> dict[str, JobHandler]:
+    """Every capability's background handlers, found the way routers are.
+
+    A capability that wants the lane writes ``jobs.py`` exporting ``handlers``;
+    nothing else changes (spec §12.1). Later folders win a duplicate kind,
+    which is the same last-word rule a dict update always had — and a
+    duplicate kind is a capability bug the first claim surfaces anyway.
+    """
+    handlers: dict[str, JobHandler] = {}
+    for folder in sorted(CAPABILITIES.iterdir()):
+        if not (folder / "jobs.py").is_file():
+            continue
+        handlers.update(import_module(f"app.capabilities.{folder.name}.jobs").handlers)
+    return handlers
+
+
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     validate_configuration()
-    yield
+    await start_worker(app, _job_handlers())
+    try:
+        yield
+    finally:
+        await stop_worker(app)
 
 
 def _serve_shell(app: FastAPI, dist: Path) -> None:
