@@ -89,6 +89,10 @@ export function NovelPage() {
   // that arrives unhandled here steps the focus back. F9 has no such tenant.
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
+      // A held key repeats, and an IME composition emits keydown the page
+      // must not act on: a repeated F9 would race the URL writes, and a
+      // composition's Esc would tear the mode mid-word.
+      if (event.repeat || event.isComposing) return;
       if (event.defaultPrevented) return;
       if (event.key === "F9") {
         event.preventDefault();
