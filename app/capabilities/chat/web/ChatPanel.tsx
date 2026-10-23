@@ -2,11 +2,13 @@ import { useState } from "react";
 
 import { client, isModelChange } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { offerProposal } from "@shell/lib/proposal";
 import { readFrames, type Source } from "@shell/lib/stream";
+import { ProposalCard } from "@shell/ui/ProposalCard";
 
 /** One question, one streamed answer, the sources it cites — the flow both
  * surfaces share: the standalone page and the workspace dock. */
-export function ChatPanel() {
+export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
   const t = useTranslation();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -14,6 +16,9 @@ export function ChatPanel() {
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState(false);
   const [modelChanged, setModelChanged] = useState(false);
+  // The offer card is spent once its answer was offered or dropped; a new
+  // question brings a fresh card with its fresh answer.
+  const [offerSpent, setOfferSpent] = useState(false);
 
   async function ask(event: React.FormEvent) {
     event.preventDefault();
@@ -23,6 +28,7 @@ export function ChatPanel() {
     setSources(null);
     setFailed(false);
     setModelChanged(false);
+    setOfferSpent(false);
     try {
       // parseAs "stream": the answer arrives as frames while it is written.
       const limit = 5; // the server's own default, pinned here by the request type
@@ -76,6 +82,21 @@ export function ChatPanel() {
           <p role="alert" className="mt-2 text-sm text-danger">
             {modelChanged ? t("chat.modelChanged") : t("chat.error")}
           </p>
+        ) : null}
+        {/* The dock's own follow-through: a complete answer can be handed
+            to the editor beside it — as a ghost there, never as text
+            without the writer's keypress. The standalone page has no
+            editor to offer into, so it never shows the card. */}
+        {canOffer && !asking && !failed && answer !== "" && !offerSpent ? (
+          <ProposalCard
+            titleKey="chat.offerAsVariant"
+            body={answer}
+            onAccept={() => {
+              setOfferSpent(true);
+              offerProposal(answer);
+            }}
+            onDiscard={() => setOfferSpent(true)}
+          />
         ) : null}
       </section>
       {sources === null ? null : (

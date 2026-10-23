@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { client, type Chapter, type Novel } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { subscribeProposal } from "@shell/lib/proposal";
 import { queryClient } from "@shell/lib/query";
 
 import { ChapterEditor } from "./ChapterEditor";
@@ -43,12 +44,16 @@ export function NovelPage() {
     const loadedChapters = chaptersResult.data ?? [];
     setChapters(loadedChapters);
     // The chapter to reopen on arrival is the last one written in, read from
-    // the server's updated_at. Strict comparison: on equal timestamps the
-    // first row keeps the lead, and the list is in position order, so the
-    // choice stays deterministic even when two chapters tie.
+    // the server's updated_at — compared as parsed instants, because two
+    // ISO strings with different timezone offsets do not order as their
+    // moments do. Strict comparison: on equal instants the first row keeps
+    // the lead, and the list is in position order, so the choice stays
+    // deterministic even when two chapters tie.
     const latest = loadedChapters.reduce<Chapter | null>(
       (best, chapter) =>
-        best === null || chapter.updated_at > best.updated_at ? chapter : best,
+        best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
+          ? chapter
+          : best,
       null,
     );
     setActive((previous) => previous ?? latest?.id ?? null);
@@ -57,6 +62,16 @@ export function NovelPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The proposal bus: the dock's panels (other capabilities) offer text
+  // through the shell; the workbench subscribes and feeds the editor's
+  // proposal props. One pending offer, last-wins, spent on resolve — and
+  // dead with this page: unmount drops the subscription, so an offer made
+  // to this workspace never haunts the next visit. `null` frees the
+  // editor's own continuation stream; only a live offer speaks here.
+  const [offer, setOffer] = useState<string | null>(null);
+  useEffect(() => subscribeProposal(setOffer), []);
+  const resolveOffer = useCallback(() => setOffer(null), []);
 
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
@@ -282,6 +297,8 @@ export function NovelPage() {
               chapterId={current.id}
               body={current.body}
               onSaved={remember}
+              proposal={offer ?? undefined}
+              onProposalResolve={resolveOffer}
             />
           ) : null}
         </section>

@@ -34,11 +34,9 @@ export const queryClient = new QueryClient({
 export function useSettingsQuery(): UseQueryResult<{ locale: string | null }> {
   return useQuery({
     queryKey: ["settings"],
-    // No refetch on window focus: the queryFn answers an outage with
-    // `{ locale: null }`, and a focus refetch while the service is down
-    // would feed that answer to the shell, erasing the locale adopted at
-    // boot. The row changes only through the switcher, which invalidates
-    // this key itself.
+    // No refetch on window focus: a focus refetch while the service is down
+    // would erase the locale adopted at boot. The row changes only through
+    // the switcher, which invalidates this key itself.
     refetchOnWindowFocus: false,
     queryFn: async () => {
       try {
