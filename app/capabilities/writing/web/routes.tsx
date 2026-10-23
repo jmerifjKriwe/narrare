@@ -45,18 +45,20 @@ const novelRoute = createRoute({
   // links that don't care open expanded without naming the param, and no new
   // panel param ever makes them name the old ones. Focus follows suit: it is
   // omitted at the workbench depth so ordinary novel URLs stay clean. The
-  // dock rounds out the convention: absent or "none" is collapsed (a closed
-  // dock is the workspace's quiet default), only "chat" names an open panel.
+  // dock rounds out the convention the same way: the open dock is the child
+  // route itself, and the param — kept so a phase-5 `?dock=chat` link still
+  // validates — is emitted only when it names "chat". A closed dock leaves
+  // a clean URL: nothing in the search names it.
   validateSearch: (search: {
     rail?: unknown;
     focus?: unknown;
     dock?: unknown;
-  }): { rail?: boolean; focus?: FocusStep; dock?: "chat" | "none" } => {
+  }): { rail?: boolean; focus?: FocusStep; dock?: "chat" } => {
     const focus = focusStep(search.focus);
     return {
       rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
       ...(focus > 0 ? { focus } : {}),
-      dock: search.dock === "chat" ? "chat" : "none",
+      ...(search.dock === "chat" ? { dock: "chat" } : {}),
     };
   },
 });

@@ -3,7 +3,7 @@
 
 Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4) —
 and ``i18n/*.json``, whose *filenames* are the set of languages. Nothing declares
-a language twice. Six views, none hand-edited, all committed:
+a language twice. Seven views, none hand-edited, all committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
@@ -17,6 +17,9 @@ a language twice. Six views, none hand-edited, all committed:
   mounts, one import per capability that owns ``web/routes.tsx``, and the one
   composition point of the dock convention: dockRoutes factories are called
   with the exported workspaceRoute, so capabilities never import each other;
+* ``web/lib/generated/docks.ts`` — the dock registry the workspace renders its
+  dock tabs from, one row per capability exporting ``dockRoutes``: a new dock
+  appears by existing, with zero generator changes;
 * ``docs/user/INDEX.md`` — one row per capability per locale, with the table's
   own words read from the catalogs.
 
@@ -26,6 +29,7 @@ it. ``just generate`` runs this after the facts change.
 """
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -56,6 +60,16 @@ class Facts:
     path: str
     needs: tuple[str, ...]
     nav: bool
+
+
+@dataclass(frozen=True)
+class Dock:
+    """One row of the dock registry: a capability's dock as the workspace
+    sees it — identity, route and catalog key, nothing else."""
+
+    id: str
+    path: str
+    title_key: str
 
 
 def locales(root: Path) -> tuple[str, ...]:
@@ -219,35 +233,107 @@ def typescript_nav(entries: tuple[Facts, ...]) -> str:
     )
 
 
-def typescript_routes(root: Path) -> str:
-    """The web-side view: the capability route table the router mounts."""
-    found = tuple(
-        folder.name
+def route_sources(root: Path) -> dict[str, str]:
+    """Every capability's routes.tsx source, keyed by capability, sorted."""
+    return {
+        folder.name: (folder / "web" / "routes.tsx").read_text(encoding="utf-8")
         for folder in sorted((root / "app" / "capabilities").iterdir())
         if (folder / "web" / "routes.tsx").is_file()
-    )
-    # The dock convention, discovered from the sources: a capability exports
-    # ``dockRoutes`` (factories that parent routes at another capability's
-    # workspace) and exactly one exports ``workspaceRoute``. No facts file is
-    # involved — the export is the whole contract, and this table is the one
-    # place the two sides meet.
-    sources = {
-        capability: (root / "app" / "capabilities" / capability / "web" / "routes.tsx").read_text(
-            encoding="utf-8"
-        )
-        for capability in found
     }
-    docks = tuple(
+
+
+def _workspace_path(source: str, capability: str) -> str:
+    """The workspace route's path literal, traced through the export's alias."""
+    alias = re.search(r"export const workspaceRoute = (\w+)", source)
+    declaration = re.search(rf"const {alias.group(1)} = createRoute\(", source) if alias else None
+    literal = re.search(r'path: "([^"]+)"', source[declaration.end() :]) if declaration else None
+    if literal is None:
+        raise SystemExit(
+            f"app/capabilities/{capability}/web/routes.tsx: workspaceRoute must alias"
+            " a `const <name> = createRoute(…)` whose path literal the scan can"
+            " read — the dock registry derives its rows' paths from it"
+        )
+    return literal.group(1)
+
+
+def _dock_path(source: str, capability: str) -> str:
+    """The one path literal inside the dockRoutes export."""
+    block = re.search(r"export const dockRoutes\b.*?\] as const;", source, re.DOTALL)
+    literals = re.findall(r'path: "([^"]+)"', block.group(0)) if block else []
+    if len(literals) != 1:
+        raise SystemExit(
+            f"app/capabilities/{capability}/web/routes.tsx: the dock registry"
+            f" reads exactly one path literal from the dockRoutes export, found"
+            f" {len(literals)} — one dock per capability; extend the registry"
+            " contract before exporting several"
+        )
+    return literals[0]
+
+
+@dataclass(frozen=True)
+class DockScan:
+    """The dock convention as one scan of the route sources reads it: the
+    registry rows and the one capability whose workspace route hosts them."""
+
+    docks: tuple[Dock, ...]
+    host: str | None
+
+
+def scan_docks(sources: dict[str, str]) -> DockScan:
+    """The dock convention, discovered from the route sources.
+
+    Discovery is a substring scan, not a parse — the caveat that keeps this
+    honest: a capability counts as a dock when its routes.tsx contains
+    ``export const dockRoutes`` and as the host when it contains ``export
+    const workspaceRoute``, and the path literals are read as the first
+    ``path: "…"`` after those markers. A routes.tsx that drifts from that
+    shape fails loudly here (or drifts visibly in ``just generate``) instead
+    of generating a wrong table.
+    """
+    docks = [
         capability for capability, text in sources.items() if "export const dockRoutes" in text
-    )
+    ]
     hosts = [
         capability for capability, text in sources.items() if "export const workspaceRoute" in text
     ]
-    if docks and len(hosts) != 1:
+    if len(hosts) > 1:
         raise SystemExit(
-            f"dockRoutes exported by {list(docks)}, but {len(hosts)} capabilities"
-            f" export workspaceRoute ({hosts}); the dock convention needs exactly one"
+            f"{len(hosts)} capabilities export workspaceRoute ({hosts}); the"
+            " dock convention parents every dock under exactly one workspace"
         )
+    if docks and not hosts:
+        raise SystemExit(
+            f"dockRoutes exported by {docks}, but no capability exports"
+            " workspaceRoute to parent them under"
+        )
+    if not hosts:
+        return DockScan(docks=(), host=None)
+    workspace = _workspace_path(sources[hosts[0]], hosts[0])
+    return DockScan(
+        docks=tuple(
+            Dock(
+                id=capability,
+                path=f"{workspace}/{_dock_path(sources[capability], capability)}",
+                title_key=f"{capability}.dockTitle",
+            )
+            for capability in docks
+        ),
+        host=hosts[0],
+    )
+
+
+def typescript_routes(root: Path) -> str:
+    """The web-side view: the capability route table the router mounts."""
+    sources = route_sources(root)
+    found = tuple(sources)
+    # The dock convention, discovered from the sources by the same scan the
+    # registry view reads: a capability exports ``dockRoutes`` (factories
+    # that parent routes at another capability's workspace) and exactly one
+    # exports ``workspaceRoute``. No facts file is involved — the export is
+    # the whole contract, and this table is the one place the two sides meet.
+    scan = scan_docks(sources)
+    docks = tuple(dock.id for dock in scan.docks)
+    hosts = [scan.host] if scan.host is not None else []
 
     def import_names(capability: str) -> str:
         names = f"routes as {capability}"
@@ -304,6 +390,37 @@ def typescript_routes(root: Path) -> str:
     )
 
 
+def typescript_docks(root: Path) -> str:
+    """The web-side view: the dock registry the workspace renders tabs from."""
+    scan = scan_docks(route_sources(root))
+    rows = "".join(
+        f'  {{ id: "{dock.id}", path: "{dock.path}", titleKey: "{dock.title_key}" }},\n'
+        for dock in scan.docks
+    )
+    table = (
+        f"export const docks = [\n{rows}] as const" if rows else "export const docks = [] as const"
+    )
+    return (
+        "// Generated by scripts/generate_capabilities.py from"
+        " app/capabilities/*/web/routes.tsx — DO NOT EDIT.\n"
+        "// The dock registry: one row per capability that exports dockRoutes,\n"
+        "// sorted — the workspace renders one tab per row and navigates to the\n"
+        "// row's path. A new dock appears here by adding its dockRoutes, with\n"
+        "// zero generator changes.\n"
+        "//\n"
+        "// as const, no annotation: the literal path carries each row's route\n"
+        "// into the tab's `to=` (a drifted row is a build error), and the\n"
+        "// title keys are checked against the English catalog by the compiler.\n"
+        'import en from "../../../i18n/en.json";\n'
+        "\n"
+        f"{table} satisfies ReadonlyArray<{{\n"
+        "  id: string;\n"
+        "  path: string;\n"
+        "  titleKey: keyof typeof en;\n"
+        "}>;\n"
+    )
+
+
 def docs_index(
     entries: tuple[Facts, ...], known: tuple[str, ...], loaded: dict[str, dict[str, str]]
 ) -> str:
@@ -348,6 +465,7 @@ def main() -> None:
         "web/lib/generated/capabilities.ts": typescript_nav(loaded_facts),
         "web/lib/generated/catalogs.ts": typescript_catalogs(known),
         "web/lib/generated/routes.ts": typescript_routes(root),
+        "web/lib/generated/docks.ts": typescript_docks(root),
         "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded),
     }
     for target, content in outputs.items():
