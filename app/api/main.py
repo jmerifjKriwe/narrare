@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse
 
 from app.generated.capabilities import CAPABILITIES as REGISTERED
 from app.kernel.configuration import validate_configuration
+from app.kernel.jobs.router import router as jobs_router
 from app.kernel.jobs.runtime import start_worker, stop_worker
 
 if TYPE_CHECKING:
@@ -91,6 +92,11 @@ def create_app(dist: Path | None = None) -> FastAPI:
 
     for folder in sorted(path for path in CAPABILITIES.iterdir() if (path / "router.py").exists()):
         app.include_router(import_module(f"app.capabilities.{folder.name}.router").router)
+
+    # Kernel machinery beside the capability routers: the jobs lane's one read
+    # route, which every capability's UI shares (spec §12.1 keeps capability
+    # folders self-contained; this route belongs to no capability).
+    app.include_router(jobs_router)
 
     shell = dist if dist is not None else Path(environ.get("NARRE_WEB_DIST", str(DEFAULT_DIST)))
     if (shell / "index.html").is_file():

@@ -1,6 +1,6 @@
 """HTTP surface. Parses, delegates to the service, returns; no logic here."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -8,14 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import (
     DocumentRead,
+    EntityRead,
+    ExtractionAccepted,
+    ExtractionRequest,
     ReembedResult,
     SearchHit,
     SearchRequest,
+    SuggestionRead,
 )
 from app.capabilities.knowledge.service import (
+    AlreadyReviewedError,
     DocumentTooLargeError,
     EmptyDocumentError,
     KnowledgeService,
+    NotFoundError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
@@ -97,3 +103,65 @@ async def search(payload: SearchRequest, service: ServiceDep) -> list[SearchHit]
         )
         for hit in hits
     ]
+
+
+@router.post("/extraction/{novel_id}", response_model=ExtractionAccepted, status_code=202)
+async def start_extraction(
+    novel_id: UUID, payload: ExtractionRequest, service: ServiceDep
+) -> ExtractionAccepted:
+    """Enqueue entity extraction for a chapter. The worker does the rest; poll
+    ``GET /api/jobs/{job_id}`` — the row's state is the answer."""
+    try:
+        job = await service.enqueue_extraction(novel_id, payload.chapter_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel or chapter not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return ExtractionAccepted(job_id=job.id)
+
+
+@router.get("/novels/{novel_id}/entities", response_model=list[EntityRead])
+async def list_entities(novel_id: UUID, service: ServiceDep) -> list[EntityRead]:
+    try:
+        entities = await service.list_entities(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [EntityRead.model_validate(entity) for entity in entities]
+
+
+@router.get("/novels/{novel_id}/suggestions", response_model=list[SuggestionRead])
+async def list_suggestions(
+    novel_id: UUID,
+    service: ServiceDep,
+    status: Literal["pending", "accepted", "discarded"] = "pending",
+) -> list[SuggestionRead]:
+    """The novel's suggestions in one review state; pending is the queue."""
+    try:
+        suggestions = await service.list_suggestions(novel_id, status)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [SuggestionRead.model_validate(suggestion) for suggestion in suggestions]
+
+
+@router.post("/suggestions/{suggestion_id}/accept", response_model=EntityRead)
+async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> EntityRead:
+    """Accept: the entity is created and the suggestion consumed, once."""
+    try:
+        entity, _ = await service.accept_suggestion(suggestion_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="suggestion not found") from None
+    except AlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
+    return EntityRead.model_validate(entity)
+
+
+@router.post("/suggestions/{suggestion_id}/discard", response_model=SuggestionRead)
+async def discard_suggestion(suggestion_id: UUID, service: ServiceDep) -> SuggestionRead:
+    """Discard: the suggestion is consumed without creating anything."""
+    try:
+        suggestion = await service.discard_suggestion(suggestion_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="suggestion not found") from None
+    except AlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
+    return SuggestionRead.model_validate(suggestion)

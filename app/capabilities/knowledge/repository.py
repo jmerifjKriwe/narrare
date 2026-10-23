@@ -1,10 +1,21 @@
 """Document and chunk persistence. Both scoped to one user."""
 
 from collections.abc import Sequence  # noqa: TC003
+from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from app.kernel.contracts.models import Chunk, Document
+from app.kernel.contracts.models import Chunk, Document, Entity, EntitySuggestion
 from app.kernel.db.base import ScopedRepository
+
+if TYPE_CHECKING:
+    from app.capabilities.knowledge.prompts import ParsedEntity
+
+# The review contract's three states. A suggestion is born pending and is
+# consumed exactly once — accepted or discarded — by the service, in one
+# transaction; these are the only values the status column ever carries.
+PENDING = "pending"
+ACCEPTED = "accepted"
+DISCARDED = "discarded"
 
 
 class DocumentRepository(ScopedRepository[Document]):
@@ -48,3 +59,68 @@ class ChunkRepository(ScopedRepository[Chunk]):
                 )
             )
         await self.session.flush()
+
+
+class EntityRepository(ScopedRepository[Entity]):
+    model = Entity
+
+    async def list_for_novel(self, novel_id: UUID) -> Sequence[Entity]:
+        result = await self.session.scalars(
+            self.query().where(Entity.novel_id == novel_id).order_by(Entity.created_at)
+        )
+        return result.all()
+
+    async def create(self, novel_id: UUID, name: str, kind: str, description: str | None) -> Entity:
+        entity = Entity(
+            user_id=self.user_id,
+            novel_id=novel_id,
+            name=name,
+            kind=kind,
+            description=description,
+        )
+        self.session.add(entity)
+        await self.session.flush()
+        return entity
+
+
+class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
+    model = EntitySuggestion
+
+    async def list_for_novel(self, novel_id: UUID, status: str) -> Sequence[EntitySuggestion]:
+        result = await self.session.scalars(
+            self.query()
+            .where(EntitySuggestion.novel_id == novel_id, EntitySuggestion.status == status)
+            .order_by(EntitySuggestion.created_at)
+        )
+        return result.all()
+
+    async def create_many(
+        self, novel_id: UUID, chapter_id: UUID, entities: Sequence[ParsedEntity]
+    ) -> None:
+        """File one suggestion per parsed entity, all pending review."""
+        for entity in entities:
+            self.session.add(
+                EntitySuggestion(
+                    user_id=self.user_id,
+                    novel_id=novel_id,
+                    chapter_id=chapter_id,
+                    name=entity.name,
+                    kind=entity.kind,
+                    description=entity.description,
+                    status=PENDING,
+                )
+            )
+        await self.session.flush()
+
+    async def locked(self, suggestion_id: UUID) -> EntitySuggestion | None:
+        """The suggestion with its row lock taken (SELECT ... FOR UPDATE).
+
+        Review is exactly-once, and the guarantee must hold for two requests
+        in flight at once, not just two sequential ones. The lock makes the
+        second transaction wait for the first one's commit and then read the
+        consumed status — one winner, one refusal — where two plain reads
+        would both see ``pending`` and both consume.
+        """
+        return await self.session.scalar(
+            self.query().where(EntitySuggestion.id == suggestion_id).with_for_update()
+        )

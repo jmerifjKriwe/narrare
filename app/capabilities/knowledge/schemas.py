@@ -32,3 +32,39 @@ class ReembedResult(BaseModel):
 
     documents: int
     chunks: int
+
+
+class ExtractionRequest(BaseModel):
+    """Which chapter of the novel the worker should read."""
+
+    chapter_id: UUID
+
+
+class ExtractionAccepted(BaseModel):
+    """The enqueue's whole answer: what to poll."""
+
+    job_id: UUID
+
+
+class EntityRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    novel_id: UUID
+    name: str
+    kind: str
+    description: str | None
+    created_at: datetime
+
+
+class SuggestionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    novel_id: UUID
+    chapter_id: UUID
+    name: str
+    kind: str
+    description: str | None
+    status: str
+    created_at: datetime
