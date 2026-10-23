@@ -26,7 +26,20 @@ export function ChapterEditor({
     content: body,
     immediatelyRender: false,
     onUpdate: ({ editor: instance }) => schedule(instance.getHTML()),
-    editorProps: { attributes: { class: "prose", "aria-label": t("chapters.editorLabel") } },
+    editorProps: {
+      attributes: {
+        class: "prose",
+        // @tiptap/core injects role="textbox" in createView, but the React
+        // binding strips it again: EditorContent.init() re-parents the view
+        // and setOptions({element}) re-props it from the raw editorProps.
+        // The explicit role keeps aria-label valid here — axe computes
+        // "generic" for the roleless div and flags aria-prohibited-attr
+        // deterministically while the editor is empty (it defers the rule
+        // once text exists).
+        role: "textbox",
+        "aria-label": t("chapters.editorLabel"),
+      },
+    },
   });
 
   async function continueWriting() {

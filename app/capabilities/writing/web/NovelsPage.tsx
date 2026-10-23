@@ -1,19 +1,28 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { client, type Novel } from "@shell/lib/api/client";
-import { nav } from "@shell/lib/generated/capabilities";
+import { client, type Novel, type NovelCreate } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { useCreateNovel, useNovelsQuery } from "@shell/lib/query";
+import { formatRelative } from "@shell/lib/time";
+import { Dialog } from "@shell/ui/Dialog";
+import { TextField } from "@shell/ui/TextField";
 
-/** The novels page: the library, and the one field that starts a new novel. */
+/** The start page: a continue-hero over the shelf, and the new-book dialog. */
 export function NovelsPage() {
   const t = useTranslation();
   const navigate = useNavigate();
-  const [novels, setNovels] = useState<Novel[]>([]);
+  const novels = useNovelsQuery();
+  const createNovel = useCreateNovel();
   const [title, setTitle] = useState("");
-  const [ready, setReady] = useState(false);
+  const [genre, setGenre] = useState("");
+  const [blurb, setBlurb] = useState("");
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
+  // The setup gate decides whether there is a library to list at all. Only
+  // the novels themselves go through the query cache; this check cannot,
+  // because its answer is "go somewhere else", not data.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -28,14 +37,6 @@ export function NovelsPage() {
           // Nothing to list yet: an uninstalled instance starts at setup.
           void navigate({ to: "/setup", replace: true });
           return;
-        } else {
-          const loaded = await client.GET("/api/writing/novels");
-          if (cancelled) return;
-          if (loaded.response.ok) {
-            setNovels(loaded.data ?? []);
-          } else {
-            setFailed(true);
-          }
         }
       } catch {
         // The local service is not answering at all and the proxy refuses.
@@ -48,82 +49,120 @@ export function NovelsPage() {
     };
   }, [navigate]);
 
-  async function reload() {
-    try {
-      const { data, response } = await client.GET("/api/writing/novels");
-      if (!response.ok) {
-        setFailed(true);
-        return;
-      }
-      setNovels(data ?? []);
-    } catch {
-      setFailed(true);
-    }
-  }
+  // The hero's book is the last-touched one. The comparison is strict, so on
+  // equal timestamps the first row of the list wins — and the list arrives
+  // newest-created first — which makes the choice deterministic even when two
+  // books were touched in the same instant.
+  const hero = (novels.data ?? []).reduce<Novel | null>(
+    (best, novel) => (best === null || novel.updated_at > best.updated_at ? novel : best),
+    null,
+  );
 
-  async function create(event: React.FormEvent) {
+  async function create(event: React.FormEvent, close: () => void) {
     event.preventDefault();
     if (title.trim() === "") return;
+    // Only fields the user filled reach the row: an empty genre is no genre,
+    // not a genre called "".
+    const input: NovelCreate = { title: title.trim() };
+    if (genre.trim() !== "") input.genre = genre.trim();
+    if (blurb.trim() !== "") input.blurb = blurb.trim();
     try {
-      const { response } = await client.POST("/api/writing/novels", { body: { title } });
-      if (!response.ok) {
-        setFailed(true);
-        return;
-      }
+      // The list refreshes through the ["novels"] invalidation, not through
+      // a reload here: the mutation owns that side of the contract.
+      await createNovel.mutateAsync(input);
     } catch {
+      // Closing lets the page's own error report take over; the typed
+      // values survive only in state — reopening the dialog returns them
+      // to the user, a reload loses them.
+      // Phase 5: keep the dialog open and show novels.errorCreate there
+      // instead, with phase 5's RAC-validation touch.
+      close();
       setFailed(true);
       return;
     }
     setTitle("");
-    await reload();
+    setGenre("");
+    setBlurb("");
+    close();
   }
 
-  if (!ready) return null;
+  // Nothing renders until the gate has answered and the list query has
+  // settled: the page appears complete or reports the failure, never an
+  // empty library that has not asked yet.
+  if (!ready || novels.isPending) return null;
+
+  const failedNow = failed || novels.isError;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
-      <p className="mt-2 text-sm text-muted">
-        {nav.map((entry, index) => (
-          <span key={entry.id}>
-            {index > 0 && <span aria-hidden="true"> · </span>}
-            <Link to={entry.path} className="underline-offset-4 hover:underline">
-              {t(entry.titleKey)}
-            </Link>
-          </span>
-        ))}
-      </p>
-      {failed ? (
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
+        {!failedNow && (
+          <Dialog title={t("novels.new")} triggerLabel={t("novels.createBook")}>
+            {(close) => (
+              <form
+                onSubmit={(event) => void create(event, close)}
+                className="mt-4 flex flex-col gap-3"
+              >
+                <TextField label={t("novels.titleLabel")} value={title} onChange={setTitle} />
+                <TextField label={t("novels.genre")} value={genre} onChange={setGenre} />
+                <TextField label={t("novels.blurb")} value={blurb} onChange={setBlurb} multiline />
+                <button
+                  type="submit"
+                  className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  {t("novels.create")}
+                </button>
+              </form>
+            )}
+          </Dialog>
+        )}
+      </div>
+      {failedNow ? (
         <p role="alert" className="mt-6 text-sm text-danger">
           {t("novels.errorLoad")}
         </p>
       ) : (
         <>
-          <form onSubmit={create} className="mt-6 flex flex-col gap-2">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {t("novels.titleLabel")}
-              <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
-              />
-            </label>
-            <button
-              type="submit"
-              className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          {hero && (
+            <section
+              aria-labelledby="novels-continue"
+              className="mt-6 rounded-lg border border-border bg-card px-5 py-4"
             >
-              {t("novels.create")}
-            </button>
-          </form>
-          <ul className="mt-8 flex flex-col gap-2">
-            {novels.map((novel) => (
+              <h2 id="novels-continue" className="text-sm font-medium text-muted">
+                {t("novels.continue")}
+              </h2>
+              {/* The title stays text: the shelf card is this book's link, and
+                  a second identically-named link would make "open the book"
+                  ambiguous for a keyboard and a screen reader alike. */}
+              <p className="mt-1 text-lg font-semibold">{hero.title}</p>
+              <p className="mt-1 text-sm text-muted">
+                {t("novels.lastTouched", { time: formatRelative(hero.updated_at) })}
+              </p>
+              <Link
+                to="/novels/$id"
+                params={{ id: hero.id }}
+                className="mt-2 inline-block rounded-md text-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                {t("chapters.continue")}
+              </Link>
+            </section>
+          )}
+          <ul className="mt-6 flex flex-col gap-2">
+            {(novels.data ?? []).map((novel) => (
               <li key={novel.id} className="rounded-lg border border-border bg-card">
                 <Link
                   to="/novels/$id"
                   params={{ id: novel.id }}
-                  className="block px-4 py-3 underline-offset-4 hover:underline"
+                  className="block rounded-md px-4 py-3 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  {novel.title}
+                  <span className="font-medium">{novel.title}</span>
+                  {novel.genre && (
+                    <span className="mt-1 block text-sm text-muted">{novel.genre}</span>
+                  )}
+                  <span className="mt-1 block text-xs text-muted">
+                    {t("novels.lastTouched", { time: formatRelative(novel.updated_at) })}
+                  </span>
                 </Link>
               </li>
             ))}

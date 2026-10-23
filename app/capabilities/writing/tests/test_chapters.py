@@ -1,5 +1,6 @@
 """Chapters: creation, ordering, saving the body, and the user boundary."""
 
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -59,14 +60,40 @@ async def test_saving_the_body_persists_it() -> None:
         assert reloaded.json()["body"] == "Der Nebel kam von See."
 
 
+async def test_chapter_writes_advance_the_novels_updated_at() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client)
+        at_creation = (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
+
+        chapter = (
+            await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
+        ).json()
+        after_chapter_create = (await client.get(f"/api/writing/novels/{novel_id}")).json()[
+            "updated_at"
+        ]
+        assert datetime.fromisoformat(after_chapter_create) > datetime.fromisoformat(at_creation)
+
+        saved = await client.put(
+            f"/api/writing/chapters/{chapter['id']}",
+            json={"body": "Der Nebel kam von See."},
+        )
+        assert saved.status_code == 200
+        assert saved.json()["updated_at"]
+
+        after_body_save = (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
+        assert datetime.fromisoformat(after_body_save) > datetime.fromisoformat(
+            after_chapter_create
+        )
+
+
 async def test_a_chapter_cannot_be_added_to_another_users_novel() -> None:
     await seed_user(OTHER_USER)
     async with Session() as session:
         novel_id = uuid4()
         await session.execute(
             text(
-                "INSERT INTO novels (id, user_id, title, created_at) "
-                "VALUES (:id, :user_id, :title, now())"
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
             ),
             {"id": novel_id, "user_id": OTHER_USER, "title": "Fremd"},
         )
@@ -85,16 +112,16 @@ async def test_another_users_chapter_cannot_be_saved() -> None:
         novel_id, chapter_id = uuid4(), uuid4()
         await session.execute(
             text(
-                "INSERT INTO novels (id, user_id, title, created_at) "
-                "VALUES (:id, :user_id, :title, now())"
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
             ),
             {"id": novel_id, "user_id": OTHER_USER, "title": "Fremd"},
         )
         await session.execute(
             text(
                 "INSERT INTO chapters "
-                "(id, user_id, novel_id, title, position, body, created_at) "
-                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now())"
+                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
             ),
             {
                 "id": chapter_id,

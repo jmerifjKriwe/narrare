@@ -15,6 +15,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 def test_the_continuation_arrives_in_the_editor_and_is_saved(page: Page, stack: Stack) -> None:
     page.goto("http://127.0.0.1:3100/")
+    page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Der Nebel")
     page.get_by_role("button", name="Anlegen").click()
     page.get_by_role("link", name="Der Nebel").click()

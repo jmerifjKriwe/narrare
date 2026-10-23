@@ -66,6 +66,11 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
           }
         },
         "required": [
@@ -74,7 +79,8 @@
           "title",
           "position",
           "body",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "title": "ChapterRead",
         "type": "object"
@@ -171,6 +177,29 @@
       },
       "NovelCreate": {
         "properties": {
+          "blurb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blurb"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
           "title": {
             "maxLength": 200,
             "minLength": 1,
@@ -186,10 +215,32 @@
       },
       "NovelRead": {
         "properties": {
+          "blurb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blurb"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
           },
           "id": {
             "format": "uuid",
@@ -199,12 +250,20 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "title",
-          "created_at"
+          "genre",
+          "blurb",
+          "created_at",
+          "updated_at"
         ],
         "title": "NovelRead",
         "type": "object"

@@ -1,5 +1,6 @@
 """Novels against the real database."""
 
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -26,13 +27,45 @@ async def test_create_then_list_novel() -> None:
         assert [novel["title"] for novel in listed.json()] == ["Der Nebel"]
 
 
+async def test_create_persists_genre_and_blurb() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post(
+            "/api/writing/novels",
+            json={
+                "title": "Der Nebel",
+                "genre": "Mystery",
+                "blurb": "A fog rolls in from the sea and does not leave.",
+            },
+        )
+        assert created.status_code == 201
+        body = created.json()
+        assert body["genre"] == "Mystery"
+        assert body["blurb"] == "A fog rolls in from the sea and does not leave."
+        # The timestamp the start page orders by; timezone-aware end to end.
+        assert datetime.fromisoformat(body["updated_at"]).tzinfo is not None
+
+        fetched = await client.get(f"/api/writing/novels/{body['id']}")
+        assert fetched.status_code == 200
+        assert fetched.json()["genre"] == "Mystery"
+        assert fetched.json()["blurb"] == "A fog rolls in from the sea and does not leave."
+        assert fetched.json()["updated_at"] == body["updated_at"]
+
+
+async def test_create_without_metadata_leaves_it_null() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
+        assert created.status_code == 201
+        assert created.json()["genre"] is None
+        assert created.json()["blurb"] is None
+
+
 async def test_another_users_novel_is_not_listed() -> None:
     await seed_user(OTHER_USER)
     async with Session() as session:
         await session.execute(
             text(
-                "INSERT INTO novels (id, user_id, title, created_at) "
-                "VALUES (:id, :user_id, :title, now())"
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
             ),
             {"id": uuid4(), "user_id": OTHER_USER, "title": "Fremd"},
         )
@@ -59,8 +92,8 @@ async def test_another_users_novel_is_not_found() -> None:
     async with Session() as session:
         await session.execute(
             text(
-                "INSERT INTO novels (id, user_id, title, created_at) "
-                "VALUES (:id, :user_id, :title, now())"
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
             ),
             {"id": novel_id, "user_id": OTHER_USER, "title": "Fremd"},
         )

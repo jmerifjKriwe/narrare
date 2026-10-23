@@ -6,7 +6,7 @@
  * utilities come from. The shell's tokens stay the one design surface:
  * these folders carry utilities only, never a palette of their own.
  */
-@source "../app/capabilities";
+@source "../app/capabilities/*/web/**";
 
 /*
  * One design surface, owned by the shell: the tokens. Pages and components
