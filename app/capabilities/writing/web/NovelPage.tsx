@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, Outlet, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { client, type Chapter, type Novel } from "@shell/lib/api/client";
@@ -60,29 +60,56 @@ export function NovelPage() {
 
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
+  // `to: "."` keeps the navigation on whatever route is showing: collapsing
+  // the rail while a dock child route is open must not throw the dock away.
   const toggleRail = useCallback(() => {
     void navigate({
-      to: "/novels/$id",
-      params: { id: novelId },
-      search: { rail: collapsed },
+      to: ".",
+      search: (prev) => ({ ...prev, rail: collapsed }),
     });
-  }, [navigate, novelId, collapsed]);
+  }, [navigate, collapsed]);
 
   // Focus depth is URL state too, so it shares rail's properties: linkable,
   // back-button-true. The updater takes the function form on purpose — it
   // receives the current search and spreads it, so deepening or releasing
-  // focus preserves ?rail instead of clobbering it.
+  // focus preserves ?rail instead of clobbering it. The same `to: "."` keeps
+  // a dock child route mounted while the depth changes around it.
   const step = useCallback(
     (next: FocusStep) => {
       if (next === focus) return; // the ends are no-ops, not new history entries
       void navigate({
-        to: "/novels/$id",
-        params: { id: novelId },
+        to: ".",
         search: (prev) => ({ ...prev, focus: next }),
       });
     },
-    [focus, navigate, novelId],
+    [focus, navigate],
   );
+
+  // A dock child route is showing (chat today, more later): the matched
+  // child — not a local flag — is the dock's open state, so the URL is the
+  // whole truth and the back button closes it. The panel itself renders
+  // through the Outlet in the dock column below.
+  const dockMatched = useChildMatches().length > 0;
+
+  // Opening and closing are navigations to and from the dock child route,
+  // with the search written in the function form so ?rail and ?focus ride
+  // along. The dock param records which panel is open, beside rail and
+  // focus in the URL.
+  const toggleDock = useCallback(() => {
+    void navigate(
+      dockMatched
+        ? {
+            to: "/novels/$id",
+            params: { id: novelId },
+            search: (prev) => ({ ...prev, dock: "none" as const }),
+          }
+        : {
+            to: "/novels/$id/chat",
+            params: { id: novelId },
+            search: (prev) => ({ ...prev, dock: "chat" as const }),
+          },
+    );
+  }, [navigate, novelId, dockMatched]);
 
   // The keyboard contract. Phase 5's ghost text layers ABOVE this: its Esc
   // discards a suggestion first and marks the event handled, and only an Esc
@@ -150,11 +177,19 @@ export function NovelPage() {
   // Panels yield to focus before their own URL state: at depth 1 the rail is
   // hidden whatever ?rail says, and its toggles hide with it — they would be
   // no-ops while focus suppresses the panel. The page's own header goes at
-  // depth 2: chrome-free means only the writing surface remains.
+  // depth 2: chrome-free means only the writing surface remains. The dock
+  // panel yields the same way; its tab survives one step longer, because at
+  // depth 1 closing the dock is still a real state change, and the tab is
+  // the dock's way back.
   const showRail = focus === 0 && !collapsed;
+  const showDockPanel = dockMatched && focus === 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div
+      className={
+        showDockPanel ? "mx-auto max-w-6xl px-4 py-10" : "mx-auto max-w-4xl px-4 py-10"
+      }
+    >
       {focus < 2 ? (
         <>
           <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
@@ -219,7 +254,9 @@ export function NovelPage() {
           ) : null}
           {/* The focus affordance, mouse's one step in and out. At depth 2 it
               is deliberately absent: the deepest step is left by keyboard,
-              which is what makes the mode distraction-free. */}
+              which is what makes the mode distraction-free. The dock tab sits
+              beside it: the one always-visible handle on the dock, pressed
+              exactly when a dock child route is showing. */}
           {focus < 2 ? (
             <button
               type="button"
@@ -227,6 +264,16 @@ export function NovelPage() {
               className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
             >
               {focus === 0 ? t("workspace.focus") : t("workspace.unfocus")}
+            </button>
+          ) : null}
+          {focus < 2 ? (
+            <button
+              type="button"
+              onClick={toggleDock}
+              aria-pressed={dockMatched}
+              className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+            >
+              {t("workspace.dockChat")}
             </button>
           ) : null}
           {current ? (
@@ -238,6 +285,31 @@ export function NovelPage() {
             />
           ) : null}
         </section>
+
+        {/* The right dock: a child route of this workspace renders here —
+            the tab's navigation decides which one, and the matched child is
+            the dock's open state. The column scrolls alone so a long answer
+            never scrolls the editor out of view. */}
+        {showDockPanel ? (
+          <aside
+            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4"
+            aria-label={t("workspace.dockChat")}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">{t("workspace.dockChat")}</h2>
+              <button
+                type="button"
+                onClick={toggleDock}
+                className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-card"
+              >
+                {t("workspace.dockClose")}
+              </button>
+            </div>
+            <div className="mt-3 max-h-[50vh] overflow-y-auto">
+              <Outlet />
+            </div>
+          </aside>
+        ) : null}
       </div>
     </div>
   );

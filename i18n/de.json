@@ -41,6 +41,8 @@
   "chapters.editorLabel": "Kapiteltext",
   "workspace.collapseRail": "Kapitelleiste ausblenden",
   "workspace.expandRail": "Kapitelleiste einblenden",
+  "workspace.dockChat": "Chat",
+  "workspace.dockClose": "Chat schließen",
   "workspace.focus": "Ablenkungen ausblenden",
   "workspace.unfocus": "Ablenkungen einblenden",
   "chapters.continueError": "Die Fortsetzung ist fehlgeschlagen.",

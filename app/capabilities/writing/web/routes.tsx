@@ -44,18 +44,29 @@ const novelRoute = createRoute({
   // params of later phases extend the same convention. The output is optional:
   // links that don't care open expanded without naming the param, and no new
   // panel param ever makes them name the old ones. Focus follows suit: it is
-  // omitted at the workbench depth so ordinary novel URLs stay clean.
+  // omitted at the workbench depth so ordinary novel URLs stay clean. The
+  // dock rounds out the convention: absent or "none" is collapsed (a closed
+  // dock is the workspace's quiet default), only "chat" names an open panel.
   validateSearch: (search: {
     rail?: unknown;
     focus?: unknown;
-  }): { rail?: boolean; focus?: FocusStep } => {
+    dock?: unknown;
+  }): { rail?: boolean; focus?: FocusStep; dock?: "chat" | "none" } => {
     const focus = focusStep(search.focus);
     return {
       rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
       ...(focus > 0 ? { focus } : {}),
+      dock: search.dock === "chat" ? "chat" : "none",
     };
   },
 });
+
+// The dock convention: the workspace route other capabilities' dockRoutes
+// parent under, exported under the name the generator looks for. The
+// generated table imports this const and passes it to every dock factory —
+// capabilities never import each other; the generator is the one composition
+// point.
+export const workspaceRoute = novelRoute;
 
 // The capability route contract: every route this capability mounts under the
 // shell root, as a const tuple. The generated table (web/lib/generated/
