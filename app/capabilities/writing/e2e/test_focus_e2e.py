@@ -120,6 +120,21 @@ def test_focus_two_url_renders_chrome_free(page: Page, stack: Stack) -> None:
     assert_accessible(page)
 
 
+def test_go_back_from_depth_two_restores_chrome(page: Page, stack: Stack) -> None:
+    _open_workbench(page, "Die Reede")
+
+    # A direct jump to the deepest step, then the back button: leaving
+    # depth 2 must run the unmount path's cleanup and bring the chrome back.
+    page.goto(f"{page.url.split('?')[0]}?focus=2")
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    expect(page.get_by_role("banner")).to_have_count(0)
+
+    page.go_back()
+
+    expect(page.get_by_role("banner")).to_be_visible()
+    assert_accessible(page)
+
+
 def test_chrome_returns_when_leaving_the_novel(page: Page, stack: Stack) -> None:
     _open_workbench(page, "Der Leitdamm")
     # Panels away, chrome still there: depth 1.

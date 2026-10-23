@@ -1,4 +1,10 @@
-"""Click once: the provider streams into the editor and the text survives reload."""
+"""Weiterschreiben proposes a ghost: Tab takes it into the text, Esc leaves nothing.
+
+The continuation stream renders as tentative decoration at the caret; the
+chapter only owns the text once Tab commits it (the debounced autosave then
+persists it) — and a discarded ghost must never reach the database, which the
+reload proves in both directions.
+"""
 
 from typing import TYPE_CHECKING
 
@@ -13,28 +19,84 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 
-def test_the_continuation_arrives_in_the_editor_and_is_saved(page: Page, stack: Stack) -> None:
+def _write_a_line(page: Page, title: str, line: str) -> None:
+    """Create a novel the only way a user can, open it, and write a line.
+
+    The module's database is shared, so every test owns a title no other uses.
+    """
     page.goto("http://127.0.0.1:3100/")
     page.get_by_role("button", name="Neues Buch").click()
-    page.get_by_label("Titel").fill("Der Nebel")
+    page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen").click()
-    page.get_by_role("link", name="Der Nebel").click()
+    page.get_by_role("link", name=title).click()
     page.get_by_role("button", name="Neues Kapitel").click()
-
     editor = page.locator(".ProseMirror")
     editor.click()
-    page.keyboard.type("Der Nebel kam von See.")
+    page.keyboard.type(line)
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
-    page.get_by_role("button", name="Weiterschreiben").click()
-    expect(editor).to_contain_text("Der Nebel hob sich ")
-    expect(editor).to_contain_text("über die Straße.")
 
-    # The stream ends, then the 800 ms debounce writes. The indicator cannot
-    # prove this save: it already shows "Gespeichert" from the typing, and it
-    # clears on the first delta. The reload is the proof that it persisted.
+def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: Stack) -> None:
+    _write_a_line(page, "Die Windrose", "Die Windrose stand offen.")
+
+    page.get_by_role("button", name="Weiterschreiben").click()
+
+    # The stream becomes a ghost: visible at the caret, decorative until
+    # taken. Waiting for the final words proves the whole stream arrived.
+    ghost = page.locator(".ProseMirror .ghost")
+    expect(ghost).to_contain_text("über die Straße.")
+    expect(ghost).to_be_visible()
+    # The offer is not invisible: the live region names its arrival.
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Am Cursor wartet ein Vorschlag.")
+
+    page.keyboard.press("Tab")
+
+    # The ghost is spent; its text belongs to the document now.
+    expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
+    expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Vorschlag übernommen.")
+
+    # The stream ended; the 800 ms debounce writes. Reload is the proof the
+    # accept persisted — nothing else writes the chapter.
     page.wait_for_timeout(1500)
     page.reload()
+    expect(page.locator(".ProseMirror")).to_contain_text("Die Windrose stand offen.")
     expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")
+
+    assert_accessible(page)
+
+
+def test_the_ghost_is_discarded_by_escape_and_leaves_no_trace(page: Page, stack: Stack) -> None:
+    _write_a_line(page, "Die Barkasse", "Die Barkasse legte ab.")
+
+    page.get_by_role("button", name="Weiterschreiben").click()
+    ghost = page.locator(".ProseMirror .ghost")
+    expect(ghost).to_contain_text("über die Straße.")
+
+    page.keyboard.press("Escape")
+
+    # Gone everywhere, announced as gone, and the written text untouched.
+    expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
+    expect(page.locator(".ProseMirror")).not_to_contain_text("Der Nebel")
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Vorschlag verworfen.")
+
+    # The seam, both directions: the editor's Esc never stepped the focus —
+    # the workbench is still at depth 0, rail open, no ?focus in the URL …
+    expect(page.get_by_role("complementary")).to_be_visible()
+    assert "focus=" not in page.url
+    # … and a ghost-free Esc still steps it back, so the window handler did
+    # not stand down for good. (The URL names focus=0 explicitly after the
+    # step; only focus=1 would be the wrong depth.)
+    page.keyboard.press("F9")
+    expect(page.get_by_role("complementary")).to_have_count(0)
+    assert "focus=1" in page.url
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("complementary")).to_be_visible()
+    assert "focus=1" not in page.url
+
+    # Discarded means never written: the reload shows the line, not the ghost.
+    page.reload()
+    expect(page.locator(".ProseMirror")).to_contain_text("Die Barkasse legte ab.")
+    expect(page.locator(".ProseMirror")).not_to_contain_text("über die Straße.")
 
     assert_accessible(page)

@@ -6,14 +6,28 @@
 // as const, no annotation: the tuple of concrete route types carries
 // each route's literal path into addChildren, which keeps a wrong
 // `to=` a build error.
-import { routes as chat } from "../../../app/capabilities/chat/web/routes";
+//
+// Dock composition: a capability may export dockRoutes — factories
+// that take the workspace route and return child routes for it — and
+// exactly one capability exports workspaceRoute. The call below
+// passes the workspace route into every factory: capabilities never
+// import each other; this generated table is the one composition
+// point.
+import { routes as chat, dockRoutes as chatDocks } from "../../../app/capabilities/chat/web/routes";
 import { routes as knowledge } from "../../../app/capabilities/knowledge/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
-import { routes as writing } from "../../../app/capabilities/writing/web/routes";
+import { routes as writing, workspaceRoute } from "../../../app/capabilities/writing/web/routes";
+
+const chatDockRoutes = chatDocks.map((dock) => dock(workspaceRoute));
 
 export const capabilityRoutes = [
   ...chat,
   ...knowledge,
   ...setup,
   ...writing,
+  //
+  // Dock children come after every capability's own routes: the router
+  // initializes a route from its parent, so the workspace route must be
+  // in the table before the dock routes parented at it.
+  ...chatDockRoutes,
 ] as const;

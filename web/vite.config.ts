@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 // The shell half of the @shell alias: capabilities under
 // app/capabilities/*/web import shell code as @shell/lib/…, and the alias
@@ -15,6 +15,16 @@ const shell = fileURLToPath(new URL(".", import.meta.url));
 // exists only while developing.
 export default defineConfig({
   plugins: [react()],
+  // Component tests live beside the components they drive, in the capability
+  // folders outside web/; the default include (this directory only) would
+  // never collect them. The jsdom environment stays a per-file decision —
+  // the docblock in each test file — so lib tests keep node semantics.
+  test: {
+    include: [
+      "**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "../app/capabilities/*/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+    ],
+  },
   resolve: {
     alias: {
       "@shell": shell,

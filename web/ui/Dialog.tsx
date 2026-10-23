@@ -31,9 +31,9 @@ export function Dialog({
       </Button>
       <ModalOverlay
         isDismissable
-        className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4"
+        className="fixed inset-0 z-30 flex items-center justify-center bg-scrim p-4"
       >
-        <Modal className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl">
+        <Modal className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-overlay">
           <RacDialog>
             {({ close }) => (
               <>

@@ -3,7 +3,9 @@
 Every flow drives the real stack — browser, API, Postgres — and ends on the
 accessibility floor. One test runs that floor with the new-book dialog open,
 because focus containment and dialog labels are exactly what a closed page
-cannot show.
+cannot show. Another stops the real API mid-dialog: a create that cannot
+reach the service must keep the dialog (and the typed Titel) where they are
+and name the failure inside, not drop the user back onto a dead page.
 """
 
 from typing import TYPE_CHECKING
@@ -142,6 +144,30 @@ def test_the_open_dialog_passes_the_accessibility_floor(page: Page, stack: Stack
 
     # The floor runs with the dialog open: containment and labels are the
     # risk, and a closed page would never see them.
+    assert_accessible(page)
+
+
+def test_create_failure_keeps_the_dialog_open_with_its_message(page: Page, stack: Stack) -> None:
+    page.goto("http://127.0.0.1:3100/")
+    page.get_by_role("button", name="Neues Buch").click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog).to_be_visible()
+    page.get_by_label("Titel").fill("Der gescheiterte Wurf")
+
+    # The create cannot reach the service — a real condition of a local
+    # app, produced by stopping the real API, not by faking a response.
+    stack.stop_api()
+    try:
+        page.get_by_role("button", name="Anlegen").click()
+
+        # The dialog stays open, the failure is named where the retry is,
+        # and the typed Titel is still the user's to fix or resubmit.
+        expect(dialog).to_be_visible()
+        expect(dialog.get_by_role("alert")).to_contain_text("konnte nicht angelegt werden")
+        expect(page.get_by_label("Titel")).to_have_value("Der gescheiterte Wurf")
+    finally:
+        stack.start_api()
+
     assert_accessible(page)
 
 

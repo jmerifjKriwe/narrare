@@ -19,6 +19,7 @@ export function NovelsPage() {
   const [blurb, setBlurb] = useState("");
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [createFailed, setCreateFailed] = useState(false);
 
   // The setup gate decides whether there is a library to list at all. Only
   // the novels themselves go through the query cache; this check cannot,
@@ -49,18 +50,22 @@ export function NovelsPage() {
     };
   }, [navigate]);
 
-  // The hero's book is the last-touched one. The comparison is strict, so on
-  // equal timestamps the first row of the list wins — and the list arrives
-  // newest-created first — which makes the choice deterministic even when two
-  // books were touched in the same instant.
+  // The hero's book is the last-touched one — compared as parsed instants,
+  // because two ISO strings with different timezone offsets do not order as
+  // their moments do. The comparison is strict, so on equal instants the
+  // first row of the list wins — and the list arrives newest-created first —
+  // which makes the choice deterministic even when two books were touched in
+  // the same instant.
   const hero = (novels.data ?? []).reduce<Novel | null>(
-    (best, novel) => (best === null || novel.updated_at > best.updated_at ? novel : best),
+    (best, novel) =>
+      best === null || Date.parse(novel.updated_at) > Date.parse(best.updated_at) ? novel : best,
     null,
   );
 
   async function create(event: React.FormEvent, close: () => void) {
     event.preventDefault();
     if (title.trim() === "") return;
+    setCreateFailed(false);
     // Only fields the user filled reach the row: an empty genre is no genre,
     // not a genre called "".
     const input: NovelCreate = { title: title.trim() };
@@ -71,13 +76,10 @@ export function NovelsPage() {
       // a reload here: the mutation owns that side of the contract.
       await createNovel.mutateAsync(input);
     } catch {
-      // Closing lets the page's own error report take over; the typed
-      // values survive only in state — reopening the dialog returns them
-      // to the user, a reload loses them.
-      // Phase 5: keep the dialog open and show novels.errorCreate there
-      // instead, with phase 5's RAC-validation touch.
-      close();
-      setFailed(true);
+      // The dialog stays open: the typed values are the user's work, and
+      // the failure is this create's own — named inside the dialog, where
+      // the retry is one press away, not on a page behind it.
+      setCreateFailed(true);
       return;
     }
     setTitle("");
@@ -107,6 +109,11 @@ export function NovelsPage() {
                 <TextField label={t("novels.titleLabel")} value={title} onChange={setTitle} />
                 <TextField label={t("novels.genre")} value={genre} onChange={setGenre} />
                 <TextField label={t("novels.blurb")} value={blurb} onChange={setBlurb} multiline />
+                {createFailed ? (
+                  <p role="alert" className="text-sm text-danger">
+                    {t("novels.errorCreate")}
+                  </p>
+                ) : null}
                 <button
                   type="submit"
                   className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"

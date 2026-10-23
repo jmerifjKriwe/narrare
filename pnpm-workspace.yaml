@@ -15,6 +15,8 @@ publicHoistPattern:
   - "@types/react-dom"
   - "@tanstack/*"
   - "@tiptap/*"
+  - "@testing-library/*"
+  - vitest
 
 allowBuilds:
   '@parcel/watcher': true
