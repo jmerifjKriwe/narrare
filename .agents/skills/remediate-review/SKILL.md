@@ -187,9 +187,9 @@ sensible order (dependencies first):
    implementation), RULE-04 (modularize, don't compress — extract a module near
    the size limit instead of squeezing lines), RULE-06 (one responsibility per
    file; routers delegate, no business logic in routers). Prefer the code
-   knowledge-graph tools (`code-review-graph_*` / `codebase-memory-mcp_*` —
+   knowledge-graph tools (`codebase-memory-mcp_*` —
    whichever is actually registered in this environment; fall back to
-   Grep/Glob/Read only if neither is available) over Grep/Glob/Read to find
+   Grep/Glob/Read only if it is not available) over Grep/Glob/Read to find
    callers and impact before changing code.
 2. Where the cause analysis in Phase 1 identified a genuinely structural cause
    with an agreed one-sentence prevention, add it now: extend the existing
