@@ -513,6 +513,14 @@ def test_the_dock_search_reaches_passages(page: Page, stack: Stack) -> None:
     finally:
         stack.start_api()
 
+    # Recovery: the same box, asked again, finds the passage again — and
+    # the error is gone with the answer that replaced it.
+    search.fill("Leuchtturm")
+    expect(passages.get_by_text("Notizen")).to_be_visible()
+    expect(dock.get_by_role("alert")).to_have_count(0)
+
+    assert_accessible(page)
+
 
 def _row_named(entities: Locator, name: str) -> Locator:
     """The entity list's cell for one exact name.
