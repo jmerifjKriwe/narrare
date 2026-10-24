@@ -45,6 +45,15 @@ export function ExtractionPanel() {
     void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
   }, [settled, novelId]);
 
+  // One extraction at a time: the trigger stays closed while its enqueue
+  // POST is in flight or the job it filed is still outstanding (settled is
+  // false until done or failed — an unanswered poll counts as outstanding,
+  // so an unknown state never reopens the button), because a second click
+  // would stack a duplicate job and a duplicate review queue behind the
+  // first. A settled job hands the button back, and so does a refused
+  // enqueue: the retry is the same button again.
+  const busy = enqueue.isPending || (jobId !== null && !settled);
+
   async function extract() {
     if (chapterId === null) return;
     setEnqueueFailed(false);
@@ -69,7 +78,8 @@ export function ExtractionPanel() {
         <button
           type="button"
           onClick={() => void extract()}
-          className="mt-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          disabled={busy}
+          className="mt-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("knowledge.extractChapter")}
         </button>

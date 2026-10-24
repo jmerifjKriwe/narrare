@@ -41,15 +41,29 @@ def _job_handlers() -> dict[str, JobHandler]:
     """Every capability's background handlers, found the way routers are.
 
     A capability that wants the lane writes ``jobs.py`` exporting ``handlers``;
-    nothing else changes (spec §12.1). Later folders win a duplicate kind,
-    which is the same last-word rule a dict update always had — and a
-    duplicate kind is a capability bug the first claim surfaces anyway.
+    nothing else changes (spec §12.1). A kind two capabilities register is an
+    assembly bug: the later folder still takes the dict's last word, but the
+    merge says so at startup — a warning naming both sources, not a silent
+    overwrite. A hard exit guards generated output elsewhere; this is a merge
+    of live modules, and one duplicate kind does not outweigh every job.
     """
+    logger = getLogger("narrare")
     handlers: dict[str, JobHandler] = {}
+    sources: dict[str, str] = {}
     for folder in sorted(CAPABILITIES.iterdir()):
         if not (folder / "jobs.py").is_file():
             continue
-        handlers.update(import_module(f"app.capabilities.{folder.name}.jobs").handlers)
+        found = import_module(f"app.capabilities.{folder.name}.jobs").handlers
+        for kind, handler in found.items():
+            if kind in handlers:
+                logger.warning(
+                    "duplicate job kind %r: %s takes %s's handler",
+                    kind,
+                    folder.name,
+                    sources[kind],
+                )
+            handlers[kind] = handler
+            sources[kind] = folder.name
     return handlers
 
 

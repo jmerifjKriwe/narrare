@@ -14,6 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.kernel.jobs.models import DONE, FAILED, QUEUED, RUNNING, Job
 
 # What a capability registers: its own session, the claimed row, a result dict.
+#
+# The lane is at-least-once, not exactly-once: a handler that fails after
+# committing part of its work earns a re-run (MAX_ATTEMPTS), and a process
+# dying between a handler's commit and its outcome write is requeued whole by
+# reset_stuck_running — the same handler may run twice for one job. A handler
+# must therefore be idempotent, or commit once at its end: extract_entities
+# (knowledge) is the reference — provider call, rows and progress ride one
+# terminal commit, so a raise or a re-run leaves nothing half-written.
 type JobHandler = Callable[[AsyncSession, Job], Awaitable[dict[str, object]]]
 
 MAX_ATTEMPTS = 2  # the first run and the one re-run a failure earns

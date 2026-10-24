@@ -68,14 +68,20 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     expect(editor).to_be_visible()
 
     # Extraction runs on the chapter the editor is showing — the active
-    # chapter reaches the dock through the shell seam, not the URL.
-    dock.get_by_role("button", name="Dieses Kapitel durchsuchen").click()
+    # chapter reaches the dock through the shell seam, not the URL. The
+    # trigger closes while its job is outstanding: a second click could not
+    # stack a duplicate job — and a duplicate review queue — behind the first.
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    extract.click()
+    expect(extract).to_be_disabled()
     status = dock.locator("[data-job-status]")
     expect(status).to_be_visible()
     # The row is the answer (spec §9 D10): whatever the first poll sees —
     # queued, running, done — it settles done with the result count.
     expect(status).to_have_attribute("data-job-status", "done")
     expect(status).to_contain_text("3")
+    # The settled job hands the trigger back for the next run.
+    expect(extract).to_be_enabled()
 
     # The finished queue arrives as proposal cards: one per proposed entity.
     cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
