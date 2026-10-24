@@ -243,6 +243,10 @@ def test_dock_toggle_preserves_rail_and_focus(page: Page, stack: Stack) -> None:
     expect(page.get_by_role("complementary", name="Chat")).to_be_visible()
     expect(page.get_by_role("complementary")).to_have_count(1)
     assert "rail=false" in page.url
+    # The ride-along pin: the focus step is a search write on whatever route
+    # is showing, so stepping back must leave the dock child route in place
+    # — not just the panel state at the test's endpoints.
+    assert page.url.split("?")[0].endswith("/chat")
 
     # Closing the tab is the clean way out: back on the novel URL, the
     # collapsed rail intact, and not one dock param left behind — a closed

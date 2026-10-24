@@ -81,6 +81,11 @@ async def test_an_uncommitted_enqueue_leaves_nothing_behind(a_user: None) -> Non
 
 
 async def test_two_concurrent_claims_exactly_one_wins(a_user: None) -> None:
+    # What this pins is claim exclusivity — one claimant per job, the other
+    # sees an idle lane — not skip-vs-wait semantics: a worker that waited on
+    # the row lock instead of skipping it would lose the same race and also
+    # return False, so which FOR UPDATE mode earned this outcome is not what
+    # these asserts decide.
     job = await _enqueue("kind")
     calls: list[UUID] = []
 

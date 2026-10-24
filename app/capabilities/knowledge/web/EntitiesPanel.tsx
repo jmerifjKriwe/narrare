@@ -56,7 +56,19 @@ export function EntitiesPanel() {
           items={filtered.map((entity) => ({ id: entity.id, text: entity.name }))}
         />
       </div>
-      {rows.length === 0 ? (
+      {entities.isPending ? (
+        // The answer has not arrived yet: the panel asks rather than
+        // claims — not the list, and not its empty state either, since no
+        // answer is not the fact "no entities".
+        <p className="mt-2 text-sm text-muted">{t("knowledge.loading")}</p>
+      ) : entities.isError ? (
+        // An unreachable service names itself here, never as an empty
+        // list (the outage test stops the real API and reloads — the
+        // empty state would be the mask of a missing answer).
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {t("knowledge.errorLoad")}
+        </p>
+      ) : rows.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("knowledge.noEntities")}</p>
       ) : filtered.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("knowledge.noResults")}</p>

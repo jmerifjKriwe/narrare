@@ -6,7 +6,11 @@ generator changes. Inside, extraction on the chapter the editor is showing
 runs as a durable job — the panel polls the row's state, never a connection
 — and the finished queue arrives as proposal cards. Both review decisions
 are pinned: accept files the entity into the searchable list, discard clears
-it, and the spent queue empties. The Titel-refusal carry rides the same
+it, and the spent queue empties — the review flow also runs keyboard-only,
+Tab and Enter for every step from opening the dock to both decisions. The
+dock's failures are named: an unreachable backend reads as an outage, never
+as an empty list, and a job poll that meets a dead service reopens the
+trigger instead of locking it. The Titel-refusal carry rides the same
 flow's book-creation step: the failed submit names the empty field with the
 catalog's words.
 """
@@ -14,7 +18,7 @@ catalog's words.
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
 
@@ -44,6 +48,37 @@ def _open_workspace_with_validated_title(page: Page, title: str) -> None:
     page.get_by_role("button", name="Anlegen").click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
+
+
+def _write_chapter(page: Page) -> None:
+    """Create a chapter and write the extraction body into the editor.
+
+    The caret reaches the editor by Tab — the pointer has no part in this
+    file's flows once the chapter exists.
+    """
+    page.get_by_role("button", name="Neues Kapitel").click()
+    editor = page.locator(".ProseMirror")
+    expect(editor).to_be_visible()
+    _tab_to(page, editor)
+    page.keyboard.type(CHAPTER_BODY)
+    # Extraction reads the saved chapter, so the flow waits for the save
+    # the editor itself reports before asking for the job.
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+
+def _tab_to(page: Page, target: Locator) -> None:
+    """Walk the page's tab order until ``target`` holds focus.
+
+    The keyboard pin's one move: a step is a Tab or an Enter, never a
+    pointer. The bound is generous — the dock's tab order is a couple dozen
+    stops — and a walk that exhausts it fails loudly rather than reach its
+    target by accident of an already-focused element.
+    """
+    for _ in range(30):
+        if target.evaluate("element => element === document.activeElement"):
+            return
+        page.keyboard.press("Tab")
+    pytest.fail(f"the tab order never reaches {target}")
 
 
 def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack: Stack) -> None:
@@ -128,5 +163,144 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     detail = dock.get_by_role("region", name="Mira")
     expect(detail).to_contain_text("Figur")
     expect(detail).to_contain_text("Mira appears in the chapter.")
+
+    assert_accessible(page)
+
+
+def test_the_wissen_dock_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
+    """An outage in the dock reads as an outage, never as an empty list.
+
+    A local service that is not running is a real condition of this
+    product; stopping the real API produces it. The entities panel must
+    name it — and must not wear its empty state as a mask, because "no
+    entities" is a fact only a reachable service can claim.
+    """
+    _open_workspace_with_validated_title(page, "Die stille Bucht")
+
+    # The dock opens on its tab and answers while the service runs: the
+    # honest empty state of a novel without entities.
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(entities.get_by_text("Noch keine Entitäten")).to_be_visible()
+
+    # The reload is the refetch path: a fresh page asks again, and the
+    # answer must be the outage's own name.
+    stack.stop_api()
+    try:
+        page.reload()
+        expect(dock).to_be_visible()
+        expect(dock.get_by_role("alert").filter(has_text="konnten nicht geladen")).to_be_visible()
+        # The empty-state text must not stand in for the missing answer.
+        expect(entities.get_by_text("Noch keine Entitäten")).to_have_count(0)
+    finally:
+        stack.start_api()
+
+    # Recovery: the same page, asked again, shows the honest empty state —
+    # and no error is left standing.
+    page.reload()
+    expect(dock.get_by_text("Noch keine Entitäten")).to_be_visible()
+    expect(dock.get_by_role("alert")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def test_the_wissen_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> None:
+    """The review flow without a pointer: Tab reaches, Enter decides.
+
+    The dock's tab, the extraction trigger and both review decisions are
+    reached through the page's own tab order and pressed with Enter — no
+    click anywhere in the flow.
+    """
+    _open_workspace_with_validated_title(page, "Die Tastatur der Bucht")
+    _write_chapter(page)
+
+    # The keyboard opens the dock from the editor's caret.
+    tab = page.get_by_role("button", name="Wissen", exact=True)
+    _tab_to(page, tab)
+    page.keyboard.press("Enter")
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+
+    # The trigger too: Tab reaches it, Enter starts the extraction.
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    _tab_to(page, extract)
+    page.keyboard.press("Enter")
+    status = dock.locator("[data-job-status]")
+    expect(status).to_have_attribute("data-job-status", "done")
+    expect(status).to_contain_text("3")
+
+    cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
+    expect(cards).to_have_count(3)
+    entities = dock.get_by_role("region", name="Entitäten")
+
+    # Accept by keyboard: Mira is filed into the searchable list.
+    accept_mira = cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True)
+    _tab_to(page, accept_mira)
+    page.keyboard.press("Enter")
+    expect(entities).to_contain_text("Mira")
+
+    # Discard by keyboard: See never becomes an entity.
+    discard_see = cards.filter(has_text="See").get_by_role("button", name="Verwerfen")
+    _tab_to(page, discard_see)
+    page.keyboard.press("Enter")
+    expect(entities).not_to_contain_text("See")
+
+    # One decision each: the queue holds only Haus.
+    expect(cards).to_have_count(1)
+    expect(cards).to_contain_text("Haus")
+
+    assert_accessible(page)
+
+
+def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) -> None:
+    """An unanswered job poll is an error with a way back, not a locked button.
+
+    The service going down under an outstanding job leaves the poll with no
+    answer. That must read as a named error — the row is the answer, and no
+    answer is an error, not work still going — and the trigger must reopen:
+    the retry is the same button again, starting a fresh extraction.
+    """
+    _open_workspace_with_validated_title(page, "Die unterbrochene Durchsuchung")
+    _write_chapter(page)
+
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    status = dock.locator("[data-job-status]")
+
+    # The stop must land under an outstanding job. The fake provider
+    # finishes fast, so a first poll that already says done gets another
+    # extraction — each round is a fresh chance to catch live work, and a
+    # done row's suggestions are simply more pending queue for the recovery.
+    for attempt in range(8):
+        extract.click()
+        if attempt > 0:
+            # The panel tracks one job id: the previous round's status
+            # element unmounts the moment the trigger files a new job.
+            expect(status).to_have_count(0)
+        expect(status).to_be_visible()
+        if status.get_attribute("data-job-status") != "done":
+            break
+    else:
+        pytest.fail("never caught an outstanding job to stop the service under")
+
+    stack.stop_api()
+    try:
+        # The poll's answer is the connection's refusal, and that is named.
+        expect(dock.get_by_role("alert").filter(has_text="Fortschritt")).to_be_visible()
+        # The trigger reopens instead of locking on the unanswered job.
+        expect(extract).to_be_enabled()
+    finally:
+        stack.start_api()
+
+    # The retry: a click on the reopened trigger runs a fresh extraction,
+    # and the panel follows it to its answer with no error left standing.
+    extract.click()
+    expect(status).to_have_attribute("data-job-status", "done")
+    expect(status).to_contain_text("3")
+    expect(dock.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)

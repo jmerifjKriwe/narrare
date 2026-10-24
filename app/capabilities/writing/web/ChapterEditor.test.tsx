@@ -2,12 +2,17 @@
 /**
  * The ghost-text contract at the caret, driven through the real TipTap: the
  * proposal renders as a decoration (in the DOM, never in the document), Tab
- * commits it, Esc drops it without reaching the window, and an accept while
- * an autosave PUT is in flight loses no text.
+ * commits it, Esc drops it without reaching the window, a ghost-free Esc
+ * reaches the window exactly once — as a clean copy carrying the physical
+ * key's code — a superseding offer announces its replacement once, a
+ * growing stream announces nothing per delta, a failed stream names its
+ * failure rather than a discard, and an accept while an autosave PUT is in
+ * flight loses no text.
  *
  * The first import re-bases fetch onto a real local HTTP server (see
  * editorApiServer) — no module is mocked and no editor is faked; holding the
- * server's first response is what makes a save "in flight".
+ * server's first response is what makes a save "in flight", and its scripted
+ * event-stream is what makes a continuation succeed, grow or die.
  */
 import "./editorApiServer";
 
@@ -21,6 +26,11 @@ import { t } from "@shell/lib/i18n";
 import { ChapterEditor } from "./ChapterEditor";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
+
+/** The SSE body a continuation is answered with: one data frame per fact. */
+function streamOf(...frames: object[]): string {
+  return frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join("");
+}
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry
 // is simply missing — and ProseMirror reads Range rects whenever it scrolls
@@ -40,6 +50,7 @@ afterEach(() => {
   for (const request of editorServer.requests) request.respond();
   editorServer.requests.length = 0;
   editorServer.holdNext = 0;
+  editorServer.continueWith = null;
 });
 
 /** What the live region says across both of its logs. Announcements linger
@@ -47,6 +58,16 @@ afterEach(() => {
  *  caused — that is the bleed-proof form of the check. */
 function announced(): string {
   return document.querySelector("[data-live-announcer]")?.textContent ?? "";
+}
+
+/** How often the live region holds one exact announcement. Every announce
+ *  appends its own node to a log (the region accumulates for seven seconds),
+ *  so counting the nodes counts the announcements — the witness for "once
+ *  per supersede, never per delta". */
+function announcementsOf(copy: string): number {
+  return [...document.querySelectorAll('[data-live-announcer] [role="log"] > div')].filter(
+    (node) => node.textContent === copy,
+  ).length;
 }
 
 /** The document's own text: the editor DOM as ProseMirror renders it, with
@@ -156,15 +177,25 @@ describe("ChapterEditor's ghost text", () => {
     // The seam in the editor's own direction: a ghost-free Esc is not the
     // editor's key — even though ProseMirror's core marks it handled, the
     // window must receive a clean copy or the focus stepper stands down
-    // forever after the first ghost.
-    const forwarded: KeyboardEvent[] = [];
-    const catcher = (event: KeyboardEvent) => forwarded.push(event);
-    window.addEventListener("keydown", catcher);
+    // forever after the first ghost. The copy stands IN for the physical
+    // key: the window sees exactly one Esc (no double-fire for a listener
+    // that does not check defaultPrevented), and it carries the physical
+    // key's code fields so future listeners can discriminate.
+    const physical: KeyboardEvent[] = [];
+    const atDocument = (event: KeyboardEvent) => physical.push(event);
+    const atWindow: KeyboardEvent[] = [];
+    const throughWindow = (event: KeyboardEvent) => atWindow.push(event);
+    document.addEventListener("keydown", atDocument, true);
+    window.addEventListener("keydown", throughWindow);
     await user.keyboard("{Escape}");
-    window.removeEventListener("keydown", catcher);
-    expect(forwarded.some((event) => event.key === "Escape" && !event.defaultPrevented)).toBe(
-      true,
-    );
+    document.removeEventListener("keydown", atDocument, true);
+    window.removeEventListener("keydown", throughWindow);
+    expect(physical).toHaveLength(1);
+    expect(atWindow).toHaveLength(1);
+    expect(atWindow[0]!.key).toBe("Escape");
+    expect(atWindow[0]!.defaultPrevented).toBe(false);
+    expect(atWindow[0]!.code).toBe(physical[0]!.code);
+    expect(atWindow[0]!.keyCode).toBe(physical[0]!.keyCode);
   });
 
   it("loses no text when the ghost is accepted while a save is in flight", { timeout: 20_000 }, async () => {
@@ -197,5 +228,86 @@ describe("ChapterEditor's ghost text", () => {
     expect(editorServer.requests[1].body).toContain("Handgeschrieben.");
     expect(editorServer.requests[1].body).toContain("Geisterzählung");
     editorServer.requests[0].respond();
+  });
+
+  it("announces a superseding offer once per supersede", { timeout: 10_000 }, async () => {
+    // Announcements linger in the region for seconds; every count below is
+    // a delta against the moment the test starts, so what earlier tests
+    // announced there cannot bleed into the verdict.
+    const before = {
+      arrived: announcementsOf(t("editor.ghostArrived")),
+      replaced: announcementsOf(t("editor.ghostReplaced")),
+    };
+    const view = render(<ChapterEditor chapterId={CHAPTER} body="" proposal="Das erste Angebot." />);
+    await screen.findByText("Das erste Angebot.");
+    await waitFor(() =>
+      expect(announcementsOf(t("editor.ghostArrived"))).toBe(before.arrived + 1),
+    );
+
+    // The bus is last-wins: a second offer replaces the pending ghost —
+    // announced once, as a replacement, never as a second arrival.
+    await view.rerender(
+      <ChapterEditor chapterId={CHAPTER} body="" proposal="Das zweite Angebot." />,
+    );
+    await screen.findByText("Das zweite Angebot.");
+    expect(announcementsOf(t("editor.ghostReplaced"))).toBe(before.replaced + 1);
+    expect(announcementsOf(t("editor.ghostArrived"))).toBe(before.arrived + 1);
+
+    // And a third: one announcement per supersede, not one per render.
+    await view.rerender(
+      <ChapterEditor chapterId={CHAPTER} body="" proposal="Das dritte Angebot." />,
+    );
+    await screen.findByText("Das dritte Angebot.");
+    expect(announcementsOf(t("editor.ghostReplaced"))).toBe(before.replaced + 2);
+    expect(announcementsOf(t("editor.ghostArrived"))).toBe(before.arrived + 1);
+    expect(document.querySelector(".ghost")).not.toBeNull();
+  });
+
+  it("announces a growing stream once, never per delta", { timeout: 10_000 }, async () => {
+    const before = {
+      arrived: announcementsOf(t("editor.ghostArrived")),
+      replaced: announcementsOf(t("editor.ghostReplaced")),
+    };
+    editorServer.continueWith = streamOf(
+      { delta: "Der Nebel " },
+      { delta: "hob sich " },
+      { delta: "vom See." },
+    );
+    // No proposal prop: the floor is the component's own stream (null would
+    // be the explicit "no proposal" opinion, and the prop wins over the
+    // stream — the ghost would never show).
+    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The whole stream arrived: the ghost holds every delta.
+    const ghost = await screen.findByText("Der Nebel hob sich vom See.");
+    expect(ghost.closest(".ghost")).not.toBeNull();
+    // One arrival announcement for the run — the deltas that grew it stayed
+    // silent, and no replacement was announced (nothing superseded).
+    await waitFor(() =>
+      expect(announcementsOf(t("editor.ghostArrived"))).toBe(before.arrived + 1),
+    );
+    expect(announcementsOf(t("editor.ghostReplaced"))).toBe(before.replaced);
+  });
+
+  it("announces a failed stream as failed, not as discarded", { timeout: 10_000 }, async () => {
+    const before = {
+      failed: announcementsOf(t("editor.ghostFailed")),
+      discarded: announcementsOf(t("editor.ghostDiscarded")),
+    };
+    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, { error: "the provider died" });
+    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The error frame replaces the done frame: nothing of the suggestion
+    // remains, the failure is on screen — and the announcement names the
+    // failure. It does not claim the user discarded anything: only the
+    // user's own Esc may say that.
+    await waitFor(() => expect(document.querySelector(".ghost")).toBeNull());
+    expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError"));
+    await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
+    expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(before.discarded);
   });
 });

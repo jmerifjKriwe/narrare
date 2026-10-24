@@ -23,6 +23,11 @@ export const editorServer = {
   /** How many of the next incoming requests to hold without answering — the
    *  in-flight save a test wants to accept into. */
   holdNext: 0,
+  /** The SSE body the next continuation POST will be answered with — the
+   *  frames a test wants the real stream reader to read. One shot: the
+   *  first /continue POST consumes it; null answers everything as the
+   *  empty JSON save, as before. */
+  continueWith: null as string | null,
 };
 
 const realFetch = globalThis.fetch.bind(globalThis);
@@ -54,6 +59,17 @@ export async function startEditorServer(): Promise<void> {
     const chunks: Buffer[] = [];
     request.on("data", (chunk) => chunks.push(chunk));
     request.on("end", () => {
+      // The continuation endpoint speaks its own protocol: a scripted body
+      // is answered as the event-stream it is, immediately and unrecorded —
+      // the stream tests assert on announcements and ghost text, not on the
+      // request log the saves live in.
+      if ((request.url ?? "").endsWith("/continue") && editorServer.continueWith !== null) {
+        const body = editorServer.continueWith;
+        editorServer.continueWith = null;
+        response.writeHead(200, { "content-type": "text/event-stream" });
+        response.end(body);
+        return;
+      }
       let responded = false;
       const record: RecordedRequest = {
         url: request.url ?? "",

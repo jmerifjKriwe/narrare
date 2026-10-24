@@ -85,19 +85,33 @@ export function ChapterEditor({
   // this component's own stream. The prop wins when it has an opinion.
   const ghost = proposal !== undefined ? proposal : streamed;
   const previous = useRef<string | null>(null);
+  // Who owns the ghost on screen: the offer (its text is its identity — the
+  // bus is last-wins) or the stream run that grows it. A new text under the
+  // same owner is a delta, the stream extending its own words; a change of
+  // owner while a ghost is pending is a supersede.
+  const owner = useRef<string | number | null>(null);
 
   useEffect(() => {
     if (!editor) return;
-    const arriving = previous.current === null && ghost !== null && ghost !== "";
-    previous.current = ghost === "" ? null : ghost;
+    const text = ghost === "" ? null : ghost;
+    const mine = proposal !== undefined ? `offer:${proposal}` : run.current;
+    const wasPending = previous.current !== null;
+    const arriving = !wasPending && text !== null;
+    const superseding = wasPending && text !== null && owner.current !== mine;
+    previous.current = text;
+    owner.current = text === null ? null : mine;
     if (arriving) {
       // One announcement per ghost, not one per delta.
       announce(t("editor.ghostArrived"));
       // Tab and Esc are the editor's keys; whoever holds focus now (the
       // Weiterschreiben button, the panel that offered) gives the caret back.
       editor.commands.focus();
+    } else if (superseding) {
+      // One announcement per supersede: a new offer or a fresh run replaced
+      // the pending ghost — the deltas that grow a ghost say nothing.
+      announce(t("editor.ghostReplaced"));
     }
-    showGhost(editor, ghost === "" ? null : ghost);
+    showGhost(editor, text);
   }, [editor, ghost, t]);
 
   async function continueWriting() {
@@ -121,11 +135,12 @@ export function ChapterEditor({
         // The ghost was taken or dropped mid-stream: stop feeding it.
         if (mine !== run.current) return;
         // An error frame replaces the done frame: the provider died, and a
-        // silent end would look like a finished continuation.
+        // silent end would look like a finished continuation. The failure
+        // is announced as what it is — the user did not discard anything.
         if (frame.error) {
           setFailed(true);
           setStreamed(null);
-          announce(t("editor.ghostDiscarded"));
+          announce(t("editor.ghostFailed"));
           return;
         }
         if (!frame.delta) continue;

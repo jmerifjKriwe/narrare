@@ -11,6 +11,8 @@ suite, not a wrong UI.
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.generate_capabilities import (
     Facts,
     catalogs,
@@ -19,6 +21,7 @@ from scripts.generate_capabilities import (
     locales,
     python_locales,
     python_registry,
+    scan_docks,
     typescript_catalogs,
     typescript_nav,
 )
@@ -82,3 +85,33 @@ def test_every_facts_title_key_exists_in_every_catalog() -> None:
         catalog = json.loads((ROOT / "i18n" / f"{locale}.json").read_text(encoding="utf-8"))
         for capability in loaded_facts:
             assert capability.title in catalog
+
+
+def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:
+    # The scan reads the shape of routes.tsx, so the fake sources are that
+    # shape in miniature: a host whose workspaceRoute path the docks parent
+    # under, and one path literal per dockRoutes export.
+    host = (
+        'const novel = createRoute({ path: "/novels/$id" });\n'
+        "export const workspaceRoute = novel;\n"
+    )
+
+    def dock_source(path: str) -> str:
+        return f'export const dockRoutes = [() => createRoute({{ path: "{path}" }})] as const;'
+
+    # Distinct paths scan cleanly — both docks become registry rows — so the
+    # failing case below fails for the missing guard, not for inputs the
+    # scan would not even recognize as docks.
+    scan = scan_docks(
+        {"chat": dock_source("chat"), "notes": dock_source("notizen"), "writing": host}
+    )
+    assert [dock.id for dock in scan.docks] == ["chat", "notes"]
+    assert scan.host == "writing"
+
+    # The same path twice is two registry rows behind one route: both tabs
+    # would navigate identically. Generation stops naming every capability
+    # at that path instead of writing the duplicate table.
+    same_path = {"chat": dock_source("chat"), "notes": dock_source("chat"), "writing": host}
+    with pytest.raises(SystemExit, match="same path") as failure:
+        scan_docks(same_path)
+    assert "chat" in str(failure.value) and "notes" in str(failure.value)

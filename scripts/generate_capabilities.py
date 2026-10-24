@@ -309,17 +309,28 @@ def scan_docks(sources: dict[str, str]) -> DockScan:
     if not hosts:
         return DockScan(docks=(), host=None)
     workspace = _workspace_path(sources[hosts[0]], hosts[0])
-    return DockScan(
-        docks=tuple(
-            Dock(
-                id=capability,
-                path=f"{workspace}/{_dock_path(sources[capability], capability)}",
-                title_key=f"{capability}.dockTitle",
-            )
-            for capability in docks
-        ),
-        host=hosts[0],
+    rows = tuple(
+        Dock(
+            id=capability,
+            path=f"{workspace}/{_dock_path(sources[capability], capability)}",
+            title_key=f"{capability}.dockTitle",
+        )
+        for capability in docks
     )
+    # Two capabilities' docks resolving to the same full path would render two
+    # registry rows behind one route: both tabs navigate identically. The
+    # guard names every capability at the path, so the message alone points
+    # at the fix.
+    owners: dict[str, list[str]] = {}
+    for dock in rows:
+        owners.setdefault(dock.path, []).append(dock.id)
+    for path, names in owners.items():
+        if len(names) > 1:
+            raise SystemExit(
+                f"capabilities {names} resolve their docks to the same path"
+                f" ({path}); the dock registry is one row per path"
+            )
+    return DockScan(docks=rows, host=hosts[0])
 
 
 def typescript_routes(root: Path) -> str:

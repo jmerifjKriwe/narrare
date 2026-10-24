@@ -93,9 +93,14 @@ export function ghostText(handlers: { current: GhostHandlers }): Extension {
                 // copy there would re-enter this very handler. The window is
                 // where the key is headed anyway: its propagation path holds
                 // only the window, so the copy cannot come back down.
+                // The copy mirrors the physical key's code fields, so a
+                // future listener can tell keys apart the way it could had
+                // the original arrived.
                 window.dispatchEvent(
                   new KeyboardEvent("keydown", {
                     key: event.key,
+                    code: event.code,
+                    keyCode: event.keyCode,
                     bubbles: true,
                     cancelable: true,
                     repeat: event.repeat,
@@ -105,6 +110,12 @@ export function ghostText(handlers: { current: GhostHandlers }): Extension {
                     shiftKey: event.shiftKey,
                   }),
                 );
+                // The copy stands IN for the key, not beside it: letting the
+                // original bubble on would deliver every editor Esc to the
+                // window twice — once defaultPrevented, once clean — and a
+                // listener that does not check defaultPrevented would act
+                // on both.
+                event.stopPropagation();
                 return false;
               }
               if (!ghost) return false;

@@ -40,25 +40,24 @@ const novelRoute = createRoute({
   // Panel state is URL state. The default search parser hands validateSearch
   // typed values, not raw strings: a linked `?rail=0` arrives as the number 0,
   // and the page's own toggle writes booleans (`?rail=false`). Every collapsed
-  // encoding is listed, so a shared link and the toggle agree — and the dock
-  // params of later phases extend the same convention. The output is optional:
-  // links that don't care open expanded without naming the param, and no new
-  // panel param ever makes them name the old ones. Focus follows suit: it is
-  // omitted at the workbench depth so ordinary novel URLs stay clean. The
-  // dock rounds out the convention the same way: the open dock is the child
-  // route itself, and the param — kept so a phase-5 `?dock=chat` link still
-  // validates — is emitted only when it names "chat". A closed dock leaves
-  // a clean URL: nothing in the search names it.
+  // encoding is listed, so a shared link and the toggle agree — and no new
+  // panel param ever makes them name the old ones. The output is optional:
+  // links that don't care open expanded without naming the param. Focus
+  // follows suit: it is omitted at the workbench depth so ordinary novel URLs
+  // stay clean. The dock has no param at all: its open state is the child
+  // route itself. `dock` stays in the accepted input so a hand-written
+  // `?dock=chat` link still parses without error, but the output never
+  // carries it — a key that round-tripped through rail/focus writes would
+  // put the dock back in the URL, contradicting the clean-URL contract.
   validateSearch: (search: {
     rail?: unknown;
     focus?: unknown;
     dock?: unknown;
-  }): { rail?: boolean; focus?: FocusStep; dock?: "chat" } => {
+  }): { rail?: boolean; focus?: FocusStep } => {
     const focus = focusStep(search.focus);
     return {
       rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
       ...(focus > 0 ? { focus } : {}),
-      ...(search.dock === "chat" ? { dock: "chat" } : {}),
     };
   },
 });

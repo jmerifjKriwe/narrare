@@ -45,14 +45,25 @@ export function ExtractionPanel() {
     void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
   }, [settled, novelId]);
 
+  // The poll can fail like any fetch: the service going down under an
+  // outstanding job leaves the row's answer missing. A missing answer is
+  // an error, not a promise of movement — the queued/running row promised
+  // progress, and an unanswered poll must not wear that promise.
+  const pollFailed = jobId !== null && job.isError;
+
   // One extraction at a time: the trigger stays closed while its enqueue
-  // POST is in flight or the job it filed is still outstanding (settled is
-  // false until done or failed — an unanswered poll counts as outstanding,
-  // so an unknown state never reopens the button), because a second click
-  // would stack a duplicate job and a duplicate review queue behind the
-  // first. A settled job hands the button back, and so does a refused
-  // enqueue: the retry is the same button again.
-  const busy = enqueue.isPending || (jobId !== null && !settled);
+  // POST is in flight or the job it filed is still outstanding, because a
+  // second click would stack a duplicate job and a duplicate review queue
+  // behind the first. Three things hand the button back: a settled row
+  // (done or failed is an answer), a poll that met the dead service — an
+  // unanswered poll used to count as outstanding, so an unknown state
+  // locked the trigger for the whole outage; the locked button was the
+  // bug, and the reopened one is the retry — and a refused enqueue: the
+  // retry is the same button again, starting a fresh extraction (the
+  // outstanding job stays on the durable lane and will run when the
+  // service returns, so its suggestions surface in the queue like any
+  // run's).
+  const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
 
   async function extract() {
     if (chapterId === null) return;
@@ -93,6 +104,15 @@ export function ExtractionPanel() {
         <div className="mt-2">
           <JobStatus job={job.data} />
         </div>
+      ) : null}
+      {pollFailed ? (
+        // The failed poll names itself where the trigger it unlocked sits:
+        // the outage reads as an outage, and the retry is one click away.
+        // With a last-known row the status keeps standing beside it — that
+        // state is the panel's last truth; the alert is the outage's.
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {t("knowledge.errorJob")}
+        </p>
       ) : null}
       {/* The review queue outlives the job that filled it: a dock reopened
           later still owes the writer the decisions, so the cards render from
