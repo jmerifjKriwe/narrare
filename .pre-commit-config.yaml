@@ -33,6 +33,24 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      - id: web-typecheck
+        name: Web typecheck (tsc)
+        entry: pnpm --dir web typecheck
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: ^web/
+        stages: [pre-commit]
+
+      - id: web-tests
+        name: Web tests (vitest)
+        entry: pnpm --dir web test
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: ^web/
+        stages: [pre-commit]
+
       - id: pyright-full
         name: Pyright (whole project)
         entry: uv run pyright
@@ -43,7 +61,10 @@ repos:
 
       - id: pytest
         name: Tests
-        entry: uv run pytest app -q
+        entry: bash
+        args:
+          - "-c"
+          - "{ exec 3<>/dev/tcp/localhost/5433; } 2>/dev/null || { echo 'dev services not running — run: just dev-services'; exit 2; }; exec 3>&-; uv run pytest app -q"
         language: system
         pass_filenames: false
         always_run: true
