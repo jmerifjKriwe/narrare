@@ -132,8 +132,8 @@ export function NovelPage() {
 
   // Opening and closing are navigations to and from the dock child route,
   // with the search written in the function form so ?rail and ?focus ride
-  // along. Neither names the dock param: the open dock's URL truth is the
-  // child route itself, and a closed dock leaves a clean URL.
+  // along. There is no dock param to scrub: the open dock's URL truth is
+  // the child route itself, and a closed dock leaves a clean URL.
   const toggleDock = useCallback(
     (dock: DockRow) => {
       void navigate(
@@ -141,12 +141,12 @@ export function NovelPage() {
           ? {
               to: "/novels/$id",
               params: { id: novelId },
-              search: (prev) => ({ ...prev, dock: undefined }),
+              search: (prev) => ({ ...prev }),
             }
           : {
               to: dock.path,
               params: { id: novelId },
-              search: (prev) => ({ ...prev, dock: undefined }),
+              search: (prev) => ({ ...prev }),
             },
       );
     },
