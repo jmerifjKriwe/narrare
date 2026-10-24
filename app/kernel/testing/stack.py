@@ -20,6 +20,7 @@ import time
 from collections.abc import Generator  # noqa: TC003
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from contextlib import suppress as _suppress
 from dataclasses import dataclass
 from os import environ
 from pathlib import Path
@@ -43,13 +44,16 @@ SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
 def _read_log(process: subprocess.Popen[bytes]) -> str:
+    path = getattr(process, "_log_path", None)
     log_file = getattr(process, "_log_file", None)
-    if log_file is None:
+    if log_file is not None:
+        with _suppress(OSError):
+            log_file.flush()
+    if path is None:
         return ""
     try:
-        log_file.flush()
-        return Path(log_file.name).read_text(errors="replace")
-    except OSError, ValueError:
+        return Path(path).read_text(errors="replace")
+    except OSError:
         return ""
 
 
@@ -107,7 +111,7 @@ def _prepare(database: str, seed_user: bool) -> None:
 
 
 def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
-    _fd, _ = tempfile.mkstemp(prefix="narrare-api-")
+    _fd, _path = tempfile.mkstemp(prefix="narrare-api-")
     log_file = os.fdopen(_fd, "w+b")
     proc = subprocess.Popen(  # noqa: S603  fixed argument list, this interpreter
         [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(API_PORT)],
@@ -118,6 +122,7 @@ def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
         stderr=subprocess.STDOUT,
     )
     proc._log_file = log_file  # type: ignore[attr-defined]
+    proc._log_path = _path  # type: ignore[attr-defined]
     return proc
 
 
@@ -168,7 +173,7 @@ def run_stack(
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")
     api_process = _spawn_api(environment)
-    _fd2, _ = tempfile.mkstemp(prefix="narrare-web-")
+    _fd2, _path2 = tempfile.mkstemp(prefix="narrare-web-")
     web_log = os.fdopen(_fd2, "w+b")
     web_process = subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
         [pnpm, "dev"],
@@ -178,6 +183,8 @@ def run_stack(
         stdout=web_log,
         stderr=subprocess.STDOUT,
     )
+    web_process._log_file = web_log  # type: ignore[attr-defined]
+    web_process._log_path = _path2  # type: ignore[attr-defined]
     web_process._log_file = web_log  # type: ignore[attr-defined]
     stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
