@@ -73,8 +73,7 @@ jobs:
           just-version: "1.58.0"
       - run: just lint
       - run: just typecheck
-      - uses: gitleaks/gitleaks-action@v2
-        if: false  # temporarily disabled: stderr-is-not-empty bug
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
