@@ -182,7 +182,7 @@ jobs:
       - name: API smoke
         run: |
           set -x
-          NARRE_DATABASE_URL="postgresql+asyncpg://narrare:narrare@localhost:5433/narrare" uv run python -m uvicorn app.api.main:app --port 8000 &
+          uv run python -c "import asyncio; from app.kernel.db.testsupport import ensure_database, url_for; from app.kernel.db.init import reset_schema; ensure_database('narrare_v2_smoke_e2e'); asyncio.run(reset_schema(url_for('narrare_v2_smoke_e2e'))); print('SCHEMA OK')" && NARRE_DATABASE_URL="postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_v2_smoke_e2e" uv run python -m uvicorn app.api.main:app --port 8000 &
           API_PID=$!
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/opencode/smoke.out -w "%{http_code}" http://127.0.0.1:8000/openapi.json 2>/dev/null || echo 000)
