@@ -24,6 +24,9 @@ jobs:
   # every job below reports skipped. On PRs and pushes it always proceeds.
   nightly-guard:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       proceed: ${{ steps.guard.outputs.proceed }}
     steps:
@@ -56,6 +59,10 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
       - run: just lint
       - run: just typecheck
       - uses: gitleaks/gitleaks-action@v2
@@ -123,6 +130,10 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
       - run: just test
 
   e2e:
@@ -181,6 +192,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
       - run: just build
 
   coverage:
