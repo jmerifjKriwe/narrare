@@ -1,4 +1,4 @@
-import { announce as announceToLiveRegion } from "@react-aria/live-announcer";
+import { announce as announceToLiveRegion, clearAnnouncer } from "@react-aria/live-announcer";
 
 /**
  * The one door for screen-reader announcements. The shell owns the
@@ -8,4 +8,12 @@ import { announce as announceToLiveRegion } from "@react-aria/live-announcer";
  */
 export function announce(text: string): void {
   announceToLiveRegion(text, "polite");
+}
+
+/** Empty the live region. The shell owns this too: a test between cases
+ *  is a caller like any other, and what the region remembers — and for
+ *  how long — is not a caller's decision to make. */
+export function clearAnnouncements(): void {
+  clearAnnouncer("assertive");
+  clearAnnouncer("polite");
 }

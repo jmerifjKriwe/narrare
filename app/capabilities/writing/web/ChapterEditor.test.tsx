@@ -6,8 +6,10 @@
  * reaches the window exactly once — as a clean copy carrying the physical
  * key's code — a superseding offer announces its replacement once, a
  * growing stream announces nothing per delta, a failed stream names its
- * failure rather than a discard, and an accept while an autosave PUT is in
- * flight loses no text.
+ * failure rather than a discard — but stays silent while an offer owns
+ * the screen — a refused continuation announces the failure instead of
+ * nothing, and an accept while an autosave PUT is in flight loses no
+ * text.
  *
  * The first import re-bases fetch onto a real local HTTP server (see
  * editorApiServer) — no module is mocked and no editor is faked; holding the
@@ -21,6 +23,7 @@ import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
+import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
 
 import { ChapterEditor } from "./ChapterEditor";
@@ -47,10 +50,17 @@ afterAll(stopEditorServer);
 
 afterEach(() => {
   cleanup();
+  // The live region is a body-level singleton that outlives every
+  // component: its nodes linger for seven seconds by design. Clearing it
+  // between cases keeps every baseline at zero — no earlier case's
+  // announcement can bleed in, and none can expire mid-case on a slow
+  // runner and take a count down with it.
+  clearAnnouncements();
   for (const request of editorServer.requests) request.respond();
   editorServer.requests.length = 0;
   editorServer.holdNext = 0;
   editorServer.continueWith = null;
+  editorServer.refuseContinue = false;
 });
 
 /** What the live region says across both of its logs. Announcements linger
@@ -187,7 +197,20 @@ describe("ChapterEditor's ghost text", () => {
     const throughWindow = (event: KeyboardEvent) => atWindow.push(event);
     document.addEventListener("keydown", atDocument, true);
     window.addEventListener("keydown", throughWindow);
-    await user.keyboard("{Escape}");
+    // The physical key arrives the way a browser delivers it, not the way
+    // userEvent's simulation does: real keydowns carry the legacy keyCode
+    // (27 for Escape) while userEvent's omit it — an equality between the
+    // two events' keyCode would read 0 on both sides and pass vacuously,
+    // which is exactly what the literal below pins away.
+    (await editorElement()).dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        keyCode: 27,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
     document.removeEventListener("keydown", atDocument, true);
     window.removeEventListener("keydown", throughWindow);
     expect(physical).toHaveLength(1);
@@ -195,7 +218,7 @@ describe("ChapterEditor's ghost text", () => {
     expect(atWindow[0]!.key).toBe("Escape");
     expect(atWindow[0]!.defaultPrevented).toBe(false);
     expect(atWindow[0]!.code).toBe(physical[0]!.code);
-    expect(atWindow[0]!.keyCode).toBe(physical[0]!.keyCode);
+    expect(atWindow[0]!.keyCode).toBe(27);
   });
 
   it("loses no text when the ghost is accepted while a save is in flight", { timeout: 20_000 }, async () => {
@@ -263,6 +286,20 @@ describe("ChapterEditor's ghost text", () => {
     expect(document.querySelector(".ghost")).not.toBeNull();
   });
 
+  it("starts every case with a cleared live region", () => {
+    // The witness for the between-cases clearAnnouncer: the cases before
+    // this one announced arrivals, accepts, discards and replacements,
+    // and none of it is measurable anymore — a baseline taken now counts
+    // zero nodes, so it can neither bleed an earlier case's announcement
+    // in nor lose one to the region's seven-second expiry on a slow
+    // runner. Meaningful in a full run of the file (cases run in order);
+    // vacuously green when this case runs alone.
+    expect(announcementsOf(t("editor.ghostArrived"))).toBe(0);
+    expect(announcementsOf(t("editor.ghostReplaced"))).toBe(0);
+    expect(announcementsOf(t("editor.ghostAccepted"))).toBe(0);
+    expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(0);
+  });
+
   it("announces a growing stream once, never per delta", { timeout: 10_000 }, async () => {
     const before = {
       arrived: announcementsOf(t("editor.ghostArrived")),
@@ -308,6 +345,47 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(document.querySelector(".ghost")).toBeNull());
     expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError"));
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
+    expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(before.discarded);
+  });
+
+  it("announces a refused continuation as a failure", { timeout: 10_000 }, async () => {
+    const before = { failed: announcementsOf(t("editor.ghostFailed")) };
+    editorServer.refuseContinue = true; // the server refuses before a word
+    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The request was refused outright: no ghost ever showed, but the
+    // failure is the truth of the click the user just made — the alert
+    // shows it, and the announcement says it instead of nothing.
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+    );
+    await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
+  });
+
+  it("stays silent about a stream's failure while an offer owns the screen", { timeout: 10_000 }, async () => {
+    const before = {
+      failed: announcementsOf(t("editor.ghostFailed")),
+      discarded: announcementsOf(t("editor.ghostDiscarded")),
+    };
+    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, { error: "the provider died" });
+    // The prop has an opinion, so its offer owns the ghost on screen —
+    // the stream's own text never becomes the visible one.
+    render(<ChapterEditor chapterId={CHAPTER} body="" proposal="Das Angebot bleibt." />);
+    const user = await focusEditor();
+    await screen.findByText("Das Angebot bleibt.");
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The stream died mid-word, but the ghost the user is looking at is
+    // the offer's, and the offer is fine: it must not hear a failure
+    // about a ghost that is not on screen. The alert still names the
+    // refused request — that one is the user's.
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+    );
+    expect(screen.getByText("Das Angebot bleibt.")).toBeTruthy();
+    expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed);
     expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(before.discarded);
   });
 });

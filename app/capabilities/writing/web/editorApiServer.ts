@@ -28,6 +28,9 @@ export const editorServer = {
    *  first /continue POST consumes it; null answers everything as the
    *  empty JSON save, as before. */
   continueWith: null as string | null,
+  /** Answer the next continuation POST with a 503 instead of a stream —
+   *  the request refused before a single word. One shot, like the body. */
+  refuseContinue: false,
 };
 
 const realFetch = globalThis.fetch.bind(globalThis);
@@ -63,6 +66,12 @@ export async function startEditorServer(): Promise<void> {
       // is answered as the event-stream it is, immediately and unrecorded —
       // the stream tests assert on announcements and ghost text, not on the
       // request log the saves live in.
+      if ((request.url ?? "").endsWith("/continue") && editorServer.refuseContinue) {
+        editorServer.refuseContinue = false;
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end("{}");
+        return;
+      }
       if ((request.url ?? "").endsWith("/continue") && editorServer.continueWith !== null) {
         const body = editorServer.continueWith;
         editorServer.continueWith = null;
