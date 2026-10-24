@@ -15,7 +15,11 @@ chat panel is a child route of the workspace, so opening it is a navigation
 The tab itself comes from the generated dock registry: one tab per dock that
 exists, labeled by its capability, pressed exactly while its child route is
 showing — and the open route is the dock's whole URL state, so a closed dock
-leaves a clean URL (no dock param anywhere the app itself produces).
+leaves a clean URL (no dock param anywhere the app itself produces). An
+external `?dock=chat` link is the tolerance side of that contract: it parses
+without error and never opens the dock — and, as found and reported, its
+foreign param survives the router's URL normalization, because the search
+validator's merge keeps every accepted key.
 
 The proposal tests drive the bus that crosses the dock/editor seam: a
 completed dock answer offered as a variant becomes ghost text in the editor
@@ -217,6 +221,37 @@ def test_back_button_closes_the_dock(page: Page, stack: Stack) -> None:
     expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
     expect(tab).to_have_attribute("aria-pressed", "false")
     expect(page.locator(".ProseMirror")).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_an_external_dock_param_parses_tolerantly(page: Page, stack: Stack) -> None:
+    _open_workspace(page, "Die Dockfeder")
+    novel_url = page.url.split("?")[0]
+
+    # An external `?dock=chat` link names a param the workspace accepts but
+    # never reads: the open dock is the child route, not search state. The
+    # parse must be tolerant — the workspace renders as itself — and the
+    # param must not open the dock: only the route does that.
+    page.goto(f"{novel_url}?dock=chat")
+    expect(page.get_by_role("heading", name="Die Dockfeder")).to_be_visible()
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
+
+    # The router normalized the loaded URL through the route's search
+    # validation — pinned as found: the validator's merge keeps every
+    # accepted input key, so the foreign `dock` rides along while the
+    # validated `rail` joins it. Only the app's own links drop unmentioned
+    # keys, so this is the URL shape an external dock link leaves behind.
+    # (The gap against the routes' clean-URL comment is reported, not
+    # fixed here: a pin changes no behavior.)
+    expect(page).to_have_url(f"{novel_url}?dock=chat&rail=true")
+
+    # The dock opens the way the app opens it: by its route. The URL's
+    # path is the dock's whole open state — the param never had a say.
+    page.get_by_role("button", name="Chat", exact=True).click()
+    expect(page.get_by_role("complementary", name="Chat")).to_be_visible()
+    assert page.url.split("?")[0].endswith("/chat")
 
     assert_accessible(page)
 

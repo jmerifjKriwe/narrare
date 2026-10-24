@@ -13,19 +13,31 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.chunking import chunk_text
-from app.capabilities.knowledge.jobs import KIND
+from app.capabilities.knowledge.jobs import KIND, KIND_CHECK, MAX_NAME_LENGTH
+from app.capabilities.knowledge.prompts import ENTITY_KINDS
 from app.capabilities.knowledge.repository import (
     ACCEPTED,
+    ACKNOWLEDGED,
     DISCARDED,
+    DISMISSED,
     PENDING,
     ChunkRepository,
+    ConsistencyFindingRepository,
     DocumentRepository,
     EntityRepository,
     EntitySuggestionRepository,
 )
-from app.capabilities.knowledge.schemas import ReembedResult
+from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult
 from app.kernel.auth import SetupRequiredError
-from app.kernel.contracts.models import Chapter, Document, Entity, EntitySuggestion, Novel, User
+from app.kernel.contracts.models import (
+    Chapter,
+    ConsistencyFinding,
+    Document,
+    Entity,
+    EntitySuggestion,
+    Novel,
+    User,
+)
 from app.kernel.embeddings import EmbeddingProvider  # noqa: TC001
 from app.kernel.jobs import Job, enqueue
 from app.kernel.retrieval import EmbeddingMismatchError, Passage, PassageRepository
@@ -51,6 +63,20 @@ class AlreadyReviewedError(Exception):
     """The suggestion was accepted or discarded before; review is exactly-once."""
 
 
+class FindingAlreadyReviewedError(Exception):
+    """The finding was acknowledged or dismissed before; review is exactly-once."""
+
+
+class InvalidEntityUpdateError(ValueError):
+    """The update breaks the entity contract: a blank or over-long name, or
+    a kind outside the extraction vocabulary."""
+
+
+class SelfMergeError(Exception):
+    """The merge names its own source as the target; folding a row into
+    itself is a no-op with a delete's blast radius, so it is refused."""
+
+
 class KnowledgeService:
     def __init__(self, session: AsyncSession, user_id: UUID, embeddings: EmbeddingProvider) -> None:
         self.session = session
@@ -61,6 +87,7 @@ class KnowledgeService:
         self.passages = PassageRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
         self.suggestions = EntitySuggestionRepository(session, user_id)
+        self.findings = ConsistencyFindingRepository(session, user_id)
 
     async def list_documents(self) -> Sequence[Document]:
         return await self.documents.list()
@@ -187,3 +214,128 @@ class KnowledgeService:
         suggestion.status = DISCARDED
         await self.session.commit()
         return suggestion
+
+    async def enqueue_consistency(self, novel_id: UUID) -> Job:
+        """Validate the novel and enqueue the consistency check — nothing more.
+
+        The request only enqueues (D14): the provider call is the worker's,
+        in the check's handler. The enqueue rides this transaction, so a
+        failure of the request leaves no job behind. The whole novel is the
+        work — a novel without chapters is a valid check that answers an
+        empty queue, not a refusal.
+        """
+        if await self.session.get(User, self.user_id) is None:
+            raise SetupRequiredError
+        await self._own_novel(novel_id)
+        job = await enqueue(self.session, self.user_id, KIND_CHECK, {"novel_id": str(novel_id)})
+        await self.session.commit()
+        return job
+
+    async def list_findings(
+        self, novel_id: UUID, status: str = PENDING
+    ) -> Sequence[ConsistencyFinding]:
+        await self._own_novel(novel_id)
+        return await self.findings.list_for_novel(novel_id, status)
+
+    async def acknowledge_finding(self, finding_id: UUID) -> ConsistencyFinding:
+        """Acknowledge: consume the finding — seen, and the text stays as it is.
+
+        The suggestion queue's exactly-once, for the second review lane: the
+        repository's row lock plus the pending check makes a concurrent
+        verdict wait for this commit and then read a consumed row.
+        """
+        finding = await self.findings.locked(finding_id)
+        if finding is None:
+            raise NotFoundError
+        if finding.status != PENDING:
+            raise FindingAlreadyReviewedError
+        finding.status = ACKNOWLEDGED
+        await self.session.commit()
+        return finding
+
+    async def dismiss_finding(self, finding_id: UUID) -> ConsistencyFinding:
+        """Dismiss: consume without keeping, with acknowledge's exactly-once."""
+        finding = await self.findings.locked(finding_id)
+        if finding is None:
+            raise NotFoundError
+        if finding.status != PENDING:
+            raise FindingAlreadyReviewedError
+        finding.status = DISMISSED
+        await self.session.commit()
+        return finding
+
+    async def update_entity(self, entity_id: UUID, changes: EntityUpdate) -> Entity:
+        """Correct an entity by hand: only the fields the body carries.
+
+        The values are checked against the same contract the parse side
+        checks — a name that is not blank and fits its column, a kind from
+        the extraction vocabulary — so a hand correction can never write a
+        row the review path would have refused. ``model_fields_set`` is
+        what makes the update partial: a field the body does not carry is
+        not a change, and a carried ``null`` description is one (the
+        cleared state, not the skipped field).
+        """
+        entity = await self.entities.get(entity_id)
+        if entity is None:
+            raise NotFoundError
+        provided = changes.model_fields_set
+        # One field at a time, validate and carry together: the
+        # assignments are in-memory until the single commit below, so a
+        # refusal on any field leaves the row exactly as it was.
+        if "name" in provided:
+            name = changes.name
+            if not name or not name.strip():
+                raise InvalidEntityUpdateError("an entity needs a name")
+            if len(name) > MAX_NAME_LENGTH:
+                raise InvalidEntityUpdateError(
+                    f"an entity's name is over the {MAX_NAME_LENGTH} character limit"
+                )
+            entity.name = name
+        if "kind" in provided:
+            kind = changes.kind
+            if kind not in ENTITY_KINDS:
+                raise InvalidEntityUpdateError(
+                    f"an entity's kind is not one of {'|'.join(ENTITY_KINDS)}"
+                )
+            entity.kind = kind
+        if "description" in provided:
+            entity.description = changes.description
+        await self.session.commit()
+        return entity
+
+    async def delete_entity(self, entity_id: UUID) -> None:
+        """Delete an entity: one row goes, and nothing else.
+
+        Entity rows have no referents. An accepted suggestion keeps its own
+        name/kind/description snapshot — it is a self-contained copy, never
+        a reference to the entity it filed — and nothing else points at an
+        entity, so the delete is a row delete: no cascade to chase, no
+        orphan to leave, and the review history stays exactly as it was.
+        """
+        entity = await self.entities.get(entity_id)
+        if entity is None:
+            raise NotFoundError
+        await self.entities.delete(entity)
+        await self.session.commit()
+
+    async def merge_entities(self, source_id: UUID, target_id: UUID) -> Entity:
+        """Fold the source into the target: the target survives, the source
+        is deleted.
+
+        The same no-referents fact shapes the merge: nothing hangs off
+        either row that could move, so "merge" is delete-plus-keep — the
+        source's row goes, the target's stays as it is. Both ends are read
+        scoped to the caller: the other user's row is the same absence as
+        no row, whichever end of the pair it is.
+        """
+        if source_id == target_id:
+            raise SelfMergeError
+        source = await self.entities.get(source_id)
+        if source is None:
+            raise NotFoundError
+        target = await self.entities.get(target_id)
+        if target is None:
+            raise NotFoundError
+        await self.entities.delete(source)
+        await self.session.commit()
+        return target

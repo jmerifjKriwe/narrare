@@ -15,7 +15,7 @@ agent orchestration appears — not before.
 from collections.abc import Callable  # noqa: TC003
 from os import environ
 
-from app.kernel.llm.contract import SOURCE_PREFIX, TextProvider
+from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX, TextProvider
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.openai_compat import OpenAICompatibleProvider
 
@@ -24,7 +24,7 @@ PROVIDERS: dict[str, Callable[[], TextProvider]] = {
     "openai-compatible": OpenAICompatibleProvider.from_environment,
 }
 
-__all__ = ["PROVIDERS", "SOURCE_PREFIX", "TextProvider", "get_provider"]
+__all__ = ["PROVIDERS", "PURPOSE_PREFIX", "SOURCE_PREFIX", "TextProvider", "get_provider"]
 
 
 def get_provider() -> TextProvider:

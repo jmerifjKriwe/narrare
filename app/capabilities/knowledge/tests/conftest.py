@@ -30,7 +30,7 @@ async def empty_tables() -> None:
     async with Session() as session:
         await session.execute(
             text(
-                "TRUNCATE entities, entity_suggestions, jobs,"
+                "TRUNCATE entities, entity_suggestions, consistency_findings, jobs,"
                 " chunks, documents, novels, chapters, users CASCADE"
             )
         )

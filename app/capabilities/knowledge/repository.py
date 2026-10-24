@@ -4,11 +4,17 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from app.kernel.contracts.models import Chunk, Document, Entity, EntitySuggestion
+from app.kernel.contracts.models import (
+    Chunk,
+    ConsistencyFinding,
+    Document,
+    Entity,
+    EntitySuggestion,
+)
 from app.kernel.db.base import ScopedRepository
 
 if TYPE_CHECKING:
-    from app.capabilities.knowledge.prompts import ParsedEntity
+    from app.capabilities.knowledge.prompts import ParsedEntity, ParsedFinding
 
 # The review contract's three states. A suggestion is born pending and is
 # consumed exactly once — accepted or discarded — by the service, in one
@@ -16,6 +22,11 @@ if TYPE_CHECKING:
 PENDING = "pending"
 ACCEPTED = "accepted"
 DISCARDED = "discarded"
+
+# The finding queue's consumed states; a finding is born pending too, and is
+# consumed by acknowledge or dismiss — the same contract, its own words.
+ACKNOWLEDGED = "acknowledged"
+DISMISSED = "dismissed"
 
 
 class DocumentRepository(ScopedRepository[Document]):
@@ -64,6 +75,11 @@ class ChunkRepository(ScopedRepository[Chunk]):
 class EntityRepository(ScopedRepository[Entity]):
     model = Entity
 
+    async def get(self, entity_id: UUID) -> Entity | None:
+        """The row, scoped: another user's entity answers as absent, the
+        way every scoped read in this product answers."""
+        return await self.session.scalar(self.query().where(Entity.id == entity_id))
+
     async def list_for_novel(self, novel_id: UUID) -> Sequence[Entity]:
         result = await self.session.scalars(
             self.query().where(Entity.novel_id == novel_id).order_by(Entity.created_at)
@@ -82,6 +98,9 @@ class EntityRepository(ScopedRepository[Entity]):
         await self.session.flush()
         return entity
 
+    async def delete(self, entity: Entity) -> None:
+        await self.session.delete(entity)
+
 
 class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
     model = EntitySuggestion
@@ -97,8 +116,31 @@ class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
     async def create_many(
         self, novel_id: UUID, chapter_id: UUID, entities: Sequence[ParsedEntity]
     ) -> None:
-        """File one suggestion per parsed entity, all pending review."""
+        """File one suggestion per parsed entity, all pending review.
+
+        The dedupe ruling: a parsed entity whose (chapter, name, kind) is
+        already pending files nothing — a re-run, the outage retry's shape,
+        answers with the rows the queue already holds instead of stacking a
+        second set behind them. The skip reads only pending rows, which is
+        the asymmetry by design: accept or discard consumes a suggestion,
+        so after a review the same key files fresh on the next run — the
+        writer's decision is the only thing that reopens a filed key.
+        """
+        result = await self.session.scalars(
+            self.query().where(
+                EntitySuggestion.chapter_id == chapter_id,
+                EntitySuggestion.status == PENDING,
+            )
+        )
+        # The set is the filed identity: what the query found still pending,
+        # joined by every key this run files — a provider answer naming the
+        # same (name, kind) twice is one suggestion, not two.
+        filed = {(row.name, row.kind) for row in result.all()}
         for entity in entities:
+            key = (entity.name, entity.kind)
+            if key in filed:
+                continue
+            filed.add(key)
             self.session.add(
                 EntitySuggestion(
                     user_id=self.user_id,
@@ -123,4 +165,61 @@ class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
         """
         return await self.session.scalar(
             self.query().where(EntitySuggestion.id == suggestion_id).with_for_update()
+        )
+
+
+class ConsistencyFindingRepository(ScopedRepository[ConsistencyFinding]):
+    model = ConsistencyFinding
+
+    async def list_for_novel(self, novel_id: UUID, status: str) -> Sequence[ConsistencyFinding]:
+        result = await self.session.scalars(
+            self.query()
+            .where(ConsistencyFinding.novel_id == novel_id, ConsistencyFinding.status == status)
+            .order_by(ConsistencyFinding.created_at)
+        )
+        return result.all()
+
+    async def create_many(self, novel_id: UUID, findings: Sequence[ParsedFinding]) -> None:
+        """File one finding per parsed contradiction, all pending review.
+
+        The dedupe ruling, mirroring the suggestion queue's: a parsed finding
+        whose summary is already pending files nothing — a re-run, the outage
+        retry's shape, answers with the rows the queue already holds instead
+        of stacking a second set behind them. The skip reads only pending
+        rows, which is the asymmetry by design: acknowledge or dismiss
+        consumes a finding, so after a review the same summary files fresh on
+        the next run — the writer's decision is the only thing that reopens a
+        filed summary.
+        """
+        result = await self.session.scalars(
+            self.query().where(
+                ConsistencyFinding.novel_id == novel_id,
+                ConsistencyFinding.status == PENDING,
+            )
+        )
+        # The set is the filed identity: what the query found still pending,
+        # joined by every summary this run files — a provider answer naming
+        # the same contradiction twice is one finding, not two.
+        filed = {row.summary for row in result.all()}
+        for finding in findings:
+            if finding.summary in filed:
+                continue
+            filed.add(finding.summary)
+            self.session.add(
+                ConsistencyFinding(
+                    user_id=self.user_id,
+                    novel_id=novel_id,
+                    summary=finding.summary,
+                    detail=finding.detail,
+                    status=PENDING,
+                )
+            )
+        await self.session.flush()
+
+    async def locked(self, finding_id: UUID) -> ConsistencyFinding | None:
+        """The finding with its row lock taken (SELECT ... FOR UPDATE) —
+        the suggestion queue's exactly-once guarantee, for the finding's
+        acknowledge and dismiss."""
+        return await self.session.scalar(
+            self.query().where(ConsistencyFinding.id == finding_id).with_for_update()
         )

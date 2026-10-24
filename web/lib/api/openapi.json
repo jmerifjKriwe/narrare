@@ -137,6 +137,21 @@
         "title": "ChatRequest",
         "type": "object"
       },
+      "ConsistencyAccepted": {
+        "description": "The check's enqueue answer: what to poll.",
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "ConsistencyAccepted",
+        "type": "object"
+      },
       "DocumentRead": {
         "properties": {
           "created_at": {
@@ -160,6 +175,21 @@
           "created_at"
         ],
         "title": "DocumentRead",
+        "type": "object"
+      },
+      "EntityMerge": {
+        "description": "The merge's whole ask: which row survives.",
+        "properties": {
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id"
+        ],
+        "title": "EntityMerge",
         "type": "object"
       },
       "EntityRead": {
@@ -210,6 +240,46 @@
         "title": "EntityRead",
         "type": "object"
       },
+      "EntityUpdate": {
+        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\ndescription both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the parse contract's vocabulary:\nthis schema carries the fields, the contract decides what a value may\nbe.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "EntityUpdate",
+        "type": "object"
+      },
       "ExtractionAccepted": {
         "description": "The enqueue's whole answer: what to poll.",
         "properties": {
@@ -238,6 +308,54 @@
           "chapter_id"
         ],
         "title": "ExtractionRequest",
+        "type": "object"
+      },
+      "FindingRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "summary",
+          "detail",
+          "status",
+          "created_at"
+        ],
+        "title": "FindingRead",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -760,6 +878,50 @@
         ]
       }
     },
+    "/api/knowledge/consistency/{novel_id}": {
+      "post": {
+        "description": "Enqueue the whole-novel consistency check. The worker does the rest;\npoll ``GET /api/jobs/{job_id}`` — the row's state is the answer.",
+        "operationId": "start_consistency_api_knowledge_consistency__novel_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Consistency",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/knowledge/documents": {
       "get": {
         "operationId": "list_documents_api_knowledge_documents_get",
@@ -825,6 +987,149 @@
         ]
       }
     },
+    "/api/knowledge/entities/{entity_id}": {
+      "delete": {
+        "description": "Delete an entity. The row has no referents — the delete is a row delete.",
+        "operationId": "delete_entity_api_knowledge_entities__entity_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Entity",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "patch": {
+        "description": "Correct an entity by hand: only the fields the body carries change.",
+        "operationId": "update_entity_api_knowledge_entities__entity_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Entity",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/entities/{entity_id}/merge": {
+      "post": {
+        "description": "Fold this entity into another: the target survives, the source is deleted.",
+        "operationId": "merge_entity_api_knowledge_entities__entity_id__merge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityMerge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Entity",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/knowledge/extraction/{novel_id}": {
       "post": {
         "description": "Enqueue entity extraction for a chapter. The worker does the rest; poll\n``GET /api/jobs/{job_id}`` — the row's state is the answer.",
@@ -879,6 +1184,94 @@
         ]
       }
     },
+    "/api/knowledge/findings/{finding_id}/acknowledge": {
+      "post": {
+        "description": "Acknowledge: the finding is consumed — seen, the text stays as it is.",
+        "operationId": "acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge Finding",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/findings/{finding_id}/dismiss": {
+      "post": {
+        "description": "Dismiss: the finding is consumed without keeping.",
+        "operationId": "dismiss_finding_api_knowledge_findings__finding_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Finding",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/knowledge/novels/{novel_id}/entities": {
       "get": {
         "operationId": "list_entities_api_knowledge_novels__novel_id__entities_get",
@@ -921,6 +1314,69 @@
           }
         },
         "summary": "List Entities",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/novels/{novel_id}/findings": {
+      "get": {
+        "description": "The novel's findings in one review state; pending is the queue.",
+        "operationId": "list_findings_api_knowledge_novels__novel_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "enum": [
+                "pending",
+                "acknowledged",
+                "dismissed"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FindingRead"
+                  },
+                  "title": "Response List Findings Api Knowledge Novels  Novel Id  Findings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Findings",
         "tags": [
           "knowledge"
         ]

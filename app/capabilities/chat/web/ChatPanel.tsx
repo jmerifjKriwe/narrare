@@ -69,7 +69,11 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       // Everything else keeps being a real error.
       if (!controller.signal.aborted) throw error;
     } finally {
-      askAbort.current = null;
+      // The cleanup owns only its own ask: a later ask that began while
+      // this one settles has replaced the ref, and nulling it now would
+      // take the unmount abort away from the ask still streaming — the
+      // very zombie the ref exists to prevent.
+      if (askAbort.current === controller) askAbort.current = null;
       if (!controller.signal.aborted) setAsking(false);
     }
   }

@@ -36,6 +36,11 @@ export function ChapterEditor({
 
   const resolve = useRef(onProposalResolve);
   resolve.current = onProposalResolve;
+  // The proposal prop as it stands right now: a stream that fails must
+  // judge by the screen the user is looking at, not by the render its
+  // click happened in — an offer may have arrived or cleared mid-stream.
+  const offered = useRef(proposal);
+  offered.current = proposal;
   // The stream run a ghost belongs to: bumping it abandons the loop, so a
   // resolved ghost cannot be resurrected by the deltas still in flight.
   const run = useRef(0);
@@ -128,9 +133,13 @@ export function ChapterEditor({
       );
       if (!response.ok) {
         setFailed(true);
+        // The refusal is the stream's own story only while no offer from
+        // outside owns the ghost on screen — that offer did not fail, and
+        // the alert above already names the refused request either way.
+        if (offered.current === undefined) announce(t("editor.ghostFailed"));
         return;
       }
-      let proposal = "";
+      let draft = "";
       for await (const frame of readFrames(response)) {
         // The ghost was taken or dropped mid-stream: stop feeding it.
         if (mine !== run.current) return;
@@ -140,14 +149,18 @@ export function ChapterEditor({
         if (frame.error) {
           setFailed(true);
           setStreamed(null);
-          announce(t("editor.ghostFailed"));
+          // The ghost this failure may speak of is the stream's own only
+          // while no offer owns the screen: the offer still showing is
+          // not the ghost that just died, and hearing "failed" about it
+          // would be a lie about the one ghost the user can see.
+          if (offered.current === undefined) announce(t("editor.ghostFailed"));
           return;
         }
         if (!frame.delta) continue;
         // The stream grows the ghost, never the document: the text is the
         // user's only when they take it.
-        proposal += frame.delta;
-        setStreamed(proposal);
+        draft += frame.delta;
+        setStreamed(draft);
       }
     } finally {
       setContinuing(false);

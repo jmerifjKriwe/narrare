@@ -5,8 +5,18 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
-import { client, type Entity, type Job, type Novel, type NovelCreate, type Suggestion } from "./api/client";
+import {
+  client,
+  type Entity,
+  type Finding,
+  type Hit,
+  type Job,
+  type Novel,
+  type NovelCreate,
+  type Suggestion,
+} from "./api/client";
 
 /**
  * The one query client. `retry: false` because the backend is a local
@@ -148,6 +158,35 @@ export function usePendingSuggestionsQuery(novelId: string): UseQueryResult<Sugg
   });
 }
 
+/**
+ * The dock search's second tier: the box's text asked of the semantic
+ * search. The ask is debounced (300ms) — the instant tier of the box is
+ * the client-side entity filter, and the server's answer is owed only
+ * once the typing pauses, so a word typed a letter at a time is one
+ * request, not one per keystroke. The key carries the debounced text, so
+ * every answer is cached under the words that produced it, and an empty
+ * query asks nothing (`enabled`).
+ */
+export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
+  const [debounced, setDebounced] = useState(query);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+  return useQuery({
+    queryKey: ["knowledge", "passages", debounced],
+    enabled: debounced.trim() !== "",
+    queryFn: async () => {
+      const limit = 5; // the server's own default, pinned here by the request type
+      const { data, response } = await client.POST("/api/knowledge/search", {
+        body: { query: debounced, limit },
+      });
+      if (!response.ok) throw new Error(`search unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
 /** Enqueue extraction for a chapter: 202 and the job id to poll. The write
  *  invalidates the job key so every cached job row is asked for again —
  *  a new job makes the old answers history. */
@@ -165,6 +204,84 @@ export function useEnqueueExtraction(
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+/** The pending findings queue: the contradictions the check filed, waiting
+ *  for a decision. */
+export function useFindingsQuery(novelId: string): UseQueryResult<Finding[]> {
+  return useQuery({
+    queryKey: ["knowledge", "findings", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET(
+        "/api/knowledge/novels/{novel_id}/findings",
+        { params: { path: { novel_id: novelId }, query: { status: "pending" } } },
+      );
+      if (!response.ok) throw new Error(`findings unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/** Enqueue the whole-novel consistency check: 202 and the job id to poll.
+ *  The write invalidates the job key so every cached job row is asked for
+ *  again — a new job makes the old answers history. */
+export function useEnqueueCheck(
+  novelId: string,
+): UseMutationResult<{ job_id: string }, Error, void> {
+  return useMutation({
+    mutationFn: async () => {
+      const { data, response } = await client.POST("/api/knowledge/consistency/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`check refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+/**
+ * The findings queue's two review decisions. Both invalidate the pending
+ * queue on settling — not only on success: a 409 means another reviewer (or
+ * an earlier click of the same one) consumed the finding first, and the
+ * refetch is what removes the card a second decision would have acted on.
+ */
+export function useAcknowledgeFinding(
+  novelId: string,
+): UseMutationResult<Finding, Error, string> {
+  return useMutation({
+    mutationFn: async (findingId: string) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/findings/{finding_id}/acknowledge",
+        { params: { path: { finding_id: findingId } } },
+      );
+      if (!response.ok || !data) throw new Error(`acknowledge refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
+    },
+  });
+}
+
+export function useDismissFinding(
+  novelId: string,
+): UseMutationResult<Finding, Error, string> {
+  return useMutation({
+    mutationFn: async (findingId: string) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/findings/{finding_id}/dismiss",
+        { params: { path: { finding_id: findingId } } },
+      );
+      if (!response.ok || !data) throw new Error(`dismiss refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
     },
   });
 }
@@ -209,6 +326,71 @@ export function useDiscardSuggestion(
       void invalidateKnowledge(novelId);
     },
   });
+}
+
+/** The fields a correction may carry: only these reach the PATCH body. */
+export type EntityChanges = Partial<Pick<Entity, "name" | "kind" | "description">>;
+
+/**
+ * The three corrections of the detail view. Each invalidates the entity
+ * list on settling — not only on success: a 404 means the row is already
+ * gone (another correction won the race), and the refetch is what makes
+ * the detail follow a list that no longer holds the row it shows.
+ */
+export function useUpdateEntity(
+  novelId: string,
+): UseMutationResult<Entity, Error, { entityId: string; changes: EntityChanges }> {
+  return useMutation({
+    mutationFn: async (input: { entityId: string; changes: EntityChanges }) => {
+      const { data, response } = await client.PATCH("/api/knowledge/entities/{entity_id}", {
+        params: { path: { entity_id: input.entityId } },
+        body: input.changes,
+      });
+      if (!response.ok || !data) throw new Error(`update refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void invalidateEntities(novelId);
+    },
+  });
+}
+
+export function useDeleteEntity(novelId: string): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (entityId: string) => {
+      const { response } = await client.DELETE("/api/knowledge/entities/{entity_id}", {
+        params: { path: { entity_id: entityId } },
+      });
+      if (!response.ok) throw new Error(`delete refused: ${response.status}`);
+    },
+    onSettled: () => {
+      void invalidateEntities(novelId);
+    },
+  });
+}
+
+export function useMergeEntities(
+  novelId: string,
+): UseMutationResult<Entity, Error, { sourceId: string; targetId: string }> {
+  return useMutation({
+    mutationFn: async (input: { sourceId: string; targetId: string }) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/entities/{entity_id}/merge",
+        { params: { path: { entity_id: input.sourceId } }, body: { target_id: input.targetId } },
+      );
+      if (!response.ok || !data) throw new Error(`merge refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void invalidateEntities(novelId);
+    },
+  });
+}
+
+/** The entity list is the detail view's data too: the selected row is read
+ *  out of it, so one invalidation refreshes both. */
+function invalidateEntities(novelId: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
 }
 
 /** The two knowledge views of a novel go stale together: a review decision

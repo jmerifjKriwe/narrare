@@ -38,6 +38,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/consistency/{novel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Consistency
+         * @description Enqueue the whole-novel consistency check. The worker does the rest;
+         *     poll ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+         */
+        post: operations["start_consistency_api_knowledge_consistency__novel_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/documents": {
         parameters: {
             query?: never;
@@ -53,6 +74,50 @@ export interface paths {
          * @description Ingest a text file. Plain text only; the body is decoded as UTF-8.
          */
         post: operations["upload_document_api_knowledge_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/entities/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Entity
+         * @description Delete an entity. The row has no referents — the delete is a row delete.
+         */
+        delete: operations["delete_entity_api_knowledge_entities__entity_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Entity
+         * @description Correct an entity by hand: only the fields the body carries change.
+         */
+        patch: operations["update_entity_api_knowledge_entities__entity_id__patch"];
+        trace?: never;
+    };
+    "/api/knowledge/entities/{entity_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Entity
+         * @description Fold this entity into another: the target survives, the source is deleted.
+         */
+        post: operations["merge_entity_api_knowledge_entities__entity_id__merge_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -80,6 +145,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/findings/{finding_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge Finding
+         * @description Acknowledge: the finding is consumed — seen, the text stays as it is.
+         */
+        post: operations["acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/findings/{finding_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Finding
+         * @description Dismiss: the finding is consumed without keeping.
+         */
+        post: operations["dismiss_finding_api_knowledge_findings__finding_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/novels/{novel_id}/entities": {
         parameters: {
             query?: never;
@@ -89,6 +194,26 @@ export interface paths {
         };
         /** List Entities */
         get: operations["list_entities_api_knowledge_novels__novel_id__entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/novels/{novel_id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Findings
+         * @description The novel's findings in one review state; pending is the queue.
+         */
+        get: operations["list_findings_api_knowledge_novels__novel_id__findings_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -399,6 +524,17 @@ export interface components {
             /** Question */
             question: string;
         };
+        /**
+         * ConsistencyAccepted
+         * @description The check's enqueue answer: what to poll.
+         */
+        ConsistencyAccepted: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+        };
         /** DocumentRead */
         DocumentRead: {
             /**
@@ -413,6 +549,17 @@ export interface components {
             id: string;
             /** Title */
             title: string;
+        };
+        /**
+         * EntityMerge
+         * @description The merge's whole ask: which row survives.
+         */
+        EntityMerge: {
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
         };
         /** EntityRead */
         EntityRead: {
@@ -439,6 +586,25 @@ export interface components {
             novel_id: string;
         };
         /**
+         * EntityUpdate
+         * @description The PATCH body: only the fields present are the change.
+         *
+         *     ``None`` is ambiguous by shape alone — an absent field and a cleared
+         *     description both look like None — so the service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one. The
+         *     values are checked there, against the parse contract's vocabulary:
+         *     this schema carries the fields, the contract decides what a value may
+         *     be.
+         */
+        EntityUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /**
          * ExtractionAccepted
          * @description The enqueue's whole answer: what to poll.
          */
@@ -459,6 +625,30 @@ export interface components {
              * Format: uuid
              */
             chapter_id: string;
+        };
+        /** FindingRead */
+        FindingRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Detail */
+            detail: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -707,6 +897,37 @@ export interface operations {
             };
         };
     };
+    start_consistency_api_knowledge_consistency__novel_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsistencyAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_documents_api_knowledge_documents_get: {
         parameters: {
             query?: never;
@@ -760,6 +981,105 @@ export interface operations {
             };
         };
     };
+    delete_entity_api_knowledge_entities__entity_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_entity_api_knowledge_entities__entity_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_entity_api_knowledge_entities__entity_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityMerge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     start_extraction_api_knowledge_extraction__novel_id__post: {
         parameters: {
             query?: never;
@@ -795,6 +1115,68 @@ export interface operations {
             };
         };
     };
+    acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_finding_api_knowledge_findings__finding_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_entities_api_knowledge_novels__novel_id__entities_get: {
         parameters: {
             query?: never;
@@ -813,6 +1195,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntityRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_findings_api_knowledge_novels__novel_id__findings_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "acknowledged" | "dismissed";
+            };
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"][];
                 };
             };
             /** @description Validation Error */

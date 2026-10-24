@@ -1,11 +1,12 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes five views: the Python registry `app/api/main.py`
+`just generate` writes seven views: the Python registry `app/api/main.py`
 cross-checks at startup, the locale list the server validates against, the
-TypeScript nav data, the TypeScript catalog map and the user-docs index. A stale
-view means the UI or the startup check runs on old facts — the same failure mode
-the OpenAPI drift test guards — so forgetting `just generate` must be a red
-suite, not a wrong UI.
+TypeScript nav data, the TypeScript catalog map, the TypeScript route table,
+the TypeScript dock registry and the user-docs index. A stale view means the
+UI or the startup check runs on old facts — the same failure mode the OpenAPI
+drift test guards — so forgetting `just generate` must be a red suite, not a
+wrong UI.
 """
 
 import json
@@ -23,7 +24,9 @@ from scripts.generate_capabilities import (
     python_registry,
     scan_docks,
     typescript_catalogs,
+    typescript_docks,
     typescript_nav,
+    typescript_routes,
 )
 
 ROOT = Path(__file__).parents[2]
@@ -66,6 +69,23 @@ def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
     known, _, _ = _views()
     assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(known), (
         "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+    )
+
+
+def test_committed_typescript_routes_match_the_route_sources() -> None:
+    # The route table and the dock registry are generated from the route
+    # sources, not the facts files: a capability that renames an export or
+    # repaths a dock changes them, and a committed table that missed the
+    # change is a router mounting capabilities that no longer exist as
+    # written.
+    assert _committed("web", "lib", "generated", "routes.ts") == typescript_routes(ROOT), (
+        "web/lib/generated/routes.ts is stale: run `just generate` and commit the result"
+    )
+
+
+def test_committed_typescript_docks_match_the_route_sources() -> None:
+    assert _committed("web", "lib", "generated", "docks.ts") == typescript_docks(ROOT), (
+        "web/lib/generated/docks.ts is stale: run `just generate` and commit the result"
     )
 
 
@@ -114,4 +134,7 @@ def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:
     same_path = {"chat": dock_source("chat"), "notes": dock_source("chat"), "writing": host}
     with pytest.raises(SystemExit, match="same path") as failure:
         scan_docks(same_path)
-    assert "chat" in str(failure.value) and "notes" in str(failure.value)
+    # The assertion matches the capability list the message names. The
+    # shared path contains "chat" on its own, so a bare substring check
+    # would pass on the path alone and prove nothing about the naming.
+    assert "['chat', 'notes']" in str(failure.value)
