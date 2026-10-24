@@ -1,8 +1,6 @@
 ---
 name: tailwind-design-system
 description: Build scalable design systems with Tailwind CSS v4, design tokens, component libraries, and responsive patterns. Use when creating component libraries, implementing design systems, or standardizing UI patterns.
-metadata:
-  opencode/autoinvoke: false
 ---
 
 # Tailwind Design System (v4)
@@ -185,3 +183,4 @@ Base styles → Variants → Sizes → States → Overrides
 ## Detailed patterns and worked examples
 
 Detailed pattern documentation lives in `references/details.md`. Read that file when the navigation tier above is insufficient.
+
