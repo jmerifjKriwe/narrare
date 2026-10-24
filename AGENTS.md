@@ -37,6 +37,16 @@ the capability's E2E. A gate counts only when its output was read.
 on a different model; it is dispatched from outside, never by the builder, and edits
 nothing. That is the whole layer.
 
+## Tools (optional)
+
+`codebase-memory-mcp` is available as an MCP server and indexes this repo into a
+persistent knowledge graph (functions, classes, call chains, routes). It is a
+recommendation, not a requirement: for structural questions (who calls X, what
+does X call, impact of a change, dead code) it is far cheaper and more precise
+than grep/read, but agents may use grep/read when the graph is unavailable or
+stale. Re-index after large structural changes (`index_repository`). Do not add
+a mandatory rule or gate for it (see Rules above).
+
 ## Git
 
 `--no-verify` and force push are forbidden. Conventional commits; `feat`/`fix` need a
