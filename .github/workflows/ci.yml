@@ -182,7 +182,14 @@ jobs:
       - name: API smoke
         run: |
           set -x
-          uv run python -c "from app.kernel.db.testsupport import ensure_database; ensure_database('narrare_v2_smoke_e2e'); print('DB OK')"
+          uv run python -c "
+from app.kernel.db.testsupport import ensure_database, url_for
+from app.kernel.db.init import reset_schema
+import asyncio
+ensure_database('narrare_v2_smoke_e2e')
+asyncio.run(reset_schema(url_for('narrare_v2_smoke_e2e')))
+print('DB + SCHEMA OK')
+"
           NARRE_DATABASE_URL="postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_v2_smoke_e2e" uv run python -m uvicorn app.api.main:app --port 8000 &
           API_PID=$!
           for i in $(seq 1 30); do
@@ -193,6 +200,7 @@ jobs:
           done
           kill $API_PID 2>/dev/null || true
           wait $API_PID 2>/dev/null || true
+          sleep 2
       # The same invocation `just test-e2e` makes; the suites come from the
       # changes job, so a PR pays for what it touches.
       - name: E2E
