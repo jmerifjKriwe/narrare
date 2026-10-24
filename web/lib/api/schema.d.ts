@@ -38,6 +38,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/consistency/{novel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Consistency
+         * @description Enqueue the whole-novel consistency check. The worker does the rest;
+         *     poll ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+         */
+        post: operations["start_consistency_api_knowledge_consistency__novel_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/documents": {
         parameters: {
             query?: never;
@@ -124,6 +145,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/findings/{finding_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge Finding
+         * @description Acknowledge: the finding is consumed — seen, the text stays as it is.
+         */
+        post: operations["acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/findings/{finding_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Finding
+         * @description Dismiss: the finding is consumed without keeping.
+         */
+        post: operations["dismiss_finding_api_knowledge_findings__finding_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/novels/{novel_id}/entities": {
         parameters: {
             query?: never;
@@ -133,6 +194,26 @@ export interface paths {
         };
         /** List Entities */
         get: operations["list_entities_api_knowledge_novels__novel_id__entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/novels/{novel_id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Findings
+         * @description The novel's findings in one review state; pending is the queue.
+         */
+        get: operations["list_findings_api_knowledge_novels__novel_id__findings_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -443,6 +524,17 @@ export interface components {
             /** Question */
             question: string;
         };
+        /**
+         * ConsistencyAccepted
+         * @description The check's enqueue answer: what to poll.
+         */
+        ConsistencyAccepted: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+        };
         /** DocumentRead */
         DocumentRead: {
             /**
@@ -533,6 +625,30 @@ export interface components {
              * Format: uuid
              */
             chapter_id: string;
+        };
+        /** FindingRead */
+        FindingRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Detail */
+            detail: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -781,6 +897,37 @@ export interface operations {
             };
         };
     };
+    start_consistency_api_knowledge_consistency__novel_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsistencyAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_documents_api_knowledge_documents_get: {
         parameters: {
             query?: never;
@@ -968,6 +1115,68 @@ export interface operations {
             };
         };
     };
+    acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_finding_api_knowledge_findings__finding_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_entities_api_knowledge_novels__novel_id__entities_get: {
         parameters: {
             query?: never;
@@ -986,6 +1195,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntityRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_findings_api_knowledge_novels__novel_id__findings_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "acknowledged" | "dismissed";
+            };
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"][];
                 };
             };
             /** @description Validation Error */

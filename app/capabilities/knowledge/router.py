@@ -7,12 +7,14 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import (
+    ConsistencyAccepted,
     DocumentRead,
     EntityMerge,
     EntityRead,
     EntityUpdate,
     ExtractionAccepted,
     ExtractionRequest,
+    FindingRead,
     ReembedResult,
     SearchHit,
     SearchRequest,
@@ -22,6 +24,7 @@ from app.capabilities.knowledge.service import (
     AlreadyReviewedError,
     DocumentTooLargeError,
     EmptyDocumentError,
+    FindingAlreadyReviewedError,
     InvalidEntityUpdateError,
     KnowledgeService,
     NotFoundError,
@@ -169,6 +172,57 @@ async def discard_suggestion(suggestion_id: UUID, service: ServiceDep) -> Sugges
     except AlreadyReviewedError:
         raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
     return SuggestionRead.model_validate(suggestion)
+
+
+@router.post("/consistency/{novel_id}", response_model=ConsistencyAccepted, status_code=202)
+async def start_consistency(novel_id: UUID, service: ServiceDep) -> ConsistencyAccepted:
+    """Enqueue the whole-novel consistency check. The worker does the rest;
+    poll ``GET /api/jobs/{job_id}`` — the row's state is the answer."""
+    try:
+        job = await service.enqueue_consistency(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return ConsistencyAccepted(job_id=job.id)
+
+
+@router.get("/novels/{novel_id}/findings", response_model=list[FindingRead])
+async def list_findings(
+    novel_id: UUID,
+    service: ServiceDep,
+    status: Literal["pending", "acknowledged", "dismissed"] = "pending",
+) -> list[FindingRead]:
+    """The novel's findings in one review state; pending is the queue."""
+    try:
+        findings = await service.list_findings(novel_id, status)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [FindingRead.model_validate(finding) for finding in findings]
+
+
+@router.post("/findings/{finding_id}/acknowledge", response_model=FindingRead)
+async def acknowledge_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
+    """Acknowledge: the finding is consumed — seen, the text stays as it is."""
+    try:
+        finding = await service.acknowledge_finding(finding_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="finding not found") from None
+    except FindingAlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="finding already reviewed") from None
+    return FindingRead.model_validate(finding)
+
+
+@router.post("/findings/{finding_id}/dismiss", response_model=FindingRead)
+async def dismiss_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
+    """Dismiss: the finding is consumed without keeping."""
+    try:
+        finding = await service.dismiss_finding(finding_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="finding not found") from None
+    except FindingAlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="finding already reviewed") from None
+    return FindingRead.model_validate(finding)
 
 
 @router.patch("/entities/{entity_id}", response_model=EntityRead)

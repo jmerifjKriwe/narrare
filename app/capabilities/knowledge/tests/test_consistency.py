@@ -1,0 +1,467 @@
+"""The consistency check: the second job kind, from enqueue to findings.
+
+Mirrors the extraction suite's shape: the request only enqueues (D14), the
+worker's handler reads every chapter plus the accepted canon, prompts the
+provider, and files its findings as reviewable rows on one terminal commit.
+The review contract mirrors the suggestion queue's end to end — pending is
+the queue, acknowledge and dismiss consume exactly once, and a re-run stacks
+nothing behind a pending row.
+"""
+
+import asyncio
+from typing import TYPE_CHECKING
+from uuid import uuid4
+
+import pytest
+from httpx import ASGITransport, AsyncClient, Response
+from sqlalchemy import text
+
+from app.api.main import app
+from app.kernel.contracts.models import Novel
+from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+pytestmark = pytest.mark.timeout(60)
+
+OTHER_USER = uuid4()
+
+# Chapter titles without numbers, on purpose: the fake's passage assembly
+# carries every chapter heading after the first marker inside a passage, and
+# a numbered title ("Kapitel 2") would feed the derivation a (word, number)
+# pair of its own. The bodies steer the derivation; the titles stay inert.
+CHAPTER_TITLES = ("Ankunft", "Später", "Danach", "Ende")
+
+# Two chapters that disagree about Mira's age: the check's bread and butter.
+# The texts steer the fake provider's derivation — a capitalized word given
+# two different numbers across the chapters is the contradiction.
+CONTRADICTING_BODIES = (
+    "Mira ist 34 Jahre alt und kennt das Dorf.",
+    "Später steht geschrieben: Mira ist 37 und will fort.",
+)
+# Two names, two contradictions each: enough findings for a review round.
+TWO_NAMES_BODIES = (
+    "Mira ist 34, und Tom ist 30.",
+    "Mira ist 37, und Tom ist 33.",
+)
+# Chapters that agree: the empty array is the honest answer.
+AGREEING_BODIES = (
+    "Mira ist 34, wie am Anfang.",
+    "Mira ist 34, unverändert.",
+)
+
+
+def _client() -> AsyncClient:
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+async def _novel_with_chapters(
+    client: AsyncClient, bodies: tuple[str, ...], title: str = "Der Nebel"
+) -> str:
+    """A novel with one written chapter per body, all the caller's own."""
+    novel = await client.post("/api/writing/novels", json={"title": title})
+    novel_id = novel.json()["id"]
+    for position, body in enumerate(bodies):
+        chapter = await client.post(
+            f"/api/writing/novels/{novel_id}/chapters",
+            # The modulo only guards a fifth chapter nobody wrote; duplicates
+            # are harmless — titles carry no uniqueness.
+            json={"title": CHAPTER_TITLES[position % len(CHAPTER_TITLES)]},
+        )
+        await client.put(f"/api/writing/chapters/{chapter.json()['id']}", json={"body": body})
+    return novel_id
+
+
+async def _run_lane_once() -> bool:
+    """One claim of the lane, the way the api app's task would run it."""
+    from app.capabilities.knowledge.jobs import handlers
+    from app.kernel.jobs.worker import Worker
+
+    return await Worker(Session, handlers).run_once()
+
+
+async def _enqueue_check(client: AsyncClient, novel_id: str) -> str:
+    """Enqueue one consistency run, asserting the contract's 202.
+
+    Every test expecting the 202 goes through here, so a refusal is caught
+    as the wrong status where it happens — not later as a KeyError on a
+    body that never carried a job id.
+    """
+    response = await client.post(f"/api/knowledge/consistency/{novel_id}")
+    assert response.status_code == 202
+    return response.json()["job_id"]
+
+
+async def _pending_findings(client: AsyncClient, novel_id: str) -> list[dict[str, object]]:
+    listed = await client.get(f"/api/knowledge/novels/{novel_id}/findings")
+    assert listed.status_code == 200
+    return listed.json()
+
+
+class _GarbageProvider:
+    """A provider whose answer is not JSON: the malformed-answer path.
+
+    It sits exactly where the real one does — behind the provider boundary —
+    so everything below the boundary runs the real code."""
+
+    def describe(self) -> str:
+        return "garbage"
+
+    def configuration_problems(self) -> list[str]:
+        return []
+
+    async def stream(self, prompt: str) -> AsyncIterator[str]:
+        yield "Die Kapitel stimmen überein — aber kein JSON."
+
+
+async def test_the_prompts_declare_their_purpose() -> None:
+    from app.capabilities.knowledge.prompts import consistency_prompt, extraction_prompt
+    from app.kernel.llm import PURPOSE_PREFIX
+
+    extraction = extraction_prompt(chapter_title="Ankunft", body="Mira kam.")
+    assert extraction.startswith(f"{PURPOSE_PREFIX}extract-entities\n")
+    assert "SOURCE: Mira kam." in extraction
+
+    check = consistency_prompt(
+        entities=[("Mira", "character")],
+        chapters=[("Ankunft", "Mira ist 34."), ("Später", "Mira ist 37.")],
+    )
+    assert check.startswith(f"{PURPOSE_PREFIX}check-consistency\n")
+    assert "JSON array" in check  # the answer shape is contracted in prose
+    assert "Mira (character)" in check  # the accepted canon grounds the check
+    assert "Chapter: Ankunft\nText:\nSOURCE: Mira ist 34." in check
+    assert "Chapter: Später\nText:\nSOURCE: Mira ist 37." in check
+
+    empty_grounding = consistency_prompt(entities=[], chapters=[("Ankunft", "Mira ist 34.")])
+    assert "None accepted yet." in empty_grounding
+
+
+def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> None:
+    from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_findings
+
+    good = '[{"summary": "Mira: 34 vs. 37", "detail": "Die Kapitel widersprechen sich."}]'
+    [finding] = parse_findings(good)
+    assert finding.summary == "Mira: 34 vs. 37"
+    assert finding.detail == "Die Kapitel widersprechen sich."
+
+    [bare] = parse_findings('[{"summary": "Nur eine Zeile"}]')  # detail is nullable
+    assert bare.detail is None
+
+    assert parse_findings("[]") == []  # an empty array is a valid answer
+
+    with pytest.raises(MalformedAnswerError):
+        parse_findings("Die Kapitel stimmen überein — aber kein JSON.")
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('{"summary": "Mira"}')  # an object, not an array
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('[{"detail": "ohne summary"}]')  # no summary
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('[{"summary": "   "}]')  # blank is no summary
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('["Mira"]')  # a string, not an object
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('[{"summary": "Mira", "detail": 5}]')  # detail must be a string
+
+    # The summary column is String(200): a summary of exactly that width
+    # parses, and a longer one is refused on the contract path — not by the
+    # database, whose verdict would arrive as a DataError after the fact.
+    [widest] = parse_findings(f'[{{"summary": "{"S" * 200}"}}]')
+    assert widest.summary == "S" * 200
+    with pytest.raises(MalformedAnswerError) as refused:
+        parse_findings(f'[{{"summary": "{"S" * 201}"}}]')
+    # The refusal carries the summary's true length, the way the entity
+    # parse's does: the repr clips the shown item, so the count is what
+    # keeps an over-long summary diagnosable.
+    assert "an item's summary is 201 characters" in str(refused.value)
+
+
+async def test_the_check_enqueues_a_job_and_refuses_what_is_not_the_callers() -> None:
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+        job_id = await _enqueue_check(client, novel_id)
+
+        # The request only enqueued: the row sits queued until the lane claims it.
+        status = await client.get(f"/api/jobs/{job_id}")
+        assert status.status_code == 200
+        assert status.json()["status"] == "queued"
+        assert status.json()["kind"] == "check-consistency"
+
+        unknown = await client.post(
+            "/api/knowledge/consistency/00000000-0000-0000-0000-0000000000ff"
+        )
+        assert unknown.status_code == 404
+
+    await seed_user(OTHER_USER)
+    async with Session() as session:
+        foreign = Novel(user_id=OTHER_USER, title="Fremder Roman")
+        session.add(foreign)
+        await session.commit()
+
+    async with _client() as client:
+        foreign_response = await client.post(f"/api/knowledge/consistency/{foreign.id}")
+        assert foreign_response.status_code == 404
+        foreign_findings = await client.get(f"/api/knowledge/novels/{foreign.id}/findings")
+        assert foreign_findings.status_code == 404
+
+    async with Session() as session:
+        enqueued = await session.scalar(text("SELECT count(*) FROM jobs"))
+    assert enqueued == 1  # the refusals enqueued nothing
+
+
+async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+        job_id = await _enqueue_check(client, novel_id)
+
+        assert await _run_lane_once() is True
+
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+        assert done["status"] == "done"
+        assert done["progress"] == 100
+        assert done["result"] == {"findings": 1}
+        assert done["error"] is None
+
+        findings = await _pending_findings(client, novel_id)
+        assert len(findings) == 1
+        [finding] = findings
+        assert finding["novel_id"] == novel_id
+        assert finding["summary"] == "Mira: 34 vs. 37"
+        assert finding["detail"] == '"Mira ist 34" vs. "Mira ist 37"'
+        assert finding["status"] == "pending"
+
+
+async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, AGREEING_BODIES)
+        job_id = await _enqueue_check(client, novel_id)
+
+        assert await _run_lane_once() is True
+
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+        assert done["status"] == "done"
+        assert done["result"] == {"findings": 0}
+        assert await _pending_findings(client, novel_id) == []
+
+
+async def test_a_novel_without_chapters_checks_to_an_empty_queue() -> None:
+    # No chapters is no contradiction: the check is a done job with an honest
+    # zero, not a failure — the empty array is a valid answer.
+    async with _client() as client:
+        novel = await client.post("/api/writing/novels", json={"title": "Leer"})
+        novel_id = novel.json()["id"]
+        job_id = await _enqueue_check(client, novel_id)
+
+        assert await _run_lane_once() is True
+
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+        assert done["status"] == "done"
+        assert done["result"] == {"findings": 0}
+        assert await _pending_findings(client, novel_id) == []
+
+
+async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.capabilities.knowledge.jobs as jobs
+
+    monkeypatch.setattr(jobs, "get_provider", lambda: _GarbageProvider())
+
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+        job_id = await _enqueue_check(client, novel_id)
+
+        # The failure earns exactly one re-run (MAX_ATTEMPTS = 2), then fails.
+        assert await _run_lane_once() is True
+        assert await _run_lane_once() is True
+        assert await _run_lane_once() is False  # nothing queued anymore
+
+        job = (await client.get(f"/api/jobs/{job_id}")).json()
+        assert job["status"] == "failed"
+        assert job["error"] is not None
+        assert "JSON" in job["error"] or "json" in job["error"]
+        assert job["result"] is None
+
+    async with Session() as session:
+        findings = await session.scalar(text("SELECT count(*) FROM consistency_findings"))
+    assert findings == 0
+
+
+async def test_a_rerun_stacks_nothing_and_a_consumed_finding_files_fresh() -> None:
+    """The dedupe ruling: only a pending row blocks, and it blocks its own summary.
+
+    A re-run — the outage retry's shape, a second check after the first
+    settled — skips a parsed finding whose summary is already pending, so the
+    queue answers with one finding. The skip reads only pending rows, which
+    is the asymmetry: acknowledge consumes the row, and the same re-run is
+    then allowed to file it again — the writer's decision reopens a summary.
+    """
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        # The re-run on the same novel: the same contradiction parsed, its
+        # summary already pending — no second row behind the first.
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+
+        first = await _pending_findings(client, novel_id)
+        assert [finding["summary"] for finding in first] == ["Mira: 34 vs. 37"]
+
+        # The asymmetry's proof: acknowledging consumes the row, so the
+        # re-run files the same summary fresh — a new pending row, not the
+        # consumed one back.
+        acknowledged = await client.post(f"/api/knowledge/findings/{first[0]['id']}/acknowledge")
+        assert acknowledged.status_code == 200
+
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+
+        after = await _pending_findings(client, novel_id)
+        assert [finding["summary"] for finding in after] == ["Mira: 34 vs. 37"]
+        assert first[0]["id"] not in [finding["id"] for finding in after]  # fresh, not resurrected
+        consumed = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/findings?status=acknowledged")
+        ).json()
+        assert [row["id"] for row in consumed] == [first[0]["id"]]
+
+
+async def test_acknowledge_and_dismiss_consume_exactly_once() -> None:
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, TWO_NAMES_BODIES)
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+
+        findings = await _pending_findings(client, novel_id)
+        assert [finding["summary"] for finding in findings] == [
+            "Mira: 34 vs. 37",
+            "Tom: 30 vs. 33",
+        ]
+
+        acknowledged = await client.post(f"/api/knowledge/findings/{findings[0]['id']}/acknowledge")
+        assert acknowledged.status_code == 200
+        assert acknowledged.json()["status"] == "acknowledged"
+
+        dismissed = await client.post(f"/api/knowledge/findings/{findings[1]['id']}/dismiss")
+        assert dismissed.status_code == 200
+        assert dismissed.json()["status"] == "dismissed"
+
+        # Review is exactly-once: every second verdict on a consumed row is a 409,
+        # whichever way the first one went.
+        for path in (
+            f"/api/knowledge/findings/{findings[0]['id']}/acknowledge",
+            f"/api/knowledge/findings/{findings[0]['id']}/dismiss",
+            f"/api/knowledge/findings/{findings[1]['id']}/dismiss",
+            f"/api/knowledge/findings/{findings[1]['id']}/acknowledge",
+        ):
+            second = await client.post(path)
+            assert second.status_code == 409
+
+        assert await _pending_findings(client, novel_id) == []
+        listed_acknowledged = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/findings?status=acknowledged")
+        ).json()
+        listed_dismissed = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/findings?status=dismissed")
+        ).json()
+        assert [row["id"] for row in listed_acknowledged] == [findings[0]["id"]]
+        assert [row["id"] for row in listed_dismissed] == [findings[1]["id"]]
+
+
+async def test_two_concurrent_acknowledges_leave_one_winner() -> None:
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        [finding] = await _pending_findings(client, novel_id)
+        acknowledge_path = f"/api/knowledge/findings/{finding['id']}/acknowledge"
+
+    async def _acknowledge() -> Response:
+        async with _client() as own:
+            return await own.post(acknowledge_path)
+
+    # Two requests in flight at once: the row-level transition must serialize
+    # them — one winner, one 409, one consumed row.
+    first, second = await asyncio.gather(_acknowledge(), _acknowledge())
+    assert sorted([first.status_code, second.status_code]) == [200, 409]
+
+    async with _client() as client:
+        assert await _pending_findings(client, novel_id) == []
+        consumed = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/findings?status=acknowledged")
+        ).json()
+    assert len(consumed) == 1
+
+
+async def test_acknowledge_and_dismiss_race_for_one_finding() -> None:
+    # The stronger race: both verdicts on the same row at once. Whichever
+    # wins, the row is consumed exactly once — the loser reads a consumed
+    # status under the winner's commit, not a second verdict's ground.
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        [finding] = await _pending_findings(client, novel_id)
+        acknowledge = f"/api/knowledge/findings/{finding['id']}/acknowledge"
+        dismiss = f"/api/knowledge/findings/{finding['id']}/dismiss"
+
+    async def _post(path: str) -> Response:
+        async with _client() as own:
+            return await own.post(path)
+
+    winner, loser = await asyncio.gather(_post(acknowledge), _post(dismiss))
+    assert sorted([winner.status_code, loser.status_code]) == [200, 409]
+
+    async with _client() as client:
+        assert await _pending_findings(client, novel_id) == []
+        acknowledged = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/findings?status=acknowledged")
+        ).json()
+        dismissed = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/findings?status=dismissed")
+        ).json()
+    # Exactly one verdict landed; which one is the race's, not the contract's.
+    assert len(acknowledged) + len(dismissed) == 1
+
+
+async def test_another_users_finding_cannot_be_reviewed() -> None:
+    from app.kernel.contracts.models import ConsistencyFinding
+
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
+        await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True  # my rows exist: scoping must not blur
+
+    await seed_user(OTHER_USER)
+    async with Session() as session:
+        novel = Novel(user_id=OTHER_USER, title="Fremder Roman")
+        session.add(novel)
+        await session.flush()
+        theirs = ConsistencyFinding(
+            user_id=OTHER_USER,
+            novel_id=novel.id,
+            summary="Mira: 34 vs. 37",
+            status="pending",
+        )
+        session.add(theirs)
+        await session.commit()
+
+    async with _client() as client:
+        for path in (
+            f"/api/knowledge/findings/{theirs.id}/acknowledge",
+            f"/api/knowledge/findings/{theirs.id}/dismiss",
+        ):
+            response = await client.post(path)
+            assert response.status_code == 404
+
+        unknown = await client.post(
+            "/api/knowledge/findings/00000000-0000-0000-0000-0000000000ff/acknowledge"
+        )
+        assert unknown.status_code == 404
+
+    async with Session() as session:
+        row = await session.get(ConsistencyFinding, theirs.id)
+    assert row is not None
+    assert row.status == "pending"  # the refusals consumed nothing

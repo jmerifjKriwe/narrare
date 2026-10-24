@@ -46,6 +46,12 @@ class ExtractionAccepted(BaseModel):
     job_id: UUID
 
 
+class ConsistencyAccepted(BaseModel):
+    """The check's enqueue answer: what to poll."""
+
+    job_id: UUID
+
+
 class EntityRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -88,5 +94,16 @@ class SuggestionRead(BaseModel):
     name: str
     kind: str
     description: str | None
+    status: str
+    created_at: datetime
+
+
+class FindingRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    novel_id: UUID
+    summary: str
+    detail: str | None
     status: str
     created_at: datetime

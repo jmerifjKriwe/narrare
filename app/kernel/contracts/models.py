@@ -103,6 +103,29 @@ class EntitySuggestion(UserOwned):
     )
 
 
+class ConsistencyFinding(UserOwned):
+    """One contradiction the whole-novel check found, awaiting review.
+
+    The review contract mirrors the suggestion queue's: born ``pending``,
+    consumed exactly once — acknowledged (seen; the text stays as it is) or
+    dismissed. ``summary`` is the finding's identity: a re-run of the check
+    files nothing new while the same summary is still pending.
+    """
+
+    __tablename__ = "consistency_findings"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    novel_id: Mapped[UUID] = mapped_column(ForeignKey("novels.id", ondelete="CASCADE"))
+    summary: Mapped[str] = mapped_column(String(200))
+    # The quoted readings that disagree, when the provider offered them.
+    detail: Mapped[str | None] = mapped_column(Text)
+    # pending | acknowledged | dismissed — the review contract's three states.
+    status: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class Document(UserOwned):
     """An uploaded text the knowledge base can search."""
 

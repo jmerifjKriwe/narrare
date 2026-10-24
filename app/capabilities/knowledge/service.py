@@ -13,20 +13,31 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.chunking import chunk_text
-from app.capabilities.knowledge.jobs import KIND, MAX_NAME_LENGTH
+from app.capabilities.knowledge.jobs import KIND, KIND_CHECK, MAX_NAME_LENGTH
 from app.capabilities.knowledge.prompts import ENTITY_KINDS
 from app.capabilities.knowledge.repository import (
     ACCEPTED,
+    ACKNOWLEDGED,
     DISCARDED,
+    DISMISSED,
     PENDING,
     ChunkRepository,
+    ConsistencyFindingRepository,
     DocumentRepository,
     EntityRepository,
     EntitySuggestionRepository,
 )
 from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult
 from app.kernel.auth import SetupRequiredError
-from app.kernel.contracts.models import Chapter, Document, Entity, EntitySuggestion, Novel, User
+from app.kernel.contracts.models import (
+    Chapter,
+    ConsistencyFinding,
+    Document,
+    Entity,
+    EntitySuggestion,
+    Novel,
+    User,
+)
 from app.kernel.embeddings import EmbeddingProvider  # noqa: TC001
 from app.kernel.jobs import Job, enqueue
 from app.kernel.retrieval import EmbeddingMismatchError, Passage, PassageRepository
@@ -52,6 +63,10 @@ class AlreadyReviewedError(Exception):
     """The suggestion was accepted or discarded before; review is exactly-once."""
 
 
+class FindingAlreadyReviewedError(Exception):
+    """The finding was acknowledged or dismissed before; review is exactly-once."""
+
+
 class InvalidEntityUpdateError(ValueError):
     """The update breaks the entity contract: a blank or over-long name, or
     a kind outside the extraction vocabulary."""
@@ -72,6 +87,7 @@ class KnowledgeService:
         self.passages = PassageRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
         self.suggestions = EntitySuggestionRepository(session, user_id)
+        self.findings = ConsistencyFindingRepository(session, user_id)
 
     async def list_documents(self) -> Sequence[Document]:
         return await self.documents.list()
@@ -198,6 +214,55 @@ class KnowledgeService:
         suggestion.status = DISCARDED
         await self.session.commit()
         return suggestion
+
+    async def enqueue_consistency(self, novel_id: UUID) -> Job:
+        """Validate the novel and enqueue the consistency check — nothing more.
+
+        The request only enqueues (D14): the provider call is the worker's,
+        in the check's handler. The enqueue rides this transaction, so a
+        failure of the request leaves no job behind. The whole novel is the
+        work — a novel without chapters is a valid check that answers an
+        empty queue, not a refusal.
+        """
+        if await self.session.get(User, self.user_id) is None:
+            raise SetupRequiredError
+        await self._own_novel(novel_id)
+        job = await enqueue(self.session, self.user_id, KIND_CHECK, {"novel_id": str(novel_id)})
+        await self.session.commit()
+        return job
+
+    async def list_findings(
+        self, novel_id: UUID, status: str = PENDING
+    ) -> Sequence[ConsistencyFinding]:
+        await self._own_novel(novel_id)
+        return await self.findings.list_for_novel(novel_id, status)
+
+    async def acknowledge_finding(self, finding_id: UUID) -> ConsistencyFinding:
+        """Acknowledge: consume the finding — seen, and the text stays as it is.
+
+        The suggestion queue's exactly-once, for the second review lane: the
+        repository's row lock plus the pending check makes a concurrent
+        verdict wait for this commit and then read a consumed row.
+        """
+        finding = await self.findings.locked(finding_id)
+        if finding is None:
+            raise NotFoundError
+        if finding.status != PENDING:
+            raise FindingAlreadyReviewedError
+        finding.status = ACKNOWLEDGED
+        await self.session.commit()
+        return finding
+
+    async def dismiss_finding(self, finding_id: UUID) -> ConsistencyFinding:
+        """Dismiss: consume without keeping, with acknowledge's exactly-once."""
+        finding = await self.findings.locked(finding_id)
+        if finding is None:
+            raise NotFoundError
+        if finding.status != PENDING:
+            raise FindingAlreadyReviewedError
+        finding.status = DISMISSED
+        await self.session.commit()
+        return finding
 
     async def update_entity(self, entity_id: UUID, changes: EntityUpdate) -> Entity:
         """Correct an entity by hand: only the fields the body carries.
