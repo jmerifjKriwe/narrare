@@ -11,6 +11,7 @@ import en from "../../../i18n/en.json";
 
 export const docks = [
   { id: "chat", path: "/novels/$id/chat", titleKey: "chat.dockTitle" },
+  { id: "knowledge", path: "/novels/$id/wissen", titleKey: "knowledge.dockTitle" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;

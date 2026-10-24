@@ -2,6 +2,7 @@ import { Link, Outlet, useChildMatches, useNavigate, useParams, useSearch } from
 import { useCallback, useEffect, useState } from "react";
 
 import { client, type Chapter, type Novel } from "@shell/lib/api/client";
+import { publishActiveChapter } from "@shell/lib/activeChapter";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
@@ -78,6 +79,18 @@ export function NovelPage() {
   const [offer, setOffer] = useState<string | null>(null);
   useEffect(() => subscribeProposal(setOffer), []);
   const resolveOffer = useCallback(() => setOffer(null), []);
+
+  // The active chapter is workspace state the docks beside the editor need
+  // — extraction reads the chapter the editor is showing. The shell seam
+  // (not a capability import) carries it: published on every selection
+  // change, null as the workspace goes, so a selection never outlives its
+  // owner.
+  useEffect(() => {
+    publishActiveChapter(active);
+    return () => {
+      publishActiveChapter(null);
+    };
+  }, [active]);
 
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
