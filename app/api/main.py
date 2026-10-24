@@ -89,6 +89,16 @@ def _serve_shell(app: FastAPI, dist: Path) -> None:
             raise HTTPException(status_code=404)
         return FileResponse(file, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
+    @app.get("/THIRD-PARTY-NOTICES.txt", include_in_schema=False)
+    async def notices() -> FileResponse:
+        # The bundle inlines third-party code whose license comments the
+        # minifier strips; this file is where those licenses reach the
+        # recipient. Uncached like the shell: it changes with every build.
+        file = root / "THIRD-PARTY-NOTICES.txt"
+        if not file.is_file():
+            raise HTTPException(status_code=404)
+        return FileResponse(file, headers={"Cache-Control": "no-store"})
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def shell(full_path: str) -> FileResponse:
         # Not a route of its own: the API keeps answering, JSON included.

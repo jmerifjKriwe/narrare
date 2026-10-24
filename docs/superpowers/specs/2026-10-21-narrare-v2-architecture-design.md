@@ -57,15 +57,18 @@ otherwise. Two numbers from the design dialogue had moved and are corrected here
 | Intent declaration surfaces | **8** — cited from the 2026-10-19 throughput spec, *not re-counted* | 8 | 0 hand-edited |
 | Provider declaration surfaces | **1 hand-edited** (`llm/_providers/catalog.yaml`) + 2 generated; was 15 | 15 → 1 | 1 catalog entry |
 | `justfile` public recipes | **95** | 95 | 21 |
-| CI jobs | **17 across 5 workflows (13 in `ci.yml`)** | 15 | ≤ 5 |
+| CI jobs | **7 in `ci.yml` (5 gates + `changes` + `nightly-guard`) + `release-please`** | 7 | ≤ 7 (5 gates + 2 scheduling guards) |
 | Hand-written TS API type modules (`packages/web/lib/api/*.ts`) | **64** | — | 0 |
 
 Corrections and notes:
 
 - **ADRs: 100, matching the dialogue.** The dialogue value was right; a broader count
   that included INDEX/TEMPLATE produced the wrong 102.
-- **CI jobs: 17, not 15.** `ci.yml` holds 13; `eval-nightly`, `mutation-testing-monthly`,
-  `release-please`, `vrt-update-baselines` hold 4 more.
+- **CI jobs: 7, not 17.** The v1 surface (17 jobs across 5 workflows) was deleted with
+  the cutover. `ci.yml` now holds 7 jobs — 5 functional gates (`lint-types`, `tests`,
+  `e2e`, `build`, `coverage`) plus `changes` (PR narrowing) and `nightly-guard`
+  (skip on unchanged `main`) — and `release-please` runs separately. The target is
+  therefore ≤ 7, with the two scheduling guards called out as non-gate jobs.
 - **Recipes: the target is 21, not 22.** The §6 list has 21 entries; the 22 that
   stood here and in §12 was a miscount, corrected 2026-10-22.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
@@ -193,8 +196,10 @@ scoped to changed paths.
 
 **Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
 
-**CI — at most five jobs:** lint + types; tests; e2e for affected capabilities; build;
-coverage badge. Runs on PR, plus the nightly schedule on the e2e job and on release.
+**CI — at most seven jobs:** five functional gates (lint + types; tests; e2e for
+affected capabilities; build; coverage badge) plus `changes` (PR narrowing) and
+`nightly-guard` (skip on unchanged `main`). Runs on PR, plus the nightly schedule on
+the e2e job and on release.
 
 **`justfile` keeps 21 public recipes:**
 
@@ -381,7 +386,7 @@ not by a document:
 3. **A capability is done only with a green E2E** through the real UI, real backend and
    real database, with the fake provider at the boundary.
 4. **The §2 numbers reach their targets**: ADRs ≤ 15, rules ≤ 5, hooks ≤ 10, check
-   scripts ≤ 3, recipes 21, CI jobs ≤ 5, zero hand-written API type modules.
+   scripts ≤ 3, recipes 21, CI jobs ≤ 7 (5 gates + 2 scheduling guards), zero hand-written API type modules.
 5. **The local gate runs in under 10 s and under 60 s**, and a capability port is a
    folder plus a test, not a tour of the repository.
 

@@ -8,7 +8,6 @@ description:
   API changes.
 license: MIT
 metadata:
-  opencode/autoinvoke: false
   author: vercel
   version: '1.0.0'
 ---

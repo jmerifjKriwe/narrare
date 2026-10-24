@@ -24,6 +24,9 @@ jobs:
   # every job below reports skipped. On PRs and pushes it always proceeds.
   nightly-guard:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       proceed: ${{ steps.guard.outputs.proceed }}
     steps:
@@ -50,15 +53,31 @@ jobs:
     if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     steps:
+      # Full history: gitleaks scans the push range base^..head, which needs
+      # the base commit that a shallow (depth-1) checkout does not have.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
       - run: uv sync
+      - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
       - run: just lint
       - run: just typecheck
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -112,7 +131,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U narrare"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -123,6 +142,10 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
       - run: just test
 
   e2e:
@@ -139,7 +162,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U narrare"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -181,6 +204,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
       - run: just build
 
   coverage:
@@ -197,7 +224,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U narrare"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -208,18 +235,15 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync
-      - run: uv run pytest app --cov --cov-report=term
-      - id: coverage
-        run: |
-          percent=$(uv run coverage report --format=total)
-          echo "percent=$percent" >> "$GITHUB_OUTPUT"
-      - uses: schneegans/dynamic-badges-action@v1.7.0
+      - run: uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          auth: ${{ secrets.GIST_TOKEN }}
-          gistID: ${{ vars.COVERAGE_GIST_ID }}
-          filename: narrare-coverage.json
-          label: coverage
-          message: ${{ steps.coverage.outputs.percent }}%
-          valColorRange: ${{ steps.coverage.outputs.percent }}
-          maxColorRange: 100
-          minColorRange: 0
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml

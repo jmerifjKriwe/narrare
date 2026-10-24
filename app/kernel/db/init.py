@@ -41,7 +41,23 @@ async def reset_schema(database_url: str) -> None:
     """
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
-        await connection.run_sync(models.Base.metadata.drop_all)
+        # Drop every table (and dependent views/foreign keys) in the public
+        # schema, including ones the current models do not know about (leftover
+        # tables from an older schema version). metadata.drop_all alone leaves
+        # those behind and then fails on the next run. Dropping tables (not the
+        # whole schema) keeps the vector extension's types registered, so pooled
+        # connections do not hit stale type OIDs.
+        result = await connection.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        )
+        for (table_name,) in result.fetchall():
+            await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
+        # Views can also depend on tables; drop them too.
+        result = await connection.execute(
+            text("SELECT viewname FROM pg_views WHERE schemaname = 'public'")
+        )
+        for (view_name,) in result.fetchall():
+            await connection.execute(text(f'DROP VIEW IF EXISTS "{view_name}" CASCADE'))
     await engine.dispose()
     await init_schema(database_url)
 

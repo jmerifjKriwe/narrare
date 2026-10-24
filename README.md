@@ -4,87 +4,77 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![codecov](https://codecov.io/gh/jmerifjKriwe/narrare/branch/main/graph/badge.svg)](https://codecov.io/gh/jmerifjKriwe/narrare)
 
 > Local-first, AI-assisted creative writing.
 
-Four capabilities, one folder each under `app/capabilities/`: writing (novel, chapter,
-editor, continuation), knowledge (upload, chunk, embed, search), chat (question over
-the knowledge base, streamed answer with sources) and setup (first run). Shared domain
-lives in `app/kernel/`; the web app is `web/`.
+Narrare is a writing environment for novels that runs entirely on your machine.
+Write in a focused editor, ask your own reference material questions and get
+streamed answers with sources, and continue a chapter with any OpenAI-compatible
+model — cloud or local.
 
-## Requirements
+<!-- TODO(screenshot): replace with a real app capture once the UI rework lands. -->
 
-- [Python 3.14+](https://www.python.org/downloads/) and [uv](https://docs.astral.sh/uv/)
-- [Node.js 22+](https://nodejs.org/) and [pnpm](https://pnpm.io/)
-- [Docker](https://docs.docker.com/get-docker/) with Compose (Postgres + pgvector)
-- [just](https://just.systems/)
+## Why Narrare
+
+Narrare exists so that a writer's body of work stays theirs: the manuscripts,
+the reference material behind them and the tools that touch them. It treats
+novels as a body of work, not a single file — several novels, chapters under
+each, and novels that belong together in a series.
+
+There is no account and no cloud: it is your install, your Postgres, your
+machine, and the model is your choice — a hosted endpoint or one you run
+yourself. Nothing leaves the machine but what you send to the model.
+
+## Features
+
+- **Novels, not files** — writing works the way books do: several novels,
+  chapters under each, a focused editor, and continuations generated from your
+  own text.
+- **A knowledge base that is yours** — upload plain-text reference material and
+  it is chunked, embedded and searched in your own Postgres.
+- **Answers with receipts** — chat over the knowledge base, streamed, every
+  answer citing its sources.
+- **A first run that ends with your first novel** — enter a title and start
+  writing; there is no account to create.
+- **Local-first** — your data lives in your own Postgres (`pgvector` included)
+  on your machine; nothing leaves it but what you send to your model.
+- **Bring your own model** — any OpenAI-compatible endpoint: OpenAI, OpenRouter,
+  DeepSeek, Groq, or fully local through Ollama, llama.cpp or vLLM. The same
+  three settings drive text and embeddings, and a model switch re-embeds the
+  corpus in one click.
+- **English, Deutsch, français** — the UI speaks all three; a missing
+  translation is a build error, not a quiet fallback.
+
+## Status
+
+Pre-1.0 and moving: the writing surface keeps growing, more import formats and
+series support are on the way, and every capability is proven by an end-to-end
+test that drives the real browser, API and database.
 
 ## Quick start
+
+[Python 3.14+](https://www.python.org/downloads/) with [uv](https://docs.astral.sh/uv/),
+[Node.js 22+](https://nodejs.org/) with [pnpm](https://pnpm.io/),
+[Docker](https://docs.docker.com/get-docker/) with Compose and
+[just](https://just.systems/):
 
 ```bash
 just dev-setup     # python env, web deps, git hooks, Postgres, schema
 just dev           # API on :8000, web on :3100
 ```
 
-Open <http://localhost:3100>. A fresh database lands on `/setup`.
+Open <http://localhost:3100>. A fresh database lands on `/setup`, and the
+default provider needs no key.
 
-## Commands
+The daily workflow — branches, commits, PRs, gates — lives in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-`just --list` shows all 21. The ones used daily:
+## Where to look next
 
-```bash
-just check              # fast gate: ruff + pyright
-just test               # every integration test
-just test-file <path>   # one file or one node
-just test-e2e           # capability E2E: browser, API, Postgres
-just test-frontend      # web unit tests
-just verify             # check + all suites + web build
-just build              # production build of the web app
-just dev-services       # Postgres on :5432 (dev) and :5433 (tests)
-just db-init            # create the schema directly from the models
-just db-reset           # drop and rebuild the dev database
-just db-shell           # psql on the dev database
-just generate           # write the OpenAPI document, the capability views and the typed client
-just new-capability x   # scaffold the test fixtures for a new capability
-```
-
-## Structure
-
-```
-app/
-├── api/            ← FastAPI app, mounts the capability routers
-├── capabilities/   ← one folder per capability: router, service, repository, tests, e2e
-└── kernel/         ← contracts, db, auth, llm and embedding boundaries, retrieval, testing
-web/                ← Vite + React app
-i18n/               ← en, de, fr; typing makes a missing key a build error
-docs/               ← the design record
-```
-
-The authority for structure and boundaries is
-[`docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md).
-
-## Testing
-
-A capability is done only with a green E2E that drives the real browser, the real API
-and the real Postgres. The only fake is the provider at its boundary, and it is a
-catalog entry chosen by configuration (`NARRE_LLM_PROVIDER`, `NARRE_EMBEDDING_PROVIDER`),
-not a test branch.
-
-`fake` is the default and needs no key. Setting `NARRE_LLM_PROVIDER=openai-compatible`
-switches generations to a real model through one fetch strategy for the chat
-completions SSE shape — OpenAI, OpenRouter, DeepSeek, Groq and local servers (Ollama,
-llama.cpp, vLLM) all speak it, so `NARRE_LLM_BASE_URL`, `NARRE_LLM_MODEL` and
-`NARRE_LLM_API_KEY` are all that change. `NARRE_EMBEDDING_PROVIDER=openai-compatible`
-does the same for retrieval through the `/embeddings` JSON shape. The vector column
-takes whatever width the model answers with; one knowledge base stays with one model,
-and a model switch is refused with a clear message until the corpus is re-embedded —
-one click on the knowledge page. Startup logs which providers serve and refuses to
-start on a half-configured one.
-
-The integration suites share `narrare_v2_test`; each E2E capability owns a database and
-a module-scoped stack, so `just test-e2e` runs suites one after another on the same
-ports.
-
-## License
-
-MIT
+- [CONTRIBUTING.md](CONTRIBUTING.md) — getting started, branch model, PR process
+- [AGENTS.md](AGENTS.md) — the rules of the codebase and the agent layer
+- [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
+  — the authority for structure and boundaries
+- [docs/user/INDEX.md](docs/user/INDEX.md) — the app's surfaces, generated from
+  the capability facts

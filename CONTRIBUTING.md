@@ -7,11 +7,12 @@ more.
 
 ## Getting Started
 
-The requirements are the ones in the [README](README.md): Python 3.14+ with
-[uv](https://docs.astral.sh/uv/), Node.js 22+ with pnpm, Docker with Compose,
-and [just](https://just.systems/). One command sets everything else up — the
-Python environment, web dependencies, git hooks, the Postgres services and the
-schema:
+You need [Python 3.14+](https://www.python.org/downloads/) with
+[uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
+[pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with
+Compose, and [just](https://just.systems/). One command sets everything else
+up — the Python environment, web dependencies, git hooks, the Postgres
+services and the schema:
 
 ```bash
 just dev-setup
@@ -89,8 +90,8 @@ muss bleiben, solange der Scan die History sieht.
 ## PR Process
 
 1. Push your feature branch and open a Pull Request against `main`.
-2. Fill in the PR template (see `.github/PULL_REQUEST_TEMPLATE/`). For
-   AI-powered UI changes, complete the **UX Review Checklist** (`ux_review.md`).
+2. Fill in the PR template (`.github/PULL_REQUEST_TEMPLATE.md`). For UI or
+   AI-touching changes, complete the **UX review** section; delete it otherwise.
 3. **PR checklist:**
    - [ ] `just check` passes (lint + types)
    - [ ] Tests pass (`just test`, `just test-frontend`, and the capability E2E)
