@@ -261,6 +261,16 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
     answer. That must read as a named error — the row is the answer, and no
     answer is an error, not work still going — and the trigger must reopen:
     the retry is the same button again, starting a fresh extraction.
+
+    Two timing windows shape the loop, and neither may cost a timeout. The
+    fake provider finishes fast, so a round's job may complete between the
+    read that says it is live and the service stop: its poll then answers
+    done before the service dies, no poll is left to raise the outage, and
+    the alert this test needs never comes — a round lost that way costs one
+    more round. And the panel's swap of the previous round's status element
+    for the new job's is a render that can fall between two samples, so the
+    swap is waited out by the old element going away — durable once true —
+    never by catching a milliseconds-wide count-zero window.
     """
     _open_workspace_with_validated_title(page, "Die unterbrochene Durchsuchung")
     _write_chapter(page)
@@ -270,31 +280,49 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
     expect(dock).to_be_visible()
     extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
     status = dock.locator("[data-job-status]")
+    alert = dock.get_by_role("alert").filter(has_text="Fortschritt")
 
-    # The stop must land under an outstanding job. The fake provider
-    # finishes fast, so a first poll that already says done gets another
-    # extraction — each round is a fresh chance to catch live work, and a
-    # done row's suggestions are simply more pending queue for the recovery.
-    for attempt in range(8):
+    for _attempt in range(8):
+        if _attempt > 0:
+            # Tag the previous round's row: the next read must sample the
+            # new job's element, and "the tagged one is gone" is exactly
+            # that, durably — React unmounts the old node when the trigger
+            # files a new job, and a fresh one never carries the tag.
+            status.evaluate("element => element.setAttribute('data-previous-round', '1')")
         extract.click()
-        if attempt > 0:
-            # The panel tracks one job id: the previous round's status
-            # element unmounts the moment the trigger files a new job.
-            expect(status).to_have_count(0)
+        if _attempt > 0:
+            # The tag check retries through the enqueue's flight and lands
+            # when the old element unmounts; the visible status afterwards
+            # is the new job's row by construction.
+            expect(dock.locator("[data-job-status][data-previous-round]")).to_have_count(0)
         expect(status).to_be_visible()
-        if status.get_attribute("data-job-status") != "done":
+        if status.get_attribute("data-job-status") == "done":
+            # Settled before the stop could land under it: a spent chance,
+            # and the done row's suggestions are simply more pending queue
+            # for the round that does catch live work.
+            continue
+
+        # A live row: stop the service under it. The stop settles the round
+        # one of two ways within a poll tick — the unanswered poll names the
+        # outage (the race won), or the row's last answer, a poll that
+        # landed before the service died, flips it done and the polling
+        # stops with nothing left to raise (the race lost).
+        stack.stop_api()
+        try:
+            expect(alert.or_(dock.locator('[data-job-status="done"]'))).to_be_visible()
+            if alert.count() == 0:
+                # The race lost. The service comes back and the loop takes
+                # another round; only the won round proceeds.
+                continue
+            # The poll's answer is the connection's refusal, and that is named.
+            expect(alert).to_be_visible()
+            # The trigger reopens instead of locking on the unanswered job.
+            expect(extract).to_be_enabled()
             break
+        finally:
+            stack.start_api()
     else:
         pytest.fail("never caught an outstanding job to stop the service under")
-
-    stack.stop_api()
-    try:
-        # The poll's answer is the connection's refusal, and that is named.
-        expect(dock.get_by_role("alert").filter(has_text="Fortschritt")).to_be_visible()
-        # The trigger reopens instead of locking on the unanswered job.
-        expect(extract).to_be_enabled()
-    finally:
-        stack.start_api()
 
     # The retry: a click on the reopened trigger runs a fresh extraction,
     # and the panel follows it to its answer with no error left standing.

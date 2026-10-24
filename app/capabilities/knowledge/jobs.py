@@ -71,7 +71,13 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
         if not isinstance(name, str) or not name.strip():
             raise _refuse("an item has no name", item)
         if len(name) > MAX_NAME_LENGTH:
-            raise _refuse(f"an item's name is longer than {MAX_NAME_LENGTH} characters", item)
+            raise _refuse(
+                # The name's true length rides the reason: the repr below
+                # clips the shown item, so without the count a 2000-character
+                # name would look like a 200-character one.
+                f"an item's name is {len(name)} characters, over the {MAX_NAME_LENGTH} limit",
+                item,
+            )
         if kind not in ENTITY_KINDS:
             raise _refuse(f"an item's kind is not one of {'|'.join(ENTITY_KINDS)}", item)
         if description is not None and not isinstance(description, str):

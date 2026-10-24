@@ -51,7 +51,7 @@ async def _run_lane_once() -> bool:
 async def _enqueue_extraction(client: AsyncClient, novel_id: str, chapter_id: str) -> str:
     """Enqueue one extraction run, asserting the contract's 202.
 
-    Every test that enqueues goes through here, so a refusal is caught as
+    Every test expecting the 202 goes through here, so a refusal is caught as
     the wrong status where it happens — not later as a KeyError on a body
     that never carried a job id.
     """
@@ -230,8 +230,12 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     # whose verdict would arrive as a DataError after the fact.
     [widest] = parse_entities(f'[{{"name": "{"N" * 200}", "kind": "character"}}]')
     assert widest.name == "N" * 200
-    with pytest.raises(MalformedAnswerError):
+    with pytest.raises(MalformedAnswerError) as refused:
         parse_entities(f'[{{"name": "{"N" * 201}", "kind": "character"}}]')
+    # The refusal carries the name's true length: the repr clips the shown
+    # item at 200 characters, so the count is what keeps an over-long name
+    # diagnosable — 201 is a boundary slip, 2000 is a broken prompt.
+    assert "an item's name is 201 characters" in str(refused.value)
 
 
 async def test_another_users_job_is_not_visible() -> None:
