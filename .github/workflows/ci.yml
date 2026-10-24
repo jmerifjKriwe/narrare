@@ -231,18 +231,15 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync
-      - run: uv run pytest app --cov --cov-report=term
-      - id: coverage
-        run: |
-          percent=$(uv run coverage report --format=total)
-          echo "percent=$percent" >> "$GITHUB_OUTPUT"
-      - uses: schneegans/dynamic-badges-action@v1.7.0
+      - run: uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          auth: ${{ secrets.GIST_TOKEN }}
-          gistID: ${{ vars.COVERAGE_GIST_ID }}
-          filename: narrare-coverage.json
-          label: coverage
-          message: ${{ steps.coverage.outputs.percent }}%
-          valColorRange: ${{ steps.coverage.outputs.percent }}
-          maxColorRange: 100
-          minColorRange: 0
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
