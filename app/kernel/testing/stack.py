@@ -15,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Generator  # noqa: TC003
 from concurrent.futures import ThreadPoolExecutor
@@ -41,6 +42,17 @@ WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100"))
 SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
+def _read_log(process: subprocess.Popen[bytes]) -> str:
+    log_file = getattr(process, "_log_file", None)
+    if log_file is None:
+        return ""
+    try:
+        log_file.flush()
+        return Path(log_file.name).read_text(errors="replace")
+    except OSError, ValueError:
+        return ""
+
+
 def _wait_for(
     url: str, timeout: float = 180.0, process: subprocess.Popen[bytes] | None = None
 ) -> None:
@@ -53,23 +65,14 @@ def _wait_for(
         except URLError, TimeoutError:
             time.sleep(0.5)
         if process is not None and process.poll() is not None:
-            output = b""
-            if process.stdout is not None:
-                output = process.stdout.read()
+            output = _read_log(process)
             raise RuntimeError(
                 f"{url} did not answer within {timeout}s; process exited "
-                f"{process.returncode}:\n{output.decode(errors='replace')}"
+                f"{process.returncode}:\n{output}"
             )
     # Timed out: capture whatever the process printed.
-    output = b""
-    if process is not None and process.stdout is not None:
-        try:
-            output = process.stdout.read()
-        except Exception:
-            output = b""
-    raise RuntimeError(
-        f"{url} did not answer within {timeout}s:\n{output.decode(errors='replace')}"
-    )
+    output = _read_log(process) if process is not None else ""
+    raise RuntimeError(f"{url} did not answer within {timeout}s:\n{output}")
 
 
 async def _reset(database: str, seed_user: bool) -> None:
@@ -103,14 +106,18 @@ def _prepare(database: str, seed_user: bool) -> None:
 
 
 def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
-    return subprocess.Popen(  # noqa: S603  fixed argument list, this interpreter
+    _fd, _ = tempfile.mkstemp(prefix="narrare-api-")
+    log_file = os.fdopen(_fd, "w+b")
+    proc = subprocess.Popen(  # noqa: S603  fixed argument list, this interpreter
         [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(API_PORT)],
         cwd=ROOT,
         env=environment,
         start_new_session=True,
-        stdout=subprocess.PIPE,
+        stdout=log_file,
         stderr=subprocess.STDOUT,
     )
+    proc._log_file = log_file  # type: ignore[attr-defined]
+    return proc
 
 
 def _stop(process: subprocess.Popen[bytes]) -> None:
@@ -118,8 +125,9 @@ def _stop(process: subprocess.Popen[bytes]) -> None:
     if process.poll() is None:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         process.wait(timeout=SHUTDOWN_TIMEOUT)
-    if process.stdout is not None:
-        process.stdout.close()
+    log_file = getattr(process, "_log_file", None)
+    if log_file is not None:
+        log_file.close()
 
 
 @dataclass
@@ -157,14 +165,17 @@ def run_stack(
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")
     api_process = _spawn_api(environment)
+    _fd2, _ = tempfile.mkstemp(prefix="narrare-web-")
+    web_log = os.fdopen(_fd2, "w+b")
     web_process = subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
         [pnpm, "dev"],
         cwd=ROOT / "web",
         env=environment,
         start_new_session=True,
-        stdout=subprocess.PIPE,
+        stdout=web_log,
         stderr=subprocess.STDOUT,
     )
+    web_process._log_file = web_log  # type: ignore[attr-defined]
     stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
         _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json", process=api_process)
