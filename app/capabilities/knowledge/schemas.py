@@ -57,6 +57,28 @@ class EntityRead(BaseModel):
     created_at: datetime
 
 
+class EntityUpdate(BaseModel):
+    """The PATCH body: only the fields present are the change.
+
+    ``None`` is ambiguous by shape alone — an absent field and a cleared
+    description both look like None — so the service reads
+    ``model_fields_set`` to tell a carried change from a missing one. The
+    values are checked there, against the parse contract's vocabulary:
+    this schema carries the fields, the contract decides what a value may
+    be.
+    """
+
+    name: str | None = None
+    kind: str | None = None
+    description: str | None = None
+
+
+class EntityMerge(BaseModel):
+    """The merge's whole ask: which row survives."""
+
+    target_id: UUID
+
+
 class SuggestionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

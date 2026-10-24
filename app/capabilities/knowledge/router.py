@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import (
     DocumentRead,
+    EntityMerge,
     EntityRead,
+    EntityUpdate,
     ExtractionAccepted,
     ExtractionRequest,
     ReembedResult,
@@ -20,8 +22,10 @@ from app.capabilities.knowledge.service import (
     AlreadyReviewedError,
     DocumentTooLargeError,
     EmptyDocumentError,
+    InvalidEntityUpdateError,
     KnowledgeService,
     NotFoundError,
+    SelfMergeError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
@@ -165,3 +169,36 @@ async def discard_suggestion(suggestion_id: UUID, service: ServiceDep) -> Sugges
     except AlreadyReviewedError:
         raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
     return SuggestionRead.model_validate(suggestion)
+
+
+@router.patch("/entities/{entity_id}", response_model=EntityRead)
+async def update_entity(entity_id: UUID, payload: EntityUpdate, service: ServiceDep) -> EntityRead:
+    """Correct an entity by hand: only the fields the body carries change."""
+    try:
+        entity = await service.update_entity(entity_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+    except InvalidEntityUpdateError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    return EntityRead.model_validate(entity)
+
+
+@router.delete("/entities/{entity_id}", status_code=204)
+async def delete_entity(entity_id: UUID, service: ServiceDep) -> None:
+    """Delete an entity. The row has no referents — the delete is a row delete."""
+    try:
+        await service.delete_entity(entity_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+
+
+@router.post("/entities/{entity_id}/merge", response_model=EntityRead)
+async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDep) -> EntityRead:
+    """Fold this entity into another: the target survives, the source is deleted."""
+    try:
+        target = await service.merge_entities(entity_id, payload.target_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+    except SelfMergeError:
+        raise HTTPException(status_code=422, detail="an entity cannot merge into itself") from None
+    return EntityRead.model_validate(target)

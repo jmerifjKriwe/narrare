@@ -64,6 +64,11 @@ class ChunkRepository(ScopedRepository[Chunk]):
 class EntityRepository(ScopedRepository[Entity]):
     model = Entity
 
+    async def get(self, entity_id: UUID) -> Entity | None:
+        """The row, scoped: another user's entity answers as absent, the
+        way every scoped read in this product answers."""
+        return await self.session.scalar(self.query().where(Entity.id == entity_id))
+
     async def list_for_novel(self, novel_id: UUID) -> Sequence[Entity]:
         result = await self.session.scalars(
             self.query().where(Entity.novel_id == novel_id).order_by(Entity.created_at)
@@ -81,6 +86,9 @@ class EntityRepository(ScopedRepository[Entity]):
         self.session.add(entity)
         await self.session.flush()
         return entity
+
+    async def delete(self, entity: Entity) -> None:
+        await self.session.delete(entity)
 
 
 class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):

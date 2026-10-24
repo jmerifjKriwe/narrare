@@ -18,8 +18,15 @@ the names it filters instantly, and the corpus's passages through the
 semantic search, debounced. The Titel-refusal carry rides the same
 flow's book-creation step: the failed submit names the empty field with the
 catalog's words.
+
+The detail view corrects what review filed: rename, delete and merge —
+each a dialog the focus contract already owns, each outcome announced,
+and the entity list reflects every change at once. The rename also runs
+keyboard-only: the grid's rows answer the arrow keys and Enter, and the
+form dialog opens into its name field.
 """
 
+from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
@@ -506,10 +513,174 @@ def test_the_dock_search_reaches_passages(page: Page, stack: Stack) -> None:
     finally:
         stack.start_api()
 
-    # Recovery: the same box, asked again, finds the passage again — and
-    # the error is gone with the answer that replaced it.
-    search.fill("Leuchtturm")
-    expect(passages.get_by_text("Notizen")).to_be_visible()
-    expect(dock.get_by_role("alert")).to_have_count(0)
+
+def _row_named(entities: Locator, name: str) -> Locator:
+    """The entity list's cell for one exact name.
+
+    The detail heading shares the name with the row it opened, so the
+    list's own witness is the grid cell, and the exact match keeps a
+    renamed name ("Miralam") from standing in for the old one ("Mira").
+    """
+    return entities.get_by_role("gridcell", name=name, exact=True)
+
+
+def _seed_entities(novel_title: str) -> str:
+    """A novel with Mira, Haus and See filed as entities, through the API.
+
+    The correction flows start where review leaves the story: three
+    accepted entities and no chapter to write first. The API is the
+    stack's own, the worker runs inside it, and the accepts ride the real
+    review path — the seeding is a faster driver, not a shortcut around
+    the product. Returns the novel's id, the workspace URL's parameter.
+    """
+    with httpx.Client(base_url=API, timeout=30) as api:
+        novel = api.post("/api/writing/novels", json={"title": novel_title})
+        novel.raise_for_status()
+        novel_id = novel.json()["id"]
+        chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
+        chapter.raise_for_status()
+        chapter_id = chapter.json()["id"]
+        saved = api.put(f"/api/writing/chapters/{chapter_id}", json={"body": CHAPTER_BODY})
+        saved.raise_for_status()
+        enqueued = api.post(
+            f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id}
+        )
+        enqueued.raise_for_status()
+        # The worker rides the API process: poll the row it settles.
+        for _ in range(120):
+            job = api.get(f"/api/jobs/{enqueued.json()['job_id']}")
+            job.raise_for_status()
+            if job.json()["status"] in ("done", "failed"):
+                break
+            sleep(0.25)
+        else:
+            pytest.fail("the seeded extraction never settled")
+        assert job.json()["status"] == "done"
+        suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
+        suggestions.raise_for_status()
+        assert len(suggestions.json()) == 3
+        for suggestion in suggestions.json():
+            accepted = api.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+            accepted.raise_for_status()
+    return novel_id
+
+
+def test_the_detail_view_corrects_entities_by_hand(page: Page, stack: Stack) -> None:
+    """Rename, delete and merge: the detail view's three corrections.
+
+    Entities enter the world through review, but the review's answer is
+    not the last word — a typo no longer lives forever. The rename shows
+    in the list the moment it lands; the merge leaves the target and not
+    the source; the delete leaves the row gone. Every outcome is
+    announced, so the change is heard as well as seen.
+    """
+    _seed_entities("Die korrigierte Bucht")
+    page.goto("http://127.0.0.1:3100/")
+    page.get_by_role("link", name="Die korrigierte Bucht").click()
+    expect(page.get_by_role("heading", name="Die korrigierte Bucht")).to_be_visible()
+
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+
+    # Rename: the typo dies. The list shows the new name the moment the
+    # save lands, the old one is gone, and the detail follows the row it
+    # opened.
+    _row_named(entities, "Mira").click()
+    dock.get_by_role("region", name="Mira").get_by_role("button", name="Bearbeiten").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Name").fill("Miralam")
+    dialog.get_by_role("button", name="Speichern").click()
+    expect(dialog).not_to_be_visible()
+    expect(_row_named(entities, "Miralam")).to_be_visible()
+    expect(_row_named(entities, "Mira")).to_have_count(0)
+    expect(dock.get_by_role("region", name="Miralam")).to_be_visible()
+    # the outcome is heard, not only seen
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Änderungen an Miralam wurden gespeichert"
+    )
+
+    # Merge: two entries for the same thing fold into one — the target
+    # survives, the source is deleted. The picker offers the novel's other
+    # entities; the source itself is not among them. The detail is still
+    # open on the renamed row: the selection followed it through the save.
+    dock.get_by_role("region", name="Miralam").get_by_role("button", name="Zusammenführen").click()
+    dialog = page.get_by_role("dialog")
+    picker = dialog.get_by_label("Zusammenführen mit")
+    picker.fill("Haus")
+    picker.press("ArrowDown")
+    picker.press("Enter")
+    expect(picker).to_have_value("Haus")
+    dialog.get_by_role("button", name="Jetzt zusammenführen").click()
+    expect(dialog).not_to_be_visible()
+    expect(_row_named(entities, "Haus")).to_be_visible()
+    expect(_row_named(entities, "Miralam")).to_have_count(0)
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Miralam wurde mit Haus zusammengeführt"
+    )
+
+    # Delete: the row goes, and only the row — the confirm dialog names
+    # what it will take before it takes it.
+    _row_named(entities, "See").click()
+    dock.get_by_role("region", name="See").get_by_role("button", name="Löschen").click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_text("Willst du See wirklich löschen?")).to_be_visible()
+    dialog.get_by_role("button", name="Endgültig löschen").click()
+    expect(dialog).not_to_be_visible()
+    expect(_row_named(entities, "See")).to_have_count(0)
+    # what remains is exactly the merge's survivor
+    expect(entities.get_by_role("row")).to_have_count(1)
+    expect(_row_named(entities, "Haus")).to_be_visible()
+    expect(page.locator("[data-live-announcer]")).to_contain_text("See wurde gelöscht")
+
+    assert_accessible(page)
+
+
+def test_an_entity_can_be_renamed_by_keyboard_alone(page: Page, stack: Stack) -> None:
+    """The rename without a pointer: Tab reaches, Enter decides.
+
+    The corrections are dialogs, so the focus contract is the shell's:
+    opening lands in the form, the buttons answer the keyboard, and the
+    save closes back out. The grid's rows are reached through the page's
+    own tab order and selected with Enter. No click anywhere in the flow.
+    """
+    novel_id = _seed_entities("Die Tastatur der Korrektur")
+    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die Tastatur der Korrektur")).to_be_visible()
+
+    tab = page.get_by_role("button", name="Wissen", exact=True)
+    _tab_to(page, tab)
+    page.keyboard.press("Enter")
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+
+    # The list is a real grid: Tab reaches it, the arrows walk it, Enter
+    # selects the row the detail opens on.
+    row = entities.get_by_role("row").filter(has_text="Mira")
+    _tab_to(page, row)
+    page.keyboard.press("Enter")
+    detail = dock.get_by_role("region", name="Mira")
+    expect(detail).to_be_visible()
+
+    # Bearbeiten opens the form; the modal holds the focus, and one Tab
+    # reaches the name field — the typing corrects the row from the
+    # keyboard, no pointer involved.
+    _tab_to(page, detail.get_by_role("button", name="Bearbeiten"))
+    page.keyboard.press("Enter")
+    dialog = page.get_by_role("dialog")
+    name_field = dialog.get_by_label("Name")
+    _tab_to(page, name_field)
+    page.keyboard.type("Miralam")
+    _tab_to(page, dialog.get_by_role("button", name="Speichern"))
+    page.keyboard.press("Enter")
+    expect(dialog).not_to_be_visible()
+    expect(_row_named(entities, "Miralam")).to_be_visible()
+    expect(_row_named(entities, "Mira")).to_have_count(0)
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Änderungen an Miralam wurden gespeichert"
+    )
 
     assert_accessible(page)

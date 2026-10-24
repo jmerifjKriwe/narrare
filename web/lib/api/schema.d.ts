@@ -59,6 +59,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/entities/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Entity
+         * @description Delete an entity. The row has no referents — the delete is a row delete.
+         */
+        delete: operations["delete_entity_api_knowledge_entities__entity_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Entity
+         * @description Correct an entity by hand: only the fields the body carries change.
+         */
+        patch: operations["update_entity_api_knowledge_entities__entity_id__patch"];
+        trace?: never;
+    };
+    "/api/knowledge/entities/{entity_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Entity
+         * @description Fold this entity into another: the target survives, the source is deleted.
+         */
+        post: operations["merge_entity_api_knowledge_entities__entity_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/extraction/{novel_id}": {
         parameters: {
             query?: never;
@@ -414,6 +458,17 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * EntityMerge
+         * @description The merge's whole ask: which row survives.
+         */
+        EntityMerge: {
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+        };
         /** EntityRead */
         EntityRead: {
             /**
@@ -437,6 +492,25 @@ export interface components {
              * Format: uuid
              */
             novel_id: string;
+        };
+        /**
+         * EntityUpdate
+         * @description The PATCH body: only the fields present are the change.
+         *
+         *     ``None`` is ambiguous by shape alone — an absent field and a cleared
+         *     description both look like None — so the service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one. The
+         *     values are checked there, against the parse contract's vocabulary:
+         *     this schema carries the fields, the contract decides what a value may
+         *     be.
+         */
+        EntityUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Name */
+            name?: string | null;
         };
         /**
          * ExtractionAccepted
@@ -747,6 +821,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_entity_api_knowledge_entities__entity_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_entity_api_knowledge_entities__entity_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_entity_api_knowledge_entities__entity_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityMerge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
                 };
             };
             /** @description Validation Error */

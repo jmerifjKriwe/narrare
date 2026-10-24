@@ -249,6 +249,71 @@ export function useDiscardSuggestion(
   });
 }
 
+/** The fields a correction may carry: only these reach the PATCH body. */
+export type EntityChanges = Partial<Pick<Entity, "name" | "kind" | "description">>;
+
+/**
+ * The three corrections of the detail view. Each invalidates the entity
+ * list on settling — not only on success: a 404 means the row is already
+ * gone (another correction won the race), and the refetch is what makes
+ * the detail follow a list that no longer holds the row it shows.
+ */
+export function useUpdateEntity(
+  novelId: string,
+): UseMutationResult<Entity, Error, { entityId: string; changes: EntityChanges }> {
+  return useMutation({
+    mutationFn: async (input: { entityId: string; changes: EntityChanges }) => {
+      const { data, response } = await client.PATCH("/api/knowledge/entities/{entity_id}", {
+        params: { path: { entity_id: input.entityId } },
+        body: input.changes,
+      });
+      if (!response.ok || !data) throw new Error(`update refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void invalidateEntities(novelId);
+    },
+  });
+}
+
+export function useDeleteEntity(novelId: string): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (entityId: string) => {
+      const { response } = await client.DELETE("/api/knowledge/entities/{entity_id}", {
+        params: { path: { entity_id: entityId } },
+      });
+      if (!response.ok) throw new Error(`delete refused: ${response.status}`);
+    },
+    onSettled: () => {
+      void invalidateEntities(novelId);
+    },
+  });
+}
+
+export function useMergeEntities(
+  novelId: string,
+): UseMutationResult<Entity, Error, { sourceId: string; targetId: string }> {
+  return useMutation({
+    mutationFn: async (input: { sourceId: string; targetId: string }) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/entities/{entity_id}/merge",
+        { params: { path: { entity_id: input.sourceId } }, body: { target_id: input.targetId } },
+      );
+      if (!response.ok || !data) throw new Error(`merge refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void invalidateEntities(novelId);
+    },
+  });
+}
+
+/** The entity list is the detail view's data too: the selected row is read
+ *  out of it, so one invalidation refreshes both. */
+function invalidateEntities(novelId: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
+}
+
 /** The two knowledge views of a novel go stale together: a review decision
  *  moves the queue and (on accept) the list in one request. */
 function invalidateKnowledge(novelId: string): void {
