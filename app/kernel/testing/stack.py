@@ -41,7 +41,9 @@ WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100"))
 SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
-def _wait_for(url: str, timeout: float = 180.0) -> None:
+def _wait_for(
+    url: str, timeout: float = 180.0, process: subprocess.Popen[bytes] | None = None
+) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
@@ -50,7 +52,24 @@ def _wait_for(url: str, timeout: float = 180.0) -> None:
                     return
         except URLError, TimeoutError:
             time.sleep(0.5)
-    raise RuntimeError(f"{url} did not answer within {timeout}s")
+        if process is not None and process.poll() is not None:
+            output = b""
+            if process.stdout is not None:
+                output = process.stdout.read()
+            raise RuntimeError(
+                f"{url} did not answer within {timeout}s; process exited "
+                f"{process.returncode}:\n{output.decode(errors='replace')}"
+            )
+    # Timed out: capture whatever the process printed.
+    output = b""
+    if process is not None and process.stdout is not None:
+        try:
+            output = process.stdout.read()
+        except Exception:
+            output = b""
+    raise RuntimeError(
+        f"{url} did not answer within {timeout}s:\n{output.decode(errors='replace')}"
+    )
 
 
 async def _reset(database: str, seed_user: bool) -> None:
@@ -89,15 +108,18 @@ def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
         cwd=ROOT,
         env=environment,
         start_new_session=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
 
 
 def _stop(process: subprocess.Popen[bytes]) -> None:
     """End a whole process group: pnpm runs the dev server as a child."""
-    if process.poll() is not None:
-        return
-    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-    process.wait(timeout=SHUTDOWN_TIMEOUT)
+    if process.poll() is None:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        process.wait(timeout=SHUTDOWN_TIMEOUT)
+    if process.stdout is not None:
+        process.stdout.close()
 
 
 @dataclass
@@ -134,19 +156,19 @@ def run_stack(
     pnpm = shutil.which("pnpm")
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")
-    stack = Stack(
-        environment=environment,
-        api=_spawn_api(environment),
-        web=subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
-            [pnpm, "dev"],
-            cwd=ROOT / "web",
-            env=environment,
-            start_new_session=True,
-        ),
+    api_process = _spawn_api(environment)
+    web_process = subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
+        [pnpm, "dev"],
+        cwd=ROOT / "web",
+        env=environment,
+        start_new_session=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
+    stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
-        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json")
-        _wait_for(f"http://127.0.0.1:{WEB_PORT}")
+        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json", process=api_process)
+        _wait_for(f"http://127.0.0.1:{WEB_PORT}", process=web_process)
         yield stack
     finally:
         # pnpm runs its server in a child process; kill the whole group or the
