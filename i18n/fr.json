@@ -49,6 +49,8 @@
   "editor.ghostArrived": "Une suggestion attend au curseur.",
   "editor.ghostAccepted": "Suggestion acceptée.",
   "editor.ghostDiscarded": "Suggestion rejetée.",
+  "editor.ghostReplaced": "Une nouvelle suggestion a remplacé la précédente.",
+  "editor.ghostFailed": "La suggestion n'a pas pu être complétée.",
   "chat.error": "La réponse a échoué.",
   "knowledge.dockTitle": "Savoir",
   "knowledge.extractionHeading": "Extraction",

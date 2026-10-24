@@ -49,6 +49,8 @@
   "editor.ghostArrived": "A suggestion is waiting at the caret.",
   "editor.ghostAccepted": "Suggestion accepted.",
   "editor.ghostDiscarded": "Suggestion discarded.",
+  "editor.ghostReplaced": "A new suggestion replaced the previous one.",
+  "editor.ghostFailed": "The suggestion could not be completed.",
   "chat.error": "The answer failed.",
   "knowledge.dockTitle": "Knowledge",
   "knowledge.extractionHeading": "Extraction",

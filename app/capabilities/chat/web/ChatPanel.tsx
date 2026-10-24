@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { client, isModelChange } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -19,10 +19,17 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
   // The offer card is spent once its answer was offered or dropped; a new
   // question brings a fresh card with its fresh answer.
   const [offerSpent, setOfferSpent] = useState(false);
+  // The abort line of the in-flight ask. Closing the dock — or leaving the
+  // page, same unmount — stops the answer at the fetch instead of streaming
+  // it into a panel that is gone.
+  const askAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => askAbort.current?.abort(), []);
 
   async function ask(event: React.FormEvent) {
     event.preventDefault();
     if (question.trim() === "") return;
+    const controller = new AbortController();
+    askAbort.current = controller;
     setAsking(true);
     setAnswer("");
     setSources(null);
@@ -35,6 +42,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       const { error, response } = await client.POST("/api/chat/ask", {
         body: { question, limit },
         parseAs: "stream",
+        signal: controller.signal,
       });
       if (!response.ok) {
         // The mismatch refusal names its fix; every other failure stays generic.
@@ -43,6 +51,9 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
         return;
       }
       for await (const frame of readFrames(response)) {
+        // The panel went away with this ask's answer still streaming: write
+        // nothing more into it.
+        if (controller.signal.aborted) return;
         if (frame.sources) setSources(frame.sources);
         if (frame.delta) setAnswer((current) => current + frame.delta);
         // An error frame replaces the done frame: the provider died, and a
@@ -52,8 +63,14 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           return;
         }
       }
+    } catch (error) {
+      // The abort of a departed panel is the user's doing, not a failure —
+      // the fetch rejects with it, and there is no panel left to tell.
+      // Everything else keeps being a real error.
+      if (!controller.signal.aborted) throw error;
     } finally {
-      setAsking(false);
+      askAbort.current = null;
+      if (!controller.signal.aborted) setAsking(false);
     }
   }
 

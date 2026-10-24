@@ -49,6 +49,8 @@
   "editor.ghostArrived": "Am Cursor wartet ein Vorschlag.",
   "editor.ghostAccepted": "Vorschlag übernommen.",
   "editor.ghostDiscarded": "Vorschlag verworfen.",
+  "editor.ghostReplaced": "Ein neuer Vorschlag hat den vorherigen ersetzt.",
+  "editor.ghostFailed": "Der Vorschlag konnte nicht vollendet werden.",
   "chat.error": "Die Antwort ist fehlgeschlagen.",
   "knowledge.dockTitle": "Wissen",
   "knowledge.extractionHeading": "Extraktion",
