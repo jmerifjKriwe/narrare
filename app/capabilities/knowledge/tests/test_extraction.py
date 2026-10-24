@@ -238,6 +238,45 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     assert "an item's name is 201 characters" in str(refused.value)
 
 
+async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
+    """The dedupe ruling: only a pending row blocks, and it blocks its own key.
+
+    A re-run — the outage retry's shape, a second job on the same chapter
+    after the first settled — skips a parsed entity whose (chapter, name,
+    kind) is already pending, so the queue answers with one card set. The
+    skip reads only pending rows, which is the asymmetry: accept consumes
+    the row, and the same re-run is then allowed to ask again — the
+    consumed key files fresh.
+    """
+    async with _client() as client:
+        novel_id, chapter_id = await _chapter(client)
+
+        await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+        # The re-run on the same chapter: three parsed entities, all three
+        # already pending — none of them files a second row.
+        await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+
+        first = (await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")).json()
+        assert [row["name"] for row in first] == ["Mira", "Haus", "See"]
+
+        # The asymmetry's proof: accept consumes Mira's row, so the re-run
+        # files her fresh — a new pending row, not the consumed one back.
+        accepted = await client.post(f"/api/knowledge/suggestions/{first[0]['id']}/accept")
+        assert accepted.status_code == 200
+
+        await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+
+        # The fresh Mira row files after the two that never left, so the
+        # queue's created_at order answers Haus, See first — the pin is the
+        # set, not the sequence.
+        after = (await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")).json()
+        assert sorted(row["name"] for row in after) == ["Haus", "Mira", "See"]
+        assert first[0]["id"] not in [row["id"] for row in after]  # fresh, not resurrected
+
+
 async def test_another_users_job_is_not_visible() -> None:
     from app.kernel.jobs import enqueue
 

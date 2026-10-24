@@ -100,7 +100,13 @@ export function ExtractionPanel() {
           {t("knowledge.extractionError")}
         </p>
       ) : null}
-      {job.data ? (
+      {job.data && !(pollFailed && (job.data.status === "queued" || job.data.status === "running")) ? (
+        // The last-known row renders only what it can still stand behind.
+        // A done or failed row is a fact and stays beside the outage's
+        // alert; a queued or running row is a promise of movement, and a
+        // dead poll cannot keep that promise — hidden, because the alert
+        // is the truth and a row still promising progress the panel
+        // cannot show would outshout it.
         <div className="mt-2">
           <JobStatus job={job.data} />
         </div>
@@ -108,8 +114,6 @@ export function ExtractionPanel() {
       {pollFailed ? (
         // The failed poll names itself where the trigger it unlocked sits:
         // the outage reads as an outage, and the retry is one click away.
-        // With a last-known row the status keeps standing beside it — that
-        // state is the panel's last truth; the alert is the outage's.
         <p role="alert" className="mt-2 text-sm text-danger">
           {t("knowledge.errorJob")}
         </p>
@@ -117,23 +121,34 @@ export function ExtractionPanel() {
       {/* The review queue outlives the job that filled it: a dock reopened
           later still owes the writer the decisions, so the cards render from
           the query, not from the job's lifecycle. */}
-      {(suggestions.data ?? []).map((suggestion) => (
-        <ProposalCard
-          key={suggestion.id}
-          titleKey="knowledge.suggestionTitle"
-          body={suggestion.description ?? ""}
-          onAccept={() => {
-            void accept.mutateAsync(suggestion.id).catch(() => undefined);
-          }}
-          onDiscard={() => {
-            void discard.mutateAsync(suggestion.id).catch(() => undefined);
-          }}
-        >
-          <p className="mt-2 text-sm font-medium">
-            {suggestion.name} · {entityKindLabel(t, suggestion.kind)}
-          </p>
-        </ProposalCard>
-      ))}
+      {suggestions.isError ? (
+        // The queue's own outage, named apart from the entity list's (the
+        // two panels share the dock, and both queries fail together — a
+        // writer reading two alerts must know which answer is missing).
+        // Silence here would read as a spent queue, the same mask the
+        // entity list shed in its own outage test.
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {t("knowledge.errorQueue")}
+        </p>
+      ) : (
+        (suggestions.data ?? []).map((suggestion) => (
+          <ProposalCard
+            key={suggestion.id}
+            titleKey="knowledge.suggestionTitle"
+            body={suggestion.description ?? ""}
+            onAccept={() => {
+              void accept.mutateAsync(suggestion.id).catch(() => undefined);
+            }}
+            onDiscard={() => {
+              void discard.mutateAsync(suggestion.id).catch(() => undefined);
+            }}
+          >
+            <p className="mt-2 text-sm font-medium">
+              {suggestion.name} · {entityKindLabel(t, suggestion.kind)}
+            </p>
+          </ProposalCard>
+        ))
+      )}
     </section>
   );
 }

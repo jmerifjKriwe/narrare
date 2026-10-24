@@ -5,8 +5,17 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
-import { client, type Entity, type Job, type Novel, type NovelCreate, type Suggestion } from "./api/client";
+import {
+  client,
+  type Entity,
+  type Hit,
+  type Job,
+  type Novel,
+  type NovelCreate,
+  type Suggestion,
+} from "./api/client";
 
 /**
  * The one query client. `retry: false` because the backend is a local
@@ -143,6 +152,35 @@ export function usePendingSuggestionsQuery(novelId: string): UseQueryResult<Sugg
         { params: { path: { novel_id: novelId }, query: { status: "pending" } } },
       );
       if (!response.ok) throw new Error(`suggestions unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * The dock search's second tier: the box's text asked of the semantic
+ * search. The ask is debounced (300ms) — the instant tier of the box is
+ * the client-side entity filter, and the server's answer is owed only
+ * once the typing pauses, so a word typed a letter at a time is one
+ * request, not one per keystroke. The key carries the debounced text, so
+ * every answer is cached under the words that produced it, and an empty
+ * query asks nothing (`enabled`).
+ */
+export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
+  const [debounced, setDebounced] = useState(query);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+  return useQuery({
+    queryKey: ["knowledge", "passages", debounced],
+    enabled: debounced.trim() !== "",
+    queryFn: async () => {
+      const limit = 5; // the server's own default, pinned here by the request type
+      const { data, response } = await client.POST("/api/knowledge/search", {
+        body: { query: debounced, limit },
+      });
+      if (!response.ok) throw new Error(`search unavailable: ${response.status}`);
       return data ?? [];
     },
   });

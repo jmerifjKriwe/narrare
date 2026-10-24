@@ -9,14 +9,20 @@ are pinned: accept files the entity into the searchable list, discard clears
 it, and the spent queue empties — the review flow also runs keyboard-only,
 Tab and Enter for every step from opening the dock to both decisions. The
 dock's failures are named: an unreachable backend reads as an outage, never
-as an empty list, and a job poll that meets a dead service reopens the
-trigger instead of locking it. The Titel-refusal carry rides the same
+as an empty list — the review queue no less than the entity list, each with
+its own words — and a job poll that meets a dead service reopens the
+trigger instead of locking it. The extraction is idempotent against a
+re-run: the same chapter filed twice holds one card set, and a consumed
+suggestion files fresh on the next run. The search box reaches two tiers:
+the names it filters instantly, and the corpus's passages through the
+semantic search, debounced. The Titel-refusal carry rides the same
 flow's book-creation step: the failed submit names the empty field with the
 catalog's words.
 """
 
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
@@ -27,11 +33,23 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
+# The API the stack runs, for seeding a passage-search corpus the way the
+# standalone search test's upload does — through the real service, its real
+# ingestion and the E2E stack's real embedding stand-in.
+API = "http://127.0.0.1:8000"
+
 # Capitalized words steer the fake provider's extraction (it derives names
 # from them): Mira, Haus and See become the three suggestions, kinds cycling
 # character, place, thing in order of appearance. Draußen is fourth, beyond
 # the fake's ceiling of three.
 CHAPTER_BODY = "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."
+
+# The passage-search corpus: one document, one chunk, its first sentence the
+# needle a query shares a word with (the stand-in embeds by word, so a shared
+# word is what ranks the chunk first).
+PASSAGE_TEXT = (
+    "Der Leuchtturm am Horizont war seit Jahren dunkel.\n\nNiemand im Dorf sprach noch über ihn."
+)
 
 
 def _open_workspace_with_validated_title(page: Page, title: str) -> None:
@@ -79,6 +97,21 @@ def _tab_to(page: Page, target: Locator) -> None:
             return
         page.keyboard.press("Tab")
     pytest.fail(f"the tab order never reaches {target}")
+
+
+def _rerun_extraction_to_done(dock: Locator, extract: Locator, status: Locator) -> None:
+    """Click the trigger again and wait for THAT job's row to settle done.
+
+    The previous round's done row would satisfy any done-wait on its own,
+    so the round is separated by tagging its row: the wait lands only when
+    the tagged element is gone — the new job's id has no cached answer, so
+    the row unmounts for a beat before the new job's first poll answers —
+    and the row that answers afterwards is the new job's by construction.
+    """
+    status.evaluate("element => element.setAttribute('data-previous-round', '1')")
+    extract.click()
+    expect(dock.locator("[data-job-status][data-previous-round]")).to_have_count(0)
+    expect(status).to_have_attribute("data-job-status", "done")
 
 
 def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack: Stack) -> None:
@@ -316,6 +349,12 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
                 continue
             # The poll's answer is the connection's refusal, and that is named.
             expect(alert).to_be_visible()
+            # The stale row must not stand beside it: the last-known answer
+            # under a dead poll is queued or running (a done row would have
+            # stopped the polling before the service died), and a row still
+            # promising progress the panel cannot show would outshout the
+            # alert that holds the truth.
+            expect(status).to_have_count(0)
             # The trigger reopens instead of locking on the unanswered job.
             expect(extract).to_be_enabled()
             break
@@ -329,6 +368,148 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
     extract.click()
     expect(status).to_have_attribute("data-job-status", "done")
     expect(status).to_contain_text("3")
+    expect(dock.get_by_role("alert")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
+    """The queue's outage is named, never worn as a spent queue.
+
+    A queue holding three pending cards goes unreachable: a reload that
+    cannot reach the service must say so in the queue's own words. The
+    entity list shed this mask first (its outage test pins that alert);
+    the queue's silence would read worse — as a queue already reviewed —
+    and the two alerts must stay nameable apart, because both panels sit
+    in the dock and both queries fail together.
+    """
+    _open_workspace_with_validated_title(page, "Die wartende Bucht")
+    _write_chapter(page)
+
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    extract.click()
+    status = dock.locator("[data-job-status]")
+    expect(status).to_have_attribute("data-job-status", "done")
+    cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
+    expect(cards).to_have_count(3)
+
+    # The reload is the refetch path: a fresh page asks again, and the
+    # queue's answer must be the outage's own name — not the silence a
+    # spent queue renders exactly like.
+    stack.stop_api()
+    try:
+        page.reload()
+        expect(dock).to_be_visible()
+        queue_alert = dock.get_by_role("alert").filter(has_text="lassen sich nicht laden")
+        expect(queue_alert).to_be_visible()
+        # The queue does not pretend beside its own alert: no last-known
+        # cards stand in for the missing answer.
+        expect(cards).to_have_count(0)
+    finally:
+        stack.start_api()
+
+    # Recovery: the same page, asked again, shows the queue it holds —
+    # and no error is left standing.
+    page.reload()
+    expect(cards).to_have_count(3)
+    expect(dock.get_by_role("alert")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def test_a_rerun_stacks_no_duplicate_cards(page: Page, stack: Stack) -> None:
+    """The re-run files one card set, and a consumed row files fresh.
+
+    An extraction re-run — the outage retry's shape, the trigger clicked
+    again after the row settled — parses the same three entities off the
+    same chapter. The pending dedupe must hold: the queue answers with
+    the cards it already has, never a stacked second set. The asymmetry
+    is the other half of the rule: accept consumes a row, so the next
+    re-run files that entity fresh — the review is the only thing that
+    reopens a filed key.
+    """
+    _open_workspace_with_validated_title(page, "Die wiederholte Durchsuchung")
+    _write_chapter(page)
+
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    status = dock.locator("[data-job-status]")
+    cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
+
+    # The first run files its three cards.
+    extract.click()
+    expect(status).to_have_attribute("data-job-status", "done")
+    expect(cards).to_have_count(3)
+
+    # The re-run on the same chapter: one card set, whatever the panel is
+    # asked again. (The done row's count is the parse's, not the queue's —
+    # the card count is the dedupe's witness.)
+    _rerun_extraction_to_done(dock, extract, status)
+    expect(cards).to_have_count(3)
+
+    # The asymmetry: accept consumes Mira's row, and the re-run files her
+    # fresh beside the two that never left.
+    cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True).click()
+    expect(cards).to_have_count(2)
+    _rerun_extraction_to_done(dock, extract, status)
+    expect(cards).to_have_count(3)
+
+    assert_accessible(page)
+
+
+def test_the_dock_search_reaches_passages(page: Page, stack: Stack) -> None:
+    """The search box's second tier: passages from the semantic search.
+
+    The box keeps its instant, client-side filter of the names — and while
+    it carries a query, a debounced server search renders the corpus's
+    passages under the entity list, each with its document's title. A
+    search that meets a dead service names itself: the same named-failure
+    rule the dock's other panels hold, in this tier's own words.
+    """
+    _open_workspace_with_validated_title(page, "Die Bucht mit den Notizen")
+
+    # The corpus is seeded through the API the stack runs — the same path
+    # the standalone search test's upload takes, embedding included.
+    with httpx.Client(base_url=API, timeout=30) as api:
+        seeded = api.post(
+            "/api/knowledge/documents",
+            files={"file": ("notizen.txt", PASSAGE_TEXT.encode("utf-8"), "text/plain")},
+            data={"title": "Notizen"},
+        )
+        seeded.raise_for_status()
+
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    search = dock.get_by_label("Entitäten durchsuchen")
+
+    # Typing asks both tiers: the names filter where they are, and past
+    # the debounce the passages arrive with their document's title.
+    search.fill("Leuchtturm")
+    passages = dock.get_by_role("region", name="Passagen")
+    expect(passages.get_by_text("Notizen")).to_be_visible()
+    expect(
+        passages.get_by_text("Der Leuchtturm am Horizont war seit Jahren dunkel.")
+    ).to_be_visible()
+
+    # The outage names itself in this tier's words: a failed search is an
+    # answer missing, not an empty passages block.
+    stack.stop_api()
+    try:
+        search.fill("Dorf")
+        expect(dock.get_by_role("alert").filter(has_text="Passagensuche")).to_be_visible()
+    finally:
+        stack.start_api()
+
+    # Recovery: the same box, asked again, finds the passage again — and
+    # the error is gone with the answer that replaced it.
+    search.fill("Leuchtturm")
+    expect(passages.get_by_text("Notizen")).to_be_visible()
     expect(dock.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)

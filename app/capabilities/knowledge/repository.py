@@ -97,8 +97,31 @@ class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
     async def create_many(
         self, novel_id: UUID, chapter_id: UUID, entities: Sequence[ParsedEntity]
     ) -> None:
-        """File one suggestion per parsed entity, all pending review."""
+        """File one suggestion per parsed entity, all pending review.
+
+        The dedupe ruling: a parsed entity whose (chapter, name, kind) is
+        already pending files nothing — a re-run, the outage retry's shape,
+        answers with the rows the queue already holds instead of stacking a
+        second set behind them. The skip reads only pending rows, which is
+        the asymmetry by design: accept or discard consumes a suggestion,
+        so after a review the same key files fresh on the next run — the
+        writer's decision is the only thing that reopens a filed key.
+        """
+        result = await self.session.scalars(
+            self.query().where(
+                EntitySuggestion.chapter_id == chapter_id,
+                EntitySuggestion.status == PENDING,
+            )
+        )
+        # The set is the filed identity: what the query found still pending,
+        # joined by every key this run files — a provider answer naming the
+        # same (name, kind) twice is one suggestion, not two.
+        filed = {(row.name, row.kind) for row in result.all()}
         for entity in entities:
+            key = (entity.name, entity.kind)
+            if key in filed:
+                continue
+            filed.add(key)
             self.session.add(
                 EntitySuggestion(
                     user_id=self.user_id,

@@ -2,7 +2,7 @@ import { useParams } from "@tanstack/react-router";
 import { useId, useState } from "react";
 
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
-import { useEntitiesQuery } from "@shell/lib/query";
+import { useEntitiesQuery, usePassageSearch } from "@shell/lib/query";
 import { ComboBox } from "@shell/ui/ComboBox";
 import { GridList } from "@shell/ui/GridList";
 
@@ -32,6 +32,7 @@ export function EntitiesPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const headingId = useId();
   const detailId = useId();
+  const passagesId = useId();
 
   const rows = entities.data ?? [];
   // The search reaches the names, case-insensitively: the box and the list
@@ -41,6 +42,11 @@ export function EntitiesPanel() {
   // The detail follows the selection, not the filter: picking an entity and
   // then narrowing the search must not close what was opened.
   const selected = rows.find((entity) => entity.id === selectedId) ?? null;
+
+  // The box's second tier: the same words, asked of the semantic search
+  // (debounced, in the hook) while they are in the box at all.
+  const passages = usePassageSearch(query);
+  const searching = query.trim() !== "";
 
   return (
     <section aria-labelledby={headingId} className="mt-6">
@@ -84,6 +90,40 @@ export function EntitiesPanel() {
           />
         </div>
       )}
+      {searching ? (
+        /* The box's second tier renders under the list it shares the words
+            with: the corpus's passages, each with its document's title. Its
+            error names itself in this tier's own words (errorPassages, not
+            the standalone page's errorSearch) because the dock can show it
+            beside the entity list's and the queue's outages — three
+            failures at once must stay nameable apart. */
+        <section aria-labelledby={passagesId} className="mt-4">
+          <h4 id={passagesId} className="text-sm font-semibold">
+            {t("knowledge.passagesHeading")}
+          </h4>
+          {passages.isPending ? (
+            // The ask is debounced, so the block asks while the words
+            // settle and the answer flies — the same patience the entity
+            // list's own loading state has.
+            <p className="mt-2 text-sm text-muted">{t("knowledge.loading")}</p>
+          ) : passages.isError ? (
+            <p role="alert" className="mt-2 text-sm text-danger">
+              {t("knowledge.errorPassages")}
+            </p>
+          ) : (passages.data ?? []).length === 0 ? (
+            <p className="mt-2 text-sm text-muted">{t("knowledge.noPassages")}</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-2">
+              {(passages.data ?? []).map((hit) => (
+                <li key={hit.chunk_id} className="rounded-lg border border-border bg-card p-3">
+                  <strong className="text-sm font-semibold">{hit.document_title}</strong>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{hit.text}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
       {selected ? (
         <section
           aria-labelledby={detailId}
