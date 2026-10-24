@@ -1,13 +1,15 @@
 """The built web app, served by the API: deep links work, misses stay misses.
 
 One process serves the product: FastAPI answers /api, the built SPA answers
-every other path. The four failures this pins, each of which reaches the user:
+every other path. The five failures this pins, each of which reaches the user:
 
 * a deep link (``/novels/<id>``) returns 404 because no file has that name;
 * a missing bundle returns the shell with 200, so the browser reports a syntax
   error instead of a missing file;
 * an unknown ``/api`` path returns HTML, so the client parses a page as JSON;
-* the shell is cached, so the next release keeps loading the old bundle.
+* the shell is cached, so the next release keeps loading the old bundle;
+* the third-party notices 404, so the app serves bundled code whose licenses
+  demand an accompanying notice.
 """
 
 from typing import TYPE_CHECKING
@@ -50,6 +52,31 @@ async def test_a_hashed_asset_is_served_as_immutable(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert response.text == ASSET
     assert response.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+
+async def test_the_third_party_notices_are_served_uncached(tmp_path: Path) -> None:
+    # The minifier strips license comments, so this file is the only place the
+    # bundled libraries' license texts reach the recipient of the app. It has a
+    # suffix, so without a route of its own the catch-all would 404 it.
+    dist = _dist(tmp_path)
+    (dist / "THIRD-PARTY-NOTICES.txt").write_text("react@19.3.0 MIT", encoding="utf-8")
+
+    async with _client(dist) as client:
+        response = await client.get("/THIRD-PARTY-NOTICES.txt")
+
+    assert response.status_code == 200
+    assert response.text == "react@19.3.0 MIT"
+    assert response.headers["cache-control"] == "no-store"
+
+
+async def test_without_notices_the_path_stays_a_404(tmp_path: Path) -> None:
+    # A build that predates the notices generator must not answer with the
+    # shell: a browser following the URL would parse HTML as plain text.
+    async with _client(_dist(tmp_path)) as client:
+        response = await client.get("/THIRD-PARTY-NOTICES.txt")
+
+    assert response.status_code == 404
+    assert response.text != SHELL
 
 
 async def test_a_missing_asset_is_a_404_not_the_shell(tmp_path: Path) -> None:
