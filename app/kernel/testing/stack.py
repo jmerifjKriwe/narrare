@@ -54,8 +54,9 @@ def _read_log(process: subprocess.Popen[bytes]) -> str:
 
 
 def _wait_for(
-    url: str, timeout: float = 180.0, process: subprocess.Popen[bytes] | None = None
+    url: str, timeout: float = 30.0, process: subprocess.Popen[bytes] | None = None
 ) -> None:
+    print(f"WAIT_FOR {url} timeout={timeout}", flush=True)
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
@@ -155,8 +156,10 @@ class Stack:
 def run_stack(
     *, database: str, seed_user: bool, env: dict[str, str] | None = None
 ) -> Generator[Stack]:
+    print(f"PREPARE database={database}", flush=True)
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
+    print("PREPARE DONE", flush=True)
 
     # Extra environment reaches the API only: a stack may point a provider at a
     # test-owned stand-in (the one boundary a fake may hold).
@@ -178,8 +181,11 @@ def run_stack(
     web_process._log_file = web_log  # type: ignore[attr-defined]
     stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
+        print("WAIT API", flush=True)
         _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json", process=api_process)
+        print("API OK", flush=True)
         _wait_for(f"http://127.0.0.1:{WEB_PORT}", process=web_process)
+        print("WEB OK", flush=True)
         yield stack
     finally:
         # pnpm runs its server in a child process; kill the whole group or the
