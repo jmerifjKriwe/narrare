@@ -29,6 +29,13 @@ class MalformedAnswerError(ValueError):
     """The provider's answer is not the contracted JSON array of entities."""
 
 
+# The width of EntitySuggestion.name (and Entity.name): String(200). A longer
+# name is the provider breaking the contract, and parse_entities is where it
+# is refused — the database's own verdict would arrive as a DataError after
+# the fact, which is not this contract's error and says nothing about the answer.
+MAX_NAME_LENGTH = 200
+
+
 def _refuse(reason: str, shown: object) -> MalformedAnswerError:
     return MalformedAnswerError(f"not a JSON array of entities: {reason} ({repr(shown)[:200]})")
 
@@ -37,10 +44,10 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
     """The provider's answer as entities, or a loud refusal.
 
     Defensive on purpose: a non-JSON answer, a non-array document or an item
-    without a name, with an unknown kind or a non-string description raises,
-    so the job fails and nothing is written — the alternative, skipping bad
-    items, would silently shrink the review queue and hide a prompt regression
-    behind a green job.
+    without a name, or with one too long for its column, with an unknown
+    kind or a non-string description raises, so the job fails and nothing
+    is written — the alternative, skipping bad items, would silently shrink
+    the review queue and hide a prompt regression behind a green job.
     """
     try:
         document: object = loads(answer)
@@ -63,6 +70,8 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
         description = item.get("description")
         if not isinstance(name, str) or not name.strip():
             raise _refuse("an item has no name", item)
+        if len(name) > MAX_NAME_LENGTH:
+            raise _refuse(f"an item's name is longer than {MAX_NAME_LENGTH} characters", item)
         if kind not in ENTITY_KINDS:
             raise _refuse(f"an item's kind is not one of {'|'.join(ENTITY_KINDS)}", item)
         if description is not None and not isinstance(description, str):
