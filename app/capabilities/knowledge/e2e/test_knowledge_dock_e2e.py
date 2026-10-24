@@ -19,6 +19,11 @@ semantic search, debounced. The Titel-refusal carry rides the same
 flow's book-creation step: the failed submit names the empty field with the
 catalog's words.
 
+The whole-novel consistency check rides the same lane beside the chapter-
+scoped extraction: one trigger, the job's row, and the findings queue —
+each contradiction a card quoting both readings, acknowledged or dismissed
+exactly once, with the done copy naming the check's own count.
+
 The detail view corrects what review filed: rename, delete and merge —
 each a dialog the focus contract already owns, each outcome announced,
 and the entity list reflects every change at once. The rename also runs
@@ -50,6 +55,18 @@ API = "http://127.0.0.1:8000"
 # character, place, thing in order of appearance. Draußen is fourth, beyond
 # the fake's ceiling of three.
 CHAPTER_BODY = "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."
+
+# The planted contradictions: two chapters give Mira and Tom two different
+# ages each. The texts steer the fake provider's derivation (a capitalized
+# word given two different numbers across the chapters is one finding
+# quoting both readings), the way CHAPTER_BODY steers extraction. Two names
+# make two findings, so the review round has one card to acknowledge and
+# one to dismiss. The chapters are created through the UI, which stores
+# empty titles — the prompt's "Chapter: " headings carry no numbers.
+CONTRADICTING_BODIES = (
+    "Mira ist 34, und Tom ist 30.",
+    "Mira ist 37, und Tom ist 33.",
+)
 
 # The passage-search corpus: one document, one chunk, its first sentence the
 # needle a query shares a word with (the stand-in embeds by word, so a shared
@@ -89,6 +106,22 @@ def _write_chapter(page: Page) -> None:
     # Extraction reads the saved chapter, so the flow waits for the save
     # the editor itself reports before asking for the job.
     expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+
+def _write_chapters(page: Page, bodies: tuple[str, ...]) -> None:
+    """Create one chapter per body and write it into the editor.
+
+    The check reads every saved chapter of the novel, so each body waits
+    for the save the editor itself reports before the next chapter begins
+    — the check must see what the writer wrote, not a save still debouncing.
+    """
+    for body in bodies:
+        page.get_by_role("button", name="Neues Kapitel").click()
+        editor = page.locator(".ProseMirror")
+        expect(editor).to_be_visible()
+        editor.click()
+        page.keyboard.type(body)
+        expect(page.get_by_text("Gespeichert")).to_be_visible()
 
 
 def _tab_to(page: Page, target: Locator) -> None:
@@ -203,6 +236,81 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     detail = dock.get_by_role("region", name="Mira")
     expect(detail).to_contain_text("Figur")
     expect(detail).to_contain_text("Mira appears in the chapter.")
+
+    assert_accessible(page)
+
+
+def test_the_wissen_dock_reviews_the_novels_findings(page: Page, stack: Stack) -> None:
+    """The whole-novel check: the planted contradictions, reviewed to empty.
+
+    Two chapters give Mira and Tom two different ages each; the check —
+    novel-wide, its section beside the chapter-scoped extraction — files
+    one finding per name, each a card quoting both readings. Acknowledge
+    and dismiss consume exactly once: each card leaves the queue, each
+    outcome is heard, and the job's done copy names the check's own count
+    — the kind-aware row, not the extraction's words. The row settling is
+    also the poll's end: no /api/jobs request may leave the page after it.
+    """
+    _open_workspace_with_validated_title(page, "Die widersprüchliche Bucht")
+    _write_chapters(page, CONTRADICTING_BODIES)
+
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    checks = dock.get_by_role("region", name="Konsistenz")
+
+    # The check is novel-wide: one trigger beside the extraction's chapter
+    # one, closed while its job is outstanding — the same single-shot rule,
+    # because a second click would stack a duplicate job behind the first.
+    check = checks.get_by_role("button", name="Ganzes Buch prüfen")
+    check.click()
+    expect(check).to_be_disabled()
+    status = checks.locator("[data-job-status]")
+    expect(status).to_be_visible()
+    # The row is the answer (spec §9 D10): it settles done, and the done
+    # copy speaks the check's kind — the findings found, not the
+    # extraction's suggestions.
+    expect(status).to_have_attribute("data-job-status", "done")
+    expect(status).to_contain_text("2 Widersprüche gefunden")
+    # The settled job hands the trigger back for the next run.
+    expect(check).to_be_enabled()
+
+    # The findings arrive as cards: one per contradiction, the summary and
+    # the detail quoting both readings on the card.
+    cards = dock.get_by_role("region", name="Widerspruch")
+    expect(cards).to_have_count(2)
+    mira = cards.filter(has_text="Mira")
+    expect(mira).to_contain_text("Mira: 34 vs. 37")
+    expect(mira).to_contain_text('"Mira ist 34" vs. "Mira ist 37"')
+    tom = cards.filter(has_text="Tom")
+    expect(tom).to_contain_text("Tom: 30 vs. 33")
+    expect(tom).to_contain_text('"Tom ist 30" vs. "Tom ist 33"')
+
+    # Acknowledge consumes Mira's finding exactly once: the card leaves the
+    # queue and the outcome is heard, not only seen.
+    mira.get_by_role("button", name="Übernehmen", exact=True).click()
+    expect(mira).to_have_count(0)
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Der Widerspruch wurde zur Kenntnis genommen"
+    )
+
+    # Dismiss consumes Tom's: the queue is spent, and the done row stays
+    # the parse's count — two found, whatever the review decided.
+    tom.get_by_role("button", name="Verwerfen").click()
+    expect(cards).to_have_count(0)
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Der Widerspruch wurde verworfen")
+    expect(status).to_contain_text("2 Widersprüche gefunden")
+
+    # The status stays the result, not a spinner: polling stopped with the
+    # done row. No /api/jobs request may leave the page for the next turns
+    # of the poll's own clock.
+    poll_silence: list[str] = []
+    page.on(
+        "request",
+        lambda request: poll_silence.append(request.url) if "/api/jobs/" in request.url else None,
+    )
+    page.wait_for_timeout(2500)
+    assert poll_silence == [], f"the done check job is still polled: {poll_silence}"
 
     assert_accessible(page)
 
@@ -387,8 +495,10 @@ def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack)
     cannot reach the service must say so in the queue's own words. The
     entity list shed this mask first (its outage test pins that alert);
     the queue's silence would read worse — as a queue already reviewed —
-    and the two alerts must stay nameable apart, because both panels sit
-    in the dock and both queries fail together.
+    and the alerts must stay nameable apart, because every panel of the
+    dock sits in the same outage and every query fails together (the
+    findings queue's alert shares this phrasing's tail, so the filter
+    carries the queue's own noun).
     """
     _open_workspace_with_validated_title(page, "Die wartende Bucht")
     _write_chapter(page)
@@ -410,7 +520,9 @@ def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack)
     try:
         page.reload()
         expect(dock).to_be_visible()
-        queue_alert = dock.get_by_role("alert").filter(has_text="lassen sich nicht laden")
+        queue_alert = dock.get_by_role("alert").filter(
+            has_text="Vorschläge lassen sich nicht laden"
+        )
         expect(queue_alert).to_be_visible()
         # The queue does not pretend beside its own alert: no last-known
         # cards stand in for the missing answer.

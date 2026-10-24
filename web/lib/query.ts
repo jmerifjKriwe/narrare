@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import {
   client,
   type Entity,
+  type Finding,
   type Hit,
   type Job,
   type Novel,
@@ -203,6 +204,84 @@ export function useEnqueueExtraction(
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+/** The pending findings queue: the contradictions the check filed, waiting
+ *  for a decision. */
+export function useFindingsQuery(novelId: string): UseQueryResult<Finding[]> {
+  return useQuery({
+    queryKey: ["knowledge", "findings", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET(
+        "/api/knowledge/novels/{novel_id}/findings",
+        { params: { path: { novel_id: novelId }, query: { status: "pending" } } },
+      );
+      if (!response.ok) throw new Error(`findings unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/** Enqueue the whole-novel consistency check: 202 and the job id to poll.
+ *  The write invalidates the job key so every cached job row is asked for
+ *  again — a new job makes the old answers history. */
+export function useEnqueueCheck(
+  novelId: string,
+): UseMutationResult<{ job_id: string }, Error, void> {
+  return useMutation({
+    mutationFn: async () => {
+      const { data, response } = await client.POST("/api/knowledge/consistency/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`check refused: ${response.status}`);
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+/**
+ * The findings queue's two review decisions. Both invalidate the pending
+ * queue on settling — not only on success: a 409 means another reviewer (or
+ * an earlier click of the same one) consumed the finding first, and the
+ * refetch is what removes the card a second decision would have acted on.
+ */
+export function useAcknowledgeFinding(
+  novelId: string,
+): UseMutationResult<Finding, Error, string> {
+  return useMutation({
+    mutationFn: async (findingId: string) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/findings/{finding_id}/acknowledge",
+        { params: { path: { finding_id: findingId } } },
+      );
+      if (!response.ok || !data) throw new Error(`acknowledge refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
+    },
+  });
+}
+
+export function useDismissFinding(
+  novelId: string,
+): UseMutationResult<Finding, Error, string> {
+  return useMutation({
+    mutationFn: async (findingId: string) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/findings/{finding_id}/dismiss",
+        { params: { path: { finding_id: findingId } } },
+      );
+      if (!response.ok || !data) throw new Error(`dismiss refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
     },
   });
 }
