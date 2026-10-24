@@ -1,13 +1,14 @@
 ---
 description: Reads a change, runs the gates, reports what is wrong. Does not edit.
+model: opencode-go/deepseek-v4.1-flash
 mode: subagent
-model: opencode/deepseek-v4.1-flash-free#high
+color: "#8e4ec6"
 permissions:
   - action: edit
     resource: "*"
     effect: deny
   - action: shell
-    resource: "git push *"
+    resource: git push *
     effect: deny
 ---
 
