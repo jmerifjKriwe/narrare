@@ -182,19 +182,12 @@ jobs:
       - name: API smoke
         run: |
           set -x
-          uv run python -c "
-from app.kernel.db.testsupport import ensure_database, url_for
-from app.kernel.db.init import reset_schema
-import asyncio
-ensure_database('narrare_v2_smoke_e2e')
-asyncio.run(reset_schema(url_for('narrare_v2_smoke_e2e')))
-print('DB + SCHEMA OK')
-"
-          NARRE_DATABASE_URL="postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_v2_smoke_e2e" uv run python -m uvicorn app.api.main:app --port 8000 &
+          NARRE_DATABASE_URL="postgresql+asyncpg://narrare:narrare@localhost:5433/narrare" uv run python -m uvicorn app.api.main:app --port 8000 &
           API_PID=$!
           for i in $(seq 1 30); do
-            if curl -sS -o /tmp/opencode/smoke.out -w "%{http_code}" http://127.0.0.1:8000/openapi.json | grep -q 200; then
-              echo "API OK"; cat /tmp/opencode/smoke.out | head -c 100; echo; break
+            code=$(curl -sS -o /tmp/opencode/smoke.out -w "%{http_code}" http://127.0.0.1:8000/openapi.json 2>/dev/null || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "API OK"; head -c 100 /tmp/opencode/smoke.out; echo; break
             fi
             sleep 1
           done
