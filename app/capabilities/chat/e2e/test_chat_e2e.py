@@ -12,6 +12,10 @@ re-render would silently drop the answer).
 The dock tests drive the same ask/answer flow inside the novel workspace: the
 chat panel is a child route of the workspace, so opening it is a navigation
 (URL truth, back button closes it) and the editor stays mounted beside it.
+The tab itself comes from the generated dock registry: one tab per dock that
+exists, labeled by its capability, pressed exactly while its child route is
+showing — and the open route is the dock's whole URL state, so a closed dock
+leaves a clean URL (no dock param anywhere the app itself produces).
 
 The proposal tests drive the bus that crosses the dock/editor seam: a
 completed dock answer offered as a variant becomes ghost text in the editor
@@ -19,6 +23,7 @@ completed dock answer offered as a variant becomes ghost text in the editor
 novel — there is no editor to haunt, so there must be no ghost on return.
 """
 
+import re
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
@@ -157,14 +162,21 @@ def test_dock_answers_beside_the_editor(page: Page, stack: Stack, tmp_path: Path
 
     # The tab's label is also the top bar's — the bar's is a link, the tab a
     # button, so the role tells them apart; exact keeps "Chat" from matching
-    # the panel's own close button once it exists.
-    page.get_by_role("button", name="Chat", exact=True).click()
+    # the panel's own close button once it exists. The tab comes from the
+    # generated dock registry: the label is the capability's own dockTitle,
+    # the pressed state the match of its child route.
+    tab = page.get_by_role("button", name="Chat", exact=True)
+    expect(tab).to_have_attribute("aria-pressed", "false")
+    tab.click()
+    expect(tab).to_have_attribute("aria-pressed", "true")
     dock = page.get_by_role("complementary", name="Chat")
     editor = page.locator(".ProseMirror")
     expect(dock).to_be_visible()
     expect(editor).to_be_visible()
-    # The open dock is URL state beside rail and focus.
-    assert "dock=chat" in page.url
+    # The open dock is URL state: the child route is the whole of it. No
+    # dock param rides along — omit-at-default, like focus.
+    assert page.url.split("?")[0].endswith("/chat")
+    assert "dock=" not in page.url
 
     # Beside, not below: the editor ends where the dock begins — and both
     # fit the viewport at once, like the rail does.
@@ -194,13 +206,16 @@ def test_dock_answers_beside_the_editor(page: Page, stack: Stack, tmp_path: Path
 def test_back_button_closes_the_dock(page: Page, stack: Stack) -> None:
     _open_workspace(page, "Die Dockkante")
 
-    page.get_by_role("button", name="Chat", exact=True).click()
+    tab = page.get_by_role("button", name="Chat", exact=True)
+    tab.click()
     expect(page.get_by_role("complementary", name="Chat")).to_be_visible()
 
     # Opening the dock was a navigation: the browser's back button is a
-    # first-class way to close it again.
+    # first-class way to close it again — and the tab's pressed state is
+    # the route match, so it walks back too.
     page.go_back()
     expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
+    expect(tab).to_have_attribute("aria-pressed", "false")
     expect(page.locator(".ProseMirror")).to_be_visible()
 
     assert_accessible(page)
@@ -216,16 +231,27 @@ def test_dock_toggle_preserves_rail_and_focus(page: Page, stack: Stack) -> None:
     page.keyboard.press("F9")
     assert "rail=false" in page.url and "focus=1" in page.url
 
-    page.get_by_role("button", name="Chat", exact=True).click()
+    tab = page.get_by_role("button", name="Chat", exact=True)
+    tab.click()
     assert "rail=false" in page.url and "focus=1" in page.url
-    assert "dock=chat" in page.url
+    assert page.url.split("?")[0].endswith("/chat")
+    assert "dock=" not in page.url
     # Focus 1 suppresses the panel whatever the URL holds; the step back
     # brings it back without losing the collapsed rail.
     expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
     page.keyboard.press("Escape")
     expect(page.get_by_role("complementary", name="Chat")).to_be_visible()
     expect(page.get_by_role("complementary")).to_have_count(1)
-    assert "rail=false" in page.url and "dock=chat" in page.url
+    assert "rail=false" in page.url
+
+    # Closing the tab is the clean way out: back on the novel URL, the
+    # collapsed rail intact, and not one dock param left behind — a closed
+    # dock leaves a clean URL.
+    tab.click()
+    expect(page.get_by_role("complementary")).to_have_count(0)
+    assert re.search(r"/novels/[^/]+$", page.url.split("?")[0])
+    assert "rail=false" in page.url
+    assert "dock=" not in page.url
 
     assert_accessible(page)
 

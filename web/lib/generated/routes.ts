@@ -14,11 +14,12 @@
 // import each other; this generated table is the one composition
 // point.
 import { routes as chat, dockRoutes as chatDocks } from "../../../app/capabilities/chat/web/routes";
-import { routes as knowledge } from "../../../app/capabilities/knowledge/web/routes";
+import { routes as knowledge, dockRoutes as knowledgeDocks } from "../../../app/capabilities/knowledge/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
 import { routes as writing, workspaceRoute } from "../../../app/capabilities/writing/web/routes";
 
 const chatDockRoutes = chatDocks.map((dock) => dock(workspaceRoute));
+const knowledgeDockRoutes = knowledgeDocks.map((dock) => dock(workspaceRoute));
 
 export const capabilityRoutes = [
   ...chat,
@@ -30,4 +31,5 @@ export const capabilityRoutes = [
   // initializes a route from its parent, so the workspace route must be
   // in the table before the dock routes parented at it.
   ...chatDockRoutes,
+  ...knowledgeDockRoutes,
 ] as const;

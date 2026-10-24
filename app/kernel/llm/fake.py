@@ -6,9 +6,24 @@ whichever name ``NARRE_LLM_PROVIDER`` selects.
 """
 
 import asyncio
+import json
+import re
 from collections.abc import AsyncIterator  # noqa: TC003
 
 from app.kernel.llm.contract import SOURCE_PREFIX
+
+JSON_REQUEST = "JSON array"
+"""The phrase an instruction uses to ask for a JSON-array answer. The fake
+reads it the way a real provider reads the instruction; the prompt builders
+and this fake share it as a literal, the same way they share the marker."""
+
+PROPOSED_ENTITIES = 3
+ENTITY_KINDS = ("character", "place", "thing")
+# Kept in step with the extraction contract's vocabulary (knowledge's prompt
+# asks for exactly these kinds); the handler's parse refuses anything else, so
+# drift here fails loudly at the first extraction instead of silently.
+
+CAPITALIZED = re.compile(r"\b[ÄÖÜA-Z][äöüßa-z]+\b")
 
 
 def _first_source(prompt: str) -> str | None:
@@ -27,12 +42,43 @@ def _pieces(text: str) -> tuple[str, ...]:
     )
 
 
+def _entities_answer(passage: str) -> str:
+    """Deterministic extraction: the passage's capitalized words as entities.
+
+    Names are derived from the prompt, so a test steers the fake with the
+    chapter text alone; kinds cycle the extraction vocabulary in order of
+    appearance.
+    """
+    names = list(dict.fromkeys(CAPITALIZED.findall(passage)))[:PROPOSED_ENTITIES]
+    return json.dumps(
+        [
+            {
+                "name": name,
+                "kind": ENTITY_KINDS[index % len(ENTITY_KINDS)],
+                "description": f"{name} appears in the chapter.",
+            }
+            for index, name in enumerate(names)
+        ],
+        ensure_ascii=False,
+    )
+
+
+def _json_answer(prompt: str) -> str | None:
+    """The JSON-array answer when the instruction asks for one; None otherwise."""
+    head, _separator, passage = prompt.partition(SOURCE_PREFIX)
+    if JSON_REQUEST not in head:
+        return None
+    return _entities_answer(passage.strip())
+
+
 class FakeProvider:
     """Deterministic prose, streamed in pieces, so the wire is visible end to end.
 
-    Two shapes, because the pipeline has two: a prompt without sources gets a fixed
-    continuation; a prompt with sources gets the first one quoted back. The second
-    shape is what lets a test see that retrieval reached the model boundary.
+    Three shapes, because the pipeline has three: a prompt without sources gets
+    a fixed continuation; a prompt with sources gets the first one quoted back
+    (what lets a test see that retrieval reached the model boundary); and a
+    prompt whose instruction asks for a JSON array gets one derived from the
+    marked passage — the extraction path, whose names come from the chapter.
     """
 
     CHUNKS = (
@@ -48,6 +94,12 @@ class FakeProvider:
         return []
 
     async def stream(self, prompt: str) -> AsyncIterator[str]:
+        answer = _json_answer(prompt)
+        if answer is not None:
+            # One piece is still a stream: the consumer sees the same protocol.
+            await asyncio.sleep(0)
+            yield answer
+            return
         source = _first_source(prompt)
         for chunk in _pieces(source) if source else self.CHUNKS:
             # Yield to the loop between pieces: the server flushes each event

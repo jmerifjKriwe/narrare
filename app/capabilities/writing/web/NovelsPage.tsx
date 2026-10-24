@@ -20,6 +20,11 @@ export function NovelsPage() {
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
   const [createFailed, setCreateFailed] = useState(false);
+  // The empty Titel is refused by name, not by silence: the failed submit
+  // marks the field, and the mark lifts as soon as the field answers it.
+  // Derived, not stored, so typing a title can never leave a stale refusal.
+  const [triedEmptyTitle, setTriedEmptyTitle] = useState(false);
+  const titleInvalid = triedEmptyTitle && title.trim() === "";
 
   // The setup gate decides whether there is a library to list at all. Only
   // the novels themselves go through the query cache; this check cannot,
@@ -64,7 +69,10 @@ export function NovelsPage() {
 
   async function create(event: React.FormEvent, close: () => void) {
     event.preventDefault();
-    if (title.trim() === "") return;
+    if (title.trim() === "") {
+      setTriedEmptyTitle(true);
+      return;
+    }
     setCreateFailed(false);
     // Only fields the user filled reach the row: an empty genre is no genre,
     // not a genre called "".
@@ -85,6 +93,7 @@ export function NovelsPage() {
     setTitle("");
     setGenre("");
     setBlurb("");
+    setTriedEmptyTitle(false);
     close();
   }
 
@@ -106,7 +115,13 @@ export function NovelsPage() {
                 onSubmit={(event) => void create(event, close)}
                 className="mt-4 flex flex-col gap-3"
               >
-                <TextField label={t("novels.titleLabel")} value={title} onChange={setTitle} />
+                <TextField
+                  label={t("novels.titleLabel")}
+                  value={title}
+                  onChange={setTitle}
+                  isInvalid={titleInvalid}
+                  validationMessage={titleInvalid ? t("novels.titleRequired") : undefined}
+                />
                 <TextField label={t("novels.genre")} value={genre} onChange={setGenre} />
                 <TextField label={t("novels.blurb")} value={blurb} onChange={setBlurb} multiline />
                 {createFailed ? (

@@ -15,12 +15,18 @@ from importlib import import_module
 from logging import INFO, basicConfig, getLogger
 from os import environ
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from app.generated.capabilities import CAPABILITIES as REGISTERED
 from app.kernel.configuration import validate_configuration
+from app.kernel.jobs.router import router as jobs_router
+from app.kernel.jobs.runtime import start_worker, stop_worker
+
+if TYPE_CHECKING:
+    from app.kernel.jobs.worker import JobHandler
 
 CAPABILITIES = Path(__file__).resolve().parent.parent / "capabilities"
 DEFAULT_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
@@ -31,10 +37,44 @@ DEFAULT_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 basicConfig(level=INFO)
 
 
+def _job_handlers() -> dict[str, JobHandler]:
+    """Every capability's background handlers, found the way routers are.
+
+    A capability that wants the lane writes ``jobs.py`` exporting ``handlers``;
+    nothing else changes (spec §12.1). A kind two capabilities register is an
+    assembly bug: the later folder still takes the dict's last word, but the
+    merge says so at startup — a warning naming both sources, not a silent
+    overwrite. A hard exit guards generated output elsewhere; this is a merge
+    of live modules, and one duplicate kind does not outweigh every job.
+    """
+    logger = getLogger("narrare")
+    handlers: dict[str, JobHandler] = {}
+    sources: dict[str, str] = {}
+    for folder in sorted(CAPABILITIES.iterdir()):
+        if not (folder / "jobs.py").is_file():
+            continue
+        found = import_module(f"app.capabilities.{folder.name}.jobs").handlers
+        for kind, handler in found.items():
+            if kind in handlers:
+                logger.warning(
+                    "duplicate job kind %r: %s takes %s's handler",
+                    kind,
+                    folder.name,
+                    sources[kind],
+                )
+            handlers[kind] = handler
+            sources[kind] = folder.name
+    return handlers
+
+
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     validate_configuration()
-    yield
+    await start_worker(app, _job_handlers())
+    try:
+        yield
+    finally:
+        await stop_worker(app)
 
 
 def _serve_shell(app: FastAPI, dist: Path) -> None:
@@ -66,6 +106,11 @@ def create_app(dist: Path | None = None) -> FastAPI:
 
     for folder in sorted(path for path in CAPABILITIES.iterdir() if (path / "router.py").exists()):
         app.include_router(import_module(f"app.capabilities.{folder.name}.router").router)
+
+    # Kernel machinery beside the capability routers: the jobs lane's one read
+    # route, which every capability's UI shares (spec §12.1 keeps capability
+    # folders self-contained; this route belongs to no capability).
+    app.include_router(jobs_router)
 
     shell = dist if dist is not None else Path(environ.get("NARRE_WEB_DIST", str(DEFAULT_DIST)))
     if (shell / "index.html").is_file():
