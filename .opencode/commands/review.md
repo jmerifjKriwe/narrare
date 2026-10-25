@@ -1,14 +1,22 @@
 ---
-description: Review the uncommitted change on a different model, in a child session
+description: Review one task's uncommitted change in a child session
 agent: reviewer
 ---
 
-Review the change in the working tree. Base commit, or a narrower instruction: $ARGUMENTS
+Review one task's change in the working tree. Base commit or task: $ARGUMENTS
 
-Nothing is committed before this review, so the tree is the change: `git diff <base>`
-for the tracked part and every untracked file from `git status --porcelain`, read in
-full. You cannot stage, so do not expect an untracked file to appear in a diff.
+Base commit: !`git rev-parse --short HEAD` — if $ARGUMENTS names an earlier
+base, that one wins; say which you used. Nothing is committed before this
+review: if `git log` shows a commit on top of the base, that is a finding.
 
-Run the gates the change touches and read their output; the implementer's report is a
-claim, not evidence. Report findings by severity with `file:line` and how to reproduce,
-and do not re-litigate a decision the task names as settled.
+The change is `git diff <base>` for tracked files plus every untracked file from
+`git status --porcelain`, read in full.
+
+Read the task brief and the implementer's report the dispatch names. The brief is
+the requirement; the report is a claim. Follow the rubric in your agent file,
+including the Declined-to-judge list.
+
+Run the gates the task names, `just check`, and the capability E2E when one
+exists. Read their output. A gate you did not run is not green.
+
+Report in your agent's output format.
