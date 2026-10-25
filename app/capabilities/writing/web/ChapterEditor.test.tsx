@@ -30,10 +30,18 @@ import { ChapterEditor } from "./ChapterEditor";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
 
-/** The SSE body a continuation is answered with: one data frame per fact. */
-function streamOf(...frames: object[]): string {
-  return frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join("");
+/** The SSE body a continuation is answered with: one `data:` frame per
+ * fact, or a raw frame where a test needs the router's own bytes. */
+function streamOf(...frames: (object | string)[]): string {
+  return frames
+    .map((frame) => (typeof frame === "string" ? frame : `data: ${JSON.stringify(frame)}\n\n`))
+    .join("");
 }
+
+/** How a dead provider ends the stream: the router's own error frame, byte
+ * for byte (writing/router.py) — `event: error` with an empty payload, not
+ * a `data:` shape no endpoint emits. */
+const PROVIDER_DIED = "event: error\ndata: {}\n\n";
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry
 // is simply missing — and ProseMirror reads Range rects whenever it scrolls
@@ -333,7 +341,7 @@ describe("ChapterEditor's ghost text", () => {
       failed: announcementsOf(t("editor.ghostFailed")),
       discarded: announcementsOf(t("editor.ghostDiscarded")),
     };
-    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, { error: "the provider died" });
+    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, PROVIDER_DIED);
     render(<ChapterEditor chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
@@ -369,7 +377,7 @@ describe("ChapterEditor's ghost text", () => {
       failed: announcementsOf(t("editor.ghostFailed")),
       discarded: announcementsOf(t("editor.ghostDiscarded")),
     };
-    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, { error: "the provider died" });
+    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, PROVIDER_DIED);
     // The prop has an opinion, so its offer owns the ghost on screen —
     // the stream's own text never becomes the visible one.
     render(<ChapterEditor chapterId={CHAPTER} body="" proposal="Das Angebot bleibt." />);

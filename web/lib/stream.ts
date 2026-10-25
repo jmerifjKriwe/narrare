@@ -10,7 +10,9 @@ export type Frame = {
   error?: string;
 };
 
-/** Read a text/event-stream response and yield its parsed data payloads, in order. */
+/** Read a text/event-stream response and yield its parsed frames, in order.
+ * An `event:` line names the frame's kind: the routers end a dead provider
+ * with `event: error`, and the reader must carry that into the frame. */
 export async function* readFrames(response: Response): AsyncGenerator<Frame> {
   const body = response.body;
   if (!body) return;
@@ -27,10 +29,20 @@ export async function* readFrames(response: Response): AsyncGenerator<Frame> {
     while (boundary >= 0) {
       const frame = buffer.slice(0, boundary);
       buffer = buffer.slice(boundary + 2);
+      let event: string | undefined;
+      const data: string[] = [];
       for (const line of frame.split("\n")) {
-        if (!line.startsWith("data: ")) continue;
-        yield JSON.parse(line.slice(6)) as Frame;
+        if (line.startsWith("event: ")) event = line.slice(7);
+        else if (line.startsWith("data: ")) data.push(line.slice(6));
       }
+      // A frame with neither field — a comment, a keep-alive — is no fact.
+      if (data.length === 0 && event === undefined) continue;
+      const parsed = (data.length === 0 ? {} : JSON.parse(data.join("\n"))) as Frame;
+      // The failure lives in the event, not the payload: a reader that
+      // dropped `event:` parsed this frame to `{}`, and a truncation looked
+      // like a clean end of the stream.
+      if (event === "error") parsed.error ??= "stream failed";
+      yield parsed;
       boundary = buffer.indexOf("\n\n");
     }
   }

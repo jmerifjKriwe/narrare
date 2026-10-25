@@ -51,6 +51,23 @@ describe("formatNotices", () => {
     expect(notices).toContain("This is free and unencumbered software released into the public domain.");
   });
 
+  it("keeps a shared license text holder-neutral — the rows name the holders", () => {
+    // The Apache-2.0 group is not one vendor's: @swc/helpers ships beside
+    // Adobe's React Aria packages, so a license text carrying one package's
+    // applied copyright (Adobe's, as the first embedded text did) attributes
+    // the whole group to it. The canonical text keeps the boilerplate's
+    // bracketed placeholder; each package's own attribution is its row.
+    const notices = formatNotices({
+      "Apache-2.0": [pkg("@swc/helpers", ["0.5.23"], { author: "강동윤", license: "Apache-2.0" })],
+    });
+
+    expect(notices).toContain("@swc/helpers 0.5.23 — 강동윤");
+    expect(notices).toContain("Copyright [yyyy] [name of copyright owner]");
+    // No applied copyright — a year and someone's name — may live in any
+    // text shared by a whole license group.
+    expect(notices).not.toMatch(/Copyright \d{4} /);
+  });
+
   it("fails on a license whose text is not embedded", () => {
     // A notice without its terms would be worse than a red build: a new
     // license in the closure must be added to LICENSE_TEXTS deliberately.
