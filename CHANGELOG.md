@@ -204,7 +204,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 * **development:** document the feature scaffolder (throughput T13) ([79b78e6](https://github.com/jmerifjKriwe/narrare/commit/79b78e610217b4df2b973849055af27590578280))
 * **features:** keep the v1 corpus as archive, not as a registry ([451b268](https://github.com/jmerifjKriwe/narrare/commit/451b2687a5a7a3ff2bb59456a876e80db2baf5a3))
 * final-review ride-along — align ADR-090 task-15 bullet with D6 amendment; zai profile docstring lists glm-5.3-flash ([69bc787](https://github.com/jmerifjKriwe/narrare/commit/69bc787316018e4f905540fc63fe4f44eb2da29c))
-* **github:** PR and issue templates that mirror the existing gates ([2807049](https://github.com/jmerifjKriwe/narrare/commit/28070498d47b97966b258cf9378b375298da8034))
+* **GitHub:** PR and issue templates that mirror the existing gates ([2807049](https://github.com/jmerifjKriwe/narrare/commit/28070498d47b97966b258cf9378b375298da8034))
 * **governance:** the spec, the contributor guide and the recipe count match the built system ([dd3778a](https://github.com/jmerifjKriwe/narrare/commit/dd3778a55fee199e4c43147851e1a641f43d8942))
 * **licenses:** attribute the vendored agent skills ([9a6a875](https://github.com/jmerifjKriwe/narrare/commit/9a6a8752cd18bb23bde06356b964eedb7fed337d))
 * **notes:** W0 round-2 billing-outage diagnosis (spec-referenced) ([388bae2](https://github.com/jmerifjKriwe/narrare/commit/388bae209a695f0d40394357c1fa196e0da51057))
