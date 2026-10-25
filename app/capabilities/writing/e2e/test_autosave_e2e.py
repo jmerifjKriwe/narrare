@@ -9,6 +9,7 @@ the browser's own leave dialog.
 """
 
 import re
+from collections.abc import Callable  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import pytest
@@ -58,6 +59,32 @@ def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Sta
     assert_accessible(page)
 
 
+def _answer_confirm(page: Page, action: Callable[[], None], *, accept: bool = False) -> str:
+    """Run a leave action and answer the native confirm it raises.
+
+    The handler is registered *before* the action on purpose. Playwright's
+    click waits for the dialog a handler must answer, so awaiting the event
+    around the click deadlocks when the click's own handler raises it: the
+    click never returns, so the code that would answer never runs. Registered
+    first, the click returns and the wait sees the event that was answered.
+    An action that raises no dialog fails rather than passing quietly.
+    """
+    seen: list[str] = []
+
+    def answer(dialog: Dialog) -> None:
+        seen.append(dialog.type)
+        if accept:
+            dialog.accept()
+        else:
+            dialog.dismiss()
+
+    page.once("dialog", answer)
+    with page.expect_event("dialog", timeout=10_000) as asked:
+        action()
+    assert seen, "the leave asked nothing"
+    return asked.value.type
+
+
 def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None:
     """Protect failed text on chapter switches, links and history navigation."""
     _create_book(page, "Der Priel")
@@ -74,41 +101,38 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         page.keyboard.type("Bleibt hier.")
         expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
 
-        # Each leave asks through window.confirm after its flush fails. The
-        # dialog is awaited around the click that causes it: the sync API
-        # returns from click() before the dialog event reaches Python, so a
-        # plain page.on("dialog") collector races the assertion below.
+        # Each leave asks through window.confirm after its flush fails.
         seen: list[str] = []
 
-        with page.expect_event("dialog") as asked:
+        def switch() -> None:
             page.get_by_role("button", name="Kapitel 2", exact=True).click()
-        seen.append(asked.value.type)
-        asked.value.dismiss()
+
+        seen.append(_answer_confirm(page, switch))
         expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_have_attribute(
             "aria-pressed", "true"
         )
         expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
 
-        with page.expect_event("dialog") as asked:
+        def shelf() -> None:
             page.get_by_role("link", name="Alle Romane").click()
-        seen.append(asked.value.type)
-        asked.value.dismiss()
+
+        seen.append(_answer_confirm(page, shelf))
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
         # The shell's top bar is outside this page and a router navigation
         # like any other: the blocker is the one place all of them pass.
-        with page.expect_event("dialog") as asked:
+        def topbar() -> None:
             page.get_by_role("link", name="Chat").click()
-        seen.append(asked.value.type)
-        asked.value.dismiss()
+
+        seen.append(_answer_confirm(page, topbar))
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
         # Back is history, not a click. Driven directly so the assertion is
         # about the blocker, not about Playwright's navigation wait.
-        with page.expect_event("dialog") as asked:
+        def back() -> None:
             page.evaluate("window.history.back()")
-        seen.append(asked.value.type)
-        asked.value.dismiss()
+
+        seen.append(_answer_confirm(page, back))
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
         expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
 
