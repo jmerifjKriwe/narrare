@@ -8,8 +8,8 @@
  * growing stream announces nothing per delta, a failed stream names its
  * failure rather than a discard — but stays silent while an offer owns
  * the screen — a refused continuation announces the failure instead of
- * nothing, and an accept while an autosave PUT is in flight loses no
- * text.
+ * nothing, an accept while an autosave PUT is in flight loses no text,
+ * and the arriving ghost owns the caret without waiting for a frame.
  *
  * The first import re-bases fetch onto a real local HTTP server (see
  * editorApiServer) — no module is mocked and no editor is faked; holding the
@@ -136,6 +136,46 @@ describe("ChapterEditor's ghost text", () => {
     expect(documentText()).not.toContain("Vorschlag");
     await waitFor(() => expect(announced()).toContain(t("editor.ghostArrived")));
     expect(resolved).toEqual([]);
+  });
+
+  it("owns the caret when the ghost arrives, so Esc alone discards it", async () => {
+    // The condition CI hits: the frame callback has not run yet. The focus
+    // command defers to requestAnimationFrame, and the click that started the
+    // stream dropped the caret to <body> (React disables the focused button),
+    // so a ghost painted one frame early is a ghost no key can reach: Esc
+    // lands on <body> and the workbench's own Esc handler sees nothing to
+    // stop. With no frame at all the gap is permanent, which is what makes
+    // this deterministic instead of a race.
+    const frame = window.requestAnimationFrame;
+    window.requestAnimationFrame = () => 0;
+    try {
+      const resolved: boolean[] = [];
+      render(
+        <ChapterEditor
+          chapterId={CHAPTER}
+          body=""
+          proposal="Weg damit."
+          onProposalResolve={(accepted) => resolved.push(accepted)}
+        />,
+      );
+      const ghost = await screen.findByText("Weg damit.");
+      expect(ghost.closest(".ghost")).not.toBeNull();
+      // The arrival hands the caret over itself — no test-supplied focus.
+      expect(document.activeElement).toBe(document.querySelector(".ProseMirror"));
+
+      // Nobody focused the editor by hand, so this Esc is the writer's own:
+      // it belongs to the ghost, not to the workbench.
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      await user.keyboard("{Escape}");
+
+      expect(document.querySelector(".ghost")).toBeNull();
+      await waitFor(() => expect(announced()).toContain(t("editor.ghostDiscarded")));
+      expect(resolved).toEqual([false]);
+      // A discarded proposal schedules nothing: no PUT ever left the page.
+      expect(editorServer.requests).toEqual([]);
+    } finally {
+      window.requestAnimationFrame = frame;
+    }
   });
 
   it("commits the ghost into document and autosave on Tab", { timeout: 10_000 }, async () => {
