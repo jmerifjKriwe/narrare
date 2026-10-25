@@ -87,6 +87,40 @@ async def test_a_missing_asset_is_a_404_not_the_shell(tmp_path: Path) -> None:
     assert response.text != SHELL
 
 
+async def test_an_encoded_traversal_out_of_assets_is_a_404(tmp_path: Path) -> None:
+    # The asset route takes the request path, which arrives from the client.
+    # A dot segment is percent-encoded here: an HTTP client normalizes a
+    # literal `..` before the request leaves, so only the encoded form arrives
+    # at the handler with the dots intact — and it must stay a 404.
+    dist = _dist(tmp_path)
+    (dist / "secret.txt").write_text("SECRET", encoding="utf-8")
+
+    async with _client(dist) as client:
+        for path in (
+            "/assets/%2e%2e%2fsecret.txt",
+            "/assets/..%2fsecret.txt",
+            "/assets/sub/%2e%2e/%2e%2e/secret.txt",
+        ):
+            response = await client.get(path)
+
+            assert response.status_code == 404, path
+            assert "SECRET" not in response.text, path
+
+
+async def test_a_symlink_out_of_assets_is_a_404(tmp_path: Path) -> None:
+    # A link inside the build directory that points out of it is not a file of
+    # the app: resolving the request path must not serve its target.
+    dist = _dist(tmp_path)
+    (dist / "secret.txt").write_text("SECRET", encoding="utf-8")
+    (dist / "assets" / "escape.js").symlink_to(dist / "secret.txt")
+
+    async with _client(dist) as client:
+        response = await client.get("/assets/escape.js")
+
+    assert response.status_code == 404
+    assert "SECRET" not in response.text
+
+
 async def test_a_missing_root_file_is_not_the_shell(tmp_path: Path) -> None:
     # Files from public/ land at the root, not under /assets. The catch-all must
     # not answer them: a browser asking for a favicon and receiving HTML is a

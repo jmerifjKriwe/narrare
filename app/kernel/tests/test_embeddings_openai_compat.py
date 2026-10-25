@@ -157,10 +157,13 @@ def test_a_local_provider_needs_no_key() -> None:
 
 
 def test_the_description_names_the_model_and_the_endpoint() -> None:
+    # The whole line, not the pieces: `"api.openai.com" in described` is the
+    # URL-substring shape a sanitizer would use, and static analysis reads it
+    # as one. The exact text pins more anyway.
     described = _provider("https://api.openai.com/v1", model="text-embedding-3-small").describe()
-    assert "openai-compatible" in described
-    assert "text-embedding-3-small" in described
-    assert "api.openai.com" in described
+    assert described == (
+        "openai-compatible model=text-embedding-3-small base_url=https://api.openai.com/v1"
+    )
 
 
 def test_the_description_names_a_configured_truncation_hint() -> None:

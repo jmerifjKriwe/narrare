@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from importlib import import_module
 from logging import INFO, basicConfig, getLogger
 from os import environ
+from os.path import isfile, realpath, sep
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -87,11 +88,18 @@ def _serve_shell(app: FastAPI, dist: Path) -> None:
     """Mount the built app: immutable assets, an uncached shell, nothing else."""
     root = dist.resolve()
     assets = root / "assets"
+    inside_assets = f"{assets}{sep}"
 
     @app.get("/assets/{path:path}", include_in_schema=False)
     async def asset(path: str) -> FileResponse:
-        file = (assets / path).resolve()
-        if not file.is_relative_to(assets) or not file.is_file():
+        # The request path arrives from the client, so it is attacker-controlled.
+        # Resolve it first (symlinks included), then require the result to stay
+        # inside assets/. realpath plus a prefix check, not resolve() plus
+        # is_relative_to(): the same test in the shape static analysis can
+        # verify, so a later regression reaches a reviewer as a finding
+        # instead of staying silent.
+        file = realpath(assets / path)
+        if not file.startswith(inside_assets) or not isfile(file):
             raise HTTPException(status_code=404)
         return FileResponse(file, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
