@@ -83,6 +83,7 @@ fake in the system is the model at its boundary.
 ## Where to look next
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — getting started, branch model, PR process
+- [SECURITY.md](SECURITY.md) — the supported version and how to report a vulnerability
 - [AGENTS.md](AGENTS.md) — the rules of the codebase and the agent layer
 - [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
   — the authority for structure and boundaries
