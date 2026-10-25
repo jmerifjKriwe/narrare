@@ -106,6 +106,17 @@ jobs:
           git fetch origin main
           changed=$(git diff --name-only origin/main...HEAD)
           echo "$changed"
+          # A release PR moves version strings and the changelog; no browser
+          # runs any of them. release-please force-pushes this branch on every
+          # push to main, so the suites here cost minutes per release and get
+          # cancelled mid-flight by the next update. Both conditions are needed:
+          # the branch name alone or the file list alone could catch a real PR.
+          # A skipped job still satisfies the required check.
+          if [ "$GITHUB_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
+            && ! echo "$changed" | grep -qvE '^(\.release-please-manifest\.json|CHANGELOG\.md|app/kernel/version\.py|package\.json|web/package\.json|pyproject\.toml|web/lib/api/openapi\.json)$'; then
+            echo "suites=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if echo "$changed" | grep -qE '^(app/(kernel|api|generated)/|web/|i18n/|justfile|pyproject\.toml|uv\.lock|pnpm-lock\.yaml|\.github/workflows/ci\.yml)'; then
             echo "suites=all" >> "$GITHUB_OUTPUT"
             exit 0
