@@ -56,9 +56,10 @@ def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: St
     expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Vorschlag übernommen.")
 
-    # The stream ended; the 800 ms debounce writes. Reload is the proof the
-    # accept persisted — nothing else writes the chapter.
-    page.wait_for_timeout(1500)
+    # The accepted text schedules the debounced save; the indicator names
+    # its landing, and the reload is the proof it persisted — nothing else
+    # writes the chapter.
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Die Windrose stand offen.")
     expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")

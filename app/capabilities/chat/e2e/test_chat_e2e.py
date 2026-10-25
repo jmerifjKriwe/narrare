@@ -365,9 +365,10 @@ def test_an_answer_becomes_a_ghost_the_editor_decides(
     expect(editor).to_contain_text(offered)
     expect(page.locator("[data-live-announcer]")).to_contain_text("Vorschlag übernommen.")
 
-    # The stream ended; the 800 ms debounce writes. Reload is the proof the
-    # accept persisted — nothing else writes the chapter.
-    page.wait_for_timeout(1500)
+    # The accepted text schedules the debounced save; the indicator names
+    # its landing, and the reload is the proof it persisted — nothing else
+    # writes the chapter.
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Der Wirt sah zur Tür.")
     expect(page.locator(".ProseMirror")).to_contain_text(offered)

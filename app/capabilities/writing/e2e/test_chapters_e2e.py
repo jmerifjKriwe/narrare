@@ -118,11 +118,28 @@ def test_typed_text_survives_a_chapter_switch(page: Page, stack: Stack) -> None:
     editor = page.locator(".ProseMirror")
     editor.click()
     page.keyboard.type("Erster Satz am Kai.")
-    expect(page.get_by_text("Gespeichert")).to_be_visible()
 
-    # A fresh chapter starts empty; the written one keeps its text.
-    page.get_by_role("button", name="Neues Kapitel").click()
+    # Switch inside the 800 ms debounce: nothing is written yet and the
+    # indicator is quiet (it stays hidden while the save is pending).
+    # Waiting for "Gespeichert" here would exercise only the settled path;
+    # the unmount flush is what this test is about.
+    expect(page.get_by_role("status")).to_have_count(0)
+
+    # The switch is the flush's cue. Wait for its PUT on the wire rather
+    # than for a clock: the response is the fact that the pending text
+    # reached the server.
+    with page.expect_response(
+        lambda response: (
+            "/api/writing/chapters/" in response.url and response.request.method == "PUT"
+        )
+    ) as flushed:
+        page.get_by_role("button", name="Neues Kapitel").click()
+    assert flushed.value.ok
+
+    # A fresh chapter starts empty; the written one keeps its text — and
+    # the reload proves the row, not the in-memory body the switch carried.
     expect(page.locator(".ProseMirror")).to_have_text("")
+    page.reload()
     page.get_by_role("button", name="Kapitel 1", exact=True).click()
     expect(page.locator(".ProseMirror")).to_contain_text("Erster Satz am Kai.")
 
