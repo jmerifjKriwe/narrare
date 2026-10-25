@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Sequence  # noqa: TC003
+from logging import Formatter
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -34,11 +35,11 @@ PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
 async def test_audit_failure_does_not_truncate_the_response(
     fail: bool, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A real audit FK rejection still permits the final ASGI body to be sent."""
+    """A real audit FK rejection preserves response framing and keeps text out of logs."""
     provider = StreamProbeProvider(fail=fail)
     # This user does not exist: the audit's real database commit must fail.
     response = FinalizingStreamingResponse(
-        _events(provider, "question", [], uuid4()),
+        _events(provider, "audit-private-prompt", [], uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -53,6 +54,11 @@ async def test_audit_failure_does_not_truncate_the_response(
     assert len(failures) == 1
     assert failures[0].exc_info is not None
     assert isinstance(failures[0].exc_info[1], IntegrityError)
+    logged = Formatter().format(failures[0])
+    assert "audit-private-prompt" not in logged
+    assert "partial" not in logged
+    assert "IntegrityError" in logged
+    assert "INSERT INTO llm_calls" in logged
 
 
 @pytest.mark.parametrize("interruption", ["waiting", "send"])
