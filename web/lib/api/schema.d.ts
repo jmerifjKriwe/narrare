@@ -21,6 +21,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job
+         * @description Return an owned job's state; absent and other users' jobs both raise HTTP 404.
+         */
+        get: operations["get_job_api_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/consistency/{novel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Consistency
+         * @description Enqueue the whole-novel consistency check. The worker does the rest;
+         *     poll ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is required.
+         */
+        post: operations["start_consistency_api_knowledge_consistency__novel_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/documents": {
         parameters: {
             query?: never;
@@ -36,6 +79,191 @@ export interface paths {
          * @description Ingest a text file. Plain text only; the body is decoded as UTF-8.
          */
         post: operations["upload_document_api_knowledge_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/entities/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Entity
+         * @description Delete an entity. The row has no referents — the delete is a row delete.
+         *
+         *     Raise HTTP 404 for an absent or unowned entity.
+         */
+        delete: operations["delete_entity_api_knowledge_entities__entity_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Entity
+         * @description Correct an entity by hand: only the fields the body carries change.
+         *
+         *     Return the entity; raise HTTP 404 for an absent or unowned entity,
+         *     or HTTP 422 for an invalid name or kind. A null description clears it.
+         */
+        patch: operations["update_entity_api_knowledge_entities__entity_id__patch"];
+        trace?: never;
+    };
+    "/api/knowledge/entities/{entity_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Entity
+         * @description Fold this entity into another: the target survives, the source is deleted.
+         *
+         *     Return the unchanged target; raise HTTP 404 if either entity is absent or
+         *     unowned, or HTTP 422 for a self-merge or a target in another novel.
+         */
+        post: operations["merge_entity_api_knowledge_entities__entity_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/extraction/{novel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Extraction
+         * @description Enqueue entity extraction for a chapter. The worker does the rest; poll
+         *     ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+         *
+         *     Respond with HTTP 404 for an absent or unowned novel or chapter, including
+         *     a chapter from a different novel, or HTTP 409 when setup is required.
+         */
+        post: operations["start_extraction_api_knowledge_extraction__novel_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/findings/{finding_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge Finding
+         * @description Acknowledge: the finding is consumed — seen, the text stays as it is.
+         *
+         *     Return the finding; raise HTTP 404 for an absent or unowned finding,
+         *     or HTTP 409 for an already reviewed finding.
+         */
+        post: operations["acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/findings/{finding_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Finding
+         * @description Dismiss a finding and return its retained row with status dismissed.
+         *
+         *     Raise HTTP 404 for an absent or unowned finding, or HTTP 409 if already reviewed.
+         */
+        post: operations["dismiss_finding_api_knowledge_findings__finding_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/novels/{novel_id}/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Entities
+         * @description Return entities oldest first; raise HTTP 404 for an absent or unowned novel.
+         */
+        get: operations["list_entities_api_knowledge_novels__novel_id__entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/novels/{novel_id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Findings
+         * @description The novel's findings in one review state; pending is the queue.
+         *
+         *     Return them oldest first; raise HTTP 404 for an absent or unowned novel.
+         */
+        get: operations["list_findings_api_knowledge_novels__novel_id__findings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/novels/{novel_id}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Suggestions
+         * @description The novel's suggestions in one review state; pending is the queue.
+         *
+         *     Return them oldest first; raise HTTP 404 for an absent or unowned novel.
+         */
+        get: operations["list_suggestions_api_knowledge_novels__novel_id__suggestions_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -73,6 +301,52 @@ export interface paths {
         put?: never;
         /** Search */
         post: operations["search_api_knowledge_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/suggestions/{suggestion_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Suggestion
+         * @description Accept: the entity is created and the suggestion consumed, once.
+         *
+         *     Return the entity; raise HTTP 404 for an absent or unowned suggestion,
+         *     or HTTP 409 for an already reviewed suggestion.
+         */
+        post: operations["accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/suggestions/{suggestion_id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Suggestion
+         * @description Discard: the suggestion is consumed without creating anything.
+         *
+         *     Return the suggestion; raise HTTP 404 for an absent or unowned suggestion,
+         *     or HTTP 409 for an already reviewed suggestion.
+         */
+        post: operations["discard_suggestion_api_knowledge_suggestions__suggestion_id__discard_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -176,7 +450,10 @@ export interface paths {
         /** List Novels */
         get: operations["list_novels_api_writing_novels_get"];
         put?: never;
-        /** Create Novel */
+        /**
+         * Create Novel
+         * @description Create and return a novel; respond with HTTP 409 if setup is required.
+         */
         post: operations["create_novel_api_writing_novels_post"];
         delete?: never;
         options?: never;
@@ -261,6 +538,11 @@ export interface components {
             position: number;
             /** Title */
             title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ChapterUpdate */
         ChapterUpdate: {
@@ -279,6 +561,17 @@ export interface components {
             /** Question */
             question: string;
         };
+        /**
+         * ConsistencyAccepted
+         * @description The check's enqueue answer: what to poll.
+         */
+        ConsistencyAccepted: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+        };
         /** DocumentRead */
         DocumentRead: {
             /**
@@ -294,23 +587,154 @@ export interface components {
             /** Title */
             title: string;
         };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+        /**
+         * EntityMerge
+         * @description The merge's whole ask: which row survives.
+         */
+        EntityMerge: {
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
         };
-        /** NovelCreate */
-        NovelCreate: {
-            /** Title */
-            title: string;
-        };
-        /** NovelRead */
-        NovelRead: {
+        /** EntityRead */
+        EntityRead: {
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+        };
+        /**
+         * EntityUpdate
+         * @description The PATCH body: only the fields present are the change.
+         *
+         *     ``None`` is ambiguous by shape alone — an absent field and a cleared
+         *     description both look like None — so the service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one. The
+         *     values are checked there, against the parse contract's vocabulary:
+         *     this schema carries the fields, the contract decides what a value may
+         *     be.
+         */
+        EntityUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * ExtractionAccepted
+         * @description The enqueue's whole answer: what to poll.
+         */
+        ExtractionAccepted: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+        };
+        /**
+         * ExtractionRequest
+         * @description Which chapter of the novel the worker should read.
+         */
+        ExtractionRequest: {
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+        };
+        /** FindingRead */
+        FindingRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Detail */
+            detail: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * JobRead
+         * @description What a UI polls: the row's state, not its payload.
+         */
+        JobRead: {
+            /** Error */
+            error: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Progress */
+            progress: number | null;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Status */
+            status: string;
+        };
+        /** NovelCreate */
+        NovelCreate: {
+            /** Blurb */
+            blurb?: string | null;
+            /** Genre */
+            genre?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** NovelRead */
+        NovelRead: {
+            /** Blurb */
+            blurb: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Genre */
+            genre: string | null;
             /**
              * Id
              * Format: uuid
@@ -318,6 +742,11 @@ export interface components {
             id: string;
             /** Title */
             title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * ReembedResult
@@ -388,6 +817,37 @@ export interface components {
             /** Complete */
             complete: boolean;
         };
+        /** SuggestionRead */
+        SuggestionRead: {
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Status */
+            status: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -430,6 +890,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_api_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_consistency_api_knowledge_consistency__novel_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsistencyAccepted"];
                 };
             };
             /** @description Validation Error */
@@ -496,6 +1018,299 @@ export interface operations {
             };
         };
     };
+    delete_entity_api_knowledge_entities__entity_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_entity_api_knowledge_entities__entity_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_entity_api_knowledge_entities__entity_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityMerge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_extraction_api_knowledge_extraction__novel_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_finding_api_knowledge_findings__finding_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_entities_api_knowledge_novels__novel_id__entities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_findings_api_knowledge_novels__novel_id__findings_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "acknowledged" | "dismissed";
+            };
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_suggestions_api_knowledge_novels__novel_id__suggestions_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "accepted" | "discarded";
+            };
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reembed_api_knowledge_reembed_post: {
         parameters: {
             query?: never;
@@ -536,6 +1351,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchHit"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_suggestion_api_knowledge_suggestions__suggestion_id__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionRead"];
                 };
             };
             /** @description Validation Error */

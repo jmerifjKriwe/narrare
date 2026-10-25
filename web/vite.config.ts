@@ -1,11 +1,35 @@
+import { fileURLToPath } from "node:url";
+
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
+
+// The shell half of the @shell alias: capabilities under
+// app/capabilities/*/web import shell code as @shell/lib/…, and the alias
+// must resolve identically here (dev and build) and in typecheck
+// (web/tsconfig.json paths). It points one way only — a capability imports
+// the shell, never another capability.
+const shell = fileURLToPath(new URL(".", import.meta.url));
 
 // One origin in the browser, as before: /api is forwarded to the FastAPI
 // process. In production FastAPI serves the built files itself, so this proxy
 // exists only while developing.
 export default defineConfig({
   plugins: [react()],
+  // Component tests live beside the components they drive, in the capability
+  // folders outside web/; the default include (this directory only) would
+  // never collect them. The jsdom environment stays a per-file decision —
+  // the docblock in each test file — so lib tests keep node semantics.
+  test: {
+    include: [
+      "**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "../app/capabilities/*/web/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+    ],
+  },
+  resolve: {
+    alias: {
+      "@shell": shell,
+    },
+  },
   server: {
     // Bind to IPv4 localhost explicitly: in CI (and on some hosts) `localhost`
     // resolves to ::1 (IPv6) only, so the E2E stack's http://127.0.0.1:3100

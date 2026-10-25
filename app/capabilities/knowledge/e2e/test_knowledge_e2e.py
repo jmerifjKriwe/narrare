@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
     from app.kernel.testing.vendor import EmbeddingsVendor
@@ -33,6 +35,8 @@ def test_uploaded_passage_is_returned_by_search(page: Page, stack: Stack, tmp_pa
     page.get_by_label("Suchbegriff").fill("Leuchtturm")
     page.get_by_role("button", name="Suchen").click()
     expect(page.get_by_text("Der Leuchtturm am Horizont war seit Jahren dunkel.")).to_be_visible()
+
+    assert_accessible(page)
 
 
 def test_a_model_change_is_refused_and_reembedding_restores_search(
@@ -58,3 +62,5 @@ def test_a_model_change_is_refused_and_reembedding_restores_search(
 
     page.get_by_role("button", name="Suchen").click()
     expect(page.get_by_text("Der Leuchtturm am Horizont war seit Jahren dunkel.")).to_be_visible()
+
+    assert_accessible(page)

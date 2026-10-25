@@ -1,21 +1,35 @@
 """HTTP surface. Parses, delegates to the service, returns; no logic here."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import (
+    ConsistencyAccepted,
     DocumentRead,
+    EntityMerge,
+    EntityRead,
+    EntityUpdate,
+    ExtractionAccepted,
+    ExtractionRequest,
+    FindingRead,
     ReembedResult,
     SearchHit,
     SearchRequest,
+    SuggestionRead,
 )
 from app.capabilities.knowledge.service import (
+    AlreadyReviewedError,
+    CrossNovelMergeError,
     DocumentTooLargeError,
     EmptyDocumentError,
+    FindingAlreadyReviewedError,
+    InvalidEntityUpdateError,
     KnowledgeService,
+    NotFoundError,
+    SelfMergeError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
@@ -97,3 +111,193 @@ async def search(payload: SearchRequest, service: ServiceDep) -> list[SearchHit]
         )
         for hit in hits
     ]
+
+
+@router.post("/extraction/{novel_id}", response_model=ExtractionAccepted, status_code=202)
+async def start_extraction(
+    novel_id: UUID, payload: ExtractionRequest, service: ServiceDep
+) -> ExtractionAccepted:
+    """Enqueue entity extraction for a chapter. The worker does the rest; poll
+    ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+
+    Respond with HTTP 404 for an absent or unowned novel or chapter, including
+    a chapter from a different novel, or HTTP 409 when setup is required.
+    """
+    try:
+        job = await service.enqueue_extraction(novel_id, payload.chapter_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel or chapter not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return ExtractionAccepted(job_id=job.id)
+
+
+@router.get("/novels/{novel_id}/entities", response_model=list[EntityRead])
+async def list_entities(novel_id: UUID, service: ServiceDep) -> list[EntityRead]:
+    """Return entities oldest first; raise HTTP 404 for an absent or unowned novel."""
+    try:
+        entities = await service.list_entities(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [EntityRead.model_validate(entity) for entity in entities]
+
+
+@router.get("/novels/{novel_id}/suggestions", response_model=list[SuggestionRead])
+async def list_suggestions(
+    novel_id: UUID,
+    service: ServiceDep,
+    status: Literal["pending", "accepted", "discarded"] = "pending",
+) -> list[SuggestionRead]:
+    """The novel's suggestions in one review state; pending is the queue.
+
+    Return them oldest first; raise HTTP 404 for an absent or unowned novel.
+    """
+    try:
+        suggestions = await service.list_suggestions(novel_id, status)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [SuggestionRead.model_validate(suggestion) for suggestion in suggestions]
+
+
+@router.post("/suggestions/{suggestion_id}/accept", response_model=EntityRead)
+async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> EntityRead:
+    """Accept: the entity is created and the suggestion consumed, once.
+
+    Return the entity; raise HTTP 404 for an absent or unowned suggestion,
+    or HTTP 409 for an already reviewed suggestion.
+    """
+    try:
+        entity, _ = await service.accept_suggestion(suggestion_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="suggestion not found") from None
+    except AlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
+    return EntityRead.model_validate(entity)
+
+
+@router.post("/suggestions/{suggestion_id}/discard", response_model=SuggestionRead)
+async def discard_suggestion(suggestion_id: UUID, service: ServiceDep) -> SuggestionRead:
+    """Discard: the suggestion is consumed without creating anything.
+
+    Return the suggestion; raise HTTP 404 for an absent or unowned suggestion,
+    or HTTP 409 for an already reviewed suggestion.
+    """
+    try:
+        suggestion = await service.discard_suggestion(suggestion_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="suggestion not found") from None
+    except AlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
+    return SuggestionRead.model_validate(suggestion)
+
+
+@router.post("/consistency/{novel_id}", response_model=ConsistencyAccepted, status_code=202)
+async def start_consistency(novel_id: UUID, service: ServiceDep) -> ConsistencyAccepted:
+    """Enqueue the whole-novel consistency check. The worker does the rest;
+    poll ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+
+    Raise HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is required.
+    """
+    try:
+        job = await service.enqueue_consistency(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return ConsistencyAccepted(job_id=job.id)
+
+
+@router.get("/novels/{novel_id}/findings", response_model=list[FindingRead])
+async def list_findings(
+    novel_id: UUID,
+    service: ServiceDep,
+    status: Literal["pending", "acknowledged", "dismissed"] = "pending",
+) -> list[FindingRead]:
+    """The novel's findings in one review state; pending is the queue.
+
+    Return them oldest first; raise HTTP 404 for an absent or unowned novel.
+    """
+    try:
+        findings = await service.list_findings(novel_id, status)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [FindingRead.model_validate(finding) for finding in findings]
+
+
+@router.post("/findings/{finding_id}/acknowledge", response_model=FindingRead)
+async def acknowledge_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
+    """Acknowledge: the finding is consumed — seen, the text stays as it is.
+
+    Return the finding; raise HTTP 404 for an absent or unowned finding,
+    or HTTP 409 for an already reviewed finding.
+    """
+    try:
+        finding = await service.acknowledge_finding(finding_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="finding not found") from None
+    except FindingAlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="finding already reviewed") from None
+    return FindingRead.model_validate(finding)
+
+
+@router.post("/findings/{finding_id}/dismiss", response_model=FindingRead)
+async def dismiss_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
+    """Dismiss a finding and return its retained row with status dismissed.
+
+    Raise HTTP 404 for an absent or unowned finding, or HTTP 409 if already reviewed.
+    """
+    try:
+        finding = await service.dismiss_finding(finding_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="finding not found") from None
+    except FindingAlreadyReviewedError:
+        raise HTTPException(status_code=409, detail="finding already reviewed") from None
+    return FindingRead.model_validate(finding)
+
+
+@router.patch("/entities/{entity_id}", response_model=EntityRead)
+async def update_entity(entity_id: UUID, payload: EntityUpdate, service: ServiceDep) -> EntityRead:
+    """Correct an entity by hand: only the fields the body carries change.
+
+    Return the entity; raise HTTP 404 for an absent or unowned entity,
+    or HTTP 422 for an invalid name or kind. A null description clears it.
+    """
+    try:
+        entity = await service.update_entity(entity_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+    except InvalidEntityUpdateError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    return EntityRead.model_validate(entity)
+
+
+@router.delete("/entities/{entity_id}", status_code=204)
+async def delete_entity(entity_id: UUID, service: ServiceDep) -> None:
+    """Delete an entity. The row has no referents — the delete is a row delete.
+
+    Raise HTTP 404 for an absent or unowned entity.
+    """
+    try:
+        await service.delete_entity(entity_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+
+
+@router.post("/entities/{entity_id}/merge", response_model=EntityRead)
+async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDep) -> EntityRead:
+    """Fold this entity into another: the target survives, the source is deleted.
+
+    Return the unchanged target; raise HTTP 404 if either entity is absent or
+    unowned, or HTTP 422 for a self-merge or a target in another novel.
+    """
+    try:
+        target = await service.merge_entities(entity_id, payload.target_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+    except SelfMergeError:
+        raise HTTPException(status_code=422, detail="an entity cannot merge into itself") from None
+    except CrossNovelMergeError:
+        raise HTTPException(
+            status_code=422, detail="an entity cannot merge into another novel's entity"
+        ) from None
+    return EntityRead.model_validate(target)

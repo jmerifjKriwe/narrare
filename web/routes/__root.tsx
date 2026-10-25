@@ -1,99 +1,30 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
 
-import { client } from "../lib/api/client";
-import { catalogs, locales } from "../lib/generated/catalogs";
+import { TopBar } from "../components/TopBar";
 import { useTranslation } from "../lib/i18n";
-import {
-  adoptServerLocale,
-  applyLocale,
-  chosenLocale,
-  subscribeLocale,
-  type Locale,
-} from "../lib/locale";
+import { adoptServerLocale } from "../lib/locale";
+import { useSettingsQuery } from "../lib/query";
 import "../globals.css";
-
-/** The language control. It lives in the shell, so it exists on every page. */
-function LanguageSwitcher() {
-  const t = useTranslation();
-  const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
-  const [failed, setFailed] = useState(false);
-
-  async function choose(value: string) {
-    const previous = chosenLocale();
-    const next: Locale | null = value === "auto" ? null : (value as Locale);
-    // Applied first: a local service answers in milliseconds, and the page
-    // must not feel like it waits for the write.
-    applyLocale(next);
-    setFailed(false);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-    } catch {
-      // The write did not happen, so the display must not pretend it did.
-      applyLocale(previous);
-      setFailed(true);
-    }
-  }
-
-  return (
-    <div className="fixed right-4 top-4 z-10 flex items-center gap-2 text-sm">
-      <label htmlFor="locale" className="text-muted">
-        {t("settings.language")}
-      </label>
-      <select
-        id="locale"
-        value={chosen ?? "auto"}
-        onChange={(event) => void choose(event.target.value)}
-        className="rounded-md border border-border bg-card px-2 py-1 text-sm"
-      >
-        {/* "Automatic" is a real choice, not an empty one: it means the row
-            holds no preference and the browser decides. */}
-        <option value="auto">{t("settings.automatic")}</option>
-        {locales.map((code) => (
-          <option key={code} value={code}>
-            {/* Endonyms: a reader looking for their language finds it written
-                in their language, whatever the app currently speaks. */}
-            {catalogs[code]["locale.name"]}
-          </option>
-        ))}
-      </select>
-      {failed ? (
-        <p role="alert" className="text-danger">
-          {t("settings.errorSave")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 /** The one shell: every route renders inside it. */
 function Shell() {
   const t = useTranslation();
   // The language is user data on the server, so the first paint waits for it.
   // Rendering first and switching after would flash the wrong language on
-  // every load, which is the one visible artefact this gate prevents.
+  // every load, which is the one visible artefact this gate prevents. The
+  // gate rests on the query never erroring: an unreachable service resolves
+  // to `locale: null` (web/lib/query.ts), so `isSuccess` is reached on an
+  // outage too, and the gate opens into the browser's language.
   const [ready, setReady] = useState(false);
+  const settings = useSettingsQuery();
 
   useEffect(() => {
-    let live = true;
-    void (async () => {
-      let stored: string | null = null;
-      try {
-        const { data } = await client.GET("/api/settings");
-        stored = data?.locale ?? null;
-      } catch {
-        // An unreachable service: the browser's language is the best answer,
-        // and each page reports the outage in its own words.
-      }
-      if (!live) return;
-      adoptServerLocale(stored);
-      setReady(true);
-    })();
-    return () => {
-      live = false;
-    };
-  }, []);
+    if (!settings.isSuccess) return;
+    adoptServerLocale(settings.data.locale);
+    setReady(true);
+  }, [settings.data, settings.isSuccess]);
 
   useEffect(() => {
     document.title = t("app.title");
@@ -103,10 +34,66 @@ function Shell() {
 
   return (
     <>
-      <LanguageSwitcher />
-      <Outlet />
+      <TopBar />
+      {/* The shell owns the page's one main landmark; routes render content
+          inside it, and the skip link lands here. tabIndex makes the landing
+          hold focus — fragment navigation focuses a target only if it can —
+          and -1 keeps it out of the tab order. */}
+      <main id="main" tabIndex={-1}>
+        {/* Capability pages load lazily, each as its own bundle chunk; the
+            one boundary lives in the shell so no capability needs one. The
+            fallback is null on purpose — the shell's own pre-paint gate is
+            quiet, and the gap while a chunk arrives is the same quiet. */}
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
+      </main>
     </>
   );
 }
 
-export const rootRoute = createRootRoute({ component: Shell });
+/** The shell's answer to an unknown URL: the copy comes from the catalog —
+ * TanStack's English default would break the i18n rule inside the localized
+ * shell — and the way home is the shelf. */
+function NotFound() {
+  const t = useTranslation();
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("shell.notFound")}</h1>
+      <Link
+        to="/"
+        className="mt-4 inline-block text-sm text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        {t("nav.back")}
+      </Link>
+    </div>
+  );
+}
+
+/** A route that throws lands here, not on TanStack's English default: the
+ * failure is named in the catalog's language and the thrown message rides
+ * along — a local-first app shows its own errors. */
+function RouteError({ error }: ErrorComponentProps) {
+  const t = useTranslation();
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("shell.error")}</h1>
+      <p role="alert" className="mt-4 text-sm text-danger">
+        {message}
+      </p>
+      <Link
+        to="/"
+        className="mt-4 inline-block text-sm text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        {t("nav.back")}
+      </Link>
+    </div>
+  );
+}
+
+export const rootRoute = createRootRoute({
+  component: Shell,
+  notFoundComponent: NotFound,
+  errorComponent: RouteError,
+});

@@ -13,11 +13,17 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@shell/*": ["./*"]
     },
     "allowJs": true,
     "skipLibCheck": true
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../app/capabilities/*/web/**/*.ts",
+    "../app/capabilities/*/web/**/*.tsx"
+  ],
   "exclude": ["node_modules", "dist"]
 }

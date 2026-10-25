@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 /*
+ * Capability pages live outside web/, under each capability's own web
+ * folder, beyond the scanner's own reach; this names the places their
+ * utilities come from. The shell's tokens stay the one design surface:
+ * these folders carry utilities only, never a palette of their own.
+ */
+@source "../app/capabilities/*/web/**";
+
+/*
  * One design surface, owned by the shell: the tokens. Pages and components
  * consume them through utilities; capabilities never carry their own palette.
  * Dark mode follows the system (prefers-color-scheme) — night writing needs
@@ -12,10 +20,26 @@
   --foreground: oklch(0.25 0.01 85);
   --muted: oklch(0.55 0.01 85);
   --card: oklch(1 0 0);
+  /* Quiet surfaces between the page and a card: the top bar today, rails and
+   * docks later. Raised, but not raised enough to be a card. */
+  --panel: oklch(0.995 0.004 85);
   --border: oklch(0.88 0.005 85);
   --primary: oklch(0.42 0.09 45);
   --primary-foreground: oklch(0.98 0.005 85);
+  /* The keyboard's pointer: primary's family one step brighter, so the ring
+   * reads against text, surfaces and both themes. */
+  --focus: oklch(0.48 0.11 45);
+  --success: oklch(0.5 0.12 150);
+  --warning: oklch(0.6 0.13 75);
   --danger: oklch(0.5 0.16 25);
+  /* The overlay pair: what a surface floating above the page dims it with,
+   * and the shadow such a raised surface casts. Theme-constant on purpose —
+   * a black scrim reads on light and dark pages alike. The dialog is the
+   * first consumer; whatever floats next (command palette, sheets) reuses
+   * these instead of growing its own. */
+  --scrim: oklch(0 0 0 / 0.4);
+  --overlay-shadow:
+    0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,9 +48,13 @@
     --foreground: oklch(0.9 0.005 85);
     --muted: oklch(0.62 0.01 85);
     --card: oklch(0.24 0.01 85);
+    --panel: oklch(0.215 0.01 85);
     --border: oklch(0.32 0.01 85);
     --primary: oklch(0.72 0.1 60);
     --primary-foreground: oklch(0.2 0.02 60);
+    --focus: oklch(0.8 0.11 60);
+    --success: oklch(0.68 0.13 150);
+    --warning: oklch(0.78 0.13 80);
     --danger: oklch(0.68 0.15 25);
   }
 }
@@ -46,10 +74,16 @@ body {
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-card: var(--card);
+  --color-panel: var(--panel);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-scrim: var(--scrim);
+  --shadow-overlay: var(--overlay-shadow);
 }
 
 /* The editor's prose: the one place long-form text is read, so it gets a

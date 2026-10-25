@@ -72,8 +72,9 @@ async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
 
 @router.post("/novels", response_model=NovelRead, status_code=201)
 async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
+    """Create and return a novel; respond with HTTP 409 if setup is required."""
     try:
-        novel = await service.create_novel(payload.title)
+        novel = await service.create_novel(payload.title, genre=payload.genre, blurb=payload.blurb)
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
     return NovelRead.model_validate(novel)

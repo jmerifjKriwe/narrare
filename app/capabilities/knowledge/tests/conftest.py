@@ -28,7 +28,12 @@ async def empty_tables() -> None:
     from app.kernel.db.session import Session
 
     async with Session() as session:
-        await session.execute(text("TRUNCATE chunks, documents, novels, chapters, users CASCADE"))
+        await session.execute(
+            text(
+                "TRUNCATE entities, entity_suggestions, consistency_findings, jobs,"
+                " chunks, documents, novels, chapters, users CASCADE"
+            )
+        )
         # The local user exists: these tests exercise a set-up instance. The
         # guard test deletes it again to see the refusal.
         session.add(User(id=LOCAL_USER_ID))

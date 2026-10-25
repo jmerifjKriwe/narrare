@@ -1,6 +1,23 @@
 packages:
   - "web"
 
+# Capability web folders (app/capabilities/*/web) live outside web/, so their
+# bare imports cannot walk up to web/node_modules. The packages a capability
+# may import directly — the React and router stack, the editor's TipTap — are
+# hoisted to the workspace root, where tsc, vitest, the vite dev server and
+# the production build resolve them from anywhere. The list is the boundary:
+# capabilities import the shell through @shell/* and the framework through
+# these, nothing else.
+publicHoistPattern:
+  - react
+  - react-dom
+  - "@types/react"
+  - "@types/react-dom"
+  - "@tanstack/*"
+  - "@tiptap/*"
+  - "@testing-library/*"
+  - vitest
+
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
@@ -11,6 +28,7 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - vite@8.3.5
+  - happy-dom@21.0.4
 
 overrides:
   # GHSA-r825-w8mm-5pxw: vite 8.3.0-8.3.2, reached through vitest. 8.3.5 is the
@@ -18,3 +36,10 @@ overrides:
   # why it is pinned exactly and listed in minimumReleaseAgeExclude above.
   # Drop the pin when vitest's own range resolves a patched vite on its own.
   vite: "8.3.5"
+  # CVE-2026-33943 (incomplete fix): happy-dom 17.0.0-21.0.3 runs unsanitized
+  # import aliases — host code execution. Not a direct dependency: vitest's
+  # auto-installed optional peer, unused (every test runs jsdom). Pinned to the
+  # first patched release and excluded from the release-age guard above for the
+  # same reason as vite. Drop the pin when vitest resolves a patched happy-dom
+  # on its own.
+  happy-dom: "21.0.4"

@@ -1,11 +1,11 @@
-import { createRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { client, isModelChange, type Hit, type KnowledgeDocument } from "../lib/api/client";
-import { useTranslation } from "../lib/i18n";
-import { rootRoute } from "./__root";
+import { client, isModelChange, type Hit, type KnowledgeDocument } from "@shell/lib/api/client";
+import { useTranslation } from "@shell/lib/i18n";
 
-function KnowledgePage() {
+/** The knowledge page: upload documents, then search them by meaning. */
+export function KnowledgePage() {
   const t = useTranslation();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [title, setTitle] = useState("");
@@ -87,7 +87,7 @@ function KnowledgePage() {
   if (!ready) return null;
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">{t("knowledge.heading")}</h1>
       <p className="mt-2 text-sm text-muted">
         <Link to="/" className="underline-offset-4 hover:underline">
@@ -182,12 +182,6 @@ function KnowledgePage() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }
-
-export const knowledgeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/knowledge",
-  component: KnowledgePage,
-});

@@ -13,8 +13,14 @@ from asyncio import run
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# The contracts module is the schema: importing it registers every table.
+# The schema is registered by import on the shared Base: contracts holds the
+# domain vocabulary, jobs its own table — kernel machinery, not domain — and
+# both drop_all/create_all passes below see every table only because both
+# modules are imported here.
 from app.kernel.contracts import models
+from app.kernel.jobs import models as jobs_models
+
+del jobs_models  # the import is for its registration side effect, not the name
 
 
 async def init_schema(database_url: str) -> None:

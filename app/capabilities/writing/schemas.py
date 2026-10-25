@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
+    genre: str | None = Field(default=None, max_length=80)
+    blurb: str | None = None
 
 
 class NovelRead(BaseModel):
@@ -15,7 +17,10 @@ class NovelRead(BaseModel):
 
     id: UUID
     title: str
+    genre: str | None
+    blurb: str | None
     created_at: datetime
+    updated_at: datetime
 
 
 class ChapterCreate(BaseModel):
@@ -38,3 +43,4 @@ class ChapterRead(BaseModel):
     position: int
     body: str
     created_at: datetime
+    updated_at: datetime

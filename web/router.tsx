@@ -1,18 +1,13 @@
 import { createRouter } from "@tanstack/react-router";
 
+import { capabilityRoutes } from "./lib/generated/routes";
 import { rootRoute } from "./routes/__root";
-import { chatRoute } from "./routes/chat";
-import { indexRoute } from "./routes/index";
-import { knowledgeRoute } from "./routes/knowledge";
-import { novelRoute } from "./routes/novels.$id";
-import { setupRoute } from "./routes/setup";
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
-  novelRoute,
-  knowledgeRoute,
-  chatRoute,
-  setupRoute,
+  // The generated capability route table: every route the app serves comes
+  // from a capability's web/routes.tsx; the shell holds no hand-written
+  // list of its own.
+  ...capabilityRoutes,
 ]);
 
 export const router = createRouter({ routeTree });
