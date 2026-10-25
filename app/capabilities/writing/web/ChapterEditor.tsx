@@ -120,7 +120,17 @@ export function ChapterEditor({
       announce(t("editor.ghostArrived"));
       // Tab and Esc are the editor's keys; whoever holds focus now (the
       // Weiterschreiben button, the panel that offered) gives the caret back.
-      editor.commands.focus();
+      // Synchronously, and through the view: `commands.focus()` waits for the
+      // next animation frame, while the click that started the stream already
+      // lost the caret to <body> (React disables the focused button). A ghost
+      // painted in that gap is a ghost no key can reach — Esc lands on <body>,
+      // and the workbench's own Esc handler sees nothing to stop. view.focus()
+      // focuses and restores the caret from the state in the same task that
+      // paints the ghost, so "ghost on screen" and "the editor owns the
+      // keyboard" are never two different moments. The frame the command also
+      // used to scroll the caret into view is not owed here: an arrival does
+      // not move the caret.
+      editor.view.focus();
     } else if (superseding) {
       // One announcement per supersede: a new offer or a fresh run replaced
       // the pending ghost — the deltas that grow a ghost say nothing.

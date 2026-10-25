@@ -43,12 +43,20 @@ SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
 def _read_log(process: subprocess.Popen[bytes]) -> str:
+    """Whatever the child wrote, read back from the object that holds it.
+
+    The log is an open file object over a ``mkstemp`` descriptor, not a path:
+    ``fdopen`` names the object after the descriptor, an integer, so a
+    ``Path(...)`` here raised before the child's own words could be shown —
+    and the report about a stack that would not start became a TypeError.
+    """
     log_file = getattr(process, "_log_file", None)
     if log_file is None:
         return ""
     try:
         log_file.flush()
-        return Path(log_file.name).read_text(errors="replace")
+        log_file.seek(0)
+        return log_file.read().decode(errors="replace")
     except OSError, ValueError:
         return ""
 
