@@ -1,12 +1,13 @@
 """Knowledge's background jobs: handlers the api app discovers by convention.
 
 One job kind, one function (spec §9 D10). A handler receives its own session
-and owns its transaction: the provider call, the filed rows and the progress
-report all ride one commit at the end — a malformed answer raises before any
-row exists, and the lane records the failure with nothing written.
+and owns its transaction: the provider call, the filed rows, the audit row and
+the progress report all ride one commit at the end — a malformed answer raises
+before any row exists, and the lane records the failure with nothing written.
 """
 
 from json import JSONDecodeError, loads
+from time import monotonic
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
@@ -27,7 +28,9 @@ from app.capabilities.knowledge.repository import (
 )
 from app.kernel.contracts.models import Chapter, Novel
 from app.kernel.jobs.models import Job
-from app.kernel.llm import get_provider
+from app.kernel.llm import get_provider, provider_facts
+from app.kernel.llm.audit import record_call
+from app.kernel.llm.contract import CompletionRequest, Delta, Usage
 
 if TYPE_CHECKING:
     from app.kernel.jobs.worker import JobHandler
@@ -165,8 +168,9 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
     ``job.payload['chapter_id']`` identifies the chapter as a UUID. Missing or invalid IDs,
     or a chapter missing from the owner's rows, raise ValueError. Invalid
     answers raise MalformedAnswerError; provider and database errors propagate.
-    Success commits suggestions and progress=100 and returns ``suggestions``
-    as the parsed entity count, including duplicates skipped during filing.
+    Success commits suggestions, the call audit, and progress=100 together,
+    and returns ``suggestions`` as the parsed entity count, including duplicates
+    skipped during filing. Provider or answer-validation failures create no audit row.
     """
     try:
         chapter_id = UUID(str(job.payload["chapter_id"]))
@@ -181,10 +185,37 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
         raise ValueError(f"chapter {chapter_id} is gone or not the job owner's")
 
     prompt = extraction_prompt(chapter_title=chapter.title, body=chapter.body)
+    kind, model = provider_facts()
     pieces: list[str] = []
-    async for delta in get_provider().stream(prompt):
-        pieces.append(delta)
-    entities = parse_entities("".join(pieces))
+    usage: Usage | None = None
+    started = monotonic()
+    async for event in get_provider().stream(CompletionRequest.user(prompt)):
+        if isinstance(event, Delta):
+            pieces.append(event.text)
+        elif isinstance(event, Usage):
+            usage = event
+    answer = "".join(pieces)
+    latency_ms = round((monotonic() - started) * 1000)
+    entities = parse_entities(answer)
+
+    # The audit row rides the handler's terminal commit with the rows it
+    # files: the call is part of the work. A raise before here — a malformed
+    # answer, a dead provider — writes no row; the rollback would take it
+    # anyway (D3, D14).
+    await record_call(
+        session,
+        user_id=job.user_id,
+        task_key="knowledge.extract-entities",
+        provider_kind=kind,
+        model=model,
+        latency_ms=latency_ms,
+        status="ok",
+        prompt_text=prompt,
+        response_text=answer,
+        input_tokens=usage.input_tokens if usage else None,
+        output_tokens=usage.output_tokens if usage else None,
+        novel_id=chapter.novel_id,
+    )
 
     suggestions = EntitySuggestionRepository(session, job.user_id)
     await suggestions.create_many(chapter.novel_id, chapter_id, entities)
@@ -210,8 +241,9 @@ async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object
     ``job.payload['novel_id']`` identifies the novel as a UUID. Missing or invalid IDs,
     or a novel missing from the owner's rows, raise ValueError. Invalid answers
     raise MalformedAnswerError; provider and database errors propagate.
-    Success commits findings and progress=100 and returns ``findings`` as the
-    parsed finding count, including duplicates skipped during filing.
+    Success commits findings, the call audit, and progress=100 together,
+    and returns ``findings`` as the parsed finding count, including duplicates
+    skipped during filing. Provider or answer-validation failures create no audit row.
     """
     try:
         novel_id = UUID(str(job.payload["novel_id"]))
@@ -237,10 +269,35 @@ async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object
         entities=[(entity.name, entity.kind) for entity in entities],
         chapters=[(chapter.title, chapter.body) for chapter in chapters],
     )
+    kind, model = provider_facts()
     pieces: list[str] = []
-    async for delta in get_provider().stream(prompt):
-        pieces.append(delta)
-    findings = parse_findings("".join(pieces))
+    usage: Usage | None = None
+    started = monotonic()
+    async for event in get_provider().stream(CompletionRequest.user(prompt)):
+        if isinstance(event, Delta):
+            pieces.append(event.text)
+        elif isinstance(event, Usage):
+            usage = event
+    answer = "".join(pieces)
+    latency_ms = round((monotonic() - started) * 1000)
+    findings = parse_findings(answer)
+
+    # The extraction handler's audit contract, unchanged in shape: the row
+    # rides the terminal commit, and a failure before here writes none.
+    await record_call(
+        session,
+        user_id=job.user_id,
+        task_key="knowledge.check-consistency",
+        provider_kind=kind,
+        model=model,
+        latency_ms=latency_ms,
+        status="ok",
+        prompt_text=prompt,
+        response_text=answer,
+        input_tokens=usage.input_tokens if usage else None,
+        output_tokens=usage.output_tokens if usage else None,
+        novel_id=novel_id,
+    )
 
     repository = ConsistencyFindingRepository(session, job.user_id)
     await repository.create_many(novel_id, findings)

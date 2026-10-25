@@ -6,6 +6,12 @@ from uuid import UUID  # noqa: TC003
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class WritingErrorRead(BaseModel):
+    """The JSON body for missing resources and incomplete setup."""
+
+    detail: str
+
+
 class NovelCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     genre: str | None = Field(default=None, max_length=80)

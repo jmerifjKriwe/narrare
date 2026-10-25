@@ -13,9 +13,11 @@ import json
 from collections.abc import AsyncIterator  # noqa: TC003
 from dataclasses import dataclass
 from os import environ
+from typing import cast
 
 import httpx
 
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.vendor import needs_api_key
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
@@ -23,7 +25,9 @@ DEFAULT_BASE_URL = "https://api.openai.com/v1"
 TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
 """Reading waits: a completion streams for as long as the model takes."""
 
-DONE = "[DONE]"
+DONE_MARKER = "[DONE]"
+"""The wire's own terminal line. Local servers omit it, so the protocol's DONE
+does not depend on it."""
 
 
 @dataclass(frozen=True)
@@ -36,6 +40,7 @@ class OpenAISettings:
 
     @classmethod
     def from_environment(cls) -> OpenAISettings:
+        """Read provider settings from NARRE_LLM variables and remove trailing base URL slashes."""
         return cls(
             base_url=environ.get("NARRE_LLM_BASE_URL", DEFAULT_BASE_URL).rstrip("/"),
             model=environ.get("NARRE_LLM_MODEL", ""),
@@ -56,6 +61,7 @@ class OpenAICompatibleProvider:
     """Streams a chat completion from any OpenAI-shaped endpoint."""
 
     def __init__(self, settings: OpenAISettings) -> None:
+        """Use the supplied endpoint, model, and API key for subsequent completions."""
         self.settings = settings
 
     @classmethod
@@ -64,23 +70,47 @@ class OpenAICompatibleProvider:
         return cls(OpenAISettings.from_environment())
 
     def describe(self) -> str:
+        """Describe the configured model and endpoint without exposing the API key."""
         return (
             f"openai-compatible model={self.settings.model or '(unset)'}"
             f" base_url={self.settings.base_url}"
         )
 
     def configuration_problems(self) -> list[str]:
+        """Return missing configuration reported by the provider settings."""
         return self.settings.problems()
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Stream text and reported usage, then DONE on normal completion.
+
+        Messages retain their roles; optional completion settings are sent only
+        when set. Usage is requested but is yielded only when the server reports
+        it. Both the wire's [DONE] marker and a normal EOF end with one DONE.
+        HTTP, transport, JSON-decoding, and frame-parsing errors propagate
+        without yielding DONE; malformed reported usage raises ValueError.
+        """
         headers = (
             {"Authorization": f"Bearer {self.settings.api_key}"} if self.settings.api_key else {}
         )
-        body = {
+        body: dict[str, object] = {
             "model": self.settings.model,
             "stream": True,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": message.role, "content": message.content} for message in request.messages
+            ],
+            # Always: without it the stream carries no token counts, and the
+            # audit (plan §3.4) would have nothing to record.
+            "stream_options": {"include_usage": True},
         }
+        if request.temperature is not None:
+            body["temperature"] = request.temperature
+        if request.max_tokens is not None:
+            body["max_tokens"] = request.max_tokens
+        if request.response_schema is not None:
+            body["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "answer", "schema": request.response_schema},
+            }
         async with (
             httpx.AsyncClient(timeout=TIMEOUT) as client,
             client.stream(
@@ -93,24 +123,69 @@ class OpenAICompatibleProvider:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if _is_done(line):
-                    return
-                delta = _delta(line)
-                if delta is not None:
-                    yield delta
+                    break
+                event = _event(line)
+                if event is not None:
+                    yield event
+        # Exactly one terminal event, whether or not the server sent its own
+        # [DONE] line — local servers close the stream without one.
+        yield DONE
 
 
 def _is_done(line: str) -> bool:
-    return line.startswith("data: ") and line[6:].strip() == DONE
+    """Recognize an SSE data line containing the terminal wire marker."""
+    return line.startswith("data: ") and line[6:].strip() == DONE_MARKER
 
 
-def _delta(line: str) -> str | None:
-    """The text one SSE line carries, or None when it carries none.
+def _usage(usage: object) -> Usage:
+    """The reported token counts, or a loud refusal naming the broken field.
 
-    Keep-alive comments, the role frame and the finish frame are data lines
-    without content; only text reaches the caller.
+    ``usage: null`` is handled by the caller (absent, valid); a present object
+    fails when a count is missing, not an integer, a boolean (``type`` excludes
+    the int subclass) or negative. The message carries the field and the
+    received value: the generic sentence landed verbatim in ``llm_calls.error``
+    and told an operator nothing about which vendor field drifted.
+    """
+    if not isinstance(usage, dict):
+        raise ValueError(f"reported usage is not an object: {usage!r}")
+    # JSON object keys are strings by contract (RFC 8259); the cast states
+    # that contract on the type level — every value is still checked below.
+    report = cast("dict[str, object]", usage)
+    counts: list[int] = []
+    for field in ("prompt_tokens", "completion_tokens"):
+        if field not in report:
+            # A dropped field and an explicit null are different vendor bugs;
+            # the row's error text should tell an operator which one arrived.
+            raise ValueError(f"reported usage is missing {field}")
+        value = report.get(field)
+        if type(value) is not int or value < 0:
+            raise ValueError(
+                f"reported usage field {field} is not a non-negative integer count: {value!r}"
+            )
+        counts.append(value)
+    input_tokens, output_tokens = counts
+    return Usage(input_tokens=input_tokens, output_tokens=output_tokens)
+
+
+def _event(line: str) -> CompletionEvent | None:
+    """The event one SSE line carries, or None when it carries none.
+
+    Comments and frames without text or usage return None. Reported usage
+    takes precedence over text in the same frame and must contain non-negative
+    integer token counts (booleans are rejected), or ValueError is raised.
+    Invalid JSON raises JSONDecodeError; other malformed frame structures may
+    propagate AttributeError, KeyError, or TypeError. The terminal wire marker
+    must be handled by the caller before parsing.
     """
     if not line.startswith("data: "):
         return None
-    choice = json.loads(line[6:].strip())["choices"][0]["delta"]
-    content = choice.get("content")
-    return content if isinstance(content, str) else None
+    frame = json.loads(line[6:].strip())
+    usage = frame.get("usage")
+    if usage is not None:
+        return _usage(usage)
+    choices = frame.get("choices")
+    if choices:
+        content = choices[0].get("delta", {}).get("content")
+        if isinstance(content, str):
+            return Delta(text=content)
+    return None

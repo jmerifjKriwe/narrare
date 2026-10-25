@@ -6,17 +6,61 @@ persists it) — and a discarded ghost must never reach the database, which the
 reload proves in both directions.
 """
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
+
+DATABASE = "narrare_v2_e2e"  # the stack's own database (e2e/conftest.py)
+
+
+def _continuation_audit(title: str) -> tuple[str, str, int, int, str, float | None]:
+    """The llm_calls row of the novel a test created, from the stack's database.
+
+    Runs in a worker thread: pytest-asyncio keeps a session loop running, and
+    asyncio.run refuses to start a second one in the same thread.
+    """
+
+    async def run() -> tuple[str, str, int, int, str, float | None] | None:
+        """Read the named novel audit using a fresh async engine, or return None."""
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.connect() as connection:
+            row = (
+                await connection.execute(
+                    text(
+                        "SELECT status, task_key, input_tokens, output_tokens, response_text,"
+                        " cost_usd FROM llm_calls c"
+                        " JOIN novels n ON c.novel_id = n.id WHERE n.title = :title"
+                    ),
+                    {"title": title},
+                )
+            ).one_or_none()
+        await engine.dispose()
+        if row is None:
+            return None
+        return (
+            row.status,
+            row.task_key,
+            row.input_tokens,
+            row.output_tokens,
+            row.response_text,
+            row.cost_usd,
+        )
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, run()).result() or ("", "", 0, 0, "", 0.0)
 
 
 def _write_a_line(page: Page, title: str, line: str) -> None:
@@ -37,6 +81,7 @@ def _write_a_line(page: Page, title: str, line: str) -> None:
 
 
 def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: Stack) -> None:
+    """Verify Tab accepts the streamed ghost, autosave persists it, and the call is audited."""
     _write_a_line(page, "Die Windrose", "Die Windrose stand offen.")
 
     page.get_by_role("button", name="Weiterschreiben").click()
@@ -64,10 +109,23 @@ def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: St
     expect(page.locator(".ProseMirror")).to_contain_text("Die Windrose stand offen.")
     expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")
 
+    # The call behind the ghost is audited in the real database (plan §3.4):
+    # one ok continuation for this novel, tokens counted, cost still NULL.
+    status, task_key, input_tokens, output_tokens, response_text, cost_usd = _continuation_audit(
+        "Die Windrose"
+    )
+    assert task_key == "writing.continuation"
+    assert status == "ok"
+    assert input_tokens > 0
+    assert output_tokens > 0
+    assert "über die Straße." in response_text
+    assert cost_usd is None
+
     assert_accessible(page)
 
 
 def test_the_ghost_is_discarded_by_escape_and_leaves_no_trace(page: Page, stack: Stack) -> None:
+    """Verify Escape discards the ghost without persisting text or disrupting focus controls."""
     _write_a_line(page, "Die Barkasse", "Die Barkasse legte ab.")
 
     page.get_by_role("button", name="Weiterschreiben").click()

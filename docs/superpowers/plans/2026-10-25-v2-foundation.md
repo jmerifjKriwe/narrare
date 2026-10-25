@@ -49,7 +49,7 @@ announcer, axe assertions and keyboard-only E2E flows.
 
 **Not built yet:** provider profiles and task assignment; a model catalog; prompt
 overrides; demo content; Markdown storage and export; entity relations; entity types
-beyond `character|place|thing`; `LlmCall` audit; a context budget; hybrid search;
+beyond `character|place|thing`; a context budget; hybrid search;
 a settings surface; the ⌘K palette; chapter and novel management (rename, delete,
 reorder, a chapter's own title); document deletion and document metadata.
 
@@ -144,7 +144,10 @@ CompletionEvent = Delta(text) | Usage(input_tokens, output_tokens) | Done
 
 The fake keeps deriving answers from the `PURPOSE:`/`SOURCE:` markers and emits
 deterministic `Usage`. The `openai-chat` adapter maps `response_format`,
-`stream_options.include_usage` and typed errors.
+`stream_options.include_usage` and typed errors. A usage object the endpoint
+reports but cannot stand behind — a count missing, not an integer, a boolean,
+negative — ends the call with a visible error rather than recording counts that
+lie; the audit keeps the answer text either way.
 
 ### 3.6 Autosave tells the truth
 
