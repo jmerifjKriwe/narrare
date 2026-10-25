@@ -2,8 +2,8 @@
 
 These two functions are the interface the spec keeps swappable (D10): the
 lifespan calls them and does not care what loops behind them — this drain loop
-today, something else later. Stopping is graceful by construction: no
-cancellation, so a handler mid-flight always gets to record its outcome.
+today, something else later. Stopping drains the current job inside a bounded
+grace; a handler hung past it is cancelled and recovered by the stale sweep.
 """
 
 import asyncio
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 IDLE_SLEEP = 0.5  # seconds between empty polls — off the database's back when idle
 ERROR_BACKOFF = 1.0  # seconds before re-probing a failed database, not a tight loop
+SHUTDOWN_GRACE = 10.0  # seconds a mid-flight handler gets to record its outcome
 STALE_AFTER = 30.0  # seconds without a heartbeat before a running row reads as dead
 SWEEP_EVERY = 10.0  # seconds between the lane's sweeps for stale running rows
 
@@ -79,20 +80,32 @@ async def start_worker(app: FastAPI, handlers: dict[str, JobHandler]) -> None:
 
 
 async def stop_worker(app: FastAPI) -> None:
-    """Stop the lane gracefully and wait for it: the current run_once finishes.
+    """Stop the lane with a bounded grace: wait for the current run_once.
 
-    Setting the event is the whole signal — the lane checks it between jobs,
-    never mid-handler, so no outcome is left unrecorded and no row is abandoned
-    in running by a polite shutdown (a killed process is what the stale sweep
-    is for).
+    Setting the event is the signal — the lane checks it between jobs, never
+    mid-handler — so an ordinary shutdown leaves every outcome recorded. A
+    handler that outlives SHUTDOWN_GRACE is cancelled and abandoned in
+    running, because a real provider stream can stall and a shutdown that
+    waits forever is no shutdown: the stale sweep requeues the row once its
+    heartbeat has gone silent, the same recovery a killed process gets.
     """
     task: asyncio.Task[None] | None = getattr(app.state, "jobs_task", None)
-    if task is None:
+    if task is None or task.done():
         return
     stopping: asyncio.Event | None = getattr(app.state, "jobs_stopping", None)
     if stopping is not None:
         stopping.set()
-    await task
+    try:
+        # shield: the timeout must not cancel the task behind our back — the
+        # grace logs first, then the cancel below is the deliberate act.
+        await asyncio.wait_for(asyncio.shield(task), SHUTDOWN_GRACE)
+    except TimeoutError:
+        getLogger("narrare").warning(
+            "the jobs lane did not drain within %ss; cancelling it", SHUTDOWN_GRACE
+        )
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 async def _lane(

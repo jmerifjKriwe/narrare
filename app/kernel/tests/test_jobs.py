@@ -472,6 +472,44 @@ async def test_the_runtime_lane_drains_jobs_and_stops_cleanly(a_user: None) -> N
     assert task.done()  # graceful: the lane finished and exited
 
 
+async def test_stop_worker_bounds_a_handler_that_outlives_the_grace(
+    a_user: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A provider stream that never answers must not hang shutdown: the lane
+    # gets a bounded grace to record an outcome, then the handler is
+    # abandoned in running — the stale sweep, pinned above, is its recovery.
+    monkeypatch.setattr(jobs_runtime, "SHUTDOWN_GRACE", 0.1)
+
+    job = await _enqueue("kind")
+    stuck = asyncio.Event()
+
+    async def stuck_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+        await stuck.wait()  # a provider that never returns
+        return {"ran": True}
+
+    app = FastAPI()
+    await start_worker(app, {"kind": stuck_handler})
+    try:
+        # Let the lane claim the row and enter the handler.
+        for _ in range(100):
+            if (await _job(job.id)).status == RUNNING:
+                break
+            await asyncio.sleep(0.02)
+        else:
+            pytest.fail("the lane never claimed the job")
+
+        # stop_worker must return despite the stuck handler.
+        await asyncio.wait_for(stop_worker(app), timeout=5)
+    finally:
+        stuck.set()  # release the handler so nothing outlives the test
+
+    # The abandoned claim stays running until the stale sweep recovers it.
+    assert (await _job(job.id)).status == RUNNING
+    await _age_past_stale(job.id)
+    assert await reset_stuck_running(Session) == 1
+    assert (await _job(job.id)).status == QUEUED
+
+
 async def test_the_lane_survives_a_transient_infrastructure_failure(a_user: None) -> None:
     job = await _enqueue("kind")
 
