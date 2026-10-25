@@ -22,6 +22,7 @@ from app.capabilities.knowledge.schemas import (
 )
 from app.capabilities.knowledge.service import (
     AlreadyReviewedError,
+    CrossNovelMergeError,
     DocumentTooLargeError,
     EmptyDocumentError,
     FindingAlreadyReviewedError,
@@ -255,4 +256,8 @@ async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDe
         raise HTTPException(status_code=404, detail="entity not found") from None
     except SelfMergeError:
         raise HTTPException(status_code=422, detail="an entity cannot merge into itself") from None
+    except CrossNovelMergeError:
+        raise HTTPException(
+            status_code=422, detail="an entity cannot merge into another novel's entity"
+        ) from None
     return EntityRead.model_validate(target)

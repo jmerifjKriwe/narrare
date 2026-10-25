@@ -77,6 +77,12 @@ class SelfMergeError(Exception):
     itself is a no-op with a delete's blast radius, so it is refused."""
 
 
+class CrossNovelMergeError(Exception):
+    """The merge names a target in another novel; a merge folds two entries
+    of one story, so the relation is invalid — the target row is neither
+    missing nor the caller's to discard."""
+
+
 class KnowledgeService:
     def __init__(self, session: AsyncSession, user_id: UUID, embeddings: EmbeddingProvider) -> None:
         self.session = session
@@ -326,7 +332,9 @@ class KnowledgeService:
         either row that could move, so "merge" is delete-plus-keep — the
         source's row goes, the target's stays as it is. Both ends are read
         scoped to the caller: the other user's row is the same absence as
-        no row, whichever end of the pair it is.
+        no row, whichever end of the pair it is. Both ends must also sit in
+        the same novel: a merge folds two entries of one story, so another
+        novel's row is an invalid target, not a missing one.
         """
         if source_id == target_id:
             raise SelfMergeError
@@ -336,6 +344,8 @@ class KnowledgeService:
         target = await self.entities.get(target_id)
         if target is None:
             raise NotFoundError
+        if target.novel_id != source.novel_id:
+            raise CrossNovelMergeError
         await self.entities.delete(source)
         await self.session.commit()
         return target

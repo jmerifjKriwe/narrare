@@ -191,6 +191,26 @@ async def test_an_entity_cannot_merge_into_itself() -> None:
         assert len(listed.json()) == 2
 
 
+async def test_a_merge_cannot_cross_novels() -> None:
+    # Two novels, both the caller's own: the rows exist and are owned, but a
+    # merge folds two entries of ONE story. Another novel's row is not a
+    # target — the same invalid relation as merging a row into itself — and
+    # the refusal must delete nothing on either side.
+    [mira] = await _entities(("Mira", "character", None))
+    [haus] = await _entities(("Haus", "place", None))
+    async with _client() as client:
+        refused = await client.post(
+            f"/api/knowledge/entities/{mira.id}/merge", json={"target_id": str(haus.id)}
+        )
+        assert refused.status_code == 422
+
+        # both rows survive, each in its own novel
+        first = await client.get(f"/api/knowledge/novels/{mira.novel_id}/entities")
+        second = await client.get(f"/api/knowledge/novels/{haus.novel_id}/entities")
+        assert [row["name"] for row in first.json()] == ["Mira"]
+        assert [row["name"] for row in second.json()] == ["Haus"]
+
+
 async def test_another_users_entity_cannot_be_corrected() -> None:
     [mira] = await _entities(("Mira", "character", None))
     await seed_user(OTHER_USER)
