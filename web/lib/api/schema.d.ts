@@ -28,7 +28,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Job */
+        /**
+         * Get Job
+         * @description Return an owned job's state; absent and other users' jobs both raise HTTP 404.
+         */
         get: operations["get_job_api_jobs__job_id__get"];
         put?: never;
         post?: never;
@@ -51,6 +54,8 @@ export interface paths {
          * Start Consistency
          * @description Enqueue the whole-novel consistency check. The worker does the rest;
          *     poll ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is required.
          */
         post: operations["start_consistency_api_knowledge_consistency__novel_id__post"];
         delete?: never;
@@ -93,6 +98,8 @@ export interface paths {
         /**
          * Delete Entity
          * @description Delete an entity. The row has no referents — the delete is a row delete.
+         *
+         *     Raise HTTP 404 for an absent or unowned entity.
          */
         delete: operations["delete_entity_api_knowledge_entities__entity_id__delete"];
         options?: never;
@@ -100,6 +107,9 @@ export interface paths {
         /**
          * Update Entity
          * @description Correct an entity by hand: only the fields the body carries change.
+         *
+         *     Return the entity; raise HTTP 404 for an absent or unowned entity,
+         *     or HTTP 422 for an invalid name or kind. A null description clears it.
          */
         patch: operations["update_entity_api_knowledge_entities__entity_id__patch"];
         trace?: never;
@@ -116,6 +126,9 @@ export interface paths {
         /**
          * Merge Entity
          * @description Fold this entity into another: the target survives, the source is deleted.
+         *
+         *     Return the unchanged target; raise HTTP 404 if either entity is absent or
+         *     unowned, or HTTP 422 for a self-merge or a target in another novel.
          */
         post: operations["merge_entity_api_knowledge_entities__entity_id__merge_post"];
         delete?: never;
@@ -137,6 +150,9 @@ export interface paths {
          * Start Extraction
          * @description Enqueue entity extraction for a chapter. The worker does the rest; poll
          *     ``GET /api/jobs/{job_id}`` — the row's state is the answer.
+         *
+         *     Respond with HTTP 404 for an absent or unowned novel or chapter, including
+         *     a chapter from a different novel, or HTTP 409 when setup is required.
          */
         post: operations["start_extraction_api_knowledge_extraction__novel_id__post"];
         delete?: never;
@@ -157,6 +173,9 @@ export interface paths {
         /**
          * Acknowledge Finding
          * @description Acknowledge: the finding is consumed — seen, the text stays as it is.
+         *
+         *     Return the finding; raise HTTP 404 for an absent or unowned finding,
+         *     or HTTP 409 for an already reviewed finding.
          */
         post: operations["acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post"];
         delete?: never;
@@ -176,7 +195,9 @@ export interface paths {
         put?: never;
         /**
          * Dismiss Finding
-         * @description Dismiss: the finding is consumed without keeping.
+         * @description Dismiss a finding and return its retained row with status dismissed.
+         *
+         *     Raise HTTP 404 for an absent or unowned finding, or HTTP 409 if already reviewed.
          */
         post: operations["dismiss_finding_api_knowledge_findings__finding_id__dismiss_post"];
         delete?: never;
@@ -192,7 +213,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Entities */
+        /**
+         * List Entities
+         * @description Return entities oldest first; raise HTTP 404 for an absent or unowned novel.
+         */
         get: operations["list_entities_api_knowledge_novels__novel_id__entities_get"];
         put?: never;
         post?: never;
@@ -212,6 +236,8 @@ export interface paths {
         /**
          * List Findings
          * @description The novel's findings in one review state; pending is the queue.
+         *
+         *     Return them oldest first; raise HTTP 404 for an absent or unowned novel.
          */
         get: operations["list_findings_api_knowledge_novels__novel_id__findings_get"];
         put?: never;
@@ -232,6 +258,8 @@ export interface paths {
         /**
          * List Suggestions
          * @description The novel's suggestions in one review state; pending is the queue.
+         *
+         *     Return them oldest first; raise HTTP 404 for an absent or unowned novel.
          */
         get: operations["list_suggestions_api_knowledge_novels__novel_id__suggestions_get"];
         put?: never;
@@ -291,6 +319,9 @@ export interface paths {
         /**
          * Accept Suggestion
          * @description Accept: the entity is created and the suggestion consumed, once.
+         *
+         *     Return the entity; raise HTTP 404 for an absent or unowned suggestion,
+         *     or HTTP 409 for an already reviewed suggestion.
          */
         post: operations["accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post"];
         delete?: never;
@@ -311,6 +342,9 @@ export interface paths {
         /**
          * Discard Suggestion
          * @description Discard: the suggestion is consumed without creating anything.
+         *
+         *     Return the suggestion; raise HTTP 404 for an absent or unowned suggestion,
+         *     or HTTP 409 for an already reviewed suggestion.
          */
         post: operations["discard_suggestion_api_knowledge_suggestions__suggestion_id__discard_post"];
         delete?: never;
@@ -416,7 +450,10 @@ export interface paths {
         /** List Novels */
         get: operations["list_novels_api_writing_novels_get"];
         put?: never;
-        /** Create Novel */
+        /**
+         * Create Novel
+         * @description Create and return a novel; respond with HTTP 409 if setup is required.
+         */
         post: operations["create_novel_api_writing_novels_post"];
         delete?: never;
         options?: never;

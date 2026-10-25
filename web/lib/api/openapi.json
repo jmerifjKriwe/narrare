@@ -837,6 +837,7 @@
     },
     "/api/jobs/{job_id}": {
       "get": {
+        "description": "Return an owned job's state; absent and other users' jobs both raise HTTP 404.",
         "operationId": "get_job_api_jobs__job_id__get",
         "parameters": [
           {
@@ -880,7 +881,7 @@
     },
     "/api/knowledge/consistency/{novel_id}": {
       "post": {
-        "description": "Enqueue the whole-novel consistency check. The worker does the rest;\npoll ``GET /api/jobs/{job_id}`` — the row's state is the answer.",
+        "description": "Enqueue the whole-novel consistency check. The worker does the rest;\npoll ``GET /api/jobs/{job_id}`` — the row's state is the answer.\n\nRaise HTTP 404 for an absent or unowned novel, or HTTP 409 if setup is required.",
         "operationId": "start_consistency_api_knowledge_consistency__novel_id__post",
         "parameters": [
           {
@@ -989,7 +990,7 @@
     },
     "/api/knowledge/entities/{entity_id}": {
       "delete": {
-        "description": "Delete an entity. The row has no referents — the delete is a row delete.",
+        "description": "Delete an entity. The row has no referents — the delete is a row delete.\n\nRaise HTTP 404 for an absent or unowned entity.",
         "operationId": "delete_entity_api_knowledge_entities__entity_id__delete",
         "parameters": [
           {
@@ -1024,7 +1025,7 @@
         ]
       },
       "patch": {
-        "description": "Correct an entity by hand: only the fields the body carries change.",
+        "description": "Correct an entity by hand: only the fields the body carries change.\n\nReturn the entity; raise HTTP 404 for an absent or unowned entity,\nor HTTP 422 for an invalid name or kind. A null description clears it.",
         "operationId": "update_entity_api_knowledge_entities__entity_id__patch",
         "parameters": [
           {
@@ -1078,7 +1079,7 @@
     },
     "/api/knowledge/entities/{entity_id}/merge": {
       "post": {
-        "description": "Fold this entity into another: the target survives, the source is deleted.",
+        "description": "Fold this entity into another: the target survives, the source is deleted.\n\nReturn the unchanged target; raise HTTP 404 if either entity is absent or\nunowned, or HTTP 422 for a self-merge or a target in another novel.",
         "operationId": "merge_entity_api_knowledge_entities__entity_id__merge_post",
         "parameters": [
           {
@@ -1132,7 +1133,7 @@
     },
     "/api/knowledge/extraction/{novel_id}": {
       "post": {
-        "description": "Enqueue entity extraction for a chapter. The worker does the rest; poll\n``GET /api/jobs/{job_id}`` — the row's state is the answer.",
+        "description": "Enqueue entity extraction for a chapter. The worker does the rest; poll\n``GET /api/jobs/{job_id}`` — the row's state is the answer.\n\nRespond with HTTP 404 for an absent or unowned novel or chapter, including\na chapter from a different novel, or HTTP 409 when setup is required.",
         "operationId": "start_extraction_api_knowledge_extraction__novel_id__post",
         "parameters": [
           {
@@ -1186,7 +1187,7 @@
     },
     "/api/knowledge/findings/{finding_id}/acknowledge": {
       "post": {
-        "description": "Acknowledge: the finding is consumed — seen, the text stays as it is.",
+        "description": "Acknowledge: the finding is consumed — seen, the text stays as it is.\n\nReturn the finding; raise HTTP 404 for an absent or unowned finding,\nor HTTP 409 for an already reviewed finding.",
         "operationId": "acknowledge_finding_api_knowledge_findings__finding_id__acknowledge_post",
         "parameters": [
           {
@@ -1230,7 +1231,7 @@
     },
     "/api/knowledge/findings/{finding_id}/dismiss": {
       "post": {
-        "description": "Dismiss: the finding is consumed without keeping.",
+        "description": "Dismiss a finding and return its retained row with status dismissed.\n\nRaise HTTP 404 for an absent or unowned finding, or HTTP 409 if already reviewed.",
         "operationId": "dismiss_finding_api_knowledge_findings__finding_id__dismiss_post",
         "parameters": [
           {
@@ -1274,6 +1275,7 @@
     },
     "/api/knowledge/novels/{novel_id}/entities": {
       "get": {
+        "description": "Return entities oldest first; raise HTTP 404 for an absent or unowned novel.",
         "operationId": "list_entities_api_knowledge_novels__novel_id__entities_get",
         "parameters": [
           {
@@ -1321,7 +1323,7 @@
     },
     "/api/knowledge/novels/{novel_id}/findings": {
       "get": {
-        "description": "The novel's findings in one review state; pending is the queue.",
+        "description": "The novel's findings in one review state; pending is the queue.\n\nReturn them oldest first; raise HTTP 404 for an absent or unowned novel.",
         "operationId": "list_findings_api_knowledge_novels__novel_id__findings_get",
         "parameters": [
           {
@@ -1384,7 +1386,7 @@
     },
     "/api/knowledge/novels/{novel_id}/suggestions": {
       "get": {
-        "description": "The novel's suggestions in one review state; pending is the queue.",
+        "description": "The novel's suggestions in one review state; pending is the queue.\n\nReturn them oldest first; raise HTTP 404 for an absent or unowned novel.",
         "operationId": "list_suggestions_api_knowledge_novels__novel_id__suggestions_get",
         "parameters": [
           {
@@ -1514,7 +1516,7 @@
     },
     "/api/knowledge/suggestions/{suggestion_id}/accept": {
       "post": {
-        "description": "Accept: the entity is created and the suggestion consumed, once.",
+        "description": "Accept: the entity is created and the suggestion consumed, once.\n\nReturn the entity; raise HTTP 404 for an absent or unowned suggestion,\nor HTTP 409 for an already reviewed suggestion.",
         "operationId": "accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post",
         "parameters": [
           {
@@ -1558,7 +1560,7 @@
     },
     "/api/knowledge/suggestions/{suggestion_id}/discard": {
       "post": {
-        "description": "Discard: the suggestion is consumed without creating anything.",
+        "description": "Discard: the suggestion is consumed without creating anything.\n\nReturn the suggestion; raise HTTP 404 for an absent or unowned suggestion,\nor HTTP 409 for an already reviewed suggestion.",
         "operationId": "discard_suggestion_api_knowledge_suggestions__suggestion_id__discard_post",
         "parameters": [
           {
@@ -1882,6 +1884,7 @@
         ]
       },
       "post": {
+        "description": "Create and return a novel; respond with HTTP 409 if setup is required.",
         "operationId": "create_novel_api_writing_novels_post",
         "requestBody": {
           "content": {
