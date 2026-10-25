@@ -160,7 +160,10 @@ class FakeProvider:
 
         Other prompts yield the first source line in pieces, or CHUNKS when
         that line is absent or empty. JSON answers arrive as a single piece.
-        Every shape ends with the Usage D6 pins, then DONE.
+        Only user-message contents, joined with newlines, form the prompt;
+        other roles and completion options are ignored. Every shape ends with
+        Usage, then DONE. Counts follow D6: prompt and answer character lengths
+        divided by four, rounded down.
         """
         prompt = "\n".join(
             message.content for message in request.messages if message.role == "user"

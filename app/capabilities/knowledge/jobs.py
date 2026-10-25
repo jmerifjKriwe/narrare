@@ -168,8 +168,9 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
     ``job.payload['chapter_id']`` identifies the chapter as a UUID. Missing or invalid IDs,
     or a chapter missing from the owner's rows, raise ValueError. Invalid
     answers raise MalformedAnswerError; provider and database errors propagate.
-    Success commits suggestions and progress=100 and returns ``suggestions``
-    as the parsed entity count, including duplicates skipped during filing.
+    Success commits suggestions, the call audit, and progress=100 together,
+    and returns ``suggestions`` as the parsed entity count, including duplicates
+    skipped during filing. Provider or answer-validation failures create no audit row.
     """
     try:
         chapter_id = UUID(str(job.payload["chapter_id"]))
@@ -240,8 +241,9 @@ async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object
     ``job.payload['novel_id']`` identifies the novel as a UUID. Missing or invalid IDs,
     or a novel missing from the owner's rows, raise ValueError. Invalid answers
     raise MalformedAnswerError; provider and database errors propagate.
-    Success commits findings and progress=100 and returns ``findings`` as the
-    parsed finding count, including duplicates skipped during filing.
+    Success commits findings, the call audit, and progress=100 together,
+    and returns ``findings`` as the parsed finding count, including duplicates
+    skipped during filing. Provider or answer-validation failures create no audit row.
     """
     try:
         novel_id = UUID(str(job.payload["novel_id"]))

@@ -46,6 +46,11 @@ async def record_call(
 ) -> None:
     """Add one audit row on the caller's session; the caller's commit lands it.
 
+    Prompt and response are each limited to 65,536 characters; ``truncated``
+    is true if either was shortened. Text exactly at the limit is preserved.
+    ``latency_ms`` is the caller's elapsed time in milliseconds; absent token
+    counts remain NULL. This function neither flushes nor commits the session.
+
     cost_usd is never set here: WP2's catalog prices the call, and until then
     the column stays NULL — an unknown price is not a free call (D5).
     """

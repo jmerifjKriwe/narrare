@@ -81,7 +81,14 @@ class OpenAICompatibleProvider:
         return self.settings.problems()
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
-        """Stream text and usage events, then DONE; propagate HTTP and malformed-usage errors."""
+        """Stream text and reported usage, then DONE on normal completion.
+
+        Messages retain their roles; optional completion settings are sent only
+        when set. Usage is requested but is yielded only when the server reports
+        it. Both the wire's [DONE] marker and a normal EOF end with one DONE.
+        HTTP, transport, JSON-decoding, and frame-parsing errors propagate
+        without yielding DONE; malformed reported usage raises ValueError.
+        """
         headers = (
             {"Authorization": f"Bearer {self.settings.api_key}"} if self.settings.api_key else {}
         )
@@ -133,8 +140,12 @@ def _is_done(line: str) -> bool:
 def _event(line: str) -> CompletionEvent | None:
     """The event one SSE line carries, or None when it carries none.
 
-    Keep-alive comments, the role frame and the finish frame are data lines
-    without content; only text and usage reach the caller.
+    Comments and frames without text or usage return None. Reported usage
+    takes precedence over text in the same frame and must contain non-negative
+    integer token counts (booleans are rejected), or ValueError is raised.
+    Invalid JSON raises JSONDecodeError; other malformed frame structures may
+    propagate AttributeError, KeyError, or TypeError. The terminal wire marker
+    must be handled by the caller before parsing.
     """
     if not line.startswith("data: "):
         return None

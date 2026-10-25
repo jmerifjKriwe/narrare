@@ -52,11 +52,15 @@ async def _audit(
     status: str,
     error: str | None = None,
 ) -> None:
-    """Record the call on a short session of the finalizer's own.
+    """Commit the call on a short session of the finalizer's own.
 
     A log row, not user data — plan §3.4's one exception to "no side effect
     after the response". Chat has no novel context until plan §9.2, so the
     row's novel_id stays NULL.
+
+    ``answer`` may be partial; ``usage=None`` leaves token counts unknown.
+    ``latency_ms`` is elapsed milliseconds. Provider configuration and database
+    errors propagate to the finalizer.
     """
     kind, model = provider_facts()
     async with Session() as session:
@@ -85,8 +89,11 @@ async def _events(
     The sources go out before the first token so the reader can show what the
     answer was built from while it is still arriving. A provider that dies
     mid-stream ends with an error frame instead of done: the reader cannot see
-    a traceback, and a silent close would look like a finished answer. However
-    the stream ends, the call is audited after the last frame (§3.4).
+    a traceback, and a silent close would look like a finished answer.
+    Once provider streaming starts, finalization attempts an audit of the
+    accumulated answer and latest usage (§3.4), including on interruption.
+    Audit errors are suppressed and do not change the response frames.
+    Closing at the initial sources frame makes no provider call or audit.
     """
     sources = [
         {

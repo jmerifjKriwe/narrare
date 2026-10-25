@@ -59,11 +59,15 @@ async def _audit(
     status: str,
     error: str | None = None,
 ) -> None:
-    """Record the call on a short session of the finalizer's own.
+    """Commit the call on a short session of the finalizer's own.
 
     A log row, not user data — plan §3.4's one exception to "no side effect
     after the response": the stream is over, and the audit cannot ride a
     request transaction that no longer exists.
+
+    ``answer`` may be partial; ``usage=None`` leaves token counts unknown.
+    ``latency_ms`` is elapsed milliseconds. Provider configuration and database
+    errors propagate to the finalizer.
     """
     kind, model = provider_facts()
     async with Session() as session:
@@ -91,8 +95,9 @@ async def _continuation_events(
     """Deltas, then done — or an error frame if the provider dies mid-stream.
 
     The editor appends what arrived and autosaves it; a silent close would look
-    like a finished continuation. However the stream ends, the call is audited
-    after the last frame (§3.4): success and failure alike leave their row.
+    like a finished continuation. Finalization attempts an audit of the
+    accumulated answer and latest usage (§3.4), including on interruption.
+    Audit errors are suppressed and do not change the response frames.
     """
     pieces: list[str] = []
     usage: Usage | None = None
