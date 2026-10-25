@@ -259,148 +259,148 @@ export function NovelPage() {
         </>
       ) : null}
 
-      {pending ? (
-        // The workbench has asked and is waiting: a named state, not a
-        // blank page or an empty rail that has not heard yet.
-        <p className="mt-6 text-sm text-muted">{t("chapters.loading")}</p>
-      ) : failed ? (
-        // The book could not be loaded — refused or unreachable. The
-        // failure is named where the retry is one press away; the empty
-        // rail's copy would dress an outage up as an empty book.
-        <div className="mt-6">
-          <p role="alert" className="text-sm text-danger">
-            {t("chapters.errorLoad")}
-          </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-          >
-            {t("chapters.retry")}
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* The workbench: the rail beside the editor, so writing never scrolls
-              past the chapter list. Collapsed, the rail unmounts and the editor
-              takes the full width. */}
-          <div className="mt-6 flex items-start gap-6">
-            {showRail ? (
-              <aside className="w-56 shrink-0" aria-label={t("chapters.heading")}>
-                <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
-                <button
-                  type="button"
-                  onClick={toggleRail}
-                  className="mt-2 w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-                >
-                  {t("workspace.collapseRail")}
-                </button>
-                {chapters.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted">{t("chapters.empty")}</p>
-                ) : null}
-                <ul className="mt-3 flex flex-col gap-2">
-                  {chapters.map((chapter) => (
-                    <li key={chapter.id}>
-                      <button
-                        type="button"
-                        aria-pressed={chapter.id === active}
-                        onClick={() => setActive(chapter.id)}
-                        className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                      >
-                        {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={createChapter}
-                  className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
-                >
-                  {t("chapters.new")}
-                </button>
-              </aside>
+      {/* The workbench: the rail beside the editor, so writing never scrolls
+          past the chapter list. Collapsed, the rail unmounts and the editor
+          takes the full width. The frame stays while the book loads or
+          fails — the toolbar and the docks are independent of the book's
+          row, and a dock's own outage story must stay reachable. */}
+      <div className="mt-6 flex items-start gap-6">
+        {/* The rail needs the chapter list. While it loads, or after the
+            load failed, there is no list to be empty — the empty copy would
+            mask exactly the state this page just named in the editor column. */}
+        {showRail && !pending && !failed ? (
+          <aside className="w-56 shrink-0" aria-label={t("chapters.heading")}>
+            <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
+            <button
+              type="button"
+              onClick={toggleRail}
+              className="mt-2 w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+            >
+              {t("workspace.collapseRail")}
+            </button>
+            {chapters.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">{t("chapters.empty")}</p>
             ) : null}
-    
-            <section className="min-w-0 flex-1">
-              {/* The way back when the rail is gone: the toggle lives in the rail
-                  while it exists, so the collapsed page needs its own handle. */}
-              {collapsed && focus === 0 ? (
-                <button
-                  type="button"
-                  onClick={toggleRail}
-                  className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-                >
-                  {t("workspace.expandRail")}
-                </button>
-              ) : null}
-              {/* The focus affordance, mouse's one step in and out. At depth 2 it
-                  is deliberately absent: the deepest step is left by keyboard,
-                  which is what makes the mode distraction-free. The dock tabs
-                  sit beside it, one per registry row: the label is the dock's
-                  own (its capability's catalog key), and a tab is pressed
-                  exactly while its route is the matched child. */}
-              {focus < 2 ? (
-                <button
-                  type="button"
-                  onClick={() => step(focus === 0 ? 1 : 0)}
-                  className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-                >
-                  {focus === 0 ? t("workspace.focus") : t("workspace.unfocus")}
-                </button>
-              ) : null}
-              {focus < 2
-                ? docks.map((dock) => (
-                    <button
-                      key={dock.id}
-                      type="button"
-                      onClick={() => toggleDock(dock)}
-                      aria-pressed={activeDock?.path === dock.path}
-                      className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                    >
-                      {t(dock.titleKey)}
-                    </button>
-                  ))
-                : null}
-              {current ? (
-                <ChapterEditor
-                  key={current.id}
-                  chapterId={current.id}
-                  body={current.body}
-                  onSaved={remember}
-                  proposal={offer ?? undefined}
-                  onProposalResolve={resolveOffer}
-                />
-              ) : null}
-            </section>
-    
-            {/* The right dock: the open registry row's child route renders here —
-                 the tab's navigation decided which one, and the matched child is
-                 the dock's open state. The column scrolls alone so a long answer
-                 never scrolls the editor out of view. */}
-            {openDock ? (
-              <aside
-                className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4"
-                aria-label={t(openDock.titleKey)}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-lg font-semibold">{t(openDock.titleKey)}</h2>
+            <ul className="mt-3 flex flex-col gap-2">
+              {chapters.map((chapter) => (
+                <li key={chapter.id}>
                   <button
                     type="button"
-                    onClick={() => toggleDock(openDock)}
-                    className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-card"
+                    aria-pressed={chapter.id === active}
+                    onClick={() => setActive(chapter.id)}
+                    className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   >
-                    {t("workspace.dockClose")}
+                    {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
                   </button>
-                </div>
-                <div className="mt-3 max-h-[50vh] overflow-y-auto">
-                  <Outlet />
-                </div>
-              </aside>
-            ) : null}
-          </div>
-        </>
-      )}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={createChapter}
+              className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
+            >
+              {t("chapters.new")}
+            </button>
+          </aside>
+        ) : null}
+
+        <section className="min-w-0 flex-1">
+          {/* The way back when the rail is gone: the toggle lives in the rail
+              while it exists, so the collapsed page needs its own handle. */}
+          {collapsed && focus === 0 ? (
+            <button
+              type="button"
+              onClick={toggleRail}
+              className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+            >
+              {t("workspace.expandRail")}
+            </button>
+          ) : null}
+          {/* The focus affordance, mouse's one step in and out. At depth 2 it
+              is deliberately absent: the deepest step is left by keyboard,
+              which is what makes the mode distraction-free. The dock tabs
+              sit beside it, one per registry row: the label is the dock's
+              own (its capability's catalog key), and a tab is pressed
+              exactly while its route is the matched child. */}
+          {focus < 2 ? (
+            <button
+              type="button"
+              onClick={() => step(focus === 0 ? 1 : 0)}
+              className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+            >
+              {focus === 0 ? t("workspace.focus") : t("workspace.unfocus")}
+            </button>
+          ) : null}
+          {focus < 2
+            ? docks.map((dock) => (
+                <button
+                  key={dock.id}
+                  type="button"
+                  onClick={() => toggleDock(dock)}
+                  aria-pressed={activeDock?.path === dock.path}
+                  className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                >
+                  {t(dock.titleKey)}
+                </button>
+              ))
+            : null}
+          {pending ? (
+            // The page has asked and is waiting — a named state, not a blank
+            // or empty-looking book.
+            <p className="mt-6 text-sm text-muted">{t("chapters.loading")}</p>
+          ) : failed ? (
+            // The book could not be loaded — refused or unreachable. The
+            // failure is named where the retry is one press away.
+            <div className="mt-6">
+              <p role="alert" className="text-sm text-danger">
+                {t("chapters.errorLoad")}
+              </p>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+              >
+                {t("chapters.retry")}
+              </button>
+            </div>
+          ) : current ? (
+            <ChapterEditor
+              key={current.id}
+              chapterId={current.id}
+              body={current.body}
+              onSaved={remember}
+              proposal={offer ?? undefined}
+              onProposalResolve={resolveOffer}
+            />
+          ) : null}
+        </section>
+
+        {/* The right dock: the open registry row's child route renders here —
+            the tab's navigation decided which one, and the matched child is
+            the dock's open state. The column scrolls alone so a long answer
+            never scrolls the editor out of view. */}
+        {openDock ? (
+          <aside
+            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4"
+            aria-label={t(openDock.titleKey)}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">{t(openDock.titleKey)}</h2>
+              <button
+                type="button"
+                onClick={() => toggleDock(openDock)}
+                className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-card"
+              >
+                {t("workspace.dockClose")}
+              </button>
+            </div>
+            <div className="mt-3 max-h-[50vh] overflow-y-auto">
+              <Outlet />
+            </div>
+          </aside>
+        ) : null}
+      </div>
     </div>
   );
 }
