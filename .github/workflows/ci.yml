@@ -98,6 +98,12 @@ jobs:
         with:
           fetch-depth: 0
       - id: suites
+        env:
+          # A fork may name its branch anything, so the branch name alone says
+          # nothing about who pushed it: the exception below also requires the
+          # head to live in this repository.
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
         run: |
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             echo "suites=all" >> "$GITHUB_OUTPUT"
@@ -106,6 +112,19 @@ jobs:
           git fetch origin main
           changed=$(git diff --name-only origin/main...HEAD)
           echo "$changed"
+          # A release PR moves version strings and the changelog; no browser
+          # runs any of them. release-please force-pushes this branch on every
+          # push to main, so the suites here cost minutes per release and get
+          # cancelled mid-flight by the next update. Three conditions, because
+          # each alone is spoofable: a fork may take the branch name, and
+          # pyproject.toml and uv.lock are ordinary dependency files. A skipped
+          # job still satisfies the required check.
+          if [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
+            && [ "$GITHUB_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
+            && ! echo "$changed" | grep -qvE '^(\.release-please-manifest\.json|CHANGELOG\.md|app/kernel/version\.py|package\.json|web/package\.json|pyproject\.toml|web/lib/api/openapi\.json)$'; then
+            echo "suites=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if echo "$changed" | grep -qE '^(app/(kernel|api|generated)/|web/|i18n/|justfile|pyproject\.toml|uv\.lock|pnpm-lock\.yaml|\.github/workflows/ci\.yml)'; then
             echo "suites=all" >> "$GITHUB_OUTPUT"
             exit 0
