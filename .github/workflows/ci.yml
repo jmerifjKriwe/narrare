@@ -231,7 +231,8 @@ jobs:
       # `!cancelled()`: a report is worth uploading even when a test failed.
       # A second run of the same action with `report_type`, not Codecov's
       # separate test-results-action: that one is deprecated in favor of this
-      # (it says so on every run) and is still the only Node-20 action we have.
+      # (it says so on every run) and would be the only Node-20 action left in
+      # this file.
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
