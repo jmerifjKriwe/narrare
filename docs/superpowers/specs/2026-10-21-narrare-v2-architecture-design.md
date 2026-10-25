@@ -272,6 +272,13 @@ Binding, quoted verbatim:
 
 > **Governance budget.** New rules, registries, check scripts, hooks, required fields or mandatory documents are forbidden by default. An agent may only *propose* them, never implement them, and only with three statements: (1) which concrete failure it prevents, (2) what effort it creates for **every** future change, (3) which cheaper alternative exists (types, generation, colocation). Implementation only after explicit approval by the product owner. Existing rules are judged by the same standard and deleted when they serve no purpose.
 
+The architecture is a decision, not a law. Any boundary may be proposed for
+reopening with the same three statements: the failure it prevents, the effort it
+creates, the cheaper alternative. Crossing a boundary — a capability importing
+another, a second data store, a global store, a migration tool — needs the product
+owner's explicit approval and is recorded as a dated decision. Until then, the
+boundary stands.
+
 Enforcement is social, not technical. An agent that believes a new gate is needed
 stops and reports `NEEDS-APPROVAL` with the three statements, and builds nothing.
 There is no checker that enforces the governance budget — that would be the failure
@@ -410,10 +417,10 @@ not by a document:
 | Auth mechanism (sessions, OIDC, magic link) | after the hosting model — it follows from single- vs multi-tenant, not the reverse |
 | pydantic-ai: keep or replace | prove-it list (D3): name the effort it saves against a thin client over the provider interfaces; outcome recorded in the kernel PR that first needs agent orchestration |
 | mem0: keep or replace | prove-it test during the knowledge-base port; if pgvector plus a small retrieval layer covers the same ground, mem0 goes |
-| pgvector, Alembic, TanStack Query | same prove-it test, at first use; all three are expected to pass, none is exempt |
+| pgvector, Alembic, TanStack Query | **resolved 2026-10-25**: pgvector kept; Alembic removed (no migrations until go-live); TanStack Query entered with the frontend foundation |
 | Capability inventory for the port and its order | the implementation plan, separate artefact — deliberately not fixed here |
 | Migration story (Alembic or equivalent) | going live with a user's data — until then the models are the schema (§6, §9 D11; `app/kernel/db/init.py` carries the ruling) |
-| `kernel/jobs` table and the single worker (§9 D10) | the first capability whose side effect must outlive its request — none exists today |
+| `kernel/jobs` table and the single worker (§9 D10) | **resolved 2026-10-25**: built with the knowledge phase; extraction and the whole-novel check run on it |
 
 The prove-it test is a written sentence in the PR that introduces the dependency, not
 a document: *what it saves, what it costs, what smaller thing would replace it.* A
@@ -421,7 +428,7 @@ dependency that cannot answer is removed.
 
 ---
 
-## 14. As built, 2026-10-22
+## 14. As built, 2026-10-25
 
 The five capabilities — writing, knowledge, chat, setup, settings — are built.
 These are the places the code is simpler than §3–§6 describe, recorded here so
@@ -448,22 +455,25 @@ trigger that would build the missing piece.
   generated table is the single composition point. Component tests live beside
   their components in the capability folder. A new route is a `routes.tsx`
   change plus `just generate`.
-- **`kernel/jobs`, `kernel/events` and `kernel/prompts` are not built.** No
-  feature needs background work yet, so standing rule 3 holds trivially; the
-  jobs table and worker arrive with the first capability that needs them (§13).
-  Prompts live in the two capabilities that have them, joined only by
-  `SOURCE_PREFIX` in the provider contract.
+- **`kernel/jobs` is built; `kernel/events` and `kernel/prompts` are not.**
+  The knowledge phase needed durable work (extraction, the whole-novel check),
+  so the table, the single worker and the stale-row sweep landed there (§13).
+  Prompts still live in the capabilities that own them, joined only by the
+  `SOURCE_PREFIX` and `PURPOSE_PREFIX` markers in the provider contract; a
+  prompt registry arrives with the override system.
 - **Prove-it outcomes:** pydantic-ai removed (a streaming completion over a
   fixed prompt needs one async method), mem0 removed (pgvector plus
   `kernel/retrieval.py` covers the ground), pgvector kept, Alembic removed
-  (§6). TanStack Query never entered: the generated client was enough.
+  (§6). TanStack Query entered with the frontend foundation: multi-surface
+  invalidation and job polling were the hand cache the generated client alone
+  could not replace.
 - **CI runs the E2E of the affected capabilities on each PR and each push**
   and all of them nightly (§6): a `changes` job narrows a PR to the capabilities
   it touched — everything when kernel, api, the generated views, web, i18n or
   the tooling moved — and narrows a push by the commits it landed, so a
   documentation-only push runs no browser. The nightly runs only when `main`
   carries a commit the last successful nightly did not test; an unchanged `main`
-  skips every job through one guard. 9 tests, ~29 s at five capabilities.
+  skips every job through one guard.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
 - **The web shell is a Vite SPA, not Next.js.** Every page was a client

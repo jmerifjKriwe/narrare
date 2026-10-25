@@ -131,8 +131,9 @@ a build error. The generator is an extension of `scripts/generate`.
 - **Progressive focus:** F9 collapses dock and rail; the next step hides all
   chrome; only the text remains. Esc restores stepwise.
 - **Keyboard contract:** Tab accepts ghost text, Esc discards it, F9 focuses,
-  ⌘K opens the palette (entity search, commands, chapter jump). The mouse is
-  never required.
+  ⌘K opens the palette (entity search, commands, chapter jump). The palette is
+  the one part not built; it lands with the coherence phase, and until then
+  chapter and entity navigation have a pointer path only.
 - **Autosave:** debounced PUT on typing pause and on navigation away; an
   unobtrusive save-state signal; no save button. Single-user last-write-wins
   is accepted for now.
@@ -219,6 +220,14 @@ Product behaviour for the depth features comes from the v1 corpus files
 (WRITE-007, KB-007, …), triaged per spec §11 at plan time; each phase ships
 its capability backend (one folder, OpenAPI, generated client).
 
+### 5.12 Settings (`/settings`)
+
+Settings becomes a destination of its own: `settings/web/routes.tsx` mounts
+`/settings`, and the top bar's gear links to it (`nav: false` — it is a control,
+not a browsing destination). Sections: language, providers, prompts. It stays a
+capability (its HTTP surface already is), so the generated route table and the
+one-way `@shell` import need no exception.
+
 ## 6. Phasing (input for the implementation plan)
 
 1. **Shell:** tokens + `ui/` layer + top bar + Query — no behaviour change;
@@ -238,8 +247,9 @@ rewrites the E2E specs it changes behaviour for (in scope, not a regression).
 
 ## 7. Calls made by the designer (rejectable)
 
-- **Desktop-first.** Small viewports: panels become overlays; the phone is
-  not a target.
+- **Desktop-first.** The phone is not a design target: no mobile layouts, no
+  touch gestures. Every page must still not overflow horizontally at 360 px, and
+  panels become overlays there. Checked by eye, not by a gate.
 - E2E specs of behaviour-changing phases are rewritten as part of that phase.
 - A dock flow is tested by the capability owning the feature (chat's `e2e/`
   drives the chat dock tab inside the workspace); the route owner provides
