@@ -34,13 +34,6 @@ the capability's E2E. A gate counts only when its output was read.
 
 `just --list` is the whole command surface: 21 recipes, no hidden gates.
 
-## Agents
-
-`NarrareBuilder` builds and commits; broad research it delegates to the built-in
-`explore` subagent, the only agent it may launch. `NarrareReviewer` checks the result
-on a different model; it is dispatched from outside, never by the builder, and edits
-nothing. That is the whole layer.
-
 ## Tools (optional)
 
 `codebase-memory-mcp` is available as an MCP server and indexes this repo into a

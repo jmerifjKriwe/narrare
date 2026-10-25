@@ -35,8 +35,6 @@ license text so the copyright notice travels with the copy.
 | context7 | built around the Context7 API; the [upstash/context7](https://github.com/upstash/context7) project is MIT | none declared | **Open item:** not tracked in `skills-lock.json` and carries no license statement — clarify the source or replace |
 | task-management | unclear (author "opencode"; not present in opencode-ai/opencode) | none declared | **Open item:** not tracked in `skills-lock.json` and carries no license statement — clarify the source or replace |
 
-`.opencode/agents/` (NarrareBuilder, NarrareReviewer) is first-party.
-
 ## The built web app (`web/dist/`)
 
 The production bundle inlines the web application's production dependency
