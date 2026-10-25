@@ -33,6 +33,10 @@ class WritingService:
     async def create_novel(
         self, title: str, genre: str | None = None, blurb: str | None = None
     ) -> Novel:
+        """Commit a novel with optional genre and blurb; return the created row.
+
+        Raise SetupRequiredError if setup has not created the owning user.
+        """
         await self._require_user()
         novel = await self.novels.create(title, genre=genre, blurb=blurb)
         await self.session.commit()
@@ -81,6 +85,10 @@ class WritingService:
         )
 
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
+        """Commit non-null edits and update the parent novel's timestamp.
+
+        Return the chapter; raise NotFoundError if it is absent or another user's.
+        """
         chapter = await self.get_chapter(chapter_id)
         chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))
         await self.session.commit()

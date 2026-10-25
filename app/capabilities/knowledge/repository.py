@@ -81,12 +81,14 @@ class EntityRepository(ScopedRepository[Entity]):
         return await self.session.scalar(self.query().where(Entity.id == entity_id))
 
     async def list_for_novel(self, novel_id: UUID) -> Sequence[Entity]:
+        """Return this user's entities in the novel, oldest first."""
         result = await self.session.scalars(
             self.query().where(Entity.novel_id == novel_id).order_by(Entity.created_at)
         )
         return result.all()
 
     async def create(self, novel_id: UUID, name: str, kind: str, description: str | None) -> Entity:
+        """Flush a new entity for this user without committing the transaction."""
         entity = Entity(
             user_id=self.user_id,
             novel_id=novel_id,
@@ -99,6 +101,7 @@ class EntityRepository(ScopedRepository[Entity]):
         return entity
 
     async def delete(self, entity: Entity) -> None:
+        """Mark the supplied entity for deletion; the caller commits the change."""
         await self.session.delete(entity)
 
 
@@ -106,6 +109,7 @@ class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
     model = EntitySuggestion
 
     async def list_for_novel(self, novel_id: UUID, status: str) -> Sequence[EntitySuggestion]:
+        """Return this user's suggestions in the given review state, oldest first."""
         result = await self.session.scalars(
             self.query()
             .where(EntitySuggestion.novel_id == novel_id, EntitySuggestion.status == status)
@@ -172,6 +176,7 @@ class ConsistencyFindingRepository(ScopedRepository[ConsistencyFinding]):
     model = ConsistencyFinding
 
     async def list_for_novel(self, novel_id: UUID, status: str) -> Sequence[ConsistencyFinding]:
+        """Return this user's findings in the given review state, oldest first."""
         result = await self.session.scalars(
             self.query()
             .where(ConsistencyFinding.novel_id == novel_id, ConsistencyFinding.status == status)

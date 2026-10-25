@@ -12,7 +12,11 @@ export type Frame = {
 
 /** Read a text/event-stream response and yield its parsed frames, in order.
  * An `event:` line names the frame's kind: the routers end a dead provider
- * with `event: error`, and the reader must carry that into the frame. */
+ * with `event: error`, and the reader must carry that into the frame.
+ * Frames end at two LF characters; an incomplete trailing frame is ignored.
+ * A missing body yields nothing. Invalid JSON and stream read errors propagate;
+ * an error event is yielded as a frame rather than thrown.
+ */
 export async function* readFrames(response: Response): AsyncGenerator<Frame> {
   const body = response.body;
   if (!body) return;

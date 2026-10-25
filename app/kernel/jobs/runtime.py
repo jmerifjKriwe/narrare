@@ -91,6 +91,10 @@ async def stop_worker(app: FastAPI) -> None:
     heartbeat has gone silent, the same recovery a killed process gets. The
     cancel itself is bounded too (CANCEL_GRACE): a handler that delays or
     swallows the CancelledError is abandoned rather than awaited.
+
+    Both grace constants are measured in seconds. Returning after CANCEL_GRACE
+    does not guarantee the handler stopped; it may still be running and sending
+    heartbeats.
     """
     task: asyncio.Task[None] | None = getattr(app.state, "jobs_task", None)
     if task is None or task.done():

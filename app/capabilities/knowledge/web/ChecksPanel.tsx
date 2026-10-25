@@ -54,6 +54,7 @@ export function ChecksPanel() {
   // met the dead service, a refused enqueue.
   const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
 
+  /** Enqueue a check and select its job for polling, or expose the enqueue failure. */
   async function check() {
     setEnqueueFailed(false);
     try {

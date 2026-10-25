@@ -22,6 +22,7 @@ class NovelRepository(ScopedRepository[Novel]):
         return await self.session.scalar(self.query().where(Novel.id == novel_id))
 
     async def create(self, title: str, genre: str | None = None, blurb: str | None = None) -> Novel:
+        """Flush a new novel for this user, leaving the commit to the caller."""
         novel = Novel(user_id=self.user_id, title=title, genre=genre, blurb=blurb)
         self.session.add(novel)
         await self.session.flush()
@@ -47,6 +48,10 @@ class ChapterRepository(ScopedRepository[Chapter]):
         return 0 if current is None else current + 1
 
     async def create(self, novel_id: UUID, title: str) -> Chapter:
+        """Append a chapter at the next position and update its novel's timestamp.
+
+        Flush both changes without committing; an empty novel starts at position 0.
+        """
         chapter = Chapter(
             user_id=self.user_id,
             novel_id=novel_id,

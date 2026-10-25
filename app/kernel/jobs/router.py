@@ -41,6 +41,7 @@ class JobRead(BaseModel):
 
 @router.get("/{job_id}", response_model=JobRead)
 async def get_job(job_id: UUID, session: SessionDep, user_id: UserDep) -> JobRead:
+    """Return an owned job's state; absent and other users' jobs both raise HTTP 404."""
     job = await session.scalar(select(Job).where(Job.id == job_id, Job.user_id == user_id))
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")

@@ -268,6 +268,7 @@ export function useAcknowledgeFinding(
   });
 }
 
+/** Dismiss a finding and invalidate the novel's pending queue on success or failure. */
 export function useDismissFinding(
   novelId: string,
 ): UseMutationResult<Finding, Error, string> {
@@ -310,6 +311,7 @@ export function useAcceptSuggestion(
   });
 }
 
+/** Discard a suggestion and invalidate the novel's entities and queue on success or failure. */
 export function useDiscardSuggestion(
   novelId: string,
 ): UseMutationResult<Suggestion, Error, string> {
@@ -355,6 +357,7 @@ export function useUpdateEntity(
   });
 }
 
+/** Delete an entity and invalidate the novel's entity list on success or failure. */
 export function useDeleteEntity(novelId: string): UseMutationResult<void, Error, string> {
   return useMutation({
     mutationFn: async (entityId: string) => {
@@ -369,6 +372,7 @@ export function useDeleteEntity(novelId: string): UseMutationResult<void, Error,
   });
 }
 
+/** Merge the source into the returned target and invalidate entities on success or failure. */
 export function useMergeEntities(
   novelId: string,
 ): UseMutationResult<Entity, Error, { sourceId: string; targetId: string }> {

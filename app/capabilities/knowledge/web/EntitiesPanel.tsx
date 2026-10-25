@@ -226,6 +226,7 @@ function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string
   const resolvedKind = kindItems.find((item) => item.text === kindText.trim())?.id ?? null;
   const kindInvalid = triedSave && resolvedKind === null;
 
+  /** Save changed fields, clearing a blank description; keep the dialog open on refusal. */
   async function save(event: React.FormEvent, close: () => void) {
     event.preventDefault();
     setTriedSave(true);
@@ -316,6 +317,7 @@ function DeleteEntityDialog({
   const remove = useDeleteEntity(novelId);
   const [failed, setFailed] = useState(false);
 
+  /** Delete and clear the selection on success; keep the dialog open on failure. */
   async function destroy(close: () => void) {
     setFailed(false);
     try {
@@ -380,6 +382,7 @@ function MergeEntityDialog({
   const target = others.find((row) => row.id === targetId) ?? null;
   const targetInvalid = triedSave && (target === null || target.name !== targetText.trim());
 
+  /** Merge into the still-matching picked target and select the survivor; expose failures. */
   async function mergeThem(close: () => void) {
     setTriedSave(true);
     setFailed(false);

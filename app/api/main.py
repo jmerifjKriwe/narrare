@@ -69,6 +69,11 @@ def _job_handlers() -> dict[str, JobHandler]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Validate configuration and run the jobs worker for the app's lifetime.
+
+    Startup validation, handler discovery, and worker startup errors propagate;
+    after a successful startup, exiting the context stops the worker.
+    """
     validate_configuration()
     await start_worker(app, _job_handlers())
     try:
@@ -112,6 +117,11 @@ def _serve_shell(app: FastAPI, dist: Path) -> None:
 
 
 def create_app(dist: Path | None = None) -> FastAPI:
+    """Build the API with discovered capability routers and the shared jobs route.
+
+    ``dist`` selects the web build; otherwise use NARRE_WEB_DIST or DEFAULT_DIST.
+    Mount the web shell only when that directory contains index.html.
+    """
     app = FastAPI(title="Narrare", version="2.0.0", lifespan=lifespan)
 
     for folder in sorted(path for path in CAPABILITIES.iterdir() if (path / "router.py").exists()):

@@ -243,7 +243,10 @@ def route_sources(root: Path) -> dict[str, str]:
 
 
 def _workspace_path(source: str, capability: str) -> str:
-    """The workspace route's path literal, traced through the export's alias."""
+    """The workspace route's path literal, traced through the export's alias.
+
+    Raise SystemExit if the alias, createRoute declaration, or path cannot be read.
+    """
     alias = re.search(r"export const workspaceRoute = (\w+)", source)
     declaration = re.search(rf"const {alias.group(1)} = createRoute\(", source) if alias else None
     literal = re.search(r'path: "([^"]+)"', source[declaration.end() :]) if declaration else None
@@ -257,7 +260,10 @@ def _workspace_path(source: str, capability: str) -> str:
 
 
 def _dock_path(source: str, capability: str) -> str:
-    """The one path literal inside the dockRoutes export."""
+    """The one path literal inside the dockRoutes export.
+
+    Raise SystemExit unless exactly one path is found before ``] as const;``.
+    """
     block = re.search(r"export const dockRoutes\b.*?\] as const;", source, re.DOTALL)
     literals = re.findall(r'path: "([^"]+)"', block.group(0)) if block else []
     if len(literals) != 1:
@@ -285,10 +291,12 @@ def scan_docks(sources: dict[str, str]) -> DockScan:
     Discovery is a substring scan, not a parse — the caveat that keeps this
     honest: a capability counts as a dock when its routes.tsx contains
     ``export const dockRoutes`` and as the host when it contains ``export
-    const workspaceRoute``, and the path literals are read as the first
-    ``path: "…"`` after those markers. A routes.tsx that drifts from that
-    shape fails loudly here (or drifts visibly in ``just generate``) instead
-    of generating a wrong table.
+    const workspaceRoute``. The host export must alias a createRoute
+    declaration with a readable path; each dock export must contain exactly
+    one path literal before ``] as const;``. No host and no docks returns
+    an empty scan. Raise SystemExit for multiple hosts, docks without a host,
+    unreadable paths, or duplicate full dock paths. Other source drift may
+    still require inspection of the generated output.
     """
     docks = [
         capability for capability, text in sources.items() if "export const dockRoutes" in text
@@ -347,6 +355,7 @@ def typescript_routes(root: Path) -> str:
     hosts = [scan.host] if scan.host is not None else []
 
     def import_names(capability: str) -> str:
+        """Name the route exports this capability contributes to the composed table."""
         names = f"routes as {capability}"
         if capability in docks:
             names += f", dockRoutes as {capability}Docks"
@@ -466,6 +475,11 @@ def docs_index(
 
 
 def main() -> None:
+    """Validate capability inputs and overwrite the seven views from the current directory.
+
+    Validation may raise SystemExit; file and parse errors propagate. Parent
+    directories are created as needed when writing the views.
+    """
     root = Path(".")
     known = locales(root)
     loaded = catalogs(root, known)

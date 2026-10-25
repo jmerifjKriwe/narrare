@@ -75,6 +75,7 @@ export function NovelsPage() {
     null,
   );
 
+  /** Create a book from trimmed fields; close on success and retain the form on failure. */
   async function create(event: React.FormEvent, close: () => void) {
     event.preventDefault();
     if (title.trim() === "") {

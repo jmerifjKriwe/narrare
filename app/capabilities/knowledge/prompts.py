@@ -37,6 +37,11 @@ class ParsedFinding(NamedTuple):
 
 
 def extraction_prompt(*, chapter_title: str, body: str) -> str:
+    """Build a prompt requesting entity JSON from the chapter's full body.
+
+    The purpose marker selects extraction, and the source marker introduces
+    the body for providers that read marked passages.
+    """
     kinds = "|".join(ENTITY_KINDS)
     return (
         f"{PURPOSE_PREFIX}extract-entities\n\n"

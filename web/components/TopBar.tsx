@@ -25,6 +25,7 @@ function LanguageSwitcher() {
   const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
   const [failed, setFailed] = useState(false);
 
+  /** Apply and persist a locale (`auto` clears it); restore the prior choice if saving fails. */
   async function choose(value: string) {
     const previous = chosenLocale();
     const next: Locale | null = value === "auto" ? null : (value as Locale);

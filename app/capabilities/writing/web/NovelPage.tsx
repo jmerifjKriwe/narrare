@@ -209,6 +209,7 @@ export function NovelPage() {
     };
   }, [focus]);
 
+  /** Create and select an untitled chapter, or show a retryable failure in the rail. */
   async function createChapter() {
     // An explicit empty title: the placeholder is a display concern, and
     // storing a title would freeze one locale's wording into the database.

@@ -65,6 +65,7 @@ export function ExtractionPanel() {
   // run's).
   const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
 
+  /** Enqueue the active chapter for polling; no selection is a no-op and failures stay visible. */
   async function extract() {
     if (chapterId === null) return;
     setEnqueueFailed(false);

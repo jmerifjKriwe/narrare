@@ -85,6 +85,7 @@ class CrossNovelMergeError(Exception):
 
 class KnowledgeService:
     def __init__(self, session: AsyncSession, user_id: UUID, embeddings: EmbeddingProvider) -> None:
+        """Bind knowledge operations to this user's session and embedding provider."""
         self.session = session
         self.user_id = user_id
         self.embeddings = embeddings
@@ -160,8 +161,10 @@ class KnowledgeService:
         """Validate the chapter and enqueue the extraction job — nothing more.
 
         The request only enqueues (D14): the provider call is the worker's.
-        The enqueue rides this transaction, so a failure of the request leaves
-        no job behind.
+        The enqueue rides this transaction and becomes durable on commit.
+
+        Commit and return the job. Raise SetupRequiredError if the user is
+        missing, or NotFoundError if the novel or its chapter is not owned.
         """
         if await self.session.get(User, self.user_id) is None:
             raise SetupRequiredError
@@ -180,12 +183,17 @@ class KnowledgeService:
         return job
 
     async def list_entities(self, novel_id: UUID) -> Sequence[Entity]:
+        """Return entities oldest first; raise NotFoundError for an absent or unowned novel."""
         await self._own_novel(novel_id)
         return await self.entities.list_for_novel(novel_id)
 
     async def list_suggestions(
         self, novel_id: UUID, status: str = PENDING
     ) -> Sequence[EntitySuggestion]:
+        """Return suggestions in the requested review state, oldest first.
+
+        Default to pending; raise NotFoundError for an absent or unowned novel.
+        """
         await self._own_novel(novel_id)
         return await self.suggestions.list_for_novel(novel_id, status)
 
@@ -197,6 +205,9 @@ class KnowledgeService:
         consumed row. Entity and status ride the same commit — there is no
         state in which the entity exists and the suggestion is still pending,
         nor the other way around.
+
+        Return the entity and consumed suggestion. Raise NotFoundError for
+        an absent or unowned suggestion, or AlreadyReviewedError if not pending.
         """
         suggestion = await self.suggestions.locked(suggestion_id)
         if suggestion is None:
@@ -211,7 +222,11 @@ class KnowledgeService:
         return entity, suggestion
 
     async def discard_suggestion(self, suggestion_id: UUID) -> EntitySuggestion:
-        """Discard: consume without creating, with accept's exactly-once."""
+        """Discard: consume without creating, with accept's exactly-once.
+
+        Commit and return the suggestion. Raise NotFoundError for an absent or
+        unowned suggestion, or AlreadyReviewedError if it is no longer pending.
+        """
         suggestion = await self.suggestions.locked(suggestion_id)
         if suggestion is None:
             raise NotFoundError
@@ -225,10 +240,11 @@ class KnowledgeService:
         """Validate the novel and enqueue the consistency check — nothing more.
 
         The request only enqueues (D14): the provider call is the worker's,
-        in the check's handler. The enqueue rides this transaction, so a
-        failure of the request leaves no job behind. The whole novel is the
-        work — a novel without chapters is a valid check that answers an
-        empty queue, not a refusal.
+        in the check's handler. The enqueue becomes durable on commit. The whole novel is the
+        work — a novel without chapters is also valid to enqueue.
+
+        Commit and return the job. Raise SetupRequiredError if the user is
+        missing, or NotFoundError if the novel is absent or unowned.
         """
         if await self.session.get(User, self.user_id) is None:
             raise SetupRequiredError
@@ -240,6 +256,10 @@ class KnowledgeService:
     async def list_findings(
         self, novel_id: UUID, status: str = PENDING
     ) -> Sequence[ConsistencyFinding]:
+        """Return findings in the requested review state, oldest first.
+
+        Default to pending; raise NotFoundError for an absent or unowned novel.
+        """
         await self._own_novel(novel_id)
         return await self.findings.list_for_novel(novel_id, status)
 
@@ -249,6 +269,9 @@ class KnowledgeService:
         The suggestion queue's exactly-once, for the second review lane: the
         repository's row lock plus the pending check makes a concurrent
         verdict wait for this commit and then read a consumed row.
+
+        Commit and return the finding. Raise NotFoundError for an absent or
+        unowned finding, or FindingAlreadyReviewedError if no longer pending.
         """
         finding = await self.findings.locked(finding_id)
         if finding is None:
@@ -260,7 +283,11 @@ class KnowledgeService:
         return finding
 
     async def dismiss_finding(self, finding_id: UUID) -> ConsistencyFinding:
-        """Dismiss: consume without keeping, with acknowledge's exactly-once."""
+        """Dismiss: mark the finding dismissed, with acknowledge's exactly-once.
+
+        Commit and return the retained row. Raise NotFoundError for an absent
+        or unowned finding, or FindingAlreadyReviewedError if no longer pending.
+        """
         finding = await self.findings.locked(finding_id)
         if finding is None:
             raise NotFoundError
@@ -280,6 +307,9 @@ class KnowledgeService:
         what makes the update partial: a field the body does not carry is
         not a change, and a carried ``null`` description is one (the
         cleared state, not the skipped field).
+
+        Commit and return the entity. Raise NotFoundError if it is absent or
+        unowned, or InvalidEntityUpdateError for an invalid name or kind.
         """
         entity = await self.entities.get(entity_id)
         if entity is None:
@@ -317,6 +347,8 @@ class KnowledgeService:
         a reference to the entity it filed — and nothing else points at an
         entity, so the delete is a row delete: no cascade to chase, no
         orphan to leave, and the review history stays exactly as it was.
+
+        Commit the deletion; raise NotFoundError for an absent or unowned entity.
         """
         entity = await self.entities.get(entity_id)
         if entity is None:
@@ -335,6 +367,10 @@ class KnowledgeService:
         no row, whichever end of the pair it is. Both ends must also sit in
         the same novel: a merge folds two entries of one story, so another
         novel's row is an invalid target, not a missing one.
+
+        Commit and return the unchanged target. Raise SelfMergeError for equal
+        IDs, NotFoundError for either absent or unowned row, or CrossNovelMergeError
+        when the two owned entities belong to different novels.
         """
         if source_id == target_id:
             raise SelfMergeError

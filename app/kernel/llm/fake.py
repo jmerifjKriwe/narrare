@@ -145,6 +145,11 @@ class FakeProvider:
         return []
 
     async def stream(self, prompt: str) -> AsyncIterator[str]:
+        """Yield deterministic JSON for recognized extraction or check purposes.
+
+        Other prompts yield the first source line in pieces, or CHUNKS when
+        that line is absent or empty. JSON answers arrive as a single piece.
+        """
         purpose = _purpose(prompt)
         passages = _passages(prompt)
         if purpose == PURPOSE_EXTRACT:

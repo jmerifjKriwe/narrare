@@ -10,6 +10,10 @@ import { readFrames } from "@shell/lib/stream";
 
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
 
+/**
+ * Edit and autosave a chapter, with proposals kept as ghost text until accepted.
+ * `body` initializes the editor; remount with a new key when switching chapters.
+ */
 export function ChapterEditor({
   chapterId,
   body,
@@ -125,6 +129,7 @@ export function ChapterEditor({
     showGhost(editor, text);
   }, [editor, ghost, t]);
 
+  /** Stream a continuation into the ghost; report request and stream failures in the editor. */
   async function continueWriting() {
     if (!editor) return;
     const mine = ++run.current;

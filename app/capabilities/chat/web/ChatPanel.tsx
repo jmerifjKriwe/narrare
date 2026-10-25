@@ -25,6 +25,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
   const askAbort = useRef<AbortController | null>(null);
   useEffect(() => () => askAbort.current?.abort(), []);
 
+  /** Replace the previous answer with a streamed reply; show failures unless unmount aborted it. */
   async function ask(event: React.FormEvent) {
     event.preventDefault();
     if (question.trim() === "") return;

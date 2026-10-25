@@ -28,6 +28,7 @@ const indexRoute = createRoute({
 const FOCUS_STEPS = [0, 1, 2] as const;
 export type FocusStep = (typeof FOCUS_STEPS)[number];
 
+/** Normalize numeric or string depths to 0, 1, or 2; default other values to 0. */
 function focusStep(value: unknown): FocusStep {
   const parsed = typeof value === "string" ? Number(value) : value;
   return FOCUS_STEPS.find((step) => step === parsed) ?? 0;

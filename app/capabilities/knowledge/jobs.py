@@ -52,6 +52,7 @@ MAX_SUMMARY_LENGTH = 200
 
 
 def _refuse(shape: str, reason: str, shown: object) -> MalformedAnswerError:
+    """Build a parse error with at most 200 characters of the rejected value's repr."""
     return MalformedAnswerError(f"not a JSON array of {shape}: {reason} ({repr(shown)[:200]})")
 
 
@@ -63,6 +64,10 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
     kind or a non-string description raises, so the job fails and nothing
     is written — the alternative, skipping bad items, would silently shrink
     the review queue and hide a prompt regression behind a green job.
+
+    Raise MalformedAnswerError for these refusals. Names must be nonblank and
+    at most 200 characters; descriptions may be absent or null. An empty array
+    returns an empty list, and valid strings are preserved without trimming.
     """
     try:
         document: object = loads(answer)
@@ -113,6 +118,10 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
     and nothing is written — the alternative, skipping bad items, would
     silently shrink the findings queue and hide a prompt regression behind
     a green job.
+
+    Raise MalformedAnswerError for these refusals. Summaries must be nonblank
+    and at most 200 characters; details may be absent or null. An empty array
+    returns an empty list, and valid strings are preserved without trimming.
     """
     try:
         document: object = loads(answer)
@@ -146,12 +155,18 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
 
 
 async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]:
-    """Read the chapter, prompt the provider, file one suggestion per entity.
+    """Read the chapter, prompt the provider, and file pending entity suggestions.
 
     The chapter is read scoped to the job's owner — a job row is user-owned
     and the work must stay inside that owner's rows. The provider call happens
     here, in the worker, never in a request (D14); everything this handler
     writes commits once at the end, so a raise leaves no half-written queue.
+
+    ``job.payload['chapter_id']`` identifies the chapter as a UUID. Missing or invalid IDs,
+    or a chapter missing from the owner's rows, raise ValueError. Invalid
+    answers raise MalformedAnswerError; provider and database errors propagate.
+    Success commits suggestions and progress=100 and returns ``suggestions``
+    as the parsed entity count, including duplicates skipped during filing.
     """
     try:
         chapter_id = UUID(str(job.payload["chapter_id"]))
@@ -183,14 +198,20 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
 
 
 async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object]:
-    """Read every chapter and the accepted canon, file one finding per contradiction.
+    """Read every chapter and the accepted canon, then file pending findings.
 
     The novel's chapters and entities are read scoped to the job's owner —
     a job row is user-owned and the work must stay inside that owner's rows.
     The provider call happens here, in the worker, never in a request (D14);
     everything this handler writes commits once at the end, so a raise leaves
-    no half-written queue. A novel without chapters is a valid check: nothing
-    to contradict, an honest zero.
+    no half-written queue. A novel without chapters is still sent to the provider;
+    an empty answer array is valid.
+
+    ``job.payload['novel_id']`` identifies the novel as a UUID. Missing or invalid IDs,
+    or a novel missing from the owner's rows, raise ValueError. Invalid answers
+    raise MalformedAnswerError; provider and database errors propagate.
+    Success commits findings and progress=100 and returns ``findings`` as the
+    parsed finding count, including duplicates skipped during filing.
     """
     try:
         novel_id = UUID(str(job.payload["novel_id"]))

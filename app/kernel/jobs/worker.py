@@ -46,6 +46,7 @@ class Worker:
         session_factory: async_sessionmaker[AsyncSession],
         handlers: dict[str, JobHandler],
     ) -> None:
+        """Use the session factory for job I/O and map job kinds to their handlers."""
         self._session_factory = session_factory
         self._handlers = handlers
         # Claims whose outcome write died: the row is stranded in running,
@@ -60,8 +61,12 @@ class Worker:
         dead outcome write stranded, so the line it belongs in is whole
         again before a new claim is made.
 
-        True when a row was claimed and run (to done *or* failed — both count
-        as work done); False when the queue was idle.
+        Return True when a row was claimed, including one requeued after a
+        handler failure or failed for a missing handler; False when no unlocked
+        queued row was available. Handler exceptions become job state; errors
+        in recovery, claiming, or outcome writes propagate. An outcome write
+        failure leaves the claim remembered for requeueing on the next call.
+        Cancellation propagates.
         """
         await self._return_stranded()
         async with self._session_factory() as session:

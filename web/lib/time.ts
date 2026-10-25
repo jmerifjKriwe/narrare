@@ -5,6 +5,7 @@ import { activeLocale } from "./locale";
  * "hier" — chosen by Intl.RelativeTimeFormat in the active locale. The
  * wording is the platform's, so no catalog carries it and every language the
  * app can switch to is covered without a new key.
+ * `timestamp` must be parseable by Date.parse; an invalid timestamp raises RangeError.
  */
 export function formatRelative(timestamp: string): string {
   const formatter = new Intl.RelativeTimeFormat(activeLocale(), { numeric: "auto" });
