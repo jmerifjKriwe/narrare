@@ -6,6 +6,8 @@ same shape serves OpenAI, OpenRouter, DeepSeek, Groq and local servers (Ollama,
 llama.cpp, vLLM).
 """
 
+import json
+
 import httpx
 import pytest
 
@@ -23,9 +25,7 @@ FRAMES = (
 
 # A local server may close without the [DONE] line; the terminal event is the
 # protocol's own, not the wire's.
-FRAMES_WITHOUT_DONE_LINE = "".join(
-    frame for frame in FRAMES if not frame.startswith("data: [DONE]")
-)
+FRAMES_WITHOUT_DONE_LINE = FRAMES.removesuffix("data: [DONE]\n\n")
 
 REFUSAL = '{"error": {"message": "Incorrect API key provided"}}'
 
@@ -50,13 +50,58 @@ async def test_the_strategy_streams_the_events_in_order() -> None:
     ]
 
 
-async def test_done_is_last_with_or_without_a_done_line() -> None:
-    with vendor_server(body=FRAMES_WITHOUT_DONE_LINE, content_type="text/event-stream") as vendor:
+@pytest.mark.parametrize("frames", [FRAMES, FRAMES_WITHOUT_DONE_LINE])
+async def test_done_is_last_with_or_without_a_done_line(frames: str) -> None:
+    assert "[DONE]" not in FRAMES_WITHOUT_DONE_LINE
+    with vendor_server(body=frames, content_type="text/event-stream") as vendor:
         provider = _provider(vendor.base_url)
         events = [
             event async for event in provider.stream(CompletionRequest.user("Erzähl weiter."))
         ]
-    assert events[-1] is DONE  # exactly one terminal event, marker or no marker
+    assert events == [Delta("Der Nebel"), Delta(" hob sich"), Usage(12, 7), DONE]
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {},
+        {"prompt_tokens": 1},
+        {"completion_tokens": 1},
+        {"prompt_tokens": True, "completion_tokens": 1},
+        {"prompt_tokens": 1, "completion_tokens": False},
+        {"prompt_tokens": -1, "completion_tokens": 1},
+        {"prompt_tokens": 1, "completion_tokens": -1},
+        {"prompt_tokens": "1", "completion_tokens": 1},
+        {"prompt_tokens": 1, "completion_tokens": 1.5},
+        {"prompt_tokens": None, "completion_tokens": 1},
+        [],
+        "",
+        False,
+        0,
+    ],
+)
+async def test_malformed_reported_usage_raises(usage: object) -> None:
+    """A malformed usage frame fails the call instead of losing audit evidence."""
+    frames = f"data: {json.dumps({'usage': usage})}\n\ndata: [DONE]\n\n"
+    with (
+        vendor_server(body=frames, content_type="text/event-stream") as vendor,
+        pytest.raises(ValueError, match="reported usage"),
+    ):
+        [event async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))]
+
+
+async def test_null_usage_preserves_text_and_zero_counts_are_reported() -> None:
+    """Ordinary null usage does not hide text; reported zero counts stay zero."""
+    frames = (
+        'data: {"choices":[{"delta":{"content":"Hi"}}],"usage":null}\n\n'
+        'data: {"choices":[],"usage":{"prompt_tokens":0,"completion_tokens":0}}\n\n'
+        "data: [DONE]\n\n"
+    )
+    with vendor_server(body=frames, content_type="text/event-stream") as vendor:
+        events = [
+            event async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
+        ]
+    assert events == [Delta("Hi"), Usage(0, 0), DONE]
 
 
 async def test_the_request_carries_model_messages_stream_options_and_the_key() -> None:

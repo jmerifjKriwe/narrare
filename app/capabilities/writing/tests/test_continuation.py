@@ -5,19 +5,71 @@ from collections.abc import AsyncIterator  # noqa: TC003
 from uuid import UUID, uuid4
 
 import pytest
+from anyio import Event
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
 from app.capabilities.writing.prompts import continuity_prompt
+from app.capabilities.writing.router import (
+    _continuation_events,  # pyright: ignore[reportPrivateUsage]  test the stream's finalizer
+)
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm import FakeProvider, get_provider
 from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta
+from app.kernel.llm.streaming import FinalizingStreamingResponse
+from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 
 pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
+
+
+@pytest.mark.parametrize(
+    ("spec_version", "frame"),
+    [
+        (spec, frame)
+        for spec in ("2.0", "2.4")
+        for frame in ("delta", "event: done", "event: error", "waiting")
+        if (spec, frame) != ("2.4", "waiting")
+    ],
+)
+async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str) -> None:
+    """Disconnects preserve partial text, usage, and the provider's outcome."""
+    waiting = Event() if frame == "waiting" else None
+    provider = StreamProbeProvider(fail=frame == "event: error", waiting=waiting)
+    novel_id = uuid4()
+    response = FinalizingStreamingResponse(
+        _continuation_events(provider, "question", novel_id, LOCAL_USER_ID),
+        media_type="text/event-stream",
+        headers={},
+    )
+    await interrupt_response(
+        response, spec_version=spec_version, frame="" if waiting else frame, disconnected=waiting
+    )
+    async with Session() as session:
+        row = (
+            await session.execute(
+                text(
+                    "SELECT status, error, response_text, input_tokens, output_tokens,"
+                    " novel_id FROM llm_calls"
+                )
+            )
+        ).one()
+    assert row.novel_id == novel_id
+    assert row.response_text == "partial"
+    assert row.status == ("ok" if frame == "event: done" else "error")
+    assert row.error == (
+        None
+        if frame == "event: done"
+        else "provider failed"
+        if frame == "event: error"
+        else "stream interrupted"
+    )
+    expected_usage = (None, None) if frame == "delta" else (3, 2)
+    assert (row.input_tokens, row.output_tokens) == expected_usage
 
 
 def _client() -> AsyncClient:

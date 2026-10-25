@@ -13,6 +13,7 @@ import json
 from collections.abc import AsyncIterator  # noqa: TC003
 from dataclasses import dataclass
 from os import environ
+from typing import cast
 
 import httpx
 
@@ -133,11 +134,20 @@ def _event(line: str) -> CompletionEvent | None:
         return None
     frame = json.loads(line[6:].strip())
     usage = frame.get("usage")
-    if usage:
-        prompt_tokens = usage.get("prompt_tokens")
-        completion_tokens = usage.get("completion_tokens")
-        if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
-            return Usage(input_tokens=prompt_tokens, output_tokens=completion_tokens)
+    if usage is not None:
+        if not isinstance(usage, dict):
+            raise ValueError("reported usage must be an object")
+        reported_usage = cast("dict[str, object]", usage)
+        prompt_tokens = reported_usage.get("prompt_tokens")
+        completion_tokens = reported_usage.get("completion_tokens")
+        if (
+            type(prompt_tokens) is not int
+            or type(completion_tokens) is not int
+            or prompt_tokens < 0
+            or completion_tokens < 0
+        ):
+            raise ValueError("reported usage must contain non-negative integer token counts")
+        return Usage(input_tokens=prompt_tokens, output_tokens=completion_tokens)
     choices = frame.get("choices")
     if choices:
         content = choices[0].get("delta", {}).get("content")
