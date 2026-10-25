@@ -17,7 +17,8 @@ DATABASE_URL = environ.get(
     "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_v2_dev",
 )
 
-engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+# Bound values include manuscript text; keep them out of SQL exception logs.
+engine = create_async_engine(DATABASE_URL, pool_pre_ping=True, hide_parameters=True)
 Session = async_sessionmaker(engine, expire_on_commit=False)
 
 

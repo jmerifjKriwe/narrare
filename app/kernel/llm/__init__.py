@@ -24,7 +24,14 @@ PROVIDERS: dict[str, Callable[[], TextProvider]] = {
     "openai-compatible": OpenAICompatibleProvider.from_environment,
 }
 
-__all__ = ["PROVIDERS", "PURPOSE_PREFIX", "SOURCE_PREFIX", "TextProvider", "get_provider"]
+__all__ = [
+    "PROVIDERS",
+    "PURPOSE_PREFIX",
+    "SOURCE_PREFIX",
+    "TextProvider",
+    "get_provider",
+    "provider_facts",
+]
 
 
 def get_provider() -> TextProvider:
@@ -33,3 +40,18 @@ def get_provider() -> TextProvider:
     if name not in PROVIDERS:
         raise RuntimeError(f"unknown LLM provider {name!r}; known: {', '.join(sorted(PROVIDERS))}")
     return PROVIDERS[name]()
+
+
+def provider_facts() -> tuple[str, str]:
+    """The configured entry's ``(kind, model)``, for the audit's columns.
+
+    Read from the same environment :func:`get_provider` reads — never parsed
+    back out of ``describe()``, which is a log line, not a contract. The fake
+    reports ``("fake", "fake")``; the real entry names the model it sends.
+    """
+    name = environ.get("NARRE_LLM_PROVIDER", "fake")
+    if name not in PROVIDERS:
+        raise RuntimeError(f"unknown LLM provider {name!r}; known: {', '.join(sorted(PROVIDERS))}")
+    if name == "openai-compatible":
+        return ("openai-compatible", environ.get("NARRE_LLM_MODEL", ""))
+    return ("fake", "fake")

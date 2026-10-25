@@ -10,7 +10,15 @@ import json
 import re
 from collections.abc import AsyncIterator  # noqa: TC003
 
-from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX
+from app.kernel.llm.contract import (
+    DONE,
+    PURPOSE_PREFIX,
+    SOURCE_PREFIX,
+    CompletionEvent,
+    CompletionRequest,
+    Delta,
+    Usage,
+)
 
 PURPOSE_EXTRACT = "extract-entities"
 PURPOSE_CHECK = "check-consistency"
@@ -42,6 +50,7 @@ def _purpose(prompt: str) -> str | None:
 
 
 def _first_source(prompt: str) -> str | None:
+    """Return the first source-marked line without its prefix, or None when absent."""
     for line in prompt.splitlines():
         if line.startswith(SOURCE_PREFIX):
             return line.removeprefix(SOURCE_PREFIX)
@@ -139,17 +148,26 @@ class FakeProvider:
     )
 
     def describe(self) -> str:
+        """Identify the deterministic fake provider for startup logging."""
         return "fake"
 
     def configuration_problems(self) -> list[str]:
+        """Report that the fake provider is ready without configuration."""
         return []
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
         """Yield deterministic JSON for recognized extraction or check purposes.
 
         Other prompts yield the first source line in pieces, or CHUNKS when
         that line is absent or empty. JSON answers arrive as a single piece.
+        Only user-message contents, joined with newlines, form the prompt;
+        other roles and completion options are ignored. Every shape ends with
+        Usage, then DONE. Counts follow D6: prompt and answer character lengths
+        divided by four, rounded down.
         """
+        prompt = "\n".join(
+            message.content for message in request.messages if message.role == "user"
+        )
         purpose = _purpose(prompt)
         passages = _passages(prompt)
         if purpose == PURPOSE_EXTRACT:
@@ -161,11 +179,17 @@ class FakeProvider:
         if answer is not None:
             # One piece is still a stream: the consumer sees the same protocol.
             await asyncio.sleep(0)
-            yield answer
+            yield Delta(text=answer)
+            yield Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer) // 4)
+            yield DONE
             return
         source = _first_source(prompt)
-        for chunk in _pieces(source) if source else self.CHUNKS:
+        chunks = _pieces(source) if source else self.CHUNKS
+        for chunk in chunks:
             # Yield to the loop between pieces: the server flushes each event
             # instead of collapsing the whole completion into one write.
             await asyncio.sleep(0)
-            yield chunk
+            yield Delta(text=chunk)
+        answer_text = "".join(chunks)
+        yield Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer_text) // 4)
+        yield DONE
