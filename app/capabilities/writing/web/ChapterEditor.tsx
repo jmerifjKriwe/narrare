@@ -5,25 +5,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { announce } from "@shell/lib/announce";
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
-import { SaveIndicator, useAutosave } from "@shell/lib/save";
+import { SaveIndicator, type SaveStatus } from "@shell/lib/save";
 import { readFrames } from "@shell/lib/stream";
 
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
 
 /**
- * Edit and autosave a chapter, with proposals kept as ghost text until accepted.
- * `body` initializes the editor; remount with a new key when switching chapters.
+ * Edit a chapter, with proposals kept as ghost text until accepted. Saving is
+ * the page's, not the editor's: it receives the autosave's `status` (shown
+ * beside the text) and `schedule` (fed on every update). `body` initializes
+ * the editor; remount with a new key when switching chapters.
  */
 export function ChapterEditor({
   chapterId,
   body,
-  onSaved,
+  status,
+  schedule,
   proposal,
   onProposalResolve,
 }: {
   chapterId: string;
   body: string;
-  onSaved?: (chapterId: string, body: string) => void;
+  status: SaveStatus;
+  schedule: (body: string) => void;
   /** A proposal from outside (the proposal bus, later): rendered as a ghost
    *  at the caret. `undefined` leaves the floor to this component's own
    *  continuation stream; `null` is an explicit "no proposal". */
@@ -32,7 +36,6 @@ export function ChapterEditor({
   onProposalResolve?: (accepted: boolean) => void;
 }) {
   const t = useTranslation();
-  const { status, schedule } = useAutosave(chapterId, onSaved);
   const [continuing, setContinuing] = useState(false);
   const [failed, setFailed] = useState(false);
   // What this component's own stream has proposed so far.

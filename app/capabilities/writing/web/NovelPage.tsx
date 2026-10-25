@@ -7,6 +7,7 @@ import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
 import { queryClient } from "@shell/lib/query";
+import { useAutosave } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 import type { FocusStep } from "./routes";
@@ -252,6 +253,14 @@ export function NovelPage() {
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
+  // The autosave is the page's, not the chapter's: the editor remounts on
+  // every switch (its key is the chapter id), and a hook that lived inside
+  // it would unmount with it — cleanup firing, a refused body dying with
+  // its ref — on each switch. Here the body's lifetime spans switches: the
+  // editor shows `status` beside the text and feeds `schedule` on update;
+  // `flush` is the page's own handle on what has not reached the server.
+  const { status, schedule, flush } = useAutosave(current?.id ?? null, remember);
+
   // Panels yield to focus before their own URL state: at depth 1 the rail is
   // hidden whatever ?rail says, and its toggles hide with it — they would be
   // no-ops while focus suppresses the panel. The page's own header goes at
@@ -390,7 +399,8 @@ export function NovelPage() {
               key={current.id}
               chapterId={current.id}
               body={current.body}
-              onSaved={remember}
+              status={status}
+              schedule={schedule}
               proposal={offer ?? undefined}
               onProposalResolve={resolveOffer}
             />

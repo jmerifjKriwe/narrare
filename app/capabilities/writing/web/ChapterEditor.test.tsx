@@ -25,10 +25,34 @@ import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
+import { useAutosave } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
+
+/** The editor as the page mounts it: the autosave hook above, `status` and
+ *  `schedule` handed down — saving is not the editor's. The flush button
+ *  stands where the page's leave paths call `save.flush()`. */
+function Harness(props: { chapterId?: string; body?: string; proposal?: string | null;
+  onProposalResolve?: (accepted: boolean) => void;
+  onSaved?: (id: string, body: string) => void }) {
+  const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
+  return (
+    <>
+      <ChapterEditor
+        chapterId={props.chapterId ?? CHAPTER}
+        body={props.body ?? ""}
+        status={save.status}
+        schedule={save.schedule}
+        proposal={props.proposal}
+        onProposalResolve={props.onProposalResolve}
+      />
+      <button type="button" onClick={() => save.flush()}>flush</button>
+      {/* Task 3 adds: <button type="button" onClick={save.discard}>discard</button> */}
+    </>
+  );
+}
 
 /** The SSE body a continuation is answered with: one `data:` frame per
  * fact, or a raw frame where a test needs the router's own bytes. */
@@ -128,7 +152,7 @@ describe("ChapterEditor's ghost text", () => {
   it("renders the proposal as decoration, not document", async () => {
     const resolved: boolean[] = [];
     render(
-      <ChapterEditor
+      <Harness
         chapterId={CHAPTER}
         body="Anfang."
         proposal="Der Vorschlag des Geistes."
@@ -158,7 +182,7 @@ describe("ChapterEditor's ghost text", () => {
     try {
       const resolved: boolean[] = [];
       render(
-        <ChapterEditor
+        <Harness
           chapterId={CHAPTER}
           body=""
           proposal="Weg damit."
@@ -188,7 +212,7 @@ describe("ChapterEditor's ghost text", () => {
   it("commits the ghost into document and autosave on Tab", { timeout: 10_000 }, async () => {
     const resolved: boolean[] = [];
     render(
-      <ChapterEditor
+      <Harness
         chapterId={CHAPTER}
         body=""
         proposal="Nimm mich auf."
@@ -215,7 +239,7 @@ describe("ChapterEditor's ghost text", () => {
   it("drops the ghost on Escape without document, save or window", { timeout: 10_000 }, async () => {
     const resolved: boolean[] = [];
     render(
-      <ChapterEditor
+      <Harness
         chapterId={CHAPTER}
         body=""
         proposal="Weg damit."
@@ -282,7 +306,7 @@ describe("ChapterEditor's ghost text", () => {
 
   it("loses no text when the ghost is accepted while a save is in flight", { timeout: 20_000 }, async () => {
     editorServer.holdNext = 1; // the typing's save stays unanswered — that is "in flight"
-    const view = render(<ChapterEditor chapterId={CHAPTER} body="" proposal={null} />);
+    const view = render(<Harness chapterId={CHAPTER} body="" proposal={null} />);
     const user = await focusEditor();
     // keyboard, not type: type() clicks first, and ProseMirror's mousedown
     // path needs the layout jsdom does not have. The editor already holds
@@ -295,7 +319,7 @@ describe("ChapterEditor's ghost text", () => {
     expect(editorServer.requests[0].body).not.toContain("Geisterzählung");
 
     await view.rerender(
-      <ChapterEditor chapterId={CHAPTER} body="" proposal="Und die Geisterzählung." />,
+      <Harness chapterId={CHAPTER} body="" proposal="Und die Geisterzählung." />,
     );
     await screen.findByText("Und die Geisterzählung.");
     await user.keyboard("{Tab}");
@@ -316,7 +340,7 @@ describe("ChapterEditor's ghost text", () => {
     const saved: [string, string][] = [];
     editorServer.refuseSave = true;
     render(
-      <ChapterEditor
+      <Harness
         chapterId={CHAPTER}
         body="Anfang."
         onSaved={(id, body) => saved.push([id, body])}
@@ -337,7 +361,7 @@ describe("ChapterEditor's ghost text", () => {
 
   it("retries a failed save on the next keystroke and clears the failure", { timeout: 10_000 }, async () => {
     editorServer.refuseSave = true;
-    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    render(<Harness chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.keyboard("A");
     await screen.findByRole("alert", {}, { timeout: 5000 });
@@ -357,7 +381,7 @@ describe("ChapterEditor's ghost text", () => {
       arrived: announcementsOf(t("editor.ghostArrived")),
       replaced: announcementsOf(t("editor.ghostReplaced")),
     };
-    const view = render(<ChapterEditor chapterId={CHAPTER} body="" proposal="Das erste Angebot." />);
+    const view = render(<Harness chapterId={CHAPTER} body="" proposal="Das erste Angebot." />);
     await screen.findByText("Das erste Angebot.");
     await waitFor(() =>
       expect(announcementsOf(t("editor.ghostArrived"))).toBe(before.arrived + 1),
@@ -366,7 +390,7 @@ describe("ChapterEditor's ghost text", () => {
     // The bus is last-wins: a second offer replaces the pending ghost —
     // announced once, as a replacement, never as a second arrival.
     await view.rerender(
-      <ChapterEditor chapterId={CHAPTER} body="" proposal="Das zweite Angebot." />,
+      <Harness chapterId={CHAPTER} body="" proposal="Das zweite Angebot." />,
     );
     await screen.findByText("Das zweite Angebot.");
     expect(announcementsOf(t("editor.ghostReplaced"))).toBe(before.replaced + 1);
@@ -374,7 +398,7 @@ describe("ChapterEditor's ghost text", () => {
 
     // And a third: one announcement per supersede, not one per render.
     await view.rerender(
-      <ChapterEditor chapterId={CHAPTER} body="" proposal="Das dritte Angebot." />,
+      <Harness chapterId={CHAPTER} body="" proposal="Das dritte Angebot." />,
     );
     await screen.findByText("Das dritte Angebot.");
     expect(announcementsOf(t("editor.ghostReplaced"))).toBe(before.replaced + 2);
@@ -409,7 +433,7 @@ describe("ChapterEditor's ghost text", () => {
     // No proposal prop: the floor is the component's own stream (null would
     // be the explicit "no proposal" opinion, and the prop wins over the
     // stream — the ghost would never show).
-    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    render(<Harness chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
@@ -430,7 +454,7 @@ describe("ChapterEditor's ghost text", () => {
       discarded: announcementsOf(t("editor.ghostDiscarded")),
     };
     editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, PROVIDER_DIED);
-    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    render(<Harness chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
@@ -447,7 +471,7 @@ describe("ChapterEditor's ghost text", () => {
   it("announces a refused continuation as a failure", { timeout: 10_000 }, async () => {
     const before = { failed: announcementsOf(t("editor.ghostFailed")) };
     editorServer.refuseContinue = true; // the server refuses before a word
-    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    render(<Harness chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
@@ -468,7 +492,7 @@ describe("ChapterEditor's ghost text", () => {
     editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, PROVIDER_DIED);
     // The prop has an opinion, so its offer owns the ghost on screen —
     // the stream's own text never becomes the visible one.
-    render(<ChapterEditor chapterId={CHAPTER} body="" proposal="Das Angebot bleibt." />);
+    render(<Harness chapterId={CHAPTER} body="" proposal="Das Angebot bleibt." />);
     const user = await focusEditor();
     await screen.findByText("Das Angebot bleibt.");
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
@@ -491,7 +515,7 @@ describe("ChapterEditor's ghost text", () => {
     // fetch, not keep running unread on a dead socket.
     editorServer.continueWith = streamOf({ delta: "Der Nebel " });
     editorServer.holdContinue = true;
-    const view = render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const view = render(<Harness chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
@@ -522,7 +546,7 @@ describe("ChapterEditor's ghost text", () => {
     // it, and no rejection escapes the handler unnamed.
     const before = { failed: announcementsOf(t("editor.ghostFailed")) };
     editorServer.breakContinue = true;
-    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    render(<Harness chapterId={CHAPTER} body="" />);
     const user = await focusEditor();
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
