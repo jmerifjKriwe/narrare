@@ -210,3 +210,14 @@ text, reviewable in two clicks.
 ## Self-review notes
 
 Scope = the parked ledger exactly (16 directly; the 2 second-job-kind parks resolve across Tasks 5–6) + round A's remainder (manual CRUD) + round B whole. Deliberately OUT, with reasons: graph/canvas — needs a relationship model and real usage of the landed surface first (spec §11: a later answer is a decision); notes/wiki, analysis, series, adaptive, templates, import/export, observability, auth/hosting — §11 deferrals, untouched. Observed and left: accept-then-re-extract can file a fresh suggestion for an accepted name (dedupe is pending-only by design — a re-suggestion after acceptance is sometimes right; a product call for later, not this round). Chapters are not in the semantic search — the corpus is documents; the dock search reaches what the endpoint reaches, and widening the corpus is its own merit question.
+
+## Corrections (recorded after execution, 2026-10-25)
+
+- Task 1's drift-test bullet says the test "regenerates into a temp
+  location". The shipped test does not: `app/api/test_capability_views.py`
+  calls the generator functions in-process (`typescript_routes(ROOT)`,
+  `python_registry(...)`, …) and compares their output against the committed
+  files. Same contract — the committed files are the contract — reached by a
+  different mechanism. The PR #284 review flagged the mismatch (an audit
+  trail stating a mechanism the code does not use); the wording above stays
+  as written, per the no-retroactive-rewrite rule.

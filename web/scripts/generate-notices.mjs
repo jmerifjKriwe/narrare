@@ -16,6 +16,16 @@ const DIST = resolve(WEB, "dist");
 // The full license text for every SPDX id the output may list. An unknown id
 // fails the build instead of shipping a notice without its terms: a new
 // license in the runtime closure must be added here deliberately.
+//
+// Every text is the CANONICAL license terms — the SPDX/official body — not a
+// package's own LICENSE file: an applied copyright line ("Copyright 2019
+// Adobe", "Copyright (c) Microsoft Corporation.") stays out of a text shared
+// by a whole license group, because it would attribute every package in the
+// group to that one holder. Each package's own attribution is its row above
+// (name, version, author). The Apache text is therefore apache.org's
+// LICENSE-2.0.txt with the boilerplate placeholder ("Copyright [yyyy] [name
+// of copyright owner]") intact; the 0BSD text is the canonical terms, and
+// tslib's LICENSE prepends a copyright line the shared text does not carry.
 const LICENSE_TEXTS = {
   MIT: `Copyright (c) the respective package authors listed above.
 
