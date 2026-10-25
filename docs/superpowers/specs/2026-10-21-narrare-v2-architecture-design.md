@@ -204,9 +204,10 @@ scoped to changed paths.
 **Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
 
 **CI — at most seven jobs:** five functional gates (lint + types; tests; e2e for
-affected capabilities; build; coverage badge) plus `changes` (PR narrowing) and
-`nightly-guard` (skip on unchanged `main`). Runs on PR, plus the nightly schedule on
-the e2e job and on release.
+affected capabilities; build; coverage badge) plus `changes` (range narrowing: a PR
+against where it branched, a push against the commits it landed) and `nightly-guard`
+(skip on unchanged `main`). Runs on PR and on push to `main`, plus the nightly
+schedule on the e2e job and on release.
 
 **`justfile` keeps 21 public recipes:**
 
@@ -254,9 +255,9 @@ Preconditions — a user, a novel, a chapter — may be prepared directly. The t
 flow itself runs through the UI: click, type, stream, observe the result that was
 persisted.
 
-Scheduling: affected capabilities on PR, all of them nightly and at merge. A real LLM
-provider is never used at any test level. Anything a test would pay for is faked at
-the boundary.
+Scheduling: affected capabilities on a PR and on a push, all of them nightly. A real
+LLM provider is never used at any test level. Anything a test would pay for is faked
+at the boundary.
 
 Consequence: an E2E failure means the product is broken, not that a schema changed.
 The suite is the only place where "works" has a definition.
@@ -454,12 +455,13 @@ trigger that would build the missing piece.
   fixed prompt needs one async method), mem0 removed (pgvector plus
   `kernel/retrieval.py` covers the ground), pgvector kept, Alembic removed
   (§6). TanStack Query never entered: the generated client was enough.
-- **CI runs the E2E of the affected capabilities on each PR** and all of them
-  on `main` pushes and nightly (§6): a `changes` job narrows a PR to the
-  capabilities it touched — everything when kernel, api, the generated views,
-  web, i18n or the tooling moved. The nightly runs only when `main` carries a
-  commit the last successful nightly did not test; an unchanged `main` skips
-  every job through one guard. 9 tests, ~29 s at five capabilities.
+- **CI runs the E2E of the affected capabilities on each PR and each push**
+  and all of them nightly (§6): a `changes` job narrows a PR to the capabilities
+  it touched — everything when kernel, api, the generated views, web, i18n or
+  the tooling moved — and narrows a push by the commits it landed, so a
+  documentation-only push runs no browser. The nightly runs only when `main`
+  carries a commit the last successful nightly did not test; an unchanged `main`
+  skips every job through one guard. 9 tests, ~29 s at five capabilities.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
 - **The web shell is a Vite SPA, not Next.js.** Every page was a client

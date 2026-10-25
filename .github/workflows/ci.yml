@@ -11,7 +11,12 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A narrow change on top of a wide one supersedes it, so a new push cancels
+  # the run of the commit it stands on: two pushes in a row used to run two
+  # full suites side by side, for two trees where the newer one contains the
+  # older. The nightly is exempt, because a push at 03:18 must not cancel the
+  # one run the nightly-guard reads back tomorrow.
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 permissions:
   contents: read
@@ -89,7 +94,9 @@ jobs:
   # Which E2E suites a change owes: the capabilities it touches, or all of
   # them when a shared surface moved (spec §6 "affected capabilities"; the
   # shared surfaces are kernel, api, the generated views, web, i18n and the
-  # tooling). Pushes and nightly runs take everything.
+  # tooling). A pull request is measured against where it branched, a push
+  # against the commits it landed, so a docs-only change owes no browser suite
+  # either way. A nightly takes everything.
   changes:
     needs: nightly-guard
     if: needs.nightly-guard.outputs.proceed == 'true'
@@ -102,19 +109,41 @@ jobs:
           fetch-depth: 0
       - id: suites
         env:
+          # What kind of event this is: the range below differs per event, and
+          # `schedule` has none at all.
+          EVENT: ${{ github.event_name }}
           # A fork may name its branch anything, so the branch name alone says
           # nothing about who pushed it: the exception below also requires the
           # head to live in this repository.
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          # The commit a push landed on. Exactly 40 zeros on the first push of a
+          # branch, and no object at all after a force push.
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+          # "none" is only ever a decision, never a fallback: a path that cannot
+          # name a range takes all suites instead.
+          if [ "$EVENT" = pull_request ]; then
+            git fetch origin main
+            changed=$(git diff --name-only origin/main...HEAD)
+          elif [ "$EVENT" = push ]; then
+            # The commits this push landed, which is the diff the same change
+            # would show as a PR. A first push and a force push both name a base
+            # that cannot be read, and `git diff` failing must not read as
+            # "nothing changed" — both take everything.
+            if ! echo "$PUSH_BEFORE" | grep -qxE '[0-9a-f]{40}' \
+              || echo "$PUSH_BEFORE" | grep -qxE '0{40}' \
+              || ! changed=$(git diff --name-only "$PUSH_BEFORE..HEAD"); then
+              echo "suites=all (the push range cannot be read)"
+              echo "suites=all" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            echo "suites=all (a nightly tests every capability)"
             echo "suites=all" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git fetch origin main
-          changed=$(git diff --name-only origin/main...HEAD)
-          echo "$changed"
+          echo "${changed:-<no file changed>}"
           # A release PR moves version strings and the changelog; no browser
           # runs any of them. release-please force-pushes this branch on every
           # push to main, so the suites here cost minutes per release and get
@@ -122,7 +151,8 @@ jobs:
           # each alone is spoofable: a fork may take the branch name, and
           # pyproject.toml and uv.lock are ordinary dependency files. A skipped
           # job still satisfies the required check.
-          if [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
+          if [ "$EVENT" = pull_request ] \
+            && [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
             && [ "$GITHUB_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
             && ! echo "$changed" | grep -qvE '^(\.release-please-manifest\.json|CHANGELOG\.md|app/kernel/version\.py|package\.json|web/package\.json|pyproject\.toml|web/lib/api/openapi\.json|uv\.lock)$'; then
             echo "suites=none" >> "$GITHUB_OUTPUT"
@@ -132,7 +162,11 @@ jobs:
             echo "suites=all" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          capabilities=$(echo "$changed" | grep -oP '^app/capabilities/\K[^/]+' | sort -u)
+          # The trailing `|| true` is insurance, not a fix: the pipeline's status
+          # is `sort`'s, so an empty match already returns 0 under the runner's
+          # `bash -e {0}`. Declaring `shell: bash` on this step would add
+          # `pipefail` and turn "no capability" into a failed job.
+          capabilities=$(echo "$changed" | grep -oP '^app/capabilities/\K[^/]+' | sort -u || true)
           if [ -z "$capabilities" ]; then
             echo "suites=none" >> "$GITHUB_OUTPUT"
             exit 0
@@ -207,7 +241,7 @@ jobs:
       - run: uv run playwright install --with-deps chromium
       - run: pnpm install --frozen-lockfile
       # The same invocation `just test-e2e` makes; the suites come from the
-      # changes job, so a PR pays for what it touches.
+      # changes job, so a change pays for what it touches.
       - name: E2E
         run: |
           suites="${{ needs.changes.outputs.suites }}"
