@@ -63,10 +63,14 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     # The shell paints only after the settings query answers — the locale
     # gate — so the Tab below must wait for the bar to exist.
     expect(page.locator("header")).to_be_visible()
-    body = page.locator("body")
-    body.press("Tab")  # first Tab reaches the skip link
+    # Keyboard, not locator presses: Locator.press focuses its target first,
+    # and body is not focusable — the surviving skip-link focus is only a
+    # no-op side effect this test must not lean on. The keyboard path sends
+    # the keys to whatever is actually focused, which is the contract the
+    # skip link lives by.
+    page.keyboard.press("Tab")  # first Tab reaches the skip link
     expect(page.get_by_role("link", name="Zum Inhalt springen")).to_be_focused()
-    body.press("Enter")
+    page.keyboard.press("Enter")
     expect(page.locator("#main")).to_be_focused()
 
     assert_accessible(page)
