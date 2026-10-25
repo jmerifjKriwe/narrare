@@ -49,6 +49,7 @@ export function useAutosave(
   // The tail of the write queue. Never rejects: `attempt` resolves every path.
   const writes = useRef<Promise<FlushOutcome>>(Promise.resolve("clean"));
 
+  /** Write the current body once, retaining newer text and ignoring retired answers. */
   const attempt = useCallback(async (): Promise<FlushOutcome> => {
     const body = pending.current;
     const target = id.current;
@@ -91,16 +92,26 @@ export function useAutosave(
     }
   }, []);
 
+  /** Serialize writes and settle the latest body before allowing a caller to leave. */
   const flush = useCallback((): Promise<FlushOutcome> => {
     if (timer.current !== null) {
       clearTimeout(timer.current);
       timer.current = null;
     }
-    const next = writes.current.then(() => attempt());
+    const next = writes.current.then(async () => {
+      let outcome = await attempt();
+      // Typing can replace the body while its PUT is in flight. A leave
+      // must wait for that replacement too, and stop if any write fails.
+      while (outcome === "saved" && pending.current !== null) {
+        outcome = await attempt();
+      }
+      return outcome;
+    });
     writes.current = next;
     return next;
   }, [attempt]);
 
+  /** Keep the latest body and restart its debounce without hiding a failed save. */
   const schedule = useCallback(
     (body: string) => {
       pending.current = body;
@@ -125,6 +136,7 @@ export function useAutosave(
   // hidden mid-debounce flushes now, because nothing may type it back to
   // life. The unload prompt belongs to the page (one owner for leaving).
   useEffect(() => {
+    /** Flush pending text as soon as the tab is hidden. */
     function onHidden() {
       if (document.visibilityState === "hidden") void flush();
     }
@@ -142,6 +154,7 @@ export function useAutosave(
   return { status, schedule, flush, discard };
 }
 
+/** Show saving, confirmed success or a retryable failure beside the editor. */
 export function SaveIndicator({ status }: { status: SaveStatus }) {
   const t = useTranslation();
   if (status === "failed") {

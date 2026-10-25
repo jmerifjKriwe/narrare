@@ -36,6 +36,7 @@ def _create_book(page: Page, title: str) -> None:
 
 
 def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Stack) -> None:
+    """Retain failed text, retry it after recovery and prove it survives a reload."""
     _create_book(page, "Die Bucht")
     page.get_by_role("button", name="Neues Kapitel").click()
     page.locator(".ProseMirror").click()
@@ -58,6 +59,7 @@ def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Sta
 
 
 def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None:
+    """Protect failed text on chapter switches, links and history navigation."""
     _create_book(page, "Der Priel")
     page.get_by_role("button", name="Neues Kapitel").click()
     page.get_by_role("button", name="Neues Kapitel").click()
@@ -125,6 +127,7 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
 
 
 def test_closing_a_tab_with_a_failed_save_asks(page: Page, stack: Stack) -> None:
+    """Prompt on unload only while the chapter contains text the server lacks."""
     _create_book(page, "Der Grund")
     page.get_by_role("button", name="Neues Kapitel").click()
     page.locator(".ProseMirror").click()
@@ -132,6 +135,7 @@ def test_closing_a_tab_with_a_failed_save_asks(page: Page, stack: Stack) -> None
     seen: list[str] = []
 
     def accept(dialog: Dialog) -> None:
+        """Record the native dialog and allow the reload to proceed."""
         seen.append(dialog.type)
         dialog.accept()
 
@@ -163,3 +167,49 @@ def test_closing_a_tab_with_a_failed_save_asks(page: Page, stack: Stack) -> None
         assert seen == ["beforeunload"]
     finally:
         stack.start_api()
+
+
+def test_failed_chapter_creation_keeps_the_unsaved_body(page: Page, stack: Stack) -> None:
+    """Keep failure and leave protection until a requested new chapter exists."""
+    _create_book(page, "Die Sandbank")
+    page.get_by_role("button", name="Neues Kapitel").click()
+    page.locator(".ProseMirror").click()
+
+    stack.stop_api()
+    try:
+        page.keyboard.type("Diesen Satz behalten.")
+        expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
+
+        with page.expect_event("dialog") as asked:
+            page.once("dialog", lambda dialog: dialog.accept())
+            page.get_by_role("button", name="Neues Kapitel").click()
+        assert asked.value.type == "confirm"
+
+        expect(
+            page.get_by_role("alert").filter(has_text="Kapitel konnte nicht angelegt")
+        ).to_be_visible()
+        expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible()
+        expect(page.locator(".ProseMirror")).to_contain_text("Diesen Satz behalten.")
+        expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+
+        with page.expect_event("dialog") as asked:
+            page.once("dialog", lambda dialog: dialog.dismiss())
+            page.get_by_role("link", name="Alle Romane").click()
+        assert asked.value.type == "confirm"
+        expect(page.locator(".ProseMirror")).to_contain_text("Diesen Satz behalten.")
+    finally:
+        stack.start_api()
+
+    page.locator(".ProseMirror").click()
+    page.keyboard.press("End")
+    page.keyboard.type(" Jetzt speichern.")
+    expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible(timeout=10_000)
+    page.get_by_role("button", name="Neues Kapitel").click()
+    expect(page.get_by_role("button", name="Kapitel 2", exact=True)).to_have_attribute(
+        "aria-pressed", "true"
+    )
+    expect(page.get_by_text("Gespeichert", exact=True)).to_have_count(0)
+    page.get_by_role("button", name="Kapitel 1", exact=True).click()
+    expect(page.locator(".ProseMirror")).to_contain_text("Diesen Satz behalten. Jetzt speichern.")

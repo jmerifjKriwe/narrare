@@ -26,7 +26,7 @@ import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
-import { useAutosave, unsavedStatus } from "@shell/lib/save";
+import { useAutosave, unsavedStatus, type FlushOutcome } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 
@@ -37,12 +37,14 @@ const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
  *  stands where the page's leave paths call `save.flush()`. */
 function Harness(props: { chapterId?: string; body?: string; proposal?: string | null;
   onProposalResolve?: (accepted: boolean) => void;
-  onSaved?: (id: string, body: string) => void }) {
+  onSaved?: (id: string, body: string) => void;
+  onFlushed?: (outcome: FlushOutcome) => void }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
   // NovelPage hands this predicate to the router blocker; jsdom has no
   // router, so the same function answers a dispatched event here — the
   // predicate itself is shared, not copied, so it cannot drift.
   useEffect(() => {
+    /** Apply the page's unsaved-text predicate to the browser unload event. */
     function guard(event: BeforeUnloadEvent) {
       if (!unsavedStatus(save.status)) return;
       event.preventDefault();
@@ -61,7 +63,10 @@ function Harness(props: { chapterId?: string; body?: string; proposal?: string |
         proposal={props.proposal}
         onProposalResolve={props.onProposalResolve}
       />
-      <button type="button" onClick={() => save.flush()}>flush</button>
+      <button type="button" onClick={async () => {
+        const outcome = await save.flush();
+        props.onFlushed?.(outcome);
+      }}>flush</button>
       <button type="button" onClick={save.discard}>discard</button>
     </>
   );
@@ -163,6 +168,7 @@ async function editorElement(): Promise<HTMLElement> {
   });
 }
 
+/** Focus the mounted editor and return the keyboard driver used by its tests. */
 async function focusEditor(): Promise<ReturnType<typeof userEvent.setup>> {
   const user = userEvent.setup({ pointerEventsCheck: 0 });
   (await editorElement()).focus();
@@ -432,6 +438,50 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
       timeout: 5000,
     });
+  });
+
+  it("keeps flush pending until text typed during its PUT is saved", { timeout: 10_000 }, async () => {
+    const outcomes: FlushOutcome[] = [];
+    editorServer.holdNext = 2;
+    render(<Harness onFlushed={(outcome) => outcomes.push(outcome)} />);
+    const user = await focusEditor();
+    await user.keyboard("Eins.");
+    await user.click(screen.getByRole("button", { name: "flush" }));
+    await waitFor(() => expect(editorServer.requests).toHaveLength(1));
+
+    (await editorElement()).focus();
+    await user.keyboard(" Zwei.");
+    editorServer.requests[0].respond();
+    await waitFor(() => expect(editorServer.requests).toHaveLength(2), { timeout: 4000 });
+    expect(editorServer.requests[1].body).toContain("Eins. Zwei.");
+    expect(outcomes).toEqual([]);
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+
+    editorServer.requests[1].respond();
+    await waitFor(() => expect(outcomes).toEqual(["saved"]));
+    expect(screen.getByText(t("save.saved"))).toBeTruthy();
+  });
+
+  it("reports failure if the newer body drained by flush is refused", { timeout: 10_000 }, async () => {
+    const outcomes: FlushOutcome[] = [];
+    editorServer.holdNext = 1;
+    render(<Harness onFlushed={(outcome) => outcomes.push(outcome)} />);
+    const user = await focusEditor();
+    await user.keyboard("Eins.");
+    await user.click(screen.getByRole("button", { name: "flush" }));
+    await waitFor(() => expect(editorServer.requests).toHaveLength(1));
+
+    (await editorElement()).focus();
+    await user.keyboard(" Zwei.");
+    editorServer.refuseSave = true;
+    editorServer.requests[0].respond();
+    await waitFor(() => expect(outcomes).toEqual(["failed"]));
+    expect(screen.getByRole("alert").textContent).toContain(t("save.failed"));
+    expect(documentText()).toContain("Eins. Zwei.");
+
+    await user.click(screen.getByRole("button", { name: "flush" }));
+    await waitFor(() => expect(outcomes).toEqual(["failed", "saved"]));
+    expect(editorServer.requests.at(-1)?.body).toContain("Eins. Zwei.");
   });
 
   it("does not report a save that answers after the body was discarded", { timeout: 10_000 }, async () => {

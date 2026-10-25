@@ -275,7 +275,6 @@ export function NovelPage() {
   async function leave(then: () => void) {
     const outcome = await flush();
     if (outcome === "failed" && !window.confirm(t("save.confirmLeave"))) return;
-    if (outcome === "failed") discard();
     then();
   }
 
@@ -300,9 +299,9 @@ export function NovelPage() {
     enableBeforeUnload: () => unsavedNow.current,
   });
 
-  // A new chapter must not inherit the last one's save story: after `leave`
-  // nothing is pending, so this only drops a stale failure and the "saved"
-  // of the flush that carried the switch across.
+  // Reset the save story only after the chapter selection actually changes.
+  // Creation can fail after a confirmed leave; until it succeeds, the old
+  // chapter's failed body must still be protected by every leave guard.
   useEffect(() => {
     discard();
   }, [current?.id, discard]);
