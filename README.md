@@ -76,5 +76,7 @@ The daily workflow — branches, commits, PRs, gates — lives in
 - [AGENTS.md](AGENTS.md) — the rules of the codebase and the agent layer
 - [v2 architecture spec](docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md)
   — the authority for structure and boundaries
+- [web/](web/) is the shell (frame, router, shared client, primitives);
+  [app/capabilities/*/web/](app/capabilities) is each capability's own UI
 - [docs/user/INDEX.md](docs/user/INDEX.md) — the app's surfaces, generated from
   the capability facts

@@ -104,7 +104,7 @@ app/
     chat/             same shape
     setup/            same shape
   api/           FastAPI app: mounts capability routers, emits OpenAPI
-web/             Next.js shell: routes, layout, generated client
+web/             shell: frame, root route, API client, i18n, primitives, generated tables
 i18n/            message catalogs (en, de, fr); user docs are generated from here
 generated/       capability registry (Python + TypeScript), docs index, TS client
 docs/
@@ -113,9 +113,16 @@ docs/
 scripts/         generate · new-capability  (two, not 84)
 ```
 
-The Next.js shell in `web/` imports each capability's `web/` components through the
-generated route table, so the frontend of a capability still lives in that capability's
-folder.
+The frontend has two homes, and the tree carries both. `web/` is the **shell**: the frame
+every capability is mounted in — `main.tsx`, `router.tsx`, the root route, the shared
+libraries in `lib/` (API client, i18n, announcements, autosave, the proposal bus), the
+React-Aria primitives in `ui/` (the only React-Aria import point) and the generated
+composition tables. `app/capabilities/<name>/web/` is that **capability's own UI**: its
+pages, its components and the `routes.tsx` it exports. The shell imports a capability's
+components through the generated route table, so the frontend of a capability still
+lives in that capability's folder; a capability imports the shell through the `@shell/*`
+alias and never another capability, and the shell reaches capability code only through
+the generated tables.
 
 Two rules make this tree do work. **Dependencies point one way**: `api/ → capabilities/
 → kernel/`. A capability never imports another capability. **There is no central
@@ -136,7 +143,7 @@ A folder contains: its `capability.yaml` facts file; the prompt text it owns; a
 router that delegates immediately, a service that holds the logic, and a repository
 that owns its tables; its schemas; its tests; and an `e2e/` spec that drives the real
 UI (§7). Its frontend lives in a subfolder of the same capability folder and is
-composed into the Next.js app by the generated route table.
+composed into the shell by the generated route table.
 
 `capability.yaml` holds facts only: id, user-visible label key, category, mode,
 budget profile, locales, and the provider/model requirement. It has no behaviour, no
@@ -429,12 +436,15 @@ trigger that would build the missing piece.
   `docs/user/INDEX.md`. Fields, each read by at least two views: `id`,
   `title`, `path`, `needs`, `nav`. A new capability is one folder plus
   `just generate`.
-- **A capability's frontend lives in `web/routes/<name>.tsx`, not in its
-  folder.** A feature costs its backend folder, one route file, and one key in
-  each of the three i18n catalogs. The generated route table (§3) is not
-  built: listing the routes by hand in `web/router.tsx` is a few lines, and a
-  generated view of them would have no second consumer; it returns when
-  capabilities own many routes of their own.
+- **A capability's frontend lives in its own folder, under `web/`.**
+  `web/router.tsx` mounts only the generated route table
+  (`web/lib/generated/routes.ts`), built by `scripts/generate_capabilities.py`
+  from every `app/capabilities/*/web/routes.tsx`; a capability that exports
+  `dockRoutes` also appears in the generated dock registry. Capabilities import
+  the shell through the one-way `@shell` alias and never each other; the
+  generated table is the single composition point. Component tests live beside
+  their components in the capability folder. A new route is a `routes.tsx`
+  change plus `just generate`.
 - **`kernel/jobs`, `kernel/events` and `kernel/prompts` are not built.** No
   feature needs background work yet, so standing rule 3 holds trivially; the
   jobs table and worker arrive with the first capability that needs them (§13).
@@ -452,12 +462,12 @@ trigger that would build the missing piece.
   every job through one guard. 9 tests, ~29 s at five capabilities.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
-- **The web shell is a Vite SPA, not Next.js.** §3's "Next.js shell" is read as
-  "the web shell": every page was a client component, so Next contributed a
-  file router and a dev proxy while costing a third runtime in the packaging
-  ladder (ADR-101) and a `next start` process in production. `just build` now
-  emits `web/dist`, FastAPI serves it (`app/api/main.py`), and the routes are
-  TanStack Router's — typed, so a `to=` naming no route is a build error. The
-  TypeScript gate moved from `next build` to an explicit `tsc --noEmit` in
-  `just typecheck`, keeping `just check`'s coverage unchanged. i18n stays
-  framework-free JSON: the compiler, not a library, checks the catalogs.
+- **The web shell is a Vite SPA, not Next.js.** Every page was a client
+  component, so Next contributed a file router and a dev proxy while costing a
+  third runtime in the packaging ladder (ADR-101) and a `next start` process in
+  production. `just build` now emits `web/dist`, FastAPI serves it
+  (`app/api/main.py`), and the routes are TanStack Router's — typed, so a `to=`
+  naming no route is a build error. The TypeScript gate moved from `next build`
+  to an explicit `tsc --noEmit` in `just typecheck`, keeping `just check`'s
+  coverage unchanged. i18n stays framework-free JSON: the compiler, not a
+  library, checks the catalogs.
