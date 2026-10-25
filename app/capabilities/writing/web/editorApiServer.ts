@@ -44,6 +44,8 @@ export const editorServer = {
   /** Answer the next continuation POST with a 503 instead of a stream —
    *  the request refused before a single word. One shot, like the body. */
   refuseContinue: false,
+  /** Answer the next autosave PUT with a 500 — a refused write, one shot. */
+  refuseSave: false,
   /** Hold the continuation stream open after writing its body: the ghost is
    *  on screen and the stream is still mid-flight until the client aborts,
    *  the test finishes it or breaks the wire. One shot, like the body. */
@@ -123,6 +125,20 @@ export async function startEditorServer(): Promise<void> {
         editorServer.refuseContinue = false;
         response.writeHead(503, { "content-type": "application/json" });
         response.end("{}");
+        return;
+      }
+      // Gated on the save's own shape — a PUT to a chapter path, the
+      // autosave's request — so only that request can spend the one-shot;
+      // a continuation POST falling through the guards above must reach
+      // its own generic answer with the refusal still armed.
+      if (
+        editorServer.refuseSave &&
+        request.method === "PUT" &&
+        (request.url ?? "").startsWith("/api/writing/chapters/")
+      ) {
+        editorServer.refuseSave = false;
+        response.writeHead(500, { "content-type": "application/json" });
+        response.end('{"detail":"refused"}');
         return;
       }
       let responded = false;

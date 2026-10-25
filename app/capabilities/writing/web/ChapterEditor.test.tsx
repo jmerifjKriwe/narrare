@@ -56,8 +56,14 @@ Range.prototype.getBoundingClientRect = () => zeroRect;
 beforeAll(startEditorServer);
 afterAll(stopEditorServer);
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  // The unmount flush a failed save leaves behind is a real PUT on a real
+  // socket, and it can land after this hook — where a one-shot flag the
+  // next case sets would answer it instead of that case's own save. Give
+  // the straggler a beat to arrive, so the respond-and-clear below sweeps
+  // it up with everything the case itself sent.
+  await new Promise((resolve) => setTimeout(resolve, 25));
   // The live region is a body-level singleton that outlives every
   // component: its nodes linger for seven seconds by design. Clearing it
   // between cases keeps every baseline at zero — no earlier case's
@@ -69,6 +75,7 @@ afterEach(() => {
   editorServer.holdNext = 0;
   editorServer.continueWith = null;
   editorServer.refuseContinue = false;
+  editorServer.refuseSave = false;
   editorServer.holdContinue = false;
   editorServer.breakContinue = false;
   editorServer.continuation?.finish();
@@ -303,6 +310,43 @@ describe("ChapterEditor's ghost text", () => {
     expect(editorServer.requests[1].body).toContain("Handgeschrieben.");
     expect(editorServer.requests[1].body).toContain("Geisterzählung");
     editorServer.requests[0].respond();
+  });
+
+  it("names a refused save, drops nothing and reports no save", { timeout: 10_000 }, async () => {
+    const saved: [string, string][] = [];
+    editorServer.refuseSave = true;
+    render(
+      <ChapterEditor
+        chapterId={CHAPTER}
+        body="Anfang."
+        onSaved={(id, body) => saved.push([id, body])}
+      />,
+    );
+    const user = await focusEditor();
+    await user.keyboard("Der Satz.");
+    await waitFor(
+      // The repo's tests assert with plain Chai (no jest-dom): the alert's
+      // own text is the witness, the idiom the continuation tests use.
+      () => expect(screen.getByRole("alert").textContent).toContain(t("save.failed")),
+      { timeout: 5000 },
+    );
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+    expect(saved).toEqual([]);
+    expect(document.querySelector(".ProseMirror")?.textContent).toContain("Der Satz.");
+  });
+
+  it("retries a failed save on the next keystroke and clears the failure", { timeout: 10_000 }, async () => {
+    editorServer.refuseSave = true;
+    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.keyboard("A");
+    await screen.findByRole("alert", {}, { timeout: 5000 });
+    editorServer.refuseSave = false;
+    await user.keyboard("B");
+    await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
+      timeout: 5000,
+    });
+    expect(editorServer.requests.at(-1)?.body).toContain("AB");
   });
 
   it("announces a superseding offer once per supersede", { timeout: 10_000 }, async () => {

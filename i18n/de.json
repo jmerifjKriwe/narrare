@@ -18,6 +18,7 @@
   "chapters.loading": "Wird geladen…",
   "save.saving": "Speichert…",
   "save.saved": "Gespeichert",
+  "save.failed": "Nicht gespeichert",
   "nav.back": "Alle Romane",
   "chapters.defaultTitle": "Kapitel {n}",
   "setup.welcome": "Willkommen bei Narrare",
