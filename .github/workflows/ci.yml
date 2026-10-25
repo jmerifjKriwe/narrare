@@ -71,7 +71,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: uv sync
+      # --locked, not a plain sync: uv otherwise rewrites a stale lock inside
+      # the throwaway checkout and reports success. That is how 0.2.0 reached
+      # main with uv.lock still at 0.1.0.
+      - run: uv sync --locked
       - run: pnpm install --frozen-lockfile
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
@@ -162,7 +165,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: uv sync
+      - run: uv sync --locked
       - name: Install just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
@@ -200,7 +203,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: uv sync
+      - run: uv sync --locked
       - run: uv run playwright install --with-deps chromium
       - run: pnpm install --frozen-lockfile
       # The same invocation `just test-e2e` makes; the suites come from the
@@ -255,7 +258,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: uv sync
+      - run: uv sync --locked
       - run: uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
