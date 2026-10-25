@@ -1,25 +1,46 @@
 name: Release Please
 
-# Tag half of the release-please split (v2 line, 2026-10-22).
+# One invocation, on every push to main: it maintains the release PR and, when
+# that PR is merged, tags the release and writes the GitHub Release.
 #
-# The push trigger is path-filtered to the manifest and the config, so only
-# a version bump moves this workflow. The v2 ci.yml has no nightly
-# `release-orchestration` job (the v1 one had; v2's does not), so the
-# version bump is a human edit of .release-please-manifest.json - until
-# that happens, this workflow does not run at all.
+# The push trigger is deliberately unfiltered. A `paths` filter on the manifest
+# waits for a file only this workflow writes: with PR creation off - the split
+# this file carried until 2026-10-25 - nothing ever bumped the manifest, so the
+# workflow could not run at all and had been silent since 2026-10-17. A filter
+# is unreliable on big pushes as well: GitHub skips a path-filtered run when the
+# diff holds more than 3,000 files and the matches fall outside the first 3,000
+# it lists, which is what the 5,937-file v2 rewrite did on 2026-10-22.
 #
-# The publish half - image build, GHCR push, SBOM, release bundle - is
-# disabled: the v2 tree has no Dockerfile and no docker-compose.release.yml,
-# so the build would fail on the first missing file. The tag is therefore
-# created without a GitHub Release. Both halves return when the container
-# image returns to the tree.
+# The release PR carries every version copy, because the version is one fact and
+# release-please is its only writer: `pyproject.toml` and `app/kernel/version.py`
+# (the python strategy updates both), plus the three `extra-files` entries in
+# release-please-config.json. `web/lib/api/openapi.json` is one of them on
+# purpose - its `info.version` comes from the app, so leaving it out would let it
+# fall one release behind and turn
+# `test_committed_openapi_document_matches_the_app` red on main.
+#
+# The token is a GitHub App installation token, not `secrets.GITHUB_TOKEN`, for
+# two reasons. Resources created with `GITHUB_TOKEN` trigger no workflow runs, so
+# the release PR would show none of the four required status checks and could
+# only be merged with an admin bypass. And this repository keeps "Allow GitHub
+# Actions to create and approve pull requests" off, so automation can never
+# satisfy the required approval itself: the App authors the PR, a human approves.
+#
+# The publish half - image build, GHCR push, SBOM, release bundle - stays
+# disabled: the v2 tree has no Dockerfile and no docker-compose.release.yml. It
+# returns when the container image returns to the tree.
+#
+# Known, accepted drift: `uv.lock` records the project version and
+# release-please cannot address that entry; the next `uv run` rewrites it.
 
 on:
   push:
     branches: [main]
-    paths:
-      - ".release-please-manifest.json"
-      - "release-please-config.json"
+  workflow_dispatch:
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -29,29 +50,27 @@ jobs:
     runs-on: ubuntu-latest
     # API-bound release-PR orchestration, no builds — cap the default 360-min hang risk (spec §4.2).
     timeout-minutes: 10
-    permissions:
-      contents: write
-      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      # Least privilege lives in the App definition (contents, pull requests,
+      # issues: read & write) and the token is scoped to this repository only.
+      - name: Mint the release App token
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_PRIVATE_KEY }}
+
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: python
+          token: ${{ steps.app.outputs.token }}
+          # Manifest mode: the release type lives in the config file, and the
+          # action rejects it as an input here.
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          # W2-2 half of the split (spec §6.2): PR creation/updates moved
-          # to ci.yml's nightly release-orchestration job. Release creation
-          # itself is decided by manifest-version-vs-latest-tag and still
-          # happens here, on the release-PR merge push.
-          skip-github-pull-request: true
-          # The v2 tree ships no container image and no release bundle, so
-          # the tag is created without a GitHub Release. Drop this line
-          # when the publish job below comes back.
-          skip-github-release: true
 
   publish:
     needs: release-please
