@@ -1,0 +1,24 @@
+# Codecov is a dashboard here, not a gate: a capability counts as done on a
+# green E2E (AGENTS.md), so neither status blocks a merge. The targets are
+# Codecov's defaults, written down so a change on their side cannot silently
+# turn this into a gate.
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 1
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true
+    patch:
+      default:
+        target: auto
+        threshold: 0%
+        informational: true
+
+comment:
+  layout: "condensed_header, condensed_files, condensed_footer"
+  require_changes: true
