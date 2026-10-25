@@ -36,6 +36,12 @@ export function ChapterEditor({
 
   const resolve = useRef(onProposalResolve);
   resolve.current = onProposalResolve;
+  // The abort line of the in-flight continuation. Leaving the page or
+  // switching chapters unmounts the editor: the stream stops at the fetch
+  // instead of running unread into a component that is gone — the chat
+  // panel's own pattern.
+  const continueAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => continueAbort.current?.abort(), []);
   // The proposal prop as it stands right now: a stream that fails must
   // judge by the screen the user is looking at, not by the render its
   // click happened in — an offer may have arrived or cleared mid-stream.
@@ -122,6 +128,8 @@ export function ChapterEditor({
   async function continueWriting() {
     if (!editor) return;
     const mine = ++run.current;
+    const controller = new AbortController();
+    continueAbort.current = controller;
     setContinuing(true);
     setFailed(false);
     try {
@@ -129,7 +137,11 @@ export function ChapterEditor({
       // so the client must not buffer the response first.
       const { response } = await client.POST(
         "/api/writing/chapters/{chapter_id}/continue",
-        { params: { path: { chapter_id: chapterId } }, parseAs: "stream" },
+        {
+          params: { path: { chapter_id: chapterId } },
+          parseAs: "stream",
+          signal: controller.signal,
+        },
       );
       if (!response.ok) {
         setFailed(true);
@@ -141,8 +153,10 @@ export function ChapterEditor({
       }
       let draft = "";
       for await (const frame of readFrames(response)) {
-        // The ghost was taken or dropped mid-stream: stop feeding it.
-        if (mine !== run.current) return;
+        // The editor went away with this continuation still streaming: write
+        // nothing more into it. A ghost taken or dropped mid-stream stops
+        // the feed the same way.
+        if (mine !== run.current || controller.signal.aborted) return;
         // An error frame replaces the done frame: the provider died, and a
         // silent end would look like a finished continuation. The failure
         // is announced as what it is — the user did not discard anything.
@@ -162,7 +176,19 @@ export function ChapterEditor({
         draft += frame.delta;
         setStreamed(draft);
       }
+    } catch {
+      // A rejected request — the API down, the wire cut — is a failure the
+      // editor must name, exactly like a refusal; the abort of a departed
+      // editor is the user's doing, and there is no editor left to tell.
+      if (!controller.signal.aborted) {
+        setFailed(true);
+        if (offered.current === undefined) announce(t("editor.ghostFailed"));
+      }
     } finally {
+      // The cleanup owns only its own continuation: a later run that began
+      // while this one settles has replaced the ref, and nulling it now
+      // would take the unmount abort away from the stream still in flight.
+      if (continueAbort.current === controller) continueAbort.current = null;
       setContinuing(false);
     }
   }

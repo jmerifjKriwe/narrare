@@ -69,6 +69,10 @@ afterEach(() => {
   editorServer.holdNext = 0;
   editorServer.continueWith = null;
   editorServer.refuseContinue = false;
+  editorServer.holdContinue = false;
+  editorServer.breakContinue = false;
+  editorServer.continuation?.finish();
+  editorServer.continuation = null;
 });
 
 /** What the live region says across both of its logs. Announcements linger
@@ -395,5 +399,54 @@ describe("ChapterEditor's ghost text", () => {
     expect(screen.getByText("Das Angebot bleibt.")).toBeTruthy();
     expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed);
     expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(before.discarded);
+  });
+
+  it("stops the continuation stream when the editor unmounts", { timeout: 10_000 }, async () => {
+    // The continuation has no page to write into once the editor is gone —
+    // the dock closed, the chapter switched. The stream must stop at the
+    // fetch, not keep running unread on a dead socket.
+    editorServer.continueWith = streamOf({ delta: "Der Nebel " });
+    editorServer.holdContinue = true;
+    const view = render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The ghost is on screen from the stream's first delta, and the stream
+    // is held open mid-flight. (The .ghost query, not findByText: the
+    // delta's trailing space is real text the byText matcher will not
+    // normalize away.)
+    await waitFor(() => expect(document.querySelector(".ghost")?.textContent).toBe("Der Nebel "));
+    const continuation = editorServer.continuation;
+    expect(continuation).not.toBeNull();
+
+    // The editor goes away. The connection must follow it.
+    view.unmount();
+    await Promise.race([
+      continuation!.closed,
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("the continuation kept streaming after the editor unmounted")),
+          5_000,
+        ),
+      ),
+    ]);
+  });
+
+  it("names a continuation whose request itself dies", { timeout: 10_000 }, async () => {
+    // A rejected POST — the API down, the wire cut before a word — is a
+    // failure like a refusal: the alert shows it and the announcement says
+    // it, and no rejection escapes the handler unnamed.
+    const before = { failed: announcementsOf(t("editor.ghostFailed")) };
+    editorServer.breakContinue = true;
+    render(<ChapterEditor chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+    );
+    await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
+    const button = screen.getByRole("button", { name: t("chapters.continue") }) as HTMLButtonElement;
+    await waitFor(() => expect(button.disabled).toBe(false)); // the finally ran
   });
 });

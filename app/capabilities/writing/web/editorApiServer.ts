@@ -17,6 +17,19 @@ import type { AddressInfo } from "node:net";
 /** One recorded request: where it went, what it carried, the power to answer late. */
 export type RecordedRequest = { url: string; body: string; respond: () => void };
 
+/** A continuation held open mid-stream: the ghost is on screen, the stream
+ *  is still arriving, and the test decides how it ends. */
+export type HeldContinuation = {
+  /** Resolves when the connection goes away — within a test, the client
+   *  aborting the stream. */
+  closed: Promise<void>;
+  /** End the held stream — test teardown, never a mid-test need. */
+  finish: () => void;
+  /** Destroy the connection: the wire dies mid-continuation, after what was
+   *  written has reached the client. The fetch or its body read rejects. */
+  break: () => void;
+};
+
 export const editorServer = {
   origin: "",
   requests: [] as RecordedRequest[],
@@ -31,6 +44,16 @@ export const editorServer = {
   /** Answer the next continuation POST with a 503 instead of a stream —
    *  the request refused before a single word. One shot, like the body. */
   refuseContinue: false,
+  /** Hold the continuation stream open after writing its body: the ghost is
+   *  on screen and the stream is still mid-flight until the client aborts,
+   *  the test finishes it or breaks the wire. One shot, like the body. */
+  holdContinue: false,
+  /** Destroy the continuation's connection right after the head, before a
+   *  word of the body: the POST itself meets a dead wire — a rejected
+   *  request, not a refusal. One shot, like the body. */
+  breakContinue: false,
+  /** The held continuation of the moment, when holdContinue was set. */
+  continuation: null as HeldContinuation | null,
 };
 
 const realFetch = globalThis.fetch.bind(globalThis);
@@ -59,6 +82,9 @@ let server: Server | null = null;
 /** Bind the server on an ephemeral port and remember its origin. */
 export async function startEditorServer(): Promise<void> {
   server = createServer((request, response) => {
+    // An aborted continuation tears the connection down under the response;
+    // the no-op listener keeps that teardown from crashing the test worker.
+    response.on("error", () => {});
     const chunks: Buffer[] = [];
     request.on("data", (chunk) => chunks.push(chunk));
     request.on("end", () => {
@@ -66,17 +92,37 @@ export async function startEditorServer(): Promise<void> {
       // is answered as the event-stream it is, immediately and unrecorded —
       // the stream tests assert on announcements and ghost text, not on the
       // request log the saves live in.
-      if ((request.url ?? "").endsWith("/continue") && editorServer.refuseContinue) {
-        editorServer.refuseContinue = false;
-        response.writeHead(503, { "content-type": "application/json" });
-        response.end("{}");
+      if ((request.url ?? "").endsWith("/continue") && editorServer.breakContinue) {
+        editorServer.breakContinue = false;
+        response.writeHead(200, { "content-type": "text/event-stream" });
+        response.destroy();
         return;
       }
       if ((request.url ?? "").endsWith("/continue") && editorServer.continueWith !== null) {
         const body = editorServer.continueWith;
         editorServer.continueWith = null;
         response.writeHead(200, { "content-type": "text/event-stream" });
-        response.end(body);
+        response.write(body);
+        if (editorServer.holdContinue) {
+          editorServer.holdContinue = false;
+          editorServer.continuation = {
+            closed: new Promise<void>((resolve) => response.on("close", () => resolve())),
+            finish: () => {
+              if (!response.writableEnded && !response.destroyed) response.end();
+            },
+            break: () => {
+              response.destroy();
+            },
+          };
+          return;
+        }
+        response.end();
+        return;
+      }
+      if ((request.url ?? "").endsWith("/continue") && editorServer.refuseContinue) {
+        editorServer.refuseContinue = false;
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end("{}");
         return;
       }
       let responded = false;
@@ -99,9 +145,11 @@ export async function startEditorServer(): Promise<void> {
   editorServer.origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
-/** Close the server; held requests are answered first so sockets drain. */
+/** Close the server; held requests and continuations are answered first so
+ * sockets drain. */
 export async function stopEditorServer(): Promise<void> {
   for (const request of editorServer.requests) request.respond();
+  editorServer.continuation?.finish();
   if (!server) return;
   server.closeAllConnections();
   await new Promise<void>((resolve) => server!.close(() => resolve()));

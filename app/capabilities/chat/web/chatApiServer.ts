@@ -24,6 +24,10 @@ export type RecordedAsk = {
   closed: Promise<void>;
   /** End the held answer — test teardown, never a mid-test need. */
   finish: () => void;
+  /** Destroy the held answer's connection: the wire dies mid-answer, after
+   *  what was written has reached the client. A network failure, not a
+   *  refusal — the fetch or its body read rejects on the client side. */
+  break: () => void;
 };
 
 export const chatServer = {
@@ -76,7 +80,10 @@ export async function startChatServer(): Promise<void> {
         body: Buffer.concat(chunks).toString("utf8"),
         closed: new Promise<void>((resolve) => response.on("close", () => resolve())),
         finish: () => {
-          if (!response.writableEnded) response.end();
+          if (!response.writableEnded && !response.destroyed) response.end();
+        },
+        break: () => {
+          response.destroy();
         },
       };
       chatServer.asks.push(record);

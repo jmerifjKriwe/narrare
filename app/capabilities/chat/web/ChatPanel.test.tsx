@@ -65,6 +65,36 @@ describe("ChatPanel's in-flight ask", () => {
     ]);
   });
 
+  it("names a mid-answer network failure instead of throwing it away", { timeout: 10_000 }, async () => {
+    // A delta arrives, then the wire dies: the fetch's body read rejects
+    // mid-stream. The rethrow this test pins away would leave the half
+    // answer looking finished beside an unhandled rejection — the failure
+    // belongs on the panel, exactly like a refusal does.
+    chatServer.answerWith = `data: ${JSON.stringify({ delta: "Eine halbe Antwort" })}\n\n`;
+    chatServer.hold = true; // the answer stays open: it is mid-answer, not done
+    render(<ChatPanel />);
+    const user = userEvent.setup();
+    await user.type(
+      await screen.findByLabelText(t("chat.questionLabel")),
+      "Wo war der Leuchtturm?",
+    );
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+
+    // The answer began streaming: the first delta is on screen, and the
+    // server is holding the rest.
+    const answer = screen.getByRole("region", { name: t("chat.answerLabel") });
+    await waitFor(() => expect(answer.textContent).toContain("Eine halbe Antwort"));
+    expect(chatServer.asks).toHaveLength(1);
+
+    // The wire dies mid-answer. The panel must say failed — and settle.
+    chatServer.asks[0]!.break();
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("chat.error")),
+    );
+    const askButton = screen.getByRole("button", { name: t("chat.ask") }) as HTMLButtonElement;
+    await waitFor(() => expect(askButton.disabled).toBe(false)); // the finally ran
+  });
+
   it("keeps the unmount abort when an earlier ask settles beside a later one", { timeout: 10_000 }, async () => {
     // The identity guard's witness. A second ask while the first streams
     // is UI-unreachable today — the button disables for the whole ask —

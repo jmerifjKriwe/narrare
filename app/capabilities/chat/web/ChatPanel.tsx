@@ -63,11 +63,13 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           return;
         }
       }
-    } catch (error) {
+    } catch {
       // The abort of a departed panel is the user's doing, not a failure —
       // the fetch rejects with it, and there is no panel left to tell.
-      // Everything else keeps being a real error.
-      if (!controller.signal.aborted) throw error;
+      // Everything else is the wire dying mid-answer: a rethrow would leave
+      // a half answer looking finished beside an unhandled rejection. The
+      // failure belongs on the panel, exactly like a refusal does.
+      if (!controller.signal.aborted) setFailed(true);
     } finally {
       // The cleanup owns only its own ask: a later ask that began while
       // this one settles has replaced the ref, and nulling it now would
