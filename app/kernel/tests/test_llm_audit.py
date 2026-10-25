@@ -6,6 +6,8 @@ and no profile_id exists until a profile table does; the column set is pinned
 here so a drift fails at its first commit instead of in WP2's evidence.
 """
 
+from collections.abc import AsyncIterator  # noqa: TC003
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -15,7 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.kernel.db.base import Base
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.audit import CAP, record_call
+from app.kernel.llm.audit import CAP, audited_stream, record_call
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.models import LlmCall
 
 LLM_CALL_COLUMNS = {
@@ -171,3 +174,116 @@ async def test_record_call_rides_the_callers_commit_and_never_commits_alone() ->
     async with Session() as reader:
         after = await reader.scalar(text("SELECT count(*) FROM llm_calls"))
     assert after == 1
+
+
+class _ScriptedProvider:
+    """A provider with scripted events, or one that raises instead of yielding."""
+
+    def __init__(
+        self, events: tuple[CompletionEvent, ...], *, fail: Exception | None = None
+    ) -> None:
+        """Store the script: the events to yield, or the failure to raise."""
+        self.events = events
+        self.fail = fail
+
+    def describe(self) -> str:
+        """Name this scripted stand-in."""
+        return "scripted"
+
+    def configuration_problems(self) -> list[str]:
+        """Ready by construction."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield every scripted event, or raise the scripted failure first."""
+        if self.fail is not None:
+            raise self.fail
+        for event in self.events:
+            yield event
+
+
+async def _audited_row() -> Any:
+    """The single audit row every test in this group expects to find."""
+    async with Session() as session:
+        return (
+            await session.execute(text("SELECT status, error, response_text FROM llm_calls"))
+        ).one()
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_audited_stream_audits_a_drained_call_as_ok() -> None:
+    """A fully drained call records ok, no error, and the concatenated answer."""
+    provider = _ScriptedProvider(
+        (Delta(text="part "), Usage(input_tokens=3, output_tokens=2), DONE)
+    )
+    events = [
+        event
+        async for event in audited_stream(
+            provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+        )
+    ]
+    assert events[-1] is DONE
+    row = await _audited_row()
+    assert (row.status, row.error, row.response_text) == ("ok", None, "part ")
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_audited_stream_records_ok_when_the_consumer_stops_at_done() -> None:
+    """DONE is the terminal event: a consumer that stops there ended cleanly."""
+    provider = _ScriptedProvider((Delta(text="part "), DONE))
+    stream = audited_stream(
+        provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+    )
+    async for event in stream:
+        if event is DONE:
+            break
+    await stream.aclose()
+    row = await _audited_row()
+    assert (row.status, row.error) == ("ok", None)
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_audited_stream_records_the_usage_refusal_in_the_error_column() -> None:
+    """A malformed-usage refusal lands in the row's error text, naming the field."""
+    provider = _ScriptedProvider(
+        (),
+        fail=ValueError(
+            "reported usage field prompt_tokens is not a non-negative integer count: '12'"
+        ),
+    )
+    stream = audited_stream(
+        provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+    )
+    with pytest.raises(ValueError):
+        async for _ in stream:
+            pass
+    row = await _audited_row()
+    assert row.status == "error"
+    assert "prompt_tokens" in row.error
+
+
+class _RaisingAfterDoneProvider(_ScriptedProvider):
+    """Breaks the provider contract: raises after its own terminal event."""
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield one delta and DONE, then fail."""
+        yield Delta(text="part ")
+        yield DONE
+        raise RuntimeError("vendor died after its terminal frame")
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_a_raise_after_done_is_an_error_row_not_a_contradiction() -> None:
+    """A provider that fails after its terminal event is recorded as failed."""
+    stream = audited_stream(
+        _RaisingAfterDoneProvider((), fail=None),
+        CompletionRequest.user("Weiter"),
+        user_id=OWNER,
+        task_key="test.stream",
+    )
+    with pytest.raises(RuntimeError):
+        async for _ in stream:
+            pass
+    row = await _audited_row()
+    assert row.status == "error"
+    assert "after its terminal frame" in row.error

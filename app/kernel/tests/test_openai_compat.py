@@ -205,3 +205,14 @@ def test_the_description_names_the_model_and_the_endpoint() -> None:
     assert "openai-compatible" in described
     assert "deepseek/deepseek-chat" in described
     assert "openrouter.ai" in described
+
+
+async def test_a_missing_usage_field_is_named_as_missing() -> None:
+    """A dropped field is reported as missing, distinct from an explicit null."""
+    frames = 'data: {"choices":[],"usage":{"prompt_tokens":12}}\n\n'
+    with (
+        vendor_server(body=frames, content_type="text/event-stream") as vendor,
+        pytest.raises(ValueError, match="missing completion_tokens"),
+    ):
+        provider = _provider(vendor.base_url)
+        [event async for event in provider.stream(CompletionRequest.user("Erzähl weiter."))]

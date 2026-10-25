@@ -106,9 +106,11 @@ async def audited_stream(
     cancelled task cannot take it with it; a failed audit is logged, never
     raised into a finished response (§3.4 — a log row, not user data).
     Status names the call, not the delivery: ``ok`` once the provider ended
-    cleanly, ``error`` when the provider raised (the error text rides along),
-    and ``error`` with "stream interrupted" when the consumer went away
-    before either happened.
+    cleanly — a ``Done`` event, when the provider sends one, ends it — ``error``
+    when the provider raised (the error text rides along), and ``error`` with
+    "stream interrupted" when the consumer went away before either happened.
+    The row lands before the caller yields its terminal frame — the audit's
+    commit happens on the ``__anext__`` that ends or raises.
     """
     pieces: list[str] = []
     usage: Usage | None = None
@@ -121,8 +123,16 @@ async def audited_stream(
                 pieces.append(event.text)
             elif isinstance(event, Usage):
                 usage = event
+            else:
+                # The union is closed: the remaining event is Done, the
+                # terminal event by contract — the call ended cleanly even if
+                # the consumer stops here instead of draining the generator.
+                status, error = OK, None
             yield event
     except Exception as failure:
+        # A raise after a terminal event is a provider breaking its contract;
+        # the row must not claim ok while carrying an error text.
+        status = ERROR
         error = str(failure)
         raise
     else:
@@ -140,7 +150,7 @@ async def audited_stream(
                         model=model,
                         latency_ms=round((monotonic() - started) * 1000),
                         status=status,
-                        prompt_text="".join(message.content for message in request.messages),
+                        prompt_text="\n".join(message.content for message in request.messages),
                         response_text="".join(pieces),
                         input_tokens=usage.input_tokens if usage else None,
                         output_tokens=usage.output_tokens if usage else None,

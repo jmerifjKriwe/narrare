@@ -153,6 +153,10 @@ def _usage(usage: object) -> Usage:
     report = cast("dict[str, object]", usage)
     counts: list[int] = []
     for field in ("prompt_tokens", "completion_tokens"):
+        if field not in report:
+            # A dropped field and an explicit null are different vendor bugs;
+            # the row's error text should tell an operator which one arrived.
+            raise ValueError(f"reported usage is missing {field}")
         value = report.get(field)
         if type(value) is not int or value < 0:
             raise ValueError(
