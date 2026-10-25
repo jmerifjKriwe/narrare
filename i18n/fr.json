@@ -122,6 +122,8 @@
   "proposal.discard": "Rejeter",
   "novels.errorCreate": "Le livre n'a pas pu être créé. Le service local est-il démarré ?",
   "novels.retry": "Réessayer",
+  "shell.notFound": "Cette page n'existe pas.",
+  "shell.error": "Cette page n'a pas pu être affichée.",
   "novels.titleRequired": "Veuillez saisir un titre.",
   "locale.name": "Français",
   "docs.table.capability": "Fonction",

@@ -1,4 +1,5 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
 
 import { TopBar } from "../components/TopBar";
@@ -51,4 +52,48 @@ function Shell() {
   );
 }
 
-export const rootRoute = createRootRoute({ component: Shell });
+/** The shell's answer to an unknown URL: the copy comes from the catalog —
+ * TanStack's English default would break the i18n rule inside the localized
+ * shell — and the way home is the shelf. */
+function NotFound() {
+  const t = useTranslation();
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("shell.notFound")}</h1>
+      <Link
+        to="/"
+        className="mt-4 inline-block text-sm text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        {t("nav.back")}
+      </Link>
+    </div>
+  );
+}
+
+/** A route that throws lands here, not on TanStack's English default: the
+ * failure is named in the catalog's language and the thrown message rides
+ * along — a local-first app shows its own errors. */
+function RouteError({ error }: ErrorComponentProps) {
+  const t = useTranslation();
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("shell.error")}</h1>
+      <p role="alert" className="mt-4 text-sm text-danger">
+        {message}
+      </p>
+      <Link
+        to="/"
+        className="mt-4 inline-block text-sm text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        {t("nav.back")}
+      </Link>
+    </div>
+  );
+}
+
+export const rootRoute = createRootRoute({
+  component: Shell,
+  notFoundComponent: NotFound,
+  errorComponent: RouteError,
+});

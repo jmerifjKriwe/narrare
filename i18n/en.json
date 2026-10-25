@@ -122,6 +122,8 @@
   "proposal.discard": "Discard",
   "novels.errorCreate": "The book could not be created. Is the local service running?",
   "novels.retry": "Try again",
+  "shell.notFound": "This page does not exist.",
+  "shell.error": "This page could not be shown.",
   "novels.titleRequired": "Please enter a title.",
   "locale.name": "English",
   "docs.table.capability": "Capability",

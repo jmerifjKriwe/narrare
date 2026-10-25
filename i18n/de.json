@@ -122,6 +122,8 @@
   "proposal.discard": "Verwerfen",
   "novels.errorCreate": "Das Buch konnte nicht angelegt werden. Läuft der lokale Dienst?",
   "novels.retry": "Erneut versuchen",
+  "shell.notFound": "Diese Seite existiert nicht.",
+  "shell.error": "Diese Seite konnte nicht angezeigt werden.",
   "novels.titleRequired": "Bitte gib einen Titel ein.",
   "locale.name": "Deutsch",
   "docs.table.capability": "Funktion",
