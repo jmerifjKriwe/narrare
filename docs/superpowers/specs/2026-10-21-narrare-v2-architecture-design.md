@@ -65,10 +65,12 @@ Corrections and notes:
 - **ADRs: 100, matching the dialogue.** The dialogue value was right; a broader count
   that included INDEX/TEMPLATE produced the wrong 102.
 - **CI jobs: 7, not 17.** The v1 surface (17 jobs across 5 workflows) was deleted with
-  the cutover. `ci.yml` now holds 7 jobs — 5 functional gates (`lint-types`, `tests`,
-  `e2e`, `build`, `coverage`) plus `changes` (PR narrowing) and `nightly-guard`
-  (skip on unchanged `main`) — and `release-please` runs separately. The target is
-  therefore ≤ 7, with the two scheduling guards called out as non-gate jobs.
+  the cutover. `ci.yml` held 7 jobs at the cutover — 5 functional gates (`lint-types`,
+  `tests`, `e2e`, `build`, `coverage`) plus `changes` and `nightly-guard` — and
+  `release-please` runs separately. Since 2026-10-25 it holds 6: `coverage` ran the
+  same pytest suite as `tests` a second time on every `main` push, so its covered
+  invocation moved into `tests` and runs only there. The target is therefore ≤ 7,
+  with the two scheduling guards called out as non-gate jobs.
 - **Recipes: the target is 21, not 22.** The §6 list has 21 entries; the 22 that
   stood here and in §12 was a miscount, corrected 2026-10-22.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
@@ -203,11 +205,11 @@ scoped to changed paths.
 
 **Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
 
-**CI — at most seven jobs:** five functional gates (lint + types; tests; e2e for
-affected capabilities; build; coverage badge) plus `changes` (range narrowing: a PR
-against where it branched, a push against the commits it landed) and `nightly-guard`
-(skip on unchanged `main`). Runs on PR and on push to `main`, plus the nightly
-schedule on the e2e job and on release.
+**CI — at most six jobs:** four functional gates (lint + types; tests, which also
+uploads the coverage on a `main` push; e2e for affected capabilities; build) plus
+`changes` (range narrowing: a PR against where it branched, a push against the
+commits it landed) and `nightly-guard` (skip on unchanged `main`). Runs on PR and on
+push to `main`, plus the nightly schedule on the e2e job and on release.
 
 **`justfile` keeps 21 public recipes:**
 

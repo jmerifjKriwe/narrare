@@ -62,8 +62,9 @@ Pure rendering and wiring do not require unit tests.
 - `just test-e2e` — capability E2E suite.
 - `just verify` — all of the above plus the production build.
 
-CI runs all four on every PR; all must pass. No new gate or tool is introduced
-by this document — it states expectations, not mechanisms.
+CI runs all four on every PR and every push, plus the production build; the E2E
+narrows to the capabilities a change touches. All of them must pass. No new gate or
+tool is introduced by this document — it states expectations, not mechanisms.
 
 ## Data and fixtures
 
