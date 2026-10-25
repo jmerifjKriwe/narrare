@@ -34,6 +34,13 @@ the capability's E2E. A gate counts only when its output was read.
 
 `just --list` is the whole command surface: 21 recipes, no hidden gates.
 
+## Plan mode
+
+Plan mode loads the `brainstorming` skill before the first design question. Its
+artifacts stay in `~/.opencode/plan`; the build session moves the design doc into
+`docs/superpowers/specs/` and the plan into `docs/superpowers/plans/`, and commits
+both. Move, never copy: one state, not two.
+
 ## Tools (optional)
 
 `codebase-memory-mcp` is available as an MCP server and indexes this repo into a
