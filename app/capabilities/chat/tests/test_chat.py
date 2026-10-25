@@ -7,6 +7,7 @@ from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from app.api.main import app
 from app.capabilities.chat.service import ChatService
@@ -69,6 +70,25 @@ async def test_answer_comes_back_with_the_passage_as_source() -> None:
 
         answer = "".join(str(frame["delta"]) for frame in frames if "delta" in frame)
         assert PASSAGE in answer
+
+    # The call is audited (plan §3.4) — with no novel context until §9.2,
+    # the row carries NULL for it.
+    async with Session() as session:
+        row = (
+            await session.execute(
+                text(
+                    "SELECT task_key, novel_id, status, input_tokens, output_tokens,"
+                    " response_text, cost_usd FROM llm_calls"
+                )
+            )
+        ).one()
+    assert row.task_key == "chat.ask"
+    assert row.novel_id is None
+    assert row.status == "ok"
+    assert row.input_tokens > 0
+    assert row.output_tokens > 0
+    assert PASSAGE in row.response_text
+    assert row.cost_usd is None
 
 
 async def test_prompt_carries_the_question_and_the_passage() -> None:

@@ -3,11 +3,13 @@
 import json
 from collections.abc import AsyncIterator
 from logging import getLogger
+from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.writing.schemas import (
@@ -19,9 +21,11 @@ from app.capabilities.writing.schemas import (
 )
 from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import SetupRequiredError, current_user_id
-from app.kernel.db.session import get_session
-from app.kernel.llm import TextProvider, get_provider
-from app.kernel.llm.contract import CompletionRequest, Delta
+from app.kernel.contracts.models import Chapter
+from app.kernel.db.session import Session, get_session
+from app.kernel.llm import TextProvider, get_provider, provider_facts
+from app.kernel.llm.audit import record_call
+from app.kernel.llm.contract import CompletionRequest, Delta, Usage
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
 
@@ -41,21 +45,86 @@ ServiceDep = Annotated[WritingService, Depends(_service)]
 ProviderDep = Annotated[TextProvider, Depends(get_provider)]
 
 
-async def _continuation_events(provider: TextProvider, prompt: str) -> AsyncIterator[str]:
+async def _audit(
+    *,
+    user_id: UUID,
+    novel_id: UUID | None,
+    prompt: str,
+    answer: str,
+    usage: Usage | None,
+    latency_ms: int,
+    status: str,
+    error: str | None = None,
+) -> None:
+    """Record the call on a short session of the finalizer's own.
+
+    A log row, not user data — plan §3.4's one exception to "no side effect
+    after the response": the stream is over, and the audit cannot ride a
+    request transaction that no longer exists.
+    """
+    kind, model = provider_facts()
+    async with Session() as session:
+        await record_call(
+            session,
+            user_id=user_id,
+            task_key="writing.continuation",
+            provider_kind=kind,
+            model=model,
+            latency_ms=latency_ms,
+            status=status,
+            prompt_text=prompt,
+            response_text=answer,
+            input_tokens=usage.input_tokens if usage else None,
+            output_tokens=usage.output_tokens if usage else None,
+            novel_id=novel_id,
+            error=error,
+        )
+        await session.commit()
+
+
+async def _continuation_events(
+    provider: TextProvider, prompt: str, novel_id: UUID | None, user_id: UUID
+) -> AsyncIterator[str]:
     """Deltas, then done — or an error frame if the provider dies mid-stream.
 
     The editor appends what arrived and autosaves it; a silent close would look
-    like a finished continuation.
+    like a finished continuation. However the stream ends, the call is audited
+    after the last frame (§3.4): success and failure alike leave their row.
     """
+    pieces: list[str] = []
+    usage: Usage | None = None
+    started = monotonic()
     try:
         async for event in provider.stream(CompletionRequest.user(prompt)):
             if isinstance(event, Delta):
+                pieces.append(event.text)
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
-    except Exception:
+            elif isinstance(event, Usage):
+                usage = event
+    except Exception as failure:
         logger.exception("continuation stream failed")
         yield "event: error\ndata: {}\n\n"
+        await _audit(
+            user_id=user_id,
+            novel_id=novel_id,
+            prompt=prompt,
+            answer="".join(pieces),
+            usage=usage,
+            latency_ms=round((monotonic() - started) * 1000),
+            status="error",
+            error=str(failure),
+        )
         return
     yield "event: done\ndata: {}\n\n"
+    await _audit(
+        user_id=user_id,
+        novel_id=novel_id,
+        prompt=prompt,
+        answer="".join(pieces),
+        usage=usage,
+        latency_ms=round((monotonic() - started) * 1000),
+        status="ok",
+    )
 
 
 @router.get("/novels", response_model=list[NovelRead])
@@ -126,17 +195,23 @@ async def update_chapter(
 
 @router.post("/chapters/{chapter_id}/continue")
 async def continue_chapter(
-    chapter_id: UUID, service: ServiceDep, provider: ProviderDep
+    chapter_id: UUID, service: ServiceDep, provider: ProviderDep, user_id: UserDep
 ) -> StreamingResponse:
     try:
         prompt = await service.continuation_prompt(chapter_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="chapter not found") from None
+    # The audit names the novel, so read its id before the response starts,
+    # while the request's session is still open — one scalar, scoped to the
+    # owner continuation_prompt already proved (plan §3.4).
+    novel_id = await service.session.scalar(
+        select(Chapter.novel_id).where(Chapter.id == chapter_id, Chapter.user_id == user_id)
+    )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.
     await service.session.close()
     return StreamingResponse(
-        _continuation_events(provider, prompt),
+        _continuation_events(provider, prompt, novel_id, user_id),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
