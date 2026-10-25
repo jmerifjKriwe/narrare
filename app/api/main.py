@@ -24,6 +24,7 @@ from app.generated.capabilities import CAPABILITIES as REGISTERED
 from app.kernel.configuration import validate_configuration
 from app.kernel.jobs.router import router as jobs_router
 from app.kernel.jobs.runtime import start_worker, stop_worker
+from app.kernel.version import __version__
 
 if TYPE_CHECKING:
     from app.kernel.jobs.worker import JobHandler
@@ -122,7 +123,7 @@ def create_app(dist: Path | None = None) -> FastAPI:
     ``dist`` selects the web build; otherwise use NARRE_WEB_DIST or DEFAULT_DIST.
     Mount the web shell only when that directory contains index.html.
     """
-    app = FastAPI(title="Narrare", version="2.0.0", lifespan=lifespan)
+    app = FastAPI(title="Narrare", version=__version__, lifespan=lifespan)
 
     for folder in sorted(path for path in CAPABILITIES.iterdir() if (path / "router.py").exists()):
         app.include_router(import_module(f"app.capabilities.{folder.name}.router").router)
