@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 IDLE_SLEEP = 0.5  # seconds between empty polls — off the database's back when idle
 ERROR_BACKOFF = 1.0  # seconds before re-probing a failed database, not a tight loop
 SHUTDOWN_GRACE = 10.0  # seconds a mid-flight handler gets to record its outcome
+CANCEL_GRACE = 2.0  # seconds a cancelled handler gets to stop before it is abandoned
 STALE_AFTER = 30.0  # seconds without a heartbeat before a running row reads as dead
 SWEEP_EVERY = 10.0  # seconds between the lane's sweeps for stale running rows
 
@@ -87,7 +88,9 @@ async def stop_worker(app: FastAPI) -> None:
     handler that outlives SHUTDOWN_GRACE is cancelled and abandoned in
     running, because a real provider stream can stall and a shutdown that
     waits forever is no shutdown: the stale sweep requeues the row once its
-    heartbeat has gone silent, the same recovery a killed process gets.
+    heartbeat has gone silent, the same recovery a killed process gets. The
+    cancel itself is bounded too (CANCEL_GRACE): a handler that delays or
+    swallows the CancelledError is abandoned rather than awaited.
     """
     task: asyncio.Task[None] | None = getattr(app.state, "jobs_task", None)
     if task is None or task.done():
@@ -104,8 +107,19 @@ async def stop_worker(app: FastAPI) -> None:
             "the jobs lane did not drain within %ss; cancelling it", SHUTDOWN_GRACE
         )
         task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
+        # The cancel itself gets a bound: a handler may delay or swallow the
+        # CancelledError, and an unbounded wait here would hand the shutdown
+        # hang back through the back door. A lane that survives both graces
+        # is abandoned — its row stays running and the stale sweep recovers
+        # it, exactly like a killed process's.
+        done, _pending = await asyncio.wait({task}, timeout=CANCEL_GRACE)
+        if task in done:
+            with suppress(asyncio.CancelledError, Exception):
+                task.result()
+        else:
+            getLogger("narrare").warning(
+                "the jobs lane ignored cancellation within %ss; abandoning it", CANCEL_GRACE
+            )
 
 
 async def _lane(

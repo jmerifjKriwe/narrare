@@ -7,6 +7,7 @@ restart recovery — plus the enqueue seam the first capability boards (Task 3).
 """
 
 import asyncio
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID, uuid4
@@ -504,6 +505,62 @@ async def test_stop_worker_bounds_a_handler_that_outlives_the_grace(
         stuck.set()  # release the handler so nothing outlives the test
 
     # The abandoned claim stays running until the stale sweep recovers it.
+    assert (await _job(job.id)).status == RUNNING
+    await _age_past_stale(job.id)
+    assert await reset_stuck_running(Session) == 1
+    assert (await _job(job.id)).status == QUEUED
+
+
+async def test_stop_worker_bounds_its_cancel_wait_when_a_handler_defies_it(
+    a_user: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A handler can swallow or delay the CancelledError — a finally that
+    # awaits, a provider wrapper that catches BaseException. The cancel wait
+    # itself must be bounded too, or the shutdown hangs through the back
+    # door. The abandoned row is the stale sweep's, as always.
+    monkeypatch.setattr(jobs_runtime, "SHUTDOWN_GRACE", 0.1)
+    monkeypatch.setattr(jobs_runtime, "CANCEL_GRACE", 0.1)
+
+    job = await _enqueue("kind")
+    stuck = asyncio.Event()
+
+    async def stubborn_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+        try:
+            await stuck.wait()
+        except asyncio.CancelledError:
+            # Outlive the cancel grace on purpose: without a bound on the
+            # post-cancel wait, this sleep is the shutdown hang.
+            await asyncio.sleep(3600)
+            raise
+        return {"ran": True}
+
+    app = FastAPI()
+    await start_worker(app, {"kind": stubborn_handler})
+    task: asyncio.Task[None] | None = getattr(app.state, "jobs_task", None)
+    assert task is not None
+    try:
+        for _ in range(100):
+            if (await _job(job.id)).status == RUNNING:
+                break
+            await asyncio.sleep(0.02)
+        else:
+            pytest.fail("the lane never claimed the job")
+
+        # The handler defies cancellation; the stop must still return. The
+        # awaited stop is bounded by the harness so a regression fails the
+        # case instead of hanging it, but the real assertion is the clock:
+        # with both graces at 0.1 s, anything near the harness bound means
+        # the post-cancel wait was unbounded again.
+        started = asyncio.get_running_loop().time()
+        await asyncio.wait_for(stop_worker(app), timeout=5)
+        assert asyncio.get_running_loop().time() - started < 2.0
+    finally:
+        # The abandoned task is still sleeping; end it for the test teardown.
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    # The claim was abandoned in running; the stale sweep recovers it.
     assert (await _job(job.id)).status == RUNNING
     await _age_past_stale(job.id)
     assert await reset_stuck_running(Session) == 1
