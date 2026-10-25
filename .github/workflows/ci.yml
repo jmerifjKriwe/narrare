@@ -27,9 +27,8 @@ permissions:
 # commit then runs with this workflow's token — no diff here, no review.
 # Dependabot's monthly `github-actions` update keeps the pins current.
 #
-# The pin also fixes the runtime: every action below runs on Node 24. A pin that
-# still declares Node 20 is forced onto Node 24 by the runner and warns on every
-# run; only codecov/test-results-action has no Node-24 release yet.
+# The pin also fixes the runtime: every action below runs on Node 24, so no
+# action is forced onto a runtime its own CI never tested.
 
 jobs:
   # One cheap job every other job waits for. On a nightly it answers the
@@ -230,15 +229,17 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
       # `!cancelled()`: a report is worth uploading even when a test failed.
-      # The only action left that declares Node 20: Codecov ships no v2, so the
-      # runner forces it onto Node 24 and warns on every main run. Kept until
-      # upstream publishes a Node-24 release, or the upload is dropped.
+      # A second run of the same action with `report_type`, not Codecov's
+      # separate test-results-action: that one is deprecated in favor of this
+      # (it says so on every run) and would be the only Node-20 action left in
+      # this file.
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
+          report_type: test_results
 
   e2e:
     runs-on: ubuntu-latest
