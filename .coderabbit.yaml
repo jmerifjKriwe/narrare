@@ -1,0 +1,9 @@
+# CodeRabbit reviews every pull request. A release PR moves version strings and
+# the changelog - release-please writes both - so there is nothing in it to
+# review, and the review lands as noise beside the one thing a human should
+# check: that the version in openapi.json matches the app (the `tests` job).
+language: en
+reviews:
+  auto_review:
+    ignore_title_keywords:
+      - "chore: release"
