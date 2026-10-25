@@ -2,13 +2,16 @@
 
 A refused write is named beside the text and never worn as "saved"; the body
 it carried survives in memory, and the next keystroke retries it against the
-recovered service — proven on the real stack, outage included.
+recovered service — proven on the real stack, outage included. Leaving with
+a body that never reached the server asks first: the chapter switch and the
+shelf link confirm after their flush fails, and a reload mid-failure meets
+the browser's own leave dialog.
 """
 
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Dialog, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
 
@@ -37,11 +40,13 @@ def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Sta
     page.locator(".ProseMirror").click()
 
     stack.stop_api()
-    page.keyboard.type("Der Satz, den niemand speichert.")
-    expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
-    expect(page.get_by_text("Gespeichert", exact=True)).to_have_count(0)
+    try:
+        page.keyboard.type("Der Satz, den niemand speichert.")
+        expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
+        expect(page.get_by_text("Gespeichert", exact=True)).to_have_count(0)
+    finally:
+        stack.start_api()
 
-    stack.start_api()
     page.keyboard.type(" Und noch ein Wort.")
     expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible(timeout=10_000)
 
@@ -49,3 +54,85 @@ def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Sta
     expect(page.locator(".ProseMirror")).to_contain_text("Und noch ein Wort.")
 
     assert_accessible(page)
+
+
+def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None:
+    _create_book(page, "Der Priel")
+    page.get_by_role("button", name="Neues Kapitel").click()
+    page.get_by_role("button", name="Neues Kapitel").click()
+    page.get_by_role("button", name="Kapitel 1", exact=True).click()
+    page.locator(".ProseMirror").click()
+
+    # The outage owns the rest of the proof, and the finally restores the API:
+    # pytest-randomly shuffles the module, and whichever test runs next shares
+    # this stack — a failure here must not hand it a dead service.
+    stack.stop_api()
+    try:
+        page.keyboard.type("Bleibt hier.")
+        expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
+
+        # Each leave asks through window.confirm after its flush fails. The
+        # dialog is awaited around the click that causes it: the sync API
+        # returns from click() before the dialog event reaches Python, so a
+        # plain page.on("dialog") collector races the assertion below.
+        seen: list[str] = []
+
+        with page.expect_event("dialog") as asked:
+            page.get_by_role("button", name="Kapitel 2", exact=True).click()
+        seen.append(asked.value.type)
+        asked.value.dismiss()
+        expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+        expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
+
+        with page.expect_event("dialog") as asked:
+            page.get_by_role("link", name="Alle Romane").click()
+        seen.append(asked.value.type)
+        asked.value.dismiss()
+        expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
+
+        assert seen == ["confirm", "confirm"]
+    finally:
+        stack.start_api()
+
+
+def test_closing_a_tab_with_a_failed_save_asks(page: Page, stack: Stack) -> None:
+    _create_book(page, "Der Grund")
+    page.get_by_role("button", name="Neues Kapitel").click()
+    page.locator(".ProseMirror").click()
+
+    seen: list[str] = []
+
+    def accept(dialog: Dialog) -> None:
+        seen.append(dialog.type)
+        dialog.accept()
+
+    page.on("dialog", accept)
+
+    # The negative control first: a clean chapter reloads with no dialog at
+    # all, so an unconditional guard cannot pass as a conditional one.
+    page.reload()
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    assert seen == []
+
+    # The reload dropped the caret to <body>; the editor takes it back before
+    # the typing — the keyboard alone would write into nothing.
+    page.locator(".ProseMirror").click()
+
+    stack.stop_api()
+    try:
+        page.keyboard.type("Nicht verlieren.")
+        expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
+
+        # A reload leaves the page, and the browser's own dialog answers for
+        # the text that never reached the server — the tab-close half of the
+        # guard, spoken by the real unload path (page.close skips beforeunload
+        # handlers entirely on this build; a reload runs them). Accepting lets
+        # the reload through — dismissing would cancel it — and the fresh page
+        # loads against the stopped service and names it.
+        page.reload()
+        expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+        assert seen == ["beforeunload"]
+    finally:
+        stack.start_api()

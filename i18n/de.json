@@ -19,6 +19,7 @@
   "save.saving": "Speichert…",
   "save.saved": "Gespeichert",
   "save.failed": "Nicht gespeichert",
+  "save.confirmLeave": "In diesem Kapitel steht Text, der nicht gespeichert wurde. Trotzdem wechseln?",
   "nav.back": "Alle Romane",
   "chapters.defaultTitle": "Kapitel {n}",
   "setup.welcome": "Willkommen bei Narrare",

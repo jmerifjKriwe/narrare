@@ -20,6 +20,7 @@ import "./editorApiServer";
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
@@ -38,6 +39,18 @@ function Harness(props: { chapterId?: string; body?: string; proposal?: string |
   onProposalResolve?: (accepted: boolean) => void;
   onSaved?: (id: string, body: string) => void }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
+  // NovelPage's tab-close guard, mirrored here so jsdom can pin its pending
+  // branch (the E2E reload covers the failed one on the real unload path):
+  // an unsaved page preventDefaults beforeunload, a saved one does not.
+  useEffect(() => {
+    function guard(event: BeforeUnloadEvent) {
+      if (save.status !== "pending" && save.status !== "failed") return;
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [save.status]);
   return (
     <>
       <ChapterEditor
@@ -49,7 +62,7 @@ function Harness(props: { chapterId?: string; body?: string; proposal?: string |
         onProposalResolve={props.onProposalResolve}
       />
       <button type="button" onClick={() => save.flush()}>flush</button>
-      {/* Task 3 adds: <button type="button" onClick={save.discard}>discard</button> */}
+      <button type="button" onClick={save.discard}>discard</button>
     </>
   );
 }
@@ -371,6 +384,41 @@ describe("ChapterEditor's ghost text", () => {
       timeout: 5000,
     });
     expect(editorServer.requests.at(-1)?.body).toContain("AB");
+  });
+
+  it("does not report a save that answers after the body was discarded", { timeout: 10_000 }, async () => {
+    const saved: [string, string][] = [];
+    editorServer.holdNext = 1;
+    render(<Harness body="" onSaved={(id, body) => saved.push([id, body])} />);
+    const user = await focusEditor();
+    await user.keyboard("Zu spät.");
+    await waitFor(() => expect(editorServer.requests).toHaveLength(1));
+
+    await user.click(screen.getByRole("button", { name: "discard" }));
+    editorServer.requests[0].respond();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+    expect(saved).toEqual([]);
+  });
+
+  it("prevents beforeunload while a save is pending, not once it landed", { timeout: 10_000 }, async () => {
+    /** The guard's answer to a tab close, as one cancelable event. */
+    function unloadPrevented(): boolean {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    }
+    render(<Harness chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.keyboard("Noch nicht weg.");
+    // Inside the 800 ms debounce the body exists nowhere but memory.
+    expect(unloadPrevented()).toBe(true);
+    await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
+      timeout: 5000,
+    });
+    // The server holds the text now; a close has nothing to lose.
+    expect(unloadPrevented()).toBe(false);
   });
 
   it("announces a superseding offer once per supersede", { timeout: 10_000 }, async () => {

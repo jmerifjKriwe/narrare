@@ -259,7 +259,41 @@ export function NovelPage() {
   // its ref — on each switch. Here the body's lifetime spans switches: the
   // editor shows `status` beside the text and feeds `schedule` on update;
   // `flush` is the page's own handle on what has not reached the server.
-  const { status, schedule, flush } = useAutosave(current?.id ?? null, remember);
+  const { status, schedule, flush, discard } = useAutosave(current?.id ?? null, remember);
+
+  // The page's one opinion about unsaved text, shared by the tab-close guard
+  // and the shelf link: a body waiting for its debounce or a write that did
+  // not land. Everything else — idle, saving, saved — has nothing to ask
+  // about or nothing to lose.
+  const unsaved = status === "pending" || status === "failed";
+
+  /** Leave a chapter: save first, ask only when the save did not land. */
+  async function leave(then: () => void) {
+    const outcome = await flush();
+    if (outcome === "failed" && !window.confirm(t("save.confirmLeave"))) return;
+    if (outcome === "failed") discard();
+    then();
+  }
+
+  // The browser's half of the guard: a tab close is the one leave path with
+  // no click to intercept, so the chrome-native dialog stands in for the
+  // confirm the in-app paths show. Only an unsaved page speaks.
+  useEffect(() => {
+    function guard(event: BeforeUnloadEvent) {
+      if (status !== "pending" && status !== "failed") return;
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [status]);
+
+  // A new chapter must not inherit the last one's save story: after `leave`
+  // nothing is pending, so this only drops a stale failure and the "saved"
+  // of the flush that carried the switch across.
+  useEffect(() => {
+    discard();
+  }, [current?.id, discard]);
 
   // Panels yield to focus before their own URL state: at depth 1 the rail is
   // hidden whatever ?rail says, and its toggles hide with it — they would be
@@ -277,7 +311,15 @@ export function NovelPage() {
     >
       {focus < 2 ? (
         <>
-          <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
+          <Link
+            to="/"
+            className="text-sm text-muted underline-offset-4 hover:underline"
+            onClick={(event) => {
+              if (!unsaved) return;
+              event.preventDefault();
+              void leave(() => void navigate({ to: "/" }));
+            }}
+          >
             {t("nav.back")}
           </Link>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
@@ -312,7 +354,7 @@ export function NovelPage() {
                   <button
                     type="button"
                     aria-pressed={chapter.id === active}
-                    onClick={() => setActive(chapter.id)}
+                    onClick={() => void leave(() => setActive(chapter.id))}
                     className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   >
                     {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
@@ -322,7 +364,7 @@ export function NovelPage() {
             </ul>
             <button
               type="button"
-              onClick={createChapter}
+              onClick={() => void leave(() => void createChapter())}
               className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
             >
               {t("chapters.new")}

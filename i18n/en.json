@@ -19,6 +19,7 @@
   "save.saving": "Saving…",
   "save.saved": "Saved",
   "save.failed": "Not saved",
+  "save.confirmLeave": "This chapter has text that was not saved. Leave anyway?",
   "nav.back": "All novels",
   "chapters.defaultTitle": "Chapter {n}",
   "setup.welcome": "Welcome to Narrare",

@@ -78,14 +78,22 @@ export function useAutosave(
     [flush],
   );
 
+  /** Drop the unsaved body: the user chose to leave it behind. */
+  const discard = useCallback(() => {
+    pending.current = null;
+    generation.current += 1;
+    setStatus("idle");
+  }, []);
+
+  // The tab-close guard is the page's (it asks before discarding); what stays
+  // here is the retry while the tab lives: a tab hidden mid-debounce flushes
+  // now, because nothing may type it back to life.
   useEffect(() => {
     function onHidden() {
       if (document.visibilityState === "hidden") void flush();
     }
-    window.addEventListener("beforeunload", flush);
     document.addEventListener("visibilitychange", onHidden);
     return () => {
-      window.removeEventListener("beforeunload", flush);
       document.removeEventListener("visibilitychange", onHidden);
       // Retire every answer still in flight first, then send the last body:
       // this flush's own attempt is captured after the bump, so it lands —
@@ -95,7 +103,7 @@ export function useAutosave(
     };
   }, [flush]);
 
-  return { status, schedule, flush };
+  return { status, schedule, flush, discard };
 }
 
 export function SaveIndicator({ status }: { status: SaveStatus }) {
