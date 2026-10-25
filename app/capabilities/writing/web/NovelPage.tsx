@@ -42,6 +42,9 @@ export function NovelPage() {
   // book's clothes — the empty rail's copy is a loaded book's truth.
   const [pending, setPending] = useState(true);
   const [failed, setFailed] = useState(false);
+  // The rail's own create failure: a chapter the user asked for that never
+  // arrived must say so beside the button, not vanish into a silent click.
+  const [createFailed, setCreateFailed] = useState(false);
 
   const load = useCallback(async () => {
     setPending(true);
@@ -210,17 +213,29 @@ export function NovelPage() {
     // An explicit empty title: the placeholder is a display concern, and
     // storing a title would freeze one locale's wording into the database.
     // The server treats an empty title exactly like an omitted one.
-    const { data: chapter } = await client.POST(
-      "/api/writing/novels/{novel_id}/chapters",
-      { params: { path: { novel_id: novelId } }, body: { title: "" } },
-    );
-    if (!chapter) return;
-    // The bookshelf hero names the last-touched book, and its truth is the
-    // novel row's updated_at — a chapter write is the most common way that
-    // changes, so the shelf's ["novels"] cache must not outlive this POST.
-    void queryClient.invalidateQueries({ queryKey: ["novels"] });
-    setChapters((previous) => [...previous, chapter]);
-    setActive(chapter.id);
+    setCreateFailed(false);
+    try {
+      const { data: chapter } = await client.POST(
+        "/api/writing/novels/{novel_id}/chapters",
+        { params: { path: { novel_id: novelId } }, body: { title: "" } },
+      );
+      if (!chapter) {
+        // A refusal is the button's own story: the user asked for a chapter
+        // and none arrived.
+        setCreateFailed(true);
+        return;
+      }
+      // The bookshelf hero names the last-touched book, and its truth is the
+      // novel row's updated_at — a chapter write is the most common way that
+      // changes, so the shelf's ["novels"] cache must not outlive this POST.
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+      setChapters((previous) => [...previous, chapter]);
+      setActive(chapter.id);
+    } catch {
+      // The service is not answering at all and the proxy refuses: the same
+      // refusal the rail must name as any other.
+      setCreateFailed(true);
+    }
   }
 
   const remember = useCallback((chapterId: string, body: string) => {
@@ -302,6 +317,11 @@ export function NovelPage() {
             >
               {t("chapters.new")}
             </button>
+            {createFailed ? (
+              <p role="alert" className="mt-2 text-sm text-danger">
+                {t("chapters.errorCreate")}
+              </p>
+            ) : null}
           </aside>
         ) : null}
 

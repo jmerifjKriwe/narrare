@@ -49,6 +49,7 @@
   "workspace.unfocus": "Afficher les distractions",
   "chapters.continueError": "La suite a échoué.",
   "chapters.errorLoad": "Le livre n'a pas pu être chargé. Le service local est-il démarré ?",
+  "chapters.errorCreate": "Le chapitre n'a pas pu être créé. Le service local est-il démarré ?",
   "chapters.retry": "Réessayer",
   "editor.ghostArrived": "Une suggestion attend au curseur.",
   "editor.ghostAccepted": "Suggestion acceptée.",

@@ -202,3 +202,22 @@ def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack
     expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_chapter_creation_failure_is_named_in_the_rail(page: Page, stack: Stack) -> None:
+    """A chapter create that cannot reach the service names itself, never nothing."""
+    _create_book(page, "Die Brandung")
+
+    stack.stop_api()
+    try:
+        page.get_by_role("button", name="Neues Kapitel").click()
+        # The create has nowhere to go: the rail says so, beside the button.
+        expect(page.get_by_role("alert").filter(has_text="konnte nicht angelegt")).to_be_visible()
+    finally:
+        stack.start_api()
+
+    # The retry is the same button, once the service answers again.
+    page.get_by_role("button", name="Neues Kapitel").click()
+    expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_be_visible()
+
+    assert_accessible(page)
