@@ -26,7 +26,7 @@ import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
-import { useAutosave } from "@shell/lib/save";
+import { useAutosave, unsavedStatus } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 
@@ -39,12 +39,12 @@ function Harness(props: { chapterId?: string; body?: string; proposal?: string |
   onProposalResolve?: (accepted: boolean) => void;
   onSaved?: (id: string, body: string) => void }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
-  // NovelPage's tab-close guard, mirrored here so jsdom can pin its pending
-  // branch (the E2E reload covers the failed one on the real unload path):
-  // an unsaved page preventDefaults beforeunload, a saved one does not.
+  // NovelPage hands this predicate to the router blocker; jsdom has no
+  // router, so the same function answers a dispatched event here — the
+  // predicate itself is shared, not copied, so it cannot drift.
   useEffect(() => {
     function guard(event: BeforeUnloadEvent) {
-      if (save.status !== "pending" && save.status !== "failed") return;
+      if (!unsavedStatus(save.status)) return;
       event.preventDefault();
       event.returnValue = "";
     }
@@ -97,22 +97,30 @@ afterEach(async () => {
   cleanup();
   // The unmount flush a failed save leaves behind is a real PUT on a real
   // socket, and it can land after this hook — where a one-shot flag the
-  // next case sets would answer it instead of that case's own save. Give
-  // the straggler a beat to arrive, so the respond-and-clear below sweeps
-  // it up with everything the case itself sent.
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  // next case sets would answer it instead of that case's own save. Writes
+  // are serialized, so a straggler can arrive after the request it queued
+  // behind has been answered: respond everything, wait, and repeat until a
+  // quiet beat passes with nothing new on the wire.
+  for (let quiet = 0; quiet < 3; ) {
+    const arrived = editorServer.requests.splice(0);
+    if (arrived.length === 0) quiet += 1;
+    else {
+      quiet = 0;
+      for (const request of arrived) request.respond();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
   // The live region is a body-level singleton that outlives every
   // component: its nodes linger for seven seconds by design. Clearing it
   // between cases keeps every baseline at zero — no earlier case's
   // announcement can bleed in, and none can expire mid-case on a slow
   // runner and take a count down with it.
   clearAnnouncements();
-  for (const request of editorServer.requests) request.respond();
-  editorServer.requests.length = 0;
   editorServer.holdNext = 0;
   editorServer.continueWith = null;
   editorServer.refuseContinue = false;
   editorServer.refuseSave = false;
+  editorServer.refuseSaveEmpty = false;
   editorServer.holdContinue = false;
   editorServer.breakContinue = false;
   editorServer.continuation?.finish();
@@ -341,12 +349,13 @@ describe("ChapterEditor's ghost text", () => {
     // displaced by the accept.
     expect(documentText()).toContain("Handgeschrieben.");
     expect(documentText()).toContain("Geisterzählung");
-    // The accept's own save carries the whole document: the in-flight first
-    // save having the older body costs nothing.
+    // The accept's own save carries the whole document. Writes are
+    // serialized now, so it waits behind the held one: answering that is
+    // what lets the accepted sentence go out.
+    editorServer.requests[0].respond();
     await waitFor(() => expect(editorServer.requests.length).toBe(2), { timeout: 4_000 });
     expect(editorServer.requests[1].body).toContain("Handgeschrieben.");
     expect(editorServer.requests[1].body).toContain("Geisterzählung");
-    editorServer.requests[0].respond();
   });
 
   it("names a refused save, drops nothing and reports no save", { timeout: 10_000 }, async () => {
@@ -384,6 +393,45 @@ describe("ChapterEditor's ghost text", () => {
       timeout: 5000,
     });
     expect(editorServer.requests.at(-1)?.body).toContain("AB");
+  });
+
+  it("names a refusal that arrives with no body at all", { timeout: 10_000 }, async () => {
+    // A proxy's 502, a bare 413: openapi-fetch parses `error` from the body
+    // and finds nothing, so only the status line can tell this from a save.
+    const saved: [string, string][] = [];
+    editorServer.refuseSaveEmpty = true;
+    render(<Harness body="" onSaved={(id, body) => saved.push([id, body])} />);
+    const user = await focusEditor();
+    await user.keyboard("Niemand hat das gespeichert.");
+    await waitFor(
+      () => expect(screen.getByRole("alert").textContent).toContain(t("save.failed")),
+      { timeout: 5000 },
+    );
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+    expect(saved).toEqual([]);
+  });
+
+  it("queues the newer body behind the one on the wire and only then says saved", { timeout: 10_000 }, async () => {
+    editorServer.holdNext = 2;
+    render(<Harness body="" />);
+    const user = await focusEditor();
+    await user.keyboard("Eins.");
+    await waitFor(() => expect(editorServer.requests).toHaveLength(1));
+
+    // Typing again while the first write is unanswered queues a second one
+    // with the full document; the older answer must not clear it.
+    await user.keyboard(" Zwei.");
+    editorServer.requests[0].respond();
+    await waitFor(() => expect(editorServer.requests).toHaveLength(2), { timeout: 4000 });
+    expect(editorServer.requests[1].body).toContain("Eins. Zwei.");
+    // The first answer saved the shorter body — the newer sentence is not on
+    // the server yet, so the indicator must not claim it is.
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+
+    editorServer.requests[1].respond();
+    await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
+      timeout: 5000,
+    });
   });
 
   it("does not report a save that answers after the body was discarded", { timeout: 10_000 }, async () => {

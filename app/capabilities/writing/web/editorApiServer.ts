@@ -46,6 +46,9 @@ export const editorServer = {
   refuseContinue: false,
   /** Answer the next autosave PUT with a 500 — a refused write, one shot. */
   refuseSave: false,
+  /** Answer the next autosave PUT with an empty 502 — the proxy's shape of a
+   *  refusal, where openapi-fetch finds no error body to parse. One shot. */
+  refuseSaveEmpty: false,
   /** Hold the continuation stream open after writing its body: the ghost is
    *  on screen and the stream is still mid-flight until the client aborts,
    *  the test finishes it or breaks the wire. One shot, like the body. */
@@ -139,6 +142,20 @@ export async function startEditorServer(): Promise<void> {
         editorServer.refuseSave = false;
         response.writeHead(500, { "content-type": "application/json" });
         response.end('{"detail":"refused"}');
+        return;
+      }
+      // The same refusal as it reaches the browser through a proxy: a 502
+      // with no body at all. openapi-fetch parses `error` from the body, so
+      // this answer arrives with `error === undefined` while saving nothing —
+      // the status line, not the body, is what makes it a success.
+      if (
+        editorServer.refuseSaveEmpty &&
+        request.method === "PUT" &&
+        (request.url ?? "").startsWith("/api/writing/chapters/")
+      ) {
+        editorServer.refuseSaveEmpty = false;
+        response.writeHead(502, { "content-length": "0" });
+        response.end();
         return;
       }
       let responded = false;

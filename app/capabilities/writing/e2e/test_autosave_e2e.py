@@ -8,6 +8,7 @@ shelf link confirm after their flush fails, and a reload mid-failure meets
 the browser's own leave dialog.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -92,7 +93,33 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         asked.value.dismiss()
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
-        assert seen == ["confirm", "confirm"]
+        # The shell's top bar is outside this page and a router navigation
+        # like any other: the blocker is the one place all of them pass.
+        with page.expect_event("dialog") as asked:
+            page.get_by_role("link", name="Chat").click()
+        seen.append(asked.value.type)
+        asked.value.dismiss()
+        expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
+
+        # Back is history, not a click. Driven directly so the assertion is
+        # about the blocker, not about Playwright's navigation wait.
+        with page.expect_event("dialog") as asked:
+            page.evaluate("window.history.back()")
+        seen.append(asked.value.type)
+        asked.value.dismiss()
+        expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
+        expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
+
+        # Opening a dock is a navigation inside the book, not a leave: the
+        # editor stays mounted, so nothing may be asked here. The dock's own
+        # route keeps its tab beside the text.
+        page.get_by_role("button", name="Chat", exact=True).click()
+        expect(page).to_have_url(re.compile(r"/novels/[^/]+/chat(\?|$)"))
+        expect(page.get_by_role("button", name="Chat", exact=True)).to_have_attribute(
+            "aria-pressed", "true"
+        )
+
+        assert seen == ["confirm", "confirm", "confirm", "confirm"]
     finally:
         stack.start_api()
 

@@ -1,5 +1,5 @@
-import { Link, Outlet, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { client, type Chapter, type Novel } from "@shell/lib/api/client";
 import { publishActiveChapter } from "@shell/lib/activeChapter";
@@ -7,7 +7,7 @@ import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
 import { queryClient } from "@shell/lib/query";
-import { useAutosave } from "@shell/lib/save";
+import { useAutosave, unsavedStatus } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 import type { FocusStep } from "./routes";
@@ -261,11 +261,15 @@ export function NovelPage() {
   // `flush` is the page's own handle on what has not reached the server.
   const { status, schedule, flush, discard } = useAutosave(current?.id ?? null, remember);
 
-  // The page's one opinion about unsaved text, shared by the tab-close guard
-  // and the shelf link: a body waiting for its debounce or a write that did
-  // not land. Everything else — idle, saving, saved — has nothing to ask
-  // about or nothing to lose.
-  const unsaved = status === "pending" || status === "failed";
+  // The page's one opinion about unsaved text, shared by every guard: a body
+  // waiting for its debounce, one on the wire, or one that did not land.
+  // `saving` counts — a request that never answers loses the text just as
+  // surely as one that was refused.
+  const unsaved = unsavedStatus(status);
+  // The guards ask at the moment they run, not at the render that registered
+  // them: a navigation starts after the keystroke, not before it.
+  const unsavedNow = useRef(unsaved);
+  unsavedNow.current = unsaved;
 
   /** Leave a chapter: save first, ask only when the save did not land. */
   async function leave(then: () => void) {
@@ -275,18 +279,26 @@ export function NovelPage() {
     then();
   }
 
-  // The browser's half of the guard: a tab close is the one leave path with
-  // no click to intercept, so the chrome-native dialog stands in for the
-  // confirm the in-app paths show. Only an unsaved page speaks.
-  useEffect(() => {
-    function guard(event: BeforeUnloadEvent) {
-      if (status !== "pending" && status !== "failed") return;
-      event.preventDefault();
-      event.returnValue = "";
-    }
-    window.addEventListener("beforeunload", guard);
-    return () => window.removeEventListener("beforeunload", guard);
-  }, [status]);
+  // Every way out of the book — the shell's top bar, the shelf link, the
+  // browser's back and forward — is a router navigation, and this is the one
+  // place they all pass. A destination inside the book's own subtree (the
+  // dock's routes, a focus step, the rail) is no leave: the editor stays
+  // mounted and the body stays here.
+  // `enableBeforeUnload` is the same question for the tab close, which has no
+  // navigation to intercept.
+  useBlocker({
+    shouldBlockFn: async ({ next: to }) => {
+      const book = `/novels/${novelId}`;
+      if (to.pathname === book || to.pathname.startsWith(`${book}/`)) return false;
+      if (!unsavedNow.current) return false;
+      const outcome = await flush();
+      if (outcome !== "failed") return false;
+      if (!window.confirm(t("save.confirmLeave"))) return true;
+      discard();
+      return false;
+    },
+    enableBeforeUnload: () => unsavedNow.current,
+  });
 
   // A new chapter must not inherit the last one's save story: after `leave`
   // nothing is pending, so this only drops a stale failure and the "saved"
@@ -311,15 +323,7 @@ export function NovelPage() {
     >
       {focus < 2 ? (
         <>
-          <Link
-            to="/"
-            className="text-sm text-muted underline-offset-4 hover:underline"
-            onClick={(event) => {
-              if (!unsaved) return;
-              event.preventDefault();
-              void leave(() => void navigate({ to: "/" }));
-            }}
-          >
+          <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
             {t("nav.back")}
           </Link>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
@@ -354,7 +358,12 @@ export function NovelPage() {
                   <button
                     type="button"
                     aria-pressed={chapter.id === active}
-                    onClick={() => void leave(() => setActive(chapter.id))}
+                    onClick={() => {
+                      // The chapter already open is no leave: asking there
+                      // would discard a failure the user never left.
+                      if (chapter.id === active) return;
+                      void leave(() => setActive(chapter.id));
+                    }}
                     className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   >
                     {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
