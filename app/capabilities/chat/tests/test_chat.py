@@ -15,13 +15,16 @@ from sqlalchemy.exc import IntegrityError
 from app.api.main import app
 from app.capabilities.chat.router import (
     _events,  # pyright: ignore[reportPrivateUsage]  the stream's finalizer is under test
+    ask,
 )
+from app.capabilities.chat.schemas import ChatRequest
 from app.capabilities.chat.service import ChatService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chunk, Document
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
+from app.kernel.llm import FakeProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 
@@ -50,7 +53,9 @@ async def test_audit_failure_does_not_truncate_the_response(
     assert '"delta": "partial"' in result.text
     assert ("event: error" in result.text) is fail
     assert ("event: done" in result.text) is not fail
-    failures = [record for record in caplog.records if record.getMessage() == "chat audit failed"]
+    failures = [
+        record for record in caplog.records if record.getMessage() == "chat.ask audit failed"
+    ]
     assert len(failures) == 1
     assert failures[0].exc_info is not None
     assert isinstance(failures[0].exc_info[1], IntegrityError)
@@ -65,7 +70,8 @@ async def test_audit_failure_does_not_truncate_the_response(
 async def test_audit_failure_does_not_replace_a_disconnect(
     interruption: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A rejected audit preserves cancellation or Starlette's ClientDisconnect."""
+    """A rejected audit breaks neither disconnect path: send raises ClientDisconnect,
+    receive returns normally once Starlette's task group closes."""
     waiting = Event() if interruption == "waiting" else None
     provider = StreamProbeProvider(waiting=waiting)
     response = FinalizingStreamingResponse(
@@ -81,7 +87,9 @@ async def test_audit_failure_does_not_replace_a_disconnect(
         frame="" if waiting else "event: done",
         disconnected=waiting,
     )
-    failures = [record for record in caplog.records if record.getMessage() == "chat audit failed"]
+    failures = [
+        record for record in caplog.records if record.getMessage() == "chat.ask audit failed"
+    ]
     assert len(failures) == 1
     assert failures[0].exc_info is not None
     assert isinstance(failures[0].exc_info[1], IntegrityError)
@@ -128,6 +136,22 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
     )
     expected_usage = (None, None) if frame == "delta" else (3, 2)
     assert (row.input_tokens, row.output_tokens) == expected_usage
+
+
+async def test_the_route_hands_back_the_finalizing_response() -> None:
+    """The endpoint itself — not a hand-built wrapper — is what carries the audit.
+
+    Every disconnect test above builds the response by hand; this one binds the
+    route to the subclass, so reverting the endpoint to a plain StreamingResponse
+    fails here instead of silently losing the audit guarantee.
+    """
+    await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
+    async with Session() as session:
+        service = ChatService(session, LOCAL_USER_ID, FakeEmbeddingProvider())
+        response = await ask(
+            ChatRequest(question="Wo war der Leuchtturm?"), service, FakeProvider(), LOCAL_USER_ID
+        )
+    assert isinstance(response, FinalizingStreamingResponse)
 
 
 def _frames(body: str) -> list[dict[str, Any]]:

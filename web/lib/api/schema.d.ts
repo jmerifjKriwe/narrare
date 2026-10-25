@@ -943,6 +943,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /** @description Server-sent events: data frames for the sources and the answer, then one terminal event: done or error. */
                     "text/event-stream": string;
                 };
             };
@@ -1696,6 +1697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /** @description Server-sent events: data frames of the continuation, then one terminal event: done or error. */
                     "text/event-stream": string;
                 };
             };

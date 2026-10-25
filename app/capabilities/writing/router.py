@@ -3,11 +3,9 @@
 import json
 from collections.abc import AsyncGenerator
 from logging import getLogger
-from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
-from anyio import CancelScope
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,10 +21,10 @@ from app.capabilities.writing.schemas import (
 from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.contracts.models import Chapter
-from app.kernel.db.session import Session, get_session
-from app.kernel.llm import TextProvider, get_provider, provider_facts
-from app.kernel.llm.audit import record_call
-from app.kernel.llm.contract import CompletionRequest, Delta, Usage
+from app.kernel.db.session import get_session
+from app.kernel.llm import TextProvider, get_provider
+from app.kernel.llm.audit import audited_stream
+from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
@@ -48,94 +46,36 @@ ServiceDep = Annotated[WritingService, Depends(_service)]
 ProviderDep = Annotated[TextProvider, Depends(get_provider)]
 
 
-async def _audit(
-    *,
-    user_id: UUID,
-    novel_id: UUID | None,
-    prompt: str,
-    answer: str,
-    usage: Usage | None,
-    latency_ms: int,
-    status: str,
-    error: str | None = None,
-) -> None:
-    """Commit the call on a short session of the finalizer's own.
-
-    A log row, not user data — plan §3.4's one exception to "no side effect
-    after the response": the stream is over, and the audit cannot ride a
-    request transaction that no longer exists.
-
-    ``answer`` may be partial; ``usage=None`` leaves token counts unknown.
-    ``latency_ms`` is elapsed milliseconds. Provider configuration and database
-    errors propagate to the finalizer.
-    """
-    kind, model = provider_facts()
-    async with Session() as session:
-        await record_call(
-            session,
-            user_id=user_id,
-            task_key="writing.continuation",
-            provider_kind=kind,
-            model=model,
-            latency_ms=latency_ms,
-            status=status,
-            prompt_text=prompt,
-            response_text=answer,
-            input_tokens=usage.input_tokens if usage else None,
-            output_tokens=usage.output_tokens if usage else None,
-            novel_id=novel_id,
-            error=error,
-        )
-        await session.commit()
-
-
 async def _continuation_events(
     provider: TextProvider, prompt: str, novel_id: UUID | None, user_id: UUID
 ) -> AsyncGenerator[str]:
     """Deltas, then done — or an error frame if the provider dies mid-stream.
 
     The editor appends what arrived and autosaves it; a silent close would look
-    like a finished continuation. Finalization attempts an audit of the
-    accumulated answer and latest usage (§3.4), including on interruption.
-    Audit errors are suppressed and do not change the response frames.
+    like a finished continuation. However the stream ends — done, error,
+    disconnect, cancel — the call is audited (§3.4): success and failure alike
+    leave their row, a disconnect records "stream interrupted".
     """
-    pieces: list[str] = []
-    usage: Usage | None = None
-    started = monotonic()
-    status = "error"
-    error: str | None = "stream interrupted"
+    events = audited_stream(
+        provider,
+        CompletionRequest.user(prompt),
+        user_id=user_id,
+        task_key="writing.continuation",
+        novel_id=novel_id,
+    )
     try:
-        try:
-            async for event in provider.stream(CompletionRequest.user(prompt)):
-                if isinstance(event, Delta):
-                    pieces.append(event.text)
-                    yield f"data: {json.dumps({'delta': event.text})}\n\n"
-                elif isinstance(event, Usage):
-                    usage = event
-        except Exception as failure:
-            error = str(failure)
-            logger.exception("continuation stream failed")
-            yield "event: error\ndata: {}\n\n"
-        else:
-            status = "ok"
-            error = None
-            yield "event: done\ndata: {}\n\n"
+        async for event in events:
+            if isinstance(event, Delta):
+                yield f"data: {json.dumps({'delta': event.text})}\n\n"
+    except Exception:
+        logger.exception("continuation stream failed")
+        yield "event: error\ndata: {}\n\n"
+    else:
+        yield "event: done\ndata: {}\n\n"
     finally:
-        # A disconnect must not cancel the audit attempt.
-        with CancelScope(shield=True):
-            try:
-                await _audit(
-                    user_id=user_id,
-                    novel_id=novel_id,
-                    prompt=prompt,
-                    answer="".join(pieces),
-                    usage=usage,
-                    latency_ms=round((monotonic() - started) * 1000),
-                    status=status,
-                    error=error,
-                )
-            except Exception:
-                logger.exception("continuation audit failed")
+        # The inner finalizer must run deterministically: relying on the loop's
+        # async-generator finalizer would lose the audit row on a disconnect.
+        await events.aclose()
 
 
 @router.get("/novels", response_model=list[NovelRead])
@@ -244,7 +184,17 @@ async def update_chapter(
     response_class=FinalizingStreamingResponse,
     status_code=200,
     responses={
-        200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}},
+        200: {
+            "content": {
+                "text/event-stream": {
+                    "schema": {"type": "string"},
+                    "description": (
+                        "Server-sent events: data frames of the continuation,"
+                        " then one terminal event: done or error."
+                    ),
+                }
+            }
+        },
         404: {"model": WritingErrorRead, "description": "Chapter not found"},
     },
 )

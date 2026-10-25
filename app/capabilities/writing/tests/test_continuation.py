@@ -15,7 +15,9 @@ from app.api.main import app
 from app.capabilities.writing.prompts import continuity_prompt
 from app.capabilities.writing.router import (
     _continuation_events,  # pyright: ignore[reportPrivateUsage]  test the stream's finalizer
+    continue_chapter,
 )
+from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -49,7 +51,9 @@ async def test_audit_failure_does_not_truncate_the_response(
     assert ("event: error" in result.text) is fail
     assert ("event: done" in result.text) is not fail
     failures = [
-        record for record in caplog.records if record.getMessage() == "continuation audit failed"
+        record
+        for record in caplog.records
+        if record.getMessage() == "writing.continuation audit failed"
     ]
     assert len(failures) == 1
     assert failures[0].exc_info is not None
@@ -65,7 +69,8 @@ async def test_audit_failure_does_not_truncate_the_response(
 async def test_audit_failure_does_not_replace_a_disconnect(
     interruption: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A rejected audit preserves cancellation or Starlette's ClientDisconnect."""
+    """A rejected audit breaks neither disconnect path: send raises ClientDisconnect,
+    receive returns normally once Starlette's task group closes."""
     waiting = Event() if interruption == "waiting" else None
     provider = StreamProbeProvider(waiting=waiting)
     response = FinalizingStreamingResponse(
@@ -82,7 +87,9 @@ async def test_audit_failure_does_not_replace_a_disconnect(
         disconnected=waiting,
     )
     failures = [
-        record for record in caplog.records if record.getMessage() == "continuation audit failed"
+        record
+        for record in caplog.records
+        if record.getMessage() == "writing.continuation audit failed"
     ]
     assert len(failures) == 1
     assert failures[0].exc_info is not None
@@ -245,6 +252,21 @@ async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure() -
     assert row.task_key == "writing.continuation"
     assert row.status == "error"
     assert "the provider died" in row.error
+
+
+async def test_the_route_hands_back_the_finalizing_response() -> None:
+    """The endpoint itself — not a hand-built wrapper — is what carries the audit.
+
+    Every disconnect test above builds the response by hand; this one binds the
+    route to the subclass, so reverting the endpoint to a plain StreamingResponse
+    fails here instead of silently losing the audit guarantee.
+    """
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+    async with Session() as session:
+        service = WritingService(session, LOCAL_USER_ID)
+        response = await continue_chapter(UUID(chapter_id), service, FakeProvider(), LOCAL_USER_ID)
+    assert isinstance(response, FinalizingStreamingResponse)
 
 
 async def test_another_users_chapter_cannot_be_continued() -> None:

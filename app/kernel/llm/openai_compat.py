@@ -137,6 +137,32 @@ def _is_done(line: str) -> bool:
     return line.startswith("data: ") and line[6:].strip() == DONE_MARKER
 
 
+def _usage(usage: object) -> Usage:
+    """The reported token counts, or a loud refusal naming the broken field.
+
+    ``usage: null`` is handled by the caller (absent, valid); a present object
+    fails when a count is missing, not an integer, a boolean (``type`` excludes
+    the int subclass) or negative. The message carries the field and the
+    received value: the generic sentence landed verbatim in ``llm_calls.error``
+    and told an operator nothing about which vendor field drifted.
+    """
+    if not isinstance(usage, dict):
+        raise ValueError(f"reported usage is not an object: {usage!r}")
+    # JSON object keys are strings by contract (RFC 8259); the cast states
+    # that contract on the type level — every value is still checked below.
+    report = cast("dict[str, object]", usage)
+    counts: list[int] = []
+    for field in ("prompt_tokens", "completion_tokens"):
+        value = report.get(field)
+        if type(value) is not int or value < 0:
+            raise ValueError(
+                f"reported usage field {field} is not a non-negative integer count: {value!r}"
+            )
+        counts.append(value)
+    input_tokens, output_tokens = counts
+    return Usage(input_tokens=input_tokens, output_tokens=output_tokens)
+
+
 def _event(line: str) -> CompletionEvent | None:
     """The event one SSE line carries, or None when it carries none.
 
@@ -152,19 +178,7 @@ def _event(line: str) -> CompletionEvent | None:
     frame = json.loads(line[6:].strip())
     usage = frame.get("usage")
     if usage is not None:
-        if not isinstance(usage, dict):
-            raise ValueError("reported usage must be an object")
-        reported_usage = cast("dict[str, object]", usage)
-        prompt_tokens = reported_usage.get("prompt_tokens")
-        completion_tokens = reported_usage.get("completion_tokens")
-        if (
-            type(prompt_tokens) is not int
-            or type(completion_tokens) is not int
-            or prompt_tokens < 0
-            or completion_tokens < 0
-        ):
-            raise ValueError("reported usage must contain non-negative integer token counts")
-        return Usage(input_tokens=prompt_tokens, output_tokens=completion_tokens)
+        return _usage(usage)
     choices = frame.get("choices")
     if choices:
         content = choices[0].get("delta", {}).get("content")
