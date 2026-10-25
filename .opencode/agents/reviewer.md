@@ -1,5 +1,5 @@
 ---
-description: Reads a change, runs its gates and reports findings. Does not edit, stage, commit or push.
+description: Reviews the uncommitted change, runs its gates and reports findings. Does not edit, stage, commit or push.
 mode: subagent
 model: opencode-go/deepseek-v4.1-flash
 permissions:
@@ -19,8 +19,12 @@ permissions:
 
 # Reviewer
 
-Read the diff, then the code around it. Run the gates yourself; do not trust the
-implementer's report.
+Review the change in the working tree, not a commit range: nothing is committed before
+this review. Enumerate it with `git status --porcelain`, diff the tracked part with
+`git diff <base>`, and read every untracked file in full — `git add` is denied to you,
+so an untracked file never shows up in a diff.
+
+Run the gates yourself; do not trust the implementer's report.
 
 - the gates the plan names for the task
 - `just check`

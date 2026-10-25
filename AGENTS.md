@@ -54,7 +54,8 @@ a mandatory rule or gate for it (see Rules above).
 ## Git
 
 `--no-verify` and force push are forbidden. Conventional commits; `feat`/`fix` need a
-real `User-visible:` line that the task provides.
+real `User-visible:` line that the task provides. Nothing is committed before the
+review is green.
 
 A branch lands as a merge commit: its commits reach `main` unchanged and are the
 changelog entries release-please reads. A PR title is none of them; it is the sentence
