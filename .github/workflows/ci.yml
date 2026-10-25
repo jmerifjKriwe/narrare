@@ -121,7 +121,7 @@ jobs:
           # job still satisfies the required check.
           if [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
             && [ "$GITHUB_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
-            && ! echo "$changed" | grep -qvE '^(\.release-please-manifest\.json|CHANGELOG\.md|app/kernel/version\.py|package\.json|web/package\.json|pyproject\.toml|web/lib/api/openapi\.json)$'; then
+            && ! echo "$changed" | grep -qvE '^(\.release-please-manifest\.json|CHANGELOG\.md|app/kernel/version\.py|package\.json|web/package\.json|pyproject\.toml|web/lib/api/openapi\.json|uv\.lock)$'; then
             echo "suites=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi

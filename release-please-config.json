@@ -20,7 +20,12 @@
       "extra-files": [
         {"type": "json", "path": "package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "web/package.json", "jsonpath": "$.version"},
-        {"type": "json", "path": "web/lib/api/openapi.json", "jsonpath": "$.info.version"}
+        {"type": "json", "path": "web/lib/api/openapi.json", "jsonpath": "$.info.version"},
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='narrare')].version"
+        }
       ]
     }
   },
