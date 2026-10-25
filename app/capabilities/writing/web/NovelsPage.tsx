@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { client, type Novel, type NovelCreate } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -28,32 +28,40 @@ export function NovelsPage() {
 
   // The setup gate decides whether there is a library to list at all. Only
   // the novels themselves go through the query cache; this check cannot,
-  // because its answer is "go somewhere else", not data.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const status = await client.GET("/api/setup/status");
-        if (cancelled) return;
-        if (!status.response.ok) {
-          // An answer that is not "ok" means no usable state. Showing an empty
-          // list here would claim the instance holds nothing; say what failed.
-          setFailed(true);
-        } else if (status.data && !status.data.complete) {
-          // Nothing to list yet: an uninstalled instance starts at setup.
-          void navigate({ to: "/setup", replace: true });
-          return;
-        }
-      } catch {
-        // The local service is not answering at all and the proxy refuses.
-        if (!cancelled) setFailed(true);
+  // because its answer is "go somewhere else", not data. A callable, not
+  // just an effect: the failure's retry button runs the same question
+  // again instead of demanding a reload.
+  const checkGate = useCallback(async () => {
+    try {
+      const status = await client.GET("/api/setup/status");
+      if (!status.response.ok) {
+        // An answer that is not "ok" means no usable state. Showing an empty
+        // list here would claim the instance holds nothing; say what failed.
+        setFailed(true);
+      } else if (status.data && !status.data.complete) {
+        // Nothing to list yet: an uninstalled instance starts at setup.
+        void navigate({ to: "/setup", replace: true });
+        return;
+      } else {
+        setFailed(false);
       }
-      if (!cancelled) setReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch {
+      // The local service is not answering at all and the proxy refuses.
+      setFailed(true);
+    }
+    setReady(true);
   }, [navigate]);
+
+  useEffect(() => {
+    void checkGate();
+  }, [checkGate]);
+
+  // The failure's way back: the gate asks again and the list refetches —
+  // one press, not a reload.
+  const retryLoad = useCallback(() => {
+    void checkGate();
+    void novels.refetch();
+  }, [checkGate, novels]);
 
   // The hero's book is the last-touched one — compared as parsed instants,
   // because two ISO strings with different timezone offsets do not order as
@@ -97,10 +105,16 @@ export function NovelsPage() {
     close();
   }
 
-  // Nothing renders until the gate has answered and the list query has
-  // settled: the page appears complete or reports the failure, never an
-  // empty library that has not asked yet.
-  if (!ready || novels.isPending) return null;
+  // The page asks before it shows: a named loading state, never a blank
+  // page, and never an empty library that has not heard yet.
+  if (!ready || novels.isPending) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
+        <p className="mt-6 text-sm text-muted">{t("novels.loading")}</p>
+      </div>
+    );
+  }
 
   const failedNow = failed || novels.isError;
 
@@ -141,9 +155,20 @@ export function NovelsPage() {
         )}
       </div>
       {failedNow ? (
-        <p role="alert" className="mt-6 text-sm text-danger">
-          {t("novels.errorLoad")}
-        </p>
+        <div className="mt-6">
+          <p role="alert" className="text-sm text-danger">
+            {t("novels.errorLoad")}
+          </p>
+          {/* The way back is one press: the gate asks again and the list
+              refetches, no reload demanded. */}
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+          >
+            {t("novels.retry")}
+          </button>
+        </div>
       ) : (
         <>
           {hero && (

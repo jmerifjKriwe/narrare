@@ -189,3 +189,23 @@ def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) -> None:
+    """The dead-backend story has a second act: the retry button, not F5."""
+    page.goto("http://127.0.0.1:3100/")
+    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+
+    stack.stop_api()
+    try:
+        page.reload()
+        expect(page.get_by_role("alert").filter(has_text="nicht geladen")).to_be_visible()
+        expect(page.get_by_role("button", name="Erneut versuchen")).to_be_visible()
+    finally:
+        stack.start_api()
+
+    # One press, no reload: the shelf is back.
+    page.get_by_role("button", name="Erneut versuchen").click()
+    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+
+    assert_accessible(page)

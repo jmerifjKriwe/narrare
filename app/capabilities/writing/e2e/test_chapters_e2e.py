@@ -149,3 +149,39 @@ def test_the_latest_touched_chapter_opens_first(page: Page, stack: Stack) -> Non
     expect(page.locator(".ProseMirror")).not_to_contain_text("Kalter Wind.")
 
     assert_accessible(page)
+
+
+def test_the_workbench_names_a_book_it_cannot_load(page: Page, stack: Stack) -> None:
+    """An unreachable book is an error with a retry, never an empty workbench."""
+    _create_book(page, "Das erreichbare Buch")
+    url = page.url  # the real workspace URL, for the recovery half
+
+    # The workbench cannot reach the service — a real condition of a local
+    # app, produced by stopping the real API, not by faking a response.
+    stack.stop_api()
+    try:
+        page.goto(url)
+        expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+        expect(page.get_by_role("button", name="Erneut versuchen")).to_be_visible()
+    finally:
+        stack.start_api()
+
+    # One press, no reload: the workbench is back.
+    page.get_by_role("button", name="Erneut versuchen").click()
+    expect(page.get_by_role("heading", name="Das erreichbare Buch")).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack) -> None:
+    """A 404 is the same honesty: the error copy, not an empty chapter rail."""
+    page.goto("http://127.0.0.1:3100/novels/00000000-0000-4000-8000-000000000000")
+    expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+    # The empty-rail copy is a loaded book's truth, not a missing one's.
+    expect(page.get_by_text("Noch kein Kapitel")).not_to_be_visible()
+
+    # The retry says the same thing: the book is still not there.
+    page.get_by_role("button", name="Erneut versuchen").click()
+    expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+
+    assert_accessible(page)
