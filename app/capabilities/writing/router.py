@@ -18,6 +18,7 @@ from app.capabilities.writing.schemas import (
     ChapterUpdate,
     NovelCreate,
     NovelRead,
+    WritingErrorRead,
 )
 from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import SetupRequiredError, current_user_id
@@ -138,7 +139,11 @@ async def list_novels(service: ServiceDep) -> list[NovelRead]:
     return [NovelRead.model_validate(novel) for novel in await service.list_novels()]
 
 
-@router.get("/novels/{novel_id}", response_model=NovelRead)
+@router.get(
+    "/novels/{novel_id}",
+    response_model=NovelRead,
+    responses={404: {"model": WritingErrorRead, "description": "Novel not found"}},
+)
 async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
     """Return an owned novel; respond with HTTP 404 when it is not found."""
     try:
@@ -148,7 +153,12 @@ async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
     return NovelRead.model_validate(novel)
 
 
-@router.post("/novels", response_model=NovelRead, status_code=201)
+@router.post(
+    "/novels",
+    response_model=NovelRead,
+    status_code=201,
+    responses={409: {"model": WritingErrorRead, "description": "Setup required"}},
+)
 async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
     """Create and return a novel; respond with HTTP 409 if setup is required."""
     try:
@@ -158,7 +168,11 @@ async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
     return NovelRead.model_validate(novel)
 
 
-@router.get("/novels/{novel_id}/chapters", response_model=list[ChapterRead])
+@router.get(
+    "/novels/{novel_id}/chapters",
+    response_model=list[ChapterRead],
+    responses={404: {"model": WritingErrorRead, "description": "Novel not found"}},
+)
 async def list_chapters(novel_id: UUID, service: ServiceDep) -> list[ChapterRead]:
     """List chapters of an owned novel; respond with HTTP 404 when it is not found."""
     try:
@@ -168,7 +182,15 @@ async def list_chapters(novel_id: UUID, service: ServiceDep) -> list[ChapterRead
     return [ChapterRead.model_validate(chapter) for chapter in chapters]
 
 
-@router.post("/novels/{novel_id}/chapters", response_model=ChapterRead, status_code=201)
+@router.post(
+    "/novels/{novel_id}/chapters",
+    response_model=ChapterRead,
+    status_code=201,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {"model": WritingErrorRead, "description": "Setup required"},
+    },
+)
 async def create_chapter(
     novel_id: UUID, payload: ChapterCreate, service: ServiceDep
 ) -> ChapterRead:
@@ -182,7 +204,11 @@ async def create_chapter(
     return ChapterRead.model_validate(chapter)
 
 
-@router.get("/chapters/{chapter_id}", response_model=ChapterRead)
+@router.get(
+    "/chapters/{chapter_id}",
+    response_model=ChapterRead,
+    responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
+)
 async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
     """Return an owned chapter; respond with HTTP 404 when it is not found."""
     try:
@@ -192,7 +218,11 @@ async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
     return ChapterRead.model_validate(chapter)
 
 
-@router.put("/chapters/{chapter_id}", response_model=ChapterRead)
+@router.put(
+    "/chapters/{chapter_id}",
+    response_model=ChapterRead,
+    responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
+)
 async def update_chapter(
     chapter_id: UUID, payload: ChapterUpdate, service: ServiceDep
 ) -> ChapterRead:
@@ -204,7 +234,15 @@ async def update_chapter(
     return ChapterRead.model_validate(chapter)
 
 
-@router.post("/chapters/{chapter_id}/continue")
+@router.post(
+    "/chapters/{chapter_id}/continue",
+    response_class=FinalizingStreamingResponse,
+    status_code=200,
+    responses={
+        200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}},
+        404: {"model": WritingErrorRead, "description": "Chapter not found"},
+    },
+)
 async def continue_chapter(
     chapter_id: UUID, service: ServiceDep, provider: ProviderDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:

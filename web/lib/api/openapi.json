@@ -177,6 +177,44 @@
         "title": "DocumentRead",
         "type": "object"
       },
+      "EmbeddingMismatchDetail": {
+        "description": "Identify incompatible stored and current embedding widths.",
+        "properties": {
+          "code": {
+            "const": "embedding-mismatch",
+            "title": "Code",
+            "type": "string"
+          },
+          "found": {
+            "title": "Found",
+            "type": "integer"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "stored",
+          "found"
+        ],
+        "title": "EmbeddingMismatchDetail",
+        "type": "object"
+      },
+      "EmbeddingMismatchRead": {
+        "description": "The HTTP 409 body returned when source embeddings are incompatible.",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/EmbeddingMismatchDetail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "EmbeddingMismatchRead",
+        "type": "object"
+      },
       "EntityMerge": {
         "description": "The merge's whole ask: which row survives.",
         "properties": {
@@ -787,6 +825,20 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WritingErrorRead": {
+        "description": "The JSON body for missing resources and incomplete setup.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "WritingErrorRead",
+        "type": "object"
       }
     }
   },
@@ -813,11 +865,23 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingMismatchRead"
+                }
+              }
+            },
+            "description": "Incompatible source embeddings"
           },
           "422": {
             "content": {
@@ -1752,6 +1816,16 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1804,6 +1878,16 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1840,11 +1924,23 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
           },
           "422": {
             "content": {
@@ -1912,6 +2008,16 @@
             },
             "description": "Successful Response"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1955,6 +2061,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
           },
           "422": {
             "content": {
@@ -2003,6 +2119,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
           },
           "422": {
             "content": {
@@ -2055,6 +2181,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
           },
           "422": {
             "content": {

@@ -612,6 +612,28 @@ export interface components {
             title: string;
         };
         /**
+         * EmbeddingMismatchDetail
+         * @description Identify incompatible stored and current embedding widths.
+         */
+        EmbeddingMismatchDetail: {
+            /**
+             * Code
+             * @constant
+             */
+            code: "embedding-mismatch";
+            /** Found */
+            found: number;
+            /** Stored */
+            stored: number;
+        };
+        /**
+         * EmbeddingMismatchRead
+         * @description The HTTP 409 body returned when source embeddings are incompatible.
+         */
+        EmbeddingMismatchRead: {
+            detail: components["schemas"]["EmbeddingMismatchDetail"];
+        };
+        /**
          * EntityMerge
          * @description The merge's whole ask: which row survives.
          */
@@ -885,6 +907,14 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * WritingErrorRead
+         * @description The JSON body for missing resources and incomplete setup.
+         */
+        WritingErrorRead: {
+            /** Detail */
+            detail: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -913,7 +943,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Incompatible source embeddings */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbeddingMismatchRead"];
                 };
             };
             /** @description Validation Error */
@@ -1576,6 +1615,15 @@ export interface operations {
                     "application/json": components["schemas"]["ChapterRead"];
                 };
             };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -1611,6 +1659,15 @@ export interface operations {
                     "application/json": components["schemas"]["ChapterRead"];
                 };
             };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -1639,7 +1696,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
                 };
             };
             /** @description Validation Error */
@@ -1695,6 +1761,15 @@ export interface operations {
                     "application/json": components["schemas"]["NovelRead"];
                 };
             };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -1726,6 +1801,15 @@ export interface operations {
                     "application/json": components["schemas"]["NovelRead"];
                 };
             };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -1755,6 +1839,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterRead"][];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
                 };
             };
             /** @description Validation Error */
@@ -1790,6 +1883,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
                 };
             };
             /** @description Validation Error */

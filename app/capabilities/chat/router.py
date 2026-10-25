@@ -11,7 +11,7 @@ from anyio import CancelScope
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.capabilities.chat.schemas import ChatRequest
+from app.capabilities.chat.schemas import ChatRequest, EmbeddingMismatchRead
 from app.capabilities.chat.service import ChatService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import Session, get_session
@@ -135,7 +135,15 @@ async def _events(
                 logger.exception("chat audit failed")
 
 
-@router.post("/ask")
+@router.post(
+    "/ask",
+    response_class=FinalizingStreamingResponse,
+    status_code=200,
+    responses={
+        200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}},
+        409: {"model": EmbeddingMismatchRead, "description": "Incompatible source embeddings"},
+    },
+)
 async def ask(
     payload: ChatRequest, service: ServiceDep, provider: ProviderDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
