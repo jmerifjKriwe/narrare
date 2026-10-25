@@ -41,7 +41,7 @@ commit**: the commits land on `main` unchanged, commit references stay
 valid, and release-please sees every conventional commit. A pull request
 that does not meet the standard (typical for drive-by contributions) is
 **squashed**, with a conventional-commit title that becomes the changelog
-entry. Auto-merge is enabled for green CI. Direct pushes to `main` are
+entry. Auto-merge is off: a green PR waits for a human approval. Direct pushes to `main` are
 fine for documentation-only changes (`*.md`); everything else goes through
 a pull request, because only CI runs the E2E and the web build before the
 merge.
@@ -89,7 +89,11 @@ muss bleiben, solange der Scan die History sieht.
 
 ## PR Process
 
-1. Push your feature branch and open a Pull Request against `main`.
+1. Push your feature branch and open a Pull Request against `main`. Title it as the
+   sentence the change deserves: the same `type(scope): effect` grammar the commits
+   use. `Phase 0`, `Wave 1`, task ids and internal programme names say how the work
+   was planned, not what it does; they belong to the plan, and at most to the body as
+   a reference.
 2. Fill in the PR template (`.github/PULL_REQUEST_TEMPLATE.md`). For UI or
    AI-touching changes, complete the **UX review** section; delete it otherwise.
 3. **PR checklist:**

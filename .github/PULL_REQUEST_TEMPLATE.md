@@ -5,7 +5,9 @@
 
 ## What and why
 
-<!-- The behaviour that changes for the user, and the issue or spec section it serves. -->
+<!-- The behaviour that changes, and for whom — the user, or the release, CI or docs
+     where no user can see it. The issue it closes and the spec section may follow as
+     references, not as the name of the work. -->
 
 ## Verification
 

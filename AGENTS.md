@@ -48,3 +48,11 @@ a mandatory rule or gate for it (see Rules above).
 
 `--no-verify` and force push are forbidden. Conventional commits; `feat`/`fix` need a
 real `User-visible:` line that the task provides.
+
+A branch lands as a merge commit: its commits reach `main` unchanged and are the
+changelog entries release-please reads. A PR title is none of them; it is the sentence
+reviewers read, and it follows the same `type(scope): effect` grammar. Title and
+subject name the change, not the work package: no `Phase 0`, `Wave 1`, `P1`, `T17`, no
+programme name; the plan and `spec §3.5` belong in the body as references. Work no
+user can observe states its effect — a build that can no longer go red — and never
+claims a benefit it lacks. A commit whose content is the plan may name the phase.
