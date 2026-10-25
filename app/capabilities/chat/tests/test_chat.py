@@ -125,6 +125,7 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
 
 
 def _frames(body: str) -> list[dict[str, Any]]:
+    """Decode the JSON payloads of SSE data lines in their original order."""
     return [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
 
 
@@ -150,6 +151,7 @@ async def _seed(user_id: UUID, title: str, passage: str) -> None:
 
 
 async def _upload(client: AsyncClient, text: str, title: str) -> None:
+    """Upload a text document through the API and require a successful creation."""
     response = await client.post(
         "/api/knowledge/documents",
         files={"file": ("notizen.txt", text.encode("utf-8"), "text/plain")},
@@ -159,6 +161,7 @@ async def _upload(client: AsyncClient, text: str, title: str) -> None:
 
 
 async def test_answer_comes_back_with_the_passage_as_source() -> None:
+    """Verify a retrieved passage grounds the streamed answer and its successful audit row."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         await _upload(client, PASSAGE, "Notizen")
 
@@ -193,6 +196,7 @@ async def test_answer_comes_back_with_the_passage_as_source() -> None:
 
 
 async def test_prompt_carries_the_question_and_the_passage() -> None:
+    """Verify prompt preparation includes the question and the retrieved passage."""
     await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
 
     async with Session() as session:
@@ -206,6 +210,7 @@ async def test_prompt_carries_the_question_and_the_passage() -> None:
 
 
 async def test_another_users_passage_is_not_a_source() -> None:
+    """Verify retrieval excludes passages belonging to another user."""
     await _seed(OTHER_USER, "Fremd", PASSAGE)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -215,6 +220,7 @@ async def test_another_users_passage_is_not_a_source() -> None:
 
 
 async def test_answer_without_sources_does_not_invent_a_citation() -> None:
+    """Verify an answer can stream with an explicitly empty source list."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})
         assert response.status_code == 200
@@ -224,6 +230,7 @@ async def test_answer_without_sources_does_not_invent_a_citation() -> None:
 
 
 async def test_an_empty_question_is_rejected() -> None:
+    """Verify request validation rejects an empty question with HTTP 422."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/chat/ask", json={"question": ""})
         assert response.status_code == 422
@@ -233,16 +240,20 @@ class _OtherModel:
     """A second model at another width: same contract, other answer."""
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        """Return vectors at a different width to exercise embedding mismatch detection."""
         return [[0.25] * 768 for _ in texts]
 
     def describe(self) -> str:
+        """Identify the alternate embedding model used by this test."""
         return "test-other-width"
 
     def configuration_problems(self) -> list[str]:
+        """Report that this deterministic embedding provider needs no configuration."""
         return []
 
 
 async def test_a_model_switch_after_ingest_answers_with_the_refusal() -> None:
+    """Verify switching embedding widths after ingest returns the HTTP 409 mismatch code."""
     await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
     app.dependency_overrides[get_embedding_provider] = lambda: _OtherModel()
     try:

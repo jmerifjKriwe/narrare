@@ -13,7 +13,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ask */
+        /**
+         * Ask
+         * @description Stream a sourced answer; return HTTP 409 for incompatible source embeddings.
+         */
         post: operations["ask_api_chat_ask_post"];
         delete?: never;
         options?: never;
@@ -412,9 +415,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Chapter */
+        /**
+         * Get Chapter
+         * @description Return an owned chapter; respond with HTTP 404 when it is not found.
+         */
         get: operations["get_chapter_api_writing_chapters__chapter_id__get"];
-        /** Update Chapter */
+        /**
+         * Update Chapter
+         * @description Update an owned chapter; respond with HTTP 404 when it is not found.
+         */
         put: operations["update_chapter_api_writing_chapters__chapter_id__put"];
         post?: never;
         delete?: never;
@@ -432,7 +441,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Continue Chapter */
+        /**
+         * Continue Chapter
+         * @description Stream a continuation for an owned chapter; return HTTP 404 when it is not found.
+         */
         post: operations["continue_chapter_api_writing_chapters__chapter_id__continue_post"];
         delete?: never;
         options?: never;
@@ -447,7 +459,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Novels */
+        /**
+         * List Novels
+         * @description Return the current user's novels.
+         */
         get: operations["list_novels_api_writing_novels_get"];
         put?: never;
         /**
@@ -468,7 +483,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Novel */
+        /**
+         * Get Novel
+         * @description Return an owned novel; respond with HTTP 404 when it is not found.
+         */
         get: operations["get_novel_api_writing_novels__novel_id__get"];
         put?: never;
         post?: never;
@@ -485,10 +503,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Chapters */
+        /**
+         * List Chapters
+         * @description List chapters of an owned novel; respond with HTTP 404 when it is not found.
+         */
         get: operations["list_chapters_api_writing_novels__novel_id__chapters_get"];
         put?: never;
-        /** Create Chapter */
+        /**
+         * Create Chapter
+         * @description Create a chapter; return HTTP 404 for a missing novel or HTTP 409 if setup is required.
+         */
         post: operations["create_chapter_api_writing_novels__novel_id__chapters_post"];
         delete?: never;
         options?: never;

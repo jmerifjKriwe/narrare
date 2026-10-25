@@ -55,6 +55,7 @@ AGREEING_BODIES = (
 
 
 def _client() -> AsyncClient:
+    """Create an HTTP client that drives the real application through ASGI."""
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
@@ -96,6 +97,7 @@ async def _enqueue_check(client: AsyncClient, novel_id: str) -> str:
 
 
 async def _pending_findings(client: AsyncClient, novel_id: str) -> list[dict[str, object]]:
+    """Fetch the novel review queue and require a successful response."""
     listed = await client.get(f"/api/knowledge/novels/{novel_id}/findings")
     assert listed.status_code == 200
     return listed.json()
@@ -108,17 +110,21 @@ class _GarbageProvider:
     so everything below the boundary runs the real code."""
 
     def describe(self) -> str:
+        """Identify the provider that emits an invalid consistency answer."""
         return "garbage"
 
     def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield non-JSON prose followed by DONE to exercise answer validation."""
         yield Delta(text="Die Kapitel stimmen überein — aber kein JSON.")
         yield DONE
 
 
 async def test_the_prompts_declare_their_purpose() -> None:
+    """Verify purpose markers, source passages, and accepted canon reach the prompts."""
     from app.capabilities.knowledge.prompts import consistency_prompt, extraction_prompt
     from app.kernel.llm import PURPOSE_PREFIX
 
@@ -141,6 +147,7 @@ async def test_the_prompts_declare_their_purpose() -> None:
 
 
 def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> None:
+    """Verify finding parsing accepts valid arrays and rejects malformed or oversized fields."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_findings
 
     good = '[{"summary": "Mira: 34 vs. 37", "detail": "Die Kapitel widersprechen sich."}]'
@@ -180,6 +187,7 @@ def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> None:
 
 
 async def test_the_check_enqueues_a_job_and_refuses_what_is_not_the_callers() -> None:
+    """Verify only an owned novel can enqueue a check or expose its findings."""
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
         job_id = await _enqueue_check(client, novel_id)
@@ -213,6 +221,7 @@ async def test_the_check_enqueues_a_job_and_refuses_what_is_not_the_callers() ->
 
 
 async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
+    """Verify a completed check records progress, a pending finding, and its audit together."""
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
         job_id = await _enqueue_check(client, novel_id)
@@ -255,6 +264,7 @@ async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
 
 
 async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:
+    """Verify consistent chapters complete successfully without pending findings."""
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, AGREEING_BODIES)
         job_id = await _enqueue_check(client, novel_id)
@@ -268,6 +278,7 @@ async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:
 
 
 async def test_a_novel_without_chapters_checks_to_an_empty_queue() -> None:
+    """Verify a novel with no chapters completes with zero findings."""
     # No chapters is no contradiction: the check is a done job with an honest
     # zero, not a failure — the empty array is a valid answer.
     async with _client() as client:
@@ -286,6 +297,7 @@ async def test_a_novel_without_chapters_checks_to_an_empty_queue() -> None:
 async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verify invalid provider output exhausts retries without findings or audit rows."""
     import app.capabilities.knowledge.jobs as jobs
 
     monkeypatch.setattr(jobs, "get_provider", lambda: _GarbageProvider())
@@ -353,6 +365,7 @@ async def test_a_rerun_stacks_nothing_and_a_consumed_finding_files_fresh() -> No
 
 
 async def test_acknowledge_and_dismiss_consume_exactly_once() -> None:
+    """Verify either review verdict consumes a finding and repeated verdicts return HTTP 409."""
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, TWO_NAMES_BODIES)
         await _enqueue_check(client, novel_id)
@@ -395,6 +408,7 @@ async def test_acknowledge_and_dismiss_consume_exactly_once() -> None:
 
 
 async def test_two_concurrent_acknowledges_leave_one_winner() -> None:
+    """Verify concurrent acknowledgements yield one success and one conflict."""
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
         await _enqueue_check(client, novel_id)
@@ -403,6 +417,7 @@ async def test_two_concurrent_acknowledges_leave_one_winner() -> None:
         acknowledge_path = f"/api/knowledge/findings/{finding['id']}/acknowledge"
 
     async def _acknowledge() -> Response:
+        """Submit an acknowledgement using an independent client for the concurrency test."""
         async with _client() as own:
             return await own.post(acknowledge_path)
 
@@ -420,6 +435,7 @@ async def test_two_concurrent_acknowledges_leave_one_winner() -> None:
 
 
 async def test_acknowledge_and_dismiss_race_for_one_finding() -> None:
+    """Verify opposing concurrent verdicts consume one finding exactly once."""
     # The stronger race: both verdicts on the same row at once. Whichever
     # wins, the row is consumed exactly once — the loser reads a consumed
     # status under the winner's commit, not a second verdict's ground.
@@ -432,6 +448,7 @@ async def test_acknowledge_and_dismiss_race_for_one_finding() -> None:
         dismiss = f"/api/knowledge/findings/{finding['id']}/dismiss"
 
     async def _post(path: str) -> Response:
+        """Submit one competing review verdict through an independent client."""
         async with _client() as own:
             return await own.post(path)
 
@@ -451,6 +468,7 @@ async def test_acknowledge_and_dismiss_race_for_one_finding() -> None:
 
 
 async def test_another_users_finding_cannot_be_reviewed() -> None:
+    """Verify foreign and nonexistent findings return HTTP 404 without changing rows."""
     from app.kernel.contracts.models import ConsistencyFinding
 
     async with _client() as client:

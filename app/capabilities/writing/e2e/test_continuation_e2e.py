@@ -34,6 +34,7 @@ def _continuation_audit(title: str) -> tuple[str, str, int, int, str, float | No
     """
 
     async def run() -> tuple[str, str, int, int, str, float | None] | None:
+        """Read the named novel audit using a fresh async engine, or return None."""
         engine = create_async_engine(url_for(DATABASE))
         async with engine.connect() as connection:
             row = (
@@ -80,6 +81,7 @@ def _write_a_line(page: Page, title: str, line: str) -> None:
 
 
 def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: Stack) -> None:
+    """Verify Tab accepts the streamed ghost, autosave persists it, and the call is audited."""
     _write_a_line(page, "Die Windrose", "Die Windrose stand offen.")
 
     page.get_by_role("button", name="Weiterschreiben").click()
@@ -123,6 +125,7 @@ def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: St
 
 
 def test_the_ghost_is_discarded_by_escape_and_leaves_no_trace(page: Page, stack: Stack) -> None:
+    """Verify Escape discards the ghost without persisting text or disrupting focus controls."""
     _write_a_line(page, "Die Barkasse", "Die Barkasse legte ab.")
 
     page.get_by_role("button", name="Weiterschreiben").click()

@@ -42,6 +42,7 @@ def _extraction_audit(novel_id: str) -> tuple[str, str, int, int, float | None]:
     """
 
     async def run() -> tuple[str, str, int, int, float | None] | None:
+        """Read the novel audit from a fresh async engine, returning None when absent."""
         engine = create_async_engine(url_for(DATABASE))
         async with engine.connect() as connection:
             row = (
@@ -63,6 +64,7 @@ def _extraction_audit(novel_id: str) -> tuple[str, str, int, int, float | None]:
 
 
 def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) -> None:
+    """Verify an API restart preserves extraction work, suggestions, and the successful audit."""
     with httpx.Client(base_url=API, timeout=30) as client:
         novel = client.post("/api/writing/novels", json={"title": "Der Nebel"})
         novel.raise_for_status()

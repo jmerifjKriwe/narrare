@@ -35,6 +35,7 @@ ProviderDep = Annotated[TextProvider, Depends(get_provider)]
 
 
 def _service(session: SessionDep, user_id: UserDep, embeddings: EmbeddingsDep) -> ChatService:
+    """Build the chat service with the request session, owner, and embeddings."""
     return ChatService(session, user_id, embeddings)
 
 
@@ -138,6 +139,7 @@ async def _events(
 async def ask(
     payload: ChatRequest, service: ServiceDep, provider: ProviderDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
+    """Stream a sourced answer; return HTTP 409 for incompatible source embeddings."""
     try:
         prompt, passages = await service.prepare(payload.question, payload.limit)
     except EmbeddingMismatchError as error:

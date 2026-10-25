@@ -40,6 +40,7 @@ class OpenAISettings:
 
     @classmethod
     def from_environment(cls) -> OpenAISettings:
+        """Read provider settings from NARRE_LLM variables and remove trailing base URL slashes."""
         return cls(
             base_url=environ.get("NARRE_LLM_BASE_URL", DEFAULT_BASE_URL).rstrip("/"),
             model=environ.get("NARRE_LLM_MODEL", ""),
@@ -60,6 +61,7 @@ class OpenAICompatibleProvider:
     """Streams a chat completion from any OpenAI-shaped endpoint."""
 
     def __init__(self, settings: OpenAISettings) -> None:
+        """Use the supplied endpoint, model, and API key for subsequent completions."""
         self.settings = settings
 
     @classmethod
@@ -68,15 +70,18 @@ class OpenAICompatibleProvider:
         return cls(OpenAISettings.from_environment())
 
     def describe(self) -> str:
+        """Describe the configured model and endpoint without exposing the API key."""
         return (
             f"openai-compatible model={self.settings.model or '(unset)'}"
             f" base_url={self.settings.base_url}"
         )
 
     def configuration_problems(self) -> list[str]:
+        """Return missing configuration reported by the provider settings."""
         return self.settings.problems()
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Stream text and usage events, then DONE; propagate HTTP and malformed-usage errors."""
         headers = (
             {"Authorization": f"Bearer {self.settings.api_key}"} if self.settings.api_key else {}
         )
@@ -121,6 +126,7 @@ class OpenAICompatibleProvider:
 
 
 def _is_done(line: str) -> bool:
+    """Recognize an SSE data line containing the terminal wire marker."""
     return line.startswith("data: ") and line[6:].strip() == DONE_MARKER
 
 

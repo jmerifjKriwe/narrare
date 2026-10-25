@@ -119,8 +119,8 @@
         "properties": {
           "limit": {
             "default": 5,
-            "maximum": 20,
-            "minimum": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Limit",
             "type": "integer"
           },
@@ -584,8 +584,8 @@
         "properties": {
           "limit": {
             "default": 5,
-            "maximum": 20,
-            "minimum": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Limit",
             "type": "integer"
           },
@@ -798,6 +798,7 @@
   "paths": {
     "/api/chat/ask": {
       "post": {
+        "description": "Stream a sourced answer; return HTTP 409 for incompatible source embeddings.",
         "operationId": "ask_api_chat_ask_post",
         "requestBody": {
           "content": {
@@ -1726,6 +1727,7 @@
     },
     "/api/writing/chapters/{chapter_id}": {
       "get": {
+        "description": "Return an owned chapter; respond with HTTP 404 when it is not found.",
         "operationId": "get_chapter_api_writing_chapters__chapter_id__get",
         "parameters": [
           {
@@ -1767,6 +1769,7 @@
         ]
       },
       "put": {
+        "description": "Update an owned chapter; respond with HTTP 404 when it is not found.",
         "operationId": "update_chapter_api_writing_chapters__chapter_id__put",
         "parameters": [
           {
@@ -1820,6 +1823,7 @@
     },
     "/api/writing/chapters/{chapter_id}/continue": {
       "post": {
+        "description": "Stream a continuation for an owned chapter; return HTTP 404 when it is not found.",
         "operationId": "continue_chapter_api_writing_chapters__chapter_id__continue_post",
         "parameters": [
           {
@@ -1861,6 +1865,7 @@
     },
     "/api/writing/novels": {
       "get": {
+        "description": "Return the current user's novels.",
         "operationId": "list_novels_api_writing_novels_get",
         "responses": {
           "200": {
@@ -1926,6 +1931,7 @@
     },
     "/api/writing/novels/{novel_id}": {
       "get": {
+        "description": "Return an owned novel; respond with HTTP 404 when it is not found.",
         "operationId": "get_novel_api_writing_novels__novel_id__get",
         "parameters": [
           {
@@ -1969,6 +1975,7 @@
     },
     "/api/writing/novels/{novel_id}/chapters": {
       "get": {
+        "description": "List chapters of an owned novel; respond with HTTP 404 when it is not found.",
         "operationId": "list_chapters_api_writing_novels__novel_id__chapters_get",
         "parameters": [
           {
@@ -2014,6 +2021,7 @@
         ]
       },
       "post": {
+        "description": "Create a chapter; return HTTP 404 for a missing novel or HTTP 409 if setup is required.",
         "operationId": "create_chapter_api_writing_novels__novel_id__chapters_post",
         "parameters": [
           {

@@ -129,10 +129,12 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
 
 
 def _client() -> AsyncClient:
+    """Create an HTTP client that drives the real application through ASGI."""
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
 def _deltas(body: str) -> list[str]:
+    """Collect text deltas from SSE data lines while ignoring other event payloads."""
     deltas: list[str] = []
     for line in body.splitlines():
         if line.startswith("data: "):
@@ -143,6 +145,7 @@ def _deltas(body: str) -> list[str]:
 
 
 async def _create_chapter(client: AsyncClient, body: str = "") -> str:
+    """Create a novel and chapter through the API, optionally saving an initial body."""
     novel = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
     chapter = await client.post(
         f"/api/writing/novels/{novel.json()['id']}/chapters", json={"title": "Ankunft"}
@@ -154,6 +157,7 @@ async def _create_chapter(client: AsyncClient, body: str = "") -> str:
 
 
 async def test_the_continuation_streams_the_provider_chunks() -> None:
+    """Verify continuation emits multiple SSE deltas and finishes with a done event."""
     async with _client() as client:
         chapter_id = await _create_chapter(client)
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
@@ -168,6 +172,7 @@ async def test_the_continuation_streams_the_provider_chunks() -> None:
 
 
 async def test_the_continuation_records_its_audit_row() -> None:
+    """Verify a successful continuation audits its novel, answer, tokens, and unknown cost."""
     async with _client() as client:
         chapter_id = await _create_chapter(client)
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
@@ -201,17 +206,21 @@ class _DyingProvider:
     so everything below the boundary runs the real code."""
 
     def describe(self) -> str:
+        """Identify the provider that fails after emitting partial text."""
         return "dying"
 
     def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield one partial text delta, then raise a provider failure."""
         yield Delta(text="Halb")
         raise RuntimeError("the provider died")
 
 
 async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure() -> None:
+    """Verify partial provider output is preserved with an error event and a failed audit."""
     app.dependency_overrides[get_provider] = lambda: _DyingProvider()
     try:
         async with _client() as client:
@@ -233,6 +242,7 @@ async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure() -
 
 
 async def test_another_users_chapter_cannot_be_continued() -> None:
+    """Verify continuation hides another user's chapter with HTTP 404."""
     await seed_user(OTHER_USER)
     async with Session() as session:
         novel_id, chapter_id = uuid4(), uuid4()
@@ -264,6 +274,7 @@ async def test_another_users_chapter_cannot_be_continued() -> None:
 
 
 def test_the_prompt_carries_the_chapter_tail() -> None:
+    """Verify the continuation prompt carries novel and chapter titles and existing prose."""
     prompt = continuity_prompt(
         novel_title="Der Nebel", chapter_title="Ankunft", body="Der Nebel kam von See."
     )

@@ -27,6 +27,7 @@ CHAPTER_BODY = (
 
 
 def _client() -> AsyncClient:
+    """Create an HTTP client that drives the real application through ASGI."""
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
@@ -70,12 +71,15 @@ class _GarbageProvider:
     so everything below the boundary runs the real code."""
 
     def describe(self) -> str:
+        """Identify the provider that emits an invalid extraction answer."""
         return "garbage"
 
     def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield non-JSON prose followed by DONE to exercise answer validation."""
         yield Delta(text="Der Nebel hob sich — aber kein JSON.")
         yield DONE
 
@@ -88,17 +92,21 @@ class _NoEntitiesProvider:
     code."""
 
     def describe(self) -> str:
+        """Identify the provider that reports no extracted entities."""
         return "empty"
 
     def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield a valid empty entity array followed by DONE."""
         yield Delta(text="[]")
         yield DONE
 
 
 async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
+    """Verify queued extraction commits suggestions, completed progress, and a successful audit."""
     async with _client() as client:
         novel_id, chapter_id = await _chapter(client)
         job_id = await _enqueue_extraction(client, novel_id, chapter_id)
@@ -156,6 +164,7 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
 async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verify invalid output exhausts retries without suggestions, entities, or audit rows."""
     import app.capabilities.knowledge.jobs as jobs
 
     monkeypatch.setattr(jobs, "get_provider", lambda: _GarbageProvider())
@@ -187,6 +196,7 @@ async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
 async def test_an_empty_entity_array_is_a_valid_answer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verify an empty provider array completes with zero suggestions."""
     # The prompt promises "an empty array is a valid answer": no entities is
     # a done job with an honest zero, not a failure and not a silent skip.
     import app.capabilities.knowledge.jobs as jobs
@@ -210,6 +220,7 @@ async def test_an_empty_entity_array_is_a_valid_answer(
 
 
 async def test_extraction_refuses_a_chapter_that_is_not_the_novels() -> None:
+    """Verify mismatched and unknown chapter IDs return HTTP 404 without enqueueing jobs."""
     async with _client() as client:
         novel_id, _ = await _chapter(client, title="Erster Roman")
         _, other_chapter_id = await _chapter(client, title="Zweiter Roman")
@@ -231,6 +242,7 @@ async def test_extraction_refuses_a_chapter_that_is_not_the_novels() -> None:
 
 
 async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> None:
+    """Verify entity parsing rejects invalid shapes, kinds, and names over the column limit."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_entities
 
     good = '[{"name": "Mira", "kind": "character", "description": "Die Erzählerin."}]'
@@ -303,6 +315,7 @@ async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
 
 
 async def test_another_users_job_is_not_visible() -> None:
+    """Verify the jobs API hides a job belonging to another user."""
     from app.kernel.jobs import enqueue
 
     await seed_user(OTHER_USER)

@@ -41,12 +41,14 @@ LLM_CALL_COLUMNS = {
 
 @pytest.mark.usefixtures("schema")
 def test_the_llm_calls_table_is_registered_with_exactly_these_columns() -> None:
+    """Verify model registration exposes exactly the audit contract's columns."""
     table = Base.metadata.tables[LlmCall.__tablename__]
     assert set(table.columns.keys()) == LLM_CALL_COLUMNS
 
 
 @pytest.mark.usefixtures("schema")
 def test_the_jobs_and_contracts_tables_are_still_registered() -> None:
+    """Verify registering audits preserves job and domain table metadata."""
     tables = Base.metadata.tables
     assert "jobs" in tables
     assert "novels" in tables
@@ -96,6 +98,7 @@ async def _the_row() -> LlmCall:
 
 @pytest.mark.usefixtures("a_user")
 async def test_an_over_long_prompt_is_clipped_and_the_row_is_marked_truncated() -> None:
+    """Verify prompt clipping sets the truncated flag without changing the response."""
     await _record(prompt_text="p" * (CAP + 1), response_text="[]")
 
     row = await _the_row()
@@ -106,6 +109,7 @@ async def test_an_over_long_prompt_is_clipped_and_the_row_is_marked_truncated() 
 
 @pytest.mark.usefixtures("a_user")
 async def test_an_over_long_answer_is_clipped_and_the_row_is_marked_truncated() -> None:
+    """Verify response clipping sets the truncated flag without changing the prompt."""
     await _record(prompt_text="PURPOSE: extract-entities", response_text="r" * (CAP + 1))
 
     row = await _the_row()
@@ -116,6 +120,7 @@ async def test_an_over_long_answer_is_clipped_and_the_row_is_marked_truncated() 
 
 @pytest.mark.usefixtures("a_user")
 async def test_over_long_prompt_and_answer_are_clipped_together() -> None:
+    """Verify both audit texts are capped when both exceed the limit."""
     await _record(prompt_text="p" * (CAP + 1), response_text="r" * (CAP + 1))
 
     row = await _the_row()
@@ -126,6 +131,7 @@ async def test_over_long_prompt_and_answer_are_clipped_together() -> None:
 
 @pytest.mark.usefixtures("a_user")
 async def test_exactly_the_cap_is_kept_whole_and_not_marked_truncated() -> None:
+    """Verify texts exactly at the cap remain intact without a truncated flag."""
     # 65 536 fits; 65 537 clips. The boundary is the contract, so both
     # columns sit exactly on it.
     await _record(prompt_text="p" * CAP, response_text="r" * CAP)
@@ -138,6 +144,7 @@ async def test_exactly_the_cap_is_kept_whole_and_not_marked_truncated() -> None:
 
 @pytest.mark.usefixtures("a_user")
 async def test_a_short_call_is_kept_whole_with_a_null_cost() -> None:
+    """Verify short texts remain intact and unknown cost stays NULL."""
     # D5, pinned: no catalog prices the call yet, and an unknown price is not
     # a free call — NULL, never 0.
     await _record(prompt_text="PURPOSE: extract-entities", response_text="[]")
@@ -151,6 +158,7 @@ async def test_a_short_call_is_kept_whole_with_a_null_cost() -> None:
 
 @pytest.mark.usefixtures("a_user")
 async def test_record_call_rides_the_callers_commit_and_never_commits_alone() -> None:
+    """Verify an audit becomes visible to other sessions only after the caller commits."""
     async with Session() as writer:
         await _record("PURPOSE: check-consistency", "[]", session=writer)
         # Nothing committed: another session cannot see the row yet, which is

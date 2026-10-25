@@ -39,6 +39,7 @@ UserDep = Annotated[UUID, Depends(current_user_id)]
 
 
 def _service(session: SessionDep, user_id: UserDep) -> WritingService:
+    """Build the writing service with the request session and current owner."""
     return WritingService(session, user_id)
 
 
@@ -133,11 +134,13 @@ async def _continuation_events(
 
 @router.get("/novels", response_model=list[NovelRead])
 async def list_novels(service: ServiceDep) -> list[NovelRead]:
+    """Return the current user's novels."""
     return [NovelRead.model_validate(novel) for novel in await service.list_novels()]
 
 
 @router.get("/novels/{novel_id}", response_model=NovelRead)
 async def get_novel(novel_id: UUID, service: ServiceDep) -> NovelRead:
+    """Return an owned novel; respond with HTTP 404 when it is not found."""
     try:
         novel = await service.get_novel(novel_id)
     except NotFoundError:
@@ -157,6 +160,7 @@ async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
 
 @router.get("/novels/{novel_id}/chapters", response_model=list[ChapterRead])
 async def list_chapters(novel_id: UUID, service: ServiceDep) -> list[ChapterRead]:
+    """List chapters of an owned novel; respond with HTTP 404 when it is not found."""
     try:
         chapters = await service.list_chapters(novel_id)
     except NotFoundError:
@@ -168,6 +172,7 @@ async def list_chapters(novel_id: UUID, service: ServiceDep) -> list[ChapterRead
 async def create_chapter(
     novel_id: UUID, payload: ChapterCreate, service: ServiceDep
 ) -> ChapterRead:
+    """Create a chapter; return HTTP 404 for a missing novel or HTTP 409 if setup is required."""
     try:
         chapter = await service.create_chapter(novel_id, payload.title)
     except NotFoundError:
@@ -179,6 +184,7 @@ async def create_chapter(
 
 @router.get("/chapters/{chapter_id}", response_model=ChapterRead)
 async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
+    """Return an owned chapter; respond with HTTP 404 when it is not found."""
     try:
         chapter = await service.get_chapter(chapter_id)
     except NotFoundError:
@@ -190,6 +196,7 @@ async def get_chapter(chapter_id: UUID, service: ServiceDep) -> ChapterRead:
 async def update_chapter(
     chapter_id: UUID, payload: ChapterUpdate, service: ServiceDep
 ) -> ChapterRead:
+    """Update an owned chapter; respond with HTTP 404 when it is not found."""
     try:
         chapter = await service.update_chapter(chapter_id, payload)
     except NotFoundError:
@@ -201,6 +208,7 @@ async def update_chapter(
 async def continue_chapter(
     chapter_id: UUID, service: ServiceDep, provider: ProviderDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
+    """Stream a continuation for an owned chapter; return HTTP 404 when it is not found."""
     try:
         prompt = await service.continuation_prompt(chapter_id)
     except NotFoundError:

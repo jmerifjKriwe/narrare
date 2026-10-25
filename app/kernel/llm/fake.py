@@ -50,6 +50,7 @@ def _purpose(prompt: str) -> str | None:
 
 
 def _first_source(prompt: str) -> str | None:
+    """Return the first source-marked line without its prefix, or None when absent."""
     for line in prompt.splitlines():
         if line.startswith(SOURCE_PREFIX):
             return line.removeprefix(SOURCE_PREFIX)
@@ -147,9 +148,11 @@ class FakeProvider:
     )
 
     def describe(self) -> str:
+        """Identify the deterministic fake provider for startup logging."""
         return "fake"
 
     def configuration_problems(self) -> list[str]:
+        """Report that the fake provider is ready without configuration."""
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
