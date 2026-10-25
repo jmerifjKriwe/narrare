@@ -8,6 +8,7 @@ import pytest
 from anyio import Event
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from app.api.main import app
 from app.capabilities.writing.prompts import continuity_prompt
@@ -25,6 +26,61 @@ from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
+
+
+@pytest.mark.parametrize("fail", [False, True])
+async def test_audit_failure_does_not_truncate_the_response(
+    fail: bool, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A real audit FK rejection still permits the final ASGI body to be sent."""
+    provider = StreamProbeProvider(fail=fail)
+    # This user does not exist: the audit's real database commit must fail.
+    response = FinalizingStreamingResponse(
+        _continuation_events(provider, "question", uuid4(), uuid4()),
+        media_type="text/event-stream",
+        headers={},
+    )
+    async with AsyncClient(transport=ASGITransport(app=response), base_url="http://test") as client:
+        result = await client.get("/")
+    # ASGITransport asserts that more_body=False was received before returning.
+    assert result.status_code == 200
+    assert '"delta": "partial"' in result.text
+    assert ("event: error" in result.text) is fail
+    assert ("event: done" in result.text) is not fail
+    failures = [
+        record for record in caplog.records if record.getMessage() == "continuation audit failed"
+    ]
+    assert len(failures) == 1
+    assert failures[0].exc_info is not None
+    assert isinstance(failures[0].exc_info[1], IntegrityError)
+
+
+@pytest.mark.parametrize("interruption", ["waiting", "send"])
+async def test_audit_failure_does_not_replace_a_disconnect(
+    interruption: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A rejected audit preserves cancellation or Starlette's ClientDisconnect."""
+    waiting = Event() if interruption == "waiting" else None
+    provider = StreamProbeProvider(waiting=waiting)
+    response = FinalizingStreamingResponse(
+        _continuation_events(provider, "question", uuid4(), uuid4()),
+        media_type="text/event-stream",
+        headers={},
+    )
+    # The probe asserts ClientDisconnect on send failure; receive cancellation
+    # must return normally after Starlette's task group closes.
+    await interrupt_response(
+        response,
+        spec_version="2.0" if waiting else "2.4",
+        frame="" if waiting else "event: done",
+        disconnected=waiting,
+    )
+    failures = [
+        record for record in caplog.records if record.getMessage() == "continuation audit failed"
+    ]
+    assert len(failures) == 1
+    assert failures[0].exc_info is not None
+    assert isinstance(failures[0].exc_info[1], IntegrityError)
 
 
 @pytest.mark.parametrize(

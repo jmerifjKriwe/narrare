@@ -114,18 +114,21 @@ async def _continuation_events(
             error = None
             yield "event: done\ndata: {}\n\n"
     finally:
-        # Starlette cancels the stream on disconnect; the audit must still commit.
+        # A disconnect must not cancel the audit attempt.
         with CancelScope(shield=True):
-            await _audit(
-                user_id=user_id,
-                novel_id=novel_id,
-                prompt=prompt,
-                answer="".join(pieces),
-                usage=usage,
-                latency_ms=round((monotonic() - started) * 1000),
-                status=status,
-                error=error,
-            )
+            try:
+                await _audit(
+                    user_id=user_id,
+                    novel_id=novel_id,
+                    prompt=prompt,
+                    answer="".join(pieces),
+                    usage=usage,
+                    latency_ms=round((monotonic() - started) * 1000),
+                    status=status,
+                    error=error,
+                )
+            except Exception:
+                logger.exception("continuation audit failed")
 
 
 @router.get("/novels", response_model=list[NovelRead])
