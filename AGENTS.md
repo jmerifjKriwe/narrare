@@ -10,8 +10,10 @@ rules.
 
 ## Rules
 
-- One capability is one folder under `app/capabilities/<name>/`. A capability never
-  imports another capability; shared domain lives in `app/kernel/`.
+- One capability is one folder under `app/capabilities/<name>/`, including its
+  frontend under `web/`; routes are generated, so a new one needs `just generate`.
+  A capability never imports another capability; shared domain lives in
+  `app/kernel/`, shared UI in the shell.
 - A capability is done only with a green E2E that drives the real UI, the real backend
   and the real database. The only permitted fake is the LLM provider at its boundary.
 - No side effect in the request path beyond the request's own transaction.
@@ -22,6 +24,8 @@ rules.
 - Never add a rule, registry, check script, hook, required field or mandatory document.
   Report `NEEDS-APPROVAL` with the failure it prevents, the effort it creates per
   change, and the cheaper alternative.
+- A boundary can be reopened. The spec's §8 names the procedure: three statements
+  and the product owner's explicit approval.
 
 ## Verify
 
