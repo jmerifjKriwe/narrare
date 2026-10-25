@@ -15,6 +15,7 @@ from sqlalchemy import text
 from app.api.main import app
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -74,8 +75,9 @@ class _GarbageProvider:
     def configuration_problems(self) -> list[str]:
         return []
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
-        yield "Der Nebel hob sich — aber kein JSON."
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        yield Delta(text="Der Nebel hob sich — aber kein JSON.")
+        yield DONE
 
 
 class _NoEntitiesProvider:
@@ -91,8 +93,9 @@ class _NoEntitiesProvider:
     def configuration_problems(self) -> list[str]:
         return []
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
-        yield "[]"
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        yield Delta(text="[]")
+        yield DONE
 
 
 async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
@@ -129,6 +132,26 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
         ]
         assert all(suggestion["status"] == "pending" for suggestion in suggestions)
 
+        # The audit row (plan §3.4): the call itself is recorded on the
+        # handler's own commit — task, novel, tokens, status, NULL cost (D5).
+        async with Session() as session:
+            row = (
+                await session.execute(
+                    text(
+                        "SELECT task_key, novel_id, provider_kind, model, input_tokens,"
+                        " output_tokens, status, cost_usd FROM llm_calls"
+                    )
+                )
+            ).one()
+        assert row.task_key == "knowledge.extract-entities"
+        assert str(row.novel_id) == novel_id
+        assert row.provider_kind == "fake"
+        assert row.model == "fake"
+        assert row.input_tokens > 0
+        assert row.output_tokens > 0
+        assert row.status == "ok"
+        assert row.cost_usd is None
+
 
 async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
     monkeypatch: pytest.MonkeyPatch,
@@ -155,8 +178,10 @@ async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
     async with Session() as session:
         suggestions = await session.scalar(text("SELECT count(*) FROM entity_suggestions"))
         entities = await session.scalar(text("SELECT count(*) FROM entities"))
+        calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert suggestions == 0
     assert entities == 0
+    assert calls == 0  # a failed job writes no audit row (D3)
 
 
 async def test_an_empty_entity_array_is_a_valid_answer(

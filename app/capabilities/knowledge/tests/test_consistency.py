@@ -20,6 +20,7 @@ from app.api.main import app
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -112,8 +113,9 @@ class _GarbageProvider:
     def configuration_problems(self) -> list[str]:
         return []
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
-        yield "Die Kapitel stimmen überein — aber kein JSON."
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        yield Delta(text="Die Kapitel stimmen überein — aber kein JSON.")
+        yield DONE
 
 
 async def test_the_prompts_declare_their_purpose() -> None:
@@ -231,6 +233,26 @@ async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
         assert finding["detail"] == '"Mira ist 34" vs. "Mira ist 37"'
         assert finding["status"] == "pending"
 
+        # The audit row (plan §3.4): the call itself is recorded on the
+        # handler's own commit — task, novel, tokens, status, NULL cost (D5).
+        async with Session() as session:
+            row = (
+                await session.execute(
+                    text(
+                        "SELECT task_key, novel_id, provider_kind, model, input_tokens,"
+                        " output_tokens, status, cost_usd FROM llm_calls"
+                    )
+                )
+            ).one()
+        assert row.task_key == "knowledge.check-consistency"
+        assert str(row.novel_id) == novel_id
+        assert row.provider_kind == "fake"
+        assert row.model == "fake"
+        assert row.input_tokens > 0
+        assert row.output_tokens > 0
+        assert row.status == "ok"
+        assert row.cost_usd is None
+
 
 async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:
     async with _client() as client:
@@ -285,7 +307,9 @@ async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
 
     async with Session() as session:
         findings = await session.scalar(text("SELECT count(*) FROM consistency_findings"))
+        calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert findings == 0
+    assert calls == 0  # a failed job writes no audit row (D3)
 
 
 async def test_a_rerun_stacks_nothing_and_a_consumed_finding_files_fresh() -> None:
