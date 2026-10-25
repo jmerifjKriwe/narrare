@@ -6,6 +6,7 @@ fails at startup instead of with the first prompt.
 """
 
 from collections.abc import AsyncIterator  # noqa: TC003
+from dataclasses import dataclass
 from typing import Protocol
 
 SOURCE_PREFIX = "SOURCE: "
@@ -23,6 +24,62 @@ is: prompt builders and providers must agree on it and live in different
 trees."""
 
 
+@dataclass(frozen=True)
+class Message:
+    """One turn of the conversation. The builders send a single user turn
+    today; the shape leaves room for a system turn without another swap."""
+
+    role: str  # "system" | "user"
+    content: str
+
+
+@dataclass(frozen=True)
+class CompletionRequest:
+    """What a consumer asks of the provider: the conversation and its limits.
+
+    ``temperature``, ``max_tokens`` and ``response_schema`` travel to a real
+    endpoint only when set — a local server that rejects an unknown field
+    still receives the request a plain prompt always sent.
+    """
+
+    messages: tuple[Message, ...]
+    temperature: float | None = None
+    max_tokens: int | None = None
+    response_schema: dict[str, object] | None = None
+
+    @classmethod
+    def user(cls, prompt: str) -> CompletionRequest:
+        """The one-turn request every consumer builds today."""
+        return cls(messages=(Message(role="user", content=prompt),))
+
+
+@dataclass(frozen=True)
+class Delta:
+    """One piece of the answer, in order."""
+
+    text: str
+
+
+@dataclass(frozen=True)
+class Usage:
+    """The token counts the provider reports for the call."""
+
+    input_tokens: int
+    output_tokens: int
+
+
+@dataclass(frozen=True)
+class Done:
+    """The terminal event: nothing follows it, whatever the wire said."""
+
+
+DONE = Done()
+"""The singleton terminal event, so ``is DONE`` identifies it."""
+
+
+type CompletionEvent = Delta | Usage | Done
+
+
 class TextProvider(Protocol):
     """What every entry offers, real or fake."""
 
@@ -34,6 +91,6 @@ class TextProvider(Protocol):
         """What this entry needs but does not have; empty when it is ready."""
         ...
 
-    def stream(self, prompt: str) -> AsyncIterator[str]:
-        """Yield the completion in pieces, in order."""
+    def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Yield the completion's events: Delta pieces in order, one Usage, then DONE."""
         ...

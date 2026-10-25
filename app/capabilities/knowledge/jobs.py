@@ -28,6 +28,7 @@ from app.capabilities.knowledge.repository import (
 from app.kernel.contracts.models import Chapter, Novel
 from app.kernel.jobs.models import Job
 from app.kernel.llm import get_provider
+from app.kernel.llm.contract import CompletionRequest, Delta
 
 if TYPE_CHECKING:
     from app.kernel.jobs.worker import JobHandler
@@ -182,8 +183,9 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
 
     prompt = extraction_prompt(chapter_title=chapter.title, body=chapter.body)
     pieces: list[str] = []
-    async for delta in get_provider().stream(prompt):
-        pieces.append(delta)
+    async for event in get_provider().stream(CompletionRequest.user(prompt)):
+        if isinstance(event, Delta):
+            pieces.append(event.text)
     entities = parse_entities("".join(pieces))
 
     suggestions = EntitySuggestionRepository(session, job.user_id)
@@ -238,8 +240,9 @@ async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object
         chapters=[(chapter.title, chapter.body) for chapter in chapters],
     )
     pieces: list[str] = []
-    async for delta in get_provider().stream(prompt):
-        pieces.append(delta)
+    async for event in get_provider().stream(CompletionRequest.user(prompt)):
+        if isinstance(event, Delta):
+            pieces.append(event.text)
     findings = parse_findings("".join(pieces))
 
     repository = ConsistencyFindingRepository(session, job.user_id)

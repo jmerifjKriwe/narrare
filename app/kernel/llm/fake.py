@@ -10,7 +10,15 @@ import json
 import re
 from collections.abc import AsyncIterator  # noqa: TC003
 
-from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX
+from app.kernel.llm.contract import (
+    DONE,
+    PURPOSE_PREFIX,
+    SOURCE_PREFIX,
+    CompletionEvent,
+    CompletionRequest,
+    Delta,
+    Usage,
+)
 
 PURPOSE_EXTRACT = "extract-entities"
 PURPOSE_CHECK = "check-consistency"
@@ -144,12 +152,16 @@ class FakeProvider:
     def configuration_problems(self) -> list[str]:
         return []
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
         """Yield deterministic JSON for recognized extraction or check purposes.
 
         Other prompts yield the first source line in pieces, or CHUNKS when
         that line is absent or empty. JSON answers arrive as a single piece.
+        Every shape ends with the Usage D6 pins, then DONE.
         """
+        prompt = "\n".join(
+            message.content for message in request.messages if message.role == "user"
+        )
         purpose = _purpose(prompt)
         passages = _passages(prompt)
         if purpose == PURPOSE_EXTRACT:
@@ -161,11 +173,17 @@ class FakeProvider:
         if answer is not None:
             # One piece is still a stream: the consumer sees the same protocol.
             await asyncio.sleep(0)
-            yield answer
+            yield Delta(text=answer)
+            yield Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer) // 4)
+            yield DONE
             return
         source = _first_source(prompt)
-        for chunk in _pieces(source) if source else self.CHUNKS:
+        chunks = _pieces(source) if source else self.CHUNKS
+        for chunk in chunks:
             # Yield to the loop between pieces: the server flushes each event
             # instead of collapsing the whole completion into one write.
             await asyncio.sleep(0)
-            yield chunk
+            yield Delta(text=chunk)
+        answer_text = "".join(chunks)
+        yield Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer_text) // 4)
+        yield DONE

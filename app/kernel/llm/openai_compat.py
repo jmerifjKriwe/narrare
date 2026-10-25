@@ -16,6 +16,7 @@ from os import environ
 
 import httpx
 
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.vendor import needs_api_key
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
@@ -23,7 +24,9 @@ DEFAULT_BASE_URL = "https://api.openai.com/v1"
 TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
 """Reading waits: a completion streams for as long as the model takes."""
 
-DONE = "[DONE]"
+DONE_MARKER = "[DONE]"
+"""The wire's own terminal line. Local servers omit it, so the protocol's DONE
+does not depend on it."""
 
 
 @dataclass(frozen=True)
@@ -72,15 +75,29 @@ class OpenAICompatibleProvider:
     def configuration_problems(self) -> list[str]:
         return self.settings.problems()
 
-    async def stream(self, prompt: str) -> AsyncIterator[str]:
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
         headers = (
             {"Authorization": f"Bearer {self.settings.api_key}"} if self.settings.api_key else {}
         )
-        body = {
+        body: dict[str, object] = {
             "model": self.settings.model,
             "stream": True,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": message.role, "content": message.content} for message in request.messages
+            ],
+            # Always: without it the stream carries no token counts, and the
+            # audit (plan §3.4) would have nothing to record.
+            "stream_options": {"include_usage": True},
         }
+        if request.temperature is not None:
+            body["temperature"] = request.temperature
+        if request.max_tokens is not None:
+            body["max_tokens"] = request.max_tokens
+        if request.response_schema is not None:
+            body["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "answer", "schema": request.response_schema},
+            }
         async with (
             httpx.AsyncClient(timeout=TIMEOUT) as client,
             client.stream(
@@ -93,24 +110,37 @@ class OpenAICompatibleProvider:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if _is_done(line):
-                    return
-                delta = _delta(line)
-                if delta is not None:
-                    yield delta
+                    break
+                event = _event(line)
+                if event is not None:
+                    yield event
+        # Exactly one terminal event, whether or not the server sent its own
+        # [DONE] line — local servers close the stream without one.
+        yield DONE
 
 
 def _is_done(line: str) -> bool:
-    return line.startswith("data: ") and line[6:].strip() == DONE
+    return line.startswith("data: ") and line[6:].strip() == DONE_MARKER
 
 
-def _delta(line: str) -> str | None:
-    """The text one SSE line carries, or None when it carries none.
+def _event(line: str) -> CompletionEvent | None:
+    """The event one SSE line carries, or None when it carries none.
 
     Keep-alive comments, the role frame and the finish frame are data lines
-    without content; only text reaches the caller.
+    without content; only text and usage reach the caller.
     """
     if not line.startswith("data: "):
         return None
-    choice = json.loads(line[6:].strip())["choices"][0]["delta"]
-    content = choice.get("content")
-    return content if isinstance(content, str) else None
+    frame = json.loads(line[6:].strip())
+    usage = frame.get("usage")
+    if usage:
+        prompt_tokens = usage.get("prompt_tokens")
+        completion_tokens = usage.get("completion_tokens")
+        if isinstance(prompt_tokens, int) and isinstance(completion_tokens, int):
+            return Usage(input_tokens=prompt_tokens, output_tokens=completion_tokens)
+    choices = frame.get("choices")
+    if choices:
+        content = choices[0].get("delta", {}).get("content")
+        if isinstance(content, str):
+            return Delta(text=content)
+    return None

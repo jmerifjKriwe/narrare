@@ -21,6 +21,7 @@ from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.llm import TextProvider, get_provider
+from app.kernel.llm.contract import CompletionRequest, Delta
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
 
@@ -47,8 +48,9 @@ async def _continuation_events(provider: TextProvider, prompt: str) -> AsyncIter
     like a finished continuation.
     """
     try:
-        async for delta in provider.stream(prompt):
-            yield f"data: {json.dumps({'delta': delta})}\n\n"
+        async for event in provider.stream(CompletionRequest.user(prompt)):
+            if isinstance(event, Delta):
+                yield f"data: {json.dumps({'delta': event.text})}\n\n"
     except Exception:
         logger.exception("continuation stream failed")
         yield "event: error\ndata: {}\n\n"

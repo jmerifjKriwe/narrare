@@ -16,6 +16,7 @@ from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm import TextProvider, get_provider
+from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -57,8 +58,9 @@ async def _events(
     ]
     yield f"data: {json.dumps({'sources': sources})}\n\n"
     try:
-        async for delta in provider.stream(prompt):
-            yield f"data: {json.dumps({'delta': delta})}\n\n"
+        async for event in provider.stream(CompletionRequest.user(prompt)):
+            if isinstance(event, Delta):
+                yield f"data: {json.dumps({'delta': event.text})}\n\n"
     except Exception:
         logger.exception("chat stream failed")
         yield "event: error\ndata: {}\n\n"

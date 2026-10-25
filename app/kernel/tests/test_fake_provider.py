@@ -4,20 +4,24 @@ The fake is a catalog entry, not a test branch, so its branching is contract:
 a prompt that declares its purpose in a marked line gets the answer that
 purpose contracts, derived from the marked passages — and an unmarked prompt
 keeps the chat behavior byte-identical, which the chat suite proves end to
-end. These tests pin the branching itself, at the provider boundary.
+end. These tests pin the branching itself, at the provider boundary, under
+the ``CompletionRequest`` shape every consumer builds.
 """
 
 import json
 
 from app.kernel.llm import FakeProvider
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
+
+
+async def _events(prompt: str) -> list[CompletionEvent]:
+    """Every event of one completion, in order — the protocol a consumer sees."""
+    return [event async for event in FakeProvider().stream(CompletionRequest.user(prompt))]
 
 
 async def _answer(prompt: str) -> str:
-    """The whole completion, joined — what a consumer accumulates on the wire."""
-    pieces: list[str] = []
-    async for piece in FakeProvider().stream(prompt):
-        pieces.append(piece)
-    return "".join(pieces)
+    """The whole completion's text, joined — what a consumer accumulates on the wire."""
+    return "".join(event.text for event in await _events(prompt) if isinstance(event, Delta))
 
 
 async def test_an_extraction_prompt_proposes_entities_from_its_passage() -> None:
@@ -124,3 +128,30 @@ async def test_the_json_phrase_no_longer_decides_the_answer_shape() -> None:
     answer = await _answer(prompt)
 
     assert answer == "Mira betrat das Haus."  # the source-quote default, not JSON
+
+
+async def test_every_shape_yields_usage_then_done_last() -> None:
+    # The stream's terminal contract: the last event is the DONE singleton,
+    # preceded by the Usage the audit records — in every answer shape.
+    shapes = (
+        "PURPOSE: extract-entities\n\nText:\nSOURCE: Mira kam.\n",  # JSON shape
+        "PURPOSE: check-consistency\n\nText:\nSOURCE: Mira ist 34.\n",  # JSON shape
+        "Erzähl weiter.",  # the fixed continuation
+        "Sources:\nSOURCE: Der Leuchtturm war dunkel.\n",  # the source quote
+    )
+    for prompt in shapes:
+        events = await _events(prompt)
+        assert events[-1] is DONE
+        assert isinstance(events[-2], Usage)
+
+
+async def test_usage_is_a_quarter_of_the_prompt_and_answer_lengths() -> None:
+    # D6, pinned: deterministic counts — a quarter of the joined user-message
+    # contents and of the answer, so WP2 can replace them with the profile's
+    # chars_per_token and nothing else moves.
+    prompt = "Sources:\nSOURCE: Der Leuchtturm war seit Jahren dunkel.\n"
+    events = await _events(prompt)
+    answer = "".join(event.text for event in events if isinstance(event, Delta))
+    usage = next(event for event in events if isinstance(event, Usage))
+
+    assert usage == Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer) // 4)
