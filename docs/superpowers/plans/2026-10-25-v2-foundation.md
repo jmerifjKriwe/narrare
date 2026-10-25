@@ -49,7 +49,7 @@ announcer, axe assertions and keyboard-only E2E flows.
 
 **Not built yet:** provider profiles and task assignment; a model catalog; prompt
 overrides; demo content; Markdown storage and export; entity relations; entity types
-beyond `character|place|thing`; `LlmCall` audit; a context budget; hybrid search;
+beyond `character|place|thing`; a context budget; hybrid search;
 a settings surface; the ⌘K palette; chapter and novel management (rename, delete,
 reorder, a chapter's own title); document deletion and document metadata.
 
