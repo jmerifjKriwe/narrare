@@ -124,8 +124,8 @@ class _GarbageProvider:
         yield DONE
 
 
-async def test_the_prompts_declare_their_purpose() -> None:
-    """Verify purpose markers, source passages, and accepted canon reach the prompts."""
+async def test_the_prompts_declare_their_purpose_and_answer_shape() -> None:
+    """Verify purpose, object-root answers, source passages, and accepted canon."""
     from app.capabilities.knowledge.prompts import consistency_prompt, extraction_prompt
     from app.kernel.llm import PURPOSE_PREFIX
 
@@ -138,7 +138,9 @@ async def test_the_prompts_declare_their_purpose() -> None:
         chapters=[("Ankunft", "Mira ist 34."), ("Später", "Mira ist 37.")],
     )
     assert check.startswith(f"{PURPOSE_PREFIX}check-consistency\n")
-    assert "JSON array" in check  # the answer shape is contracted in prose
+    for prompt in (extraction, check):
+        assert 'Answer with a JSON object containing an "items" array' in prompt
+        assert '{"items": []}' in prompt
     assert "Mira (character)" in check  # the accepted canon grounds the check
     assert "Chapter: Ankunft\nText:\nSOURCE: Mira ist 34." in check
     assert "Chapter: Später\nText:\nSOURCE: Mira ist 37." in check
