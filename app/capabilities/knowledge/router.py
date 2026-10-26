@@ -192,6 +192,11 @@ async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> AcceptR
         raise HTTPException(status_code=404, detail="suggestion not found") from None
     except AlreadyReviewedError:
         raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
+    except RelationExistsError:
+        # The edge insert's race backstop: a duplicate cannot survive the
+        # dedupe, but if the unique constraint catches one anyway, the answer
+        # is add_relation's — the conflict, not a crash.
+        raise HTTPException(status_code=409, detail="this relation exists already") from None
     except EmbeddingMismatchError as error:
         # Birth embeds (D5); a model that answers at another width than the
         # entity corpus is the upload's refusal, same code, same fix.

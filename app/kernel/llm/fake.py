@@ -28,9 +28,12 @@ PURPOSE_CHECK = "check-consistency"
 # not know gets the default prose, whose shape the handler's parse refuses
 # loudly — a drifted kind fails at its first job instead of silently.
 
-PROPOSED_ENTITIES = 3
-# The type vocabulary is the extraction contract's own, imported from the
-# kernel contracts (knowledge's prompt asks for exactly these); the
+PROPOSED_LIMIT = 8
+# The answer's ceiling is the vocabulary it cycles: an extraction proposes
+# min(distinct candidate names, 8) entities — one per type, in the
+# vocabulary's order — so a chapter naming eight candidates yields the whole
+# set. The type vocabulary is the extraction contract's own, imported from
+# the kernel contracts (knowledge's prompt asks for exactly these); the
 # handler's parse refuses anything else, so drift here fails loudly at the
 # first extraction instead of silently.
 
@@ -88,13 +91,14 @@ def _entities_answer(passage: str) -> str:
     """Deterministic extraction: the passage's capitalized words as entities.
 
     Names are derived from the prompt, so a test steers the fake with the
-    chapter text alone; types cycle the extraction vocabulary in order of
-    appearance, and each entity proposes one relation to its neighbor —
-    entity i proposes ``related_to`` to entity i+1, the last wrapping to the
-    first, so an answer with at least two entities names its links and a
-    lone entity proposes none.
+    chapter text alone: every distinct capitalized name the passage offers,
+    to the vocabulary's ceiling of eight. Types cycle the extraction
+    vocabulary in order of appearance, and each entity proposes one relation
+    to its neighbor — entity i proposes ``related_to`` to entity i+1, the
+    last wrapping to the first, so an answer with at least two entities
+    names its links and a lone entity proposes none.
     """
-    names = list(dict.fromkeys(CAPITALIZED.findall(passage)))[:PROPOSED_ENTITIES]
+    names = list(dict.fromkeys(CAPITALIZED.findall(passage)))[:PROPOSED_LIMIT]
     # The object root is the structured-outputs contract: an array is not a
     # legal root, so the ask and the answer share the {"items": [...]} shape.
     return json.dumps(

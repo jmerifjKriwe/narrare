@@ -213,17 +213,32 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
         # at the top of that scale, never outside it.
         assert 0 <= done["progress"] <= 100
         assert done["progress"] == 100
-        assert done["result"] == {"suggestions": 3, "truncated": False}
+        assert done["result"] == {"suggestions": 7, "truncated": False}
         assert done["error"] is None
 
         pending = await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")
         assert pending.status_code == 200
         suggestions = pending.json()
-        assert [suggestion["name"] for suggestion in suggestions] == ["Mira", "Haus", "See"]
+        # The fake derives every distinct capitalized name the passage
+        # offers, to the vocabulary's ceiling of eight — seven here, one
+        # per type in the vocabulary's order.
+        assert [suggestion["name"] for suggestion in suggestions] == [
+            "Mira",
+            "Haus",
+            "See",
+            "Der",
+            "Leuchtturm",
+            "Nebel",
+            "Dorf",
+        ]
         assert [suggestion["type"] for suggestion in suggestions] == [
             "character",
             "location",
             "faction",
+            "object",
+            "system",
+            "timeline",
+            "event",
         ]
         # the fake's derivation: entity i proposes related_to to entity (i+1),
         # the last wrapping to the first — deterministic off the same names.
@@ -231,6 +246,10 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
         assert [suggestion["relations"] for suggestion in suggestions] == [
             [{"target_name": "Haus", "relation_type": "related_to"}],
             [{"target_name": "See", "relation_type": "related_to"}],
+            [{"target_name": "Der", "relation_type": "related_to"}],
+            [{"target_name": "Leuchtturm", "relation_type": "related_to"}],
+            [{"target_name": "Nebel", "relation_type": "related_to"}],
+            [{"target_name": "Dorf", "relation_type": "related_to"}],
             [{"target_name": "Mira", "relation_type": "related_to"}],
         ]
         assert all(suggestion["status"] == "pending" for suggestion in suggestions)
@@ -472,7 +491,15 @@ async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
         assert await _run_lane_once() is True
 
         first = (await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")).json()
-        assert [row["name"] for row in first] == ["Mira", "Haus", "See"]
+        assert [row["name"] for row in first] == [
+            "Mira",
+            "Haus",
+            "See",
+            "Der",
+            "Leuchtturm",
+            "Nebel",
+            "Dorf",
+        ]
 
         # The asymmetry's proof: accept consumes Mira's row, so the re-run
         # files her fresh — a new pending row, not the consumed one back.
@@ -482,11 +509,13 @@ async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
         await _enqueue_extraction(client, novel_id, chapter_id)
         assert await _run_lane_once() is True
 
-        # The fresh Mira row files after the two that never left, so the
-        # queue's created_at order answers Haus, See first — the pin is the
-        # set, not the sequence.
+        # The fresh Mira row files after the seven that were pending (the
+        # six that never left plus her fresh one), so the queue's created_at
+        # order answers the six first — the pin is the set, not the sequence.
         after = (await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")).json()
-        assert sorted(row["name"] for row in after) == ["Haus", "Mira", "See"]
+        assert sorted(row["name"] for row in after) == sorted(
+            ["Mira", "Haus", "See", "Der", "Leuchtturm", "Nebel", "Dorf"]
+        )
         assert first[0]["id"] not in [row["id"] for row in after]  # fresh, not resurrected
 
 
@@ -653,4 +682,59 @@ async def test_accept_order_decides_a_pending_target() -> None:
         ).json()
         assert [(edge["to_entity_id"], edge["relation_type"]) for edge in edges] == [
             (str(body["entity"]["id"]), "bewohnt")
+        ]
+
+
+async def test_a_target_deleted_in_the_race_skips_with_its_note(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The edge insert's race backstop: a target deleted between the
+    candidate read and the write fails the edge's foreign key — that one
+    proposal skips with its note (absence semantics, D8), while the entity
+    and the other edges still land. The savepoint keeps the transaction
+    alive, so one vanished target costs one skip, not the accept."""
+    novel_id, [mira, haus] = await _seed_canon(("Mira", []), ("Haus", []))
+    suggestion = await _pending_proposal(
+        novel_id,
+        "Leuchtturm",
+        [
+            {"target": "Mira", "type": "mag"},
+            {"target": "Haus", "type": "bewohnt"},
+        ],
+    )
+
+    original_list = EntityRepository.list_for_novel
+
+    async def racing_list(
+        self: EntityRepository,
+        listed_novel_id: UUID,
+        *,
+        type: str | None = None,
+        tag: str | None = None,
+        q: str | None = None,
+    ) -> list[Entity]:
+        rows = await original_list(self, listed_novel_id, type=type, tag=tag, q=q)
+        # The concurrent writer deletes Haus after this request's read —
+        # the same window a merge or a delete racing the accept opens.
+        async with Session() as other:
+            victim = await other.get(Entity, haus.id)
+            if victim is not None:
+                await other.delete(victim)
+                await other.commit()
+        return list(rows)
+
+    monkeypatch.setattr(EntityRepository, "list_for_novel", racing_list)
+    async with _client() as client:
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion.id}/accept")
+        assert accepted.status_code == 200  # not a 500: the race is an answer
+        body = accepted.json()
+        assert body["entity"]["name"] == "Leuchtturm"  # the entity still lands
+        assert body["skipped_relations"] == [{"target_name": "Haus", "relation_type": "bewohnt"}]
+
+        # the proposal whose target survived placed anyway
+        edges = (
+            await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
+        ).json()
+        assert [(edge["to_entity_id"], edge["relation_type"]) for edge in edges] == [
+            (str(mira.id), "mag")
         ]

@@ -80,6 +80,35 @@ async def test_a_lone_entity_proposes_no_relation() -> None:
     }
 
 
+async def test_exactly_two_entities_chain_one_relation() -> None:
+    """Two derived entities: one relation, the first proposing to the second,
+    the second wrapping back to the first."""
+    prompt = (
+        "PURPOSE: extract-entities\n\n"
+        "Extract the entities of the chapter.\n\n"
+        "Chapter: Ankunft\n"
+        "Text:\n"
+        "SOURCE: Mira und Haus schwiegen.\n"
+    )
+
+    assert json.loads(await _answer(prompt)) == {
+        "items": [
+            {
+                "name": "Mira",
+                "type": "character",
+                "description": "Mira appears in the chapter.",
+                "relations": [{"target": "Haus", "type": "related_to"}],
+            },
+            {
+                "name": "Haus",
+                "type": "location",
+                "description": "Haus appears in the chapter.",
+                "relations": [{"target": "Mira", "type": "related_to"}],
+            },
+        ]
+    }
+
+
 async def test_a_multiline_passage_is_read_whole() -> None:
     """Verify extraction reads later lines of a source passage."""
     # A chapter body spans lines; the passage runs from its marker to the next

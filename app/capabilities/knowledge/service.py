@@ -169,10 +169,12 @@ def _union_labels(
     return union
 
 
-# The SQLSTATE of a unique violation. The create backstop reads it off the
-# driver's original error to tell the two races apart: a concurrent create of
-# the same edge is the duplicate's verdict, a foreign key's is the absence's.
+# The SQLSTATEs the create backstops read off the driver's original error to
+# tell the races apart: a concurrent create of the same edge is the unique
+# violation's duplicate verdict, a row deleted or merged away mid-race fails
+# the foreign key and is the absence's.
 UNIQUE_VIOLATION = "23505"
+FOREIGN_KEY_VIOLATION = "23503"
 
 
 def _validate_relation_type(relation_type: str | None) -> str:
@@ -375,6 +377,15 @@ class KnowledgeService:
         proposal's own words. The type goes through the manual path's
         validation, so the stored form is the same stripped identity an edge
         added by hand would carry.
+
+        Each insert rides its own savepoint: the candidate read above is
+        unlocked, so a target merged or deleted between that read and the
+        write fails the edge's foreign key. The savepoint keeps the
+        transaction — the entity, the edges already placed — alive, and the
+        proposal skips with its note like any other target the novel cannot
+        resolve. A unique violation cannot survive the dedupe; if the
+        constraint's race catches one anyway, the answer is add_relation's
+        duplicate refusal.
         """
         candidates = await self.entities.list_for_novel(suggestion.novel_id)
         by_name: dict[str, list[Entity]] = {}
@@ -393,8 +404,21 @@ class KnowledgeService:
                 skipped.append(SkippedRelation(target_name, relation_type))
                 continue
             target = next(iter(matches.values()))
-            if await self.relations.edge(entity.id, target.id, relation_type) is None:
-                await self.relations.create(entity.id, target.id, relation_type, None)
+            if await self.relations.edge(entity.id, target.id, relation_type) is not None:
+                continue
+            try:
+                async with self.session.begin_nested():
+                    await self.relations.create(entity.id, target.id, relation_type, None)
+            except IntegrityError as error:
+                sqlstate = getattr(error.orig, "sqlstate", None)
+                if sqlstate == FOREIGN_KEY_VIOLATION:
+                    # The target vanished mid-race: the scoped absence's own
+                    # semantics — one skip, and the next proposal goes on.
+                    skipped.append(SkippedRelation(target_name, relation_type))
+                    continue
+                if sqlstate == UNIQUE_VIOLATION:
+                    raise RelationExistsError from None
+                raise
         return skipped
 
     async def discard_suggestion(self, suggestion_id: UUID) -> EntitySuggestion:

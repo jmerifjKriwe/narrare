@@ -49,7 +49,7 @@ async def _pending_suggestion(client: AsyncClient) -> dict[str, object]:
 
     listed = await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")
     suggestions = listed.json()
-    assert len(suggestions) == 3
+    assert len(suggestions) == 7
     return suggestions[0]
 
 
@@ -76,7 +76,7 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
         still_pending = (
             await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=pending")
         ).json()
-        assert len(still_pending) == 2  # the unreviewed two remain, the accepted one is gone
+        assert len(still_pending) == 6  # the unreviewed six remain, the accepted one is gone
         assert suggestion["id"] not in [row["id"] for row in still_pending]
         consumed = (
             await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=accepted")

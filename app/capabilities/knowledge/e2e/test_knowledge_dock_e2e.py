@@ -51,9 +51,10 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 API = "http://127.0.0.1:8000"
 
 # Capitalized words steer the fake provider's extraction (it derives names
-# from them): Mira, Haus and See become the three suggestions, types cycling
-# the extraction vocabulary — character, location, faction — in order of
-# appearance. Draußen is fourth, beyond the fake's ceiling of three.
+# from them): Mira, Haus, See, Draußen and Leuchtturm become the five
+# suggestions, types cycling the extraction vocabulary — character, location,
+# faction, object, system — in order of appearance. The fake proposes up to
+# eight, one per type; this chapter names five.
 CHAPTER_BODY = "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."
 
 # The planted contradictions: two chapters give Mira and Tom two different
@@ -187,13 +188,13 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     # The row is the answer (spec §9 D10): whatever the first poll sees —
     # queued, running, done — it settles done with the result count.
     expect(status).to_have_attribute("data-job-status", "done")
-    expect(status).to_contain_text("3")
+    expect(status).to_contain_text("5")
     # The settled job hands the trigger back for the next run.
     expect(extract).to_be_enabled()
 
     # The finished queue arrives as proposal cards: one per proposed entity.
     cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
 
     # Accept files the entity: Mira appears in the list beside the editor.
     cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True).click()
@@ -207,6 +208,13 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     # A second accept, the queue's other spent row: Haus is filed too.
     cards.filter(has_text="Haus").get_by_role("button", name="Übernehmen", exact=True).click()
     expect(entities).to_contain_text("Haus")
+
+    # The chapter's other two candidates meet the same two decisions, so the
+    # queue really empties: Draußen is discarded, Leuchtturm filed.
+    cards.filter(has_text="Draußen").get_by_role("button", name="Verwerfen").click()
+    expect(entities).not_to_contain_text("Draußen")
+    cards.filter(has_text="Leuchtturm").get_by_role("button", name="Übernehmen", exact=True).click()
+    expect(entities).to_contain_text("Leuchtturm")
 
     # The queue is spent. A consumed suggestion cannot be reviewed again —
     # the backend's 409 is pinned in tests/test_entities.py; here the UI's
@@ -377,10 +385,10 @@ def test_the_wissen_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> 
     page.keyboard.press("Enter")
     status = dock.locator("[data-job-status]")
     expect(status).to_have_attribute("data-job-status", "done")
-    expect(status).to_contain_text("3")
+    expect(status).to_contain_text("5")
 
     cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
     entities = dock.get_by_role("region", name="Entitäten")
 
     # Accept by keyboard: Mira is filed into the searchable list.
@@ -395,9 +403,9 @@ def test_the_wissen_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> 
     page.keyboard.press("Enter")
     expect(entities).not_to_contain_text("See")
 
-    # One decision each: the queue holds only Haus.
-    expect(cards).to_have_count(1)
-    expect(cards).to_contain_text("Haus")
+    # One decision each: the queue holds the chapter's other three cards.
+    expect(cards).to_have_count(3)
+    expect(cards.filter(has_text="Haus")).to_be_visible()
 
     assert_accessible(page)
 
@@ -482,7 +490,7 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
     # and the panel follows it to its answer with no error left standing.
     extract.click()
     expect(status).to_have_attribute("data-job-status", "done")
-    expect(status).to_contain_text("3")
+    expect(status).to_contain_text("5")
     expect(dock.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)
@@ -511,7 +519,7 @@ def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack)
     status = dock.locator("[data-job-status]")
     expect(status).to_have_attribute("data-job-status", "done")
     cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
 
     # The reload is the refetch path: a fresh page asks again, and the
     # queue's answer must be the outage's own name — not the silence a
@@ -533,7 +541,7 @@ def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack)
     # Recovery: the same page, asked again, shows the queue it holds —
     # and no error is left standing.
     page.reload()
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
     expect(dock.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)
@@ -543,12 +551,11 @@ def test_a_rerun_stacks_no_duplicate_cards(page: Page, stack: Stack) -> None:
     """The re-run files one card set, and a consumed row files fresh.
 
     An extraction re-run — the outage retry's shape, the trigger clicked
-    again after the row settled — parses the same three entities off the
-    same chapter. The pending dedupe must hold: the queue answers with
-    the cards it already has, never a stacked second set. The asymmetry
-    is the other half of the rule: accept consumes a row, so the next
-    re-run files that entity fresh — the review is the only thing that
-    reopens a filed key.
+    again after the row settled — parses the same entities off the same
+    chapter. The pending dedupe must hold: the queue answers with the cards
+    it already has, never a stacked second set. The asymmetry is the other
+    half of the rule: accept consumes a row, so the next re-run files that
+    entity fresh — the review is the only thing that reopens a filed key.
     """
     _open_workspace_with_validated_title(page, "Die wiederholte Durchsuchung")
     _write_chapter(page)
@@ -560,23 +567,23 @@ def test_a_rerun_stacks_no_duplicate_cards(page: Page, stack: Stack) -> None:
     status = dock.locator("[data-job-status]")
     cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
 
-    # The first run files its three cards.
+    # The first run files its five cards.
     extract.click()
     expect(status).to_have_attribute("data-job-status", "done")
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
 
     # The re-run on the same chapter: one card set, whatever the panel is
     # asked again. (The done row's count is the parse's, not the queue's —
     # the card count is the dedupe's witness.)
     _rerun_extraction_to_done(dock, extract, status)
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
 
     # The asymmetry: accept consumes Mira's row, and the re-run files her
-    # fresh beside the two that never left.
+    # fresh beside the four that never left.
     cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True).click()
-    expect(cards).to_have_count(2)
+    expect(cards).to_have_count(4)
     _rerun_extraction_to_done(dock, extract, status)
-    expect(cards).to_have_count(3)
+    expect(cards).to_have_count(5)
 
     assert_accessible(page)
 
@@ -645,10 +652,11 @@ def _row_named(entities: Locator, name: str) -> Locator:
 
 
 def _seed_entities(novel_title: str) -> str:
-    """A novel with Mira, Haus and See filed as entities, through the API.
+    """A novel with the chapter's five candidates filed as entities, through
+    the API.
 
-    The correction flows start where review leaves the story: three
-    accepted entities and no chapter to write first. The API is the
+    The correction flows start where review leaves the story: five accepted
+    entities and no chapter to write first. The API is the
     stack's own, the worker runs inside it, and the accepts ride the real
     review path — the seeding is a faster driver, not a shortcut around
     the product. Returns the novel's id, the workspace URL's parameter.
@@ -678,7 +686,7 @@ def _seed_entities(novel_title: str) -> str:
         assert job.json()["status"] == "done"
         suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
         suggestions.raise_for_status()
-        assert len(suggestions.json()) == 3
+        assert len(suggestions.json()) == 5
         for suggestion in suggestions.json():
             accepted = api.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
             accepted.raise_for_status()
@@ -749,9 +757,11 @@ def test_the_detail_view_corrects_entities_by_hand(page: Page, stack: Stack) -> 
     dialog.get_by_role("button", name="Endgültig löschen").click()
     expect(dialog).not_to_be_visible()
     expect(_row_named(entities, "See")).to_have_count(0)
-    # what remains is exactly the merge's survivor
-    expect(entities.get_by_role("row")).to_have_count(1)
+    # only See went: the merge's survivor and the two untouched candidates stay
+    expect(entities.get_by_role("row")).to_have_count(3)
     expect(_row_named(entities, "Haus")).to_be_visible()
+    expect(_row_named(entities, "Draußen")).to_be_visible()
+    expect(_row_named(entities, "Leuchtturm")).to_be_visible()
     expect(page.locator("[data-live-announcer]")).to_contain_text("See wurde gelöscht")
 
     assert_accessible(page)
