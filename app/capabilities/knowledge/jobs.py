@@ -1,9 +1,9 @@
 """Knowledge's background jobs: handlers the api app discovers by convention.
 
 One job kind, one function (spec §9 D10). A handler receives its own session
-and owns its transaction: the provider call, the filed rows, the audit row and
-the progress report all ride one commit at the end — a malformed answer raises
-before any row exists, and the lane records the failure with nothing written.
+and owns its transaction: the provider call, the filed rows and the audit row
+all ride one commit at the end — a malformed answer raises before any row
+exists, and the lane records the failure with nothing written.
 """
 
 from json import JSONDecodeError, loads
@@ -33,7 +33,7 @@ from app.kernel.llm.audit import record_call
 from app.kernel.llm.contract import CompletionRequest, Delta, Usage
 
 if TYPE_CHECKING:
-    from app.kernel.jobs.worker import JobHandler
+    from app.kernel.jobs.worker import JobHandler, ProgressReport
 
 KIND = "extract-entities"
 KIND_CHECK = "check-consistency"
@@ -157,7 +157,9 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
     return findings
 
 
-async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]:
+async def extract_entities(
+    session: AsyncSession, job: Job, report: ProgressReport
+) -> dict[str, object]:
     """Read the chapter, prompt the provider, and file pending entity suggestions.
 
     The chapter is read scoped to the job's owner — a job row is user-owned
@@ -168,9 +170,10 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
     ``job.payload['chapter_id']`` identifies the chapter as a UUID. Missing or invalid IDs,
     or a chapter missing from the owner's rows, raise ValueError. Invalid
     answers raise MalformedAnswerError; provider and database errors propagate.
-    Success commits suggestions, the call audit, and progress=100 together,
-    and returns ``suggestions`` as the parsed entity count, including duplicates
-    skipped during filing. Provider or answer-validation failures create no audit row.
+    Success commits suggestions and the call audit, reports progress=100
+    through the lane's callback, and returns ``suggestions`` as the parsed
+    entity count, including duplicates skipped during filing. Provider or
+    answer-validation failures create no audit row.
     """
     try:
         chapter_id = UUID(str(job.payload["chapter_id"]))
@@ -219,16 +222,19 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
 
     suggestions = EntitySuggestionRepository(session, job.user_id)
     await suggestions.create_many(chapter.novel_id, chapter_id, entities)
-    # Progress is the handler's to report (the worker owns status, not this
-    # column), and it rides the same commit as the rows: a reader never sees
-    # work claimed that the database does not have. 100 is the whole job —
-    # one provider call, nothing incremental worth reporting.
-    await session.execute(update(Job).where(Job.id == job.id).values(progress=100))
+    # Progress is the lane's to persist through the report callback — never
+    # this session — so the handler's terminal commit stays the only commit
+    # the work rides. 100 is the whole job, reported right before returning:
+    # the row's status flips only after the handler returns, so 100 never
+    # precedes a done row the database lacks.
+    await report(100)
     await session.commit()
     return {"suggestions": len(entities)}
 
 
-async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object]:
+async def check_consistency(
+    session: AsyncSession, job: Job, report: ProgressReport
+) -> dict[str, object]:
     """Read every chapter and the accepted canon, then file pending findings.
 
     The novel's chapters and entities are read scoped to the job's owner —

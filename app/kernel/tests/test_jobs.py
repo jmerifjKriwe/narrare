@@ -29,7 +29,7 @@ from app.kernel.jobs.runtime import (
     start_worker,
     stop_worker,
 )
-from app.kernel.jobs.worker import Worker
+from app.kernel.jobs.worker import ProgressReport, Worker
 
 pytestmark = pytest.mark.usefixtures("schema", "empty_tables")
 
@@ -102,7 +102,7 @@ async def test_two_concurrent_claims_exactly_one_wins(a_user: None) -> None:
     job = await _enqueue("kind")
     calls: list[UUID] = []
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         calls.append(claimed.id)
         return {"ran": True}
 
@@ -124,7 +124,7 @@ async def test_a_claim_skips_a_row_another_transaction_locks(a_user: None) -> No
     # §9 D10 names, pinned here against a silent regression to waiting.
     job = await _enqueue("kind")
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"ran": True}
 
     worker = Worker(Session, {"kind": handler})
@@ -143,7 +143,7 @@ async def test_a_failing_handler_earns_one_rerun_then_fails(a_user: None) -> Non
     job = await _enqueue("kind")
     calls: list[str] = []
 
-    async def exploding(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def exploding(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         calls.append("ran")
         raise ValueError("extraction exploded")
 
@@ -167,11 +167,40 @@ async def test_a_failing_handler_earns_one_rerun_then_fails(a_user: None) -> Non
     assert len(calls) == 2
 
 
+async def test_report_persists_progress_and_survives_a_later_raise(a_user: None) -> None:
+    # A handler that reports twice, then raises: the row keeps the last
+    # reported progress and gains the error — the lane's honesty about
+    # failure, not the handler's.
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
+        await report(25)
+        await report(50)
+        raise RuntimeError("boom")
+
+    job = await _enqueue("kind")
+    worker = Worker(Session, {"kind": handler})
+    assert await worker.run_once() is True  # ran, failed, back in line
+
+    # The requeue's own outcome write must not take the progress with it:
+    # the number is the lane's honest record of how far the run reached,
+    # and the re-run below reports it all over again.
+    requeued = await _job(job.id)
+    assert requeued.status == QUEUED
+    assert requeued.progress == 50
+
+    assert await worker.run_once() is True  # the re-run's failure is terminal
+
+    job_row = await _job(job.id)
+    assert job_row.progress == 50
+    assert job_row.status == FAILED
+    assert job_row.error is not None
+    assert "boom" in job_row.error
+
+
 async def test_a_retry_that_succeeds_clears_the_earlier_error(a_user: None) -> None:
     job = await _enqueue("kind")
     attempts: list[str] = []
 
-    async def flaky(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def flaky(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         attempts.append("ran")
         if len(attempts) == 1:
             raise RuntimeError("first try fails")
@@ -191,7 +220,9 @@ async def test_a_retry_that_succeeds_clears_the_earlier_error(a_user: None) -> N
 async def test_a_done_job_carries_its_result(a_user: None) -> None:
     job = await _enqueue("kind")
 
-    async def handler(work: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(
+        work: AsyncSession, claimed: Job, report: ProgressReport
+    ) -> dict[str, object]:
         # The handler owns its session: what it commits here is durable.
         return {"answer": 42}
 
@@ -216,7 +247,7 @@ async def test_a_job_whose_kind_has_no_handler_fails_without_retry(a_user: None)
 async def test_a_restarted_process_completes_an_enqueued_job(a_user: None) -> None:
     job = await _enqueue("kind", {"text": "Kapitel eins"})
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"saw": claimed.payload["text"]}
 
     # A fresh engine and factory stand in for a restarted process: no shared
@@ -243,7 +274,7 @@ async def test_a_row_stranded_by_a_dead_outcome_write_recovers_without_a_restart
     job = await _enqueue("kind")
     ran: list[str] = []
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         ran.append("ran")
         return {"ran": True}
 
@@ -280,7 +311,7 @@ async def test_a_stranded_row_still_recovers_when_the_first_retry_dies_too(a_use
     # stays remembered, and the recovery is retried until it lands.
     job = await _enqueue("kind")
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"ran": True}
 
     class ThirdAndFourthOpenDie:
@@ -323,7 +354,9 @@ async def test_a_live_claims_row_stays_fresh_while_its_handler_runs(
     started = asyncio.Event()
     release = asyncio.Event()
 
-    async def slow_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def slow_handler(
+        _: AsyncSession, claimed: Job, report: ProgressReport
+    ) -> dict[str, object]:
         started.set()
         await release.wait()
         return {"ran": True}
@@ -356,7 +389,7 @@ async def test_rows_stuck_running_by_a_dead_process_are_requeued(a_user: None) -
     assert row.status == QUEUED
     assert row.retry_count == 0  # the counter is untouched; a new failure retires it
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"ran": True}
 
     assert await Worker(Session, {"kind": handler}).run_once() is True
@@ -393,7 +426,7 @@ async def test_start_worker_recovers_stale_rows_at_startup(
         await session.commit()
     await _age_past_stale(job.id)
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"ran": True}
 
     monkeypatch.setattr(jobs_runtime, "SWEEP_EVERY", 3600.0)
@@ -418,7 +451,7 @@ async def test_the_lane_sweeps_stale_running_rows_while_it_runs(
     # own periodic sweep returns it to the line; nothing else will.
     monkeypatch.setattr(jobs_runtime, "SWEEP_EVERY", 0.2)
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"ran": True}
 
     app = FastAPI()
@@ -447,11 +480,15 @@ async def test_the_runtime_lane_drains_jobs_and_stops_cleanly(a_user: None) -> N
     good = await _enqueue("good")
     attempts: list[str] = []
 
-    async def flaky_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def flaky_handler(
+        _: AsyncSession, claimed: Job, report: ProgressReport
+    ) -> dict[str, object]:
         attempts.append(claimed.kind)
         raise RuntimeError("first try explodes")
 
-    async def good_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def good_handler(
+        _: AsyncSession, claimed: Job, report: ProgressReport
+    ) -> dict[str, object]:
         attempts.append(claimed.kind)
         return {"ran": True}
 
@@ -484,7 +521,9 @@ async def test_stop_worker_bounds_a_handler_that_outlives_the_grace(
     job = await _enqueue("kind")
     stuck = asyncio.Event()
 
-    async def stuck_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def stuck_handler(
+        _: AsyncSession, claimed: Job, report: ProgressReport
+    ) -> dict[str, object]:
         await stuck.wait()  # a provider that never returns
         return {"ran": True}
 
@@ -524,7 +563,9 @@ async def test_stop_worker_bounds_its_cancel_wait_when_a_handler_defies_it(
     job = await _enqueue("kind")
     stuck = asyncio.Event()
 
-    async def stubborn_handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def stubborn_handler(
+        _: AsyncSession, claimed: Job, report: ProgressReport
+    ) -> dict[str, object]:
         try:
             await stuck.wait()
         except asyncio.CancelledError:
@@ -570,7 +611,7 @@ async def test_stop_worker_bounds_its_cancel_wait_when_a_handler_defies_it(
 async def test_the_lane_survives_a_transient_infrastructure_failure(a_user: None) -> None:
     job = await _enqueue("kind")
 
-    async def handler(_: AsyncSession, claimed: Job) -> dict[str, object]:
+    async def handler(_: AsyncSession, claimed: Job, report: ProgressReport) -> dict[str, object]:
         return {"ran": True}
 
     class FlakyFactory:
