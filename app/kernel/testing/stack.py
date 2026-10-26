@@ -13,6 +13,7 @@ import asyncio
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -83,6 +84,24 @@ def _wait_for(
     raise RuntimeError(f"{url} did not answer within {timeout}s:\n{output}")
 
 
+async def _terminate_other_backends(database: str) -> None:
+    """End every session but this one on a throwaway database.
+
+    Before the schema is rebuilt, not after: ``reset_schema`` drops tables, and
+    a previous capability's API can still be draining on a session whose locks
+    would block that drop — the reset then waits on a process nobody owns.
+    """
+    engine = create_async_engine(url_for(database))
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = current_database() AND pid <> pg_backend_pid()"
+            )
+        )
+    await engine.dispose()
+
+
 async def _reset(database: str, seed_user: bool) -> None:
     engine = create_async_engine(url_for(database))
     async with engine.begin() as connection:
@@ -109,6 +128,9 @@ def _prepare(database: str, seed_user: bool) -> None:
     # capability stacks run one after another in the same pytest process.
     # Reset, not just create: an E2E database is throwaway, and rebuilding it
     # from the models is what proves the schema the tests run against.
+    # The termination comes first: reset_schema drops tables, and a stale
+    # session's locks would block that drop before any cleanup could run.
+    asyncio.run(_terminate_other_backends(database))
     asyncio.run(reset_schema(url_for(database)))
     asyncio.run(_reset(database, seed_user))
 
@@ -128,11 +150,36 @@ def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
     return proc
 
 
+def _wait_for_free_port(port: int, timeout: float = 30.0) -> None:
+    """Wait until nothing answers on a port a stack is about to bind.
+
+    ``_wait_for`` cannot tell this stack's server from the previous one still
+    shutting down: a leftover process on the port answers the health check
+    while the freshly spawned one died on the bind, and every request then
+    reaches a server whose database was just rebuilt underneath it. Waiting
+    for the port to fall silent is what makes the health check mean "ours".
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.settimeout(0.5)
+            if probe.connect_ex(("127.0.0.1", port)) != 0:
+                return
+        time.sleep(0.25)
+    raise RuntimeError(f"port {port} still answers after {timeout}s: a previous stack did not stop")
+
+
 def _stop(process: subprocess.Popen[bytes]) -> None:
     """End a whole process group: pnpm runs the dev server as a child."""
     if process.poll() is None:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        process.wait(timeout=SHUTDOWN_TIMEOUT)
+        try:
+            process.wait(timeout=SHUTDOWN_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            # A server that ignores SIGTERM must not outlive its module and
+            # answer the next stack's health check with a dead database.
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            process.wait()
     log_file = getattr(process, "_log_file", None)
     if log_file is not None:
         log_file.close()
@@ -163,6 +210,11 @@ class Stack:
 def run_stack(
     *, database: str, seed_user: bool, env: dict[str, str] | None = None
 ) -> Generator[Stack]:
+    # The handover between capability stacks: both ports must be silent before
+    # this stack binds them, or the health check below would pass on a server
+    # that belongs to the module before this one.
+    _wait_for_free_port(API_PORT)
+    _wait_for_free_port(WEB_PORT)
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 

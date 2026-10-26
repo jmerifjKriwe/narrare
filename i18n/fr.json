@@ -18,6 +18,8 @@
   "chapters.loading": "Chargement…",
   "save.saving": "Enregistrement…",
   "save.saved": "Enregistré",
+  "save.failed": "Non enregistré",
+  "save.confirmLeave": "Ce chapitre contient du texte non enregistré. Quitter quand même ?",
   "nav.back": "Tous les romans",
   "chapters.defaultTitle": "Chapitre {n}",
   "setup.welcome": "Bienvenue dans Narrare",

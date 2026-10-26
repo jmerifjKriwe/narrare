@@ -1,5 +1,5 @@
-import { Link, Outlet, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { client, type Chapter, type Novel } from "@shell/lib/api/client";
 import { publishActiveChapter } from "@shell/lib/activeChapter";
@@ -7,6 +7,7 @@ import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
 import { queryClient } from "@shell/lib/query";
+import { useAutosave, unsavedStatus } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 import type { FocusStep } from "./routes";
@@ -252,6 +253,59 @@ export function NovelPage() {
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
+  // The autosave is the page's, not the chapter's: the editor remounts on
+  // every switch (its key is the chapter id), and a hook that lived inside
+  // it would unmount with it — cleanup firing, a refused body dying with
+  // its ref — on each switch. Here the body's lifetime spans switches: the
+  // editor shows `status` beside the text and feeds `schedule` on update;
+  // `flush` is the page's own handle on what has not reached the server.
+  const { status, schedule, flush, discard } = useAutosave(current?.id ?? null, remember);
+
+  // The page's one opinion about unsaved text, shared by every guard: a body
+  // waiting for its debounce, one on the wire, or one that did not land.
+  // `saving` counts — a request that never answers loses the text just as
+  // surely as one that was refused.
+  const unsaved = unsavedStatus(status);
+  // The guards ask at the moment they run, not at the render that registered
+  // them: a navigation starts after the keystroke, not before it.
+  const unsavedNow = useRef(unsaved);
+  unsavedNow.current = unsaved;
+
+  /** Leave a chapter: save first, ask only when the save did not land. */
+  async function leave(then: () => void) {
+    const outcome = await flush();
+    if (outcome === "failed" && !window.confirm(t("save.confirmLeave"))) return;
+    then();
+  }
+
+  // Every way out of the book — the shell's top bar, the shelf link, the
+  // browser's back and forward — is a router navigation, and this is the one
+  // place they all pass. A destination inside the book's own subtree (the
+  // dock's routes, a focus step, the rail) is no leave: the editor stays
+  // mounted and the body stays here.
+  // `enableBeforeUnload` is the same question for the tab close, which has no
+  // navigation to intercept.
+  useBlocker({
+    shouldBlockFn: async ({ next: to }) => {
+      const book = `/novels/${novelId}`;
+      if (to.pathname === book || to.pathname.startsWith(`${book}/`)) return false;
+      if (!unsavedNow.current) return false;
+      const outcome = await flush();
+      if (outcome !== "failed") return false;
+      if (!window.confirm(t("save.confirmLeave"))) return true;
+      discard();
+      return false;
+    },
+    enableBeforeUnload: () => unsavedNow.current,
+  });
+
+  // Reset the save story only after the chapter selection actually changes.
+  // Creation can fail after a confirmed leave; until it succeeds, the old
+  // chapter's failed body must still be protected by every leave guard.
+  useEffect(() => {
+    discard();
+  }, [current?.id, discard]);
+
   // Panels yield to focus before their own URL state: at depth 1 the rail is
   // hidden whatever ?rail says, and its toggles hide with it — they would be
   // no-ops while focus suppresses the panel. The page's own header goes at
@@ -303,7 +357,12 @@ export function NovelPage() {
                   <button
                     type="button"
                     aria-pressed={chapter.id === active}
-                    onClick={() => setActive(chapter.id)}
+                    onClick={() => {
+                      // The chapter already open is no leave: asking there
+                      // would discard a failure the user never left.
+                      if (chapter.id === active) return;
+                      void leave(() => setActive(chapter.id));
+                    }}
                     className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   >
                     {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
@@ -313,7 +372,7 @@ export function NovelPage() {
             </ul>
             <button
               type="button"
-              onClick={createChapter}
+              onClick={() => void leave(() => void createChapter())}
               className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
             >
               {t("chapters.new")}
@@ -390,7 +449,8 @@ export function NovelPage() {
               key={current.id}
               chapterId={current.id}
               body={current.body}
-              onSaved={remember}
+              status={status}
+              schedule={schedule}
               proposal={offer ?? undefined}
               onProposalResolve={resolveOffer}
             />
