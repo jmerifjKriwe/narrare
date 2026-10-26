@@ -178,7 +178,7 @@ check all build on the entity model; it is also the schema change with no data t
 ```
 Entity
   id, user_id, novel_id
-  type        str(40): character | location | faction | object | system | timeline | generic
+  type        str(40): character | location | faction | object | system | timeline | event | generic
   name        str(200)
   aliases     json list[str]
   tags        json list[str]
@@ -222,7 +222,7 @@ EntityRelation
 
 ### 4.4 Extraction and review
 
-- The prompt asks for the seven types and relations; `EntitySuggestion` gains `type`
+- The prompt asks for the eight types and relations; `EntitySuggestion` gains `type`
   and keeps `description`.
 - Accepting a suggestion creates the entity with the description as body and any
   proposed relations; the relation target resolves by name within the novel and is
@@ -258,6 +258,26 @@ When the **canon-vs-text** check is built (a deterministic comparison of stored 
 against prose), add one narrow JSONB column `attributes` for exactly the keys that
 check compares (age, dates, affiliation). Not a schema per type, no forms, no
 revisions. Until then, prose is the canon.
+
+### 4.10 As built, 2026-10-26 (WP1)
+
+- `ENTITY_TYPES` ships as the eight-entry tuple in `app/kernel/contracts/models.py`
+  (the §4.1 list above, `event` included); prompt, parse, validation and the panel
+  labels all import it from there.
+- Review is the only birth path: `POST /entities` does not exist — an entity enters
+  the canon exclusively through an accepted extraction suggestion.
+- Merge folds the source into the survivor: the edges re-point in both directions,
+  only exact `(from, to, relation_type)` duplicates drop, the source's name becomes
+  an alias of the survivor, aliases and tags union case-insensitively, the source's
+  body folds under a `## <source name>` heading, and the survivor's type wins.
+- Deletion is the hard delete with edge cascade that §9.4 pointed at — no soft
+  delete; export stays the safety net.
+- The entity embedding is computed synchronously in the request's own transaction —
+  at birth, on update when name/aliases/tags/content changed, and for the merge
+  survivor — with the 20 000-character cap applied to the vector text only.
+- The list's `q` tier ranks by `word_similarity(query, search_text)` — the query is
+  the needle — with the threshold measured at 0.5 (`ENTITY_SEARCH_THRESHOLD`); plain
+  `similarity() ≥ 0.8` remains the §9.1 dedup tier, not the search bar.
 
 ---
 

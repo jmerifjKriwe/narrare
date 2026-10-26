@@ -45,7 +45,7 @@
 **Interfaces:**
 - Produces: `ENTITY_TYPES = ("character", "location", "faction", "object", "system", "timeline", "event", "generic")` in kernel contracts — every consumer (prompts, parse, service validation, panel labels) imports it from there.
 - Produces: `EntityRepository.list_for_novel(novel_id, *, type: str | None = None, tag: str | None = None, q: str | None = None)`; `create(novel_id, name, type, content, aliases, tags, embedding)` computes `search_text = " ".join([name, *aliases, *tags])`; `stored_entity_width() -> int | None`.
-- Produces: `ENTITY_SEARCH_THRESHOLD = 0.5`; the `q` tier is `word_similarity(unaccent(lower(Entity.search_text)), unaccent(lower(q))) >= threshold`, ordered by that similarity descending; GIN trigram index on `search_text` (plain `gin_trgm_ops`; the unaccented expression scans at novel scale — correct per §9.1).
+- Produces: `ENTITY_SEARCH_THRESHOLD = 0.5`; the `q` tier is `word_similarity(unaccent(lower(q)), unaccent(lower(Entity.search_text))) >= threshold`, ordered by that similarity descending; GIN trigram index on `search_text` (plain `gin_trgm_ops`; the unaccented expression scans at novel scale — correct per §9.1).
 - Produces: `RelationRepository(ScopedRepository[EntityRelation])` with `list_for_entity(entity_id)` (both directions, `created_at` order), `get`, `create`, `delete`.
 - Produces: service `list_entities(novel_id, type=None, tag=None, q=None)`, `entity_relations(entity_id)`, `add_relation(entity_id, to_entity_id, relation_type, note) -> EntityRelation`, `update_relation(relation_id, ...)`, `delete_relation(relation_id)`; errors `InvalidRelationError` (blank/over-long `relation_type`, >80 chars → 422) and `RelationExistsError` (unique violation → 409). Self-relations are **allowed** (flagged only in the UI). Relation `from`/`to` are immutable — moving an edge is delete plus create.
 - Produces: `AcceptResult` stays `(Entity, EntitySuggestion)` this task — created with `aliases=[]`, `tags=[]`, `content=description or ""`, embedding and `search_text` computed; the suggestion's `relations` column is written as `[]` and not yet resolved (Task 2).
@@ -109,10 +109,10 @@ entries it names, and says which links it could not place.
 
 **Files:**
 - Modify: `app/capabilities/knowledge/web/EntitiesPanel.tsx` (filters row, card v2, grown EditEntityDialog, relations section, `ChipsField` built on `web/ui/TextField`)
-- Create: `app/capabilities/knowledge/web/relations.ts` (`RELATION_TYPES` — the twenty §4.2 labels — plus the label-key helper)
+- Create: `app/capabilities/knowledge/web/relations.ts` (`RELATION_TYPES` — the 21 §4.2 labels — plus the label-key helper)
 - Modify: `app/capabilities/knowledge/web/ExtractionPanel.tsx` (ProposalCard shows type + proposed relations; skipped announce on accept)
 - Modify: `web/lib/query.ts` (`useEntitiesQuery(novelId, filters)` with `{type?, tag?, q?}`; `useEntityRelationsQuery`, `useAddRelation`, `useUpdateRelation`, `useDeleteRelation`; accept mutation surfaces `AcceptRead`)
-- Modify: `i18n/{en,de,fr}.json` (type filter, tag filter, aliases/tags/body labels, relation labels for the twenty types with raw-text fallback, incoming/outgoing, self-relation mark, skip announcement)
+- Modify: `i18n/{en,de,fr}.json` (type filter, tag filter, aliases/tags/body labels, relation labels for the 21 types with raw-text fallback, incoming/outgoing, self-relation mark, skip announcement)
 - Test: `app/capabilities/knowledge/e2e/test_knowledge_dock_e2e.py` extended; new flows red first. Every flow ends `assert_accessible(page)`.
 
 **Interfaces:**
