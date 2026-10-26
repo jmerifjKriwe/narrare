@@ -366,6 +366,85 @@ async def test_a_merge_repoints_the_edges_and_folds_the_fields() -> None:
     assert row.embedding is not None  # the survivor was re-embedded
 
 
+async def test_a_merge_of_same_named_rows_keeps_the_name_once() -> None:
+    """The survivor's own name seeds the alias dedupe: two rows named Mira
+    fold without aliasing the name to itself — no alias is added, and the
+    search text carries the name once."""
+    source, target = await _entities(
+        ("Mira", "character", "Die Quelle."), ("Mira", "character", "Die Erzählerin.")
+    )
+    async with _client() as client:
+        merged = await client.post(
+            f"/api/knowledge/entities/{source.id}/merge", json={"target_id": str(target.id)}
+        )
+        assert merged.status_code == 200
+        assert merged.json()["aliases"] == []  # not ["Mira"]
+
+    async with Session() as session:
+        row = await session.get(Entity, target.id)
+    assert row is not None
+    assert row.search_text == "Mira"  # not "Mira Mira"
+
+
+async def test_a_merge_folds_into_an_empty_body_without_leading_blank_lines() -> None:
+    """The fold's heading opens the body when the survivor has none: the
+    folded row starts at ``## <source name>``, not at blank lines."""
+    target, source = await _entities(
+        ("Haus", "location", ""), ("Mira", "character", "Miras Kapitel.")
+    )
+    async with _client() as client:
+        merged = await client.post(
+            f"/api/knowledge/entities/{source.id}/merge", json={"target_id": str(target.id)}
+        )
+        assert merged.status_code == 200
+        assert merged.json()["content"] == "## Mira\n\nMiras Kapitel."
+
+
+async def test_the_list_orders_by_similarity_not_creation() -> None:
+    """The ``q`` tier's rank beats the row's age: the better match answers
+    first even though it was created last — the two orders disagree here."""
+    katharinka, katharina = await _entities(
+        ("Katharinka", "character", ""), ("Katharina", "character", "")
+    )
+    async with _client() as client:
+        found = await client.get(
+            f"/api/knowledge/novels/{katharina.novel_id}/entities",
+            params={"q": "Katharina"},
+        )
+        # the exact name ranks first (similarity 1.0), the near one second
+        # (0.8) — creation order alone would answer the reverse
+        assert [row["name"] for row in found.json()] == ["Katharina", "Katharinka"]
+        assert katharinka.name == "Katharinka"  # the seeded order, for the record
+
+
+async def test_a_merge_at_another_embedding_width_is_refused_and_deletes_nothing() -> None:
+    """The fold re-embeds the survivor (D5): a width mismatch refuses the merge
+    like an upload — before the source is deleted, so nothing is lost."""
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Die Weite")
+        session.add(novel)
+        await session.flush()
+        entities = EntityRepository(session, LOCAL_USER_ID)
+        target = await entities.create(novel.id, "Haus", "location", "", [], [], [0.1, 0.2, 0.3])
+        source = await entities.create(
+            novel.id, "Mira", "character", "Miras Kapitel.", [], [], None
+        )
+        await session.commit()
+
+    async with _client() as client:
+        refused = await client.post(
+            f"/api/knowledge/entities/{source.id}/merge", json={"target_id": str(target.id)}
+        )
+        assert refused.status_code == 409
+        # a dict, not a sentence: the UI localizes this error and needs a code
+        assert refused.json()["detail"]["code"] == "embedding-mismatch"
+
+        # the refusal folded and deleted nothing
+        listed = await client.get(f"/api/knowledge/novels/{novel.id}/entities")
+        assert [row["name"] for row in listed.json()] == ["Haus", "Mira"]
+        assert listed.json()[1]["content"] == "Miras Kapitel."
+
+
 async def test_an_entity_cannot_merge_into_itself() -> None:
     mira, _haus = await _entities(("Mira", "character", ""), ("Haus", "location", ""))
     async with _client() as client:

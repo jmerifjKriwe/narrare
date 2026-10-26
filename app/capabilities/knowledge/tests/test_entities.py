@@ -12,6 +12,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient, Response
 
 from app.api.main import app
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Entity
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -112,6 +113,44 @@ async def test_an_accept_births_the_entity_with_empty_labels_and_a_vector() -> N
     assert row is not None
     assert row.embedding is not None  # the vector rode the birth
     assert row.search_text == row.name
+
+
+async def test_an_accept_at_another_embedding_width_is_refused_and_writes_nothing() -> None:
+    """Birth embeds in the transaction (D5): a corpus embedded at another
+    width refuses the accept like an upload, and the refusal writes nothing —
+    no entity born, no suggestion consumed."""
+    async with _client() as client:
+        suggestion = await _pending_suggestion(client)
+        novel_id = suggestion["novel_id"]
+
+    async with Session() as session:
+        # the corpus's first set vector fixes its width at 3; the configured
+        # fake embeds at 384, so the birth's vector cannot join
+        session.add(
+            Entity(
+                user_id=LOCAL_USER_ID,
+                novel_id=UUID(str(novel_id)),
+                name="Alt",
+                type="generic",
+                search_text="Alt",
+                embedding=[0.1, 0.2, 0.3],
+            )
+        )
+        await session.commit()
+
+    async with _client() as client:
+        refused = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+        assert refused.status_code == 409
+        # a dict, not a sentence: the UI localizes this error and needs a code
+        assert refused.json()["detail"]["code"] == "embedding-mismatch"
+
+        entities = (await client.get(f"/api/knowledge/novels/{novel_id}/entities")).json()
+        assert [row["name"] for row in entities] == ["Alt"]  # the birth never landed
+        still_pending = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=pending")
+        ).json()
+        # unconsumed: the reviewed row is still among the pending three
+        assert suggestion["id"] in [row["id"] for row in still_pending]
 
 
 async def test_discard_consumes_without_creating() -> None:

@@ -10,13 +10,14 @@ the product's one answer everywhere: another user's row is a 404,
 indistinguishable from no row at all.
 """
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from app.api.main import app
+from app.capabilities.knowledge.repository import RelationRepository
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Entity, EntityRelation, Novel
 from app.kernel.db.session import Session
@@ -245,6 +246,134 @@ async def test_a_patched_type_cannot_collide_with_a_sibling_edge() -> None:
         )
         assert free.status_code == 200
         assert free.json()["relation_type"] == "kennt"
+
+
+async def test_a_retype_colliding_with_a_concurrent_sibling_answers_409(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The race backstop: a sibling created between this request's duplicate
+    look and its commit falls to the unique constraint, and the answer is the
+    duplicate's 409 — a concurrent PATCH is a conflict, never a 500.
+    """
+    _novel, [mira, haus] = await _seed("Mira", "Haus")
+    async with _client() as client:
+        second = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "besucht"},
+        )
+        assert second.status_code == 201
+
+        original_edge = RelationRepository.edge
+
+        async def racing_edge(
+            self: RelationRepository, from_id: UUID, to_id: UUID, relation_type: str
+        ) -> EntityRelation | None:
+            found = await original_edge(self, from_id, to_id, relation_type)
+            if found is None:
+                # The concurrent writer's insert lands in the window between
+                # this request's look and its commit. The row enters the
+                # session unflushed, so the constraint's verdict falls on the
+                # commit — exactly where a committed concurrent insert puts it.
+                self.session.add(
+                    EntityRelation(
+                        user_id=self.user_id,
+                        from_entity_id=from_id,
+                        to_entity_id=to_id,
+                        relation_type=relation_type,
+                    )
+                )
+            return found
+
+        monkeypatch.setattr(RelationRepository, "edge", racing_edge)
+        collided = await client.patch(
+            f"/api/knowledge/relations/{second.json()['id']}",
+            json={"relation_type": "kennt"},
+        )
+        assert collided.status_code == 409
+
+
+async def test_a_duplicate_created_in_a_race_answers_409(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The unique-violation branch of the create backstop: a concurrent create
+    of the same edge is the duplicate's 409 — the branch the FK race must not
+    take (its own test pins the 404)."""
+    _novel, [mira, haus] = await _seed("Mira", "Haus")
+    original_edge = RelationRepository.edge
+
+    async def racing_edge(
+        self: RelationRepository, from_id: UUID, to_id: UUID, relation_type: str
+    ) -> EntityRelation | None:
+        found = await original_edge(self, from_id, to_id, relation_type)
+        if found is None:
+            self.session.add(
+                EntityRelation(
+                    user_id=self.user_id,
+                    from_entity_id=from_id,
+                    to_entity_id=to_id,
+                    relation_type=relation_type,
+                )
+            )
+        return found
+
+    monkeypatch.setattr(RelationRepository, "edge", racing_edge)
+    async with _client() as client:
+        created = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "kennt"},
+        )
+        assert created.status_code == 409
+
+
+async def test_a_target_deleted_in_a_race_is_an_absence_not_a_duplicate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The FK branch of the create backstop: a target deleted between this
+    request's reads and its insert fails the edge's foreign key — the scoped
+    absence's 404, not the duplicate's 409."""
+    _novel, [mira, haus] = await _seed("Mira", "Haus")
+    original_create = RelationRepository.create
+
+    async def racing_create(
+        self: RelationRepository,
+        from_id: UUID,
+        to_id: UUID,
+        relation_type: str,
+        note: str | None,
+    ) -> EntityRelation:
+        async with Session() as other:
+            target = await other.get(Entity, to_id)
+            if target is not None:
+                await other.delete(target)
+                await other.commit()
+        return await original_create(self, from_id, to_id, relation_type, note)
+
+    monkeypatch.setattr(RelationRepository, "create", racing_create)
+    async with _client() as client:
+        created = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "kennt"},
+        )
+        assert created.status_code == 404
+
+
+async def test_a_relation_type_is_stripped_before_the_duplicate_check() -> None:
+    """A padded type is stored trimmed: the stored form is the edge's identity,
+    so its trimmed twin is the duplicate the constraint would catch — not a
+    second edge that dodges the check by its whitespace."""
+    _novel, [mira, haus] = await _seed("Mira", "Haus")
+    path = f"/api/knowledge/entities/{mira.id}/relations"
+    async with _client() as client:
+        padded = await client.post(
+            path, json={"to_entity_id": str(haus.id), "relation_type": "lebt_in "}
+        )
+        assert padded.status_code == 201
+        assert padded.json()["relation_type"] == "lebt_in"
+
+        again = await client.post(
+            path, json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"}
+        )
+        assert again.status_code == 409
 
 
 async def test_a_delete_removes_exactly_the_edge() -> None:

@@ -140,10 +140,15 @@ def _clean_labels(values: list[str] | None, what: str) -> list[str]:
     return cleaned
 
 
-def _union_labels(base: list[str], additions: Sequence[str]) -> list[str]:
+def _union_labels(
+    base: list[str], additions: Sequence[str], *, taken: Sequence[str] = ()
+) -> list[str]:
     """Base labels then the additions not already there, case-insensitively —
-    the merge's union, order-stable: the survivor's words keep their order."""
+    the merge's union, order-stable: the survivor's words keep their order.
+    ``taken`` seeds the set with words owned elsewhere, so an addition that
+    spells one is dropped: the survivor's own name is not its alias."""
     seen = {label.casefold() for label in base}
+    seen.update(label.casefold() for label in taken)
     union = list(base)
     for label in additions:
         folded = label.casefold()
@@ -153,13 +158,21 @@ def _union_labels(base: list[str], additions: Sequence[str]) -> list[str]:
     return union
 
 
+# The SQLSTATE of a unique violation. The create backstop reads it off the
+# driver's original error to tell the two races apart: a concurrent create of
+# the same edge is the duplicate's verdict, a foreign key's is the absence's.
+UNIQUE_VIOLATION = "23505"
+
+
 def _validate_relation_type(relation_type: str | None) -> str:
-    """The relation_type the contract stores: nonblank, at most 80 characters."""
+    """The relation_type the contract stores: nonblank, at most 80 characters,
+    stripped — the stored form is the edge's identity, so a padded twin must
+    not dodge the duplicate check by its whitespace."""
     if relation_type is None or not relation_type.strip():
         raise InvalidRelationError("a relation needs a type")
     if len(relation_type) > 80:
         raise InvalidRelationError("a relation's type is over the 80 character limit")
-    return relation_type
+    return relation_type.strip()
 
 
 class KnowledgeService:
@@ -529,12 +542,17 @@ class KnowledgeService:
             raise RelationExistsError
         try:
             relation = await self.relations.create(entity_id, to_entity_id, checked, note)
-        except IntegrityError:
-            # The constraint caught what the look-before-write missed: a
-            # concurrent create of the same edge. The rollback gives the
-            # session back clean; this request has written nothing else.
+        except IntegrityError as error:
+            # The constraint caught what the look-before-write missed. The two
+            # races wear different answers, told apart by the violated
+            # constraint: a concurrent create of the same edge is the unique
+            # violation's duplicate 409; a target deleted mid-race fails the
+            # foreign key and is the scoped absence's 404. The rollback gives
+            # the session back clean; this request has written nothing else.
             await self.session.rollback()
-            raise RelationExistsError from None
+            if getattr(error.orig, "sqlstate", None) == UNIQUE_VIOLATION:
+                raise RelationExistsError from None
+            raise NotFoundError from None
         await self.session.commit()
         return relation
 
@@ -565,7 +583,17 @@ class KnowledgeService:
             relation.relation_type = checked
         if "note" in provided:
             relation.note = changes.note
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            # The constraint caught what the look-before-write missed: a
+            # concurrent retype that gave the sibling edge this request's new
+            # type between its look and its commit. The rollback gives the
+            # session back clean; a retype writes nothing else. The ends are
+            # immutable, so no foreign key can fire here — the unique
+            # violation's duplicate 409 is the whole backstop.
+            await self.session.rollback()
+            raise RelationExistsError from None
         return relation
 
     async def delete_relation(self, relation_id: UUID) -> None:
@@ -636,11 +664,20 @@ class KnowledgeService:
             edge.to_entity_id = moved_to
 
         # The fields, per D3: name to alias, unions, body under a heading,
-        # the survivor's type untouched.
-        target.aliases = _union_labels(target.aliases, [*source.aliases, source.name])
+        # the survivor's type untouched. The survivor's own name seeds the
+        # alias dedupe: two rows of one name fold without aliasing the name
+        # to itself.
+        target.aliases = _union_labels(
+            target.aliases, [*source.aliases, source.name], taken=[target.name]
+        )
         target.tags = _union_labels(target.tags, source.tags)
         if source.content.strip():
-            target.content = f"{target.content}\n\n## {source.name}\n\n{source.content}"
+            # The heading opens the fold: a survivor without a body starts at
+            # the heading, no leading blank lines before it.
+            folded = f"## {source.name}\n\n{source.content}"
+            target.content = (
+                folded if not target.content.strip() else f"{target.content}\n\n{folded}"
+            )
         target.search_text = entity_search_text(target.name, target.aliases, target.tags)
         await self._embed_entity(target)
         await self.entities.delete(source)

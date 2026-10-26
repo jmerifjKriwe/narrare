@@ -7,10 +7,12 @@ purpose marker names which machine-checked answer shape a prompt wants: the
 fake branches on the marked line, so the answer shape is declared by the
 prompt, not sniffed from its prose.
 
-:class:`ParsedEntity` and :class:`ParsedFinding` live here with the vocabulary
-they are checked against: a contract's ask and its answer shapes are one
-thing, and both the handler (which parses) and the repository (which persists)
-import them from here — never from each other.
+:class:`ParsedEntity` and :class:`ParsedFinding` live here: a contract's ask
+and its answer shapes are one thing, and both the handler (which parses) and
+the repository (which persists) import them from here — never from each other.
+The type vocabulary they are checked against lives beside the model it names,
+in the kernel contracts (``ENTITY_TYPES``), and this module imports it from
+there like every other consumer.
 """
 
 from collections.abc import Sequence  # noqa: TC003

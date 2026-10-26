@@ -51,9 +51,9 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 API = "http://127.0.0.1:8000"
 
 # Capitalized words steer the fake provider's extraction (it derives names
-# from them): Mira, Haus and See become the three suggestions, kinds cycling
-# character, place, thing in order of appearance. Draußen is fourth, beyond
-# the fake's ceiling of three.
+# from them): Mira, Haus and See become the three suggestions, types cycling
+# the extraction vocabulary — character, location, faction — in order of
+# appearance. Draußen is fourth, beyond the fake's ceiling of three.
 CHAPTER_BODY = "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."
 
 # The planted contradictions: two chapters give Mira and Tom two different
@@ -230,7 +230,7 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     expect(entities.get_by_text("Haus", exact=True)).to_have_count(0)
     dock.get_by_label("Entitäten durchsuchen").press("Escape")
 
-    # Selecting an entity opens its detail: the kind and description of the
+    # Selecting an entity opens its detail: the type and description of the
     # row the review filed.
     entities.get_by_text("Mira", exact=True).click()
     detail = dock.get_by_role("region", name="Mira")
