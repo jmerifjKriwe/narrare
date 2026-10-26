@@ -15,6 +15,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.prompts import (
+    BODY_LIMIT,
     ENTITY_KINDS,
     ParsedEntity,
     ParsedFinding,
@@ -32,7 +33,7 @@ from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.contract import CompletionRequest, Delta, Usage
 
-from .structured import MalformedAnswerError
+from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
 if TYPE_CHECKING:
     from app.kernel.jobs.worker import JobHandler, ProgressReport
@@ -55,6 +56,23 @@ MAX_SUMMARY_LENGTH = 200
 def _refuse(shape: str, reason: str, shown: object) -> MalformedAnswerError:
     """Build a parse error with at most 200 characters of the rejected value's repr."""
     return MalformedAnswerError(f"not a JSON array of {shape}: {reason} ({repr(shown)[:200]})")
+
+
+# The shape parse_entities accepts, sent as the response schema: one place
+# holds the ask and the check, so they cannot drift.
+ENTITIES_SCHEMA: dict[str, object] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "kind": {"type": "string", "enum": list(ENTITY_KINDS)},
+            "description": {"type": ["string", "null"]},
+        },
+        "required": ["name", "kind", "description"],
+        "additionalProperties": False,
+    },
+}
 
 
 def parse_entities(answer: str) -> list[ParsedEntity]:
@@ -185,37 +203,38 @@ async def extract_entities(
         # as a failed row the user can see, not disappear from the lane.
         raise ValueError(f"chapter {chapter_id} is gone or not the job owner's")
 
-    prompt = extraction_prompt(chapter_title=chapter.title, body=chapter.body)
+    body = chapter.body
+    truncated = len(body) > BODY_LIMIT
+    prompt = extraction_prompt(chapter_title=chapter.title, body=body[:BODY_LIMIT])
     kind, model = provider_facts()
-    pieces: list[str] = []
-    usage: Usage | None = None
-    started = monotonic()
-    async for event in get_provider().stream(CompletionRequest.user(prompt)):
-        if isinstance(event, Delta):
-            pieces.append(event.text)
-        elif isinstance(event, Usage):
-            usage = event
-    answer = "".join(pieces)
-    latency_ms = round((monotonic() - started) * 1000)
-    entities = parse_entities(answer)
 
-    # The audit row rides the handler's terminal commit with the rows it
-    # files: the call is part of the work. A raise before here — a malformed
-    # answer, a dead provider — writes no row; the rollback would take it
-    # anyway (D3, D14).
-    await record_call(
-        session,
-        user_id=job.user_id,
-        task_key="knowledge.extract-entities",
-        provider_kind=kind,
-        model=model,
-        latency_ms=latency_ms,
-        status="ok",
-        prompt_text=prompt,
-        response_text=answer,
-        input_tokens=usage.input_tokens if usage else None,
-        output_tokens=usage.output_tokens if usage else None,
-        novel_id=chapter.novel_id,
+    async def audit(call: AuditedCall) -> None:
+        # The audit row rides the handler's terminal commit with the rows it
+        # files: the call is part of the work. A raise before the commit — a
+        # malformed answer twice over, a dead provider — writes no row; the
+        # rollback would take it anyway (D3, D14). The retry audits as its
+        # own call because it is one.
+        await record_call(
+            session,
+            user_id=job.user_id,
+            task_key="knowledge.extract-entities",
+            provider_kind=kind,
+            model=model,
+            latency_ms=call.latency_ms,
+            status="ok",
+            prompt_text=call.prompt,
+            response_text=call.answer,
+            input_tokens=call.usage.input_tokens if call.usage else None,
+            output_tokens=call.usage.output_tokens if call.usage else None,
+            novel_id=chapter.novel_id,
+        )
+
+    entities = await ask_structured(
+        get_provider(),
+        prompt,
+        schema=ENTITIES_SCHEMA,
+        parse=parse_entities,
+        audit=audit,
     )
 
     suggestions = EntitySuggestionRepository(session, job.user_id)
@@ -227,7 +246,7 @@ async def extract_entities(
     # precedes a done row the database lacks.
     await report(100)
     await session.commit()
-    return {"suggestions": len(entities)}
+    return {"suggestions": len(entities), "truncated": truncated}
 
 
 async def check_consistency(

@@ -20,6 +20,11 @@ from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
 
 ENTITY_KINDS = ("character", "place", "thing")
 
+# The most of a chapter body any prompt carries, in characters. A real model
+# overflows on a long chapter; the fake never does, which is why the bound has
+# its own tests. Characters, not bytes: a writer's é is one character.
+BODY_LIMIT = 20_000
+
 
 class ParsedEntity(NamedTuple):
     """One entity of a provider answer, already validated."""

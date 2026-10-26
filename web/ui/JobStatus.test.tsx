@@ -53,6 +53,26 @@ describe("JobStatus", () => {
     expect(status.textContent).toContain("40");
   });
 
+  it("names a truncated read beside the done count", () => {
+    // The job read what it could; a done row that stayed silent about the cut
+    // tail would let a writer believe the whole chapter was read.
+    render(
+      <JobStatus
+        job={job({ status: "done", result: { suggestions: 1, truncated: true } })}
+      />,
+    );
+    expect(screen.getByText(t("jobs.truncated"))).toBeTruthy();
+  });
+
+  it("stays silent about truncation when the whole body was read", () => {
+    render(
+      <JobStatus
+        job={job({ status: "done", result: { suggestions: 1, truncated: false } })}
+      />,
+    );
+    expect(screen.queryByText(t("jobs.truncated"))).toBeNull();
+  });
+
   it("renders a running row without progress as plain movement", () => {
     // Progress is the handler's to report; NULL until it first does — the
     // panel must not wait for a number to say the work is going.
