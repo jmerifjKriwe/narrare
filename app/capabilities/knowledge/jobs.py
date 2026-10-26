@@ -265,7 +265,9 @@ async def extract_entities(
     return {"suggestions": len(entities), "truncated": truncated}
 
 
-def _chapter_groups(chapters: Sequence[Chapter]) -> tuple[list[list[Chapter]], list[str]]:
+def _chapter_groups(
+    chapters: Sequence[Chapter],
+) -> tuple[list[list[Chapter]], list[dict[str, object]]]:
     """Pack chapters into prompt-sized groups in reading order.
 
     A group carries at most ``BODY_LIMIT`` characters of body, so a pass cannot
@@ -274,12 +276,15 @@ def _chapter_groups(chapters: Sequence[Chapter]) -> tuple[list[list[Chapter]], l
     completeness the check does not have.
     """
     groups: list[list[Chapter]] = []
-    skipped: list[str] = []
+    skipped: list[dict[str, object]] = []
     current: list[Chapter] = []
     size = 0
     for chapter in chapters:
         if len(chapter.body) > BODY_LIMIT:
-            skipped.append(chapter.title)
+            # Position and stored title, no invented wording: a chapter usually
+            # has no title yet (renaming is WP6), and the dock carries the
+            # localized fallback. The backend must not speak one locale.
+            skipped.append({"position": chapter.position, "title": chapter.title})
             continue
         if current and size + len(chapter.body) > BODY_LIMIT:
             groups.append(current)

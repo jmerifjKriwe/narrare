@@ -596,7 +596,10 @@ async def test_an_oversized_chapter_is_skipped_by_name(
 
     assert len(provider.requests) == 1
     assert "x" * 20_001 not in provider.requests[0].messages[0].content
-    assert done["result"] == {"findings": 0, "skipped_chapters": ["Ankunft"]}
+    assert done["result"] == {
+        "findings": 0,
+        "skipped_chapters": [{"position": 0, "title": "Ankunft"}],
+    }
 
 
 async def test_a_novel_of_only_oversized_chapters_makes_no_call(
@@ -616,4 +619,10 @@ async def test_a_novel_of_only_oversized_chapters_makes_no_call(
 
     assert provider.requests == []
     assert done["status"] == "done"
-    assert done["result"] == {"findings": 0, "skipped_chapters": ["Ankunft", "Später"]}
+    assert done["result"] == {
+        "findings": 0,
+        "skipped_chapters": [
+            {"position": 0, "title": "Ankunft"},
+            {"position": 1, "title": "Später"},
+        ],
+    }

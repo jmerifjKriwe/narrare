@@ -79,12 +79,37 @@ describe("JobStatus", () => {
         job={job({
           kind: "check-consistency",
           status: "done",
-          result: { findings: 1, skipped_chapters: ["Riesig", "Gigantisch"] },
+          result: {
+            findings: 1,
+            skipped_chapters: [
+              { position: 0, title: "Riesig" },
+              { position: 1, title: "Gigantisch" },
+            ],
+          },
         })}
       />,
     );
     const line = screen.getByText(t("jobs.skippedChapters", { titles: "Riesig, Gigantisch" }));
     expect(line).toBeTruthy();
+  });
+
+  it("names an untitled skipped chapter with the rail's default label", () => {
+    // Renaming a chapter is WP6; until then a stored title is usually empty,
+    // and a skip line reading "Übersprungen, zu lang: " names nothing.
+    render(
+      <JobStatus
+        job={job({
+          kind: "check-consistency",
+          status: "done",
+          result: { findings: 0, skipped_chapters: [{ position: 1, title: "" }] },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        t("jobs.skippedChapters", { titles: t("chapters.defaultTitle", { n: 2 }) }),
+      ),
+    ).toBeTruthy();
   });
 
   it("stays silent when every chapter was checked", () => {

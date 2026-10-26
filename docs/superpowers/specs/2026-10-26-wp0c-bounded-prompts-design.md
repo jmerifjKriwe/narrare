@@ -91,8 +91,10 @@ handler:
 - **Extraction truncates.** The prompt carries the first 20 000 characters; the result
   carries `truncated: true` when the body was longer; the dock names it.
 - **Consistency skips.** A chapter over the limit is not sent; the result carries
-  `skipped_chapters` as the list of its titles; the dock names them. A partially checked
-  novel would be a lie a writer acts on; suggestions from a chapter's head are not.
+  `skipped_chapters` as `{position, title}` entries; the dock names them, falling back to
+  the rail's own "Kapitel N" label when the stored title is empty (renaming is WP6, and
+  the backend does not pick a locale). A partially checked novel would be a lie a writer
+  acts on; suggestions from a chapter's head are not.
 
 The asymmetry is the plan's, not an accident.
 
