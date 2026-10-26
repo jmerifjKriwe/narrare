@@ -14,7 +14,7 @@ import {
 import { JobStatus } from "@shell/ui/JobStatus";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
-import { entityKindLabel } from "./EntitiesPanel";
+import { entityTypeLabel } from "./EntitiesPanel";
 
 /** Extraction and its review: the chapter the editor is showing, through
  *  the job lane, and the queue its result files — one proposal card per
@@ -145,7 +145,7 @@ export function ExtractionPanel() {
             }}
           >
             <p className="mt-2 text-sm font-medium">
-              {suggestion.name} · {entityKindLabel(t, suggestion.kind)}
+              {suggestion.name} · {entityTypeLabel(t, suggestion.type)}
             </p>
           </ProposalCard>
         ))

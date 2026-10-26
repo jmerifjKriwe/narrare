@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.prompts import (
     BODY_LIMIT,
-    ENTITY_KINDS,
     ParsedEntity,
     ParsedFinding,
     consistency_prompt,
@@ -26,7 +25,7 @@ from app.capabilities.knowledge.repository import (
     EntityRepository,
     EntitySuggestionRepository,
 )
-from app.kernel.contracts.models import Chapter, Novel
+from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
 from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
 
@@ -92,10 +91,10 @@ ENTITIES_SCHEMA: dict[str, object] = {
                 "type": "object",
                 "properties": {
                     "name": {"type": "string"},
-                    "kind": {"type": "string", "enum": list(ENTITY_KINDS)},
+                    "type": {"type": "string", "enum": list(ENTITY_TYPES)},
                     "description": {"type": ["string", "null"]},
                 },
-                "required": ["name", "kind", "description"],
+                "required": ["name", "type", "description"],
                 "additionalProperties": False,
             },
         }
@@ -110,7 +109,7 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
 
     Defensive on purpose: a non-JSON answer, a non-array document or an item
     without a name, or with one too long for its column, with an unknown
-    kind or a non-string description raises, so the job fails and nothing
+    type or a non-string description raises, so the job fails and nothing
     is written — the alternative, skipping bad items, would silently shrink
     the review queue and hide a prompt regression behind a green job.
 
@@ -131,7 +130,7 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
         # that contract on the type level — every value is still checked below.
         item = cast("dict[str, object]", entry)
         name = item.get("name")
-        kind = item.get("kind")
+        type_ = item.get("type")
         description = item.get("description")
         if not isinstance(name, str) or not name.strip():
             raise _refuse("entities", "an item has no name", item)
@@ -144,13 +143,13 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
                 f"an item's name is {len(name)} characters, over the {MAX_NAME_LENGTH} limit",
                 item,
             )
-        if kind not in ENTITY_KINDS:
+        if type_ not in ENTITY_TYPES:
             raise _refuse(
-                "entities", f"an item's kind is not one of {'|'.join(ENTITY_KINDS)}", item
+                "entities", f"an item's type is not one of {'|'.join(ENTITY_TYPES)}", item
             )
         if description is not None and not isinstance(description, str):
             raise _refuse("entities", "an item's description is not a string", item)
-        entities.append(ParsedEntity(name, kind, description))
+        entities.append(ParsedEntity(name, type_, description))
     return entities
 
 
@@ -374,7 +373,7 @@ async def check_consistency(
     ).all()
     entities = await EntityRepository(session, job.user_id).list_for_novel(novel_id)
 
-    canon = [(entity.name, entity.kind) for entity in entities]
+    canon = [(entity.name, entity.type) for entity in entities]
     groups, skipped = _chapter_groups(chapters)
     kind, model = provider_facts()
 

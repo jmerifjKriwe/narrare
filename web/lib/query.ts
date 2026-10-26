@@ -331,7 +331,7 @@ export function useDiscardSuggestion(
 }
 
 /** The fields a correction may carry: only these reach the PATCH body. */
-export type EntityChanges = Partial<Pick<Entity, "name" | "kind" | "description">>;
+export type EntityChanges = Partial<Pick<Entity, "name" | "type" | "content">>;
 
 /**
  * The three corrections of the detail view. Each invalidates the entity

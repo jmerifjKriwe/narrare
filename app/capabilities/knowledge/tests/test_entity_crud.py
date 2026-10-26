@@ -1,11 +1,13 @@
-"""Manual entity CRUD: rename, delete, merge — the correction contract.
+"""Manual entity CRUD: edit, delete, merge, filter — the correction contract.
 
 Entities are born through review, but a typo must not live forever. The
-three corrections are endpoint contracts first: a PATCH changes only the
-fields its body carries, a delete removes exactly the row, a merge keeps
-the target and deletes the source. Entity rows have no referents — an
-accepted suggestion is a self-contained copy, never a reference — so a
-delete needs no cascade and the review history outlives the entity. The
+corrections are endpoint contracts first: a PATCH changes only the fields
+its body carries, a delete removes exactly the row, a merge re-points the
+source's edges and folds its fields into the survivor instead of dropping
+them (D3), and the list filters by type and tag or fuzzy-finds a misspelt
+name over the maintained search_text. Every write that moves identity
+words recomputes search_text and the vector, and the vector stays inside
+the one-width corpus rule — a model switch is refused like an upload. The
 scoping answer is the product's one answer everywhere: another user's row
 is a 404, indistinguishable from no row at all.
 """
@@ -16,6 +18,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.main import app
+from app.capabilities.knowledge.repository import EntityRepository, RelationRepository
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
@@ -30,31 +33,43 @@ def _client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-async def _entities(*rows: tuple[str, str, str | None]) -> list[Entity]:
-    """Entities in one novel, seeded straight through the session.
+async def _entities(*rows: tuple[str, str, str]) -> list[Entity]:
+    """Entities in one novel, seeded through the repository.
 
     The CRUD contract is about rows that exist, not about how they were
-    born — review's own tests pin the birth. A None description stays None:
-    clearing is a value this contract must carry, so the seeded rows cover
-    both of its states.
+    born — review's own tests pin the birth. Seeding rides the repository
+    so the derived columns (search_text) are written by the code under
+    test, never by hand; the vector is left unset, which is the seeded
+    row's honest state — the width guard only reads set vectors.
     """
     async with Session() as session:
         novel = Novel(user_id=LOCAL_USER_ID, title="Die Korrektur")
         session.add(novel)
         await session.flush()
+        repository = EntityRepository(session, LOCAL_USER_ID)
         created = [
-            Entity(
-                user_id=LOCAL_USER_ID,
-                novel_id=novel.id,
-                name=name,
-                kind=kind,
-                description=description,
-            )
-            for name, kind, description in rows
+            await repository.create(novel.id, name, type_, content, [], [], None)
+            for name, type_, content in rows
         ]
-        session.add_all(created)
         await session.commit()
         return created
+
+
+async def _labeled_entities(
+    *rows: tuple[str, str, str, list[str], list[str]],
+) -> tuple[Novel, list[Entity]]:
+    """One novel whose entities carry aliases and tags, for the filters."""
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Die Korrektur")
+        session.add(novel)
+        await session.flush()
+        repository = EntityRepository(session, LOCAL_USER_ID)
+        created = [
+            await repository.create(novel.id, name, type_, content, aliases, tags, None)
+            for name, type_, content, aliases, tags in rows
+        ]
+        await session.commit()
+        return novel, created
 
 
 async def _accepted_pair() -> tuple[Entity, EntitySuggestion]:
@@ -72,7 +87,7 @@ async def _accepted_pair() -> tuple[Entity, EntitySuggestion]:
             novel_id=novel.id,
             chapter_id=chapter.id,
             name="Mira",
-            kind="character",
+            type="character",
             description="Mira appears in the chapter.",
             status="accepted",
         )
@@ -81,8 +96,8 @@ async def _accepted_pair() -> tuple[Entity, EntitySuggestion]:
             user_id=LOCAL_USER_ID,
             novel_id=novel.id,
             name="Mira",
-            kind="character",
-            description="Mira appears in the chapter.",
+            type="character",
+            content="Mira appears in the chapter.",
         )
         session.add(entity)
         await session.commit()
@@ -96,20 +111,20 @@ async def test_a_patch_changes_only_the_fields_the_body_carries() -> None:
         assert renamed.status_code == 200
         assert renamed.json()["name"] == "Miralam"
         # the fields the body does not carry are untouched
-        assert renamed.json()["kind"] == "character"
-        assert renamed.json()["description"] == "Mira appears in the chapter."
+        assert renamed.json()["type"] == "character"
+        assert renamed.json()["content"] == "Mira appears in the chapter."
 
-        rekinded = await client.patch(f"/api/knowledge/entities/{mira.id}", json={"kind": "place"})
-        assert rekinded.status_code == 200
-        assert rekinded.json()["kind"] == "place"
-        assert rekinded.json()["name"] == "Miralam"
-
-        # null is a value, not an absence: the description clears
-        cleared = await client.patch(
-            f"/api/knowledge/entities/{mira.id}", json={"description": None}
+        retyped = await client.patch(
+            f"/api/knowledge/entities/{mira.id}", json={"type": "location"}
         )
+        assert retyped.status_code == 200
+        assert retyped.json()["type"] == "location"
+        assert retyped.json()["name"] == "Miralam"
+
+        # null is a value, not an absence: the content clears to the empty body
+        cleared = await client.patch(f"/api/knowledge/entities/{mira.id}", json={"content": None})
         assert cleared.status_code == 200
-        assert cleared.json()["description"] is None
+        assert cleared.json()["content"] == ""
 
         # the empty patch is a round trip, not an error
         untouched = await client.patch(f"/api/knowledge/entities/{mira.id}", json={})
@@ -118,24 +133,126 @@ async def test_a_patch_changes_only_the_fields_the_body_carries() -> None:
 
 
 async def test_a_patch_is_validated_like_the_parse_contract() -> None:
-    [mira] = await _entities(("Mira", "character", None))
+    [mira] = await _entities(("Mira", "character", ""))
     async with _client() as client:
         for name in ("", "   ", "x" * 201):
             refused = await client.patch(f"/api/knowledge/entities/{mira.id}", json={"name": name})
             assert refused.status_code == 422, name
-        unknown_kind = await client.patch(
-            f"/api/knowledge/entities/{mira.id}", json={"kind": "idea"}
+        unknown_type = await client.patch(
+            f"/api/knowledge/entities/{mira.id}", json={"type": "idea"}
         )
-        assert unknown_kind.status_code == 422
-        not_a_string = await client.patch(
-            f"/api/knowledge/entities/{mira.id}", json={"description": 5}
-        )
+        assert unknown_type.status_code == 422
+        not_a_string = await client.patch(f"/api/knowledge/entities/{mira.id}", json={"content": 5})
         assert not_a_string.status_code == 422
+        not_a_list = await client.patch(
+            f"/api/knowledge/entities/{mira.id}", json={"aliases": "Rhea"}
+        )
+        assert not_a_list.status_code == 422
         # no refusal wrote anything
         listed = await client.get(f"/api/knowledge/novels/{mira.novel_id}/entities")
-        assert [(row["name"], row["kind"], row["description"]) for row in listed.json()] == [
-            ("Mira", "character", None)
+        assert [(row["name"], row["type"], row["content"]) for row in listed.json()] == [
+            ("Mira", "character", "")
         ]
+
+
+async def test_a_patch_validates_and_dedupes_aliases_and_tags() -> None:
+    [mira] = await _entities(("Mira", "character", ""))
+    async with _client() as client:
+        # duplicates fold case-insensitively, first spelling wins
+        dupes = await client.patch(
+            f"/api/knowledge/entities/{mira.id}", json={"aliases": ["Rhea", "rhea", "RHEA"]}
+        )
+        assert dupes.status_code == 200
+        assert dupes.json()["aliases"] == ["Rhea"]
+
+        blank = await client.patch(f"/api/knowledge/entities/{mira.id}", json={"tags": ["  "]})
+        assert blank.status_code == 422
+        overlong = await client.patch(
+            f"/api/knowledge/entities/{mira.id}", json={"aliases": ["x" * 201]}
+        )
+        assert overlong.status_code == 422
+        # a refusal writes nothing
+        listed = await client.get(f"/api/knowledge/novels/{mira.novel_id}/entities")
+        assert listed.json()[0]["tags"] == []
+
+
+async def test_an_update_recomputes_search_text_and_vector() -> None:
+    [mira] = await _entities(("Mira", "character", ""))
+    async with _client() as client:
+        patched = await client.patch(
+            f"/api/knowledge/entities/{mira.id}",
+            json={"aliases": ["Rhea"], "tags": ["protagonist"]},
+        )
+        assert patched.status_code == 200
+        assert patched.json()["aliases"] == ["Rhea"]
+
+        # the just-added alias is searchable: search_text rode the update
+        found = await client.get(
+            f"/api/knowledge/novels/{mira.novel_id}/entities", params={"q": "Rhea"}
+        )
+        assert [row["name"] for row in found.json()] == ["Mira"]
+
+    async with Session() as session:
+        row = await session.get(Entity, mira.id)
+    assert row is not None
+    assert row.search_text == "Mira Rhea protagonist"
+    assert row.embedding is not None  # the vector rode the update too
+
+
+async def test_an_update_at_another_embedding_width_is_refused_like_an_upload() -> None:
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Die Weite")
+        session.add(novel)
+        await session.flush()
+        entity = Entity(
+            user_id=LOCAL_USER_ID,
+            novel_id=novel.id,
+            name="Mira",
+            type="character",
+            search_text="Mira",
+            embedding=[0.1, 0.2, 0.3],  # a corpus embedded at width 3
+        )
+        session.add(entity)
+        await session.commit()
+
+    async with _client() as client:
+        refused = await client.patch(
+            f"/api/knowledge/entities/{entity.id}", json={"content": "Neuer Text."}
+        )
+        assert refused.status_code == 409
+        # a dict, not a sentence: the UI localizes this error and needs a code
+        assert refused.json()["detail"]["code"] == "embedding-mismatch"
+        assert refused.json()["detail"]["stored"] == 3
+
+        # the refusal wrote nothing
+        listed = await client.get(f"/api/knowledge/novels/{novel.id}/entities")
+        assert listed.json()[0]["content"] == ""
+
+
+async def test_the_list_filters_by_type_tag_and_finds_a_misspelt_name() -> None:
+    novel, _rows = await _labeled_entities(
+        ("Katharina", "character", "Die Erzählerin.", ["Käthe"], ["protagonist", "adlig"]),
+        ("Mira", "character", "", [], ["protagonist"]),
+        ("Haus", "location", "", [], ["adlig"]),
+        ("See", "location", "", [], []),
+    )
+    async with _client() as client:
+        base = f"/api/knowledge/novels/{novel.id}/entities"
+
+        by_type = await client.get(base, params={"type": "character"})
+        assert by_type.status_code == 200
+        assert [row["name"] for row in by_type.json()] == ["Katharina", "Mira"]
+
+        by_tag = await client.get(base, params={"tag": "adlig"})
+        assert [row["name"] for row in by_tag.json()] == ["Katharina", "Haus"]
+
+        # the trigram tier: a realistic misspelling still finds her
+        misspelt = await client.get(base, params={"q": "Kathrina"})
+        assert [row["name"] for row in misspelt.json()] == ["Katharina"]
+
+        # an empty q is no filter: the list answers unfiltered
+        everything = await client.get(base, params={"q": ""})
+        assert [row["name"] for row in everything.json()] == ["Katharina", "Mira", "Haus", "See"]
 
 
 async def test_a_delete_is_a_row_delete_and_the_review_history_survives() -> None:
@@ -157,7 +274,7 @@ async def test_a_delete_is_a_row_delete_and_the_review_history_survives() -> Non
         rows = accepted.json()
         assert [row["id"] for row in rows] == [str(suggestion.id)]
         assert rows[0]["name"] == "Mira"
-        assert rows[0]["kind"] == "character"
+        assert rows[0]["type"] == "character"
         assert rows[0]["description"] == "Mira appears in the chapter."
 
         # the row is gone gone: a second delete meets the same absence
@@ -166,7 +283,7 @@ async def test_a_delete_is_a_row_delete_and_the_review_history_survives() -> Non
 
 
 async def test_a_merge_keeps_the_target_and_deletes_the_source() -> None:
-    mira, haus = await _entities(("Mira", "character", None), ("Haus", "place", "Das alte Haus."))
+    mira, haus = await _entities(("Mira", "character", ""), ("Haus", "location", "Das alte Haus."))
     async with _client() as client:
         merged = await client.post(
             f"/api/knowledge/entities/{mira.id}/merge", json={"target_id": str(haus.id)}
@@ -179,8 +296,78 @@ async def test_a_merge_keeps_the_target_and_deletes_the_source() -> None:
         assert [row["name"] for row in listed.json()] == ["Haus"]
 
 
+async def test_a_merge_repoints_the_edges_and_folds_the_fields() -> None:
+    """The D3 fold: nothing the source carried is dropped.
+
+    Edges re-point in both directions and survive as the survivor's —
+    including a self-edge — with only exact duplicates dropped; the
+    source's name lives on as an alias, aliases and tags union, the body
+    folds under a self-labeling heading, and the survivor's type wins.
+    """
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Die Fusion")
+        session.add(novel)
+        await session.flush()
+        entities = EntityRepository(session, LOCAL_USER_ID)
+        relations = RelationRepository(session, LOCAL_USER_ID)
+        mira = await entities.create(
+            novel.id, "Mira", "character", "Miras Kapitel.", ["Miralam"], ["protagonist"], None
+        )
+        haus = await entities.create(
+            novel.id, "Haus", "location", "Das alte Haus.", ["The House"], ["building"], None
+        )
+        see = await entities.create(novel.id, "See", "location", "", [], [], None)
+        await relations.create(mira.id, see.id, "lebt_am", None)  # outgoing, moves
+        await relations.create(see.id, mira.id, "erwähnt", "Kapitel 1")  # incoming, moves
+        await relations.create(haus.id, haus.id, "kennt", None)  # the survivor's own edge
+        await relations.create(mira.id, haus.id, "kennt", None)  # re-points onto it: dropped
+        await relations.create(mira.id, mira.id, "spiegelt", None)  # self-edge, survives
+        await session.commit()
+
+    async with _client() as client:
+        merged = await client.post(
+            f"/api/knowledge/entities/{mira.id}/merge", json={"target_id": str(haus.id)}
+        )
+        assert merged.status_code == 200
+        survivor = merged.json()
+        assert survivor["id"] == str(haus.id)
+        assert survivor["type"] == "location"  # the survivor's type wins
+        assert survivor["aliases"] == ["The House", "Miralam", "Mira"]
+        assert survivor["tags"] == ["building", "protagonist"]
+        assert survivor["content"] == "Das alte Haus.\n\n## Mira\n\nMiras Kapitel."
+
+        listed = await client.get(f"/api/knowledge/novels/{novel.id}/entities")
+        # the source is gone; the third entity is nobody's source and stays
+        assert [row["name"] for row in listed.json()] == ["Haus", "See"]
+
+        # the edges moved with the fold: both directions, the self-edge
+        # alive, only the exact duplicate gone
+        edges = (await client.get(f"/api/knowledge/entities/{haus.id}/relations")).json()
+        haus_id = str(haus.id)
+        see_id = str(see.id)
+        assert sorted(
+            (row["from_entity_id"], row["to_entity_id"], row["relation_type"]) for row in edges
+        ) == sorted(
+            [
+                (haus_id, haus_id, "kennt"),  # the survivor's own
+                (haus_id, haus_id, "spiegelt"),  # the source's self-edge, re-pointed
+                (haus_id, see_id, "lebt_am"),  # outgoing, re-pointed
+                (see_id, haus_id, "erwähnt"),  # incoming, re-pointed
+            ]
+        )
+        # the folded source is searchable by its own name
+        found = await client.get(f"/api/knowledge/novels/{novel.id}/entities", params={"q": "Mira"})
+        assert [row["name"] for row in found.json()] == ["Haus"]
+
+    async with Session() as session:
+        row = await session.get(Entity, haus.id)
+    assert row is not None
+    assert row.search_text == "Haus The House Miralam Mira building protagonist"
+    assert row.embedding is not None  # the survivor was re-embedded
+
+
 async def test_an_entity_cannot_merge_into_itself() -> None:
-    mira, _haus = await _entities(("Mira", "character", None), ("Haus", "place", None))
+    mira, _haus = await _entities(("Mira", "character", ""), ("Haus", "location", ""))
     async with _client() as client:
         refused = await client.post(
             f"/api/knowledge/entities/{mira.id}/merge", json={"target_id": str(mira.id)}
@@ -196,8 +383,8 @@ async def test_a_merge_cannot_cross_novels() -> None:
     # merge folds two entries of ONE story. Another novel's row is not a
     # target — the same invalid relation as merging a row into itself — and
     # the refusal must delete nothing on either side.
-    [mira] = await _entities(("Mira", "character", None))
-    [haus] = await _entities(("Haus", "place", None))
+    [mira] = await _entities(("Mira", "character", ""))
+    [haus] = await _entities(("Haus", "location", ""))
     async with _client() as client:
         refused = await client.post(
             f"/api/knowledge/entities/{mira.id}/merge", json={"target_id": str(haus.id)}
@@ -212,13 +399,13 @@ async def test_a_merge_cannot_cross_novels() -> None:
 
 
 async def test_another_users_entity_cannot_be_corrected() -> None:
-    [mira] = await _entities(("Mira", "character", None))
+    [mira] = await _entities(("Mira", "character", ""))
     await seed_user(OTHER_USER)
     async with Session() as session:
         novel = Novel(user_id=OTHER_USER, title="Fremder Roman")
         session.add(novel)
         await session.flush()
-        theirs = Entity(user_id=OTHER_USER, novel_id=novel.id, name="Fremde Mira", kind="character")
+        theirs = Entity(user_id=OTHER_USER, novel_id=novel.id, name="Fremde Mira", type="character")
         session.add(theirs)
         await session.commit()
 
@@ -239,6 +426,9 @@ async def test_another_users_entity_cannot_be_corrected() -> None:
             f"/api/knowledge/entities/{mira.id}/merge", json={"target_id": str(theirs.id)}
         )
         assert cross.status_code == 404
+        # and neither are their relations reachable
+        their_relations = await client.get(f"/api/knowledge/entities/{theirs.id}/relations")
+        assert their_relations.status_code == 404
 
         unknown = "00000000-0000-0000-0000-0000000000ff"
         assert (

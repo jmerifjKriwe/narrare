@@ -38,11 +38,11 @@ async def test_an_extraction_prompt_proposes_entities_from_its_passage() -> None
         "items": [
             {
                 "name": "Mira",
-                "kind": "character",
+                "type": "character",
                 "description": "Mira appears in the chapter.",
             },
-            {"name": "Haus", "kind": "place", "description": "Haus appears in the chapter."},
-            {"name": "See", "kind": "thing", "description": "See appears in the chapter."},
+            {"name": "Haus", "type": "location", "description": "Haus appears in the chapter."},
+            {"name": "See", "type": "faction", "description": "See appears in the chapter."},
         ]
     }
 

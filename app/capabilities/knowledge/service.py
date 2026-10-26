@@ -10,11 +10,11 @@ from collections.abc import Sequence  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.chunking import chunk_text
 from app.capabilities.knowledge.jobs import KIND, KIND_CHECK, MAX_NAME_LENGTH
-from app.capabilities.knowledge.prompts import ENTITY_KINDS
 from app.capabilities.knowledge.repository import (
     ACCEPTED,
     ACKNOWLEDGED,
@@ -26,14 +26,18 @@ from app.capabilities.knowledge.repository import (
     DocumentRepository,
     EntityRepository,
     EntitySuggestionRepository,
+    RelationRepository,
+    entity_search_text,
 )
-from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult
+from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult, RelationPatch
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import (
+    ENTITY_TYPES,
     Chapter,
     ConsistencyFinding,
     Document,
     Entity,
+    EntityRelation,
     EntitySuggestion,
     Novel,
     User,
@@ -45,6 +49,13 @@ from app.kernel.retrieval import EmbeddingMismatchError, Passage, PassageReposit
 MAX_UPLOAD_BYTES = 1_000_000
 """One document, at most. Ingestion embeds in-request; an unbounded upload would
 hold the worker and, with a paid provider, bill without limit."""
+
+EMBEDDING_CONTENT_LIMIT = 20_000
+"""The most body an embedding text carries, in characters (D5). The cap is
+for the vector only: storage keeps the full body."""
+
+MAX_LABEL_LENGTH = 200
+"""The width an alias or tag may carry, the name column's own limit."""
 
 
 class EmptyDocumentError(Exception):
@@ -68,8 +79,9 @@ class FindingAlreadyReviewedError(Exception):
 
 
 class InvalidEntityUpdateError(ValueError):
-    """The update breaks the entity contract: a blank or over-long name, or
-    a kind outside the extraction vocabulary."""
+    """The update breaks the entity contract: a blank or over-long name, a
+    type outside the extraction vocabulary, or a blank or over-long alias
+    or tag."""
 
 
 class SelfMergeError(Exception):
@@ -83,6 +95,73 @@ class CrossNovelMergeError(Exception):
     missing nor the caller's to discard."""
 
 
+class InvalidRelationError(ValueError):
+    """The relation breaks its contract: a blank or over-long relation_type."""
+
+
+class RelationExistsError(Exception):
+    """The same directed edge between the same two rows already carries
+    this relation_type; the edge, not the wording, is the duplicate."""
+
+
+def _embedding_text(entity: Entity) -> str:
+    """The text a vector is built from: identity words, then the body.
+
+    The body is capped for the vector only (D5) — storage keeps everything.
+    """
+    return " ".join(
+        [
+            entity.name,
+            *entity.aliases,
+            *entity.tags,
+            entity.content[:EMBEDDING_CONTENT_LIMIT],
+        ]
+    )
+
+
+def _clean_labels(values: list[str] | None, what: str) -> list[str]:
+    """Aliases or tags as the contract stores them: stripped, each nonblank
+    and at most MAX_LABEL_LENGTH, deduped case-insensitively (first spelling
+    wins). No count limit — a writer's novel, not a form."""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for value in values or []:
+        label = value.strip()
+        if not label:
+            raise InvalidEntityUpdateError(f"an entity's {what} cannot be blank")
+        if len(label) > MAX_LABEL_LENGTH:
+            raise InvalidEntityUpdateError(
+                f"an entity's {what} is over the {MAX_LABEL_LENGTH} character limit"
+            )
+        folded = label.casefold()
+        if folded not in seen:
+            seen.add(folded)
+            cleaned.append(label)
+    return cleaned
+
+
+def _union_labels(base: list[str], additions: Sequence[str]) -> list[str]:
+    """Base labels then the additions not already there, case-insensitively —
+    the merge's union, order-stable: the survivor's words keep their order."""
+    seen = {label.casefold() for label in base}
+    union = list(base)
+    for label in additions:
+        folded = label.casefold()
+        if folded not in seen:
+            seen.add(folded)
+            union.append(label)
+    return union
+
+
+def _validate_relation_type(relation_type: str | None) -> str:
+    """The relation_type the contract stores: nonblank, at most 80 characters."""
+    if relation_type is None or not relation_type.strip():
+        raise InvalidRelationError("a relation needs a type")
+    if len(relation_type) > 80:
+        raise InvalidRelationError("a relation's type is over the 80 character limit")
+    return relation_type
+
+
 class KnowledgeService:
     def __init__(self, session: AsyncSession, user_id: UUID, embeddings: EmbeddingProvider) -> None:
         """Bind knowledge operations to this user's session and embedding provider."""
@@ -93,6 +172,7 @@ class KnowledgeService:
         self.chunks = ChunkRepository(session, user_id)
         self.passages = PassageRepository(session, user_id)
         self.entities = EntityRepository(session, user_id)
+        self.relations = RelationRepository(session, user_id)
         self.suggestions = EntitySuggestionRepository(session, user_id)
         self.findings = ConsistencyFindingRepository(session, user_id)
 
@@ -182,10 +262,29 @@ class KnowledgeService:
         await self.session.commit()
         return job
 
-    async def list_entities(self, novel_id: UUID) -> Sequence[Entity]:
-        """Return entities oldest first; raise NotFoundError for an absent or unowned novel."""
+    async def _embed_entity(self, entity: Entity) -> None:
+        """Embed one entity in the request's transaction, guarded like upload.
+
+        The corpus keeps one width: the first set vector's width is the
+        user's, and a model that answers at another width is a refusal that
+        names the fix (EmbeddingMismatchError, HTTP 409) — never silently
+        degraded search. The assignments stay in-memory until the caller's
+        single commit, so a refusal leaves the row exactly as it was.
+        """
+        [vector] = await self.embeddings.embed([_embedding_text(entity)])
+        stored = await self.entities.stored_entity_width()
+        if stored is not None and stored != len(vector):
+            raise EmbeddingMismatchError(stored, len(vector))
+        entity.embedding = vector
+
+    async def list_entities(
+        self, novel_id: UUID, type: str | None = None, tag: str | None = None, q: str | None = None
+    ) -> Sequence[Entity]:
+        """The novel's entities, filtered by type and tag or fuzzy-found by
+        q (the trigram tier over search_text); raise NotFoundError for an
+        absent or unowned novel."""
         await self._own_novel(novel_id)
-        return await self.entities.list_for_novel(novel_id)
+        return await self.entities.list_for_novel(novel_id, type=type, tag=tag, q=q)
 
     async def list_suggestions(
         self, novel_id: UUID, status: str = PENDING
@@ -204,10 +303,15 @@ class KnowledgeService:
         guarantee: a concurrent accept waits for this commit and then reads a
         consumed row. Entity and status ride the same commit — there is no
         state in which the entity exists and the suggestion is still pending,
-        nor the other way around.
+        nor the other way around. Birth per D5: the description becomes the
+        body, aliases and tags start empty, and the search text and the
+        vector are computed before the commit. The suggestion's proposed
+        relations are written as [] — resolution arrives with extraction v2.
 
         Return the entity and consumed suggestion. Raise NotFoundError for
-        an absent or unowned suggestion, or AlreadyReviewedError if not pending.
+        an absent or unowned suggestion, AlreadyReviewedError if not pending,
+        or EmbeddingMismatchError when the configured model answers at
+        another width than the entity corpus was embedded at.
         """
         suggestion = await self.suggestions.locked(suggestion_id)
         if suggestion is None:
@@ -215,8 +319,16 @@ class KnowledgeService:
         if suggestion.status != PENDING:
             raise AlreadyReviewedError
         entity = await self.entities.create(
-            suggestion.novel_id, suggestion.name, suggestion.kind, suggestion.description
+            suggestion.novel_id,
+            suggestion.name,
+            suggestion.type,
+            suggestion.description or "",
+            aliases=[],
+            tags=[],
+            embedding=None,
         )
+        await self._embed_entity(entity)
+        suggestion.relations = []
         suggestion.status = ACCEPTED
         await self.session.commit()
         return entity, suggestion
@@ -301,15 +413,20 @@ class KnowledgeService:
         """Correct an entity by hand: only the fields the body carries.
 
         The values are checked against the same contract the parse side
-        checks — a name that is not blank and fits its column, a kind from
-        the extraction vocabulary — so a hand correction can never write a
-        row the review path would have refused. ``model_fields_set`` is
-        what makes the update partial: a field the body does not carry is
-        not a change, and a carried ``null`` description is one (the
-        cleared state, not the skipped field).
+        checks — a name that is not blank and fits its column, a type from
+        the extraction vocabulary, aliases and tags each nonblank and at
+        most 200 characters, deduped case-insensitively — so a hand
+        correction can never write a row the review path would have
+        refused. ``model_fields_set`` is what makes the update partial: a
+        field the body does not carry is not a change, and a carried
+        ``null`` content is one (the cleared state, not the skipped field).
+        A write that moves the identity words or the body recomputes
+        search_text and the vector (D5), guarded like upload.
 
         Commit and return the entity. Raise NotFoundError if it is absent or
-        unowned, or InvalidEntityUpdateError for an invalid name or kind.
+        unowned, InvalidEntityUpdateError for an invalid name, type, alias
+        or tag, or EmbeddingMismatchError when the configured model answers
+        at another width than the entity corpus was embedded at.
         """
         entity = await self.entities.get(entity_id)
         if entity is None:
@@ -327,26 +444,36 @@ class KnowledgeService:
                     f"an entity's name is over the {MAX_NAME_LENGTH} character limit"
                 )
             entity.name = name
-        if "kind" in provided:
-            kind = changes.kind
-            if kind not in ENTITY_KINDS:
+        if "type" in provided:
+            type_ = changes.type
+            if type_ not in ENTITY_TYPES:
                 raise InvalidEntityUpdateError(
-                    f"an entity's kind is not one of {'|'.join(ENTITY_KINDS)}"
+                    f"an entity's type is not one of {'|'.join(ENTITY_TYPES)}"
                 )
-            entity.kind = kind
-        if "description" in provided:
-            entity.description = changes.description
+            entity.type = type_
+        if "aliases" in provided:
+            entity.aliases = _clean_labels(changes.aliases, "alias")
+        if "tags" in provided:
+            entity.tags = _clean_labels(changes.tags, "tag")
+        if "content" in provided:
+            entity.content = changes.content or ""
+        if provided & {"name", "aliases", "tags", "content"}:
+            # the identity words or the body moved: search_text and the
+            # vector ride the same commit (D5). A type change alone moves
+            # neither, so it is a plain column write.
+            entity.search_text = entity_search_text(entity.name, entity.aliases, entity.tags)
+            await self._embed_entity(entity)
         await self.session.commit()
         return entity
 
     async def delete_entity(self, entity_id: UUID) -> None:
-        """Delete an entity: one row goes, and nothing else.
+        """Delete an entity: the row goes, and its edges go with it.
 
-        Entity rows have no referents. An accepted suggestion keeps its own
-        name/kind/description snapshot — it is a self-contained copy, never
-        a reference to the entity it filed — and nothing else points at an
-        entity, so the delete is a row delete: no cascade to chase, no
-        orphan to leave, and the review history stays exactly as it was.
+        An accepted suggestion keeps its own name/type/description snapshot —
+        it is a self-contained copy, never a reference to the entity it
+        filed — so the review history outlives the entity. The relations'
+        foreign keys cascade (D4): a hard delete takes the edges along, and
+        the export is the safety net.
 
         Commit the deletion; raise NotFoundError for an absent or unowned entity.
         """
@@ -356,19 +483,125 @@ class KnowledgeService:
         await self.entities.delete(entity)
         await self.session.commit()
 
+    async def entity_relations(self, entity_id: UUID) -> Sequence[EntityRelation]:
+        """The entity's edges, both directions, oldest first.
+
+        Raise NotFoundError for an absent or unowned entity — another
+        user's rows are the same absence, including their edges.
+        """
+        entity = await self.entities.get(entity_id)
+        if entity is None:
+            raise NotFoundError
+        return await self.relations.list_for_entity(entity_id)
+
+    async def add_relation(
+        self, entity_id: UUID, to_entity_id: UUID, relation_type: str, note: str | None
+    ) -> EntityRelation:
+        """Create a directed edge from this entity to another of the same novel.
+
+        Self-relations are allowed — flagging them is the UI's business.
+        The type is free text, checked only for blankness and length (D7);
+        the exact duplicate — same owner, same ends, same type — is a
+        RelationExistsError, both as the look-before-write and as the
+        unique constraint's race backstop. The ends are fixed at birth:
+        moving an edge is delete plus create.
+
+        Commit and return the edge. Raise NotFoundError when either end is
+        absent or unowned or not of this novel, InvalidRelationError for a
+        blank or over-long type, or RelationExistsError for the duplicate.
+        """
+        entity = await self.entities.get(entity_id)
+        if entity is None:
+            raise NotFoundError
+        # The target must be an owned entity of the same story: an edge
+        # joins one novel, so any other answer is the scoped absence.
+        target = await self.session.scalar(
+            select(Entity).where(
+                Entity.id == to_entity_id,
+                Entity.user_id == self.user_id,
+                Entity.novel_id == entity.novel_id,
+            )
+        )
+        if target is None:
+            raise NotFoundError
+        checked = _validate_relation_type(relation_type)
+        if await self.relations.edge(entity_id, to_entity_id, checked) is not None:
+            raise RelationExistsError
+        try:
+            relation = await self.relations.create(entity_id, to_entity_id, checked, note)
+        except IntegrityError:
+            # The constraint caught what the look-before-write missed: a
+            # concurrent create of the same edge. The rollback gives the
+            # session back clean; this request has written nothing else.
+            await self.session.rollback()
+            raise RelationExistsError from None
+        await self.session.commit()
+        return relation
+
+    async def update_relation(self, relation_id: UUID, changes: RelationPatch) -> EntityRelation:
+        """Retype or re-note an edge; the ends stay as they are.
+
+        ``model_fields_set`` is what makes the patch partial, the way the
+        entity update's is: a carried ``null`` note clears it, an absent
+        field is not a change. A changed type may not collide with the
+        edge's own sibling — the same uniqueness as creation.
+
+        Commit and return the edge. Raise NotFoundError for an absent or
+        unowned edge, InvalidRelationError for a blank or over-long type,
+        or RelationExistsError when the new type would duplicate a sibling.
+        """
+        relation = await self.relations.get(relation_id)
+        if relation is None:
+            raise NotFoundError
+        provided = changes.model_fields_set
+        if "relation_type" in provided:
+            checked = _validate_relation_type(changes.relation_type)
+            if checked != relation.relation_type:
+                sibling = await self.relations.edge(
+                    relation.from_entity_id, relation.to_entity_id, checked
+                )
+                if sibling is not None:
+                    raise RelationExistsError
+            relation.relation_type = checked
+        if "note" in provided:
+            relation.note = changes.note
+        await self.session.commit()
+        return relation
+
+    async def delete_relation(self, relation_id: UUID) -> None:
+        """Delete one edge: exactly the edge, nothing else.
+
+        Commit the deletion; raise NotFoundError for an absent or unowned edge.
+        """
+        relation = await self.relations.get(relation_id)
+        if relation is None:
+            raise NotFoundError
+        await self.relations.delete(relation)
+        await self.session.commit()
+
     async def merge_entities(self, source_id: UUID, target_id: UUID) -> Entity:
         """Fold the source into the target: the target survives, the source
-        is deleted.
+        is deleted, and nothing the source carried is dropped (D3).
 
-        The same no-referents fact shapes the merge: nothing hangs off
-        either row that could move, so "merge" is delete-plus-keep — the
-        source's row goes, the target's stays as it is. Both ends are read
-        scoped to the caller: the other user's row is the same absence as
-        no row, whichever end of the pair it is. Both ends must also sit in
-        the same novel: a merge folds two entries of one story, so another
-        novel's row is an invalid target, not a missing one.
+        The edges re-point first, both directions, and only exact
+        duplicates are dropped — an edge whose re-pointed form collides
+        with one the survivor already carries (or with an earlier
+        re-pointed edge, oldest first) goes, every other edge moves and a
+        re-pointed self-edge stays as the survivor's own. The fields fold:
+        the source's name becomes an alias of the survivor — the differing
+        name is why both rows existed — aliases and tags union
+        (case-insensitively), the source's body is appended under a
+        ``## <source name>`` heading when it is non-empty, and the
+        survivor's type wins. Then search_text and the vector are
+        recomputed for the folded row (D5), guarded like upload.
 
-        Commit and return the unchanged target. Raise SelfMergeError for equal
+        Both ends are read scoped to the caller: the other user's row is
+        the same absence as no row, whichever end of the pair it is. Both
+        ends must also sit in the same novel: a merge folds two entries of
+        one story, so another novel's row is an invalid target, not a
+        missing one.
+
+        Commit and return the folded target. Raise SelfMergeError for equal
         IDs, NotFoundError for either absent or unowned row, or CrossNovelMergeError
         when the two owned entities belong to different novels.
         """
@@ -382,6 +615,34 @@ class KnowledgeService:
             raise NotFoundError
         if target.novel_id != source.novel_id:
             raise CrossNovelMergeError
+
+        # Edges first: the dedupe runs inside this transaction, before the
+        # re-pointed rows are written — the unique constraint stays a
+        # backstop, not the merge's arithmetic. The surviving edge of a
+        # collision is the oldest, so the fold is deterministic.
+        source_edges = await self.relations.list_for_entity(source.id)
+        target_edges = await self.relations.list_for_entity(target.id)
+        occupied = {
+            (edge.from_entity_id, edge.to_entity_id, edge.relation_type) for edge in target_edges
+        }
+        for edge in source_edges:
+            moved_from = target.id if edge.from_entity_id == source.id else edge.from_entity_id
+            moved_to = target.id if edge.to_entity_id == source.id else edge.to_entity_id
+            if (moved_from, moved_to, edge.relation_type) in occupied:
+                await self.relations.delete(edge)
+                continue
+            occupied.add((moved_from, moved_to, edge.relation_type))
+            edge.from_entity_id = moved_from
+            edge.to_entity_id = moved_to
+
+        # The fields, per D3: name to alias, unions, body under a heading,
+        # the survivor's type untouched.
+        target.aliases = _union_labels(target.aliases, [*source.aliases, source.name])
+        target.tags = _union_labels(target.tags, source.tags)
+        if source.content.strip():
+            target.content = f"{target.content}\n\n## {source.name}\n\n{source.content}"
+        target.search_text = entity_search_text(target.name, target.aliases, target.tags)
+        await self._embed_entity(target)
         await self.entities.delete(source)
         await self.session.commit()
         return target

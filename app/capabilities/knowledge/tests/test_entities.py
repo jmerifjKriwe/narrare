@@ -6,12 +6,13 @@ exclusivity holds under two concurrent accepts, not just two sequential ones.
 """
 
 import asyncio
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Response
 
 from app.api.main import app
+from app.kernel.contracts.models import Entity
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -60,7 +61,7 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
         assert accepted.status_code == 200
         entity = accepted.json()
         assert entity["name"] == suggestion["name"]
-        assert entity["kind"] == suggestion["kind"]
+        assert entity["type"] == suggestion["type"]
         assert entity["novel_id"] == novel_id
 
         entities = (await client.get(f"/api/knowledge/novels/{novel_id}/entities")).json()
@@ -81,6 +82,36 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
 
         entities_after = (await client.get(f"/api/knowledge/novels/{novel_id}/entities")).json()
         assert len(entities_after) == 1  # the refusal created nothing
+
+
+async def test_an_accept_births_the_entity_with_empty_labels_and_a_vector() -> None:
+    """Birth per D5: the description becomes the body, the labels start empty,
+    and the search text and the vector are computed in the same transaction."""
+    async with _client() as client:
+        suggestion = await _pending_suggestion(client)
+        novel_id = suggestion["novel_id"]
+
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+        assert accepted.status_code == 200
+        entity = accepted.json()
+        assert entity["type"] == suggestion["type"]
+        assert entity["content"] == (suggestion["description"] or "")
+        assert entity["aliases"] == []
+        assert entity["tags"] == []
+
+        # the entity is findable by its own name through the trigram search:
+        # search_text rode the birth
+        found = await client.get(
+            f"/api/knowledge/novels/{novel_id}/entities",
+            params={"q": str(suggestion["name"])},
+        )
+        assert [row["id"] for row in found.json()] == [entity["id"]]
+
+    async with Session() as session:
+        row = await session.get(Entity, UUID(str(entity["id"])))
+    assert row is not None
+    assert row.embedding is not None  # the vector rode the birth
+    assert row.search_text == row.name
 
 
 async def test_discard_consumes_without_creating() -> None:
@@ -147,7 +178,7 @@ async def test_another_users_suggestion_cannot_be_reviewed() -> None:
             novel_id=novel.id,
             chapter_id=chapter.id,
             name="Mira",
-            kind="character",
+            type="character",
             status="pending",
         )
         session.add(theirs)

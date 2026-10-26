@@ -10,6 +10,7 @@ import json
 import re
 from collections.abc import AsyncIterator  # noqa: TC003
 
+from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm.contract import (
     DONE,
     PURPOSE_PREFIX,
@@ -28,10 +29,11 @@ PURPOSE_CHECK = "check-consistency"
 # loudly — a drifted kind fails at its first job instead of silently.
 
 PROPOSED_ENTITIES = 3
-ENTITY_KINDS = ("character", "place", "thing")
-# Kept in step with the extraction contract's vocabulary (knowledge's prompt
-# asks for exactly these kinds); the handler's parse refuses anything else, so
-# drift here fails loudly at the first extraction instead of silently.
+# The type vocabulary is the extraction contract's own, imported from the
+# kernel contracts (knowledge's prompt asks for exactly these); the
+# handler's parse refuses anything else, so drift here fails loudly at the
+# first extraction instead of silently. Relation proposals arrive with
+# extraction v2.
 
 CAPITALIZED = re.compile(r"\b[ÄÖÜA-Z][äöüßa-z]+\b")
 
@@ -82,7 +84,7 @@ def _entities_answer(passage: str) -> str:
     """Deterministic extraction: the passage's capitalized words as entities.
 
     Names are derived from the prompt, so a test steers the fake with the
-    chapter text alone; kinds cycle the extraction vocabulary in order of
+    chapter text alone; types cycle the extraction vocabulary in order of
     appearance.
     """
     names = list(dict.fromkeys(CAPITALIZED.findall(passage)))[:PROPOSED_ENTITIES]
@@ -93,7 +95,7 @@ def _entities_answer(passage: str) -> str:
             "items": [
                 {
                     "name": name,
-                    "kind": ENTITY_KINDS[index % len(ENTITY_KINDS)],
+                    "type": ENTITY_TYPES[index % len(ENTITY_TYPES)],
                     "description": f"{name} appears in the chapter.",
                 }
                 for index, name in enumerate(names)

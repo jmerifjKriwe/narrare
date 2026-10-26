@@ -30,8 +30,8 @@ async def empty_tables() -> None:
     async with Session() as session:
         await session.execute(
             text(
-                "TRUNCATE entities, entity_suggestions, consistency_findings, jobs,"
-                " chunks, documents, novels, chapters, users CASCADE"
+                "TRUNCATE entities, entity_suggestions, entity_relations,"
+                " consistency_findings, jobs, chunks, documents, novels, chapters, users CASCADE"
             )
         )
         # The local user exists: these tests exercise a set-up instance. The

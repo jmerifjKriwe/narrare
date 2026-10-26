@@ -28,8 +28,13 @@ async def init_schema(database_url: str) -> None:
     """Create the extension and every table; existing tables stay untouched."""
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
-        # The vector column type needs its extension before the tables exist.
+        # The extensions the schema needs before the tables exist: vector for
+        # the embedding columns, pg_trgm for the trigram search over
+        # search_text, unaccent for the diacritics-folding the query side
+        # applies (the index itself is a plain gin_trgm_ops on the column).
         await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
         await connection.run_sync(models.Base.metadata.create_all)
     await engine.dispose()
 

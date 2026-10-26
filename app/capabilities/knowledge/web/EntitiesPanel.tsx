@@ -17,20 +17,27 @@ import { Dialog } from "@shell/ui/Dialog";
 import { GridList } from "@shell/ui/GridList";
 import { TextField } from "@shell/ui/TextField";
 
-// The extraction contract's kinds (knowledge's prompt vocabulary), as
-// catalog keys. A kind the contract later adds falls back to "thing" rather
+// The extraction contract's types (kernel contracts' ENTITY_TYPES), as
+// catalog keys. A type the contract later adds falls back to "generic" rather
 // than crashing the render; the list is the contract's, so it lives beside
 // its first consumer and the review queue imports it from here.
-const KIND_KEYS = {
-  character: "knowledge.kind.character",
-  place: "knowledge.kind.place",
-  thing: "knowledge.kind.thing",
+const TYPE_KEYS = {
+  character: "knowledge.type.character",
+  location: "knowledge.type.location",
+  faction: "knowledge.type.faction",
+  object: "knowledge.type.object",
+  system: "knowledge.type.system",
+  timeline: "knowledge.type.timeline",
+  event: "knowledge.type.event",
+  generic: "knowledge.type.generic",
 } as const;
 
-/** An entity kind in the user's language — the list's and the review
+/** An entity type in the user's language — the list's and the review
  *  queue's shared wording for what a filed row is. */
-export function entityKindLabel(t: (key: MessageKey) => string, kind: string): string {
-  return kind in KIND_KEYS ? t(KIND_KEYS[kind as keyof typeof KIND_KEYS]) : t("knowledge.kind.thing");
+export function entityTypeLabel(t: (key: MessageKey) => string, type: string): string {
+  return type in TYPE_KEYS
+    ? t(TYPE_KEYS[type as keyof typeof TYPE_KEYS])
+    : t("knowledge.type.generic");
 }
 
 // The button paints the shell already knows: the primary action, the
@@ -186,9 +193,9 @@ function EntityDetail({
       <h4 id={detailId} className="text-sm font-semibold">
         {entity.name}
       </h4>
-      <p className="mt-1 text-sm text-muted">{entityKindLabel(t, entity.kind)}</p>
-      {entity.description ? (
-        <p className="mt-2 text-sm leading-relaxed">{entity.description}</p>
+      <p className="mt-1 text-sm text-muted">{entityTypeLabel(t, entity.type)}</p>
+      {entity.content ? (
+        <p className="mt-2 text-sm leading-relaxed">{entity.content}</p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <EditEntityDialog entity={entity} novelId={novelId} />
@@ -204,40 +211,40 @@ function EntityDetail({
   );
 }
 
-/** Rename, rekind, redescription: the form carries only what changed. */
+/** Rename, retype, re-body: the form carries only what changed. */
 function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string }) {
   const t = useTranslation();
   const update = useUpdateEntity(novelId);
   const [name, setName] = useState(entity.name);
-  const [kindText, setKindText] = useState(entityKindLabel(t, entity.kind));
-  const [description, setDescription] = useState(entity.description ?? "");
+  const [typeText, setTypeText] = useState(entityTypeLabel(t, entity.type));
+  const [content, setContent] = useState(entity.content);
   // The refusals are derived, not stored: once a save was tried, the words
   // stand exactly as long as the field does not answer them.
   const [triedSave, setTriedSave] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const kindItems = (Object.keys(KIND_KEYS) as (keyof typeof KIND_KEYS)[]).map((kind) => ({
-    id: kind,
-    text: t(KIND_KEYS[kind]),
+  const typeItems = (Object.keys(TYPE_KEYS) as (keyof typeof TYPE_KEYS)[]).map((type) => ({
+    id: type,
+    text: t(TYPE_KEYS[type]),
   }));
   const nameInvalid = triedSave && name.trim() === "";
-  // The box is the source of truth: its text resolves back to a kind on
+  // The box is the source of truth: its text resolves back to a type on
   // save, the way the search box's text is what the list filters by.
-  const resolvedKind = kindItems.find((item) => item.text === kindText.trim())?.id ?? null;
-  const kindInvalid = triedSave && resolvedKind === null;
+  const resolvedType = typeItems.find((item) => item.text === typeText.trim())?.id ?? null;
+  const typeInvalid = triedSave && resolvedType === null;
 
-  /** Save changed fields, clearing a blank description; keep the dialog open on refusal. */
+  /** Save changed fields, clearing a blank body; keep the dialog open on refusal. */
   async function save(event: React.FormEvent, close: () => void) {
     event.preventDefault();
     setTriedSave(true);
     setFailed(false);
     const trimmedName = name.trim();
-    if (trimmedName === "" || resolvedKind === null) return;
-    const nextDescription = description.trim() === "" ? null : description;
+    if (trimmedName === "" || resolvedType === null) return;
+    const nextContent = content.trim() === "" ? "" : content;
     const changes: EntityChanges = {};
     if (trimmedName !== entity.name) changes.name = trimmedName;
-    if (resolvedKind !== entity.kind) changes.kind = resolvedKind;
-    if (nextDescription !== (entity.description ?? null)) changes.description = nextDescription;
+    if (resolvedType !== entity.type) changes.type = resolvedType;
+    if (nextContent !== entity.content) changes.content = nextContent;
     try {
       await update.mutateAsync({ entityId: entity.id, changes });
     } catch {
@@ -263,24 +270,24 @@ function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string
             validationMessage={nameInvalid ? t("knowledge.entityNameRequired") : undefined}
           />
           <ComboBox
-            label={t("knowledge.entityKindLabel")}
-            value={kindText}
-            onChange={setKindText}
+            label={t("knowledge.entityTypeLabel")}
+            value={typeText}
+            onChange={setTypeText}
             onPick={(id) => {
-              const picked = kindItems.find((item) => item.id === id);
-              if (picked) setKindText(picked.text);
+              const picked = typeItems.find((item) => item.id === id);
+              if (picked) setTypeText(picked.text);
             }}
-            items={kindItems.filter((item) =>
-              item.text.toLowerCase().includes(kindText.trim().toLowerCase()),
+            items={typeItems.filter((item) =>
+              item.text.toLowerCase().includes(typeText.trim().toLowerCase()),
             )}
           />
-          {kindInvalid ? (
-            <p className="text-sm text-danger">{t("knowledge.entityKindRequired")}</p>
+          {typeInvalid ? (
+            <p className="text-sm text-danger">{t("knowledge.entityTypeRequired")}</p>
           ) : null}
           <TextField
-            label={t("knowledge.entityDescriptionLabel")}
-            value={description}
-            onChange={setDescription}
+            label={t("knowledge.entityContentLabel")}
+            value={content}
+            onChange={setContent}
             multiline
           />
           {failed ? (

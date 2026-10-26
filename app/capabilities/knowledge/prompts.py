@@ -16,9 +16,8 @@ import them from here — never from each other.
 from collections.abc import Sequence  # noqa: TC003
 from typing import NamedTuple
 
+from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
-
-ENTITY_KINDS = ("character", "place", "thing")
 
 # The most of a chapter body any prompt carries, in characters. A real model
 # overflows on a long chapter; the fake never does, which is why the bound has
@@ -30,7 +29,7 @@ class ParsedEntity(NamedTuple):
     """One entity of a provider answer, already validated."""
 
     name: str
-    kind: str
+    type: str
     description: str | None
 
 
@@ -47,14 +46,14 @@ def extraction_prompt(*, chapter_title: str, body: str) -> str:
     The purpose marker selects extraction, and the source marker introduces
     the body for providers that read marked passages.
     """
-    kinds = "|".join(ENTITY_KINDS)
+    types = "|".join(ENTITY_TYPES)
     return (
         f"{PURPOSE_PREFIX}extract-entities\n\n"
         "Extract the entities that appear in the chapter below: the characters, "
         "the places and the things that matter to the story. For each one judge "
-        f"a kind — {kinds} — and write a one-sentence description of its role. "
+        f"a type — {types} — and write a one-sentence description of its role. "
         'Answer with a JSON object containing an "items" array of objects '
-        '{"name": string, "kind": string, '
+        '{"name": string, "type": string, '
         '"description": string} and nothing else: no prose around it, no '
         'commentary. Answer with {"items": []} when the chapter proposes '
         "no entity.\n\n"
@@ -68,13 +67,13 @@ def consistency_prompt(
 ) -> str:
     """The whole-novel check: the instruction, the accepted canon, every chapter.
 
-    ``entities`` are (name, kind) pairs of the novel's accepted entities — the
+    ``entities`` are (name, type) pairs of the novel's accepted entities — the
     story's canon, grounding what a name refers to. ``chapters`` are (title,
     body) pairs in reading order; each body rides behind the source marker the
     way a retrieval passage does, so the provider boundary sees every chapter
     and a test can steer the fake's derivation with the chapter texts alone.
     """
-    grounding = "\n".join(f"{name} ({kind})" for name, kind in entities)
+    grounding = "\n".join(f"{name} ({type_})" for name, type_ in entities)
     if not grounding:
         grounding = "None accepted yet."
     chapters_text = "\n\n".join(
