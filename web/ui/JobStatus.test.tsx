@@ -73,6 +73,33 @@ describe("JobStatus", () => {
     expect(screen.queryByText(t("jobs.truncated"))).toBeNull();
   });
 
+  it("names the chapters a check skipped as too long", () => {
+    render(
+      <JobStatus
+        job={job({
+          kind: "check-consistency",
+          status: "done",
+          result: { findings: 1, skipped_chapters: ["Riesig", "Gigantisch"] },
+        })}
+      />,
+    );
+    const line = screen.getByText(t("jobs.skippedChapters", { titles: "Riesig, Gigantisch" }));
+    expect(line).toBeTruthy();
+  });
+
+  it("stays silent when every chapter was checked", () => {
+    render(
+      <JobStatus
+        job={job({
+          kind: "check-consistency",
+          status: "done",
+          result: { findings: 1, skipped_chapters: [] },
+        })}
+      />,
+    );
+    expect(screen.queryByText(t("jobs.skippedChapters", { titles: "" }))).toBeNull();
+  });
+
   it("renders a running row without progress as plain movement", () => {
     // Progress is the handler's to report; NULL until it first does — the
     // panel must not wait for a number to say the work is going.

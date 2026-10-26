@@ -52,6 +52,12 @@ export function JobStatus({ job }: { job: Job }) {
       // the bound is reported beside the count, or the count would pass for
       // the whole chapter.
       const truncated = job.result?.["truncated"] === true;
+      // Chapters the check could not read are named by title: a done row that
+      // stayed quiet about them would pass for a checked novel.
+      const rawSkipped = job.result?.["skipped_chapters"];
+      const skipped = Array.isArray(rawSkipped)
+        ? rawSkipped.filter((title): title is string => typeof title === "string")
+        : [];
       return (
         <>
           <p role="status" data-job-status="done" className="text-sm text-muted">
@@ -69,6 +75,15 @@ export function JobStatus({ job }: { job: Job }) {
               className="mt-1 text-sm text-muted"
             >
               {t("jobs.truncated")}
+            </p>
+          ) : null}
+          {skipped.length > 0 ? (
+            <p
+              role="status"
+              data-job-skipped={skipped.length}
+              className="mt-1 text-sm text-muted"
+            >
+              {t("jobs.skippedChapters", { titles: skipped.join(", ") })}
             </p>
           ) : null}
         </>

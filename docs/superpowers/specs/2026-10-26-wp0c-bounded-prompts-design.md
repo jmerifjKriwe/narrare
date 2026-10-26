@@ -98,12 +98,21 @@ The asymmetry is the plan's, not an accident.
 
 ### Map-reduce (`check_consistency`)
 
-Load the novel's chapters and canon entities once. For each chapter within the bound: one
-structured pass (canon entities and that chapter's body), one audit row, `report` of the
-running percentage. Merge all findings, deduplicate by `summary` (first occurrence
-wins). A novel whose every chapter is over the bound makes no provider call, files no
-findings, and lists every chapter as skipped — the job is done, not failed. A novel with
-no chapters likewise makes no call (today it sends an empty prompt; see deviations).
+Load the novel's chapters and canon entities once, then pack the chapters greedily
+into **groups** under `BODY_LIMIT` in reading order; one structured pass per group, one
+audit row per call, `report` of the running percentage after each group. Merge all
+findings across groups, deduplicate by `summary` (first occurrence wins), report 0 at
+the start (a re-run must not inherit the previous number).
+
+Groups, not chapters, because a per-chapter pass cannot see a contradiction *between*
+two chapters — and the canon carries only names and kinds, so it cannot stand in for
+the other chapter's text. Two short chapters still form one group and one pass, which
+is exactly what the check always did; a long novel is cut at group boundaries and the
+cut is the price of a bounded prompt. A chapter over the bound on its own is skipped by
+name. A novel whose every chapter is over the bound makes no provider call, files no
+findings, and lists every chapter as skipped — the job is done, not failed. A novel
+with no chapters likewise makes no call (today it sends an empty prompt; see
+deviations).
 
 ## Verification
 
@@ -128,3 +137,8 @@ no chapters likewise makes no call (today it sends an empty prompt; see deviatio
 3. **A chapterless novel makes no provider call** where today it is sent an empty prompt.
    Map-reduce makes the question moot; documented so the old docstring's promise is not
    silently inverted.
+4. **Chapters are grouped, not sent one per pass** (implementation finding, 2026-10-26).
+   §3.2 says "one pass per chapter"; a per-chapter pass cannot detect a contradiction
+   between two chapters, and the canon carries only names and kinds, so it cannot supply
+   the other text. Groups keep the check's product promise and its boundedness; the
+   group boundary is where cross-chapter detection stops.

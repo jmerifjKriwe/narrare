@@ -7,11 +7,10 @@ exists, and the lane records the failure with nothing written.
 """
 
 from json import JSONDecodeError, loads
-from time import monotonic
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.prompts import (
@@ -28,14 +27,15 @@ from app.capabilities.knowledge.repository import (
     EntitySuggestionRepository,
 )
 from app.kernel.contracts.models import Chapter, Novel
-from app.kernel.jobs.models import Job
 from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
-from app.kernel.llm.contract import CompletionRequest, Delta, Usage
 
 from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from app.kernel.jobs.models import Job
     from app.kernel.jobs.worker import JobHandler, ProgressReport
 
 KIND = "extract-entities"
@@ -126,6 +126,22 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
             raise _refuse("entities", "an item's description is not a string", item)
         entities.append(ParsedEntity(name, kind, description))
     return entities
+
+
+# The shape parse_findings accepts, sent as the response schema: one place
+# holds the ask and the check, so they cannot drift.
+FINDINGS_SCHEMA: dict[str, object] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "detail": {"type": ["string", "null"]},
+        },
+        "required": ["summary", "detail"],
+        "additionalProperties": False,
+    },
+}
 
 
 def parse_findings(answer: str) -> list[ParsedFinding]:
@@ -249,24 +265,57 @@ async def extract_entities(
     return {"suggestions": len(entities), "truncated": truncated}
 
 
+def _chapter_groups(chapters: Sequence[Chapter]) -> tuple[list[list[Chapter]], list[str]]:
+    """Pack chapters into prompt-sized groups in reading order.
+
+    A group carries at most ``BODY_LIMIT`` characters of body, so a pass cannot
+    overflow a real model's window. Chapters over the bound on their own come
+    back as skipped: a chapter half-read would yield findings that claim a
+    completeness the check does not have.
+    """
+    groups: list[list[Chapter]] = []
+    skipped: list[str] = []
+    current: list[Chapter] = []
+    size = 0
+    for chapter in chapters:
+        if len(chapter.body) > BODY_LIMIT:
+            skipped.append(chapter.title)
+            continue
+        if current and size + len(chapter.body) > BODY_LIMIT:
+            groups.append(current)
+            current = []
+            size = 0
+        current.append(chapter)
+        size += len(chapter.body)
+    if current:
+        groups.append(current)
+    return groups, skipped
+
+
 async def check_consistency(
     session: AsyncSession, job: Job, report: ProgressReport
 ) -> dict[str, object]:
-    """Read every chapter and the accepted canon, then file pending findings.
+    """Read the novel in prompt-sized chapter groups and file pending findings.
 
-    The novel's chapters and entities are read scoped to the job's owner —
-    a job row is user-owned and the work must stay inside that owner's rows.
-    The provider call happens here, in the worker, never in a request (D14);
+    Map-reduce over chapters: chapters are packed greedily into groups under
+    ``BODY_LIMIT`` (a group is one provider pass), findings are merged across
+    groups and deduplicated by summary. A chapter over the bound is never sent
+    and is returned as skipped by title — a partially checked chapter would be
+    a lie a writer acts on. A novel whose chapters all fit makes exactly one
+    pass, which is what the check always did.
+
+    The novel's chapters and entities are read scoped to the job's owner.
+    The provider calls happen here, in the worker, never in a request (D14);
     everything this handler writes commits once at the end, so a raise leaves
-    no half-written queue. A novel without chapters is still sent to the provider;
-    an empty answer array is valid.
+    no half-written queue. A novel without chapters, or one whose every chapter
+    is over the bound, makes no provider call and files no findings.
 
     ``job.payload['novel_id']`` identifies the novel as a UUID. Missing or invalid IDs,
     or a novel missing from the owner's rows, raise ValueError. Invalid answers
     raise MalformedAnswerError; provider and database errors propagate.
-    Success commits findings, the call audit, and progress=100 together,
-    and returns ``findings`` as the parsed finding count, including duplicates
-    skipped during filing. Provider or answer-validation failures create no audit row.
+    Progress is reported through the lane's callback after each group; success
+    commits findings and every call's audit together, and returns ``findings``
+    as the filed count plus ``skipped_chapters``. A failure writes no audit row.
     """
     try:
         novel_id = UUID(str(job.payload["novel_id"]))
@@ -288,47 +337,61 @@ async def check_consistency(
     ).all()
     entities = await EntityRepository(session, job.user_id).list_for_novel(novel_id)
 
-    prompt = consistency_prompt(
-        entities=[(entity.name, entity.kind) for entity in entities],
-        chapters=[(chapter.title, chapter.body) for chapter in chapters],
-    )
+    canon = [(entity.name, entity.kind) for entity in entities]
+    groups, skipped = _chapter_groups(chapters)
     kind, model = provider_facts()
-    pieces: list[str] = []
-    usage: Usage | None = None
-    started = monotonic()
-    async for event in get_provider().stream(CompletionRequest.user(prompt)):
-        if isinstance(event, Delta):
-            pieces.append(event.text)
-        elif isinstance(event, Usage):
-            usage = event
-    answer = "".join(pieces)
-    latency_ms = round((monotonic() - started) * 1000)
-    findings = parse_findings(answer)
 
-    # The extraction handler's audit contract, unchanged in shape: the row
-    # rides the terminal commit, and a failure before here writes none.
-    await record_call(
-        session,
-        user_id=job.user_id,
-        task_key="knowledge.check-consistency",
-        provider_kind=kind,
-        model=model,
-        latency_ms=latency_ms,
-        status="ok",
-        prompt_text=prompt,
-        response_text=answer,
-        input_tokens=usage.input_tokens if usage else None,
-        output_tokens=usage.output_tokens if usage else None,
-        novel_id=novel_id,
-    )
+    async def audit(call: AuditedCall) -> None:
+        # One row per pass, riding the terminal commit with the findings: a
+        # raise before the commit writes none (D3), and a retry audits as the
+        # separate call it is.
+        await record_call(
+            session,
+            user_id=job.user_id,
+            task_key="knowledge.check-consistency",
+            provider_kind=kind,
+            model=model,
+            latency_ms=call.latency_ms,
+            status="ok",
+            prompt_text=call.prompt,
+            response_text=call.answer,
+            input_tokens=call.usage.input_tokens if call.usage else None,
+            output_tokens=call.usage.output_tokens if call.usage else None,
+            novel_id=novel_id,
+        )
+
+    findings: list[ParsedFinding] = []
+    seen: set[str] = set()
+    done = 0
+    total = sum(len(group) for group in groups)
+    if total:
+        # A re-run must not inherit the previous run's percentage.
+        await report(0)
+    for group in groups:
+        prompt = consistency_prompt(
+            entities=canon,
+            chapters=[(chapter.title, chapter.body) for chapter in group],
+        )
+        found = await ask_structured(
+            get_provider(),
+            prompt,
+            schema=FINDINGS_SCHEMA,
+            parse=parse_findings,
+            audit=audit,
+        )
+        for finding in found:
+            if finding.summary in seen:
+                continue
+            seen.add(finding.summary)
+            findings.append(finding)
+        done += len(group)
+        await report(round(done / total * 100))
 
     repository = ConsistencyFindingRepository(session, job.user_id)
     await repository.create_many(novel_id, findings)
-    # The extraction handler's terminal-commit contract, unchanged: progress
-    # rides the same commit as the rows, and 100 is the whole job.
-    await session.execute(update(Job).where(Job.id == job.id).values(progress=100))
+    await report(100)
     await session.commit()
-    return {"findings": len(findings)}
+    return {"findings": len(findings), "skipped_chapters": skipped}
 
 
 # The annotation is the convention the api app reads (``jobs.py`` exporting

@@ -137,5 +137,6 @@
   "settings.language": "Langue",
   "settings.automatic": "Automatique",
   "settings.errorSave": "La langue n'a pas pu être enregistrée.",
-  "jobs.truncated": "Seuls les 20 000 premiers caractères ont été lus."
+  "jobs.truncated": "Seuls les 20 000 premiers caractères ont été lus.",
+  "jobs.skippedChapters": "Ignorés, trop longs : {titles}"
 }

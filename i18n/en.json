@@ -137,5 +137,6 @@
   "settings.language": "Language",
   "settings.automatic": "Automatic",
   "settings.errorSave": "The language could not be saved.",
-  "jobs.truncated": "Only the first 20,000 characters were read."
+  "jobs.truncated": "Only the first 20,000 characters were read.",
+  "jobs.skippedChapters": "Skipped, too long: {titles}"
 }
