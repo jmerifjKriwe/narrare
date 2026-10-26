@@ -7,3 +7,10 @@ reviews:
   auto_review:
     ignore_title_keywords:
       - "chore: release"
+  finishing_touches:
+    autofix:
+      enabled: false
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
