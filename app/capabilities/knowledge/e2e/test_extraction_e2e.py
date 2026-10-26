@@ -4,7 +4,11 @@ The job is enqueued through the running API, then the API process goes down
 and comes back up. The row in Postgres is the only thing that carries the work
 across that boundary (spec §9 D10) — whether the lane ran the handler before
 the polite stop or the fresh lane picks the queued row up after the restart,
-the outcome must be the same: a done job and a queryable review queue.
+the outcome must be the same: a done job and a queryable review queue, its
+suggestions carrying the fake's relation proposals. The accept round after the
+restart walks that queue in order: the proposals whose targets are still
+pending skip with their note riding the response, and the last one resolves
+and creates its edge for real (D8) — on the real API, over the real database.
 """
 
 import asyncio
@@ -111,7 +115,49 @@ def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) ->
         listed.raise_for_status()
         suggestions = listed.json()
         assert [suggestion["name"] for suggestion in suggestions] == ["Mira", "Haus", "See"]
+        # the fake's derivation rode the row across the restart: entity i
+        # proposes related_to to entity (i+1), the last wrapping to the first
+        assert [suggestion["relations"] for suggestion in suggestions] == [
+            [{"target_name": "Haus", "relation_type": "related_to"}],
+            [{"target_name": "See", "relation_type": "related_to"}],
+            [{"target_name": "Mira", "relation_type": "related_to"}],
+        ]
         assert all(suggestion["status"] == "pending" for suggestion in suggestions)
+
+        # The accept round, in the queue's order: resolution sees existing
+        # entities only (D8), so the first two accepts skip visibly — their
+        # targets are still pending — and the last accept's target exists by
+        # then, so its edge is created for real.
+        mira, haus, see = suggestions
+        mira_accept = client.post(f"/api/knowledge/suggestions/{mira['id']}/accept")
+        mira_accept.raise_for_status()
+        assert mira_accept.json()["entity"]["name"] == "Mira"
+        assert mira_accept.json()["skipped_relations"] == [
+            {"target_name": "Haus", "relation_type": "related_to"}
+        ]
+
+        haus_accept = client.post(f"/api/knowledge/suggestions/{haus['id']}/accept")
+        haus_accept.raise_for_status()
+        assert haus_accept.json()["skipped_relations"] == [
+            {"target_name": "See", "relation_type": "related_to"}
+        ]
+
+        see_accept = client.post(f"/api/knowledge/suggestions/{see['id']}/accept")
+        see_accept.raise_for_status()
+        assert see_accept.json()["skipped_relations"] == []
+
+        edges = client.get(f"/api/knowledge/entities/{see_accept.json()['entity']['id']}/relations")
+        edges.raise_for_status()
+        assert [
+            (edge["from_entity_id"], edge["to_entity_id"], edge["relation_type"])
+            for edge in edges.json()
+        ] == [
+            (
+                see_accept.json()["entity"]["id"],
+                mira_accept.json()["entity"]["id"],
+                "related_to",
+            )
+        ]
 
     # The call the handler made is audited in the same real database (plan
     # §3.4): one ok extraction for this novel, tokens counted, cost NULL.

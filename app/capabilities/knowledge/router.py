@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import (
+    AcceptRead,
     ConsistencyAccepted,
     DocumentRead,
     EntityMerge,
@@ -21,6 +22,7 @@ from app.capabilities.knowledge.schemas import (
     RelationRead,
     SearchHit,
     SearchRequest,
+    SkippedRelationRead,
     SuggestionRead,
 )
 from app.capabilities.knowledge.service import (
@@ -174,15 +176,18 @@ async def list_suggestions(
     return [SuggestionRead.model_validate(suggestion) for suggestion in suggestions]
 
 
-@router.post("/suggestions/{suggestion_id}/accept", response_model=EntityRead)
-async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> EntityRead:
-    """Accept: the entity is created and the suggestion consumed, once.
+@router.post("/suggestions/{suggestion_id}/accept", response_model=AcceptRead)
+async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> AcceptRead:
+    """Accept: the entity is created, its proposed relations placed, and the
+    suggestion consumed, once.
 
-    Return the entity; raise HTTP 404 for an absent or unowned suggestion,
-    or HTTP 409 for an already reviewed suggestion.
+    Return the entity and the proposals that could not be placed — a target
+    still pending, absent, or ambiguous (D8); the UI announces them once,
+    and no ledger keeps them. Raise HTTP 404 for an absent or unowned
+    suggestion, or HTTP 409 for an already reviewed suggestion.
     """
     try:
-        entity, _ = await service.accept_suggestion(suggestion_id)
+        entity, skipped = await service.accept_suggestion(suggestion_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="suggestion not found") from None
     except AlreadyReviewedError:
@@ -194,7 +199,13 @@ async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> EntityR
             status_code=409,
             detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
-    return EntityRead.model_validate(entity)
+    return AcceptRead(
+        entity=EntityRead.model_validate(entity),
+        skipped_relations=[
+            SkippedRelationRead(target_name=skip.target_name, relation_type=skip.relation_type)
+            for skip in skipped
+        ],
+    )
 
 
 @router.post("/suggestions/{suggestion_id}/discard", response_model=SuggestionRead)

@@ -290,6 +290,12 @@ class EntitySuggestionRepository(ScopedRepository[EntitySuggestion]):
                     name=entity.name,
                     type=entity.type,
                     description=entity.description,
+                    # the proposals ride the row exactly as parsed — accept
+                    # resolves them; the JSON speaks the answer's own keys
+                    relations=[
+                        {"target": relation.target, "type": relation.relation_type}
+                        for relation in entity.relations
+                    ],
                     status=PENDING,
                 )
             )

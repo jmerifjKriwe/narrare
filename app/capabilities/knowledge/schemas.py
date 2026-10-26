@@ -3,7 +3,7 @@
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
 from uuid import UUID  # noqa: TC003
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class DocumentRead(BaseModel):
@@ -127,6 +127,19 @@ class EntityMerge(BaseModel):
     target_id: UUID
 
 
+class ProposedRelationRead(BaseModel):
+    """One proposed relation as review reads it: the target's name and the type.
+
+    The stored proposals speak the extraction answer's keys (``target``,
+    ``type``); the read shape names them target_name and relation_type, and
+    both spellings validate."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    target_name: str = Field(validation_alias=AliasChoices("target_name", "target"))
+    relation_type: str = Field(validation_alias=AliasChoices("relation_type", "type"))
+
+
 class SuggestionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -136,8 +149,25 @@ class SuggestionRead(BaseModel):
     name: str
     type: str
     description: str | None
+    relations: list[ProposedRelationRead]
     status: str
     created_at: datetime
+
+
+class SkippedRelationRead(BaseModel):
+    """A proposed relation accept could not place, with the proposal's own words."""
+
+    target_name: str
+    relation_type: str
+
+
+class AcceptRead(BaseModel):
+    """The accept's whole answer: the entity born, and the proposed relations
+    that could not be placed. The skips are transient — the response carries
+    them once (D8), the UI announces them, nothing persists them."""
+
+    entity: EntityRead
+    skipped_relations: list[SkippedRelationRead]
 
 
 class FindingRead(BaseModel):

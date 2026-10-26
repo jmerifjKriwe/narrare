@@ -132,6 +132,8 @@ async def test_the_prompts_declare_their_purpose_and_answer_shape() -> None:
     extraction = extraction_prompt(chapter_title="Ankunft", body="Mira kam.")
     assert extraction.startswith(f"{PURPOSE_PREFIX}extract-entities\n")
     assert "SOURCE: Mira kam." in extraction
+    # the relations ask rides the answer shape: per entity, a target and a type
+    assert '"relations": [{"target": string, "type": string}]' in extraction
 
     check = consistency_prompt(
         entities=[("Mira", "character")],

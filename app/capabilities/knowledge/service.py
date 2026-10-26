@@ -7,6 +7,7 @@ job on its own transaction (D14) and the worker's handler — knowledge's
 """
 
 from collections.abc import Sequence  # noqa: TC003
+from typing import NamedTuple
 from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import select
@@ -102,6 +103,16 @@ class InvalidRelationError(ValueError):
 class RelationExistsError(Exception):
     """The same directed edge between the same two rows already carries
     this relation_type; the edge, not the wording, is the duplicate."""
+
+
+class SkippedRelation(NamedTuple):
+    """A proposed relation accept could not place, with the proposal's own
+    words: the target's name as proposed and the relation's type. The skip
+    is transient — the accept response carries it once (D8), nothing
+    persists it."""
+
+    target_name: str
+    relation_type: str
 
 
 def _embedding_text(entity: Entity) -> str:
@@ -309,19 +320,24 @@ class KnowledgeService:
         await self._own_novel(novel_id)
         return await self.suggestions.list_for_novel(novel_id, status)
 
-    async def accept_suggestion(self, suggestion_id: UUID) -> tuple[Entity, EntitySuggestion]:
-        """Accept: create the entity and consume the suggestion, one transaction.
+    async def accept_suggestion(self, suggestion_id: UUID) -> tuple[Entity, list[SkippedRelation]]:
+        """Accept: create the entity, place its proposed relations, and consume
+        the suggestion, one transaction.
 
         The repository's row lock plus the pending check is the exactly-once
         guarantee: a concurrent accept waits for this commit and then reads a
-        consumed row. Entity and status ride the same commit — there is no
-        state in which the entity exists and the suggestion is still pending,
-        nor the other way around. Birth per D5: the description becomes the
-        body, aliases and tags start empty, and the search text and the
-        vector are computed before the commit. The suggestion's proposed
-        relations are written as [] — resolution arrives with extraction v2.
+        consumed row. Entity, edges and status ride the same commit — there
+        is no state in which the entity exists and the suggestion is still
+        pending, nor the other way around. Birth per D5: the description
+        becomes the body, aliases and tags start empty, and the search text
+        and the vector are computed before the commit. The proposals resolve
+        per D8: trimmed, case-insensitive exact match against the novel's
+        existing entities' names and aliases, the just-created entity
+        included; multiple matches mean ambiguous, no match means absent,
+        and both skip — the note rides the response only, nothing persists
+        it.
 
-        Return the entity and consumed suggestion. Raise NotFoundError for
+        Return the entity and the skipped proposals. Raise NotFoundError for
         an absent or unowned suggestion, AlreadyReviewedError if not pending,
         or EmbeddingMismatchError when the configured model answers at
         another width than the entity corpus was embedded at.
@@ -341,10 +357,45 @@ class KnowledgeService:
             embedding=None,
         )
         await self._embed_entity(entity)
-        suggestion.relations = []
+        skipped = await self._resolve_proposals(entity, suggestion)
         suggestion.status = ACCEPTED
         await self.session.commit()
-        return entity, suggestion
+        return entity, skipped
+
+    async def _resolve_proposals(
+        self, entity: Entity, suggestion: EntitySuggestion
+    ) -> list[SkippedRelation]:
+        """Place the suggestion's proposals as edges from the new entity.
+
+        Every target resolves against the novel's existing entities — names
+        and aliases, trimmed and case-insensitively, the just-created entity
+        included, so a proposal may name its own origin. Exactly one match
+        places the edge (a repeated proposal folds into the look-before-write);
+        several matches are ambiguous and none is absent — both skip with the
+        proposal's own words. The type goes through the manual path's
+        validation, so the stored form is the same stripped identity an edge
+        added by hand would carry.
+        """
+        candidates = await self.entities.list_for_novel(suggestion.novel_id)
+        by_name: dict[str, list[Entity]] = {}
+        by_alias: dict[str, list[Entity]] = {}
+        for candidate in candidates:
+            by_name.setdefault(candidate.name.strip().casefold(), []).append(candidate)
+            for alias in candidate.aliases:
+                by_alias.setdefault(alias.strip().casefold(), []).append(candidate)
+        skipped: list[SkippedRelation] = []
+        for proposal in suggestion.relations:
+            target_name = str(proposal.get("target", ""))
+            key = target_name.strip().casefold()
+            relation_type = _validate_relation_type(str(proposal.get("type", "")))
+            matches = {row.id: row for row in [*by_name.get(key, []), *by_alias.get(key, [])]}
+            if len(matches) != 1:
+                skipped.append(SkippedRelation(target_name, relation_type))
+                continue
+            target = next(iter(matches.values()))
+            if await self.relations.edge(entity.id, target.id, relation_type) is None:
+                await self.relations.create(entity.id, target.id, relation_type, None)
+        return skipped
 
     async def discard_suggestion(self, suggestion_id: UUID) -> EntitySuggestion:
         """Discard: consume without creating, with accept's exactly-once.

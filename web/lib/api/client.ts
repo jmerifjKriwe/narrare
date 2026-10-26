@@ -13,6 +13,7 @@ export type Hit = components["schemas"]["SearchHit"];
 export type Job = components["schemas"]["JobRead"];
 export type Entity = components["schemas"]["EntityRead"];
 export type Suggestion = components["schemas"]["SuggestionRead"];
+export type Accept = components["schemas"]["AcceptRead"];
 export type Finding = components["schemas"]["FindingRead"];
 
 /**

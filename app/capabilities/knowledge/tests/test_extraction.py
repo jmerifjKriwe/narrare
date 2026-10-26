@@ -5,6 +5,7 @@ handler, on the handler's own transaction. A malformed model answer fails the
 job loudly and writes nothing: no half-written review queue.
 """
 
+import json
 from collections.abc import AsyncIterator  # noqa: TC003
 from uuid import UUID
 
@@ -13,6 +14,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
+from app.capabilities.knowledge.repository import EntityRepository
+from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta
@@ -221,6 +225,14 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
             "location",
             "faction",
         ]
+        # the fake's derivation: entity i proposes related_to to entity (i+1),
+        # the last wrapping to the first — deterministic off the same names.
+        # The read shape names the pair target_name and relation_type.
+        assert [suggestion["relations"] for suggestion in suggestions] == [
+            [{"target_name": "Haus", "relation_type": "related_to"}],
+            [{"target_name": "See", "relation_type": "related_to"}],
+            [{"target_name": "Mira", "relation_type": "related_to"}],
+        ]
         assert all(suggestion["status"] == "pending" for suggestion in suggestions)
 
         # The audit row (plan §3.4): the call itself is recorded on the
@@ -328,11 +340,15 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     """Verify entity parsing rejects invalid shapes, types, and names over the column limit."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_entities
 
-    good = '{"items": [{"name": "Mira", "type": "character", "description": "Die Erzählerin."}]}'
+    good = (
+        '{"items": [{"name": "Mira", "type": "character",'
+        ' "description": "Die Erzählerin.", "relations": []}]}'
+    )
     [entity] = parse_entities(good)
     assert entity.name == "Mira"
     assert entity.type == "character"
     assert entity.description == "Die Erzählerin."
+    assert entity.relations == []
 
     with pytest.raises(MalformedAnswerError):
         parse_entities("Der Nebel hob sich — aber kein JSON.")
@@ -341,10 +357,12 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     with pytest.raises(MalformedAnswerError):
         parse_entities('[{"name": "Mira"}]')  # a bare array: not a legal root
     with pytest.raises(MalformedAnswerError):
-        parse_entities('{"items": [{"type": "character", "description": "Namenslos."}]}')  # no name
+        parse_entities(
+            '{"items": [{"type": "character", "description": "Namenslos.", "relations": []}]}'
+        )  # no name
     with pytest.raises(MalformedAnswerError):
         parse_entities(
-            '{"items": [{"name": "Mira", "type": "idea", "description": "?"}]}'
+            '{"items": [{"name": "Mira", "type": "idea", "description": "?", "relations": []}]}'
         )  # no such type
     with pytest.raises(MalformedAnswerError):
         parse_entities('{"items": ["Mira"]}')  # a string, not an object
@@ -352,14 +370,85 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     # The name column is String(200): a name of exactly that width parses,
     # and a longer one is refused on the contract path — not by the database,
     # whose verdict would arrive as a DataError after the fact.
-    [widest] = parse_entities(f'{{"items": [{{"name": "{"N" * 200}", "type": "character"}}]}}')
+    [widest] = parse_entities(
+        f'{{"items": [{{"name": "{"N" * 200}", "type": "character", "relations": []}}]}}'
+    )
     assert widest.name == "N" * 200
     with pytest.raises(MalformedAnswerError) as refused:
-        parse_entities(f'{{"items": [{{"name": "{"N" * 201}", "type": "character"}}]}}')
+        parse_entities(
+            f'{{"items": [{{"name": "{"N" * 201}", "type": "character", "relations": []}}]}}'
+        )
     # The refusal carries the name's true length: the repr clips the shown
     # item at 200 characters, so the count is what keeps an over-long name
     # diagnosable — 201 is a boundary slip, 2000 is a broken prompt.
     assert "an item's name is 201 characters" in str(refused.value)
+
+
+async def test_the_parse_reads_relations_and_refuses_their_malformed_forms() -> None:
+    """Every item carries its relations: proposals parse into (target, type)
+    pairs, and a missing or malformed one is a loud refusal — nothing is
+    skipped silently, a bad answer fails the job."""
+    from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_entities
+    from app.capabilities.knowledge.prompts import ParsedRelation
+
+    good = (
+        '{"items": [{"name": "Mira", "type": "character", "description": null,'
+        ' "relations": [{"target": "Haus", "type": "bewohnt"}, {"target": "See", "type": "mag"}]}]}'
+    )
+    [entity] = parse_entities(good)
+    assert entity.relations == [ParsedRelation("Haus", "bewohnt"), ParsedRelation("See", "mag")]
+
+    # the boundary is inclusive: the name column's 200 for the target, the
+    # relation column's 80 for the type
+    [widest] = parse_entities(
+        '{"items": [{"name": "Mira", "type": "character", "description": null,'
+        f' "relations": [{{"target": "{"T" * 200}", "type": "{"R" * 80}"}}]}}]}}'
+    )
+    assert widest.relations == [ParsedRelation("T" * 200, "R" * 80)]
+
+    def _item(relations: object) -> str:
+        """One well-formed item whose relations array is replaced."""
+        return json.dumps(
+            {
+                "items": [
+                    {
+                        "name": "Mira",
+                        "type": "character",
+                        "description": None,
+                        "relations": relations,
+                    }
+                ]
+            }
+        )
+
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(
+            '{"items": [{"name": "Mira", "type": "character", "description": null}]}'
+        )  # no relations at all
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item("keine"))  # not an array
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item(["Haus"]))  # a proposal is an object, not a string
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"type": "bewohnt"}]))  # no target
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "", "type": "bewohnt"}]))  # a blank target
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "   ", "type": "bewohnt"}]))  # whitespace only
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": 5, "type": "bewohnt"}]))  # not a string
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "Haus"}]))  # no type
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "Haus", "type": ""}]))  # a blank type
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "Haus", "type": "   "}]))
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "Haus", "type": 7}]))  # not a string
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "T" * 201, "type": "bewohnt"}]))  # over the target width
+    with pytest.raises(MalformedAnswerError):
+        parse_entities(_item([{"target": "Haus", "type": "R" * 81}]))  # over the type width
 
 
 async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
@@ -367,7 +456,7 @@ async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
 
     A re-run — the outage retry's shape, a second job on the same chapter
     after the first settled — skips a parsed entity whose (chapter, name,
-    kind) is already pending, so the queue answers with one card set. The
+    type) is already pending, so the queue answers with one card set. The
     skip reads only pending rows, which is the asymmetry: accept consumes
     the row, and the same re-run is then allowed to ask again — the
     consumed key files fresh.
@@ -413,3 +502,155 @@ async def test_another_users_job_is_not_visible() -> None:
     async with _client() as client:
         response = await client.get(f"/api/jobs/{other_job.id}")
     assert response.status_code == 404
+
+
+# --- Accept's resolution (D8) -----------------------------------------------
+#
+# The proposals ride the suggestion; accept places every one whose target
+# resolves — trimmed, case-insensitive exact match on names and aliases —
+# and answers with the ones it could not place, never a silent drop. The
+# tests seed the canon and the pending suggestions through the models: the
+# parse and the fake's derivation are pinned above, these pin the placing.
+
+
+async def _seed_canon(*rows: tuple[str, list[str]]) -> tuple[UUID, list[Entity]]:
+    """A novel with canon entities of (name, aliases), through the repository.
+
+    The repository is the one writer of search_text, so the seeds carry the
+    derived column the same way accepted births do."""
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Die Auflösung")
+        session.add(novel)
+        await session.flush()
+        repository = EntityRepository(session, LOCAL_USER_ID)
+        created = [
+            await repository.create(novel.id, name, "character", "", aliases, [], None)
+            for name, aliases in rows
+        ]
+        await session.commit()
+        return novel.id, created
+
+
+async def _pending_proposal(
+    novel_id: UUID, name: str, relations: list[dict[str, str]]
+) -> EntitySuggestion:
+    """A pending suggestion carrying proposals, beside its own chapter."""
+    async with Session() as session:
+        chapter = Chapter(user_id=LOCAL_USER_ID, novel_id=novel_id, title="Ankunft", position=0)
+        session.add(chapter)
+        await session.flush()
+        suggestion = EntitySuggestion(
+            user_id=LOCAL_USER_ID,
+            novel_id=novel_id,
+            chapter_id=chapter.id,
+            name=name,
+            type="location",
+            description=f"{name} appears in the chapter.",
+            relations=relations,
+            status="pending",
+        )
+        session.add(suggestion)
+        await session.commit()
+        return suggestion
+
+
+async def test_an_accept_resolves_proposals_by_name_and_by_alias() -> None:
+    """D8's resolution: trimmed, case-insensitive exact match on names and
+    aliases — '  mira  ' finds Mira, an alias in any case finds its row."""
+    novel_id, [mira, haus] = await _seed_canon(("Mira", []), ("Haus", ["The House"]))
+    suggestion = await _pending_proposal(
+        novel_id,
+        "Leuchtturm",
+        [
+            {"target": "  mira  ", "type": "bewohnt"},
+            {"target": "the house", "type": "steht_in"},
+        ],
+    )
+    async with _client() as client:
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion.id}/accept")
+        assert accepted.status_code == 200
+        body = accepted.json()
+        assert body["entity"]["name"] == "Leuchtturm"
+        assert body["skipped_relations"] == []  # both proposals placed
+
+        edges = (
+            await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
+        ).json()
+        assert sorted((edge["to_entity_id"], edge["relation_type"]) for edge in edges) == sorted(
+            [(str(mira.id), "bewohnt"), (str(haus.id), "steht_in")]
+        )
+
+
+async def test_an_ambiguous_target_is_skipped_with_its_note() -> None:
+    """Two entities sharing the target's name make the proposal ambiguous:
+    it skips with its note — no guessed attach — while an unambiguous one
+    on the same suggestion still places."""
+    novel_id, [mira, _verena] = await _seed_canon(("Mira", ["Käthe"]), ("Verena", ["Käthe"]))
+    suggestion = await _pending_proposal(
+        novel_id,
+        "Leuchtturm",
+        [
+            {"target": "Käthe", "type": "kennt"},
+            {"target": "Mira", "type": "mag"},
+        ],
+    )
+    async with _client() as client:
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion.id}/accept")
+        assert accepted.status_code == 200
+        body = accepted.json()
+        assert body["skipped_relations"] == [{"target_name": "Käthe", "relation_type": "kennt"}]
+
+        edges = (
+            await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
+        ).json()
+        # zero edges for the skipped pair; the resolvable one placed
+        assert [(edge["to_entity_id"], edge["relation_type"]) for edge in edges] == [
+            (str(mira.id), "mag")
+        ]
+
+
+async def test_an_absent_target_is_skipped_with_its_note() -> None:
+    """A target the novel does not name skips visibly: the note rides the
+    response, and no edge is created for it."""
+    novel_id, _rows = await _seed_canon(("Mira", []))
+    suggestion = await _pending_proposal(
+        novel_id, "Leuchtturm", [{"target": "Nebel", "type": "kennt"}]
+    )
+    async with _client() as client:
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion.id}/accept")
+        assert accepted.status_code == 200
+        body = accepted.json()
+        assert body["skipped_relations"] == [{"target_name": "Nebel", "relation_type": "kennt"}]
+        assert (
+            await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
+        ).json() == []
+
+
+async def test_accept_order_decides_a_pending_target() -> None:
+    """Resolution sees existing entities only: a target still pending in the
+    queue skips, and the same pair places once the target's own accept has
+    made it real — the queue's order is the resolution's."""
+    novel_id, _rows = await _seed_canon()
+    haus = await _pending_proposal(novel_id, "Haus", [{"target": "Mira", "type": "steht_in"}])
+    mira = await _pending_proposal(novel_id, "Mira", [{"target": "Haus", "type": "bewohnt"}])
+    async with _client() as client:
+        first = await client.post(f"/api/knowledge/suggestions/{haus.id}/accept")
+        assert first.status_code == 200
+        body = first.json()
+        assert body["skipped_relations"] == [
+            {"target_name": "Mira", "relation_type": "steht_in"}
+        ]  # Mira is still pending
+        assert (
+            await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
+        ).json() == []
+
+        second = await client.post(f"/api/knowledge/suggestions/{mira.id}/accept")
+        assert second.status_code == 200
+        second_body = second.json()
+        assert second_body["skipped_relations"] == []  # Haus exists by now
+        edges = (
+            await client.get(f"/api/knowledge/entities/{second_body['entity']['id']}/relations")
+        ).json()
+        assert [(edge["to_entity_id"], edge["relation_type"]) for edge in edges] == [
+            (str(body["entity"]["id"]), "bewohnt")
+        ]

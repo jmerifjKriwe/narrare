@@ -392,10 +392,13 @@ export interface paths {
         put?: never;
         /**
          * Accept Suggestion
-         * @description Accept: the entity is created and the suggestion consumed, once.
+         * @description Accept: the entity is created, its proposed relations placed, and the
+         *     suggestion consumed, once.
          *
-         *     Return the entity; raise HTTP 404 for an absent or unowned suggestion,
-         *     or HTTP 409 for an already reviewed suggestion.
+         *     Return the entity and the proposals that could not be placed — a target
+         *     still pending, absent, or ambiguous (D8); the UI announces them once,
+         *     and no ledger keeps them. Raise HTTP 404 for an absent or unowned
+         *     suggestion, or HTTP 409 for an already reviewed suggestion.
          */
         post: operations["accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post"];
         delete?: never;
@@ -595,6 +598,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AcceptRead
+         * @description The accept's whole answer: the entity born, and the proposed relations
+         *     that could not be placed. The skips are transient — the response carries
+         *     them once (D8), the UI announces them, nothing persists them.
+         */
+        AcceptRead: {
+            entity: components["schemas"]["EntityRead"];
+            /** Skipped Relations */
+            skipped_relations: components["schemas"]["SkippedRelationRead"][];
+        };
         /** Body_upload_document_api_knowledge_documents_post */
         Body_upload_document_api_knowledge_documents_post: {
             /** File */
@@ -879,6 +893,20 @@ export interface components {
             updated_at: string;
         };
         /**
+         * ProposedRelationRead
+         * @description One proposed relation as review reads it: the target's name and the type.
+         *
+         *     The stored proposals speak the extraction answer's keys (``target``,
+         *     ``type``); the read shape names them target_name and relation_type, and
+         *     both spellings validate.
+         */
+        ProposedRelationRead: {
+            /** Relation Type */
+            relation_type: string;
+            /** Target Name */
+            target_name: string;
+        };
+        /**
          * ReembedResult
          * @description What a re-embed rebuilt: every document, every chunk of it.
          */
@@ -1008,6 +1036,16 @@ export interface components {
             /** Complete */
             complete: boolean;
         };
+        /**
+         * SkippedRelationRead
+         * @description A proposed relation accept could not place, with the proposal's own words.
+         */
+        SkippedRelationRead: {
+            /** Relation Type */
+            relation_type: string;
+            /** Target Name */
+            target_name: string;
+        };
         /** SuggestionRead */
         SuggestionRead: {
             /**
@@ -1034,6 +1072,8 @@ export interface components {
              * Format: uuid
              */
             novel_id: string;
+            /** Relations */
+            relations: components["schemas"]["ProposedRelationRead"][];
             /** Status */
             status: string;
             /** Type */
@@ -1724,7 +1764,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EntityRead"];
+                    "application/json": components["schemas"]["AcceptRead"];
                 };
             };
             /** @description Validation Error */

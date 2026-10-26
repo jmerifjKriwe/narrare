@@ -7,12 +7,12 @@ purpose marker names which machine-checked answer shape a prompt wants: the
 fake branches on the marked line, so the answer shape is declared by the
 prompt, not sniffed from its prose.
 
-:class:`ParsedEntity` and :class:`ParsedFinding` live here: a contract's ask
-and its answer shapes are one thing, and both the handler (which parses) and
-the repository (which persists) import them from here — never from each other.
-The type vocabulary they are checked against lives beside the model it names,
-in the kernel contracts (``ENTITY_TYPES``), and this module imports it from
-there like every other consumer.
+:class:`ParsedEntity`, :class:`ParsedRelation` and :class:`ParsedFinding`
+live here: a contract's ask and its answer shapes are one thing, and both the
+handler (which parses) and the repository (which persists) import them from
+here — never from each other. The type vocabulary they are checked against
+lives beside the model it names, in the kernel contracts (``ENTITY_TYPES``),
+and this module imports it from there like every other consumer.
 """
 
 from collections.abc import Sequence  # noqa: TC003
@@ -27,12 +27,21 @@ from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
 BODY_LIMIT = 20_000
 
 
+class ParsedRelation(NamedTuple):
+    """One proposed relation of a provider answer, already validated."""
+
+    target: str
+    relation_type: str
+
+
 class ParsedEntity(NamedTuple):
-    """One entity of a provider answer, already validated."""
+    """One entity of a provider answer, already validated, with the
+    relations it proposes to the other named entities."""
 
     name: str
     type: str
     description: str | None
+    relations: list[ParsedRelation]
 
 
 class ParsedFinding(NamedTuple):
@@ -54,11 +63,15 @@ def extraction_prompt(*, chapter_title: str, body: str) -> str:
         "Extract the entities that appear in the chapter below: the characters, "
         "the places and the things that matter to the story. For each one judge "
         f"a type — {types} — and write a one-sentence description of its role. "
+        "Then, for each entity, name the relations it has to the other entities "
+        "you found: a relation names its target entity and carries a short type "
+        '(for example "related_to", "lives_in", "member_of"). '
         'Answer with a JSON object containing an "items" array of objects '
-        '{"name": string, "type": string, '
-        '"description": string} and nothing else: no prose around it, no '
-        'commentary. Answer with {"items": []} when the chapter proposes '
-        "no entity.\n\n"
+        '{"name": string, "type": string, "description": string, '
+        '"relations": [{"target": string, "type": string}]} and nothing else: '
+        "no prose around it, no commentary. Every entity carries its relations "
+        'array, empty when it proposes none. Answer with {"items": []} when the '
+        "chapter proposes no entity.\n\n"
         f"Chapter: {chapter_title}\n"
         f"Text:\n{SOURCE_PREFIX}{body}\n"
     )

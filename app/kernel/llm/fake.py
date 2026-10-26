@@ -32,8 +32,12 @@ PROPOSED_ENTITIES = 3
 # The type vocabulary is the extraction contract's own, imported from the
 # kernel contracts (knowledge's prompt asks for exactly these); the
 # handler's parse refuses anything else, so drift here fails loudly at the
-# first extraction instead of silently. Relation proposals arrive with
-# extraction v2.
+# first extraction instead of silently.
+
+RELATION_TYPE = "related_to"
+# The fake's one relation type: entity i proposes this to entity i+1 (the
+# last wraps to the first), so every derived answer names its links the way
+# the contract now asks — deterministic, off the same names.
 
 CAPITALIZED = re.compile(r"\b[ÄÖÜA-Z][äöüßa-z]+\b")
 
@@ -85,7 +89,10 @@ def _entities_answer(passage: str) -> str:
 
     Names are derived from the prompt, so a test steers the fake with the
     chapter text alone; types cycle the extraction vocabulary in order of
-    appearance.
+    appearance, and each entity proposes one relation to its neighbor —
+    entity i proposes ``related_to`` to entity i+1, the last wrapping to the
+    first, so an answer with at least two entities names its links and a
+    lone entity proposes none.
     """
     names = list(dict.fromkeys(CAPITALIZED.findall(passage)))[:PROPOSED_ENTITIES]
     # The object root is the structured-outputs contract: an array is not a
@@ -97,6 +104,16 @@ def _entities_answer(passage: str) -> str:
                     "name": name,
                     "type": ENTITY_TYPES[index % len(ENTITY_TYPES)],
                     "description": f"{name} appears in the chapter.",
+                    "relations": (
+                        [
+                            {
+                                "target": names[(index + 1) % len(names)],
+                                "type": RELATION_TYPE,
+                            }
+                        ]
+                        if len(names) >= 2
+                        else []
+                    ),
                 }
                 for index, name in enumerate(names)
             ]

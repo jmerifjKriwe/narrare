@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import {
   client,
+  type Accept,
   type Entity,
   type Finding,
   type Hit,
@@ -295,7 +296,7 @@ export function useDismissFinding(
  */
 export function useAcceptSuggestion(
   novelId: string,
-): UseMutationResult<Entity, Error, string> {
+): UseMutationResult<Accept, Error, string> {
   return useMutation({
     mutationFn: async (suggestionId: string) => {
       const { data, response } = await client.POST(

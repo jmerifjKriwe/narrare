@@ -60,7 +60,12 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
 
         accepted = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
         assert accepted.status_code == 200
-        entity = accepted.json()
+        # the accept's envelope: the entity born, and the proposals that could
+        # not be placed — Mira proposes Haus, whose row is still pending, so
+        # the skip note rides the response (transient, per D8)
+        body = accepted.json()
+        assert body["skipped_relations"] == [{"target_name": "Haus", "relation_type": "related_to"}]
+        entity = body["entity"]
         assert entity["name"] == suggestion["name"]
         assert entity["type"] == suggestion["type"]
         assert entity["novel_id"] == novel_id
@@ -94,7 +99,7 @@ async def test_an_accept_births_the_entity_with_empty_labels_and_a_vector() -> N
 
         accepted = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
         assert accepted.status_code == 200
-        entity = accepted.json()
+        entity = accepted.json()["entity"]
         assert entity["type"] == suggestion["type"]
         assert entity["content"] == (suggestion["description"] or "")
         assert entity["aliases"] == []
