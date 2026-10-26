@@ -32,15 +32,13 @@ from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.contract import CompletionRequest, Delta, Usage
 
+from .structured import MalformedAnswerError
+
 if TYPE_CHECKING:
     from app.kernel.jobs.worker import JobHandler, ProgressReport
 
 KIND = "extract-entities"
 KIND_CHECK = "check-consistency"
-
-
-class MalformedAnswerError(ValueError):
-    """The provider's answer is not the contracted JSON array of entities or findings."""
 
 
 # The width of EntitySuggestion.name (and Entity.name): String(200). A longer
