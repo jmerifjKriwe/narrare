@@ -69,7 +69,7 @@ def test_an_enqueued_check_completes_across_an_api_restart(stack: Stack) -> None
             sleep(0.5)
         assert job["status"] == "done", f"the restart lost the job: {job}"
         assert job["progress"] == 100
-        assert job["result"] == {"findings": 1}
+        assert job["result"] == {"findings": 1, "skipped_chapters": []}
 
         listed = client.get(
             f"/api/knowledge/novels/{novel.json()['id']}/findings",

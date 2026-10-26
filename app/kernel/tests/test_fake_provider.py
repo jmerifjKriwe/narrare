@@ -34,11 +34,17 @@ async def test_an_extraction_prompt_proposes_entities_from_its_passage() -> None
         "SOURCE: Mira betrat das alte Haus am See.\n"
     )
 
-    assert json.loads(await _answer(prompt)) == [
-        {"name": "Mira", "kind": "character", "description": "Mira appears in the chapter."},
-        {"name": "Haus", "kind": "place", "description": "Haus appears in the chapter."},
-        {"name": "See", "kind": "thing", "description": "See appears in the chapter."},
-    ]
+    assert json.loads(await _answer(prompt)) == {
+        "items": [
+            {
+                "name": "Mira",
+                "kind": "character",
+                "description": "Mira appears in the chapter.",
+            },
+            {"name": "Haus", "kind": "place", "description": "Haus appears in the chapter."},
+            {"name": "See", "kind": "thing", "description": "See appears in the chapter."},
+        ]
+    }
 
 
 async def test_a_multiline_passage_is_read_whole() -> None:
@@ -55,7 +61,7 @@ async def test_a_multiline_passage_is_read_whole() -> None:
     )
 
     answer = json.loads(await _answer(prompt))
-    assert [entity["name"] for entity in answer] == ["Mira", "Haus", "See"]
+    assert [entity["name"] for entity in answer["items"]] == ["Mira", "Haus", "See"]
 
 
 async def test_a_consistency_prompt_gets_one_finding_per_contradicted_name() -> None:
@@ -72,12 +78,14 @@ async def test_a_consistency_prompt_gets_one_finding_per_contradicted_name() -> 
         "SOURCE: Später steht geschrieben, Mira ist 37.\n"
     )
 
-    assert json.loads(await _answer(prompt)) == [
-        {
-            "summary": "Mira: 34 vs. 37",
-            "detail": '"Mira ist 34" vs. "Mira ist 37"',
-        }
-    ]
+    assert json.loads(await _answer(prompt)) == {
+        "items": [
+            {
+                "summary": "Mira: 34 vs. 37",
+                "detail": '"Mira ist 34" vs. "Mira ist 37"',
+            }
+        ]
+    }
 
 
 async def test_a_name_with_one_reading_is_no_finding() -> None:
@@ -95,7 +103,7 @@ async def test_a_name_with_one_reading_is_no_finding() -> None:
         "SOURCE: Mira ist 34, wie zuvor.\n"
     )
 
-    assert json.loads(await _answer(prompt)) == []
+    assert json.loads(await _answer(prompt)) == {"items": []}
 
 
 async def test_an_unmarked_prompt_keeps_the_chat_answer() -> None:

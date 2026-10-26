@@ -20,6 +20,11 @@ from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
 
 ENTITY_KINDS = ("character", "place", "thing")
 
+# The most of a chapter body any prompt carries, in characters. A real model
+# overflows on a long chapter; the fake never does, which is why the bound has
+# its own tests. Characters, not bytes: a writer's é is one character.
+BODY_LIMIT = 20_000
+
 
 class ParsedEntity(NamedTuple):
     """One entity of a provider answer, already validated."""
@@ -48,9 +53,10 @@ def extraction_prompt(*, chapter_title: str, body: str) -> str:
         "Extract the entities that appear in the chapter below: the characters, "
         "the places and the things that matter to the story. For each one judge "
         f"a kind — {kinds} — and write a one-sentence description of its role. "
-        'Answer with a JSON array of objects {"name": string, "kind": string, '
+        'Answer with a JSON object containing an "items" array of objects '
+        '{"name": string, "kind": string, '
         '"description": string} and nothing else: no prose around it, no '
-        "commentary. An empty array is a valid answer when the chapter proposes "
+        'commentary. Answer with {"items": []} when the chapter proposes '
         "no entity.\n\n"
         f"Chapter: {chapter_title}\n"
         f"Text:\n{SOURCE_PREFIX}{body}\n"
@@ -80,9 +86,10 @@ def consistency_prompt(
         "itself: an age that changes between chapters, a date or a timeline that "
         "cannot hold, a name that drifts, a fact stated one way and later another. "
         "For each contradiction write a short summary and a detail that quotes the "
-        'readings that disagree. Answer with a JSON array of objects {"summary": '
+        'readings that disagree. Answer with a JSON object containing an "items" '
+        'array of objects {"summary": '
         'string, "detail": string} and nothing else: no prose around it, no '
-        "commentary. An empty array is a valid answer when the chapters agree.\n\n"
+        'commentary. Answer with {"items": []} when the chapters agree.\n\n'
         f"The story's accepted entities, as grounding:\n{grounding}\n\n"
         f"{chapters_text}\n"
     )

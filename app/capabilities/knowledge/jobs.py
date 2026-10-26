@@ -1,20 +1,20 @@
 """Knowledge's background jobs: handlers the api app discovers by convention.
 
 One job kind, one function (spec §9 D10). A handler receives its own session
-and owns its transaction: the provider call, the filed rows, the audit row and
-the progress report all ride one commit at the end — a malformed answer raises
-before any row exists, and the lane records the failure with nothing written.
+and owns its transaction: the provider call, the filed rows and the audit row
+all ride one commit at the end — a malformed answer raises before any row
+exists, and the lane records the failure with nothing written.
 """
 
 from json import JSONDecodeError, loads
-from time import monotonic
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.prompts import (
+    BODY_LIMIT,
     ENTITY_KINDS,
     ParsedEntity,
     ParsedFinding,
@@ -27,20 +27,19 @@ from app.capabilities.knowledge.repository import (
     EntitySuggestionRepository,
 )
 from app.kernel.contracts.models import Chapter, Novel
-from app.kernel.jobs.models import Job
 from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
-from app.kernel.llm.contract import CompletionRequest, Delta, Usage
+
+from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
 if TYPE_CHECKING:
-    from app.kernel.jobs.worker import JobHandler
+    from collections.abc import Sequence
+
+    from app.kernel.jobs.models import Job
+    from app.kernel.jobs.worker import JobHandler, ProgressReport
 
 KIND = "extract-entities"
 KIND_CHECK = "check-consistency"
-
-
-class MalformedAnswerError(ValueError):
-    """The provider's answer is not the contracted JSON array of entities or findings."""
 
 
 # The width of EntitySuggestion.name (and Entity.name): String(200). A longer
@@ -57,6 +56,53 @@ MAX_SUMMARY_LENGTH = 200
 def _refuse(shape: str, reason: str, shown: object) -> MalformedAnswerError:
     """Build a parse error with at most 200 characters of the rejected value's repr."""
     return MalformedAnswerError(f"not a JSON array of {shape}: {reason} ({repr(shown)[:200]})")
+
+
+def _items_of(shape: str, document: object) -> list[object]:
+    """The answer's items array, refusing every other document shape.
+
+    The root is an object because structured outputs rejects an array root;
+    a bare array is therefore a contract violation, not a tolerated variant
+    — accepting both would let a prompt regression pass as green.
+    """
+    if not isinstance(document, dict):
+        raise _refuse(shape, "the answer is not an object with an items array", document)
+    # JSON object keys are strings by contract (RFC 8259); the cast states
+    # that contract on the type level — the value is re-checked right below.
+    record = cast("dict[str, object]", document)
+    raw_items = record.get("items")
+    if not isinstance(raw_items, list):
+        raise _refuse(shape, "the answer is not an object with an items array", record)
+    # isinstance narrows to list[Unknown]; the cast restates the check above
+    # as the type the callers' loops already re-verify per item.
+    return cast("list[object]", raw_items)
+
+
+# The shape parse_entities accepts, sent as the response schema: one place
+# holds the ask and the check, so they cannot drift. The root is an object,
+# not the array the answers used to be: structured outputs (the OpenAI
+# contract the adapter speaks) rejects an array root outright, so the ask
+# and the answer share the {"items": [...]} shape.
+ENTITIES_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "kind": {"type": "string", "enum": list(ENTITY_KINDS)},
+                    "description": {"type": ["string", "null"]},
+                },
+                "required": ["name", "kind", "description"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
 
 
 def parse_entities(answer: str) -> list[ParsedEntity]:
@@ -76,11 +122,7 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
         document: object = loads(answer)
     except JSONDecodeError as error:
         raise _refuse("entities", "the answer is not JSON", answer) from error
-    if not isinstance(document, list):
-        raise _refuse("entities", "the answer is not an array", document)
-    # isinstance narrows to list[Unknown]; the cast restates the check above
-    # as the type the loop below already re-verifies per item.
-    items = cast("list[object]", document)
+    items = _items_of("entities", document)
     entities: list[ParsedEntity] = []
     for entry in items:
         if not isinstance(entry, dict):
@@ -112,6 +154,30 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
     return entities
 
 
+# The shape parse_findings accepts, sent as the response schema: one place
+# holds the ask and the check, so they cannot drift.
+# The object root is the structured-outputs contract (see ENTITIES_SCHEMA).
+FINDINGS_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string"},
+                    "detail": {"type": ["string", "null"]},
+                },
+                "required": ["summary", "detail"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+
 def parse_findings(answer: str) -> list[ParsedFinding]:
     """The provider's answer as findings, or a loud refusal.
 
@@ -130,9 +196,7 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
         document: object = loads(answer)
     except JSONDecodeError as error:
         raise _refuse("findings", "the answer is not JSON", answer) from error
-    if not isinstance(document, list):
-        raise _refuse("findings", "the answer is not an array", document)
-    items = cast("list[object]", document)
+    items = _items_of("findings", document)
     findings: list[ParsedFinding] = []
     for entry in items:
         if not isinstance(entry, dict):
@@ -157,7 +221,9 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
     return findings
 
 
-async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]:
+async def extract_entities(
+    session: AsyncSession, job: Job, report: ProgressReport
+) -> dict[str, object]:
     """Read the chapter, prompt the provider, and file pending entity suggestions.
 
     The chapter is read scoped to the job's owner — a job row is user-owned
@@ -168,9 +234,10 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
     ``job.payload['chapter_id']`` identifies the chapter as a UUID. Missing or invalid IDs,
     or a chapter missing from the owner's rows, raise ValueError. Invalid
     answers raise MalformedAnswerError; provider and database errors propagate.
-    Success commits suggestions, the call audit, and progress=100 together,
-    and returns ``suggestions`` as the parsed entity count, including duplicates
-    skipped during filing. Provider or answer-validation failures create no audit row.
+    Success commits suggestions and the call audit, reports progress=100
+    through the lane's callback, and returns ``suggestions`` as the parsed
+    entity count, including duplicates skipped during filing. Provider or
+    answer-validation failures create no audit row.
     """
     try:
         chapter_id = UUID(str(job.payload["chapter_id"]))
@@ -184,66 +251,108 @@ async def extract_entities(session: AsyncSession, job: Job) -> dict[str, object]
         # as a failed row the user can see, not disappear from the lane.
         raise ValueError(f"chapter {chapter_id} is gone or not the job owner's")
 
-    prompt = extraction_prompt(chapter_title=chapter.title, body=chapter.body)
+    body = chapter.body
+    truncated = len(body) > BODY_LIMIT
+    prompt = extraction_prompt(chapter_title=chapter.title, body=body[:BODY_LIMIT])
     kind, model = provider_facts()
-    pieces: list[str] = []
-    usage: Usage | None = None
-    started = monotonic()
-    async for event in get_provider().stream(CompletionRequest.user(prompt)):
-        if isinstance(event, Delta):
-            pieces.append(event.text)
-        elif isinstance(event, Usage):
-            usage = event
-    answer = "".join(pieces)
-    latency_ms = round((monotonic() - started) * 1000)
-    entities = parse_entities(answer)
 
-    # The audit row rides the handler's terminal commit with the rows it
-    # files: the call is part of the work. A raise before here — a malformed
-    # answer, a dead provider — writes no row; the rollback would take it
-    # anyway (D3, D14).
-    await record_call(
-        session,
-        user_id=job.user_id,
-        task_key="knowledge.extract-entities",
-        provider_kind=kind,
-        model=model,
-        latency_ms=latency_ms,
-        status="ok",
-        prompt_text=prompt,
-        response_text=answer,
-        input_tokens=usage.input_tokens if usage else None,
-        output_tokens=usage.output_tokens if usage else None,
-        novel_id=chapter.novel_id,
+    async def audit(call: AuditedCall) -> None:
+        # The audit row rides the handler's terminal commit with the rows it
+        # files: the call is part of the work. A raise before the commit — a
+        # malformed answer twice over, a dead provider — writes no row; the
+        # rollback would take it anyway (D3, D14). The retry audits as its
+        # own call because it is one.
+        await record_call(
+            session,
+            user_id=job.user_id,
+            task_key="knowledge.extract-entities",
+            provider_kind=kind,
+            model=model,
+            latency_ms=call.latency_ms,
+            status="ok",
+            prompt_text=call.prompt,
+            response_text=call.answer,
+            input_tokens=call.usage.input_tokens if call.usage else None,
+            output_tokens=call.usage.output_tokens if call.usage else None,
+            novel_id=chapter.novel_id,
+        )
+
+    entities = await ask_structured(
+        get_provider(),
+        prompt,
+        schema=ENTITIES_SCHEMA,
+        parse=parse_entities,
+        audit=audit,
     )
 
     suggestions = EntitySuggestionRepository(session, job.user_id)
     await suggestions.create_many(chapter.novel_id, chapter_id, entities)
-    # Progress is the handler's to report (the worker owns status, not this
-    # column), and it rides the same commit as the rows: a reader never sees
-    # work claimed that the database does not have. 100 is the whole job —
-    # one provider call, nothing incremental worth reporting.
-    await session.execute(update(Job).where(Job.id == job.id).values(progress=100))
+    # Progress is the lane's to persist through the report callback — never
+    # this session — so the handler's terminal commit stays the only commit
+    # the work rides. 100 is the whole job, reported right before returning:
+    # the row's status flips only after the handler returns, so 100 never
+    # precedes a done row the database lacks.
+    await report(100)
     await session.commit()
-    return {"suggestions": len(entities)}
+    return {"suggestions": len(entities), "truncated": truncated}
 
 
-async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object]:
-    """Read every chapter and the accepted canon, then file pending findings.
+def _chapter_groups(
+    chapters: Sequence[Chapter],
+) -> tuple[list[list[Chapter]], list[dict[str, object]]]:
+    """Pack chapters into prompt-sized groups in reading order.
 
-    The novel's chapters and entities are read scoped to the job's owner —
-    a job row is user-owned and the work must stay inside that owner's rows.
-    The provider call happens here, in the worker, never in a request (D14);
+    A group carries at most ``BODY_LIMIT`` characters of body, so a pass cannot
+    overflow a real model's window. Chapters over the bound on their own come
+    back as skipped: a chapter half-read would yield findings that claim a
+    completeness the check does not have.
+    """
+    groups: list[list[Chapter]] = []
+    skipped: list[dict[str, object]] = []
+    current: list[Chapter] = []
+    size = 0
+    for chapter in chapters:
+        if len(chapter.body) > BODY_LIMIT:
+            # Position and stored title, no invented wording: a chapter usually
+            # has no title yet (renaming is WP6), and the dock carries the
+            # localized fallback. The backend must not speak one locale.
+            skipped.append({"position": chapter.position, "title": chapter.title})
+            continue
+        if current and size + len(chapter.body) > BODY_LIMIT:
+            groups.append(current)
+            current = []
+            size = 0
+        current.append(chapter)
+        size += len(chapter.body)
+    if current:
+        groups.append(current)
+    return groups, skipped
+
+
+async def check_consistency(
+    session: AsyncSession, job: Job, report: ProgressReport
+) -> dict[str, object]:
+    """Read the novel in prompt-sized chapter groups and file pending findings.
+
+    Map-reduce over chapters: chapters are packed greedily into groups under
+    ``BODY_LIMIT`` (a group is one provider pass), findings are merged across
+    groups and deduplicated by summary. A chapter over the bound is never sent
+    and is returned as skipped by title — a partially checked chapter would be
+    a lie a writer acts on. A novel whose chapters all fit makes exactly one
+    pass, which is what the check always did.
+
+    The novel's chapters and entities are read scoped to the job's owner.
+    The provider calls happen here, in the worker, never in a request (D14);
     everything this handler writes commits once at the end, so a raise leaves
-    no half-written queue. A novel without chapters is still sent to the provider;
-    an empty answer array is valid.
+    no half-written queue. A novel without chapters, or one whose every chapter
+    is over the bound, makes no provider call and files no findings.
 
     ``job.payload['novel_id']`` identifies the novel as a UUID. Missing or invalid IDs,
     or a novel missing from the owner's rows, raise ValueError. Invalid answers
     raise MalformedAnswerError; provider and database errors propagate.
-    Success commits findings, the call audit, and progress=100 together,
-    and returns ``findings`` as the parsed finding count, including duplicates
-    skipped during filing. Provider or answer-validation failures create no audit row.
+    Progress is reported through the lane's callback after each group; success
+    commits findings and every call's audit together, and returns ``findings``
+    as the filed count plus ``skipped_chapters``. A failure writes no audit row.
     """
     try:
         novel_id = UUID(str(job.payload["novel_id"]))
@@ -265,47 +374,61 @@ async def check_consistency(session: AsyncSession, job: Job) -> dict[str, object
     ).all()
     entities = await EntityRepository(session, job.user_id).list_for_novel(novel_id)
 
-    prompt = consistency_prompt(
-        entities=[(entity.name, entity.kind) for entity in entities],
-        chapters=[(chapter.title, chapter.body) for chapter in chapters],
-    )
+    canon = [(entity.name, entity.kind) for entity in entities]
+    groups, skipped = _chapter_groups(chapters)
     kind, model = provider_facts()
-    pieces: list[str] = []
-    usage: Usage | None = None
-    started = monotonic()
-    async for event in get_provider().stream(CompletionRequest.user(prompt)):
-        if isinstance(event, Delta):
-            pieces.append(event.text)
-        elif isinstance(event, Usage):
-            usage = event
-    answer = "".join(pieces)
-    latency_ms = round((monotonic() - started) * 1000)
-    findings = parse_findings(answer)
 
-    # The extraction handler's audit contract, unchanged in shape: the row
-    # rides the terminal commit, and a failure before here writes none.
-    await record_call(
-        session,
-        user_id=job.user_id,
-        task_key="knowledge.check-consistency",
-        provider_kind=kind,
-        model=model,
-        latency_ms=latency_ms,
-        status="ok",
-        prompt_text=prompt,
-        response_text=answer,
-        input_tokens=usage.input_tokens if usage else None,
-        output_tokens=usage.output_tokens if usage else None,
-        novel_id=novel_id,
-    )
+    async def audit(call: AuditedCall) -> None:
+        # One row per pass, riding the terminal commit with the findings: a
+        # raise before the commit writes none (D3), and a retry audits as the
+        # separate call it is.
+        await record_call(
+            session,
+            user_id=job.user_id,
+            task_key="knowledge.check-consistency",
+            provider_kind=kind,
+            model=model,
+            latency_ms=call.latency_ms,
+            status="ok",
+            prompt_text=call.prompt,
+            response_text=call.answer,
+            input_tokens=call.usage.input_tokens if call.usage else None,
+            output_tokens=call.usage.output_tokens if call.usage else None,
+            novel_id=novel_id,
+        )
+
+    findings: list[ParsedFinding] = []
+    seen: set[str] = set()
+    done = 0
+    total = sum(len(group) for group in groups)
+    if total:
+        # A re-run must not inherit the previous run's percentage.
+        await report(0)
+    for group in groups:
+        prompt = consistency_prompt(
+            entities=canon,
+            chapters=[(chapter.title, chapter.body) for chapter in group],
+        )
+        found = await ask_structured(
+            get_provider(),
+            prompt,
+            schema=FINDINGS_SCHEMA,
+            parse=parse_findings,
+            audit=audit,
+        )
+        for finding in found:
+            if finding.summary in seen:
+                continue
+            seen.add(finding.summary)
+            findings.append(finding)
+        done += len(group)
+        await report(round(done / total * 100))
 
     repository = ConsistencyFindingRepository(session, job.user_id)
     await repository.create_many(novel_id, findings)
-    # The extraction handler's terminal-commit contract, unchanged: progress
-    # rides the same commit as the rows, and 100 is the whole job.
-    await session.execute(update(Job).where(Job.id == job.id).values(progress=100))
+    await report(100)
     await session.commit()
-    return {"findings": len(findings)}
+    return {"findings": len(findings), "skipped_chapters": skipped}
 
 
 # The annotation is the convention the api app reads (``jobs.py`` exporting

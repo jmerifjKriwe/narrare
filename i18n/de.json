@@ -136,5 +136,7 @@
   "needs.embeddings": "ein Embedding-Modell",
   "settings.language": "Sprache",
   "settings.automatic": "Automatisch",
-  "settings.errorSave": "Die Sprache konnte nicht gespeichert werden."
+  "settings.errorSave": "Die Sprache konnte nicht gespeichert werden.",
+  "jobs.truncated": "Nur die ersten 20.000 Zeichen wurden gelesen.",
+  "jobs.skippedChapters": "Übersprungen, zu lang: {titles}"
 }

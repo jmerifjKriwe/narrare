@@ -9,6 +9,7 @@ nothing behind a pending row.
 """
 
 import asyncio
+from json import dumps
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -123,8 +124,8 @@ class _GarbageProvider:
         yield DONE
 
 
-async def test_the_prompts_declare_their_purpose() -> None:
-    """Verify purpose markers, source passages, and accepted canon reach the prompts."""
+async def test_the_prompts_declare_their_purpose_and_answer_shape() -> None:
+    """Verify purpose, object-root answers, source passages, and accepted canon."""
     from app.capabilities.knowledge.prompts import consistency_prompt, extraction_prompt
     from app.kernel.llm import PURPOSE_PREFIX
 
@@ -137,7 +138,9 @@ async def test_the_prompts_declare_their_purpose() -> None:
         chapters=[("Ankunft", "Mira ist 34."), ("Später", "Mira ist 37.")],
     )
     assert check.startswith(f"{PURPOSE_PREFIX}check-consistency\n")
-    assert "JSON array" in check  # the answer shape is contracted in prose
+    for prompt in (extraction, check):
+        assert 'Answer with a JSON object containing an "items" array' in prompt
+        assert '{"items": []}' in prompt
     assert "Mira (character)" in check  # the accepted canon grounds the check
     assert "Chapter: Ankunft\nText:\nSOURCE: Mira ist 34." in check
     assert "Chapter: Später\nText:\nSOURCE: Mira ist 37." in check
@@ -150,36 +153,40 @@ def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> None:
     """Verify finding parsing accepts valid arrays and rejects malformed or oversized fields."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_findings
 
-    good = '[{"summary": "Mira: 34 vs. 37", "detail": "Die Kapitel widersprechen sich."}]'
+    good = (
+        '{"items": [{"summary": "Mira: 34 vs. 37", "detail": "Die Kapitel widersprechen sich."}]}'
+    )
     [finding] = parse_findings(good)
     assert finding.summary == "Mira: 34 vs. 37"
     assert finding.detail == "Die Kapitel widersprechen sich."
 
-    [bare] = parse_findings('[{"summary": "Nur eine Zeile"}]')  # detail is nullable
+    [bare] = parse_findings('{"items": [{"summary": "Nur eine Zeile"}]}')  # detail is nullable
     assert bare.detail is None
 
-    assert parse_findings("[]") == []  # an empty array is a valid answer
+    assert parse_findings('{"items": []}') == []  # empty is a valid answer
 
     with pytest.raises(MalformedAnswerError):
         parse_findings("Die Kapitel stimmen überein — aber kein JSON.")
     with pytest.raises(MalformedAnswerError):
-        parse_findings('{"summary": "Mira"}')  # an object, not an array
+        parse_findings('{"summary": "Mira"}')  # no items array
     with pytest.raises(MalformedAnswerError):
-        parse_findings('[{"detail": "ohne summary"}]')  # no summary
+        parse_findings('[{"summary": "Mira"}]')  # a bare array: not a legal root
     with pytest.raises(MalformedAnswerError):
-        parse_findings('[{"summary": "   "}]')  # blank is no summary
+        parse_findings('{"items": [{"detail": "ohne summary"}]}')  # no summary
     with pytest.raises(MalformedAnswerError):
-        parse_findings('["Mira"]')  # a string, not an object
+        parse_findings('{"items": [{"summary": "   "}]}')  # blank is no summary
     with pytest.raises(MalformedAnswerError):
-        parse_findings('[{"summary": "Mira", "detail": 5}]')  # detail must be a string
+        parse_findings('{"items": ["Mira"]}')  # a string, not an object
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('{"items": [{"summary": "Mira", "detail": 5}]}')  # detail: a string
 
     # The summary column is String(200): a summary of exactly that width
     # parses, and a longer one is refused on the contract path — not by the
     # database, whose verdict would arrive as a DataError after the fact.
-    [widest] = parse_findings(f'[{{"summary": "{"S" * 200}"}}]')
+    [widest] = parse_findings(f'{{"items": [{{"summary": "{"S" * 200}"}}]}}')
     assert widest.summary == "S" * 200
     with pytest.raises(MalformedAnswerError) as refused:
-        parse_findings(f'[{{"summary": "{"S" * 201}"}}]')
+        parse_findings(f'{{"items": [{{"summary": "{"S" * 201}"}}]}}')
     # The refusal carries the summary's true length, the way the entity
     # parse's does: the repr clips the shown item, so the count is what
     # keeps an over-long summary diagnosable.
@@ -231,7 +238,7 @@ async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
         done = (await client.get(f"/api/jobs/{job_id}")).json()
         assert done["status"] == "done"
         assert done["progress"] == 100
-        assert done["result"] == {"findings": 1}
+        assert done["result"] == {"findings": 1, "skipped_chapters": []}
         assert done["error"] is None
 
         findings = await _pending_findings(client, novel_id)
@@ -273,7 +280,7 @@ async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:
 
         done = (await client.get(f"/api/jobs/{job_id}")).json()
         assert done["status"] == "done"
-        assert done["result"] == {"findings": 0}
+        assert done["result"] == {"findings": 0, "skipped_chapters": []}
         assert await _pending_findings(client, novel_id) == []
 
 
@@ -290,7 +297,7 @@ async def test_a_novel_without_chapters_checks_to_an_empty_queue() -> None:
 
         done = (await client.get(f"/api/jobs/{job_id}")).json()
         assert done["status"] == "done"
-        assert done["result"] == {"findings": 0}
+        assert done["result"] == {"findings": 0, "skipped_chapters": []}
         assert await _pending_findings(client, novel_id) == []
 
 
@@ -507,3 +514,123 @@ async def test_another_users_finding_cannot_be_reviewed() -> None:
         row = await session.get(ConsistencyFinding, theirs.id)
     assert row is not None
     assert row.status == "pending"  # the refusals consumed nothing
+
+
+class _ScriptedProvider:
+    """A provider that answers each call from a script and records the prompt."""
+
+    def __init__(self, answers: tuple[str, ...]) -> None:
+        self.answers = list(answers)
+        self.requests: list[CompletionRequest] = []
+
+    def describe(self) -> str:
+        """Identify the provider that reads its answers from a script."""
+        return "scripted"
+
+    def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Record the request and answer with the next scripted finding array."""
+        self.requests.append(request)
+        yield Delta(text=self.answers.pop(0))
+        yield DONE
+
+
+def _findings_json(*summaries: str) -> str:
+    """A provider answer carrying one finding per summary, at the object root."""
+    return dumps(
+        {"items": [{"summary": summary, "detail": "34 gegen 37"} for summary in summaries]}
+    )
+
+
+async def test_a_novel_beyond_the_bound_is_checked_in_groups(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two chapters that cannot share a pass become two calls and one merge."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _ScriptedProvider((_findings_json("Mira altert"), _findings_json("Tom altert")))
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, ("x" * 12_000, "y" * 12_000))
+        job_id = await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+        findings = await _pending_findings(client, novel_id)
+
+    assert len(provider.requests) == 2
+    assert done["status"] == "done"
+    assert done["result"] == {"findings": 2, "skipped_chapters": []}
+    assert [finding["summary"] for finding in findings] == ["Mira altert", "Tom altert"]
+
+
+async def test_the_same_summary_from_two_groups_is_filed_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A contradiction both passes report is one card, not two."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _ScriptedProvider((_findings_json("Mira altert"), _findings_json("Mira altert")))
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, ("x" * 12_000, "y" * 12_000))
+        job_id = await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+        findings = await _pending_findings(client, novel_id)
+
+    assert done["result"] == {"findings": 1, "skipped_chapters": []}
+    assert len(findings) == 1
+
+
+async def test_an_oversized_chapter_is_skipped_by_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The chapter over the bound never reaches the provider and is named."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _ScriptedProvider((_findings_json(),))
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, ("x" * 20_001, "Mira ist 34."))
+        job_id = await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+
+    assert len(provider.requests) == 1
+    assert "x" * 20_001 not in provider.requests[0].messages[0].content
+    assert done["result"] == {
+        "findings": 0,
+        "skipped_chapters": [{"position": 0, "title": "Ankunft"}],
+    }
+
+
+async def test_a_novel_of_only_oversized_chapters_makes_no_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nothing to check is done, not a failure: no call, every name skipped."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _ScriptedProvider(())
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+
+    async with _client() as client:
+        novel_id = await _novel_with_chapters(client, ("x" * 20_001, "y" * 20_001))
+        job_id = await _enqueue_check(client, novel_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+
+    assert provider.requests == []
+    assert done["status"] == "done"
+    assert done["result"] == {
+        "findings": 0,
+        "skipped_chapters": [
+            {"position": 0, "title": "Ankunft"},
+            {"position": 1, "title": "Später"},
+        ],
+    }

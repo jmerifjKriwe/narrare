@@ -101,8 +101,91 @@ class _NoEntitiesProvider:
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
         """Yield a valid empty entity array followed by DONE."""
-        yield Delta(text="[]")
+        yield Delta(text='{"items": []}')
         yield DONE
+
+
+class _RecordingProvider:
+    """A provider that answers with a fixed valid array and keeps what it was asked."""
+
+    def __init__(self, answer: str = '{"items": []}') -> None:
+        self.answer = answer
+        self.requests: list[CompletionRequest] = []
+
+    def describe(self) -> str:
+        """Identify the provider that records its prompts."""
+        return "recording"
+
+    def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Record the request and answer with the fixed array."""
+        self.requests.append(request)
+        yield Delta(text=self.answer)
+        yield DONE
+
+
+async def _write_body(client: AsyncClient, chapter_id: str, body: str) -> None:
+    """Replace a chapter's body the way the editor does, before enqueueing."""
+    response = await client.put(f"/api/writing/chapters/{chapter_id}", json={"body": body})
+    assert response.status_code == 200
+
+
+async def test_a_long_body_is_cut_at_the_limit_and_reported_truncated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A body over the bound reaches the provider cut, and the row says so."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _RecordingProvider()
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    async with _client() as client:
+        novel_id, chapter_id = await _chapter(client)
+        await _write_body(client, chapter_id, "x" * 20_001)
+        job_id = await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+
+    assert done["result"] == {"suggestions": 0, "truncated": True}
+    sent = provider.requests[0].messages[0].content
+    assert "x" * 20_000 in sent
+    assert "x" * 20_001 not in sent
+
+
+async def test_a_body_at_the_limit_is_sent_whole(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The bound is inclusive: exactly 20 000 characters are not a truncation."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _RecordingProvider()
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    async with _client() as client:
+        novel_id, chapter_id = await _chapter(client)
+        await _write_body(client, chapter_id, "x" * 20_000)
+        job_id = await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+
+    assert done["result"] == {"suggestions": 0, "truncated": False}
+    assert "x" * 20_000 in provider.requests[0].messages[0].content
+
+
+async def test_the_limit_counts_characters_not_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """20 000 two-byte characters are 20 000 characters, not a truncation."""
+    import app.capabilities.knowledge.jobs as jobs
+
+    provider = _RecordingProvider()
+    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    async with _client() as client:
+        novel_id, chapter_id = await _chapter(client)
+        await _write_body(client, chapter_id, "é" * 20_000)
+        job_id = await _enqueue_extraction(client, novel_id, chapter_id)
+        assert await _run_lane_once() is True
+        done = (await client.get(f"/api/jobs/{job_id}")).json()
+
+    assert done["result"] == {"suggestions": 0, "truncated": False}
+    assert provider.requests[0].messages[0].content.count("é") == 20_000
 
 
 async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
@@ -126,7 +209,7 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
         # at the top of that scale, never outside it.
         assert 0 <= done["progress"] <= 100
         assert done["progress"] == 100
-        assert done["result"] == {"suggestions": 3}
+        assert done["result"] == {"suggestions": 3, "truncated": False}
         assert done["error"] is None
 
         pending = await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")
@@ -211,7 +294,7 @@ async def test_an_empty_entity_array_is_a_valid_answer(
 
         done = (await client.get(f"/api/jobs/{job_id}")).json()
         assert done["status"] == "done"
-        assert done["result"] == {"suggestions": 0}
+        assert done["result"] == {"suggestions": 0, "truncated": False}
         assert done["error"] is None
 
     async with Session() as session:
@@ -245,7 +328,7 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     """Verify entity parsing rejects invalid shapes, kinds, and names over the column limit."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_entities
 
-    good = '[{"name": "Mira", "kind": "character", "description": "Die Erzählerin."}]'
+    good = '{"items": [{"name": "Mira", "kind": "character", "description": "Die Erzählerin."}]}'
     [entity] = parse_entities(good)
     assert entity.name == "Mira"
     assert entity.kind == "character"
@@ -254,21 +337,25 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     with pytest.raises(MalformedAnswerError):
         parse_entities("Der Nebel hob sich — aber kein JSON.")
     with pytest.raises(MalformedAnswerError):
-        parse_entities('{"name": "Mira", "kind": "character"}')  # an object, not an array
+        parse_entities('{"name": "Mira", "kind": "character"}')  # no items array
     with pytest.raises(MalformedAnswerError):
-        parse_entities('[{"kind": "character", "description": "Namenslos."}]')  # no name
+        parse_entities('[{"name": "Mira"}]')  # a bare array: not a legal root
     with pytest.raises(MalformedAnswerError):
-        parse_entities('[{"name": "Mira", "kind": "idea", "description": "?"}]')  # no such kind
+        parse_entities('{"items": [{"kind": "character", "description": "Namenslos."}]}')  # no name
     with pytest.raises(MalformedAnswerError):
-        parse_entities('["Mira"]')  # a string, not an object
+        parse_entities(
+            '{"items": [{"name": "Mira", "kind": "idea", "description": "?"}]}'
+        )  # no such kind
+    with pytest.raises(MalformedAnswerError):
+        parse_entities('{"items": ["Mira"]}')  # a string, not an object
 
     # The name column is String(200): a name of exactly that width parses,
     # and a longer one is refused on the contract path — not by the database,
     # whose verdict would arrive as a DataError after the fact.
-    [widest] = parse_entities(f'[{{"name": "{"N" * 200}", "kind": "character"}}]')
+    [widest] = parse_entities(f'{{"items": [{{"name": "{"N" * 200}", "kind": "character"}}]}}')
     assert widest.name == "N" * 200
     with pytest.raises(MalformedAnswerError) as refused:
-        parse_entities(f'[{{"name": "{"N" * 201}", "kind": "character"}}]')
+        parse_entities(f'{{"items": [{{"name": "{"N" * 201}", "kind": "character"}}]}}')
     # The refusal carries the name's true length: the repr clips the shown
     # item at 200 characters, so the count is what keeps an over-long name
     # diagnosable — 201 is a boundary slip, 2000 is a broken prompt.

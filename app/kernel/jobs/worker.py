@@ -4,6 +4,10 @@ A job row enqueued in a request's transaction is this class's business and no
 one else's. Handlers receive their own session and own their transaction — what
 a handler commits is durable whatever happens to the job row afterwards. A
 handler that raises never propagates: the row pays for it, not the lane.
+Progress is the lane's, not the handler's: a handler reports it through a
+callback, and the lane persists each report on its own session — the handler's
+terminal commit stays untouched, and reported progress survives a handler
+that raises right after reporting it.
 """
 
 import asyncio
@@ -17,16 +21,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.kernel.jobs.models import DONE, FAILED, QUEUED, RUNNING, Job
 
-# What a capability registers: its own session, the claimed row, a result dict.
+# What a handler reports as it goes: 0-100 on the claimed row, persisted by
+# the lane, never the handler.
+type ProgressReport = Callable[[int], Awaitable[None]]
+
+# What a capability registers: its own session, the claimed row, the progress
+# reporter, a result dict.
 #
 # The lane is at-least-once, not exactly-once: a handler that fails after
 # committing part of its work earns a re-run (MAX_ATTEMPTS), and a process
 # dying between a handler's commit and its outcome write is requeued whole by
 # the stale sweep — the same handler may run twice for one job. A handler
 # must therefore be idempotent, or commit once at its end: extract_entities
-# (knowledge) is the reference — provider call, rows and progress ride one
-# terminal commit, so a raise or a re-run leaves nothing half-written.
-type JobHandler = Callable[[AsyncSession, Job], Awaitable[dict[str, object]]]
+# (knowledge) is the reference — provider call and rows ride one terminal
+# commit, progress is reported through the lane's callback, so a raise or a
+# re-run leaves nothing half-written.
+type JobHandler = Callable[[AsyncSession, Job, ProgressReport], Awaitable[dict[str, object]]]
 
 MAX_ATTEMPTS = 2  # the first run and the one re-run a failure earns
 
@@ -134,10 +144,16 @@ class Worker:
         # can never mistake a live claim for a dead process's leftover —
         # however long the handler takes.
         heartbeat = asyncio.create_task(self._heartbeat(job))
+
+        # One report per run, bound to this claim: each call is the lane's own
+        # short transaction on the claimed row, never the handler's session.
+        async def report(value: int) -> None:
+            await self._report_progress(job, value)
+
         try:
             try:
                 async with self._session_factory() as session:
-                    result = await handler(session, job)
+                    result = await handler(session, job, report)
             except Exception as failure:
                 # The lane never dies with a job: the failure becomes the row's
                 # state. Both attempts spent → failed; otherwise back in line for
@@ -183,6 +199,39 @@ class Worker:
                     "the claim heartbeat died; job %s will age past the stale bound", job.id
                 )
                 return
+
+    async def _report_progress(self, job: Job, value: int) -> None:
+        """Persist one progress report on the lane's own short transaction.
+
+        The handler's session is never touched, so its terminal commit stays
+        the only commit the work rides: a failed job still writes no audit
+        row (D3), while the progress it reported before failing stays on the
+        row — the lane's honesty about how far a run reached.
+
+        A write that dies is logged, not raised: progress is advisory, and a
+        dead percentage must not fail finished work, roll it back and earn
+        the lane a second provider run of the same job. Cancellation is not
+        an advisory failure — it propagates.
+
+        The write is gated on the claim still being the live one: a row the
+        stale sweep returned to the queue keeps no percentage from a run
+        nobody is running. A re-claimed row is beyond this guard — a dead
+        run's callback may land one late advisory value on the new run's
+        counter — and that residue is accepted: progress is advisory, and a
+        claim token is more machinery than the column is worth.
+        """
+        try:
+            async with self._session_factory() as session:
+                await session.execute(
+                    update(Job)
+                    .where(Job.id == job.id, Job.status == RUNNING)
+                    .values(progress=value)
+                )
+                await session.commit()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            getLogger("narrare").warning("progress write for job %s failed", job.id, exc_info=True)
 
     async def _write(
         self,

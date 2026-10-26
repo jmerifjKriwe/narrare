@@ -12,6 +12,6 @@ The table is kernel-internal machinery, so it lives in this package's
 """
 
 from app.kernel.jobs.models import Job, enqueue
-from app.kernel.jobs.worker import JobHandler, Worker
+from app.kernel.jobs.worker import JobHandler, ProgressReport, Worker
 
-__all__ = ["Job", "JobHandler", "Worker", "enqueue"]
+__all__ = ["Job", "JobHandler", "ProgressReport", "Worker", "enqueue"]

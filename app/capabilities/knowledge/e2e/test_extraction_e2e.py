@@ -102,7 +102,7 @@ def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) ->
             sleep(0.5)
         assert job["status"] == "done", f"the restart lost the job: {job}"
         assert job["progress"] == 100
-        assert job["result"] == {"suggestions": 3}
+        assert job["result"] == {"suggestions": 3, "truncated": False}
 
         listed = client.get(
             f"/api/knowledge/novels/{novel.json()['id']}/suggestions",

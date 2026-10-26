@@ -48,15 +48,49 @@ export function JobStatus({ job }: { job: Job }) {
       );
     case "done": {
       const outcome = DONE_BY_KIND[job.kind];
+      // A done row can still owe the writer a caveat: a read that stopped at
+      // the bound is reported beside the count, or the count would pass for
+      // the whole chapter.
+      const truncated = job.result?.["truncated"] === true;
+      // Chapters the check could not read are named by title: a done row that
+      // stayed quiet about them would pass for a checked novel.
+      const skipped = skippedChapters(job);
       return (
-        <p role="status" data-job-status="done" className="text-sm text-muted">
-          {outcome === undefined
-            ? // A kind without an entry is contract drift, and hiding it
-              // would look like silence. Shown raw, it is at least seen —
-              // the same rule the unknown status keeps below.
-              job.kind
-            : t(outcome.doneKey, { count: resultCount(job, outcome.resultKey) })}
-        </p>
+        <>
+          <p role="status" data-job-status="done" className="text-sm text-muted">
+            {outcome === undefined
+              ? // A kind without an entry is contract drift, and hiding it
+                // would look like silence. Shown raw, it is at least seen —
+                // the same rule the unknown status keeps below.
+                job.kind
+              : t(outcome.doneKey, { count: resultCount(job, outcome.resultKey) })}
+          </p>
+          {truncated ? (
+            <p
+              role="status"
+              data-job-truncated="true"
+              className="mt-1 text-sm text-muted"
+            >
+              {t("jobs.truncated")}
+            </p>
+          ) : null}
+          {skipped.length > 0 ? (
+            <p
+              role="status"
+              data-job-skipped={skipped.length}
+              className="mt-1 text-sm text-muted"
+            >
+              {t("jobs.skippedChapters", {
+                titles: skipped
+                  .map((entry) =>
+                    entry.title ||
+                    t("chapters.defaultTitle", { n: entry.position + 1 }),
+                  )
+                  .join(", "),
+              })}
+            </p>
+          ) : null}
+        </>
       );
     }
     default:
@@ -76,4 +110,24 @@ export function JobStatus({ job }: { job: Job }) {
 function resultCount(job: Job, resultKey: string): number {
   const value = job.result?.[resultKey];
   return typeof value === "number" ? value : 0;
+}
+
+/** A chapter the check could not read: the stored title is usually empty
+ *  (renaming arrives with chapter management), so the row falls back to the
+ *  same localized default the rail shows — the backend never picks a locale. */
+type SkippedChapter = { position: number; title: string };
+
+function skippedChapters(job: Job): SkippedChapter[] {
+  const raw = job.result?.["skipped_chapters"];
+  if (!Array.isArray(raw)) return [];
+  const entries: SkippedChapter[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const record = entry as Record<string, unknown>;
+    const position = record["position"];
+    const title = record["title"];
+    if (typeof position !== "number" || typeof title !== "string") continue;
+    entries.push({ position, title });
+  }
+  return entries;
 }
