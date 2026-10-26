@@ -84,19 +84,27 @@ def _wait_for(
     raise RuntimeError(f"{url} did not answer within {timeout}s:\n{output}")
 
 
-async def _reset(database: str, seed_user: bool) -> None:
+async def _terminate_other_backends(database: str) -> None:
+    """End every session but this one on a throwaway database.
+
+    Before the schema is rebuilt, not after: ``reset_schema`` drops tables, and
+    a previous capability's API can still be draining on a session whose locks
+    would block that drop — the reset then waits on a process nobody owns.
+    """
     engine = create_async_engine(url_for(database))
     async with engine.begin() as connection:
-        # Nothing else may hold the throwaway database while it is rebuilt.
-        # A previous capability's API can still be draining after its module
-        # ended; its ordinary reads meet the TRUNCATE's exclusive locks and
-        # the two deadlock. Terminating them is what makes the rebuild total.
         await connection.execute(
             text(
                 "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
                 "WHERE datname = current_database() AND pid <> pg_backend_pid()"
             )
         )
+    await engine.dispose()
+
+
+async def _reset(database: str, seed_user: bool) -> None:
+    engine = create_async_engine(url_for(database))
+    async with engine.begin() as connection:
         await connection.execute(
             text("TRUNCATE chunks, documents, novels, chapters, users CASCADE")
         )
@@ -120,6 +128,9 @@ def _prepare(database: str, seed_user: bool) -> None:
     # capability stacks run one after another in the same pytest process.
     # Reset, not just create: an E2E database is throwaway, and rebuilding it
     # from the models is what proves the schema the tests run against.
+    # The termination comes first: reset_schema drops tables, and a stale
+    # session's locks would block that drop before any cleanup could run.
+    asyncio.run(_terminate_other_backends(database))
     asyncio.run(reset_schema(url_for(database)))
     asyncio.run(_reset(database, seed_user))
 
