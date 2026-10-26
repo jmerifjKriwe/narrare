@@ -13,7 +13,9 @@ import type { ReactNode } from "react";
  * React-Aria owns the whole focus contract — the trap inside, Escape, the
  * restore to the trigger on close — so this wrapper only paints tokens onto
  * the parts. Content arrives as a function of `close`, because "done" is the
- * caller's decision (a saved form), never the shell's.
+ * caller's decision (a saved form), never the shell's. The overlay scrolls:
+ * `m-auto` centers a short dialog and lets a tall one (a form with many
+ * fields) reach its buttons instead of clipping them.
  */
 export function Dialog({
   title,
@@ -31,9 +33,9 @@ export function Dialog({
       </Button>
       <ModalOverlay
         isDismissable
-        className="fixed inset-0 z-30 flex items-center justify-center bg-scrim p-4"
+        className="fixed inset-0 z-30 flex overflow-y-auto bg-scrim p-4"
       >
-        <Modal className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-overlay">
+        <Modal className="m-auto w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-overlay">
           <RacDialog>
             {({ close }) => (
               <>

@@ -2,6 +2,7 @@ import { useParams } from "@tanstack/react-router";
 import { useEffect, useId, useState } from "react";
 
 import { activeChapter, subscribeActiveChapter } from "@shell/lib/activeChapter";
+import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
 import {
   queryClient,
@@ -15,6 +16,7 @@ import { JobStatus } from "@shell/ui/JobStatus";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
 import { entityTypeLabel } from "./EntitiesPanel";
+import { relationTypeLabel } from "./relations";
 
 /** Extraction and its review: the chapter the editor is showing, through
  *  the job lane, and the queue its result files — one proposal card per
@@ -138,7 +140,23 @@ export function ExtractionPanel() {
             titleKey="knowledge.suggestionTitle"
             body={suggestion.description ?? ""}
             onAccept={() => {
-              void accept.mutateAsync(suggestion.id).catch(() => undefined);
+              void accept
+                .mutateAsync(suggestion.id)
+                .then((accepted) => {
+                  // The skips are transient (D8): announced once, aloud,
+                  // naming the targets accept could not reach — persisted
+                  // nowhere, so the announcement is the whole trace.
+                  const skipped = accepted.skipped_relations;
+                  if (skipped.length > 0) {
+                    announce(
+                      t("knowledge.relationSkipped", {
+                        count: skipped.length,
+                        names: skipped.map((skip) => skip.target_name).join(", "),
+                      }),
+                    );
+                  }
+                })
+                .catch(() => undefined);
             }}
             onDiscard={() => {
               void discard.mutateAsync(suggestion.id).catch(() => undefined);
@@ -147,6 +165,26 @@ export function ExtractionPanel() {
             <p className="mt-2 text-sm font-medium">
               {suggestion.name} · {entityTypeLabel(t, suggestion.type)}
             </p>
+            {suggestion.relations.length > 0 ? (
+              // The proposals ride the card (D9): the target's name and
+              // the suggested type, the vocabulary's wording or the raw
+              // proposal's own words.
+              <div className="mt-2">
+                <p className="text-sm font-medium">
+                  {t("knowledge.suggestionRelationsHeading")}
+                </p>
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {suggestion.relations.map((relation) => (
+                    <li
+                      key={`${relation.target_name}\u0000${relation.relation_type}`}
+                      className="text-sm text-muted"
+                    >
+                      → {relation.target_name} · {relationTypeLabel(t, relation.relation_type)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </ProposalCard>
         ))
       )}

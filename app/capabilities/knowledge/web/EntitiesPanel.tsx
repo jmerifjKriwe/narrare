@@ -2,11 +2,13 @@ import { useParams } from "@tanstack/react-router";
 import { useId, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
-import type { Entity } from "@shell/lib/api/client";
+import type { Entity, Relation } from "@shell/lib/api/client";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import {
+  useDebouncedValue,
   useDeleteEntity,
   useEntitiesQuery,
+  useEntityRelationsQuery,
   useMergeEntities,
   usePassageSearch,
   useUpdateEntity,
@@ -16,6 +18,10 @@ import { ComboBox } from "@shell/ui/ComboBox";
 import { Dialog } from "@shell/ui/Dialog";
 import { GridList } from "@shell/ui/GridList";
 import { TextField } from "@shell/ui/TextField";
+
+import { DANGER_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
+import { EntityRelationsSection } from "./EntityRelationsSection";
+import { relationTypeLabel } from "./relations";
 
 // The extraction contract's types (kernel contracts' ENTITY_TYPES), as
 // catalog keys. A type the contract later adds falls back to "generic" rather
@@ -40,31 +46,55 @@ export function entityTypeLabel(t: (key: MessageKey) => string, type: string): s
     : t("knowledge.type.generic");
 }
 
-// The button paints the shell already knows: the primary action, the
-// quiet second choice, and the one a confirm dialog owes its danger to.
-const PRIMARY_BUTTON =
-  "rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-const QUIET_BUTTON =
-  "rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-const DANGER_BUTTON =
-  "rounded-md border border-danger px-3 py-2 text-sm font-medium text-danger hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+// The card previews the body as the source it is (D2: WP3 brings the
+// editor), cut where a glance ends and the detail dialog begins.
+const PREVIEW_LENGTH = 140;
 
-/** The novel's entities: searched with the combo box, listed, and opened
- *  into a detail view on selection. */
+/** The novel's entities: searched and filtered against the server,
+ *  listed, and opened into a detail view on selection. */
 export function EntitiesPanel() {
   const t = useTranslation();
   const { id: novelId } = useParams({ from: "/novels/$id" });
-  const entities = useEntitiesQuery(novelId);
+  // Two views of one list: the unfiltered ask feeds the filters' options,
+  // the detail and the pickers; the narrowed ask is what the rows show.
+  // While no filter is set both are the same question — and share the
+  // cache entry, so the options cost nothing extra until they are used.
+  const all = useEntitiesQuery(novelId);
   const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const headingId = useId();
+  const typeFilterId = useId();
+  const tagFilterId = useId();
   const passagesId = useId();
 
-  const rows = entities.data ?? [];
-  // The search reaches the names, case-insensitively: the box and the list
-  // share one filter, so what the box narrows is what the list shows.
-  const needle = query.trim().toLowerCase();
-  const filtered = rows.filter((entity) => entity.name.toLowerCase().includes(needle));
+  // The box's words reach the server once the typing pauses; the filters
+  // answer at once. An empty box is no `q`, an "all" option is no filter.
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const narrowed = useEntitiesQuery(novelId, {
+    type: typeFilter || undefined,
+    tag: tagFilter || undefined,
+    q: debouncedQuery.trim() || undefined,
+  });
+
+  const rows = all.data ?? [];
+  const shown = narrowed.data ?? [];
+
+  // The filters offer what the novel's rows actually carry — the types in
+  // the contract's order, the tags alphabetically.
+  const typeOrder = Object.keys(TYPE_KEYS);
+  const typeOptions = [...new Set(rows.map((row) => row.type))].sort((a, b) => {
+    const rank = (type: string) => {
+      const index = typeOrder.indexOf(type);
+      return index === -1 ? typeOrder.length : index;
+    };
+    return rank(a) - rank(b) || a.localeCompare(b);
+  });
+  const tagOptions = [...new Set(rows.flatMap((row) => row.tags))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+
   // The detail follows the selection, not the filter: picking an entity and
   // then narrowing the search must not close what was opened.
   const selected = rows.find((entity) => entity.id === selectedId) ?? null;
@@ -85,15 +115,55 @@ export function EntitiesPanel() {
           value={query}
           onChange={setQuery}
           onPick={setSelectedId}
-          items={filtered.map((entity) => ({ id: entity.id, text: entity.name }))}
+          items={shown.map((entity) => ({ id: entity.id, text: entity.name }))}
         />
       </div>
-      {entities.isPending ? (
+      <div className="mt-2 flex flex-wrap gap-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor={typeFilterId} className="text-sm font-medium">
+            {t("knowledge.typeFilterLabel")}
+          </label>
+          <select
+            id={typeFilterId}
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            className="rounded-md border border-border bg-card px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <option value="">{t("knowledge.filterAllTypes")}</option>
+            {typeOptions.map((type) => (
+              <option key={type} value={type}>
+                {entityTypeLabel(t, type)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={tagFilterId} className="text-sm font-medium">
+            {t("knowledge.tagFilterLabel")}
+          </label>
+          <select
+            id={tagFilterId}
+            value={tagFilter}
+            onChange={(event) => setTagFilter(event.target.value)}
+            className="rounded-md border border-border bg-card px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <option value="">{t("knowledge.filterAllTags")}</option>
+            {tagOptions.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {all.isPending || (narrowed.isPending && narrowed.data === undefined) ? (
         // The answer has not arrived yet: the panel asks rather than
         // claims — not the list, and not its empty state either, since no
-        // answer is not the fact "no entities".
+        // answer is not the fact "no entities". A narrowed ask in flight
+        // keeps its previous answer on screen (the hook's own patience),
+        // so this state is the first load's alone.
         <p className="mt-2 text-sm text-muted">{t("knowledge.loading")}</p>
-      ) : entities.isError ? (
+      ) : all.isError || narrowed.isError ? (
         // An unreachable service names itself here, never as an empty
         // list (the outage test stops the real API and reloads — the
         // empty state would be the mask of a missing answer).
@@ -102,13 +172,13 @@ export function EntitiesPanel() {
         </p>
       ) : rows.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("knowledge.noEntities")}</p>
-      ) : filtered.length === 0 ? (
+      ) : shown.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("knowledge.noResults")}</p>
       ) : (
         <div className="mt-2">
           <GridList
             label={t("knowledge.entitiesHeading")}
-            items={filtered}
+            items={shown}
             getId={(entity) => entity.id}
             selectedId={selectedId}
             onSelect={setSelectedId}
@@ -153,11 +223,13 @@ export function EntitiesPanel() {
       {selected ? (
         /* The detail is keyed by the row: selecting another entity remounts
             it with that row's values, and the corrections' own state (the
-            form fields, the picked merge target) never crosses rows. */
+            form fields, the picked merge target) never crosses rows. The
+            whole unfiltered list rides along: the card reads the other
+            ends' names from it, and the pickers offer it. */
         <EntityDetail
           key={selected.id}
           entity={selected}
-          others={rows.filter((row) => row.id !== selected.id)}
+          rows={rows}
           novelId={novelId}
           onSelect={setSelectedId}
         />
@@ -166,42 +238,73 @@ export function EntitiesPanel() {
   );
 }
 
-/** The selected entity's detail: what review filed, and the three ways to
- *  correct it. Every correction is a dialog, so the focus contract — the
- *  trap inside, Escape, the restore to the trigger — is the shell's, and
- *  every outcome is announced: the dialog closes on success, and the list
- *  changing under it is the only visible trace without the announcement. */
+/** The selected entity's detail, kept compact (D9): what review filed —
+ *  name, type, chips, the body's source preview, both directions of every
+ *  edge — and the doors to the corrections, which all live in dialogs. */
 function EntityDetail({
   entity,
-  others,
+  rows,
   novelId,
   onSelect,
 }: {
   entity: Entity;
-  others: Entity[];
+  rows: Entity[];
   novelId: string;
   onSelect: (id: string | null) => void;
 }) {
   const t = useTranslation();
   const detailId = useId();
+  const relations = useEntityRelationsQuery(entity.id);
+  const edges = relations.data ?? [];
+  const nameOf = (id: string) => rows.find((row) => row.id === id)?.name ?? id;
 
   return (
     <section
       aria-labelledby={detailId}
       className="mt-3 rounded-lg border border-border bg-card p-4"
     >
-      <h4 id={detailId} className="text-sm font-semibold">
-        {entity.name}
-      </h4>
-      <p className="mt-1 text-sm text-muted">{entityTypeLabel(t, entity.type)}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <h4 id={detailId} className="text-sm font-semibold">
+          {entity.name}
+        </h4>
+        <span className="rounded-full border border-border bg-panel px-2 py-0.5 text-xs">
+          {entityTypeLabel(t, entity.type)}
+        </span>
+      </div>
+      {entity.aliases.length > 0 ? (
+        <ChipRow label={t("knowledge.entityAliasesLabel")} values={entity.aliases} />
+      ) : null}
+      {entity.tags.length > 0 ? (
+        <ChipRow label={t("knowledge.entityTagsLabel")} values={entity.tags} />
+      ) : null}
       {entity.content ? (
-        <p className="mt-2 text-sm leading-relaxed">{entity.content}</p>
+        // The body's source, cut for the glance: no renderer intervenes
+        // (WP3 brings the editor), so what was written is what is shown.
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+          {truncate(entity.content)}
+        </p>
+      ) : null}
+      {relations.isError ? (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {t("knowledge.errorRelations")}
+        </p>
+      ) : edges.length > 0 ? (
+        <div className="mt-2">
+          <p className="text-sm font-medium">{t("knowledge.relationsHeading")}</p>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {edges.map((relation) => (
+              <li key={relation.id} className="text-sm text-muted">
+                {edgeText(relation, entity.id, nameOf, t)}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <EditEntityDialog entity={entity} novelId={novelId} />
+        <EditEntityDialog entity={entity} rows={rows} novelId={novelId} />
         <MergeEntityDialog
           entity={entity}
-          others={others}
+          others={rows.filter((row) => row.id !== entity.id)}
           novelId={novelId}
           onSelect={onSelect}
         />
@@ -211,12 +314,131 @@ function EntityDetail({
   );
 }
 
-/** Rename, retype, re-body: the form carries only what changed. */
-function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string }) {
+/** One compact edge row's text: the arrow tells the direction, the other
+ *  end's name is resolved from the novel's list, and a self-relation —
+ *  an edge that only a re-pointing can create — wears its mark. */
+function edgeText(
+  relation: Relation,
+  entityId: string,
+  nameOf: (id: string) => string,
+  t: (key: MessageKey) => string,
+): string {
+  const label = relationTypeLabel(t, relation.relation_type);
+  if (relation.from_entity_id === relation.to_entity_id) {
+    return `↻ ${label} · ${t("knowledge.relationSelf")}`;
+  }
+  const outgoing = relation.from_entity_id === entityId;
+  const other = nameOf(outgoing ? relation.to_entity_id : relation.from_entity_id);
+  return `${outgoing ? "→" : "←"} ${other} · ${label}`;
+}
+
+/** A labeled row of read-only chips: what the card shows of the aliases
+ *  and tags the dialog edits. */
+function ChipRow({ label, values }: { label: string; values: string[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      <span className="text-sm text-muted">{label}:</span>
+      {values.map((value) => (
+        <span
+          key={value}
+          className="rounded-full border border-border bg-panel px-2 py-0.5 text-xs"
+        >
+          {value}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function truncate(content: string): string {
+  return content.length > PREVIEW_LENGTH ? `${content.slice(0, PREVIEW_LENGTH)}…` : content;
+}
+
+/** The chips input on top of the shell's text field: Enter or comma files
+ *  the text as a chip, ✕ removes one, and a case twin is turned away —
+ *  the service dedupes too, this is the field's own courtesy. */
+function ChipsField({
+  label,
+  values,
+  onChange,
+}: {
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const t = useTranslation();
+  const [text, setText] = useState("");
+
+  function fileText() {
+    const value = text.trim().replace(/,+$/, "");
+    if (value === "") return;
+    setText("");
+    if (values.some((existing) => existing.toLowerCase() === value.toLowerCase())) return;
+    onChange([...values, value]);
+  }
+
+  return (
+    <div
+      className="flex flex-col gap-1"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === ",") {
+          // Enter must not submit what sits around the field, and the
+          // comma must not stay in it: both file the chip instead.
+          event.preventDefault();
+          fileText();
+        }
+      }}
+    >
+      {values.length > 0 ? (
+        <ul className="flex flex-wrap gap-1">
+          {values.map((value) => (
+            <li
+              key={value}
+              className="flex items-center gap-1 rounded-full border border-border bg-panel px-2 py-0.5 text-xs"
+            >
+              <span>{value}</span>
+              <button
+                type="button"
+                aria-label={t("knowledge.chipRemove", { value })}
+                onClick={() => onChange(values.filter((existing) => existing !== value))}
+                className="text-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <TextField label={label} value={text} onChange={setText} />
+    </div>
+  );
+}
+
+/** Order-sensitive list equality: a label field reaches the PATCH body
+ *  only when the chips truly differ from what the row holds. */
+function sameList(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+/** Every field of the row in one dialog (D9): name, type, aliases, tags,
+ *  the Markdown body as plain source, and the relations with their add
+ *  row. The container is no form — the relations section owns real forms
+ *  of its own, and a nested form is no form at all. */
+function EditEntityDialog({
+  entity,
+  rows,
+  novelId,
+}: {
+  entity: Entity;
+  rows: Entity[];
+  novelId: string;
+}) {
   const t = useTranslation();
   const update = useUpdateEntity(novelId);
   const [name, setName] = useState(entity.name);
   const [typeText, setTypeText] = useState(entityTypeLabel(t, entity.type));
+  const [aliases, setAliases] = useState<string[]>(entity.aliases);
+  const [tags, setTags] = useState<string[]>(entity.tags);
   const [content, setContent] = useState(entity.content);
   // The refusals are derived, not stored: once a save was tried, the words
   // stand exactly as long as the field does not answer them.
@@ -234,8 +456,7 @@ function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string
   const typeInvalid = triedSave && resolvedType === null;
 
   /** Save changed fields, clearing a blank body; keep the dialog open on refusal. */
-  async function save(event: React.FormEvent, close: () => void) {
-    event.preventDefault();
+  async function save(close: () => void) {
     setTriedSave(true);
     setFailed(false);
     const trimmedName = name.trim();
@@ -244,6 +465,8 @@ function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string
     const changes: EntityChanges = {};
     if (trimmedName !== entity.name) changes.name = trimmedName;
     if (resolvedType !== entity.type) changes.type = resolvedType;
+    if (!sameList(aliases, entity.aliases)) changes.aliases = aliases;
+    if (!sameList(tags, entity.tags)) changes.tags = tags;
     if (nextContent !== entity.content) changes.content = nextContent;
     try {
       await update.mutateAsync({ entityId: entity.id, changes });
@@ -261,7 +484,7 @@ function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string
   return (
     <Dialog title={t("knowledge.entityEditTitle")} triggerLabel={t("knowledge.entityEdit")}>
       {(close) => (
-        <form onSubmit={(event) => void save(event, close)} className="mt-4 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-3">
           <TextField
             label={t("knowledge.entityNameLabel")}
             value={name}
@@ -284,26 +507,33 @@ function EditEntityDialog({ entity, novelId }: { entity: Entity; novelId: string
           {typeInvalid ? (
             <p className="text-sm text-danger">{t("knowledge.entityTypeRequired")}</p>
           ) : null}
+          <ChipsField
+            label={t("knowledge.entityAliasesLabel")}
+            values={aliases}
+            onChange={setAliases}
+          />
+          <ChipsField label={t("knowledge.entityTagsLabel")} values={tags} onChange={setTags} />
           <TextField
-            label={t("knowledge.entityContentLabel")}
+            label={t("knowledge.entityBodyLabel")}
             value={content}
             onChange={setContent}
             multiline
           />
+          <EntityRelationsSection entity={entity} rows={rows} />
           {failed ? (
             <p role="alert" className="text-sm text-danger">
               {t("knowledge.entityFailed")}
             </p>
           ) : null}
           <div className="flex gap-2">
-            <button type="submit" className={PRIMARY_BUTTON}>
+            <button type="button" onClick={() => void save(close)} className={PRIMARY_BUTTON}>
               {t("knowledge.entitySave")}
             </button>
             <button type="button" onClick={close} className={QUIET_BUTTON}>
               {t("knowledge.entityCancel")}
             </button>
           </div>
-        </form>
+        </div>
       )}
     </Dialog>
   );

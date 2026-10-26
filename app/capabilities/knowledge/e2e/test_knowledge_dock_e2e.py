@@ -29,6 +29,19 @@ each a dialog the focus contract already owns, each outcome announced,
 and the entity list reflects every change at once. The rename also runs
 keyboard-only: the grid's rows answer the arrow keys and Enter, and the
 form dialog opens into its name field.
+
+The list narrows twice over: the type and tag filters answer from the
+novel's own rows, and the search box asks the server — a misspelt name
+still finds its row, which a substring filter could never do. The edit
+dialog carries every field the review filed: aliases and tags as chips
+(Enter or comma files one, a case twin dedupes), the body as Markdown
+source — written and shown as written — and the relations: added
+against the novel's other entries with the suggested vocabulary as
+autocomplete, retyped inline, deleted exactly. The card stays compact
+and shows what the dialog filed: chips, the source preview, both
+directions of every edge, and the mark that flags a self-relation. A
+proposal card reads its suggested type and relations, and an accept
+that cannot place a relation says so once, aloud.
 """
 
 from time import sleep
@@ -193,27 +206,49 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     expect(extract).to_be_enabled()
 
     # The finished queue arrives as proposal cards: one per proposed entity.
+    # Each card reads its suggested type and the relations the fake proposes,
+    # so a relation line may name another card's entity — the cards below
+    # are picked by their name · type line, never by a name alone.
     cards = dock.get_by_role("region", name="Vorgeschlagene Entität")
     expect(cards).to_have_count(5)
 
+    # The proposal rides the card: the suggested type and the relation in
+    # the review's words.
+    mira_card = cards.filter(has_text="Mira · Figur")
+    expect(mira_card).to_contain_text("Verbunden mit")
+    expect(mira_card).to_contain_text("Haus")
+
     # Accept files the entity: Mira appears in the list beside the editor.
-    cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True).click()
+    mira_card.get_by_role("button", name="Übernehmen", exact=True).click()
     entities = dock.get_by_role("region", name="Entitäten")
     expect(entities).to_contain_text("Mira")
+    # Her proposal points at Haus, still pending in the queue: the accept
+    # cannot place it yet, and the skip is announced once, naming its
+    # target — transient, heard now, persisted nowhere.
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Eine Beziehung konnte nicht gesetzt werden: Haus"
+    )
 
     # Discard clears: See never becomes an entity.
-    cards.filter(has_text="See").get_by_role("button", name="Verwerfen").click()
+    cards.filter(has_text="See · Fraktion").get_by_role("button", name="Verwerfen").click()
     expect(entities).not_to_contain_text("See")
 
-    # A second accept, the queue's other spent row: Haus is filed too.
-    cards.filter(has_text="Haus").get_by_role("button", name="Übernehmen", exact=True).click()
+    # A second accept, the queue's other spent row: Haus is filed too —
+    # and its proposal points at See, discarded one step ago, so its skip
+    # names See.
+    cards.filter(has_text="Haus · Ort").get_by_role("button", name="Übernehmen", exact=True).click()
     expect(entities).to_contain_text("Haus")
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Eine Beziehung konnte nicht gesetzt werden: See"
+    )
 
     # The chapter's other two candidates meet the same two decisions, so the
     # queue really empties: Draußen is discarded, Leuchtturm filed.
-    cards.filter(has_text="Draußen").get_by_role("button", name="Verwerfen").click()
+    cards.filter(has_text="Draußen · Objekt").get_by_role("button", name="Verwerfen").click()
     expect(entities).not_to_contain_text("Draußen")
-    cards.filter(has_text="Leuchtturm").get_by_role("button", name="Übernehmen", exact=True).click()
+    cards.filter(has_text="Leuchtturm · System").get_by_role(
+        "button", name="Übernehmen", exact=True
+    ).click()
     expect(entities).to_contain_text("Leuchtturm")
 
     # The queue is spent. A consumed suggestion cannot be reviewed again —
@@ -392,20 +427,22 @@ def test_the_wissen_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> 
     entities = dock.get_by_role("region", name="Entitäten")
 
     # Accept by keyboard: Mira is filed into the searchable list.
-    accept_mira = cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True)
+    accept_mira = cards.filter(has_text="Mira · Figur").get_by_role(
+        "button", name="Übernehmen", exact=True
+    )
     _tab_to(page, accept_mira)
     page.keyboard.press("Enter")
     expect(entities).to_contain_text("Mira")
 
     # Discard by keyboard: See never becomes an entity.
-    discard_see = cards.filter(has_text="See").get_by_role("button", name="Verwerfen")
+    discard_see = cards.filter(has_text="See · Fraktion").get_by_role("button", name="Verwerfen")
     _tab_to(page, discard_see)
     page.keyboard.press("Enter")
     expect(entities).not_to_contain_text("See")
 
     # One decision each: the queue holds the chapter's other three cards.
     expect(cards).to_have_count(3)
-    expect(cards.filter(has_text="Haus")).to_be_visible()
+    expect(cards.filter(has_text="Haus · Ort")).to_be_visible()
 
     assert_accessible(page)
 
@@ -580,7 +617,9 @@ def test_a_rerun_stacks_no_duplicate_cards(page: Page, stack: Stack) -> None:
 
     # The asymmetry: accept consumes Mira's row, and the re-run files her
     # fresh beside the four that never left.
-    cards.filter(has_text="Mira").get_by_role("button", name="Übernehmen", exact=True).click()
+    cards.filter(has_text="Mira · Figur").get_by_role(
+        "button", name="Übernehmen", exact=True
+    ).click()
     expect(cards).to_have_count(4)
     _rerun_extraction_to_done(dock, extract, status)
     expect(cards).to_have_count(5)
@@ -812,5 +851,262 @@ def test_an_entity_can_be_renamed_by_keyboard_alone(page: Page, stack: Stack) ->
     expect(page.locator("[data-live-announcer]")).to_contain_text(
         "Änderungen an Miralam wurden gespeichert"
     )
+
+    assert_accessible(page)
+
+
+def _label_entities(novel_id: str, labels: dict[str, dict[str, list[str]]]) -> None:
+    """Alias and tag the seeded entities through the correction API.
+
+    The filter flows need a list whose tags differ per row, and the list
+    grows only through review — so the labels ride the same PATCH the
+    edit dialog drives. Seeding is a faster driver, not another door.
+    """
+    with httpx.Client(base_url=API, timeout=30) as api:
+        listed = api.get(f"/api/knowledge/novels/{novel_id}/entities")
+        listed.raise_for_status()
+        by_name = {row["name"]: row["id"] for row in listed.json()}
+        for name, changes in labels.items():
+            patched = api.patch(f"/api/knowledge/entities/{by_name[name]}", json=changes)
+            patched.raise_for_status()
+
+
+def test_the_entity_list_filters_by_type_tag_and_searches_the_server(
+    page: Page, stack: Stack
+) -> None:
+    """The filters narrow where the rows are; the search asks the server.
+
+    The type filter and the tag filter answer from the novel's own rows —
+    the tag picker offers exactly the tags the novel's entities carry —
+    and both compose. A combo with no answers names the empty result
+    rather than wearing the unfiltered list. The search box's tier is the
+    server's trigram search: a misspelt name still finds its row, which
+    the substring filter it replaced could never do, and clearing the box
+    answers unfiltered again.
+    """
+    novel_id = _seed_entities("Die gefilterte Bucht")
+    _label_entities(
+        novel_id,
+        {
+            "Mira": {"aliases": ["Miri"], "tags": ["Hauptfigur"]},
+            "Haus": {"tags": ["Hauptfigur", "Gebäude"]},
+            "See": {"tags": ["Natur"]},
+        },
+    )
+    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die gefilterte Bucht")).to_be_visible()
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+    expect(entities.get_by_role("row")).to_have_count(5)
+
+    # The type filter narrows to the characters.
+    dock.get_by_label("Nach Typ filtern").select_option(label="Figur")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+    expect(_row_named(entities, "Haus")).to_have_count(0)
+    expect(entities.get_by_role("row")).to_have_count(1)
+
+    # The tag filter composes: Mira carries Hauptfigur, but not Natur.
+    dock.get_by_label("Nach Tag filtern").select_option(label="Hauptfigur")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+    dock.get_by_label("Nach Typ filtern").select_option(label="Alle Typen")
+    expect(_row_named(entities, "Haus")).to_be_visible()
+    expect(_row_named(entities, "See")).to_have_count(0)
+    expect(entities.get_by_role("row")).to_have_count(2)
+
+    # A combo with no answers is named, not masked: no character carries
+    # the tag Natur.
+    dock.get_by_label("Nach Typ filtern").select_option(label="Figur")
+    dock.get_by_label("Nach Tag filtern").select_option(label="Natur")
+    expect(entities.get_by_text("Keine Treffer")).to_be_visible()
+
+    # Reset, and ask the server for a misspelt name: "Leuchturm" shares
+    # enough of the word to find the row — a substring filter would have
+    # answered with nothing.
+    dock.get_by_label("Nach Typ filtern").select_option(label="Alle Typen")
+    dock.get_by_label("Nach Tag filtern").select_option(label="Alle Tags")
+    expect(entities.get_by_role("row")).to_have_count(5)
+    # Escape closes the box's popup: while it stands open the rest of the
+    # dock is aria-hidden, and the rows below must answer their role.
+    dock.get_by_label("Entitäten durchsuchen").fill("Leuchturm")
+    dock.get_by_label("Entitäten durchsuchen").press("Escape")
+    expect(_row_named(entities, "Leuchtturm")).to_be_visible()
+    expect(_row_named(entities, "Mira")).to_have_count(0)
+
+    # An empty box is no filter: the list answers whole again.
+    dock.get_by_label("Entitäten durchsuchen").fill("")
+    dock.get_by_label("Entitäten durchsuchen").press("Escape")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+    expect(entities.get_by_role("row")).to_have_count(5)
+
+    assert_accessible(page)
+
+
+def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, stack: Stack) -> None:
+    """The dialog carries every field, and the card shows what it filed.
+
+    Enter files an alias chip, a comma files a tag chip, and a case twin
+    dedupes against the chip list. The body is Markdown source: written
+    as written, previewed as written — no renderer turns the heading
+    into one (WP3 brings the editor). Reopening the dialog shows what the
+    save kept.
+    """
+    novel_id = _seed_entities("Die bearbeitete Bucht")
+    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die bearbeitete Bucht")).to_be_visible()
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+    _row_named(entities, "Mira").click()
+    detail = dock.get_by_role("region", name="Mira")
+    expect(detail).to_contain_text("Mira appears in the chapter.")
+
+    dock.get_by_role("region", name="Mira").get_by_role("button", name="Bearbeiten").click()
+    dialog = page.get_by_role("dialog")
+
+    # Enter files an alias chip; a comma files a tag chip.
+    aliases = dialog.get_by_label("Aliasse")
+    aliases.fill("Miri")
+    aliases.press("Enter")
+    expect(dialog.get_by_text("Miri", exact=True)).to_be_visible()
+    tags = dialog.get_by_label("Tags", exact=True)
+    tags.fill("Hauptfigur")
+    tags.press(",")
+    expect(dialog.get_by_text("Hauptfigur", exact=True)).to_be_visible()
+
+    # A case twin dedupes: the chip list keeps one Mira.
+    aliases.fill("MIRI")
+    aliases.press("Enter")
+    expect(dialog.get_by_text("MIRI", exact=True)).to_have_count(0)
+    expect(dialog.get_by_text("Miri", exact=True)).to_have_count(1)
+
+    # The body is the Markdown source itself.
+    dialog.get_by_label("Inhalt (Markdown)").fill("## Herkunft\n\nMira wuchs an der Bucht auf.")
+    dialog.get_by_role("button", name="Speichern").click()
+    expect(dialog).not_to_be_visible()
+    expect(page.locator("[data-live-announcer]")).to_contain_text(
+        "Änderungen an Mira wurden gespeichert"
+    )
+
+    # The card reads the new fields: the chips, and the body's source —
+    # the heading stays characters, no renderer intervenes.
+    expect(detail.get_by_text("Miri", exact=True)).to_be_visible()
+    expect(detail.get_by_text("Hauptfigur", exact=True)).to_be_visible()
+    expect(detail.get_by_text("## Herkunft")).to_be_visible()
+    expect(detail).to_contain_text("Mira wuchs an der Bucht auf.")
+
+    # Reopening shows what the save kept: chip and body persist.
+    dock.get_by_role("region", name="Mira").get_by_role("button", name="Bearbeiten").click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_text("Miri", exact=True)).to_be_visible()
+    expect(dialog.get_by_label("Inhalt (Markdown)")).to_have_value(
+        "## Herkunft\n\nMira wuchs an der Bucht auf."
+    )
+
+    assert_accessible(page)
+
+
+def _entity_id(novel_id: str, name: str) -> str:
+    """One seeded entity's id, by its exact name."""
+    with httpx.Client(base_url=API, timeout=30) as api:
+        listed = api.get(f"/api/knowledge/novels/{novel_id}/entities")
+        listed.raise_for_status()
+        return next(row["id"] for row in listed.json() if row["name"] == name)
+
+
+def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) -> None:
+    """Add, retype, delete — and the card shows both directions.
+
+    The add row picks the target from the novel's other entries and the
+    type from the suggested vocabulary (free text stays welcome); the row
+    edits inline, the ends immutable. The compact card reads the same
+    edges from both sides and flags a self-relation, which only a
+    re-pointed edge can be — the add row never offers the row itself.
+    Exactly one edge leaves when its delete is pressed.
+    """
+    novel_id = _seed_entities("Die verbundene Bucht")
+    # The seeded accept chain left Leuchtturm → Mira (the one proposal
+    # whose target existed). The self-loop rides the API: the add row
+    # offers only the other entries, so the loop is a merge's leftover —
+    # seeded here as the faster driver.
+    leuchtturm = _entity_id(novel_id, "Leuchtturm")
+    with httpx.Client(base_url=API, timeout=30) as api:
+        looped = api.post(
+            f"/api/knowledge/entities/{leuchtturm}/relations",
+            json={"to_entity_id": leuchtturm, "relation_type": "related_to"},
+        )
+        looped.raise_for_status()
+
+    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die verbundene Bucht")).to_be_visible()
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Leuchtturm")).to_be_visible()
+    _row_named(entities, "Leuchtturm").click()
+    detail = dock.get_by_role("region", name="Leuchtturm")
+    # The compact card: the seeded edge, and the loop with its mark.
+    expect(detail).to_contain_text("→ Mira")
+    expect(detail).to_contain_text("Verbunden mit")
+    expect(detail).to_contain_text("Selbstbezug")
+
+    detail.get_by_role("button", name="Bearbeiten").click()
+    dialog = page.get_by_role("dialog")
+
+    # Add: the target from the novel's other entries, the type from the
+    # vocabulary, the note optional.
+    target = dialog.get_by_label("Verbinden mit")
+    target.fill("Haus")
+    target.press("ArrowDown")
+    target.press("Enter")
+    expect(target).to_have_value("Haus")
+    kind = dialog.get_by_label("Beziehungsart")
+    kind.fill("Verbündet")
+    kind.press("ArrowDown")
+    kind.press("Enter")
+    expect(kind).to_have_value("Verbündet mit")
+    dialog.get_by_label("Notiz (optional)").fill("Seit dem Sturm")
+    dialog.get_by_role("button", name="Beziehung hinzufügen").click()
+    row = dialog.get_by_role("listitem").filter(has_text="Haus")
+    expect(row).to_contain_text("Verbündet mit")
+    expect(row).to_contain_text("Seit dem Sturm")
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde hinzugefügt")
+
+    # Inline edit: the type retypes, the ends never move.
+    row.get_by_role("button", name="Beziehung bearbeiten").click()
+    row_kind = row.get_by_label("Beziehungsart")
+    row_kind.fill("Verfeindet")
+    row_kind.press("ArrowDown")
+    row_kind.press("Enter")
+    row.get_by_role("button", name="Speichern").click()
+    expect(row).to_contain_text("Verfeindet mit")
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gespeichert")
+
+    dialog.get_by_role("button", name="Speichern").click()
+    expect(dialog).not_to_be_visible()
+
+    # The card keeps what the dialog filed, and Haus reads the same edge
+    # from the other side.
+    expect(detail).to_contain_text("→ Haus · Verfeindet mit")
+    _row_named(entities, "Haus").click()
+    haus = dock.get_by_role("region", name="Haus")
+    expect(haus).to_contain_text("← Leuchtturm · Verfeindet mit")
+
+    # Deleting takes exactly the one edge: the loop and the seeded edge
+    # survive on the same card.
+    _row_named(entities, "Leuchtturm").click()
+    dock.get_by_role("region", name="Leuchtturm").get_by_role("button", name="Bearbeiten").click()
+    dialog = page.get_by_role("dialog")
+    row = dialog.get_by_role("listitem").filter(has_text="Verfeindet")
+    row.get_by_role("button", name="Beziehung löschen").click()
+    expect(row).to_have_count(0)
+    expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gelöscht")
+    dialog.get_by_role("button", name="Abbrechen").click()
+    expect(dialog).not_to_be_visible()
+    expect(dock.get_by_role("region", name="Leuchtturm")).not_to_contain_text("Verfeindet mit")
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Selbstbezug")
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("→ Mira")
 
     assert_accessible(page)
