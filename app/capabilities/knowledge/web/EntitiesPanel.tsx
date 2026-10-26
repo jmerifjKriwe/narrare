@@ -381,6 +381,11 @@ function ChipsField({
     <div
       className="flex flex-col gap-1"
       onKeyDown={(event) => {
+        // The wrapper's keydown serves the text field only: a remove
+        // button's Enter is a button press, so any other target is none
+        // of this handler's business — swallowing it would kill the
+        // chip's keyboard removal.
+        if (!(event.target instanceof HTMLInputElement)) return;
         if (event.key === "Enter" || event.key === ",") {
           // Enter must not submit what sits around the field, and the
           // comma must not stay in it: both file the chip instead.
@@ -444,6 +449,10 @@ function EditEntityDialog({
   // stand exactly as long as the field does not answer them.
   const [triedSave, setTriedSave] = useState(false);
   const [failed, setFailed] = useState(false);
+  // A relation row editor holds typed work the entity save knows nothing
+  // about — saving and closing now would silently discard it, so the save
+  // button stands down while one is open.
+  const [rowEditorOpen, setRowEditorOpen] = useState(false);
 
   const typeItems = (Object.keys(TYPE_KEYS) as (keyof typeof TYPE_KEYS)[]).map((type) => ({
     id: type,
@@ -519,14 +528,23 @@ function EditEntityDialog({
             onChange={setContent}
             multiline
           />
-          <EntityRelationsSection entity={entity} rows={rows} />
+          <EntityRelationsSection
+            entity={entity}
+            rows={rows}
+            onRowEditorChange={setRowEditorOpen}
+          />
           {failed ? (
             <p role="alert" className="text-sm text-danger">
               {t("knowledge.entityFailed")}
             </p>
           ) : null}
           <div className="flex gap-2">
-            <button type="button" onClick={() => void save(close)} className={PRIMARY_BUTTON}>
+            <button
+              type="button"
+              onClick={() => void save(close)}
+              disabled={rowEditorOpen}
+              className={`${PRIMARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}
+            >
               {t("knowledge.entitySave")}
             </button>
             <button type="button" onClick={close} className={QUIET_BUTTON}>

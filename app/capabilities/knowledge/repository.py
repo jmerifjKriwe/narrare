@@ -98,6 +98,14 @@ class EntityRepository(ScopedRepository[Entity]):
         way every scoped read in this product answers."""
         return await self.session.scalar(self.query().where(Entity.id == entity_id))
 
+    async def list(self) -> Sequence[Entity]:
+        """Every entity of this user, across novels: oldest first.
+
+        The embedding width is the user corpus's, not a novel's — the
+        re-embed must reach every row, whichever novel keeps it."""
+        result = await self.session.scalars(self.query().order_by(Entity.created_at))
+        return result.all()
+
     async def list_for_novel(
         self,
         novel_id: UUID,

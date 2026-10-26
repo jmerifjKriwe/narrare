@@ -648,7 +648,7 @@
         "type": "object"
       },
       "ReembedResult": {
-        "description": "What a re-embed rebuilt: every document, every chunk of it.",
+        "description": "What a re-embed rebuilt: every document, every chunk of it, every\nentity — the corpus ends at one width, documents and entities alike.",
         "properties": {
           "chunks": {
             "title": "Chunks",
@@ -657,11 +657,16 @@
           "documents": {
             "title": "Documents",
             "type": "integer"
+          },
+          "entities": {
+            "title": "Entities",
+            "type": "integer"
           }
         },
         "required": [
           "documents",
-          "chunks"
+          "chunks",
+          "entities"
         ],
         "title": "ReembedResult",
         "type": "object"
@@ -924,7 +929,7 @@
         "type": "object"
       },
       "SkippedRelationRead": {
-        "description": "A proposed relation accept could not place, with the proposal's own words.",
+        "description": "A proposed relation accept could not place: the target's name as the\nproposal spelled it, the type as stored — the stripped form, not the\nproposal's raw words.",
         "properties": {
           "relation_type": {
             "title": "Relation Type",

@@ -106,10 +106,11 @@ class RelationExistsError(Exception):
 
 
 class SkippedRelation(NamedTuple):
-    """A proposed relation accept could not place, with the proposal's own
-    words: the target's name as proposed and the relation's type. The skip
-    is transient — the accept response carries it once (D8), nothing
-    persists it."""
+    """A proposed relation accept could not place. The target's name rides
+    as the proposal spelled it; the type rides as it was stored — the
+    stripped form a hand-added edge would carry, not the proposal's raw
+    words. The skip is transient — the accept response carries it once
+    (D8), nothing persists it."""
 
     target_name: str
     relation_type: str
@@ -228,11 +229,15 @@ class KnowledgeService:
         return await self.passages.search(vector, limit)
 
     async def reembed(self) -> ReembedResult:
-        """Re-embed every chunk through the configured model.
+        """Re-embed every chunk and every entity through the configured model.
 
-        The fix the mismatch refusal asks for: chunk texts are stored, so this is
-        a pure data operation — no upload, no schema change. The corpus ends at
-        one width again, the one the configured model answers with.
+        The fix the mismatch refusal asks for: chunk texts are stored, and an
+        entity's embedding text is derived from its stored columns, so this is
+        a pure data operation — no upload, no schema change. The corpus ends
+        at one width again, the one the configured model answers with — the
+        documents' and the entities' alike (D5): a switch that re-embedded
+        only the documents would leave every accept, update and merge
+        refusing on the entities' stale width.
         """
         if await self.session.get(User, self.user_id) is None:
             raise SetupRequiredError
@@ -247,8 +252,13 @@ class KnowledgeService:
                 chunk.embedding = list(vector)
             document.embedding_width = len(vectors[0])
             chunk_count += len(chunks)
+        entities = await self.entities.list()
+        if entities:
+            vectors = await self.embeddings.embed([_embedding_text(entity) for entity in entities])
+            for entity, vector in zip(entities, vectors, strict=True):
+                entity.embedding = list(vector)
         await self.session.commit()
-        return ReembedResult(documents=len(documents), chunks=chunk_count)
+        return ReembedResult(documents=len(documents), chunks=chunk_count, entities=len(entities))
 
     async def _own_novel(self, novel_id: UUID) -> Novel:
         """The novel or NotFoundError — every list below answers per novel.

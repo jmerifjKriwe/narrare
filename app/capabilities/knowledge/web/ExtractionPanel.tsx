@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 
 import { activeChapter, subscribeActiveChapter } from "@shell/lib/activeChapter";
 import { announce } from "@shell/lib/announce";
+import { isModelChange } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import {
   queryClient,
@@ -156,7 +157,16 @@ export function ExtractionPanel() {
                     );
                   }
                 })
-                .catch(() => undefined);
+                .catch((error: unknown) => {
+                  // The refusals keep their silence — except the one the
+                  // server names: a switched embedding model leaves the
+                  // entity corpus at the old width, and every accept
+                  // answers 409 embedding-mismatch until the re-embed on
+                  // the knowledge page has run. The code rides the throw,
+                  // so the announcement can name the fix; every other
+                  // failure stays today's swallowed refusal.
+                  if (isModelChange(error)) announce(t("knowledge.embeddingMismatch"));
+                });
             }}
             onDiscard={() => {
               void discard.mutateAsync(suggestion.id).catch(() => undefined);

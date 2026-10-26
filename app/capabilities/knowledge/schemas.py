@@ -28,10 +28,12 @@ class SearchHit(BaseModel):
 
 
 class ReembedResult(BaseModel):
-    """What a re-embed rebuilt: every document, every chunk of it."""
+    """What a re-embed rebuilt: every document, every chunk of it, every
+    entity — the corpus ends at one width, documents and entities alike."""
 
     documents: int
     chunks: int
+    entities: int
 
 
 class ExtractionRequest(BaseModel):
@@ -155,7 +157,9 @@ class SuggestionRead(BaseModel):
 
 
 class SkippedRelationRead(BaseModel):
-    """A proposed relation accept could not place, with the proposal's own words."""
+    """A proposed relation accept could not place: the target's name as the
+    proposal spelled it, the type as stored — the stripped form, not the
+    proposal's raw words."""
 
     target_name: str
     relation_type: str

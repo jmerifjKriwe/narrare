@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import type { Entity, Relation } from "@shell/lib/api/client";
 import { announce } from "@shell/lib/announce";
@@ -13,7 +13,7 @@ import {
 import { ComboBox } from "@shell/ui/ComboBox";
 import { TextField } from "@shell/ui/TextField";
 
-import { DANGER_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
+import { PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
 import { relationTypeLabel, RELATION_TYPES, resolveRelationType } from "./relations";
 
 /**
@@ -23,7 +23,17 @@ import { relationTypeLabel, RELATION_TYPES, resolveRelationType } from "./relati
  * text welcome, the note optional. The ends of an edge never move
  * (D7): retyping is what the edit offers; moving is delete plus add.
  */
-export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows: Entity[] }) {
+export function EntityRelationsSection(
+  { entity, rows, onRowEditorChange }: {
+    entity: Entity;
+    rows: Entity[];
+    /** Every open/close of a row editor reports upward: the dialog's own
+     *  Save stands down while typed relation work is on the table, so it
+     *  can no longer close over it and silently discard the row's type
+     *  and note. */
+    onRowEditorChange?: (open: boolean) => void;
+  },
+) {
   const t = useTranslation();
   const relations = useEntityRelationsQuery(entity.id);
   const add = useAddRelation();
@@ -51,6 +61,15 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
   const [editTypeText, setEditTypeText] = useState("");
   const [editNote, setEditNote] = useState("");
   const [triedEdit, setTriedEdit] = useState(false);
+
+  /** The one writer of the editor's id: the open state rides along, so the
+   *  dialog hears of every change — including the unmount's, where a
+   *  closed dialog must not keep a stale "editor open" standing. */
+  function changeEditingId(next: string | null) {
+    setEditingId(next);
+    onRowEditorChange?.(next !== null);
+  }
+  useEffect(() => () => onRowEditorChange?.(false), [onRowEditorChange]);
 
   // The refusals are shared: the section names the failed change, and the
   // next attempt clears the words.
@@ -90,7 +109,7 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
 
   /** Open the row's inline editor, prefilled with the edge's own words. */
   function startEdit(relation: Relation) {
-    setEditingId(relation.id);
+    changeEditingId(relation.id);
     setEditTypeText(relationTypeLabel(t, relation.relation_type));
     setEditNote(relation.note ?? "");
     setTriedEdit(false);
@@ -108,7 +127,7 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
     const nextNote = editNote.trim() === "" ? null : editNote;
     if (nextNote !== relation.note) changes.note = nextNote;
     if (changes.relationType === undefined && changes.note === undefined) {
-      setEditingId(null);
+      changeEditingId(null);
       return;
     }
     try {
@@ -118,7 +137,7 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
       return;
     }
     announce(t("knowledge.relationUpdated"));
-    setEditingId(null);
+    changeEditingId(null);
   }
 
   /** Delete exactly this edge; keep the section's other rows standing. */
@@ -130,7 +149,7 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
       setFailed(true);
       return;
     }
-    if (editingId === relation.id) setEditingId(null);
+    if (editingId === relation.id) changeEditingId(null);
     announce(t("knowledge.relationDeleted"));
   }
 
@@ -210,7 +229,11 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
                       <button type="submit" className={PRIMARY_BUTTON}>
                         {t("knowledge.entitySave")}
                       </button>
-                      <button type="button" onClick={() => setEditingId(null)} className={QUIET_BUTTON}>
+                      <button
+                        type="button"
+                        onClick={() => changeEditingId(null)}
+                        className={QUIET_BUTTON}
+                      >
                         {t("knowledge.entityCancel")}
                       </button>
                     </div>

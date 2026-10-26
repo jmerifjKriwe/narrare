@@ -485,7 +485,7 @@ async def test_a_rerun_stacks_nothing_and_a_consumed_row_files_fresh() -> None:
 
         await _enqueue_extraction(client, novel_id, chapter_id)
         assert await _run_lane_once() is True
-        # The re-run on the same chapter: three parsed entities, all three
+        # The re-run on the same chapter: seven parsed entities, all seven
         # already pending — none of them files a second row.
         await _enqueue_extraction(client, novel_id, chapter_id)
         assert await _run_lane_once() is True
@@ -611,7 +611,7 @@ async def test_an_accept_resolves_proposals_by_name_and_by_alias() -> None:
 
 
 async def test_an_ambiguous_target_is_skipped_with_its_note() -> None:
-    """Two entities sharing the target's name make the proposal ambiguous:
+    """Two entities sharing the target's alias make the proposal ambiguous:
     it skips with its note — no guessed attach — while an unambiguous one
     on the same suggestion still places."""
     novel_id, [mira, _verena] = await _seed_canon(("Mira", ["Käthe"]), ("Verena", ["Käthe"]))
@@ -685,6 +685,34 @@ async def test_accept_order_decides_a_pending_target() -> None:
         ]
 
 
+async def test_a_repeated_proposal_files_one_edge() -> None:
+    """One answer proposing the same (target, type) twice folds into one
+    edge: the look-before-write answers the second proposal, and the
+    repository's unique constraint backs the fold — the queue's wording
+    never becomes a second relation."""
+    novel_id, [mira] = await _seed_canon(("Mira", []))
+    suggestion = await _pending_proposal(
+        novel_id,
+        "Leuchtturm",
+        [
+            {"target": "Mira", "type": "mag"},
+            {"target": "Mira", "type": "mag"},
+        ],
+    )
+    async with _client() as client:
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion.id}/accept")
+        assert accepted.status_code == 200
+        body = accepted.json()
+        assert body["skipped_relations"] == []  # the fold is not a skip
+
+        edges = (
+            await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
+        ).json()
+        assert [(edge["to_entity_id"], edge["relation_type"]) for edge in edges] == [
+            (str(mira.id), "mag")
+        ]
+
+
 async def test_a_target_deleted_in_the_race_skips_with_its_note(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -698,8 +726,8 @@ async def test_a_target_deleted_in_the_race_skips_with_its_note(
         novel_id,
         "Leuchtturm",
         [
-            {"target": "Mira", "type": "mag"},
             {"target": "Haus", "type": "bewohnt"},
+            {"target": "Mira", "type": "mag"},
         ],
     )
 
@@ -731,7 +759,10 @@ async def test_a_target_deleted_in_the_race_skips_with_its_note(
         assert body["entity"]["name"] == "Leuchtturm"  # the entity still lands
         assert body["skipped_relations"] == [{"target_name": "Haus", "relation_type": "bewohnt"}]
 
-        # the proposal whose target survived placed anyway
+        # The surviving proposal comes after the failed one on purpose: the
+        # savepoint's rollback must not end the placing, so a `break` after
+        # the vanished target's insert would fail this pin — the next
+        # proposal still lands its edge.
         edges = (
             await client.get(f"/api/knowledge/entities/{body['entity']['id']}/relations")
         ).json()

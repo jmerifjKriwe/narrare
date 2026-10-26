@@ -403,7 +403,8 @@ async def test_a_merge_folds_into_an_empty_body_without_leading_blank_lines() ->
 async def test_the_list_orders_by_similarity_not_creation() -> None:
     """The ``q`` tier's rank beats the row's age: the better match answers
     first even though it was created last — the two orders disagree here."""
-    katharinka, katharina = await _entities(
+    # The near match rides along unnamed: the assertion names it.
+    _katharinka, katharina = await _entities(
         ("Katharinka", "character", ""), ("Katharina", "character", "")
     )
     async with _client() as client:
@@ -414,7 +415,6 @@ async def test_the_list_orders_by_similarity_not_creation() -> None:
         # the exact name ranks first (similarity 1.0), the near one second
         # (0.8) — creation order alone would answer the reverse
         assert [row["name"] for row in found.json()] == ["Katharina", "Katharinka"]
-        assert katharinka.name == "Katharinka"  # the seeded order, for the record
 
 
 async def test_a_merge_at_another_embedding_width_is_refused_and_deletes_nothing() -> None:

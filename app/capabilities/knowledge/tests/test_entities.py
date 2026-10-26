@@ -154,7 +154,7 @@ async def test_an_accept_at_another_embedding_width_is_refused_and_writes_nothin
         still_pending = (
             await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=pending")
         ).json()
-        # unconsumed: the reviewed row is still among the pending three
+        # unconsumed: the reviewed row is still among the pending seven
         assert suggestion["id"] in [row["id"] for row in still_pending]
 
 

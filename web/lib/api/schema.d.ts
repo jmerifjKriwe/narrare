@@ -908,13 +908,16 @@ export interface components {
         };
         /**
          * ReembedResult
-         * @description What a re-embed rebuilt: every document, every chunk of it.
+         * @description What a re-embed rebuilt: every document, every chunk of it, every
+         *     entity — the corpus ends at one width, documents and entities alike.
          */
         ReembedResult: {
             /** Chunks */
             chunks: number;
             /** Documents */
             documents: number;
+            /** Entities */
+            entities: number;
         };
         /**
          * RelationCreate
@@ -1038,7 +1041,9 @@ export interface components {
         };
         /**
          * SkippedRelationRead
-         * @description A proposed relation accept could not place, with the proposal's own words.
+         * @description A proposed relation accept could not place: the target's name as the
+         *     proposal spelled it, the type as stored — the stripped form, not the
+         *     proposal's raw words.
          */
         SkippedRelationRead: {
             /** Relation Type */

@@ -536,7 +536,7 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
 def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
     """The queue's outage is named, never worn as a spent queue.
 
-    A queue holding three pending cards goes unreachable: a reload that
+    A queue holding five pending cards goes unreachable: a reload that
     cannot reach the service must say so in the queue's own words. The
     entity list shed this mask first (its outage test pins that alert);
     the queue's silence would read worse — as a queue already reviewed —
@@ -630,11 +630,11 @@ def test_a_rerun_stacks_no_duplicate_cards(page: Page, stack: Stack) -> None:
 def test_the_dock_search_reaches_passages(page: Page, stack: Stack) -> None:
     """The search box's second tier: passages from the semantic search.
 
-    The box keeps its instant, client-side filter of the names — and while
-    it carries a query, a debounced server search renders the corpus's
-    passages under the entity list, each with its document's title. A
-    search that meets a dead service names itself: the same named-failure
-    rule the dock's other panels hold, in this tier's own words.
+    While the box carries a query, a debounced server search renders the
+    corpus's passages under the entity list, each with its document's
+    title. A search that meets a dead service names itself: the same
+    named-failure rule the dock's other panels hold, in this tier's own
+    words.
     """
     _open_workspace_with_validated_title(page, "Die Bucht mit den Notizen")
 
@@ -906,6 +906,10 @@ def test_the_entity_list_filters_by_type_tag_and_searches_the_server(
     expect(_row_named(entities, "Mira")).to_be_visible()
     expect(_row_named(entities, "Haus")).to_have_count(0)
     expect(entities.get_by_role("row")).to_have_count(1)
+    # The narrowed answer's identity, after the settling count: while the
+    # narrowed ask refetches, the list keeps its previous page, so the
+    # presence above can pass against the unfiltered rows.
+    expect(_row_named(entities, "Mira")).to_have_count(1)
 
     # The tag filter composes: Mira carries Hauptfigur, but not Natur.
     dock.get_by_label("Nach Tag filtern").select_option(label="Hauptfigur")
@@ -947,10 +951,11 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     """The dialog carries every field, and the card shows what it filed.
 
     Enter files an alias chip, a comma files a tag chip, and a case twin
-    dedupes against the chip list. The body is Markdown source: written
-    as written, previewed as written — no renderer turns the heading
-    into one (WP3 brings the editor). Reopening the dialog shows what the
-    save kept.
+    dedupes against the chip list — whose remove button answers the
+    keyboard too: Shift+Tab reaches it, Enter presses it. The body is
+    Markdown source: written as written, previewed as written — no
+    renderer turns the heading into one (WP3 brings the editor). Reopening
+    the dialog shows what the save kept.
     """
     novel_id = _seed_entities("Die bearbeitete Bucht")
     page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
@@ -967,7 +972,7 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     dialog = page.get_by_role("dialog")
 
     # Enter files an alias chip; a comma files a tag chip.
-    aliases = dialog.get_by_label("Aliasse")
+    aliases = dialog.get_by_label("Aliase")
     aliases.fill("Miri")
     aliases.press("Enter")
     expect(dialog.get_by_text("Miri", exact=True)).to_be_visible()
@@ -981,6 +986,17 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     aliases.press("Enter")
     expect(dialog.get_by_text("MIRI", exact=True)).to_have_count(0)
     expect(dialog.get_by_text("Miri", exact=True)).to_have_count(1)
+
+    # The remove button answers the keyboard: Shift+Tab reaches it from the
+    # field, Enter presses it. The chips wrapper's keydown serves the text
+    # field only, so the button keeps its own activation.
+    aliases.fill("Kathi")
+    aliases.press("Enter")
+    expect(dialog.get_by_text("Kathi", exact=True)).to_be_visible()
+    aliases.press("Shift+Tab")  # back onto the chip's remove button
+    expect(dialog.get_by_role("button", name="Kathi entfernen")).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(dialog.get_by_text("Kathi", exact=True)).to_have_count(0)
 
     # The body is the Markdown source itself.
     dialog.get_by_label("Inhalt (Markdown)").fill("## Herkunft\n\nMira wuchs an der Bucht auf.")

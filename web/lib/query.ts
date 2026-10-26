@@ -434,11 +434,19 @@ export function useAcceptSuggestion(
 ): UseMutationResult<Accept, Error, string> {
   return useMutation({
     mutationFn: async (suggestionId: string) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/suggestions/{suggestion_id}/accept",
         { params: { path: { suggestion_id: suggestionId } } },
       );
-      if (!response.ok || !data) throw new Error(`accept refused: ${response.status}`);
+      if (!response.ok || !data) {
+        // The refusal's detail rides the throw: one failure here has a fix
+        // the UI can name (the embedding model changed, the re-embed is
+        // owed first), so the machine-readable code must survive the
+        // mutation boundary. Every other refusal keeps its status-only Error.
+        throw Object.assign(new Error(`accept refused: ${response.status}`), {
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
       return data;
     },
     onSettled: () => {
