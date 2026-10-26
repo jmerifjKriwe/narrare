@@ -151,36 +151,40 @@ def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> None:
     """Verify finding parsing accepts valid arrays and rejects malformed or oversized fields."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_findings
 
-    good = '[{"summary": "Mira: 34 vs. 37", "detail": "Die Kapitel widersprechen sich."}]'
+    good = (
+        '{"items": [{"summary": "Mira: 34 vs. 37", "detail": "Die Kapitel widersprechen sich."}]}'
+    )
     [finding] = parse_findings(good)
     assert finding.summary == "Mira: 34 vs. 37"
     assert finding.detail == "Die Kapitel widersprechen sich."
 
-    [bare] = parse_findings('[{"summary": "Nur eine Zeile"}]')  # detail is nullable
+    [bare] = parse_findings('{"items": [{"summary": "Nur eine Zeile"}]}')  # detail is nullable
     assert bare.detail is None
 
-    assert parse_findings("[]") == []  # an empty array is a valid answer
+    assert parse_findings('{"items": []}') == []  # empty is a valid answer
 
     with pytest.raises(MalformedAnswerError):
         parse_findings("Die Kapitel stimmen überein — aber kein JSON.")
     with pytest.raises(MalformedAnswerError):
-        parse_findings('{"summary": "Mira"}')  # an object, not an array
+        parse_findings('{"summary": "Mira"}')  # no items array
     with pytest.raises(MalformedAnswerError):
-        parse_findings('[{"detail": "ohne summary"}]')  # no summary
+        parse_findings('[{"summary": "Mira"}]')  # a bare array: not a legal root
     with pytest.raises(MalformedAnswerError):
-        parse_findings('[{"summary": "   "}]')  # blank is no summary
+        parse_findings('{"items": [{"detail": "ohne summary"}]}')  # no summary
     with pytest.raises(MalformedAnswerError):
-        parse_findings('["Mira"]')  # a string, not an object
+        parse_findings('{"items": [{"summary": "   "}]}')  # blank is no summary
     with pytest.raises(MalformedAnswerError):
-        parse_findings('[{"summary": "Mira", "detail": 5}]')  # detail must be a string
+        parse_findings('{"items": ["Mira"]}')  # a string, not an object
+    with pytest.raises(MalformedAnswerError):
+        parse_findings('{"items": [{"summary": "Mira", "detail": 5}]}')  # detail: a string
 
     # The summary column is String(200): a summary of exactly that width
     # parses, and a longer one is refused on the contract path — not by the
     # database, whose verdict would arrive as a DataError after the fact.
-    [widest] = parse_findings(f'[{{"summary": "{"S" * 200}"}}]')
+    [widest] = parse_findings(f'{{"items": [{{"summary": "{"S" * 200}"}}]}}')
     assert widest.summary == "S" * 200
     with pytest.raises(MalformedAnswerError) as refused:
-        parse_findings(f'[{{"summary": "{"S" * 201}"}}]')
+        parse_findings(f'{{"items": [{{"summary": "{"S" * 201}"}}]}}')
     # The refusal carries the summary's true length, the way the entity
     # parse's does: the repr clips the shown item, so the count is what
     # keeps an over-long summary diagnosable.
@@ -533,8 +537,10 @@ class _ScriptedProvider:
 
 
 def _findings_json(*summaries: str) -> str:
-    """A provider answer carrying one finding per summary."""
-    return dumps([{"summary": summary, "detail": "34 gegen 37"} for summary in summaries])
+    """A provider answer carrying one finding per summary, at the object root."""
+    return dumps(
+        {"items": [{"summary": summary, "detail": "34 gegen 37"} for summary in summaries]}
+    )
 
 
 async def test_a_novel_beyond_the_bound_is_checked_in_groups(

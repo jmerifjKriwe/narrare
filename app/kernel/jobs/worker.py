@@ -206,8 +206,12 @@ class Worker:
         The handler's session is never touched, so its terminal commit stays
         the only commit the work rides: a failed job still writes no audit
         row (D3), while the progress it reported before failing stays on the
-        row — the lane's honesty about how far a run reached. A write that
-        dies propagates into the handler's failure path, like any lane error.
+        row — the lane's honesty about how far a run reached.
+
+        A write that dies is logged, not raised: progress is advisory, and a
+        dead percentage must not fail finished work, roll it back and earn
+        the lane a second provider run of the same job. Cancellation is not
+        an advisory failure — it propagates.
 
         The write is gated on the claim still being the live one: a row the
         stale sweep returned to the queue keeps no percentage from a run
@@ -216,11 +220,18 @@ class Worker:
         counter — and that residue is accepted: progress is advisory, and a
         claim token is more machinery than the column is worth.
         """
-        async with self._session_factory() as session:
-            await session.execute(
-                update(Job).where(Job.id == job.id, Job.status == RUNNING).values(progress=value)
-            )
-            await session.commit()
+        try:
+            async with self._session_factory() as session:
+                await session.execute(
+                    update(Job)
+                    .where(Job.id == job.id, Job.status == RUNNING)
+                    .values(progress=value)
+                )
+                await session.commit()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            getLogger("narrare").warning("progress write for job %s failed", job.id, exc_info=True)
 
     async def _write(
         self,

@@ -645,3 +645,25 @@ async def test_the_lane_survives_a_transient_infrastructure_failure(a_user: None
     finally:
         stopping.set()
         await task  # and it still stops cleanly
+
+
+async def test_a_failed_progress_write_is_logged_not_raised(a_user: None) -> None:
+    """Progress is advisory: a dead write must not fail the work around it.
+
+    A progress write shares nothing with the handler's transaction, so its
+    failure has no claim on the job's outcome — raising would roll back
+    finished work and earn the lane a second provider run of the same job.
+    The method is addressed directly because the failure sits below the
+    lane's own seam: no handler can produce it on demand.
+    """
+
+    class _BrokenFactory:
+        """A session factory whose database is gone."""
+
+        def __call__(self) -> object:
+            raise RuntimeError("database is gone")
+
+    job = await _enqueue("kind")
+    worker = Worker(_BrokenFactory(), {})  # pyright: ignore[reportArgumentType]
+
+    await worker._report_progress(job, 50)  # pyright: ignore[reportPrivateUsage]

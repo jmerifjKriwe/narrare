@@ -86,15 +86,19 @@ def _entities_answer(passage: str) -> str:
     appearance.
     """
     names = list(dict.fromkeys(CAPITALIZED.findall(passage)))[:PROPOSED_ENTITIES]
+    # The object root is the structured-outputs contract: an array is not a
+    # legal root, so the ask and the answer share the {"items": [...]} shape.
     return json.dumps(
-        [
-            {
-                "name": name,
-                "kind": ENTITY_KINDS[index % len(ENTITY_KINDS)],
-                "description": f"{name} appears in the chapter.",
-            }
-            for index, name in enumerate(names)
-        ],
+        {
+            "items": [
+                {
+                    "name": name,
+                    "kind": ENTITY_KINDS[index % len(ENTITY_KINDS)],
+                    "description": f"{name} appears in the chapter.",
+                }
+                for index, name in enumerate(names)
+            ]
+        },
         ensure_ascii=False,
     )
 
@@ -126,7 +130,8 @@ def _findings_answer(text: str) -> str:
                 "detail": '"' + '" vs. "'.join(by_number.values()) + '"',
             }
         )
-    return json.dumps(findings, ensure_ascii=False)
+    # The object root is the structured-outputs contract (see the entities).
+    return json.dumps({"items": findings}, ensure_ascii=False)
 
 
 class FakeProvider:

@@ -58,20 +58,50 @@ def _refuse(shape: str, reason: str, shown: object) -> MalformedAnswerError:
     return MalformedAnswerError(f"not a JSON array of {shape}: {reason} ({repr(shown)[:200]})")
 
 
+def _items_of(shape: str, document: object) -> list[object]:
+    """The answer's items array, refusing every other document shape.
+
+    The root is an object because structured outputs rejects an array root;
+    a bare array is therefore a contract violation, not a tolerated variant
+    — accepting both would let a prompt regression pass as green.
+    """
+    if not isinstance(document, dict):
+        raise _refuse(shape, "the answer is not an object with an items array", document)
+    # JSON object keys are strings by contract (RFC 8259); the cast states
+    # that contract on the type level — the value is re-checked right below.
+    record = cast("dict[str, object]", document)
+    raw_items = record.get("items")
+    if not isinstance(raw_items, list):
+        raise _refuse(shape, "the answer is not an object with an items array", record)
+    # isinstance narrows to list[Unknown]; the cast restates the check above
+    # as the type the callers' loops already re-verify per item.
+    return cast("list[object]", raw_items)
+
+
 # The shape parse_entities accepts, sent as the response schema: one place
-# holds the ask and the check, so they cannot drift.
+# holds the ask and the check, so they cannot drift. The root is an object,
+# not the array the answers used to be: structured outputs (the OpenAI
+# contract the adapter speaks) rejects an array root outright, so the ask
+# and the answer share the {"items": [...]} shape.
 ENTITIES_SCHEMA: dict[str, object] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "name": {"type": "string"},
-            "kind": {"type": "string", "enum": list(ENTITY_KINDS)},
-            "description": {"type": ["string", "null"]},
-        },
-        "required": ["name", "kind", "description"],
-        "additionalProperties": False,
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "kind": {"type": "string", "enum": list(ENTITY_KINDS)},
+                    "description": {"type": ["string", "null"]},
+                },
+                "required": ["name", "kind", "description"],
+                "additionalProperties": False,
+            },
+        }
     },
+    "required": ["items"],
+    "additionalProperties": False,
 }
 
 
@@ -92,11 +122,7 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
         document: object = loads(answer)
     except JSONDecodeError as error:
         raise _refuse("entities", "the answer is not JSON", answer) from error
-    if not isinstance(document, list):
-        raise _refuse("entities", "the answer is not an array", document)
-    # isinstance narrows to list[Unknown]; the cast restates the check above
-    # as the type the loop below already re-verifies per item.
-    items = cast("list[object]", document)
+    items = _items_of("entities", document)
     entities: list[ParsedEntity] = []
     for entry in items:
         if not isinstance(entry, dict):
@@ -130,17 +156,25 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
 
 # The shape parse_findings accepts, sent as the response schema: one place
 # holds the ask and the check, so they cannot drift.
+# The object root is the structured-outputs contract (see ENTITIES_SCHEMA).
 FINDINGS_SCHEMA: dict[str, object] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "summary": {"type": "string"},
-            "detail": {"type": ["string", "null"]},
-        },
-        "required": ["summary", "detail"],
-        "additionalProperties": False,
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string"},
+                    "detail": {"type": ["string", "null"]},
+                },
+                "required": ["summary", "detail"],
+                "additionalProperties": False,
+            },
+        }
     },
+    "required": ["items"],
+    "additionalProperties": False,
 }
 
 
@@ -162,9 +196,7 @@ def parse_findings(answer: str) -> list[ParsedFinding]:
         document: object = loads(answer)
     except JSONDecodeError as error:
         raise _refuse("findings", "the answer is not JSON", answer) from error
-    if not isinstance(document, list):
-        raise _refuse("findings", "the answer is not an array", document)
-    items = cast("list[object]", document)
+    items = _items_of("findings", document)
     findings: list[ParsedFinding] = []
     for entry in items:
         if not isinstance(entry, dict):

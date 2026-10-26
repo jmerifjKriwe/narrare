@@ -101,14 +101,14 @@ class _NoEntitiesProvider:
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
         """Yield a valid empty entity array followed by DONE."""
-        yield Delta(text="[]")
+        yield Delta(text='{"items": []}')
         yield DONE
 
 
 class _RecordingProvider:
     """A provider that answers with a fixed valid array and keeps what it was asked."""
 
-    def __init__(self, answer: str = "[]") -> None:
+    def __init__(self, answer: str = '{"items": []}') -> None:
         self.answer = answer
         self.requests: list[CompletionRequest] = []
 
@@ -328,7 +328,7 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     """Verify entity parsing rejects invalid shapes, kinds, and names over the column limit."""
     from app.capabilities.knowledge.jobs import MalformedAnswerError, parse_entities
 
-    good = '[{"name": "Mira", "kind": "character", "description": "Die Erzählerin."}]'
+    good = '{"items": [{"name": "Mira", "kind": "character", "description": "Die Erzählerin."}]}'
     [entity] = parse_entities(good)
     assert entity.name == "Mira"
     assert entity.kind == "character"
@@ -337,21 +337,25 @@ async def test_the_parse_refuses_answers_that_are_not_the_contracted_shape() -> 
     with pytest.raises(MalformedAnswerError):
         parse_entities("Der Nebel hob sich — aber kein JSON.")
     with pytest.raises(MalformedAnswerError):
-        parse_entities('{"name": "Mira", "kind": "character"}')  # an object, not an array
+        parse_entities('{"name": "Mira", "kind": "character"}')  # no items array
     with pytest.raises(MalformedAnswerError):
-        parse_entities('[{"kind": "character", "description": "Namenslos."}]')  # no name
+        parse_entities('[{"name": "Mira"}]')  # a bare array: not a legal root
     with pytest.raises(MalformedAnswerError):
-        parse_entities('[{"name": "Mira", "kind": "idea", "description": "?"}]')  # no such kind
+        parse_entities('{"items": [{"kind": "character", "description": "Namenslos."}]}')  # no name
     with pytest.raises(MalformedAnswerError):
-        parse_entities('["Mira"]')  # a string, not an object
+        parse_entities(
+            '{"items": [{"name": "Mira", "kind": "idea", "description": "?"}]}'
+        )  # no such kind
+    with pytest.raises(MalformedAnswerError):
+        parse_entities('{"items": ["Mira"]}')  # a string, not an object
 
     # The name column is String(200): a name of exactly that width parses,
     # and a longer one is refused on the contract path — not by the database,
     # whose verdict would arrive as a DataError after the fact.
-    [widest] = parse_entities(f'[{{"name": "{"N" * 200}", "kind": "character"}}]')
+    [widest] = parse_entities(f'{{"items": [{{"name": "{"N" * 200}", "kind": "character"}}]}}')
     assert widest.name == "N" * 200
     with pytest.raises(MalformedAnswerError) as refused:
-        parse_entities(f'[{{"name": "{"N" * 201}", "kind": "character"}}]')
+        parse_entities(f'{{"items": [{{"name": "{"N" * 201}", "kind": "character"}}]}}')
     # The refusal carries the name's true length: the repr clips the shown
     # item at 200 characters, so the count is what keeps an over-long name
     # diagnosable — 201 is a boundary slip, 2000 is a broken prompt.
