@@ -217,7 +217,9 @@ EntityRelation
 
 - Extend the existing entity endpoints with `type`, `aliases`, `tags`, `content`.
 - `GET/POST /entities/{id}/relations`, `PATCH/DELETE /relations/{id}`.
-- `GET /entities?type=&tag=&q=` (the `q` tier uses §9.1).
+- `GET /entities?type=&tag=&q=` (the `q` tier ranks by needle-first `word_similarity`
+  at the measured 0.5 threshold; §9.1's `similarity() ≥ 0.8` stays the dedup tier,
+  not the search bar).
 - Delete cascades relations (export is the safety net, §9.4).
 
 ### 4.4 Extraction and review
@@ -262,8 +264,9 @@ revisions. Until then, prose is the canon.
 ### 4.10 As built, 2026-10-26 (WP1)
 
 - `ENTITY_TYPES` ships as the eight-entry tuple in `app/kernel/contracts/models.py`
-  (the §4.1 list above, `event` included); prompt, parse, validation and the panel
-  labels all import it from there.
+  (the §4.1 list above, `event` included); prompt, parse and validation import it
+  from there, and the panel labels mirror the tuple as catalog keys, a type the
+  contract later adds falling back to `generic`.
 - Review is the only birth path: `POST /entities` does not exist — an entity enters
   the canon exclusively through an accepted extraction suggestion.
 - Merge folds the source into the survivor: the edges re-point in both directions,
@@ -393,8 +396,9 @@ resolved is reported, not dropped.
 
 ### 6.4 Demo rebuild
 
-- Three demos (fantasy, sci-fi, German literary) rebuilt in the C+ shape: seven types,
-  aliases/tags, relations, Markdown bodies. The v1 flat fields become body sections;
+- Three demos (fantasy, sci-fi, German literary) rebuilt in the C+ shape: the
+  eight-entry type vocabulary (seven concrete + generic), aliases/tags, relations,
+  Markdown bodies. The v1 flat fields become body sections;
   the v1 `relationships:` map becomes `related_to` edges with the prose as `note`.
 - The bundled demos are the round-trip fixture and the import test.
 
@@ -594,8 +598,9 @@ handlers stay idempotent.
 ### 9.4 Deletion and backup
 
 - Export before delete is the safety net now.
-- Soft delete (`deleted_at` + default filter) lands when relations exist and a delete
-  would take edges with it — decide at WP1 review, not silently.
+- Soft delete (`deleted_at` + default filter) was the "decide at WP1 review" question
+  for deletes that take edges with it — decided 2026-10-26: hard delete with edge
+  cascade; export is the safety net, no soft delete.
 - `db-reset` runs `pg_dump` into `.narrare/backups/` first (three lines, no recipe).
 
 ### 9.5 Dependencies

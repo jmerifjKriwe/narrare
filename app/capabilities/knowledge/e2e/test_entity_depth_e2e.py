@@ -265,11 +265,17 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(_row_named(entities, "Katharina")).to_be_visible()
     expect(_row_named(entities, "Gilde")).to_have_count(0)
     expect(entities.get_by_role("row")).to_have_count(1)
+    # The narrowed answer's identity, asserted after the settling count:
+    # while the narrowed ask refetches, the list keeps its previous page,
+    # so the presence above can pass against the unfiltered rows.
+    expect(_row_named(entities, "Katharina")).to_have_count(1)
     dock.get_by_label("Nach Typ filtern").select_option(label="Alle Typen")
     dock.get_by_label("Nach Tag filtern").select_option(label="Hauptfigur")
     expect(_row_named(entities, "Katharina")).to_be_visible()
     expect(_row_named(entities, "Amulett")).to_be_visible()
     expect(entities.get_by_role("row")).to_have_count(2)
+    expect(_row_named(entities, "Katharina")).to_have_count(1)
+    expect(_row_named(entities, "Amulett")).to_have_count(1)
     dock.get_by_label("Nach Typ filtern").select_option(label="Figur")
     expect(_row_named(entities, "Amulett")).to_have_count(0)
     expect(entities.get_by_role("row")).to_have_count(1)
@@ -286,6 +292,10 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(_row_named(entities, "Katharina")).to_be_visible()
     expect(_row_named(entities, "Gilde")).to_have_count(0)
     expect(entities.get_by_role("row")).to_have_count(1)
+    # The found row's identity, after the settling count: the debounced
+    # ask keeps the unfiltered list on screen while it refetches, so the
+    # presence above alone would pass whatever the server answered.
+    expect(_row_named(entities, "Katharina")).to_have_count(1)
     search.fill("")
     search.press("Escape")
     expect(entities.get_by_role("row")).to_have_count(len(CARDS_IN_QUEUE_ORDER) - 2)
