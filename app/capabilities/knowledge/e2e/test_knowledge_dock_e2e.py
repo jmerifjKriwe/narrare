@@ -1052,6 +1052,16 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(detail).to_contain_text("Verbunden mit")
     expect(detail).to_contain_text("Selbstbezug")
 
+    # Haus's card first, so its relations answer sits in the cache: an
+    # edge always has two ends, and the other end's card below must
+    # follow the edit without waiting out the answer's freshness.
+    _row_named(entities, "Haus").click()
+    haus_before = dock.get_by_role("region", name="Haus")
+    expect(haus_before).to_be_visible()
+    expect(haus_before).not_to_contain_text("Leuchtturm")
+
+    _row_named(entities, "Leuchtturm").click()
+    detail = dock.get_by_role("region", name="Leuchtturm")
     detail.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
 
@@ -1088,7 +1098,8 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(dialog).not_to_be_visible()
 
     # The card keeps what the dialog filed, and Haus reads the same edge
-    # from the other side.
+    # from the other side — a revisit, so the cached answer from before
+    # the edit must not be what the card serves.
     expect(detail).to_contain_text("→ Haus · Verfeindet mit")
     _row_named(entities, "Haus").click()
     haus = dock.get_by_role("region", name="Haus")

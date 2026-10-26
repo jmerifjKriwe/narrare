@@ -218,10 +218,13 @@ export type RelationInput = {
 export type RelationChanges = { relationType?: string; note?: string | null };
 
 /**
- * The three edge changes. Each invalidates the entity's relations list on
+ * The three edge changes. Each invalidates the whole relations prefix on
  * settling — not only on success: a 404 means the edge is already gone
  * (another correction won the race), and the refetch is what makes the
- * rows follow a list that no longer holds it.
+ * rows follow a list that no longer holds it. The prefix, not the
+ * mutating end's key, because an edge always has two ends: the other
+ * end's card reads the same cache and must not wear the old graph until
+ * its answer's freshness runs out.
  */
 export function useAddRelation(): UseMutationResult<Relation, Error, RelationInput> {
   return useMutation({
@@ -240,10 +243,8 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
       if (!response.ok || !data) throw new Error(`add relation refused: ${response.status}`);
       return data;
     },
-    onSettled: (data, error, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["knowledge", "relations", variables.entityId],
-      });
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -251,10 +252,10 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
 export function useUpdateRelation(): UseMutationResult<
   Relation,
   Error,
-  { relationId: string; entityId: string } & RelationChanges
+  { relationId: string } & RelationChanges
 > {
   return useMutation({
-    mutationFn: async (input: { relationId: string; entityId: string } & RelationChanges) => {
+    mutationFn: async (input: { relationId: string } & RelationChanges) => {
       const { data, response } = await client.PATCH("/api/knowledge/relations/{relation_id}", {
         params: { path: { relation_id: input.relationId } },
         body: { relation_type: input.relationType, note: input.note },
@@ -262,30 +263,22 @@ export function useUpdateRelation(): UseMutationResult<
       if (!response.ok || !data) throw new Error(`relation update refused: ${response.status}`);
       return data;
     },
-    onSettled: (data, error, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["knowledge", "relations", variables.entityId],
-      });
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
 
-export function useDeleteRelation(): UseMutationResult<
-  void,
-  Error,
-  { relationId: string; entityId: string }
-> {
+export function useDeleteRelation(): UseMutationResult<void, Error, { relationId: string }> {
   return useMutation({
-    mutationFn: async (input: { relationId: string; entityId: string }) => {
+    mutationFn: async (input: { relationId: string }) => {
       const { response } = await client.DELETE("/api/knowledge/relations/{relation_id}", {
         params: { path: { relation_id: input.relationId } },
       });
       if (!response.ok) throw new Error(`relation delete refused: ${response.status}`);
     },
-    onSettled: (data, error, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["knowledge", "relations", variables.entityId],
-      });
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -512,6 +505,9 @@ export function useDeleteEntity(novelId: string): UseMutationResult<void, Error,
     },
     onSettled: () => {
       void invalidateEntities(novelId);
+      // The deleted row's edges cascade: every card that showed one of
+      // them must ask again, whoever's end it stood on.
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -531,6 +527,9 @@ export function useMergeEntities(
     },
     onSettled: () => {
       void invalidateEntities(novelId);
+      // The merge re-points the source's edges to the target: cards on
+      // either end of a moved edge must ask again.
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -541,9 +540,11 @@ function invalidateEntities(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
 }
 
-/** The two knowledge views of a novel go stale together: a review decision
- *  moves the queue and (on accept) the list in one request. */
+/** The three knowledge views of a novel go stale together: a review
+ *  decision moves the queue and (on accept) the list and — the placed
+ *  relations — the edges, in one request. */
 function invalidateKnowledge(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
+  void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
 }

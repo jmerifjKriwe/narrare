@@ -112,7 +112,7 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
       return;
     }
     try {
-      await update.mutateAsync({ relationId: relation.id, entityId: entity.id, ...changes });
+      await update.mutateAsync({ relationId: relation.id, ...changes });
     } catch {
       setFailed(true);
       return;
@@ -125,7 +125,7 @@ export function EntityRelationsSection({ entity, rows }: { entity: Entity; rows:
   async function deleteEdge(relation: Relation) {
     setFailed(false);
     try {
-      await remove.mutateAsync({ relationId: relation.id, entityId: entity.id });
+      await remove.mutateAsync({ relationId: relation.id });
     } catch {
       setFailed(true);
       return;
