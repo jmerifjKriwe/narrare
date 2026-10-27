@@ -88,6 +88,16 @@ function optionalNumber(value: string): number | undefined {
 }
 
 /**
+ * A tuning column of an edit: the number, or the explicit null that clears
+ * it. An edit's every column is sent, so an emptied field must arrive as a
+ * present null — omitted, it would mean "keep", and the form says otherwise.
+ */
+function tuned(value: string): number | null {
+  const parsed = optionalNumber(value);
+  return parsed === undefined ? null : parsed;
+}
+
+/**
  * The provider section: the list with its per-profile actions, the create
  * and edit form, and the per-task assignments. Everything a user can do to
  * a profile happens here, against the same masked surface the API serves.
@@ -105,15 +115,10 @@ export function ProvidersPanel() {
   const [models, setModels] = useState<Record<string, string[] | "failed">>({});
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const { data } = await client.GET("/api/settings/profiles");
-      if (cancelled) return;
-      setProfiles(data ?? []);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    // Both views load on mount: the assignment selects display their values
+    // out of this list, so a fresh visit must show the stored choices — not
+    // "automatic" until some later mutation happens to refetch them.
+    void reload();
   }, []);
 
   async function reload(): Promise<void> {
@@ -182,7 +187,9 @@ export function ProvidersPanel() {
       return;
     }
     // An edit sends every column explicitly: an emptied field clears it
-    // (present nulls clear), which is what a form full of values means.
+    // (present nulls clear), which is what a form full of values means —
+    // the tuning columns included, or a cleared value would silently keep
+    // governing every request.
     const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
       params: { path: { profile_id: editing.id } },
       body: {
@@ -190,18 +197,10 @@ export function ProvidersPanel() {
         base_url: form.baseUrl.trim() === "" ? null : form.baseUrl.trim(),
         model: form.model.trim() === "" ? null : form.model.trim(),
         ...apiKey,
-        ...(optionalNumber(form.contextWindow) === undefined
-          ? {}
-          : { context_window: optionalNumber(form.contextWindow) }),
-        ...(optionalNumber(form.maxOutput) === undefined
-          ? {}
-          : { max_output_tokens: optionalNumber(form.maxOutput) }),
-        ...(optionalNumber(form.temperature) === undefined
-          ? {}
-          : { temperature: optionalNumber(form.temperature) }),
-        ...(optionalNumber(form.timeout) === undefined
-          ? {}
-          : { request_timeout: optionalNumber(form.timeout) }),
+        context_window: tuned(form.contextWindow),
+        max_output_tokens: tuned(form.maxOutput),
+        temperature: tuned(form.temperature),
+        request_timeout: tuned(form.timeout),
       },
     });
     if (!response.ok) {

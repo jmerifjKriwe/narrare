@@ -72,6 +72,7 @@ def _create_profile(
     kind: str = "Fake (deterministisch, ohne Netzwerk)",
     base_url: str | None = None,
     api_key: str | None = None,
+    temperature: str | None = None,
 ) -> None:
     """Create one profile through the form, the only way a user can."""
     page.get_by_label("Name", exact=True).fill(name)
@@ -81,6 +82,8 @@ def _create_profile(
     page.get_by_label("Modell").fill(model)
     if api_key is not None:
         page.get_by_label("API-Schlüssel").fill(api_key)
+    if temperature is not None:
+        page.get_by_label("Temperatur").fill(temperature)
     page.get_by_role("button", name="Profil hinzufügen").click()
     expect(page.get_by_role("listitem").filter(has_text=name)).to_be_visible()
 
@@ -109,9 +112,20 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         expect(eins.get_by_text("Standard", exact=True)).to_have_count(0)
 
         # The task tier beats the default: continuation serves from Fake Eins.
-        page.get_by_label("Weiterschreiben").select_option(label="Fake Eins")
+        # The task tier beats the default: continuation serves from Fake Eins.
+        continuation = page.get_by_label("Weiterschreiben")
+        continuation.select_option(label="Fake Eins")
+        # The PUT's refetch is what moves the select; wait for it before
+        # leaving, or the reload below could race the stored row.
+        expect(continuation).not_to_have_value("")
+        # A fresh visit shows the stored assignment: the mount itself must
+        # load it, not the first mutation's refetch.
+        page.reload()
+        expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
+        expect(page.get_by_label("Weiterschreiben")).to_have_value(_profile_id("Fake Eins"))
 
-        # A vendor profile carries the masked-key round-trip and the probes.
+        # A vendor profile carries the masked-key round-trip and the probes,
+        # and a tuning column the edit below will clear.
         _create_profile(
             page,
             "Vendor Test",
@@ -119,6 +133,7 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
             kind="OpenAI-kompatibler Chat",
             base_url=vendor.base_url,
             api_key=VENDOR_KEY,
+            temperature="0.7",
         )
         # The create answer is the one response that shows the full key.
         expect(page.get_by_text(VENDOR_KEY)).to_be_visible()
@@ -131,12 +146,20 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         expect(page.locator("body")).not_to_contain_text(VENDOR_KEY)
 
         # An update with an empty key field keeps the stored key: the mask
-        # survives a rename untouched.
+        # survives a rename untouched. A cleared tuning column really
+        # clears — an explicit null, not a silent keep of the stored value.
         vendor_row.get_by_role("button", name="Bearbeiten").click()
         page.get_by_label("Name", exact=True).fill("Vendor Umbenannt")
+        page.get_by_label("Temperatur").fill("")
         page.get_by_role("button", name="Änderungen speichern").click()
         renamed = page.get_by_role("listitem").filter(has_text="Vendor Umbenannt")
         expect(renamed).to_contain_text(VENDOR_MASK)
+
+        # The cleared column stayed cleared: the re-opened edit reads the
+        # row back, and a silently kept 0.7 would reappear right here.
+        renamed.get_by_role("button", name="Bearbeiten").click()
+        expect(page.get_by_label("Temperatur")).to_have_value("")
+        page.get_by_role("button", name="Abbrechen").click()
 
         # The probes run against the profile's own endpoint, visibly.
         renamed.get_by_role("button", name="Verbindung testen").click()
