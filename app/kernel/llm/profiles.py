@@ -38,7 +38,14 @@ class ProfileRepository(ScopedRepository[ProviderProfile]):
         return profile
 
     async def update(self, profile: ProviderProfile, **fields: Any) -> ProviderProfile:
-        """Apply the given columns and flush, leaving the commit alone."""
+        """Apply the given columns and flush, leaving the commit alone.
+
+        ``user_id`` and ``id`` are refused: ownership and identity are not
+        editable columns, and a caller passing them is a bug, not a choice.
+        """
+        refused = {"user_id", "id"} & fields.keys()
+        if refused:
+            raise ValueError(f"update() cannot change {', '.join(sorted(refused))}")
         for field, value in fields.items():
             setattr(profile, field, value)
         await self.session.flush()

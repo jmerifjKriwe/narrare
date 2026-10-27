@@ -63,6 +63,7 @@ def test_the_jobs_and_contracts_tables_are_still_registered() -> None:
 
 OWNER = uuid4()
 PROFILE = uuid4()
+REMOTE_URL = "https://api.vendor.example/v1"
 
 
 def _resolved(provider: _ScriptedProvider | _RaisingAfterDoneProvider) -> ResolvedProvider:
@@ -368,3 +369,60 @@ async def test_a_raise_after_done_is_an_error_row_not_a_contradiction() -> None:
     row = await _audited_row()
     assert row.status == "error"
     assert "after its terminal frame" in row.error
+
+
+# The resolved kind decides the cost tier: the fake is free, a local endpoint
+# is free, and an unknown model on a remote endpoint stays NULL — design D4.
+
+
+async def _cost_of_a_streamed_call(*, kind: str, model: str, base_url: str | None) -> float | None:
+    """Drain one scripted call and return the cost its audit row carries."""
+    resolved = ResolvedProvider(
+        provider=_ScriptedProvider(
+            (Delta(text="x"), Usage(input_tokens=10, output_tokens=5), DONE)
+        ),
+        profile_id=PROFILE,
+        kind=kind,
+        model=model,
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=base_url,
+        api_key=None,
+    )
+    events = [
+        event
+        async for event in audited_stream(
+            resolved, CompletionRequest.user("Continue"), user_id=OWNER, task_key="test.stream"
+        )
+    ]
+    assert events[-1] is DONE
+    async with Session() as session:
+        row = (await session.execute(text("SELECT cost_usd FROM llm_calls"))).one()
+    return row.cost_usd
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_a_fake_kind_costs_zero_even_on_an_unknown_model() -> None:
+    """The fake's rows are free whatever its free-text model spelled."""
+    cost = await _cost_of_a_streamed_call(kind="fake", model="ghost-writer", base_url=None)
+    assert cost == 0.0
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_an_unknown_model_on_a_remote_endpoint_stays_null() -> None:
+    """No catalog tier reaches the model: the cost is unknown, never free."""
+    cost = await _cost_of_a_streamed_call(
+        kind="openai-chat", model="no-catalog-entry-for-this-test", base_url=REMOTE_URL
+    )
+    assert cost is None
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_a_local_endpoint_costs_zero_even_on_an_unknown_model() -> None:
+    """Locality is free whatever the catalog knows about the model."""
+    cost = await _cost_of_a_streamed_call(
+        kind="openai-chat", model="no-catalog-entry-for-this-test", base_url="http://127.0.0.1:9/v1"
+    )
+    assert cost == 0.0

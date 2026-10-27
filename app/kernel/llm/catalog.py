@@ -89,15 +89,20 @@ def compute_cost(
     input_tokens: int | None,
     output_tokens: int | None,
     base_url: str | None,
+    kind: str | None = None,
 ) -> float | None:
     """What one call cost in USD, by the truth table (design D4).
 
-    A local ``base_url`` (host in :data:`app.kernel.vendor.LOCAL_HOSTS`) is
-    free whatever else is known — even an unknown model on this machine. No
-    info, a missing price, or an unreported token count leaves the cost
-    unknown: NULL, never 0. Otherwise both prices are summed per million
-    tokens and rounded to six decimals.
+    The fake kind reaches no vendor at all, so its calls are free whatever
+    else is known — and whatever its free-text model spelled; a fake has no
+    meaningful ``base_url`` for the locality tier to read. Next, a local
+    ``base_url`` (host in :data:`app.kernel.vendor.LOCAL_HOSTS`) is free even
+    on a model no tier reaches. No info, a missing price, or an unreported
+    token count leaves the cost unknown: NULL, never 0. Otherwise both prices
+    are summed per million tokens and rounded to six decimals.
     """
+    if kind == "fake":
+        return 0.0
     if base_url is not None and httpx.URL(base_url).host in LOCAL_HOSTS:
         return 0.0
     if info is None:

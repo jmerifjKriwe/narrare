@@ -110,7 +110,7 @@ def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: St
     expect(page.locator(".ProseMirror")).to_contain_text("über die Straße.")
 
     # The call behind the ghost is audited in the real database (plan §3.4):
-    # one ok continuation for this novel, tokens counted, cost still NULL.
+    # one ok continuation for this novel, tokens counted, the fake free at 0.0.
     status, task_key, input_tokens, output_tokens, response_text, cost_usd = _continuation_audit(
         "Die Windrose"
     )
@@ -119,7 +119,7 @@ def test_the_ghost_is_committed_by_tab_and_survives_reload(page: Page, stack: St
     assert input_tokens > 0
     assert output_tokens > 0
     assert "über die Straße." in response_text
-    assert cost_usd is None
+    assert cost_usd == 0.0
 
     assert_accessible(page)
 

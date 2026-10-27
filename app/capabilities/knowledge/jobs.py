@@ -345,6 +345,7 @@ async def extract_entities(
             novel_id=chapter.novel_id,
             profile_id=resolved.profile_id,
             base_url=resolved.base_url,
+            kind=resolved.kind,
             info=info,
         )
 
@@ -473,6 +474,7 @@ async def check_consistency(
             novel_id=novel_id,
             profile_id=resolved.profile_id,
             base_url=resolved.base_url,
+            kind=resolved.kind,
             info=info,
         )
 

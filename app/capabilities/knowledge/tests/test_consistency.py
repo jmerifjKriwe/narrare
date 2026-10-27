@@ -299,7 +299,8 @@ async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
         assert row.input_tokens > 0
         assert row.output_tokens > 0
         assert row.status == "ok"
-        assert row.cost_usd is None
+        # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+        assert row.cost_usd == 0.0
 
 
 async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:

@@ -169,10 +169,11 @@ def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) ->
         ] == [(born[last], born[suggestions[0]["name"]], "related_to")]
 
     # The call the handler made is audited in the same real database (plan
-    # §3.4): one ok extraction for this novel, tokens counted, cost NULL.
+    # §3.4): one ok extraction for this novel, tokens counted, the fake free
+    # at 0.0 (design D4).
     status, task_key, input_tokens, output_tokens, cost_usd = _extraction_audit(novel.json()["id"])
     assert task_key == "knowledge.extract-entities"
     assert status == "ok"
     assert input_tokens > 0
     assert output_tokens > 0
-    assert cost_usd is None
+    assert cost_usd == 0.0

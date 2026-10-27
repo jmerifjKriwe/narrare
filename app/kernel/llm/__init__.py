@@ -1,8 +1,8 @@
 """The LLM boundary: one streaming contract, entries picked per user and task.
 
 The contract and its prompt markers live in :mod:`app.kernel.llm.contract`;
-the entries live in their own modules — the fake, the OpenAI-compatible
-adapter — and :mod:`app.kernel.llm.resolution` decides which one serves a
+the entries live in their own modules — the fake, the openai-chat adapter
+over the official SDK — and :mod:`app.kernel.llm.resolution` decides which one serves a
 call: per user and per task, down the assignment cascade, with the
 environment (``NARRE_LLM_PROVIDER``, defaulting to the fake) as the tier a
 fresh clone runs on. The fake is a normal entry, not a test branch: routing,

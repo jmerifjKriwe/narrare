@@ -25,7 +25,7 @@ from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.models import ProviderProfile  # noqa: TC001  the helper's return annotation
-from app.kernel.llm.openai_compat import OpenAICompatibleProvider
+from app.kernel.llm.openai_chat import OpenAIChatProvider
 from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
 from app.kernel.llm.resolution import (
     KNOWN_TASK_KEYS,
@@ -185,7 +185,7 @@ async def test_without_profiles_the_environment_tier_serves(
     assert resolved.model == "acme/turbo-3"
     assert resolved.base_url == REMOTE
     assert resolved.api_key == "sk-env"
-    assert isinstance(resolved.provider, OpenAICompatibleProvider)
+    assert isinstance(resolved.provider, OpenAIChatProvider)
 
 
 @pytest.mark.usefixtures("empty_tables")
@@ -273,7 +273,31 @@ async def test_an_openai_chat_profile_resolves_its_endpoint_and_key(
         REMOTE,
     )
     assert resolved.api_key == "sk-profile"
-    assert isinstance(resolved.provider, OpenAICompatibleProvider)
+    assert isinstance(resolved.provider, OpenAIChatProvider)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_a_local_openai_chat_profile_without_a_key_resolves_keyless() -> None:
+    """The settings gate allows a local endpoint without a key; none is loaded.
+
+    An empty ``api_key`` column normally names the keyring tier; without a
+    hint there was never a key at all, and a local endpoint does not need
+    one — the adapter sends no Authorization header without a key.
+    """
+    async with Session() as session:
+        await ProfileRepository(session, OWNER).create(
+            name="Lokal",
+            kind="openai-chat",
+            base_url="http://127.0.0.1:11434/v1",
+            model="llama3",
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert isinstance(resolved.provider, OpenAIChatProvider)
+    # No key was ever stored: the resolved carrier says "no key" (None), the
+    # same absence the fake tier reports, and the adapter sends no header.
+    assert (resolved.base_url, resolved.api_key) == ("http://127.0.0.1:11434/v1", None)
 
 
 @pytest.mark.usefixtures("two_users")
@@ -334,6 +358,30 @@ async def test_the_resolver_merges_the_catalogs_tunables_with_the_profiles(
 
     unknown_resolved = await _resolve(OWNER, "knowledge.check-consistency")
     assert (unknown_resolved.context_window, unknown_resolved.max_output_tokens) == (None, None)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_stored_tunables_survive_an_uncatalogued_model() -> None:
+    """Merge edge: on a model no tier reaches, the profile's stored values stand.
+
+    The catalog contributes nothing here, so the stored columns are the only
+    source — a profile whose numbers came from its user keeps them instead of
+    collapsing to NULL with the unknown model.
+    """
+    async with Session() as session:
+        pinned = await _fake_profile(
+            session,
+            OWNER,
+            name="Pinned-unknown",
+            model="no-catalog-entry-for-this-test",
+            context_window=8_192,
+            max_output_tokens=256,
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.profile_id == pinned.id
+    assert (resolved.context_window, resolved.max_output_tokens) == (8_192, 256)
 
 
 @pytest.mark.usefixtures("two_users")

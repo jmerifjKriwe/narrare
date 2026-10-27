@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from anyio import Event
+from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +26,7 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the helper's parameter
+from app.kernel.llm.profiles import ProfileRepository
 from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
@@ -237,7 +239,8 @@ async def test_answer_comes_back_with_the_passage_as_source() -> None:
     assert row.input_tokens > 0
     assert row.output_tokens > 0
     assert PASSAGE in row.response_text
-    assert row.cost_usd is None
+    # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+    assert row.cost_usd == 0.0
 
 
 async def test_prompt_carries_the_question_and_the_passage() -> None:
@@ -279,6 +282,39 @@ async def test_an_empty_question_is_rejected() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/chat/ask", json={"question": ""})
         assert response.status_code == 422
+
+
+async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stored key no tier can produce is the error frame, never a 500.
+
+    The profile is the user's only one, so the cascade resolves it and its
+    broken key refuses before any provider call: the response is exactly the
+    one error frame (no sources frame either — nothing was answered), and no
+    audit row claims a call that never ran.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        await ProfileRepository(session, LOCAL_USER_ID).create(
+            name="Broken",
+            kind="openai-chat",
+            base_url="https://api.vendor.example/v1",
+            model="acme/turbo-3",
+            # Ciphertext another NARRE_SECRET_KEY made: undecryptable on purpose.
+            api_key="gAAAAABlindtext-not-what-this-key-encrypted",
+            api_key_hint="roken",
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})
+
+    assert response.status_code == 200
+    assert response.text == "event: error\ndata: {}\n\n"
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
 
 
 class _OtherModel:

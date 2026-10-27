@@ -60,6 +60,7 @@ async def record_call(
     error: str | None = None,
     profile_id: UUID | None = None,
     base_url: str | None = None,
+    kind: str | None = None,
     info: ModelInfo | None = None,
 ) -> None:
     """Add one audit row on the caller's session; the caller's commit lands it.
@@ -69,8 +70,9 @@ async def record_call(
     ``latency_ms`` is the caller's elapsed time in milliseconds; absent token
     counts remain NULL. This function neither flushes nor commits the session.
 
-    The cost comes from the caller's facts: ``info`` is the catalog entry for
-    the model (None when no tier reaches it) and ``base_url`` decides
+    The cost comes from the caller's facts: ``kind`` is the resolved kind (the
+    fake tier is free whatever else is known), ``info`` is the catalog entry
+    for the model (None when no tier reaches it) and ``base_url`` decides
     locality — a local endpoint is free, an unknown price stays NULL, never 0
     (the truth table, design D4).
     """
@@ -94,7 +96,11 @@ async def record_call(
             truncated=prompt_clipped or response_clipped,
             profile_id=profile_id,
             cost_usd=compute_cost(
-                info, input_tokens=input_tokens, output_tokens=output_tokens, base_url=base_url
+                info,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                base_url=base_url,
+                kind=kind,
             ),
         )
     )
@@ -112,11 +118,12 @@ async def audited_stream(
 
     One finalizer for every streaming capability. The row names the resolved
     configuration — kind, model, profile id — and prices the call from the
-    same facts: the catalog entry for the resolved model, the resolved
-    endpoint deciding locality. It is written in a ``finally`` under a
-    shielded cancel scope, so a disconnecting client or a cancelled task
-    cannot take it with it; a failed audit is logged, never raised into a
-    finished response (§3.4 — a log row, not user data).
+    same facts: the resolved kind (the fake tier is free), the catalog entry
+    for the resolved model, the resolved endpoint deciding locality. It is
+    written in a ``finally`` under a shielded cancel scope, so a
+    disconnecting client or a cancelled task cannot take it with it; a failed
+    audit is logged, never raised into a finished response (§3.4 — a log
+    row, not user data).
     Status names the call, not the delivery: ``ok`` once the provider ended
     cleanly — a ``Done`` event, when the provider sends one, ends it — ``error``
     when the provider raised (the error text rides along), and ``error`` with
@@ -174,6 +181,7 @@ async def audited_stream(
                         error=error,
                         profile_id=resolved.profile_id,
                         base_url=resolved.base_url,
+                        kind=resolved.kind,
                         info=info,
                     )
                     await session.commit()

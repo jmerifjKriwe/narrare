@@ -296,7 +296,8 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
         assert row.input_tokens > 0
         assert row.output_tokens > 0
         assert row.status == "ok"
-        assert row.cost_usd is None
+        # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+        assert row.cost_usd == 0.0
 
 
 async def test_a_malformed_answer_fails_the_job_and_writes_nothing(

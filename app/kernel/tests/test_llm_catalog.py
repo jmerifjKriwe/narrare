@@ -110,6 +110,38 @@ def test_an_absent_base_url_prices_as_remote() -> None:
     assert cost == pytest.approx(0.033)
 
 
+def test_the_fake_kind_is_free_whatever_the_catalog_knows() -> None:
+    """The fake reaches no vendor, so nothing prices it — not even a colliding id.
+
+    A fake profile's model is free text; one that happens to spell a priced
+    catalog id must not drag that price onto the fake's audit rows, and a fake
+    has no meaningful ``base_url`` for the locality tier to read.
+    """
+    fake_on_paper = compute_cost(
+        priced(),
+        input_tokens=1_000,
+        output_tokens=2_000,
+        base_url=REMOTE,
+        kind="fake",
+    )
+    fake_with_nothing = compute_cost(
+        None, input_tokens=None, output_tokens=None, base_url=None, kind="fake"
+    )
+    assert (fake_on_paper, fake_with_nothing) == (0.0, 0.0)
+
+
+def test_a_real_kind_leaves_the_truth_table_untouched() -> None:
+    """Only ``fake`` short-circuits; every other kind prices by the tiers below."""
+    unknown_remote = compute_cost(
+        None, input_tokens=1_000, output_tokens=2_000, base_url=REMOTE, kind="openai-chat"
+    )
+    local = compute_cost(
+        None, input_tokens=None, output_tokens=None, base_url=LOCAL, kind="openai-chat"
+    )
+    assert unknown_remote is None
+    assert local == 0.0
+
+
 # The lookup cascade: exact → provider prefix → normalized, first tier wins.
 
 

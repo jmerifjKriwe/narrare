@@ -29,13 +29,10 @@ from app.kernel.llm.catalog import effective_info
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the dataclass field names it
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.models import PROFILE_KINDS, ProviderProfile
-from app.kernel.llm.openai_compat import (
-    DEFAULT_BASE_URL,
-    OpenAICompatibleProvider,
-    OpenAISettings,
-)
+from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, OpenAIChatProvider
 from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
 from app.kernel.secrets import load_key
+from app.kernel.vendor import needs_api_key
 
 KNOWN_TASK_KEYS: tuple[str, ...] = (
     "writing.continuation",
@@ -47,7 +44,7 @@ KNOWN_TASK_KEYS: tuple[str, ...] = (
 
 ENV_PROVIDERS: dict[str, Callable[[], TextProvider]] = {
     "fake": FakeProvider,
-    "openai-compatible": OpenAICompatibleProvider.from_environment,
+    "openai-compatible": OpenAIChatProvider.from_environment,
 }
 """The environment tier's entries: what ``NARRE_LLM_PROVIDER`` may name."""
 
@@ -95,7 +92,7 @@ async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) 
         ordered = await profiles.ordered()  # the default first, then by name
         profile = ordered[0] if ordered else None
     if profile is not None:
-        return _from_profile(profile)
+        return from_profile(profile)
     return environment_provider()
 
 
@@ -114,11 +111,11 @@ def environment_provider() -> ResolvedProvider:
             f"unknown LLM provider {name!r}; known: {', '.join(sorted(ENV_PROVIDERS))}"
         )
     if name == "openai-compatible":
-        settings = OpenAISettings.from_environment()
-        provider: TextProvider = OpenAICompatibleProvider(settings)
-        kind, model = "openai-chat", settings.model
-        base_url: str | None = settings.base_url
-        api_key: str | None = settings.api_key
+        chat = OpenAIChatProvider.from_environment()
+        provider: TextProvider = chat
+        kind, model = "openai-chat", chat.model
+        base_url: str | None = chat.base_url
+        api_key: str | None = chat.api_key
     else:
         provider = ENV_PROVIDERS[name]()
         kind, model = "fake", "fake"
@@ -138,26 +135,33 @@ def environment_provider() -> ResolvedProvider:
     )
 
 
-def _from_profile(profile: ProviderProfile) -> ResolvedProvider:
-    """The profile tiers' resolution: the profile's own provider and columns."""
+def from_profile(profile: ProviderProfile) -> ResolvedProvider:
+    """The profile tiers' resolution: the profile's own provider and columns.
+
+    The cascade calls this with the profile it chose; the settings surface
+    calls it with the profile a probe names, so both build the identical
+    provider from the identical columns. A profile whose key its tier can no
+    longer produce raises :class:`app.kernel.secrets.KeyUnavailableError`
+    before any call runs — except a local endpoint configured without a key,
+    which never had one to lose (the settings gate allows exactly that).
+    """
     if profile.kind == "openai-chat":
-        # Task 4 lands the SDK adapter here; until then the profile speaks
-        # through the same OpenAI-compatible endpoint the environment does.
-        api_key: str | None = load_key(profile.id, profile.api_key)
-        settings = OpenAISettings(
-            base_url=(profile.base_url or DEFAULT_BASE_URL).rstrip("/"),
+        base_url = (profile.base_url or DEFAULT_BASE_URL).rstrip("/")
+        api_key: str = _profile_key(profile, base_url)
+        provider: TextProvider = OpenAIChatProvider(
+            base_url=base_url,
             model=profile.model or "",
             api_key=api_key,
+            request_timeout=profile.request_timeout,
+            temperature_default=profile.temperature,
         )
-        provider: TextProvider = OpenAICompatibleProvider(settings)
-        kind, model = "openai-chat", settings.model
-        base_url: str | None = settings.base_url
+        kind, model = "openai-chat", profile.model or ""
     elif profile.kind == "fake":
         # A fake stores no key; its model is free text, ignored for answering
         # and carried through to the audit.
         provider = FakeProvider()
         kind, model = "fake", profile.model or "fake"
-        api_key, base_url = None, None
+        base_url, api_key = "", ""
     else:
         raise ValueError(
             f"profile {profile.id} carries unknown kind {profile.kind!r};"
@@ -175,9 +179,25 @@ def _from_profile(profile: ProviderProfile) -> ResolvedProvider:
         max_output_tokens=max_output_tokens,
         temperature=profile.temperature,
         request_timeout=profile.request_timeout,
-        base_url=base_url,
-        api_key=api_key,
+        # A fake has no endpoint to name; an openai-chat profile always does.
+        base_url=base_url or None,
+        api_key=api_key or None,
     )
+
+
+def _profile_key(profile: ProviderProfile, base_url: str) -> str:
+    """The profile's key, or the empty no-key of a keyless local endpoint.
+
+    A non-empty column (Fernet ciphertext) or a stored hint (the keyring tier
+    wrote the plaintext elsewhere) names a key whichever tier holds it must
+    produce again — or refuse by name. Neither, on a local endpoint, is the
+    gate-allowed keyless configuration: no key, no header. A remote endpoint
+    without a stored key is a row the gate refuses; resolution refuses by
+    name instead of calling out silently keyless.
+    """
+    if profile.api_key or profile.api_key_hint is not None or needs_api_key(base_url):
+        return load_key(profile.id, profile.api_key)
+    return ""
 
 
 def _merged(

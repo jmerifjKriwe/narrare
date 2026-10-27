@@ -163,6 +163,16 @@ async def test_update_applies_fields_and_delete_removes_the_profile() -> None:
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_update_refuses_ownership_and_identity_columns() -> None:
+    """``user_id`` and ``id`` are not editable: passing them is a bug, not a choice."""
+    async with Session() as session:
+        repo = ProfileRepository(session, OWNER)
+        profile = await repo.create(name="First", kind="fake")
+        with pytest.raises(ValueError, match="id, user_id"):
+            await repo.update(profile, user_id=uuid4(), id=uuid4())
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_deleting_a_profile_cascades_its_assignments() -> None:
     """Verify the foreign key takes the profile's assignments with it."""
     async with Session() as session:
