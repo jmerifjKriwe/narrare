@@ -12,6 +12,7 @@ scoping answer is the product's one answer everywhere: another user's row
 is a 404, indistinguishable from no row at all.
 """
 
+import asyncio
 from uuid import uuid4
 
 import pytest
@@ -19,10 +20,12 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.main import app
 from app.capabilities.knowledge.repository import EntityRepository, RelationRepository
+from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+from app.kernel.embeddings import FakeEmbeddingProvider
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -455,6 +458,75 @@ async def test_an_entity_cannot_merge_into_itself() -> None:
         # the refusal deleted nothing
         listed = await client.get(f"/api/knowledge/novels/{mira.novel_id}/entities")
         assert len(listed.json()) == 2
+
+
+async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two concurrent merges into one survivor fold one after the other.
+
+    The fold reads the survivor's fields before it writes them, so the
+    reads must be row-locked reads: the second merge waits for the first
+    one's commit and folds from the folded state. Two unlocked reads would
+    both fold from the same pre-fold row, and the later commit would
+    overwrite the earlier fold while both sources are deleted — one fold
+    unrecoverable. The race is driven at the service seam, like the
+    relation race tests: the first merge's embed is the window, and the
+    second merge (a fresh session, a second service) runs inside it.
+    """
+
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Die Gleichzeitigkeit")
+        session.add(novel)
+        await session.flush()
+        entities = EntityRepository(session, LOCAL_USER_ID)
+        haus = await entities.create(
+            novel.id, "Haus", "location", "Das alte Haus.", ["The House"], ["building"], None
+        )
+        mira = await entities.create(
+            novel.id, "Mira", "character", "Miras Kapitel.", ["Miralam"], ["protagonist"], None
+        )
+        see = await entities.create(
+            novel.id, "See", "location", "Der See liegt tief.", ["Der See"], ["Schauplatz"], None
+        )
+        await session.commit()
+
+    async with Session() as session_a, Session() as session_b:
+        service_a = KnowledgeService(session_a, LOCAL_USER_ID, FakeEmbeddingProvider())
+        service_b = KnowledgeService(session_b, LOCAL_USER_ID, FakeEmbeddingProvider())
+        race: dict[str, asyncio.Task[Entity]] = {}
+        original_embed = KnowledgeService._embed_entity  # pyright: ignore[reportPrivateUsage]  the window is the embed, the one seam the interleaving can pause
+
+        async def racing_embed(self: KnowledgeService, entity: Entity) -> None:
+            await original_embed(self, entity)
+            if self is not service_a:
+                return
+            # The second merge runs while the first holds its reads: with
+            # the locks it blocks on the survivor until the first commit;
+            # without them it completes here and its fold is lost to the
+            # first merge's stale overwrite. The final assertions tell the
+            # two worlds apart.
+            race["task"] = asyncio.create_task(service_b.merge_entities(see.id, haus.id))
+            for _ in range(100):
+                if race["task"].done():
+                    break
+                await asyncio.sleep(0.01)
+
+        monkeypatch.setattr(KnowledgeService, "_embed_entity", racing_embed)
+        await service_a.merge_entities(mira.id, haus.id)
+        await race["task"]
+
+    async with Session() as session:
+        survivor = await session.get(Entity, haus.id)
+        assert survivor is not None
+        # The survivor carries BOTH sources' contributions, in fold order.
+        assert survivor.aliases == ["The House", "Miralam", "Mira", "Der See", "See"]
+        assert survivor.tags == ["building", "protagonist", "Schauplatz"]
+        assert survivor.content == (
+            "Das alte Haus.\n\n## Mira\n\nMiras Kapitel.\n\n## See\n\nDer See liegt tief."
+        )
+        assert await session.get(Entity, mira.id) is None
+        assert await session.get(Entity, see.id) is None
 
 
 async def test_a_merge_cannot_cross_novels() -> None:

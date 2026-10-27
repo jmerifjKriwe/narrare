@@ -355,8 +355,10 @@ function truncate(content: string): string {
 }
 
 /** The chips input on top of the shell's text field: Enter or comma files
- *  the text as a chip, ✕ removes one, and a case twin is turned away —
- *  the service dedupes too, this is the field's own courtesy. */
+ *  the text as a chip, and so does leaving the field — the Save click is
+ *  such a leaving, so typed work is filed before the save reads the chips
+ *  instead of lost in the box. ✕ removes one, and a case twin is turned
+ *  away — the service dedupes too, this is the field's own courtesy. */
 function ChipsField({
   label,
   values,
@@ -380,6 +382,7 @@ function ChipsField({
   return (
     <div
       className="flex flex-col gap-1"
+      onBlur={fileText}
       onKeyDown={(event) => {
         // The wrapper's keydown serves the text field only: a remove
         // button's Enter is a button press, so any other target is none

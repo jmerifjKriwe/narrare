@@ -105,6 +105,28 @@ async def test_a_self_relation_is_allowed() -> None:
         assert edge["from_entity_id"] == edge["to_entity_id"] == str(mira.id)
 
 
+async def test_a_created_edge_stores_no_note_as_null() -> None:
+    """The create path's no-note state is the NULL note: an absent field and
+    an explicit ``null`` both answer ``note: null`` — the contract the add
+    row's explicit no-note relies on, so an untouched note box never
+    becomes an edit's spurious change."""
+    _novel, [mira, haus] = await _seed("Mira", "Haus")
+    path = f"/api/knowledge/entities/{mira.id}/relations"
+    async with _client() as client:
+        absent = await client.post(
+            path, json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"}
+        )
+        assert absent.status_code == 201
+        assert absent.json()["note"] is None
+
+        explicit = await client.post(
+            path,
+            json={"to_entity_id": str(haus.id), "relation_type": "besucht", "note": None},
+        )
+        assert explicit.status_code == 201
+        assert explicit.json()["note"] is None
+
+
 async def test_a_duplicate_edge_conflicts_but_a_new_type_does_not() -> None:
     _novel, [mira, haus] = await _seed("Mira", "Haus")
     path = f"/api/knowledge/entities/{mira.id}/relations"

@@ -58,13 +58,16 @@ const RELATION_KEYS: Record<(typeof RELATION_TYPES)[number], MessageKey> = {
 };
 
 /** A relation type in the user's language: the vocabulary's wording, or
- *  the free text itself when the stored type is no vocabulary entry. */
+ *  the free text itself when the stored type is no vocabulary entry. The
+ *  check is an own-property one: a plain object inherits ``constructor``
+ *  and friends, and a free-text type spelling one of those must fall
+ *  back to itself, not hand a function to ``t``. */
 export function relationTypeLabel(
   t: (key: MessageKey) => string,
   relationType: string,
 ): string {
-  const key = RELATION_KEYS[relationType as (typeof RELATION_TYPES)[number]];
-  return key !== undefined ? t(key) : relationType;
+  if (!Object.hasOwn(RELATION_KEYS, relationType)) return relationType;
+  return t(RELATION_KEYS[relationType as (typeof RELATION_TYPES)[number]]);
 }
 
 /**

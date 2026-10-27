@@ -195,12 +195,14 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(amulett).to_contain_text("Katharina · Besitzt")
 
     # The tag filter later narrows to two rows, so Amulett carries the
-    # same tag — filed through the same dialog.
+    # same tag — filed through the same dialog, and filed by the save's
+    # own blur: the word is typed and Save is clicked with neither Enter
+    # nor comma, so the chips field itself must file the pending text
+    # before the save reads the chips.
     amulett.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
     tags = dialog.get_by_label("Tags", exact=True)
     tags.fill("Hauptfigur")
-    tags.press(",")
     dialog.get_by_role("button", name="Speichern").click()
     expect(dialog).not_to_be_visible()
     expect(amulett.get_by_text("Hauptfigur", exact=True)).to_be_visible()

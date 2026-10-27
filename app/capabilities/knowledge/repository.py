@@ -177,6 +177,21 @@ class EntityRepository(ScopedRepository[Entity]):
         """Mark the supplied entity for deletion; the caller commits the change."""
         await self.session.delete(entity)
 
+    async def locked(self, entity_id: UUID) -> Entity | None:
+        """The row with its row lock taken (SELECT ... FOR UPDATE), scoped.
+
+        The merge's fold reads the survivor's fields before it writes
+        them, so two concurrent merges into one survivor must serialize:
+        the lock makes the second transaction wait for the first one's
+        commit and then read the folded row — one fold on top of the
+        other, where two plain reads would both fold from the same
+        pre-fold state and the later commit would overwrite the earlier
+        fold, whose source is deleted and unrecoverable.
+        """
+        return await self.session.scalar(
+            self.query().where(Entity.id == entity_id).with_for_update()
+        )
+
     async def stored_entity_width(self) -> int | None:
         """The width the user's entities were embedded at; None when none is.
 

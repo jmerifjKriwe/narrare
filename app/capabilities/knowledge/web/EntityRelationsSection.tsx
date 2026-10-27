@@ -93,7 +93,10 @@ export function EntityRelationsSection(
         entityId: entity.id,
         toEntityId: target.id,
         relationType: addType,
-        note,
+        // The untouched box is the no-note state, said explicitly — the
+        // same normalization the edit's save applies, so an untouched
+        // editor never sees a change where the writer typed none.
+        note: note.trim() === "" ? null : note,
       });
     } catch {
       setFailed(true);

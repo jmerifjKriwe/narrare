@@ -712,7 +712,9 @@ class KnowledgeService:
         the same absence as no row, whichever end of the pair it is. Both
         ends must also sit in the same novel: a merge folds two entries of
         one story, so another novel's row is an invalid target, not a
-        missing one.
+        missing one. Both ends are read under row locks, lower id first,
+        so two concurrent merges into one survivor fold one after the
+        other instead of each overwriting the other's fold.
 
         Commit and return the folded target. Raise SelfMergeError for equal
         IDs, NotFoundError for either absent or unowned row, or CrossNovelMergeError
@@ -720,11 +722,21 @@ class KnowledgeService:
         """
         if source_id == target_id:
             raise SelfMergeError
-        source = await self.entities.get(source_id)
-        if source is None:
-            raise NotFoundError
-        target = await self.entities.get(target_id)
-        if target is None:
+        # Both rows are read under row locks, the lower id first: the
+        # deterministic order cannot deadlock, and the locks serialize two
+        # concurrent merges into one survivor — the later one waits for
+        # the earlier one's commit and folds from the folded state, where
+        # two unlocked reads would both fold from the same pre-fold row
+        # and the later commit would overwrite the earlier fold, whose
+        # source is gone (see EntityRepository.locked).
+        first_id, second_id = sorted((source_id, target_id))
+        locked_rows = {
+            first_id: await self.entities.locked(first_id),
+            second_id: await self.entities.locked(second_id),
+        }
+        source = locked_rows[source_id]
+        target = locked_rows[target_id]
+        if source is None or target is None:
             raise NotFoundError
         if target.novel_id != source.novel_id:
             raise CrossNovelMergeError

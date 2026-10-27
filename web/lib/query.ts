@@ -1,5 +1,4 @@
 import {
-  keepPreviousData,
   QueryClient,
   useMutation,
   useQuery,
@@ -148,6 +147,23 @@ export function useDebouncedValue<T>(value: T, delay: number): T {
 export type EntityFilters = { type?: string; tag?: string; q?: string };
 
 /**
+ * The entity list's placeholder patience: the previous answer stays on
+ * screen only while the ask is still the same novel's. A narrowed filter
+ * must not blank the list it narrows, but a switch to another novel must
+ * not carry the previous novel's rows across — they are selectable rows
+ * with merge, edit and delete offered on them, so showing them for a
+ * story they do not belong to is a lie the next click would carry out.
+ * The key's third slot is the novel id
+ * (`["knowledge", "entities", novelId, filters]`).
+ */
+export function sameNovelPlaceholder(novelId: string) {
+  return <T>(
+    previous: T | undefined,
+    previousQuery: { queryKey: readonly unknown[] } | undefined,
+  ): T | undefined => (previousQuery?.queryKey[2] === novelId ? previous : undefined);
+}
+
+/**
  * The novel's entities under the knowledge capability's key, narrowed by
  * the server's `type`/`tag`/`q` filters (the `q` tier is the trigram
  * search — a misspelt name still finds its row). The key carries the
@@ -155,10 +171,9 @@ export type EntityFilters = { type?: string; tag?: string; q?: string };
  * produced it; a caller keeping the unfiltered list beside a narrowed one
  * shares the cache when no filter is set, because the empty filters and
  * no filters are the same question. While a narrowed ask is in flight the
- * previous answer stays on screen (`keepPreviousData`) — the rows shown
- * are a real answer, just the one before the newest word. An answer that
- * is not ok throws, so the cache holds either the list or the failure —
- * never a half-current list.
+ * previous answer stays on screen — but only the same novel's (see
+ * `sameNovelPlaceholder`). An answer that is not ok throws, so the cache
+ * holds either the list or the failure — never a half-current list.
  */
 export function useEntitiesQuery(
   novelId: string,
@@ -166,7 +181,7 @@ export function useEntitiesQuery(
 ): UseQueryResult<Entity[]> {
   return useQuery({
     queryKey: ["knowledge", "entities", novelId, filters],
-    placeholderData: keepPreviousData,
+    placeholderData: sameNovelPlaceholder(novelId),
     queryFn: async () => {
       const { data, response } = await client.GET(
         "/api/knowledge/novels/{novel_id}/entities",
@@ -206,12 +221,14 @@ export function useEntityRelationsQuery(entityId: string): UseQueryResult<Relati
   });
 }
 
-/** The input of a relation add: the edge's end, its type, an optional note. */
+/** The input of a relation add: the edge's end, its type, an optional note.
+ *  A `null` note is the no-note state — the create sends it explicitly
+ *  rather than relying on the transport to drop an empty string. */
 export type RelationInput = {
   entityId: string;
   toEntityId: string;
   relationType: string;
-  note?: string;
+  note?: string | null;
 };
 
 /** The fields a relation edit may carry: the ends are immutable. */

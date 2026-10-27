@@ -32,6 +32,16 @@ describe("relationTypeLabel", () => {
       "Kennt sich seit der Kindheit",
     );
   });
+
+  it("falls back for names that collide with Object.prototype members", () => {
+    // The lookup is a plain object: a stored free-text type like
+    // "constructor" or "toString" hits an inherited member, and a truthy
+    // check on the lookup would hand t() a function — wrong label, or a
+    // crash at render. Only the map's own entries translate.
+    expect(relationTypeLabel(t, "constructor")).toBe("constructor");
+    expect(relationTypeLabel(t, "toString")).toBe("toString");
+    expect(relationTypeLabel(t, "__proto__")).toBe("__proto__");
+  });
 });
 
 describe("resolveRelationType", () => {
