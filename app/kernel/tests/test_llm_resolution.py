@@ -277,6 +277,38 @@ async def test_an_openai_chat_profile_resolves_its_endpoint_and_key(
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_the_resolved_repr_never_carries_the_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The dataclass repr drops the key even when one is loaded.
+
+    The generated repr is what a debug log, a failed assertion, or a debugger
+    would print; the key is the one field that must never land in any of
+    them, so the field itself is excluded — while the facts a caller debugs
+    for (kind, model, profile, endpoint) still render.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        profiles = ProfileRepository(session, OWNER)
+        profile = await profiles.create(
+            name="Hosted", kind="openai-chat", base_url=REMOTE, model="acme/turbo-3"
+        )
+        await profiles.update(profile, api_key=save_key(profile.id, "sk-never-repr"))
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.api_key == "sk-never-repr"  # the carrier holds it; the repr must not
+    text = repr(resolved)
+    assert "api_key" not in text
+    assert "sk-never-repr" not in text
+    assert resolved.kind in text
+    assert resolved.model in text
+    assert str(resolved.profile_id) in text
+    assert REMOTE in text
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_a_local_openai_chat_profile_without_a_key_resolves_keyless() -> None:
     """The settings gate allows a local endpoint without a key; none is loaded.
 

@@ -19,7 +19,7 @@ before its key is listed.
 """
 
 from collections.abc import Callable  # noqa: TC003
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os import environ
 from uuid import UUID  # noqa: TC003
 
@@ -57,7 +57,8 @@ class ResolvedProvider:
     fields are the profile's stored columns merged with the catalog's
     (:func:`app.kernel.llm.catalog.effective_info`) — ``None`` when neither
     knows. ``api_key`` is the plaintext the profile's tier produced; it never
-    reaches a log line, a response, or an audit row.
+    reaches a log line, a response, an audit row, or a repr — the dataclass
+    keeps it out of the generated one.
     """
 
     provider: TextProvider
@@ -69,7 +70,7 @@ class ResolvedProvider:
     temperature: float | None
     request_timeout: float | None
     base_url: str | None
-    api_key: str | None
+    api_key: str | None = field(default=None, repr=False)
 
 
 async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
