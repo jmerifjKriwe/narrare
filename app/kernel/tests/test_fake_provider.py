@@ -25,7 +25,7 @@ async def _answer(prompt: str) -> str:
 
 
 async def test_an_extraction_prompt_proposes_entities_from_its_passage() -> None:
-    """Verify marked extraction derives entity names and kinds from the source passage."""
+    """Verify marked extraction derives entity names, types and relations from the passage."""
     prompt = (
         "PURPOSE: extract-entities\n\n"
         "Extract the entities of the chapter.\n\n"
@@ -38,11 +38,73 @@ async def test_an_extraction_prompt_proposes_entities_from_its_passage() -> None
         "items": [
             {
                 "name": "Mira",
-                "kind": "character",
+                "type": "character",
                 "description": "Mira appears in the chapter.",
+                "relations": [{"target": "Haus", "type": "related_to"}],
             },
-            {"name": "Haus", "kind": "place", "description": "Haus appears in the chapter."},
-            {"name": "See", "kind": "thing", "description": "See appears in the chapter."},
+            {
+                "name": "Haus",
+                "type": "location",
+                "description": "Haus appears in the chapter.",
+                "relations": [{"target": "See", "type": "related_to"}],
+            },
+            {
+                "name": "See",
+                "type": "faction",
+                "description": "See appears in the chapter.",
+                "relations": [{"target": "Mira", "type": "related_to"}],
+            },
+        ]
+    }
+
+
+async def test_a_lone_entity_proposes_no_relation() -> None:
+    """One derived entity has no neighbor: its relations array is empty."""
+    prompt = (
+        "PURPOSE: extract-entities\n\n"
+        "Extract the entities of the chapter.\n\n"
+        "Chapter: Ankunft\n"
+        "Text:\n"
+        "SOURCE: Mira schwieg.\n"
+    )
+
+    assert json.loads(await _answer(prompt)) == {
+        "items": [
+            {
+                "name": "Mira",
+                "type": "character",
+                "description": "Mira appears in the chapter.",
+                "relations": [],
+            }
+        ]
+    }
+
+
+async def test_exactly_two_entities_chain_one_relation() -> None:
+    """Two derived entities: one relation, the first proposing to the second,
+    the second wrapping back to the first."""
+    prompt = (
+        "PURPOSE: extract-entities\n\n"
+        "Extract the entities of the chapter.\n\n"
+        "Chapter: Ankunft\n"
+        "Text:\n"
+        "SOURCE: Mira und Haus schwiegen.\n"
+    )
+
+    assert json.loads(await _answer(prompt)) == {
+        "items": [
+            {
+                "name": "Mira",
+                "type": "character",
+                "description": "Mira appears in the chapter.",
+                "relations": [{"target": "Haus", "type": "related_to"}],
+            },
+            {
+                "name": "Haus",
+                "type": "location",
+                "description": "Haus appears in the chapter.",
+                "relations": [{"target": "Mira", "type": "related_to"}],
+            },
         ]
     }
 

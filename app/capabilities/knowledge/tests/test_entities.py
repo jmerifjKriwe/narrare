@@ -6,12 +6,14 @@ exclusivity holds under two concurrent accepts, not just two sequential ones.
 """
 
 import asyncio
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Response
 
 from app.api.main import app
+from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.contracts.models import Entity
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -47,7 +49,7 @@ async def _pending_suggestion(client: AsyncClient) -> dict[str, object]:
 
     listed = await client.get(f"/api/knowledge/novels/{novel_id}/suggestions")
     suggestions = listed.json()
-    assert len(suggestions) == 3
+    assert len(suggestions) == 7
     return suggestions[0]
 
 
@@ -58,9 +60,14 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
 
         accepted = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
         assert accepted.status_code == 200
-        entity = accepted.json()
+        # the accept's envelope: the entity born, and the proposals that could
+        # not be placed — Mira proposes Haus, whose row is still pending, so
+        # the skip note rides the response (transient, per D8)
+        body = accepted.json()
+        assert body["skipped_relations"] == [{"target_name": "Haus", "relation_type": "related_to"}]
+        entity = body["entity"]
         assert entity["name"] == suggestion["name"]
-        assert entity["kind"] == suggestion["kind"]
+        assert entity["type"] == suggestion["type"]
         assert entity["novel_id"] == novel_id
 
         entities = (await client.get(f"/api/knowledge/novels/{novel_id}/entities")).json()
@@ -69,7 +76,7 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
         still_pending = (
             await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=pending")
         ).json()
-        assert len(still_pending) == 2  # the unreviewed two remain, the accepted one is gone
+        assert len(still_pending) == 6  # the unreviewed six remain, the accepted one is gone
         assert suggestion["id"] not in [row["id"] for row in still_pending]
         consumed = (
             await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=accepted")
@@ -81,6 +88,74 @@ async def test_accept_creates_exactly_one_entity_and_consumes_the_suggestion() -
 
         entities_after = (await client.get(f"/api/knowledge/novels/{novel_id}/entities")).json()
         assert len(entities_after) == 1  # the refusal created nothing
+
+
+async def test_an_accept_births_the_entity_with_empty_labels_and_a_vector() -> None:
+    """Birth per D5: the description becomes the body, the labels start empty,
+    and the search text and the vector are computed in the same transaction."""
+    async with _client() as client:
+        suggestion = await _pending_suggestion(client)
+        novel_id = suggestion["novel_id"]
+
+        accepted = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+        assert accepted.status_code == 200
+        entity = accepted.json()["entity"]
+        assert entity["type"] == suggestion["type"]
+        assert entity["content"] == (suggestion["description"] or "")
+        assert entity["aliases"] == []
+        assert entity["tags"] == []
+
+        # the entity is findable by its own name through the trigram search:
+        # search_text rode the birth
+        found = await client.get(
+            f"/api/knowledge/novels/{novel_id}/entities",
+            params={"q": str(suggestion["name"])},
+        )
+        assert [row["id"] for row in found.json()] == [entity["id"]]
+
+    async with Session() as session:
+        row = await session.get(Entity, UUID(str(entity["id"])))
+    assert row is not None
+    assert row.embedding is not None  # the vector rode the birth
+    assert row.search_text == row.name
+
+
+async def test_an_accept_at_another_embedding_width_is_refused_and_writes_nothing() -> None:
+    """Birth embeds in the transaction (D5): a corpus embedded at another
+    width refuses the accept like an upload, and the refusal writes nothing —
+    no entity born, no suggestion consumed."""
+    async with _client() as client:
+        suggestion = await _pending_suggestion(client)
+        novel_id = suggestion["novel_id"]
+
+    async with Session() as session:
+        # the corpus's first set vector fixes its width at 3; the configured
+        # fake embeds at 384, so the birth's vector cannot join
+        session.add(
+            Entity(
+                user_id=LOCAL_USER_ID,
+                novel_id=UUID(str(novel_id)),
+                name="Alt",
+                type="generic",
+                search_text="Alt",
+                embedding=[0.1, 0.2, 0.3],
+            )
+        )
+        await session.commit()
+
+    async with _client() as client:
+        refused = await client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+        assert refused.status_code == 409
+        # a dict, not a sentence: the UI localizes this error and needs a code
+        assert refused.json()["detail"]["code"] == "embedding-mismatch"
+
+        entities = (await client.get(f"/api/knowledge/novels/{novel_id}/entities")).json()
+        assert [row["name"] for row in entities] == ["Alt"]  # the birth never landed
+        still_pending = (
+            await client.get(f"/api/knowledge/novels/{novel_id}/suggestions?status=pending")
+        ).json()
+        # unconsumed: the reviewed row is still among the pending seven
+        assert suggestion["id"] in [row["id"] for row in still_pending]
 
 
 async def test_discard_consumes_without_creating() -> None:
@@ -147,7 +222,7 @@ async def test_another_users_suggestion_cannot_be_reviewed() -> None:
             novel_id=novel.id,
             chapter_id=chapter.id,
             name="Mira",
-            kind="character",
+            type="character",
             status="pending",
         )
         session.add(theirs)

@@ -9,12 +9,14 @@ import { useEffect, useState } from "react";
 
 import {
   client,
+  type Accept,
   type Entity,
   type Finding,
   type Hit,
   type Job,
   type Novel,
   type NovelCreate,
+  type Relation,
   type Suggestion,
 } from "./api/client";
 
@@ -125,20 +127,175 @@ export function useJobQuery(jobId: string | null): UseQueryResult<Job> {
 }
 
 /**
- * The novel's entities under the knowledge capability's key. An answer that
- * is not ok throws, so the cache holds either the list or the failure —
- * never a half-current list.
+ * A value that pauses before it becomes the ask: the words settle for
+ * `delay` milliseconds, and only then does the hook hand them on — a word
+ * typed a letter at a time is one consumer request, not one per keystroke.
  */
-export function useEntitiesQuery(novelId: string): UseQueryResult<Entity[]> {
+export function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
+/**
+ * The server-side filters of the entity list: an absent field is no
+ * parameter, an empty search box means no `q`.
+ */
+export type EntityFilters = { type?: string; tag?: string; q?: string };
+
+/**
+ * The entity list's placeholder patience: the previous answer stays on
+ * screen only while the ask is still the same novel's. A narrowed filter
+ * must not blank the list it narrows, but a switch to another novel must
+ * not carry the previous novel's rows across — they are selectable rows
+ * with merge, edit and delete offered on them, so showing them for a
+ * story they do not belong to is a lie the next click would carry out.
+ * The key's third slot is the novel id
+ * (`["knowledge", "entities", novelId, filters]`).
+ */
+export function sameNovelPlaceholder(novelId: string) {
+  return <T>(
+    previous: T | undefined,
+    previousQuery: { queryKey: readonly unknown[] } | undefined,
+  ): T | undefined => (previousQuery?.queryKey[2] === novelId ? previous : undefined);
+}
+
+/**
+ * The novel's entities under the knowledge capability's key, narrowed by
+ * the server's `type`/`tag`/`q` filters (the `q` tier is the trigram
+ * search — a misspelt name still finds its row). The key carries the
+ * filters, so every view of the list is cached under the question that
+ * produced it; a caller keeping the unfiltered list beside a narrowed one
+ * shares the cache when no filter is set, because the empty filters and
+ * no filters are the same question. While a narrowed ask is in flight the
+ * previous answer stays on screen — but only the same novel's (see
+ * `sameNovelPlaceholder`). An answer that is not ok throws, so the cache
+ * holds either the list or the failure — never a half-current list.
+ */
+export function useEntitiesQuery(
+  novelId: string,
+  filters: EntityFilters = {},
+): UseQueryResult<Entity[]> {
   return useQuery({
-    queryKey: ["knowledge", "entities", novelId],
+    queryKey: ["knowledge", "entities", novelId, filters],
+    placeholderData: sameNovelPlaceholder(novelId),
     queryFn: async () => {
       const { data, response } = await client.GET(
         "/api/knowledge/novels/{novel_id}/entities",
-        { params: { path: { novel_id: novelId } } },
+        {
+          params: {
+            path: { novel_id: novelId },
+            query: {
+              type: filters.type || undefined,
+              tag: filters.tag || undefined,
+              q: filters.q || undefined,
+            },
+          },
+        },
       );
       if (!response.ok) throw new Error(`entities unavailable: ${response.status}`);
       return data ?? [];
+    },
+  });
+}
+
+/**
+ * One entity's relations, both directions, oldest first — the card's and
+ * the edit dialog's shared view of the edges. The key carries the entity,
+ * so the two surfaces read one cache and a change invalidates both.
+ */
+export function useEntityRelationsQuery(entityId: string): UseQueryResult<Relation[]> {
+  return useQuery({
+    queryKey: ["knowledge", "relations", entityId],
+    queryFn: async () => {
+      const { data, response } = await client.GET(
+        "/api/knowledge/entities/{entity_id}/relations",
+        { params: { path: { entity_id: entityId } } },
+      );
+      if (!response.ok) throw new Error(`relations unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/** The input of a relation add: the edge's end, its type, an optional note.
+ *  A `null` note is the no-note state — the create sends it explicitly
+ *  rather than relying on the transport to drop an empty string. */
+export type RelationInput = {
+  entityId: string;
+  toEntityId: string;
+  relationType: string;
+  note?: string | null;
+};
+
+/** The fields a relation edit may carry: the ends are immutable. */
+export type RelationChanges = { relationType?: string; note?: string | null };
+
+/**
+ * The three edge changes. Each invalidates the whole relations prefix on
+ * settling — not only on success: a 404 means the edge is already gone
+ * (another correction won the race), and the refetch is what makes the
+ * rows follow a list that no longer holds it. The prefix, not the
+ * mutating end's key, because an edge always has two ends: the other
+ * end's card reads the same cache and must not wear the old graph until
+ * its answer's freshness runs out.
+ */
+export function useAddRelation(): UseMutationResult<Relation, Error, RelationInput> {
+  return useMutation({
+    mutationFn: async (input: RelationInput) => {
+      const { data, response } = await client.POST(
+        "/api/knowledge/entities/{entity_id}/relations",
+        {
+          params: { path: { entity_id: input.entityId } },
+          body: {
+            to_entity_id: input.toEntityId,
+            relation_type: input.relationType,
+            note: input.note?.trim() ? input.note : undefined,
+          },
+        },
+      );
+      if (!response.ok || !data) throw new Error(`add relation refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+    },
+  });
+}
+
+export function useUpdateRelation(): UseMutationResult<
+  Relation,
+  Error,
+  { relationId: string } & RelationChanges
+> {
+  return useMutation({
+    mutationFn: async (input: { relationId: string } & RelationChanges) => {
+      const { data, response } = await client.PATCH("/api/knowledge/relations/{relation_id}", {
+        params: { path: { relation_id: input.relationId } },
+        body: { relation_type: input.relationType, note: input.note },
+      });
+      if (!response.ok || !data) throw new Error(`relation update refused: ${response.status}`);
+      return data;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+    },
+  });
+}
+
+export function useDeleteRelation(): UseMutationResult<void, Error, { relationId: string }> {
+  return useMutation({
+    mutationFn: async (input: { relationId: string }) => {
+      const { response } = await client.DELETE("/api/knowledge/relations/{relation_id}", {
+        params: { path: { relation_id: input.relationId } },
+      });
+      if (!response.ok) throw new Error(`relation delete refused: ${response.status}`);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -160,19 +317,15 @@ export function usePendingSuggestionsQuery(novelId: string): UseQueryResult<Sugg
 
 /**
  * The dock search's second tier: the box's text asked of the semantic
- * search. The ask is debounced (300ms) — the instant tier of the box is
- * the client-side entity filter, and the server's answer is owed only
- * once the typing pauses, so a word typed a letter at a time is one
- * request, not one per keystroke. The key carries the debounced text, so
- * every answer is cached under the words that produced it, and an empty
- * query asks nothing (`enabled`).
+ * search. The ask is debounced — the box's entity list narrows the same
+ * words against the server (see `useEntitiesQuery`), and the corpus's
+ * passages are owed only once the typing pauses, so a word typed a letter
+ * at a time is one request, not one per keystroke. The key carries the
+ * debounced text, so every answer is cached under the words that produced
+ * it, and an empty query asks nothing (`enabled`).
  */
 export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
-  const [debounced, setDebounced] = useState(query);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(query), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
+  const debounced = useDebouncedValue(query, 300);
   return useQuery({
     queryKey: ["knowledge", "passages", debounced],
     enabled: debounced.trim() !== "",
@@ -295,14 +448,22 @@ export function useDismissFinding(
  */
 export function useAcceptSuggestion(
   novelId: string,
-): UseMutationResult<Entity, Error, string> {
+): UseMutationResult<Accept, Error, string> {
   return useMutation({
     mutationFn: async (suggestionId: string) => {
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/knowledge/suggestions/{suggestion_id}/accept",
         { params: { path: { suggestion_id: suggestionId } } },
       );
-      if (!response.ok || !data) throw new Error(`accept refused: ${response.status}`);
+      if (!response.ok || !data) {
+        // The refusal's detail rides the throw: one failure here has a fix
+        // the UI can name (the embedding model changed, the re-embed is
+        // owed first), so the machine-readable code must survive the
+        // mutation boundary. Every other refusal keeps its status-only Error.
+        throw Object.assign(new Error(`accept refused: ${response.status}`), {
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
       return data;
     },
     onSettled: () => {
@@ -331,13 +492,14 @@ export function useDiscardSuggestion(
 }
 
 /** The fields a correction may carry: only these reach the PATCH body. */
-export type EntityChanges = Partial<Pick<Entity, "name" | "kind" | "description">>;
+export type EntityChanges = Partial<Pick<Entity, "name" | "type" | "aliases" | "tags" | "content">>;
 
 /**
- * The three corrections of the detail view. Each invalidates the entity
- * list on settling — not only on success: a 404 means the row is already
- * gone (another correction won the race), and the refetch is what makes
- * the detail follow a list that no longer holds the row it shows.
+ * The corrections of the detail view. Each invalidates the entity list
+ * (every filtered view of it included — the invalidation is the key's
+ * prefix) on settling — not only on success: a 404 means the row is
+ * already gone (another correction won the race), and the refetch is what
+ * makes the detail follow a list that no longer holds the row it shows.
  */
 export function useUpdateEntity(
   novelId: string,
@@ -368,6 +530,9 @@ export function useDeleteEntity(novelId: string): UseMutationResult<void, Error,
     },
     onSettled: () => {
       void invalidateEntities(novelId);
+      // The deleted row's edges cascade: every card that showed one of
+      // them must ask again, whoever's end it stood on.
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -387,6 +552,9 @@ export function useMergeEntities(
     },
     onSettled: () => {
       void invalidateEntities(novelId);
+      // The merge re-points the source's edges to the target: cards on
+      // either end of a moved edge must ask again.
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
     },
   });
 }
@@ -397,9 +565,11 @@ function invalidateEntities(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
 }
 
-/** The two knowledge views of a novel go stale together: a review decision
- *  moves the queue and (on accept) the list in one request. */
+/** The three knowledge views of a novel go stale together: a review
+ *  decision moves the queue and (on accept) the list and — the placed
+ *  relations — the edges, in one request. */
 function invalidateKnowledge(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
+  void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
 }

@@ -100,7 +100,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Entity
-         * @description Delete an entity. The row has no referents — the delete is a row delete.
+         * @description Delete an entity. Its relations' foreign keys cascade: the edges go
+         *     with the row.
          *
          *     Raise HTTP 404 for an absent or unowned entity.
          */
@@ -112,7 +113,9 @@ export interface paths {
          * @description Correct an entity by hand: only the fields the body carries change.
          *
          *     Return the entity; raise HTTP 404 for an absent or unowned entity,
-         *     or HTTP 422 for an invalid name or kind. A null description clears it.
+         *     HTTP 422 for an invalid name, type, alias or tag — a null content
+         *     clears the body — or HTTP 409 when the configured embedding model
+         *     answers at another width than the entity corpus was embedded at.
          */
         patch: operations["update_entity_api_knowledge_entities__entity_id__patch"];
         trace?: never;
@@ -128,12 +131,47 @@ export interface paths {
         put?: never;
         /**
          * Merge Entity
-         * @description Fold this entity into another: the target survives, the source is deleted.
+         * @description Fold this entity into another: the target survives, the source is
+         *     deleted, and the source's edges re-point and its fields fold into the
+         *     survivor.
          *
-         *     Return the unchanged target; raise HTTP 404 if either entity is absent or
-         *     unowned, or HTTP 422 for a self-merge or a target in another novel.
+         *     Return the folded target; raise HTTP 404 if either entity is absent or
+         *     unowned, HTTP 422 for a self-merge or a target in another novel, or
+         *     HTTP 409 when the configured embedding model answers at another width
+         *     than the entity corpus was embedded at.
          */
         post: operations["merge_entity_api_knowledge_entities__entity_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/entities/{entity_id}/relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Relations
+         * @description The entity's relations, both directions, oldest first.
+         *
+         *     Raise HTTP 404 for an absent or unowned entity — another user's rows
+         *     are the same absence, including their edges.
+         */
+        get: operations["list_relations_api_knowledge_entities__entity_id__relations_get"];
+        put?: never;
+        /**
+         * Add Relation
+         * @description Create a directed edge to another entity of the same novel.
+         *
+         *     Self-relations are allowed. Raise HTTP 404 when either end is absent
+         *     or unowned or not of this novel, HTTP 422 for a blank or over-long
+         *     type, or HTTP 409 when this exact edge carries the type already.
+         */
+        post: operations["add_relation_api_knowledge_entities__entity_id__relations_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -218,7 +256,10 @@ export interface paths {
         };
         /**
          * List Entities
-         * @description Return entities oldest first; raise HTTP 404 for an absent or unowned novel.
+         * @description The novel's entities: filtered by type and tag, or fuzzy-found by q
+         *     (the trigram tier); unfiltered, oldest first.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel.
          */
         get: operations["list_entities_api_knowledge_novels__novel_id__entities_get"];
         put?: never;
@@ -293,6 +334,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/relations/{relation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Relation
+         * @description Delete one edge: exactly the edge.
+         *
+         *     Raise HTTP 404 for an absent or unowned edge.
+         */
+        delete: operations["delete_relation_api_knowledge_relations__relation_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Relation
+         * @description Retype or re-note an edge; the ends are immutable.
+         *
+         *     Return the edge; raise HTTP 404 for an absent or unowned edge,
+         *     HTTP 422 for a blank or over-long type, or HTTP 409 when the new type
+         *     would duplicate the edge's sibling.
+         */
+        patch: operations["update_relation_api_knowledge_relations__relation_id__patch"];
+        trace?: never;
+    };
     "/api/knowledge/search": {
         parameters: {
             query?: never;
@@ -321,10 +392,13 @@ export interface paths {
         put?: never;
         /**
          * Accept Suggestion
-         * @description Accept: the entity is created and the suggestion consumed, once.
+         * @description Accept: the entity is created, its proposed relations placed, and the
+         *     suggestion consumed, once.
          *
-         *     Return the entity; raise HTTP 404 for an absent or unowned suggestion,
-         *     or HTTP 409 for an already reviewed suggestion.
+         *     Return the entity and the proposals that could not be placed — a target
+         *     still pending, absent, or ambiguous (D8); the UI announces them once,
+         *     and no ledger keeps them. Raise HTTP 404 for an absent or unowned
+         *     suggestion, or HTTP 409 for an already reviewed suggestion.
          */
         post: operations["accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post"];
         delete?: never;
@@ -524,6 +598,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AcceptRead
+         * @description The accept's whole answer: the entity born, and the proposed relations
+         *     that could not be placed. The skips are transient — the response carries
+         *     them once (D8), the UI announces them, nothing persists them.
+         */
+        AcceptRead: {
+            entity: components["schemas"]["EntityRead"];
+            /** Skipped Relations */
+            skipped_relations: components["schemas"]["SkippedRelationRead"][];
+        };
         /** Body_upload_document_api_knowledge_documents_post */
         Body_upload_document_api_knowledge_documents_post: {
             /** File */
@@ -646,20 +731,20 @@ export interface components {
         };
         /** EntityRead */
         EntityRead: {
+            /** Aliases */
+            aliases: string[];
+            /** Content */
+            content: string;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Description */
-            description: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
-            /** Kind */
-            kind: string;
             /** Name */
             name: string;
             /**
@@ -667,25 +752,38 @@ export interface components {
              * Format: uuid
              */
             novel_id: string;
+            /** Tags */
+            tags: string[];
+            /** Type */
+            type: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * EntityUpdate
          * @description The PATCH body: only the fields present are the change.
          *
          *     ``None`` is ambiguous by shape alone — an absent field and a cleared
-         *     description both look like None — so the service reads
+         *     content both look like None — so the service reads
          *     ``model_fields_set`` to tell a carried change from a missing one. The
-         *     values are checked there, against the parse contract's vocabulary:
-         *     this schema carries the fields, the contract decides what a value may
-         *     be.
+         *     values are checked there, against the parse contract's vocabulary and
+         *     the label rules: this schema carries the fields, the contract decides
+         *     what a value may be. A carried ``null`` content clears the body.
          */
         EntityUpdate: {
-            /** Description */
-            description?: string | null;
-            /** Kind */
-            kind?: string | null;
+            /** Aliases */
+            aliases?: string[] | null;
+            /** Content */
+            content?: string | null;
             /** Name */
             name?: string | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Type */
+            type?: string | null;
         };
         /**
          * ExtractionAccepted
@@ -795,14 +893,92 @@ export interface components {
             updated_at: string;
         };
         /**
+         * ProposedRelationRead
+         * @description One proposed relation as review reads it: the target's name and the type.
+         *
+         *     The stored proposals speak the extraction answer's keys (``target``,
+         *     ``type``); the read shape names them target_name and relation_type, and
+         *     both spellings validate.
+         */
+        ProposedRelationRead: {
+            /** Relation Type */
+            relation_type: string;
+            /** Target Name */
+            target_name: string;
+        };
+        /**
          * ReembedResult
-         * @description What a re-embed rebuilt: every document, every chunk of it.
+         * @description What a re-embed rebuilt: every document, every chunk of it, every
+         *     entity — the corpus ends at one width, documents and entities alike.
          */
         ReembedResult: {
             /** Chunks */
             chunks: number;
             /** Documents */
             documents: number;
+            /** Entities */
+            entities: number;
+        };
+        /**
+         * RelationCreate
+         * @description The POST body of an edge: the other end, a free-text type, a note.
+         *
+         *     The type is free text on purpose (D7) — the suggested vocabulary is a
+         *     UI autocomplete, not an API constraint; the service checks blankness
+         *     and length, the ends are taken from the path and this body and are
+         *     immutable afterwards.
+         */
+        RelationCreate: {
+            /** Note */
+            note?: string | null;
+            /** Relation Type */
+            relation_type: string;
+            /**
+             * To Entity Id
+             * Format: uuid
+             */
+            to_entity_id: string;
+        };
+        /**
+         * RelationPatch
+         * @description The PATCH body of an edge: type and note only.
+         *
+         *     The ends are immutable — moving an edge is delete plus create — so no
+         *     field here could carry them. ``model_fields_set`` tells a carried
+         *     ``null`` note (cleared) from an absent one (untouched).
+         */
+        RelationPatch: {
+            /** Note */
+            note?: string | null;
+            /** Relation Type */
+            relation_type?: string | null;
+        };
+        /** RelationRead */
+        RelationRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * From Entity Id
+             * Format: uuid
+             */
+            from_entity_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Note */
+            note: string | null;
+            /** Relation Type */
+            relation_type: string;
+            /**
+             * To Entity Id
+             * Format: uuid
+             */
+            to_entity_id: string;
         };
         /** SearchHit */
         SearchHit: {
@@ -863,6 +1039,18 @@ export interface components {
             /** Complete */
             complete: boolean;
         };
+        /**
+         * SkippedRelationRead
+         * @description A proposed relation accept could not place: the target's name as the
+         *     proposal spelled it, the type as stored — the stripped form, not the
+         *     proposal's raw words.
+         */
+        SkippedRelationRead: {
+            /** Relation Type */
+            relation_type: string;
+            /** Target Name */
+            target_name: string;
+        };
         /** SuggestionRead */
         SuggestionRead: {
             /**
@@ -882,8 +1070,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Kind */
-            kind: string;
             /** Name */
             name: string;
             /**
@@ -891,8 +1077,12 @@ export interface components {
              * Format: uuid
              */
             novel_id: string;
+            /** Relations */
+            relations: components["schemas"]["ProposedRelationRead"][];
             /** Status */
             status: string;
+            /** Type */
+            type: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1181,6 +1371,72 @@ export interface operations {
             };
         };
     };
+    list_relations_api_knowledge_entities__entity_id__relations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_relation_api_knowledge_entities__entity_id__relations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     start_extraction_api_knowledge_extraction__novel_id__post: {
         parameters: {
             query?: never;
@@ -1280,7 +1536,11 @@ export interface operations {
     };
     list_entities_api_knowledge_novels__novel_id__entities_get: {
         parameters: {
-            query?: never;
+            query?: {
+                type?: string | null;
+                tag?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path: {
                 novel_id: string;
@@ -1395,6 +1655,70 @@ export interface operations {
             };
         };
     };
+    delete_relation_api_knowledge_relations__relation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                relation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_relation_api_knowledge_relations__relation_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                relation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelationPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     search_api_knowledge_search_post: {
         parameters: {
             query?: never;
@@ -1445,7 +1769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EntityRead"];
+                    "application/json": components["schemas"]["AcceptRead"];
                 };
             };
             /** @description Validation Error */

@@ -7,18 +7,19 @@ purpose marker names which machine-checked answer shape a prompt wants: the
 fake branches on the marked line, so the answer shape is declared by the
 prompt, not sniffed from its prose.
 
-:class:`ParsedEntity` and :class:`ParsedFinding` live here with the vocabulary
-they are checked against: a contract's ask and its answer shapes are one
-thing, and both the handler (which parses) and the repository (which persists)
-import them from here — never from each other.
+:class:`ParsedEntity`, :class:`ParsedRelation` and :class:`ParsedFinding`
+live here: a contract's ask and its answer shapes are one thing, and both the
+handler (which parses) and the repository (which persists) import them from
+here — never from each other. The type vocabulary they are checked against
+lives beside the model it names, in the kernel contracts (``ENTITY_TYPES``),
+and this module imports it from there like every other consumer.
 """
 
 from collections.abc import Sequence  # noqa: TC003
 from typing import NamedTuple
 
+from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
-
-ENTITY_KINDS = ("character", "place", "thing")
 
 # The most of a chapter body any prompt carries, in characters. A real model
 # overflows on a long chapter; the fake never does, which is why the bound has
@@ -26,12 +27,21 @@ ENTITY_KINDS = ("character", "place", "thing")
 BODY_LIMIT = 20_000
 
 
+class ParsedRelation(NamedTuple):
+    """One proposed relation of a provider answer, already validated."""
+
+    target: str
+    relation_type: str
+
+
 class ParsedEntity(NamedTuple):
-    """One entity of a provider answer, already validated."""
+    """One entity of a provider answer, already validated, with the
+    relations it proposes to the other named entities."""
 
     name: str
-    kind: str
+    type: str
     description: str | None
+    relations: list[ParsedRelation]
 
 
 class ParsedFinding(NamedTuple):
@@ -47,17 +57,21 @@ def extraction_prompt(*, chapter_title: str, body: str) -> str:
     The purpose marker selects extraction, and the source marker introduces
     the body for providers that read marked passages.
     """
-    kinds = "|".join(ENTITY_KINDS)
+    types = "|".join(ENTITY_TYPES)
     return (
         f"{PURPOSE_PREFIX}extract-entities\n\n"
         "Extract the entities that appear in the chapter below: the characters, "
         "the places and the things that matter to the story. For each one judge "
-        f"a kind — {kinds} — and write a one-sentence description of its role. "
+        f"a type — {types} — and write a one-sentence description of its role. "
+        "Then, for each entity, name the relations it has to the other entities "
+        "you found: a relation names its target entity and carries a short type "
+        '(for example "related_to", "lives_in", "member_of"). '
         'Answer with a JSON object containing an "items" array of objects '
-        '{"name": string, "kind": string, '
-        '"description": string} and nothing else: no prose around it, no '
-        'commentary. Answer with {"items": []} when the chapter proposes '
-        "no entity.\n\n"
+        '{"name": string, "type": string, "description": string, '
+        '"relations": [{"target": string, "type": string}]} and nothing else: '
+        "no prose around it, no commentary. Every entity carries its relations "
+        'array, empty when it proposes none. Answer with {"items": []} when the '
+        "chapter proposes no entity.\n\n"
         f"Chapter: {chapter_title}\n"
         f"Text:\n{SOURCE_PREFIX}{body}\n"
     )
@@ -68,13 +82,13 @@ def consistency_prompt(
 ) -> str:
     """The whole-novel check: the instruction, the accepted canon, every chapter.
 
-    ``entities`` are (name, kind) pairs of the novel's accepted entities — the
+    ``entities`` are (name, type) pairs of the novel's accepted entities — the
     story's canon, grounding what a name refers to. ``chapters`` are (title,
     body) pairs in reading order; each body rides behind the source marker the
     way a retrieval passage does, so the provider boundary sees every chapter
     and a test can steer the fake's derivation with the chapter texts alone.
     """
-    grounding = "\n".join(f"{name} ({kind})" for name, kind in entities)
+    grounding = "\n".join(f"{name} ({type_})" for name, type_ in entities)
     if not grounding:
         grounding = "None accepted yet."
     chapters_text = "\n\n".join(

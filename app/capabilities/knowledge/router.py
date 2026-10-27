@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.knowledge.schemas import (
+    AcceptRead,
     ConsistencyAccepted,
     DocumentRead,
     EntityMerge,
@@ -16,8 +17,12 @@ from app.capabilities.knowledge.schemas import (
     ExtractionRequest,
     FindingRead,
     ReembedResult,
+    RelationCreate,
+    RelationPatch,
+    RelationRead,
     SearchHit,
     SearchRequest,
+    SkippedRelationRead,
     SuggestionRead,
 )
 from app.capabilities.knowledge.service import (
@@ -27,8 +32,10 @@ from app.capabilities.knowledge.service import (
     EmptyDocumentError,
     FindingAlreadyReviewedError,
     InvalidEntityUpdateError,
+    InvalidRelationError,
     KnowledgeService,
     NotFoundError,
+    RelationExistsError,
     SelfMergeError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
@@ -133,10 +140,20 @@ async def start_extraction(
 
 
 @router.get("/novels/{novel_id}/entities", response_model=list[EntityRead])
-async def list_entities(novel_id: UUID, service: ServiceDep) -> list[EntityRead]:
-    """Return entities oldest first; raise HTTP 404 for an absent or unowned novel."""
+async def list_entities(
+    novel_id: UUID,
+    service: ServiceDep,
+    type: str | None = None,
+    tag: str | None = None,
+    q: str | None = None,
+) -> list[EntityRead]:
+    """The novel's entities: filtered by type and tag, or fuzzy-found by q
+    (the trigram tier); unfiltered, oldest first.
+
+    Raise HTTP 404 for an absent or unowned novel.
+    """
     try:
-        entities = await service.list_entities(novel_id)
+        entities = await service.list_entities(novel_id, type=type, tag=tag, q=q)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="novel not found") from None
     return [EntityRead.model_validate(entity) for entity in entities]
@@ -159,20 +176,41 @@ async def list_suggestions(
     return [SuggestionRead.model_validate(suggestion) for suggestion in suggestions]
 
 
-@router.post("/suggestions/{suggestion_id}/accept", response_model=EntityRead)
-async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> EntityRead:
-    """Accept: the entity is created and the suggestion consumed, once.
+@router.post("/suggestions/{suggestion_id}/accept", response_model=AcceptRead)
+async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> AcceptRead:
+    """Accept: the entity is created, its proposed relations placed, and the
+    suggestion consumed, once.
 
-    Return the entity; raise HTTP 404 for an absent or unowned suggestion,
-    or HTTP 409 for an already reviewed suggestion.
+    Return the entity and the proposals that could not be placed — a target
+    still pending, absent, or ambiguous (D8); the UI announces them once,
+    and no ledger keeps them. Raise HTTP 404 for an absent or unowned
+    suggestion, or HTTP 409 for an already reviewed suggestion.
     """
     try:
-        entity, _ = await service.accept_suggestion(suggestion_id)
+        entity, skipped = await service.accept_suggestion(suggestion_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="suggestion not found") from None
     except AlreadyReviewedError:
         raise HTTPException(status_code=409, detail="suggestion already reviewed") from None
-    return EntityRead.model_validate(entity)
+    except RelationExistsError:
+        # The edge insert's race backstop: a duplicate cannot survive the
+        # dedupe, but if the unique constraint catches one anyway, the answer
+        # is add_relation's — the conflict, not a crash.
+        raise HTTPException(status_code=409, detail="this relation exists already") from None
+    except EmbeddingMismatchError as error:
+        # Birth embeds (D5); a model that answers at another width than the
+        # entity corpus is the upload's refusal, same code, same fix.
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+        ) from None
+    return AcceptRead(
+        entity=EntityRead.model_validate(entity),
+        skipped_relations=[
+            SkippedRelationRead(target_name=skip.target_name, relation_type=skip.relation_type)
+            for skip in skipped
+        ],
+    )
 
 
 @router.post("/suggestions/{suggestion_id}/discard", response_model=SuggestionRead)
@@ -260,7 +298,9 @@ async def update_entity(entity_id: UUID, payload: EntityUpdate, service: Service
     """Correct an entity by hand: only the fields the body carries change.
 
     Return the entity; raise HTTP 404 for an absent or unowned entity,
-    or HTTP 422 for an invalid name or kind. A null description clears it.
+    HTTP 422 for an invalid name, type, alias or tag — a null content
+    clears the body — or HTTP 409 when the configured embedding model
+    answers at another width than the entity corpus was embedded at.
     """
     try:
         entity = await service.update_entity(entity_id, payload)
@@ -268,12 +308,18 @@ async def update_entity(entity_id: UUID, payload: EntityUpdate, service: Service
         raise HTTPException(status_code=404, detail="entity not found") from None
     except InvalidEntityUpdateError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
+    except EmbeddingMismatchError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+        ) from None
     return EntityRead.model_validate(entity)
 
 
 @router.delete("/entities/{entity_id}", status_code=204)
 async def delete_entity(entity_id: UUID, service: ServiceDep) -> None:
-    """Delete an entity. The row has no referents — the delete is a row delete.
+    """Delete an entity. Its relations' foreign keys cascade: the edges go
+    with the row.
 
     Raise HTTP 404 for an absent or unowned entity.
     """
@@ -283,12 +329,86 @@ async def delete_entity(entity_id: UUID, service: ServiceDep) -> None:
         raise HTTPException(status_code=404, detail="entity not found") from None
 
 
+@router.get("/entities/{entity_id}/relations", response_model=list[RelationRead])
+async def list_relations(entity_id: UUID, service: ServiceDep) -> list[RelationRead]:
+    """The entity's relations, both directions, oldest first.
+
+    Raise HTTP 404 for an absent or unowned entity — another user's rows
+    are the same absence, including their edges.
+    """
+    try:
+        relations = await service.entity_relations(entity_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+    return [RelationRead.model_validate(relation) for relation in relations]
+
+
+@router.post("/entities/{entity_id}/relations", response_model=RelationRead, status_code=201)
+async def add_relation(
+    entity_id: UUID, payload: RelationCreate, service: ServiceDep
+) -> RelationRead:
+    """Create a directed edge to another entity of the same novel.
+
+    Self-relations are allowed. Raise HTTP 404 when either end is absent
+    or unowned or not of this novel, HTTP 422 for a blank or over-long
+    type, or HTTP 409 when this exact edge carries the type already.
+    """
+    try:
+        relation = await service.add_relation(
+            entity_id, payload.to_entity_id, payload.relation_type, payload.note
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="entity not found") from None
+    except InvalidRelationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    except RelationExistsError:
+        raise HTTPException(status_code=409, detail="this relation exists already") from None
+    return RelationRead.model_validate(relation)
+
+
+@router.patch("/relations/{relation_id}", response_model=RelationRead)
+async def update_relation(
+    relation_id: UUID, payload: RelationPatch, service: ServiceDep
+) -> RelationRead:
+    """Retype or re-note an edge; the ends are immutable.
+
+    Return the edge; raise HTTP 404 for an absent or unowned edge,
+    HTTP 422 for a blank or over-long type, or HTTP 409 when the new type
+    would duplicate the edge's sibling.
+    """
+    try:
+        relation = await service.update_relation(relation_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="relation not found") from None
+    except InvalidRelationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    except RelationExistsError:
+        raise HTTPException(status_code=409, detail="this relation exists already") from None
+    return RelationRead.model_validate(relation)
+
+
+@router.delete("/relations/{relation_id}", status_code=204)
+async def delete_relation(relation_id: UUID, service: ServiceDep) -> None:
+    """Delete one edge: exactly the edge.
+
+    Raise HTTP 404 for an absent or unowned edge.
+    """
+    try:
+        await service.delete_relation(relation_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="relation not found") from None
+
+
 @router.post("/entities/{entity_id}/merge", response_model=EntityRead)
 async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDep) -> EntityRead:
-    """Fold this entity into another: the target survives, the source is deleted.
+    """Fold this entity into another: the target survives, the source is
+    deleted, and the source's edges re-point and its fields fold into the
+    survivor.
 
-    Return the unchanged target; raise HTTP 404 if either entity is absent or
-    unowned, or HTTP 422 for a self-merge or a target in another novel.
+    Return the folded target; raise HTTP 404 if either entity is absent or
+    unowned, HTTP 422 for a self-merge or a target in another novel, or
+    HTTP 409 when the configured embedding model answers at another width
+    than the entity corpus was embedded at.
     """
     try:
         target = await service.merge_entities(entity_id, payload.target_id)
@@ -299,5 +419,10 @@ async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDe
     except CrossNovelMergeError:
         raise HTTPException(
             status_code=422, detail="an entity cannot merge into another novel's entity"
+        ) from None
+    except EmbeddingMismatchError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
     return EntityRead.model_validate(target)

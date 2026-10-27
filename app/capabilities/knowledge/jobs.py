@@ -15,9 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.prompts import (
     BODY_LIMIT,
-    ENTITY_KINDS,
     ParsedEntity,
     ParsedFinding,
+    ParsedRelation,
     consistency_prompt,
     extraction_prompt,
 )
@@ -26,7 +26,7 @@ from app.capabilities.knowledge.repository import (
     EntityRepository,
     EntitySuggestionRepository,
 )
-from app.kernel.contracts.models import Chapter, Novel
+from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
 from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
 
@@ -51,6 +51,13 @@ MAX_NAME_LENGTH = 200
 # The width of ConsistencyFinding.summary: String(200), refused at parse for
 # the same reason the name is.
 MAX_SUMMARY_LENGTH = 200
+
+# A relation's target names an entity, so it answers to the name column's
+# width; its type answers to EntityRelation.relation_type's. Both are refused
+# at parse — the database's own verdict would arrive after the fact, as a
+# DataError that says nothing about the answer.
+MAX_TARGET_LENGTH = 200
+MAX_RELATION_TYPE_LENGTH = 80
 
 
 def _refuse(shape: str, reason: str, shown: object) -> MalformedAnswerError:
@@ -82,7 +89,9 @@ def _items_of(shape: str, document: object) -> list[object]:
 # holds the ask and the check, so they cannot drift. The root is an object,
 # not the array the answers used to be: structured outputs (the OpenAI
 # contract the adapter speaks) rejects an array root outright, so the ask
-# and the answer share the {"items": [...]} shape.
+# and the answer share the {"items": [...]} shape. Every item carries its
+# relations — required, like the name: an answer that cannot say what it
+# proposes is not a valid answer.
 ENTITIES_SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
@@ -92,10 +101,22 @@ ENTITIES_SCHEMA: dict[str, object] = {
                 "type": "object",
                 "properties": {
                     "name": {"type": "string"},
-                    "kind": {"type": "string", "enum": list(ENTITY_KINDS)},
+                    "type": {"type": "string", "enum": list(ENTITY_TYPES)},
                     "description": {"type": ["string", "null"]},
+                    "relations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "target": {"type": "string"},
+                                "type": {"type": "string"},
+                            },
+                            "required": ["target", "type"],
+                            "additionalProperties": False,
+                        },
+                    },
                 },
-                "required": ["name", "kind", "description"],
+                "required": ["name", "type", "description", "relations"],
                 "additionalProperties": False,
             },
         }
@@ -110,13 +131,16 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
 
     Defensive on purpose: a non-JSON answer, a non-array document or an item
     without a name, or with one too long for its column, with an unknown
-    kind or a non-string description raises, so the job fails and nothing
-    is written — the alternative, skipping bad items, would silently shrink
-    the review queue and hide a prompt regression behind a green job.
+    type, a non-string description, or a missing or malformed relations
+    array raises, so the job fails and nothing is written — the alternative,
+    skipping bad items, would silently shrink the review queue and hide a
+    prompt regression behind a green job.
 
     Raise MalformedAnswerError for these refusals. Names must be nonblank and
-    at most 200 characters; descriptions may be absent or null. An empty array
-    returns an empty list, and valid strings are preserved without trimming.
+    at most 200 characters; descriptions may be absent or null; the relations
+    are required — every proposal needs a nonblank target of at most 200
+    characters and a nonblank type of at most 80. An empty array returns an
+    empty list, and valid strings are preserved without trimming.
     """
     try:
         document: object = loads(answer)
@@ -131,7 +155,7 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
         # that contract on the type level — every value is still checked below.
         item = cast("dict[str, object]", entry)
         name = item.get("name")
-        kind = item.get("kind")
+        type_ = item.get("type")
         description = item.get("description")
         if not isinstance(name, str) or not name.strip():
             raise _refuse("entities", "an item has no name", item)
@@ -144,14 +168,52 @@ def parse_entities(answer: str) -> list[ParsedEntity]:
                 f"an item's name is {len(name)} characters, over the {MAX_NAME_LENGTH} limit",
                 item,
             )
-        if kind not in ENTITY_KINDS:
+        if type_ not in ENTITY_TYPES:
             raise _refuse(
-                "entities", f"an item's kind is not one of {'|'.join(ENTITY_KINDS)}", item
+                "entities", f"an item's type is not one of {'|'.join(ENTITY_TYPES)}", item
             )
         if description is not None and not isinstance(description, str):
             raise _refuse("entities", "an item's description is not a string", item)
-        entities.append(ParsedEntity(name, kind, description))
+        entities.append(ParsedEntity(name, type_, description, _parse_relations(item)))
     return entities
+
+
+def _parse_relations(item: dict[str, object]) -> list[ParsedRelation]:
+    """The item's proposals, or a loud refusal: required, and every proposal
+    must carry a target and a type the columns can hold."""
+    relations = item.get("relations")
+    if not isinstance(relations, list):
+        raise _refuse("entities", "an item has no relations array", item)
+    # isinstance narrows to list[Unknown]; the cast restates the check above
+    # as the type the loop below re-verifies per proposal.
+    proposals = cast("list[object]", relations)
+    parsed: list[ParsedRelation] = []
+    for proposal in proposals:
+        if not isinstance(proposal, dict):
+            raise _refuse("entities", "a relation is not an object", proposal)
+        proposal_item = cast("dict[str, object]", proposal)
+        target = proposal_item.get("target")
+        relation_type = proposal_item.get("type")
+        if not isinstance(target, str) or not target.strip():
+            raise _refuse("entities", "a relation has no target", proposal_item)
+        if len(target) > MAX_TARGET_LENGTH:
+            raise _refuse(
+                "entities",
+                f"a relation's target is {len(target)} characters,"
+                f" over the {MAX_TARGET_LENGTH} limit",
+                proposal_item,
+            )
+        if not isinstance(relation_type, str) or not relation_type.strip():
+            raise _refuse("entities", "a relation has no type", proposal_item)
+        if len(relation_type) > MAX_RELATION_TYPE_LENGTH:
+            raise _refuse(
+                "entities",
+                f"a relation's type is {len(relation_type)} characters,"
+                f" over the {MAX_RELATION_TYPE_LENGTH} limit",
+                proposal_item,
+            )
+        parsed.append(ParsedRelation(target, relation_type))
+    return parsed
 
 
 # The shape parse_findings accepts, sent as the response schema: one place
@@ -374,7 +436,7 @@ async def check_consistency(
     ).all()
     entities = await EntityRepository(session, job.user_id).list_for_novel(novel_id)
 
-    canon = [(entity.name, entity.kind) for entity in entities]
+    canon = [(entity.name, entity.type) for entity in entities]
     groups, skipped = _chapter_groups(chapters)
     kind, model = provider_facts()
 

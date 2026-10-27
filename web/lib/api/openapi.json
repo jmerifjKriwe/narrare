@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "AcceptRead": {
+        "description": "The accept's whole answer: the entity born, and the proposed relations\nthat could not be placed. The skips are transient — the response carries\nthem once (D8), the UI announces them, nothing persists them.",
+        "properties": {
+          "entity": {
+            "$ref": "#/components/schemas/EntityRead"
+          },
+          "skipped_relations": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRelationRead"
+            },
+            "title": "Skipped Relations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entity",
+          "skipped_relations"
+        ],
+        "title": "AcceptRead",
+        "type": "object"
+      },
       "Body_upload_document_api_knowledge_documents_post": {
         "properties": {
           "file": {
@@ -232,29 +253,25 @@
       },
       "EntityRead": {
         "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
             "type": "string"
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
             "type": "string"
           },
           "name": {
@@ -265,34 +282,56 @@
             "format": "uuid",
             "title": "Novel Id",
             "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "novel_id",
           "name",
-          "kind",
-          "description",
-          "created_at"
+          "type",
+          "aliases",
+          "tags",
+          "content",
+          "created_at",
+          "updated_at"
         ],
         "title": "EntityRead",
         "type": "object"
       },
       "EntityUpdate": {
-        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\ndescription both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the parse contract's vocabulary:\nthis schema carries the fields, the contract decides what a value may\nbe.",
+        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\ncontent both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the parse contract's vocabulary and\nthe label rules: this schema carries the fields, the contract decides\nwhat a value may be. A carried ``null`` content clears the body.",
         "properties": {
-          "description": {
+          "aliases": {
             "anyOf": [
               {
-                "type": "string"
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Description"
+            "title": "Aliases"
           },
-          "kind": {
+          "content": {
             "anyOf": [
               {
                 "type": "string"
@@ -301,7 +340,7 @@
                 "type": "null"
               }
             ],
-            "title": "Kind"
+            "title": "Content"
           },
           "name": {
             "anyOf": [
@@ -313,6 +352,31 @@
               }
             ],
             "title": "Name"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
           }
         },
         "title": "EntityUpdate",
@@ -564,8 +628,27 @@
         "title": "NovelRead",
         "type": "object"
       },
+      "ProposedRelationRead": {
+        "description": "One proposed relation as review reads it: the target's name and the type.\n\nThe stored proposals speak the extraction answer's keys (``target``,\n``type``); the read shape names them target_name and relation_type, and\nboth spellings validate.",
+        "properties": {
+          "relation_type": {
+            "title": "Relation Type",
+            "type": "string"
+          },
+          "target_name": {
+            "title": "Target Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_name",
+          "relation_type"
+        ],
+        "title": "ProposedRelationRead",
+        "type": "object"
+      },
       "ReembedResult": {
-        "description": "What a re-embed rebuilt: every document, every chunk of it.",
+        "description": "What a re-embed rebuilt: every document, every chunk of it, every\nentity — the corpus ends at one width, documents and entities alike.",
         "properties": {
           "chunks": {
             "title": "Chunks",
@@ -574,13 +657,131 @@
           "documents": {
             "title": "Documents",
             "type": "integer"
+          },
+          "entities": {
+            "title": "Entities",
+            "type": "integer"
           }
         },
         "required": [
           "documents",
-          "chunks"
+          "chunks",
+          "entities"
         ],
         "title": "ReembedResult",
+        "type": "object"
+      },
+      "RelationCreate": {
+        "description": "The POST body of an edge: the other end, a free-text type, a note.\n\nThe type is free text on purpose (D7) — the suggested vocabulary is a\nUI autocomplete, not an API constraint; the service checks blankness\nand length, the ends are taken from the path and this body and are\nimmutable afterwards.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "relation_type": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Relation Type",
+            "type": "string"
+          },
+          "to_entity_id": {
+            "format": "uuid",
+            "title": "To Entity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_entity_id",
+          "relation_type"
+        ],
+        "title": "RelationCreate",
+        "type": "object"
+      },
+      "RelationPatch": {
+        "description": "The PATCH body of an edge: type and note only.\n\nThe ends are immutable — moving an edge is delete plus create — so no\nfield here could carry them. ``model_fields_set`` tells a carried\n``null`` note (cleared) from an absent one (untouched).",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "relation_type": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation Type"
+          }
+        },
+        "title": "RelationPatch",
+        "type": "object"
+      },
+      "RelationRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "from_entity_id": {
+            "format": "uuid",
+            "title": "From Entity Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "relation_type": {
+            "title": "Relation Type",
+            "type": "string"
+          },
+          "to_entity_id": {
+            "format": "uuid",
+            "title": "To Entity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "from_entity_id",
+          "to_entity_id",
+          "relation_type",
+          "note",
+          "created_at"
+        ],
+        "title": "RelationRead",
         "type": "object"
       },
       "SearchHit": {
@@ -727,6 +928,25 @@
         "title": "SetupStatus",
         "type": "object"
       },
+      "SkippedRelationRead": {
+        "description": "A proposed relation accept could not place: the target's name as the\nproposal spelled it, the type as stored — the stripped form, not the\nproposal's raw words.",
+        "properties": {
+          "relation_type": {
+            "title": "Relation Type",
+            "type": "string"
+          },
+          "target_name": {
+            "title": "Target Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_name",
+          "relation_type"
+        ],
+        "title": "SkippedRelationRead",
+        "type": "object"
+      },
       "SuggestionRead": {
         "properties": {
           "chapter_id": {
@@ -755,10 +975,6 @@
             "title": "Id",
             "type": "string"
           },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -768,8 +984,19 @@
             "title": "Novel Id",
             "type": "string"
           },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedRelationRead"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
           "status": {
             "title": "Status",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
             "type": "string"
           }
         },
@@ -778,8 +1005,9 @@
           "novel_id",
           "chapter_id",
           "name",
-          "kind",
+          "type",
           "description",
+          "relations",
           "status",
           "created_at"
         ],
@@ -1056,7 +1284,7 @@
     },
     "/api/knowledge/entities/{entity_id}": {
       "delete": {
-        "description": "Delete an entity. The row has no referents — the delete is a row delete.\n\nRaise HTTP 404 for an absent or unowned entity.",
+        "description": "Delete an entity. Its relations' foreign keys cascade: the edges go\nwith the row.\n\nRaise HTTP 404 for an absent or unowned entity.",
         "operationId": "delete_entity_api_knowledge_entities__entity_id__delete",
         "parameters": [
           {
@@ -1091,7 +1319,7 @@
         ]
       },
       "patch": {
-        "description": "Correct an entity by hand: only the fields the body carries change.\n\nReturn the entity; raise HTTP 404 for an absent or unowned entity,\nor HTTP 422 for an invalid name or kind. A null description clears it.",
+        "description": "Correct an entity by hand: only the fields the body carries change.\n\nReturn the entity; raise HTTP 404 for an absent or unowned entity,\nHTTP 422 for an invalid name, type, alias or tag — a null content\nclears the body — or HTTP 409 when the configured embedding model\nanswers at another width than the entity corpus was embedded at.",
         "operationId": "update_entity_api_knowledge_entities__entity_id__patch",
         "parameters": [
           {
@@ -1145,7 +1373,7 @@
     },
     "/api/knowledge/entities/{entity_id}/merge": {
       "post": {
-        "description": "Fold this entity into another: the target survives, the source is deleted.\n\nReturn the unchanged target; raise HTTP 404 if either entity is absent or\nunowned, or HTTP 422 for a self-merge or a target in another novel.",
+        "description": "Fold this entity into another: the target survives, the source is\ndeleted, and the source's edges re-point and its fields fold into the\nsurvivor.\n\nReturn the folded target; raise HTTP 404 if either entity is absent or\nunowned, HTTP 422 for a self-merge or a target in another novel, or\nHTTP 409 when the configured embedding model answers at another width\nthan the entity corpus was embedded at.",
         "operationId": "merge_entity_api_knowledge_entities__entity_id__merge_post",
         "parameters": [
           {
@@ -1192,6 +1420,106 @@
           }
         },
         "summary": "Merge Entity",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/entities/{entity_id}/relations": {
+      "get": {
+        "description": "The entity's relations, both directions, oldest first.\n\nRaise HTTP 404 for an absent or unowned entity — another user's rows\nare the same absence, including their edges.",
+        "operationId": "list_relations_api_knowledge_entities__entity_id__relations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RelationRead"
+                  },
+                  "title": "Response List Relations Api Knowledge Entities  Entity Id  Relations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Relations",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "post": {
+        "description": "Create a directed edge to another entity of the same novel.\n\nSelf-relations are allowed. Raise HTTP 404 when either end is absent\nor unowned or not of this novel, HTTP 422 for a blank or over-long\ntype, or HTTP 409 when this exact edge carries the type already.",
+        "operationId": "add_relation_api_knowledge_entities__entity_id__relations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Relation",
         "tags": [
           "knowledge"
         ]
@@ -1341,7 +1669,7 @@
     },
     "/api/knowledge/novels/{novel_id}/entities": {
       "get": {
-        "description": "Return entities oldest first; raise HTTP 404 for an absent or unowned novel.",
+        "description": "The novel's entities: filtered by type and tag, or fuzzy-found by q\n(the trigram tier); unfiltered, oldest first.\n\nRaise HTTP 404 for an absent or unowned novel.",
         "operationId": "list_entities_api_knowledge_novels__novel_id__entities_get",
         "parameters": [
           {
@@ -1352,6 +1680,54 @@
               "format": "uuid",
               "title": "Novel Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
             }
           }
         ],
@@ -1535,6 +1911,95 @@
         ]
       }
     },
+    "/api/knowledge/relations/{relation_id}": {
+      "delete": {
+        "description": "Delete one edge: exactly the edge.\n\nRaise HTTP 404 for an absent or unowned edge.",
+        "operationId": "delete_relation_api_knowledge_relations__relation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Relation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Relation",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "patch": {
+        "description": "Retype or re-note an edge; the ends are immutable.\n\nReturn the edge; raise HTTP 404 for an absent or unowned edge,\nHTTP 422 for a blank or over-long type, or HTTP 409 when the new type\nwould duplicate the edge's sibling.",
+        "operationId": "update_relation_api_knowledge_relations__relation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Relation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Relation",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/knowledge/search": {
       "post": {
         "operationId": "search_api_knowledge_search_post",
@@ -1582,7 +2047,7 @@
     },
     "/api/knowledge/suggestions/{suggestion_id}/accept": {
       "post": {
-        "description": "Accept: the entity is created and the suggestion consumed, once.\n\nReturn the entity; raise HTTP 404 for an absent or unowned suggestion,\nor HTTP 409 for an already reviewed suggestion.",
+        "description": "Accept: the entity is created, its proposed relations placed, and the\nsuggestion consumed, once.\n\nReturn the entity and the proposals that could not be placed — a target\nstill pending, absent, or ambiguous (D8); the UI announces them once,\nand no ledger keeps them. Raise HTTP 404 for an absent or unowned\nsuggestion, or HTTP 409 for an already reviewed suggestion.",
         "operationId": "accept_suggestion_api_knowledge_suggestions__suggestion_id__accept_post",
         "parameters": [
           {
@@ -1601,7 +2066,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EntityRead"
+                  "$ref": "#/components/schemas/AcceptRead"
                 }
               }
             },

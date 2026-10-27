@@ -4,7 +4,11 @@ The job is enqueued through the running API, then the API process goes down
 and comes back up. The row in Postgres is the only thing that carries the work
 across that boundary (spec §9 D10) — whether the lane ran the handler before
 the polite stop or the fresh lane picks the queued row up after the restart,
-the outcome must be the same: a done job and a queryable review queue.
+the outcome must be the same: a done job and a queryable review queue, its
+suggestions carrying the fake's relation proposals. The accept round after the
+restart walks that queue in order: the proposals whose targets are still
+pending skip with their note riding the response, and the last one resolves
+and creates its edge for real (D8) — on the real API, over the real database.
 """
 
 import asyncio
@@ -102,7 +106,9 @@ def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) ->
             sleep(0.5)
         assert job["status"] == "done", f"the restart lost the job: {job}"
         assert job["progress"] == 100
-        assert job["result"] == {"suggestions": 3, "truncated": False}
+        # the chapter names seven distinct candidates: the fake proposes them
+        # all, one per type in the vocabulary's order, to its ceiling of eight
+        assert job["result"] == {"suggestions": 7, "truncated": False}
 
         listed = client.get(
             f"/api/knowledge/novels/{novel.json()['id']}/suggestions",
@@ -110,8 +116,57 @@ def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) ->
         )
         listed.raise_for_status()
         suggestions = listed.json()
-        assert [suggestion["name"] for suggestion in suggestions] == ["Mira", "Haus", "See"]
+        assert [suggestion["name"] for suggestion in suggestions] == [
+            "Mira",
+            "Haus",
+            "See",
+            "Der",
+            "Leuchtturm",
+            "Nebel",
+            "Dorf",
+        ]
+        # the fake's derivation rode the row across the restart: entity i
+        # proposes related_to to entity (i+1), the last wrapping to the first
+        assert [suggestion["relations"] for suggestion in suggestions] == [
+            [{"target_name": "Haus", "relation_type": "related_to"}],
+            [{"target_name": "See", "relation_type": "related_to"}],
+            [{"target_name": "Der", "relation_type": "related_to"}],
+            [{"target_name": "Leuchtturm", "relation_type": "related_to"}],
+            [{"target_name": "Nebel", "relation_type": "related_to"}],
+            [{"target_name": "Dorf", "relation_type": "related_to"}],
+            [{"target_name": "Mira", "relation_type": "related_to"}],
+        ]
         assert all(suggestion["status"] == "pending" for suggestion in suggestions)
+
+        # The accept round, in the queue's order: resolution sees existing
+        # entities only (D8), so every accept but the last skips visibly —
+        # its target is still pending — and the last one's target (Mira,
+        # accepted first) exists by then, so its edge is created for real.
+        born: dict[str, str] = {}
+        for index, suggestion in enumerate(suggestions):
+            accepted = client.post(f"/api/knowledge/suggestions/{suggestion['id']}/accept")
+            accepted.raise_for_status()
+            body = accepted.json()
+            born[suggestion["name"]] = body["entity"]["id"]
+            expected = (
+                []
+                if index == len(suggestions) - 1
+                else [
+                    {
+                        "target_name": suggestions[index + 1]["name"],
+                        "relation_type": "related_to",
+                    }
+                ]
+            )
+            assert body["skipped_relations"] == expected, suggestion["name"]
+
+        last = suggestions[-1]["name"]  # Dorf: its proposal wraps to Mira
+        edges = client.get(f"/api/knowledge/entities/{born[last]}/relations")
+        edges.raise_for_status()
+        assert [
+            (edge["from_entity_id"], edge["to_entity_id"], edge["relation_type"])
+            for edge in edges.json()
+        ] == [(born[last], born[suggestions[0]["name"]], "related_to")]
 
     # The call the handler made is audited in the same real database (plan
     # §3.4): one ok extraction for this novel, tokens counted, cost NULL.
