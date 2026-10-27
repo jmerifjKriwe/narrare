@@ -1,83 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
-import { client } from "../lib/api/client";
 import { nav } from "../lib/generated/capabilities";
-import { catalogs, locales } from "../lib/generated/catalogs";
 import { useTranslation } from "../lib/i18n";
-import {
-  applyLocale,
-  chosenLocale,
-  subscribeLocale,
-  type Locale,
-} from "../lib/locale";
-import { queryClient } from "../lib/query";
-
-/**
- * One focus treatment for everything interactive in the bar: the ring is the
- * keyboard's pointer, and it must look the same wherever it lands.
- */
-const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-
-/** The language control. It lives in the shell, so it exists on every page. */
-function LanguageSwitcher() {
-  const t = useTranslation();
-  const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
-  const [failed, setFailed] = useState(false);
-
-  /** Apply and persist a locale (`auto` clears it); restore the prior choice if saving fails. */
-  async function choose(value: string) {
-    const previous = chosenLocale();
-    const next: Locale | null = value === "auto" ? null : (value as Locale);
-    // Applied first: a local service answers in milliseconds, and the page
-    // must not feel like it waits for the write.
-    applyLocale(next);
-    setFailed(false);
-    try {
-      const { response } = await client.PATCH("/api/settings", { body: { locale: next } });
-      if (!response.ok) throw new Error(`refused: ${response.status}`);
-      // The row changed, so the cached answer about it is stale. Invalidate
-      // instead of writing the cache by hand (spec 5.10): the refetch brings
-      // back exactly what was just persisted, so cache and row cannot
-      // disagree.
-      void queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch {
-      // The write did not happen, so the display must not pretend it did.
-      applyLocale(previous);
-      setFailed(true);
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="locale" className="text-muted">
-        {t("settings.language")}
-      </label>
-      <select
-        id="locale"
-        value={chosen ?? "auto"}
-        onChange={(event) => void choose(event.target.value)}
-        className={`rounded-md border border-border bg-card px-2 py-1 ${focusRing}`}
-      >
-        {/* "Automatic" is a real choice, not an empty one: it means the row
-            holds no preference and the browser decides. */}
-        <option value="auto">{t("settings.automatic")}</option>
-        {locales.map((code) => (
-          <option key={code} value={code}>
-            {/* Endonyms: a reader looking for their language finds it written
-                in their language, whatever the app currently speaks. */}
-            {catalogs[code]["locale.name"]}
-          </option>
-        ))}
-      </select>
-      {failed ? (
-        <p role="alert" className="text-danger">
-          {t("settings.errorSave")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
+import { focusRing, LanguageSwitcher } from "./LanguageSwitcher";
 
 /**
  * True while a page asked the shell for a chrome-free surface: the page
@@ -101,7 +27,7 @@ function useChromeless(): boolean {
   return chromeless;
 }
 
-/** The shell's chrome: the skip link, the capability navigation, the language. */
+/** The shell's chrome: the skip link, the capability navigation, the settings, the language. */
 export function TopBar() {
   const t = useTranslation();
   // The novel workbench's deepest focus step hides the bar: only the text
@@ -133,7 +59,20 @@ export function TopBar() {
             </Link>
           ))}
         </nav>
-        <LanguageSwitcher />
+        <div className="flex items-center gap-4">
+          {/* The gear: settings is a control, not a browsing destination, so
+              it rides beside the language instead of the generated nav. The
+              glyph carries the meaning in every language; the screen-reader
+              name is the localized word. */}
+          <Link
+            to="/settings"
+            className={`rounded-md text-base leading-none underline-offset-4 hover:underline ${focusRing}`}
+          >
+            <span aria-hidden="true">⚙</span>
+            <span className="sr-only">{t("shell.settings")}</span>
+          </Link>
+          <LanguageSwitcher />
+        </div>
       </div>
     </header>
   );

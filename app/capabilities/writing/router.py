@@ -22,10 +22,11 @@ from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.contracts.models import Chapter
 from app.kernel.db.session import get_session
-from app.kernel.llm import TextProvider, get_provider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
+from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
+from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
 
@@ -43,11 +44,15 @@ def _service(session: SessionDep, user_id: UserDep) -> WritingService:
 
 
 ServiceDep = Annotated[WritingService, Depends(_service)]
-ProviderDep = Annotated[TextProvider, Depends(get_provider)]
+
+
+async def _error_events() -> AsyncGenerator[str]:
+    """The one frame a stream ends with when no provider call could run."""
+    yield "event: error\ndata: {}\n\n"
 
 
 async def _continuation_events(
-    provider: TextProvider, prompt: str, novel_id: UUID | None, user_id: UUID
+    resolved: ResolvedProvider, prompt: str, novel_id: UUID | None, user_id: UUID
 ) -> AsyncGenerator[str]:
     """Deltas, then done — or an error frame if the provider dies mid-stream.
 
@@ -57,7 +62,7 @@ async def _continuation_events(
     leave their row, a disconnect records "stream interrupted".
     """
     events = audited_stream(
-        provider,
+        resolved,
         CompletionRequest.user(prompt),
         user_id=user_id,
         task_key="writing.continuation",
@@ -199,7 +204,7 @@ async def update_chapter(
     },
 )
 async def continue_chapter(
-    chapter_id: UUID, service: ServiceDep, provider: ProviderDep, user_id: UserDep
+    chapter_id: UUID, service: ServiceDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
     """Stream a continuation for an owned chapter; return HTTP 404 when it is not found."""
     try:
@@ -212,11 +217,22 @@ async def continue_chapter(
     novel_id = await service.session.scalar(
         select(Chapter.novel_id).where(Chapter.id == chapter_id, Chapter.user_id == user_id)
     )
+    # Resolution reads the user's profiles on the request's own session, so it
+    # too must run before the connection goes back. A profile whose key its
+    # tier can no longer produce ends the stream with the error frame a dead
+    # provider gets — no call ran, so no audit row.
+    try:
+        resolved = await resolve_provider(service.session, user_id, "writing.continuation")
+    except KeyUnavailableError:
+        logger.exception("continuation provider resolution failed")
+        return FinalizingStreamingResponse(
+            _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+        )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.
     await service.session.close()
     return FinalizingStreamingResponse(
-        _continuation_events(provider, prompt, novel_id, user_id),
+        _continuation_events(resolved, prompt, novel_id, user_id),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )

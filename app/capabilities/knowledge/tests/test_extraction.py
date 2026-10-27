@@ -6,12 +6,13 @@ job loudly and writes nothing: no half-written review queue.
 """
 
 import json
-from collections.abc import AsyncIterator  # noqa: TC003
+from collections.abc import AsyncIterator, Awaitable, Callable  # noqa: TC003
 from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
 from app.capabilities.knowledge.repository import EntityRepository
@@ -19,7 +20,8 @@ from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta
+from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, TextProvider
+from app.kernel.llm.resolution import ResolvedProvider
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -33,6 +35,28 @@ CHAPTER_BODY = (
 def _client() -> AsyncClient:
     """Create an HTTP client that drives the real application through ASGI."""
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+def _resolving(
+    provider: TextProvider,
+) -> Callable[[AsyncSession, UUID, str], Awaitable[ResolvedProvider]]:
+    """A resolve_provider stand-in that always serves the scripted provider."""
+
+    async def resolve(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return ResolvedProvider(
+            provider=provider,
+            profile_id=None,
+            kind="fake",
+            model="fake",
+            context_window=None,
+            max_output_tokens=None,
+            temperature=None,
+            request_timeout=None,
+            base_url=None,
+            api_key=None,
+        )
+
+    return resolve
 
 
 async def _chapter(client: AsyncClient, title: str = "Der Nebel") -> tuple[str, str]:
@@ -144,7 +168,7 @@ async def test_a_long_body_is_cut_at_the_limit_and_reported_truncated(
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _RecordingProvider()
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
     async with _client() as client:
         novel_id, chapter_id = await _chapter(client)
         await _write_body(client, chapter_id, "x" * 20_001)
@@ -163,7 +187,7 @@ async def test_a_body_at_the_limit_is_sent_whole(monkeypatch: pytest.MonkeyPatch
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _RecordingProvider()
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
     async with _client() as client:
         novel_id, chapter_id = await _chapter(client)
         await _write_body(client, chapter_id, "x" * 20_000)
@@ -180,7 +204,7 @@ async def test_the_limit_counts_characters_not_bytes(monkeypatch: pytest.MonkeyP
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _RecordingProvider()
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
     async with _client() as client:
         novel_id, chapter_id = await _chapter(client)
         await _write_body(client, chapter_id, "é" * 20_000)
@@ -272,7 +296,8 @@ async def test_extraction_enqueues_then_the_worker_files_suggestions() -> None:
         assert row.input_tokens > 0
         assert row.output_tokens > 0
         assert row.status == "ok"
-        assert row.cost_usd is None
+        # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+        assert row.cost_usd == 0.0
 
 
 async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
@@ -281,7 +306,7 @@ async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
     """Verify invalid output exhausts retries without suggestions, entities, or audit rows."""
     import app.capabilities.knowledge.jobs as jobs
 
-    monkeypatch.setattr(jobs, "get_provider", lambda: _GarbageProvider())
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(_GarbageProvider()))
 
     async with _client() as client:
         novel_id, chapter_id = await _chapter(client)
@@ -315,7 +340,7 @@ async def test_an_empty_entity_array_is_a_valid_answer(
     # a done job with an honest zero, not a failure and not a silent skip.
     import app.capabilities.knowledge.jobs as jobs
 
-    monkeypatch.setattr(jobs, "get_provider", lambda: _NoEntitiesProvider())
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(_NoEntitiesProvider()))
 
     async with _client() as client:
         novel_id, chapter_id = await _chapter(client)

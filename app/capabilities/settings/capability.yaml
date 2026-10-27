@@ -3,6 +3,6 @@
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: settings
 title: settings.language # i18n key; must exist in en, de and fr
-path: / # no page of its own: the switcher sits in the shell, on every route
+path: /settings # the gear in the top bar is the door
 needs: []
 nav: false # a control in the shell, not a destination

@@ -14,11 +14,12 @@ from app.capabilities.chat.service import ChatService
 from app.kernel.auth import current_user_id
 from app.kernel.db.session import get_session
 from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
-from app.kernel.llm import TextProvider, get_provider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
+from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
+from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -29,7 +30,6 @@ SSE_HEADERS = {"Cache-Control": "no-cache"}
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 UserDep = Annotated[UUID, Depends(current_user_id)]
 EmbeddingsDep = Annotated[EmbeddingProvider, Depends(get_embedding_provider)]
-ProviderDep = Annotated[TextProvider, Depends(get_provider)]
 
 
 def _service(session: SessionDep, user_id: UserDep, embeddings: EmbeddingsDep) -> ChatService:
@@ -40,8 +40,13 @@ def _service(session: SessionDep, user_id: UserDep, embeddings: EmbeddingsDep) -
 ServiceDep = Annotated[ChatService, Depends(_service)]
 
 
+async def _error_events() -> AsyncGenerator[str]:
+    """The one frame a stream ends with when no provider call could run."""
+    yield "event: error\ndata: {}\n\n"
+
+
 async def _events(
-    provider: TextProvider, prompt: str, passages: list[Passage], user_id: UUID
+    resolved: ResolvedProvider, prompt: str, passages: list[Passage], user_id: UUID
 ) -> AsyncGenerator[str]:
     """Sources first, then the answer, then done.
 
@@ -63,7 +68,7 @@ async def _events(
     ]
     yield f"data: {json.dumps({'sources': sources})}\n\n"
     events = audited_stream(
-        provider, CompletionRequest.user(prompt), user_id=user_id, task_key="chat.ask"
+        resolved, CompletionRequest.user(prompt), user_id=user_id, task_key="chat.ask"
     )
     try:
         async for event in events:
@@ -100,7 +105,7 @@ async def _events(
     },
 )
 async def ask(
-    payload: ChatRequest, service: ServiceDep, provider: ProviderDep, user_id: UserDep
+    payload: ChatRequest, service: ServiceDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
     """Stream a sourced answer; return HTTP 409 for incompatible source embeddings."""
     try:
@@ -111,11 +116,22 @@ async def ask(
             status_code=409,
             detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
+    # Resolution reads the user's profiles on the request's own session, so it
+    # must run before the connection goes back. A profile whose key its tier
+    # can no longer produce ends the stream with the error frame a dead
+    # provider gets — no call ran, so no audit row.
+    try:
+        resolved = await resolve_provider(service.session, user_id, "chat.ask")
+    except KeyUnavailableError:
+        logger.exception("chat provider resolution failed")
+        return FinalizingStreamingResponse(
+            _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+        )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.
     await service.session.close()
     return FinalizingStreamingResponse(
-        _events(provider, prompt, passages, user_id),
+        _events(resolved, prompt, passages, user_id),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )

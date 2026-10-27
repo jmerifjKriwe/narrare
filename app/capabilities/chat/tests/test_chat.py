@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from anyio import Event
+from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -24,7 +25,9 @@ from app.kernel.contracts.models import Chunk, Document
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
-from app.kernel.llm import FakeProvider
+from app.kernel.llm.contract import TextProvider  # noqa: TC001  the helper's parameter
+from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 
@@ -32,6 +35,22 @@ pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
 PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
+
+
+def _resolved(provider: TextProvider) -> ResolvedProvider:
+    """A fake-tier resolved carrier for a stand-in provider the tests inject."""
+    return ResolvedProvider(
+        provider=provider,
+        profile_id=None,
+        kind="fake",
+        model="fake",
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
 
 
 @pytest.mark.parametrize("fail", [False, True])
@@ -42,7 +61,7 @@ async def test_audit_failure_does_not_truncate_the_response(
     provider = StreamProbeProvider(fail=fail)
     # This user does not exist: the audit's real database commit must fail.
     response = FinalizingStreamingResponse(
-        _events(provider, "audit-private-prompt", [], uuid4()),
+        _events(_resolved(provider), "audit-private-prompt", [], uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -75,7 +94,7 @@ async def test_audit_failure_does_not_replace_a_disconnect(
     waiting = Event() if interruption == "waiting" else None
     provider = StreamProbeProvider(waiting=waiting)
     response = FinalizingStreamingResponse(
-        _events(provider, "question", [], uuid4()),
+        _events(_resolved(provider), "question", [], uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -109,7 +128,7 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
     waiting = Event() if frame == "waiting" else None
     provider = StreamProbeProvider(fail=frame == "event: error", waiting=waiting)
     response = FinalizingStreamingResponse(
-        _events(provider, "question", [], LOCAL_USER_ID),
+        _events(_resolved(provider), "question", [], LOCAL_USER_ID),
         media_type="text/event-stream",
         headers={},
     )
@@ -148,9 +167,7 @@ async def test_the_route_hands_back_the_finalizing_response() -> None:
     await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
     async with Session() as session:
         service = ChatService(session, LOCAL_USER_ID, FakeEmbeddingProvider())
-        response = await ask(
-            ChatRequest(question="Wo war der Leuchtturm?"), service, FakeProvider(), LOCAL_USER_ID
-        )
+        response = await ask(ChatRequest(question="Wo war der Leuchtturm?"), service, LOCAL_USER_ID)
     assert isinstance(response, FinalizingStreamingResponse)
 
 
@@ -222,7 +239,8 @@ async def test_answer_comes_back_with_the_passage_as_source() -> None:
     assert row.input_tokens > 0
     assert row.output_tokens > 0
     assert PASSAGE in row.response_text
-    assert row.cost_usd is None
+    # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+    assert row.cost_usd == 0.0
 
 
 async def test_prompt_carries_the_question_and_the_passage() -> None:
@@ -264,6 +282,39 @@ async def test_an_empty_question_is_rejected() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/chat/ask", json={"question": ""})
         assert response.status_code == 422
+
+
+async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stored key no tier can produce is the error frame, never a 500.
+
+    The profile is the user's only one, so the cascade resolves it and its
+    broken key refuses before any provider call: the response is exactly the
+    one error frame (no sources frame either — nothing was answered), and no
+    audit row claims a call that never ran.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        await ProfileRepository(session, LOCAL_USER_ID).create(
+            name="Broken",
+            kind="openai-chat",
+            base_url="https://api.vendor.example/v1",
+            model="acme/turbo-3",
+            # Ciphertext another NARRE_SECRET_KEY made: undecryptable on purpose.
+            api_key="gAAAAABlindtext-not-what-this-key-encrypted",
+            api_key_hint="roken",
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})
+
+    assert response.status_code == 200
+    assert response.text == "event: error\ndata: {}\n\n"
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
 
 
 class _OtherModel:

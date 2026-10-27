@@ -222,11 +222,12 @@ its capability backend (one folder, OpenAPI, generated client).
 
 ### 5.12 Settings (`/settings`)
 
-Settings becomes a destination of its own: `settings/web/routes.tsx` mounts
-`/settings`, and the top bar's gear links to it (`nav: false` — it is a control,
-not a browsing destination). Sections: language, providers, prompts. It stays a
-capability (its HTTP surface already is), so the generated route table and the
-one-way `@shell` import need no exception.
+Landed with WP2a (Fahrplan §5.9): `settings/web/routes.tsx` mounts `/settings`,
+and the top bar's gear links to it (`nav: false` — it is a control, not a
+browsing destination). Sections today: language, providers. The prompts section
+and the ⌘K palette remain WP5's. It stays a capability (its HTTP surface
+already is), so the generated route table and the one-way `@shell` import need
+no exception.
 
 ## 6. Phasing (input for the implementation plan)
 

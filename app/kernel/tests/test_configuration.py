@@ -44,9 +44,9 @@ def test_an_unknown_provider_fails_fast(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_the_catalog_builds_every_entry_it_advertises() -> None:
     from app.kernel.embeddings import EMBEDDING_PROVIDERS
-    from app.kernel.llm import PROVIDERS
+    from app.kernel.llm.resolution import ENV_PROVIDERS
 
-    for name, build in PROVIDERS.items():
+    for name, build in ENV_PROVIDERS.items():
         provider = build()
         assert isinstance(provider.describe(), str), name
         assert isinstance(provider.configuration_problems(), list), name

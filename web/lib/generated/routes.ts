@@ -15,6 +15,7 @@
 // point.
 import { routes as chat, dockRoutes as chatDocks } from "../../../app/capabilities/chat/web/routes";
 import { routes as knowledge, dockRoutes as knowledgeDocks } from "../../../app/capabilities/knowledge/web/routes";
+import { routes as settings } from "../../../app/capabilities/settings/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
 import { routes as writing, workspaceRoute } from "../../../app/capabilities/writing/web/routes";
 
@@ -24,6 +25,7 @@ const knowledgeDockRoutes = knowledgeDocks.map((dock) => dock(workspaceRoute));
 export const capabilityRoutes = [
   ...chat,
   ...knowledge,
+  ...settings,
   ...setup,
   ...writing,
   //

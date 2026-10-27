@@ -28,6 +28,20 @@ The Apache-2.0 entries keep the license text bundled with the vendored copy,
 as section 4 of that license requires; the MIT entries carry the upstream
 license text so the copyright notice travels with the copy.
 
+## Vendored model catalog (`app/kernel/llm/data/`)
+
+`models.json` is a snapshot of the models.dev API
+(<https://models.dev/api.json>), taken 2026-10-27 and reduced to the fields
+the kernel reads (prices per Mtok, token limits, capability flags). It is
+refreshed by hand — `python -m app.kernel.llm.data.refresh` — and never over
+the network at runtime; `refresh.py` and `catalog.py` are Narrare's own code
+under the MIT grant above, while the snapshot is models.dev's data under
+theirs.
+
+| Material | Source | License | Notice |
+| --- | --- | --- | --- |
+| `models.json` (snapshot data) | [models.dev](https://models.dev) ([anomalyco/models.dev](https://github.com/anomalyco/models.dev)) | MIT | [LICENSE](app/kernel/llm/data/LICENSE), bundled with the snapshot |
+
 ## OpenCode harness material (`.opencode/`)
 
 | Skill | Source | License | Notice |

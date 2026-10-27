@@ -35,7 +35,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         id="settings",
         title_key="settings.language",
-        path="/",
+        path="/settings",
         needs=(),
         in_nav=False,
     ),

@@ -36,6 +36,15 @@ from app.kernel.db.testsupport import ensure_database, url_for
 
 ROOT = Path(__file__).resolve().parents[3]
 
+E2E_SECRET_KEY = "W1Ap61h7AxVPB6qFGKd5SSVMnN5mXFwFAzkA1wEXT_M="
+"""A fixed Fernet key for every E2E stack's key store.
+
+Public on purpose: it is test infrastructure, not a secret — it exists so a
+profile's ``api_key`` column deterministically holds Fernet ciphertext (and a
+restored row stays decryptable across runs), never so that it hides anything.
+"""
+
+
 # Ports and shutdown grace are configuration: a second stack, or a busy port on
 # this machine, must not need a code edit. The defaults are the ones the docs use.
 API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000"))
@@ -219,8 +228,17 @@ def run_stack(
         pool.submit(_prepare, database, seed_user).result()
 
     # Extra environment reaches the API only: a stack may point a provider at a
-    # test-owned stand-in (the one boundary a fake may hold).
-    environment = {**os.environ, "NARRE_DATABASE_URL": url_for(database), **(env or {})}
+    # test-owned stand-in (the one boundary a fake may hold). The key store is
+    # pinned the same way, before the caller's extras: every stack runs the
+    # Fernet tier under this test key, deterministically, and no run ever
+    # touches a developer's real OS keychain (design, the keychain module).
+    environment = {
+        **os.environ,
+        "NARRE_DATABASE_URL": url_for(database),
+        "NARRE_SECRET_KEY": E2E_SECRET_KEY,
+        "NARRE_KEYRING": "off",
+        **(env or {}),
+    }
     pnpm = shutil.which("pnpm")
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")

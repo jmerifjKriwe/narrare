@@ -7,11 +7,14 @@ from uuid import UUID, uuid4
 
 import pytest
 from anyio import Event
+from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
+from app.capabilities.writing import router as writing_router
 from app.capabilities.writing.prompts import continuity_prompt
 from app.capabilities.writing.router import (
     _continuation_events,  # pyright: ignore[reportPrivateUsage]  test the stream's finalizer
@@ -21,14 +24,32 @@ from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm import FakeProvider, get_provider
-from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta
+from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta, TextProvider
+from app.kernel.llm.fake import FakeProvider
+from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 
 pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
+
+
+def _resolved(provider: TextProvider) -> ResolvedProvider:
+    """A fake-tier resolved carrier for a stand-in provider the tests inject."""
+    return ResolvedProvider(
+        provider=provider,
+        profile_id=None,
+        kind="fake",
+        model="fake",
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
 
 
 @pytest.mark.parametrize("fail", [False, True])
@@ -39,7 +60,7 @@ async def test_audit_failure_does_not_truncate_the_response(
     provider = StreamProbeProvider(fail=fail)
     # This user does not exist: the audit's real database commit must fail.
     response = FinalizingStreamingResponse(
-        _continuation_events(provider, "audit-private-prompt", uuid4(), uuid4()),
+        _continuation_events(_resolved(provider), "audit-private-prompt", uuid4(), uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -74,7 +95,7 @@ async def test_audit_failure_does_not_replace_a_disconnect(
     waiting = Event() if interruption == "waiting" else None
     provider = StreamProbeProvider(waiting=waiting)
     response = FinalizingStreamingResponse(
-        _continuation_events(provider, "question", uuid4(), uuid4()),
+        _continuation_events(_resolved(provider), "question", uuid4(), uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -111,7 +132,7 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
     provider = StreamProbeProvider(fail=frame == "event: error", waiting=waiting)
     novel_id = uuid4()
     response = FinalizingStreamingResponse(
-        _continuation_events(provider, "question", novel_id, LOCAL_USER_ID),
+        _continuation_events(_resolved(provider), "question", novel_id, LOCAL_USER_ID),
         media_type="text/event-stream",
         headers={},
     )
@@ -185,7 +206,7 @@ async def test_the_continuation_streams_the_provider_chunks() -> None:
 
 
 async def test_the_continuation_records_its_audit_row() -> None:
-    """Verify a successful continuation audits its novel, answer, tokens, and unknown cost."""
+    """Verify a successful continuation audits its novel, answer, tokens, and free fake."""
     async with _client() as client:
         chapter_id = await _create_chapter(client)
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
@@ -209,7 +230,8 @@ async def test_the_continuation_records_its_audit_row() -> None:
     assert row.input_tokens > 0
     assert row.output_tokens > 0
     assert row.response_text == "".join(FakeProvider.CHUNKS)
-    assert row.cost_usd is None
+    # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+    assert row.cost_usd == 0.0
 
 
 class _DyingProvider:
@@ -232,15 +254,18 @@ class _DyingProvider:
         raise RuntimeError("the provider died")
 
 
-async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure() -> None:
+async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verify partial provider output is preserved with an error event and a failed audit."""
-    app.dependency_overrides[get_provider] = lambda: _DyingProvider()
-    try:
-        async with _client() as client:
-            chapter_id = await _create_chapter(client)
-            response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
-    finally:
-        app.dependency_overrides.clear()
+
+    async def _dying(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return _resolved(_DyingProvider())
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _dying)
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
     assert _deltas(response.text) == ["Halb"]  # what arrived, arrived
@@ -254,6 +279,39 @@ async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure() -
     assert "the provider died" in row.error
 
 
+async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stored key no tier can produce is the error frame, never a 500.
+
+    The profile is the user's only one, so the cascade resolves it and its
+    broken key refuses before any provider call: the response is exactly the
+    one error frame, and no audit row claims a call that never ran.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        await ProfileRepository(session, LOCAL_USER_ID).create(
+            name="Broken",
+            kind="openai-chat",
+            base_url="https://api.vendor.example/v1",
+            model="acme/turbo-3",
+            # Ciphertext another NARRE_SECRET_KEY made: undecryptable on purpose.
+            api_key="gAAAAABlindtext-not-what-this-key-encrypted",
+            api_key_hint="roken",
+        )
+        await session.commit()
+
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+
+    assert response.status_code == 200
+    assert response.text == "event: error\ndata: {}\n\n"
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
+
+
 async def test_the_route_hands_back_the_finalizing_response() -> None:
     """The endpoint itself — not a hand-built wrapper — is what carries the audit.
 
@@ -265,7 +323,7 @@ async def test_the_route_hands_back_the_finalizing_response() -> None:
         chapter_id = await _create_chapter(client)
     async with Session() as session:
         service = WritingService(session, LOCAL_USER_ID)
-        response = await continue_chapter(UUID(chapter_id), service, FakeProvider(), LOCAL_USER_ID)
+        response = await continue_chapter(UUID(chapter_id), service, LOCAL_USER_ID)
     assert isinstance(response, FinalizingStreamingResponse)
 
 

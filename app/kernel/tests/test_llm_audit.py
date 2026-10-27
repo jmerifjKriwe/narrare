@@ -1,9 +1,9 @@
 """The LlmCall audit: the table, then the writer, then what handlers record.
 
 Plan §3.4: one row per provider call — prompt and answer capped at 64 KB,
-tokens, latency, status. cost_usd stays NULL until WP2's catalog prices it
-and no profile_id exists until a profile table does; the column set is pinned
-here so a drift fails at its first commit instead of in WP2's evidence.
+tokens, latency, status, and the price the catalog's truth table computes.
+The column set is pinned here so a drift fails at its first commit instead
+of in later work's evidence.
 """
 
 from collections.abc import AsyncIterator  # noqa: TC003
@@ -18,13 +18,16 @@ from app.kernel.db.base import Base
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.audit import CAP, audited_stream, record_call
+from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.models import LlmCall
+from app.kernel.llm.resolution import ResolvedProvider
 
 LLM_CALL_COLUMNS = {
     "id",
     "user_id",
     "novel_id",
+    "profile_id",
     "task_key",
     "prompt_key",
     "provider_kind",
@@ -59,6 +62,24 @@ def test_the_jobs_and_contracts_tables_are_still_registered() -> None:
 
 
 OWNER = uuid4()
+PROFILE = uuid4()
+REMOTE_URL = "https://api.vendor.example/v1"
+
+
+def _resolved(provider: _ScriptedProvider | _RaisingAfterDoneProvider) -> ResolvedProvider:
+    """A fake-tier resolved carrier for a scripted provider, what these tests stream."""
+    return ResolvedProvider(
+        provider=provider,
+        profile_id=PROFILE,
+        kind="fake",
+        model="fake",
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
 
 
 @pytest.fixture
@@ -147,8 +168,8 @@ async def test_exactly_the_cap_is_kept_whole_and_not_marked_truncated() -> None:
 
 @pytest.mark.usefixtures("a_user")
 async def test_a_short_call_is_kept_whole_with_a_null_cost() -> None:
-    """Verify short texts remain intact and unknown cost stays NULL."""
-    # D5, pinned: no catalog prices the call yet, and an unknown price is not
+    """Verify short texts remain intact and a caller without info stays NULL."""
+    # Pinned: the helper passes no catalog info, and an unknown price is not
     # a free call — NULL, never 0.
     await _record(prompt_text="PURPOSE: extract-entities", response_text="[]")
 
@@ -157,6 +178,58 @@ async def test_a_short_call_is_kept_whole_with_a_null_cost() -> None:
     assert row.response_text == "[]"
     assert row.truncated is False
     assert row.cost_usd is None
+
+
+ACME_TURBO = ModelInfo(
+    context_window=100_000,
+    max_output_tokens=4_096,
+    input_price_per_mtok=3.0,
+    output_price_per_mtok=15.0,
+    supports_json_schema=True,
+    supports_tools=True,
+    supports_vision=False,
+)
+
+
+async def _record_priced(base_url: str) -> None:
+    """Record one priced remote-style call carrying a profile id."""
+    async with Session() as session:
+        await record_call(
+            session,
+            user_id=OWNER,
+            task_key="chat.ask",
+            provider_kind="openai-chat",
+            model="acme/turbo-3",
+            latency_ms=120,
+            status="ok",
+            prompt_text="Continue",
+            response_text="[]",
+            input_tokens=1_000,
+            output_tokens=2_000,
+            profile_id=PROFILE,
+            base_url=base_url,
+            info=ACME_TURBO,
+        )
+        await session.commit()
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_record_call_prices_a_priced_remote_call() -> None:
+    """Verify the catalog's Mtok sum and the profile id land on the row."""
+    await _record_priced("https://api.vendor.example/v1")
+
+    row = await _the_row()
+    assert row.cost_usd == pytest.approx(0.033)  # 1 000 * 3.0 + 2 000 * 15.0
+    assert row.profile_id == PROFILE
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_record_call_prices_a_local_call_at_zero() -> None:
+    """Verify a priced model on a local endpoint is recorded as free (D4)."""
+    await _record_priced("http://127.0.0.1:11434/v1")
+
+    row = await _the_row()
+    assert row.cost_usd == 0.0
 
 
 @pytest.mark.usefixtures("a_user")
@@ -219,7 +292,10 @@ async def test_audited_stream_audits_a_drained_call_as_ok() -> None:
     events = [
         event
         async for event in audited_stream(
-            provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+            _resolved(provider),
+            CompletionRequest.user("Continue"),
+            user_id=OWNER,
+            task_key="test.stream",
         )
     ]
     assert events[-1] is DONE
@@ -232,7 +308,10 @@ async def test_audited_stream_records_ok_when_the_consumer_stops_at_done() -> No
     """DONE is the terminal event: a consumer that stops there ended cleanly."""
     provider = _ScriptedProvider((Delta(text="part "), DONE))
     stream = audited_stream(
-        provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+        _resolved(provider),
+        CompletionRequest.user("Continue"),
+        user_id=OWNER,
+        task_key="test.stream",
     )
     async for event in stream:
         if event is DONE:
@@ -252,7 +331,10 @@ async def test_audited_stream_records_the_usage_refusal_in_the_error_column() ->
         ),
     )
     stream = audited_stream(
-        provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+        _resolved(provider),
+        CompletionRequest.user("Continue"),
+        user_id=OWNER,
+        task_key="test.stream",
     )
     with pytest.raises(ValueError):
         async for _ in stream:
@@ -276,8 +358,8 @@ class _RaisingAfterDoneProvider(_ScriptedProvider):
 async def test_a_raise_after_done_is_an_error_row_not_a_contradiction() -> None:
     """A provider that fails after its terminal event is recorded as failed."""
     stream = audited_stream(
-        _RaisingAfterDoneProvider((), fail=None),
-        CompletionRequest.user("Weiter"),
+        _resolved(_RaisingAfterDoneProvider((), fail=None)),
+        CompletionRequest.user("Continue"),
         user_id=OWNER,
         task_key="test.stream",
     )
@@ -287,3 +369,60 @@ async def test_a_raise_after_done_is_an_error_row_not_a_contradiction() -> None:
     row = await _audited_row()
     assert row.status == "error"
     assert "after its terminal frame" in row.error
+
+
+# The resolved kind decides the cost tier: the fake is free, a local endpoint
+# is free, and an unknown model on a remote endpoint stays NULL — design D4.
+
+
+async def _cost_of_a_streamed_call(*, kind: str, model: str, base_url: str | None) -> float | None:
+    """Drain one scripted call and return the cost its audit row carries."""
+    resolved = ResolvedProvider(
+        provider=_ScriptedProvider(
+            (Delta(text="x"), Usage(input_tokens=10, output_tokens=5), DONE)
+        ),
+        profile_id=PROFILE,
+        kind=kind,
+        model=model,
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=base_url,
+        api_key=None,
+    )
+    events = [
+        event
+        async for event in audited_stream(
+            resolved, CompletionRequest.user("Continue"), user_id=OWNER, task_key="test.stream"
+        )
+    ]
+    assert events[-1] is DONE
+    async with Session() as session:
+        row = (await session.execute(text("SELECT cost_usd FROM llm_calls"))).one()
+    return row.cost_usd
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_a_fake_kind_costs_zero_even_on_an_unknown_model() -> None:
+    """The fake's rows are free whatever its free-text model spelled."""
+    cost = await _cost_of_a_streamed_call(kind="fake", model="ghost-writer", base_url=None)
+    assert cost == 0.0
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_an_unknown_model_on_a_remote_endpoint_stays_null() -> None:
+    """No catalog tier reaches the model: the cost is unknown, never free."""
+    cost = await _cost_of_a_streamed_call(
+        kind="openai-chat", model="no-catalog-entry-for-this-test", base_url=REMOTE_URL
+    )
+    assert cost is None
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_a_local_endpoint_costs_zero_even_on_an_unknown_model() -> None:
+    """Locality is free whatever the catalog knows about the model."""
+    cost = await _cost_of_a_streamed_call(
+        kind="openai-chat", model="no-catalog-entry-for-this-test", base_url="http://127.0.0.1:9/v1"
+    )
+    assert cost == 0.0

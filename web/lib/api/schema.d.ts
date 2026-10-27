@@ -448,6 +448,136 @@ export interface paths {
         patch: operations["update_settings_api_settings_patch"];
         trace?: never;
     };
+    "/api/settings/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Assignments
+         * @description Every task assignment of the user's, ordered by task key.
+         */
+        get: operations["list_assignments_api_settings_assignments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/assignments/{task_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Assignment
+         * @description Point the task at a profile, or clear it with ``profile_id: null``.
+         *
+         *     Any non-empty task key is accepted — unknown keys are forward-compatible.
+         */
+        put: operations["put_assignment_api_settings_assignments__task_key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Profiles
+         * @description The user's profiles, the default first; every key read shows the mask.
+         */
+        get: operations["list_profiles_api_settings_profiles_get"];
+        put?: never;
+        /**
+         * Create Profile
+         * @description Store one profile; the first becomes the default; the full key returns once.
+         */
+        post: operations["create_profile_api_settings_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Profile
+         * @description Delete a non-default profile; its assignments cascade with it.
+         */
+        delete: operations["delete_profile_api_settings_profiles__profile_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Profile
+         * @description Apply the patch; an empty ``api_key`` keeps the stored one.
+         */
+        patch: operations["update_profile_api_settings_profiles__profile_id__patch"];
+        trace?: never;
+    };
+    "/api/settings/profiles/{profile_id}/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Profile Models
+         * @description Model discovery against the profile's endpoint.
+         */
+        get: operations["list_profile_models_api_settings_profiles__profile_id__models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/profiles/{profile_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Profile
+         * @description One cheap completion against the profile's endpoint, audited as settings.test.
+         */
+        post: operations["test_profile_api_settings_profiles__profile_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/setup": {
         parameters: {
             query?: never;
@@ -608,6 +738,21 @@ export interface components {
             entity: components["schemas"]["EntityRead"];
             /** Skipped Relations */
             skipped_relations: components["schemas"]["SkippedRelationRead"][];
+        };
+        /** AssignmentRead */
+        AssignmentRead: {
+            /** Profile Id */
+            profile_id: string | null;
+            /** Task Key */
+            task_key: string;
+        };
+        /**
+         * AssignmentUpdate
+         * @description ``profile_id: null`` clears the task's assignment (back down the cascade).
+         */
+        AssignmentUpdate: {
+            /** Profile Id */
+            profile_id: string | null;
         };
         /** Body_upload_document_api_knowledge_documents_post */
         Body_upload_document_api_knowledge_documents_post: {
@@ -891,6 +1036,157 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * ProfileCreate
+         * @description One new provider profile. ``api_key`` is write-only; the mask comes back.
+         */
+        ProfileCreate: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Context Window */
+            context_window?: number | null;
+            /** Kind */
+            kind: string;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Name */
+            name: string;
+            /** Request Timeout */
+            request_timeout?: number | null;
+            /** Temperature */
+            temperature?: number | null;
+        };
+        /**
+         * ProfileCreated
+         * @description The create's answer: the one response that carries the full key.
+         *
+         *     ``api_key`` is the plaintext exactly once, for the client that just sent
+         *     it to confirm against; it is ``None`` when no key was stored (a fake, or
+         *     a local endpoint without one).
+         */
+        ProfileCreated: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Api Key Mask */
+            api_key_mask: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /** Context Window */
+            context_window: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Kind */
+            kind: string;
+            /** Max Output Tokens */
+            max_output_tokens: number | null;
+            /** Model */
+            model: string | null;
+            /** Name */
+            name: string;
+            /** Request Timeout */
+            request_timeout: number | null;
+            /** Temperature */
+            temperature: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ProfileRead
+         * @description A profile as every read shows it: the mask, never the key.
+         */
+        ProfileRead: {
+            /** Api Key Mask */
+            api_key_mask: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /** Context Window */
+            context_window: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Kind */
+            kind: string;
+            /** Max Output Tokens */
+            max_output_tokens: number | null;
+            /** Model */
+            model: string | null;
+            /** Name */
+            name: string;
+            /** Request Timeout */
+            request_timeout: number | null;
+            /** Temperature */
+            temperature: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ProfileTestResult
+         * @description What one connection test found: it ran, and it either answered or named why.
+         */
+        ProfileTestResult: {
+            /** Error */
+            error: string | null;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Ok */
+            ok: boolean;
+        };
+        /**
+         * ProfileUpdate
+         * @description What a patch may change. The kind is what the profile is: not editable.
+         *
+         *     Absent fields stay unchanged; present nulls clear the nullable columns.
+         *     ``is_default: true`` hands the default over from the current holder.
+         */
+        ProfileUpdate: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Context Window */
+            context_window?: number | null;
+            /** Is Default */
+            is_default?: boolean | null;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Request Timeout */
+            request_timeout?: number | null;
+            /** Temperature */
+            temperature?: number | null;
         };
         /**
          * ProposedRelationRead
@@ -1854,6 +2150,240 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_assignments_api_settings_assignments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentRead"][];
+                };
+            };
+        };
+    };
+    put_assignment_api_settings_assignments__task_key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_profiles_api_settings_profiles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileRead"][];
+                };
+            };
+        };
+    };
+    create_profile_api_settings_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_profile_api_settings_profiles__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_api_settings_profiles__profile_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_profile_models_api_settings_profiles__profile_id__models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_profile_api_settings_profiles__profile_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileTestResult"];
                 };
             };
             /** @description Validation Error */

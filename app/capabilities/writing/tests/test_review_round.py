@@ -8,8 +8,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
-from app.kernel import llm
 from app.kernel.db.session import Session
+from app.kernel.llm.resolution import ENV_PROVIDERS
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -64,7 +64,7 @@ async def test_the_continuation_stream_is_not_cached() -> None:
 async def test_a_failing_provider_ends_the_stream_with_an_error_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setitem(llm.PROVIDERS, "failing", _FailingProvider)
+    monkeypatch.setitem(ENV_PROVIDERS, "failing", _FailingProvider)
     monkeypatch.setenv("NARRE_LLM_PROVIDER", "failing")
     async with _client() as client:
         novel = await client.post("/api/writing/novels", json={"title": "Nebel"})

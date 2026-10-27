@@ -1,10 +1,13 @@
-"""The LLM boundary: a catalog of entries, picked by configuration.
+"""The LLM boundary: one streaming contract, entries picked per user and task.
 
-Adding a provider is one entry here, plus one fetch strategy module when the
-vendor speaks a new API shape (spec §4). The fake is a normal entry, not a test
-branch: routing, prompt composition, streaming and persistence run the same code
-whichever name is configured. ``NARRE_LLM_PROVIDER`` selects it and defaults to
-``fake``, so a fresh clone runs without a key.
+The contract and its prompt markers live in :mod:`app.kernel.llm.contract`;
+the entries live in their own modules — the fake, the openai-chat adapter
+over the official SDK — and :mod:`app.kernel.llm.resolution` decides which one serves a
+call: per user and per task, down the assignment cascade, with the
+environment (``NARRE_LLM_PROVIDER``, defaulting to the fake) as the tier a
+fresh clone runs on. The fake is a normal entry, not a test branch: routing,
+prompt composition, streaming and persistence run the same code whichever
+entry a call resolves to.
 
 pydantic-ai is deliberately absent. One streaming completion over a fixed prompt
 needs a single async method; an agent layer would add tools, retries and
@@ -12,46 +15,10 @@ structured output that nothing in v2 asks for. Revisit this module if tool use o
 agent orchestration appears — not before.
 """
 
-from collections.abc import Callable  # noqa: TC003
-from os import environ
-
 from app.kernel.llm.contract import PURPOSE_PREFIX, SOURCE_PREFIX, TextProvider
-from app.kernel.llm.fake import FakeProvider
-from app.kernel.llm.openai_compat import OpenAICompatibleProvider
-
-PROVIDERS: dict[str, Callable[[], TextProvider]] = {
-    "fake": FakeProvider,
-    "openai-compatible": OpenAICompatibleProvider.from_environment,
-}
 
 __all__ = [
-    "PROVIDERS",
     "PURPOSE_PREFIX",
     "SOURCE_PREFIX",
     "TextProvider",
-    "get_provider",
-    "provider_facts",
 ]
-
-
-def get_provider() -> TextProvider:
-    """FastAPI dependency: the configured provider."""
-    name = environ.get("NARRE_LLM_PROVIDER", "fake")
-    if name not in PROVIDERS:
-        raise RuntimeError(f"unknown LLM provider {name!r}; known: {', '.join(sorted(PROVIDERS))}")
-    return PROVIDERS[name]()
-
-
-def provider_facts() -> tuple[str, str]:
-    """The configured entry's ``(kind, model)``, for the audit's columns.
-
-    Read from the same environment :func:`get_provider` reads — never parsed
-    back out of ``describe()``, which is a log line, not a contract. The fake
-    reports ``("fake", "fake")``; the real entry names the model it sends.
-    """
-    name = environ.get("NARRE_LLM_PROVIDER", "fake")
-    if name not in PROVIDERS:
-        raise RuntimeError(f"unknown LLM provider {name!r}; known: {', '.join(sorted(PROVIDERS))}")
-    if name == "openai-compatible":
-        return ("openai-compatible", environ.get("NARRE_LLM_MODEL", ""))
-    return ("fake", "fake")

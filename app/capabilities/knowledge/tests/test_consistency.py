@@ -11,20 +11,28 @@ nothing behind a pending row.
 import asyncio
 from json import dumps
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
 from app.kernel.contracts.models import Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta
+from app.kernel.llm.contract import (
+    DONE,
+    CompletionEvent,
+    CompletionRequest,
+    Delta,
+    TextProvider,
+)
+from app.kernel.llm.resolution import ResolvedProvider
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -58,6 +66,28 @@ AGREEING_BODIES = (
 def _client() -> AsyncClient:
     """Create an HTTP client that drives the real application through ASGI."""
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+def _resolving(
+    provider: TextProvider,
+) -> Callable[[AsyncSession, UUID, str], Awaitable[ResolvedProvider]]:
+    """A resolve_provider stand-in that always serves the scripted provider."""
+
+    async def resolve(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return ResolvedProvider(
+            provider=provider,
+            profile_id=None,
+            kind="fake",
+            model="fake",
+            context_window=None,
+            max_output_tokens=None,
+            temperature=None,
+            request_timeout=None,
+            base_url=None,
+            api_key=None,
+        )
+
+    return resolve
 
 
 async def _novel_with_chapters(
@@ -269,7 +299,8 @@ async def test_the_worker_files_one_pending_finding_per_contradiction() -> None:
         assert row.input_tokens > 0
         assert row.output_tokens > 0
         assert row.status == "ok"
-        assert row.cost_usd is None
+        # The fake kind is free by the truth table (design D4): 0.0, not unknown.
+        assert row.cost_usd == 0.0
 
 
 async def test_an_agreeing_novel_checks_to_an_empty_queue() -> None:
@@ -309,7 +340,7 @@ async def test_a_malformed_answer_fails_the_job_and_writes_nothing(
     """Verify invalid provider output exhausts retries without findings or audit rows."""
     import app.capabilities.knowledge.jobs as jobs
 
-    monkeypatch.setattr(jobs, "get_provider", lambda: _GarbageProvider())
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(_GarbageProvider()))
 
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, CONTRADICTING_BODIES)
@@ -554,7 +585,7 @@ async def test_a_novel_beyond_the_bound_is_checked_in_groups(
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _ScriptedProvider((_findings_json("Mira altert"), _findings_json("Tom altert")))
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
 
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, ("x" * 12_000, "y" * 12_000))
@@ -576,7 +607,7 @@ async def test_the_same_summary_from_two_groups_is_filed_once(
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _ScriptedProvider((_findings_json("Mira altert"), _findings_json("Mira altert")))
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
 
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, ("x" * 12_000, "y" * 12_000))
@@ -596,7 +627,7 @@ async def test_an_oversized_chapter_is_skipped_by_name(
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _ScriptedProvider((_findings_json(),))
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
 
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, ("x" * 20_001, "Mira ist 34."))
@@ -619,7 +650,7 @@ async def test_a_novel_of_only_oversized_chapters_makes_no_call(
     import app.capabilities.knowledge.jobs as jobs
 
     provider = _ScriptedProvider(())
-    monkeypatch.setattr(jobs, "get_provider", lambda: provider)
+    monkeypatch.setattr(jobs, "resolve_provider", _resolving(provider))
 
     async with _client() as client:
         novel_id = await _novel_with_chapters(client, ("x" * 20_001, "y" * 20_001))

@@ -15,15 +15,15 @@ from anyio import CancelScope
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.db.session import Session
-from app.kernel.llm import provider_facts
+from app.kernel.llm.catalog import ModelInfo, compute_cost, effective_info
 from app.kernel.llm.contract import (
     CompletionEvent,
     CompletionRequest,
     Delta,
-    TextProvider,
     Usage,
 )
 from app.kernel.llm.models import ERROR, OK, LlmCall
+from app.kernel.llm.resolution import ResolvedProvider  # noqa: TC001  audited_stream's parameter
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -58,6 +58,10 @@ async def record_call(
     novel_id: UUID | None = None,
     prompt_key: str | None = None,
     error: str | None = None,
+    profile_id: UUID | None = None,
+    base_url: str | None = None,
+    kind: str | None = None,
+    info: ModelInfo | None = None,
 ) -> None:
     """Add one audit row on the caller's session; the caller's commit lands it.
 
@@ -66,8 +70,11 @@ async def record_call(
     ``latency_ms`` is the caller's elapsed time in milliseconds; absent token
     counts remain NULL. This function neither flushes nor commits the session.
 
-    cost_usd is never set here: WP2's catalog prices the call, and until then
-    the column stays NULL — an unknown price is not a free call (D5).
+    The cost comes from the caller's facts: ``kind`` is the resolved kind (the
+    fake tier is free whatever else is known), ``info`` is the catalog entry
+    for the model (None when no tier reaches it) and ``base_url`` decides
+    locality — a local endpoint is free, an unknown price stays NULL, never 0
+    (the truth table, design D4).
     """
     prompt_text, prompt_clipped = _capped(prompt_text)
     response_text, response_clipped = _capped(response_text)
@@ -87,24 +94,36 @@ async def record_call(
             prompt_key=prompt_key,
             error=error,
             truncated=prompt_clipped or response_clipped,
+            profile_id=profile_id,
+            cost_usd=compute_cost(
+                info,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                base_url=base_url,
+                kind=kind,
+            ),
         )
     )
 
 
 async def audited_stream(
-    provider: TextProvider,
+    resolved: ResolvedProvider,
     request: CompletionRequest,
     *,
     user_id: UUID,
     task_key: str,
     novel_id: UUID | None = None,
 ) -> AsyncGenerator[CompletionEvent]:
-    """Yield the provider's events and audit the call however the stream ends.
+    """Yield the resolved provider's events and audit the call however it ends.
 
-    One finalizer for every streaming capability. The row is written in a
-    ``finally`` under a shielded cancel scope, so a disconnecting client or a
-    cancelled task cannot take it with it; a failed audit is logged, never
-    raised into a finished response (§3.4 — a log row, not user data).
+    One finalizer for every streaming capability. The row names the resolved
+    configuration — kind, model, profile id — and prices the call from the
+    same facts: the resolved kind (the fake tier is free), the catalog entry
+    for the resolved model, the resolved endpoint deciding locality. It is
+    written in a ``finally`` under a shielded cancel scope, so a
+    disconnecting client or a cancelled task cannot take it with it; a failed
+    audit is logged, never raised into a finished response (§3.4 — a log
+    row, not user data).
     Status names the call, not the delivery: ``ok`` once the provider ended
     cleanly — a ``Done`` event, when the provider sends one, ends it — ``error``
     when the provider raised (the error text rides along), and ``error`` with
@@ -117,8 +136,13 @@ async def audited_stream(
     started = monotonic()
     status = ERROR
     error: str | None = "stream interrupted"
+    info = effective_info(
+        resolved.model,
+        profile_context_window=resolved.context_window,
+        profile_max_output_tokens=resolved.max_output_tokens,
+    )
     try:
-        async for event in provider.stream(request):
+        async for event in resolved.provider.stream(request):
             if isinstance(event, Delta):
                 pieces.append(event.text)
             elif isinstance(event, Usage):
@@ -140,14 +164,13 @@ async def audited_stream(
     finally:
         with CancelScope(shield=True):
             try:
-                kind, model = provider_facts()
                 async with Session() as session:
                     await record_call(
                         session,
                         user_id=user_id,
                         task_key=task_key,
-                        provider_kind=kind,
-                        model=model,
+                        provider_kind=resolved.kind,
+                        model=resolved.model,
                         latency_ms=round((monotonic() - started) * 1000),
                         status=status,
                         prompt_text="\n".join(message.content for message in request.messages),
@@ -156,6 +179,10 @@ async def audited_stream(
                         output_tokens=usage.output_tokens if usage else None,
                         novel_id=novel_id,
                         error=error,
+                        profile_id=resolved.profile_id,
+                        base_url=resolved.base_url,
+                        kind=resolved.kind,
+                        info=info,
                     )
                     await session.commit()
             except Exception:
