@@ -21,8 +21,7 @@ from collections.abc import AsyncIterator, Mapping  # noqa: TC003
 from os import environ
 from typing import TYPE_CHECKING, cast
 
-import httpx2
-from openai import AsyncOpenAI, Omit, omit
+from openai import AsyncOpenAI, Omit, Timeout, omit
 
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.vendor import needs_api_key
@@ -33,12 +32,13 @@ if TYPE_CHECKING:
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
-TIMEOUT = httpx2.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
+TIMEOUT = Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
 """Reading waits: a completion streams for as long as the model takes.
 
-``httpx2`` is the SDK's own HTTP layer — the same timeout object it hands its
-client — so the split-second connect bound and the patient read bound of the
-hand-rolled era both survive the swap.
+``Timeout`` is the SDK's own re-export of its HTTP layer's type — the same
+object it hands its client — so the split-second connect bound and the patient
+read bound of the hand-rolled era both survive the swap, and the module stays
+inside the SDK's public surface.
 """
 
 _NO_KEY = "narrare-no-key-configured"
@@ -50,7 +50,7 @@ _KEYLESS_HEADERS: Mapping[str, Omit] = {"Authorization": Omit()}
 
 
 def client_for(
-    base_url: str, api_key: str, *, timeout: float | httpx2.Timeout | None = None
+    base_url: str, api_key: str, *, timeout: float | Timeout | None = None
 ) -> AsyncOpenAI:
     """One SDK client aimed at the endpoint, with the adapter's two invariants.
 
