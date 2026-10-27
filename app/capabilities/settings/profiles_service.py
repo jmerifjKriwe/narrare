@@ -95,7 +95,12 @@ class ProfileService:
         """
         base_url = payload.base_url.rstrip("/") if payload.base_url else None
         self._gate(
-            kind=payload.kind, base_url=base_url, model=payload.model, has_key=bool(payload.api_key)
+            kind=payload.kind,
+            base_url=base_url,
+            model=payload.model,
+            has_key=bool(payload.api_key),
+            context_window=payload.context_window,
+            max_output_tokens=payload.max_output_tokens,
         )
         profiles = self._profiles()
         # Before the flush: the first profile is what makes the new one the
@@ -139,12 +144,22 @@ class ProfileService:
             else profile.base_url
         )
         model = payload.model if "model" in set_fields else profile.model
+        context_window = (
+            payload.context_window if "context_window" in set_fields else profile.context_window
+        )
+        max_output_tokens = (
+            payload.max_output_tokens
+            if "max_output_tokens" in set_fields
+            else profile.max_output_tokens
+        )
         stored_a_key = bool(profile.api_key) or profile.api_key_hint is not None
         self._gate(
             kind=profile.kind,
             base_url=base_url,
             model=model,
             has_key=bool(payload.api_key) or stored_a_key,
+            context_window=context_window,
+            max_output_tokens=max_output_tokens,
         )
         if payload.is_default is False:
             raise ProfileRefusedError(
@@ -285,14 +300,26 @@ class ProfileService:
         await self.session.commit()
         return assignment
 
-    def _gate(self, *, kind: str, base_url: str | None, model: str | None, has_key: bool) -> None:
+    def _gate(
+        self,
+        *,
+        kind: str,
+        base_url: str | None,
+        model: str | None,
+        has_key: bool,
+        context_window: int | None,
+        max_output_tokens: int | None,
+    ) -> None:
         """Refuse a configuration that could never answer, naming the fields.
 
         ``openai-chat`` needs a ``model``, an ``api_key`` when the endpoint is
-        remote (a local server may answer without one), and an ``https://``
-        endpoint whenever the key would cross the network — a remote ``http://``
-        address would carry the bearer credential in cleartext. Broken config
-        never reaches a model call (design, the settings surface).
+        remote (a local server may answer without one), an ``https://`` endpoint
+        whenever the key would cross the network — a remote ``http://`` address
+        would carry the bearer credential in cleartext — and an output
+        reservation that leaves room for input (``max_output_tokens`` below
+        ``context_window`` whenever both are known; the allocator still clamps
+        for catalog-merged pairs). Broken config never reaches a model call
+        (design, the settings surface).
         """
         if kind != "openai-chat":
             return
@@ -304,6 +331,12 @@ class ProfileService:
             fields.append("api_key")
         if needs_api_key(endpoint) and not endpoint.lower().startswith("https://"):
             fields.append("base_url")
+        if (
+            context_window is not None
+            and max_output_tokens is not None
+            and max_output_tokens >= context_window
+        ):
+            fields.append("max_output_tokens")
         if fields:
             raise ProfileRefusedError(
                 tuple(fields),

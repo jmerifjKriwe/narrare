@@ -300,6 +300,49 @@ async def test_a_patch_cannot_clear_the_name() -> None:
         assert (await client.get("/api/settings/profiles")).json()[0]["name"] == "Bleibt"
 
 
+async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> None:
+    """``max_output_tokens`` must stay below ``context_window`` when both are set.
+
+    Equality leaves a zero input budget and greater-than a negative one; the gate
+    refuses both where the pair is known, so the allocator only ever sees ordered
+    pairs (a catalog-merged degenerate pair is the allocator's clamp, WP2b).
+    """
+    payload = {
+        "name": "Grenze",
+        "kind": "openai-chat",
+        "base_url": "http://127.0.0.1:9/v1",
+        "model": "vendor-mini",
+        "api_key": SECRET,
+    }
+    async with _client() as client:
+        equal = await client.post(
+            "/api/settings/profiles",
+            json={**payload, "context_window": 1000, "max_output_tokens": 1000},
+        )
+        assert equal.status_code == 422
+        assert "max_output_tokens" in equal.text
+
+        greater = await client.post(
+            "/api/settings/profiles",
+            json={**payload, "context_window": 1000, "max_output_tokens": 2000},
+        )
+        assert greater.status_code == 422
+        assert "max_output_tokens" in greater.text
+
+        ordered = await client.post(
+            "/api/settings/profiles",
+            json={**payload, "context_window": 1000, "max_output_tokens": 200},
+        )
+        assert ordered.status_code == 201, ordered.text
+
+        # Shrinking the window under the stored reservation is the same refusal.
+        patched = await client.patch(
+            f"/api/settings/profiles/{ordered.json()['id']}", json={"context_window": 150}
+        )
+        assert patched.status_code == 422
+        assert "max_output_tokens" in patched.text
+
+
 async def test_the_connection_test_hits_the_vendor_and_audits_settings_test() -> None:
     """One cheap completion against the endpoint, one ``settings.test`` audit row."""
     with chat_vendor() as vendor:
