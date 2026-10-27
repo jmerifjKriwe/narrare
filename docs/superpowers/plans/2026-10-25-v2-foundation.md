@@ -359,6 +359,20 @@ masked key round-trip; delete guard on the default profile.
 Embedding-provider profiles (env-based; re-embed handles switches), hosted auth,
 per-request overrides beyond task keys.
 
+### 5.9 As built, 2026-10-27 (WP2a)
+
+WP2 was split into WP2a and WP2b (D1): WP2a ships the profiles, the keychain
+(keyring → `NARRE_SECRET_KEY` Fernet → named refusal), the vendored catalog
+with the cost truth table, per-request resolution with the audit naming the
+profile, the `openai`-SDK adapter, the settings HTTP surface and this section's
+E2E (`app/capabilities/settings/e2e/test_profiles_e2e.py`). WP2b keeps the
+context allocator and continuation assembly. `/settings` was pulled forward
+from WP5 (D2): the route with Sprache and Provider sections and the top-bar
+gear landed here. D3–D8 and the rest of the WP2a decisions live in
+`docs/superpowers/specs/2026-10-26-wp2a-providers-catalog-settings-design.md`,
+which is the record; of this section, §5.4's `chars_per_token` moved to WP2b as
+a kernel constant instead of a profile column (D8).
+
 ---
 
 ## 6. WP3 — Markdown, demo, export
@@ -459,8 +473,9 @@ template is refused at save time.
 
 ### 8.1 Settings route
 
-`/settings` with `web/routes.tsx`; `capability.yaml` gains the path, `nav: false`
-(the gear in the top bar links to it). Sections: language, providers, prompts.
+Landed in WP2a (§5.9): `/settings` exists, with the language and provider
+sections, and the top bar's gear links to it. What stays for WP5 is the
+prompts section and its coherence with the page.
 
 ### 8.2 Palette
 
