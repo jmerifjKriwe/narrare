@@ -33,14 +33,15 @@ has none of it — this design rebuilds it on v2 data.
   rule: every slice takes its floor, the remainder goes to the immediate-text slice,
   and a slice whose floor is zero stays zero — it is omitted at assembly time, never
   given free space (a small window loses style hints before it distorts the ratio).
-  The window arithmetic **clamps at zero**: `max(0, context_window −
-  max_output_tokens)` — equality yields a zero input budget (all four slices zero,
-  the prompt carries no context, which is deterministic and legal), greater-than
-  clamps identically instead of going negative, so the "no negative slice" invariant
-  holds by construction. WP2a's gate refuses a both-set pair where
-  `max_output_tokens ≥ context_window` (shipped), so the clamp is the defence for
-  catalog/default-merged pairs; T1's property tests pin equality, greater-than and
-  an ordered pair. The output reservation is not part of the input budget, so the
+  The window arithmetic **refuses a zero-room pair**: after the profile/catalog merge,
+  `max_output_tokens >= context_window` raises `BudgetImpossibleError` naming the
+  effective pair and the model — no clamp and no zero-input budget, because a
+  continuation with no input room is not a usable call; the writing router maps the
+  error to its one-frame error response (the `KeyUnavailableError` precedent), so the
+  user sees why. The settings gate already refuses a both-set pair (shipped); this
+  boundary check catches the catalog/profile merges the gate cannot see. The
+  no-negative-slice invariant therefore holds by construction, and the reservation
+  sent as `max_tokens` is always below `context_window`. The output reservation is not part of the input budget, so the
   input never exceeds `context_window − max_output_tokens`. **The reservation
   reaches the wire unconditionally:** continuation always sends `max_tokens` — the
   profile's `max_output_tokens`, or the 1 024 fallback when it is unset — so the
@@ -123,13 +124,15 @@ asserted on `LlmCall.prompt_text`, not on prose.
    - **T1** `kernel/context.py` allocator: budgets, defaults, token↔char; property
      tests (`hypothesis`, accepted in §2): the four integer budgets sum exactly to
      `floor((context_window − max_output_tokens) × chars_per_token)` on ordered
-     pairs, equality yields a zero input budget, greater-than clamps to zero (never
-     negative), no slice negative, zero-floor slices stay zero and are omitted at
-     assembly, one unset limit falls back alone, and a tiny window degrades
+     pairs, equality and greater-than are refused with `BudgetImpossibleError`
+     (never clamped), no slice negative, zero-floor slices stay zero and are omitted
+     at assembly, one unset limit falls back alone, and a tiny window degrades
      deterministically.
    - **T2** Assembly in writing: reference scan, predecessor tails, style hints; the
      rebuilt prompt; unit tests over fixture novels (entities found by alias,
-     case-insensitive; predecessor order nearest-first; slice fill stops at budget).
+     case-insensitive; predecessor order nearest-first; slice fill stops at budget;
+     **a catalog/profile merge where the catalog's window falls below the profile's
+     reservation is refused by name**).
    - **T3** Wiring: profile facts flow into the request (`temperature` when set;
      `max_tokens` always — the effective reservation); `NARRE_CONTEXT_CHARS`
      deleted; existing continuation tests green.
@@ -154,10 +157,10 @@ asserted on `LlmCall.prompt_text`, not on prose.
   in characters, not a token guarantee.
 - **D7 — Missing limits:** each unset limit falls back to its default independently
   (8 192 / 1 024); the allocator never receives `None`.
-- **D8 — Zero-room boundary:** the input budget is `max(0, context_window −
-  max_output_tokens)`; equality is a legal zero budget, greater-than clamps to zero,
-  and WP2a's gate refuses a both-set pair where the reservation does not fit — the
-  clamp covers catalog/default-merged pairs only.
+- **D8 — Zero-room boundary:** a merged pair with `max_output_tokens >=
+  context_window` is refused (`BudgetImpossibleError`, naming the pair), never
+  clamped — a zero-token window is not a usable continuation. The profile gate
+  refuses both-set pairs; the boundary catches catalog/profile merges.
 
 ## Left to the builder
 
