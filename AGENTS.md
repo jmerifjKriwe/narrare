@@ -34,6 +34,15 @@ the capability's E2E. A gate counts only when its output was read.
 
 `just --list` is the whole command surface: 21 recipes, no hidden gates.
 
+## Follow-ups
+
+`docs/superpowers/follow-ups.md` is the one list of findings that survive an
+implementation. After the final review's triage and its fix wave, before the
+branch merges, append every still-open finding — mostly minors — as one row:
+topic, the trigger that makes it bite, where it lives, severity and origin.
+Entries are never deleted; a fix closes the row with its commit. Nothing is
+dropped for being minor.
+
 ## Plan mode
 
 Plan mode loads the `brainstorming` skill before the first design question. Its
