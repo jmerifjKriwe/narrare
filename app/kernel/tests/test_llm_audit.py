@@ -21,6 +21,7 @@ from app.kernel.llm.audit import CAP, audited_stream, record_call
 from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.models import LlmCall
+from app.kernel.llm.resolution import ResolvedProvider
 
 LLM_CALL_COLUMNS = {
     "id",
@@ -62,6 +63,22 @@ def test_the_jobs_and_contracts_tables_are_still_registered() -> None:
 
 OWNER = uuid4()
 PROFILE = uuid4()
+
+
+def _resolved(provider: _ScriptedProvider | _RaisingAfterDoneProvider) -> ResolvedProvider:
+    """A fake-tier resolved carrier for a scripted provider, what these tests stream."""
+    return ResolvedProvider(
+        provider=provider,
+        profile_id=PROFILE,
+        kind="fake",
+        model="fake",
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
 
 
 @pytest.fixture
@@ -184,7 +201,7 @@ async def _record_priced(base_url: str) -> None:
             model="acme/turbo-3",
             latency_ms=120,
             status="ok",
-            prompt_text="Weiter",
+            prompt_text="Continue",
             response_text="[]",
             input_tokens=1_000,
             output_tokens=2_000,
@@ -274,7 +291,10 @@ async def test_audited_stream_audits_a_drained_call_as_ok() -> None:
     events = [
         event
         async for event in audited_stream(
-            provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+            _resolved(provider),
+            CompletionRequest.user("Continue"),
+            user_id=OWNER,
+            task_key="test.stream",
         )
     ]
     assert events[-1] is DONE
@@ -287,7 +307,10 @@ async def test_audited_stream_records_ok_when_the_consumer_stops_at_done() -> No
     """DONE is the terminal event: a consumer that stops there ended cleanly."""
     provider = _ScriptedProvider((Delta(text="part "), DONE))
     stream = audited_stream(
-        provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+        _resolved(provider),
+        CompletionRequest.user("Continue"),
+        user_id=OWNER,
+        task_key="test.stream",
     )
     async for event in stream:
         if event is DONE:
@@ -307,7 +330,10 @@ async def test_audited_stream_records_the_usage_refusal_in_the_error_column() ->
         ),
     )
     stream = audited_stream(
-        provider, CompletionRequest.user("Weiter"), user_id=OWNER, task_key="test.stream"
+        _resolved(provider),
+        CompletionRequest.user("Continue"),
+        user_id=OWNER,
+        task_key="test.stream",
     )
     with pytest.raises(ValueError):
         async for _ in stream:
@@ -331,8 +357,8 @@ class _RaisingAfterDoneProvider(_ScriptedProvider):
 async def test_a_raise_after_done_is_an_error_row_not_a_contradiction() -> None:
     """A provider that fails after its terminal event is recorded as failed."""
     stream = audited_stream(
-        _RaisingAfterDoneProvider((), fail=None),
-        CompletionRequest.user("Weiter"),
+        _resolved(_RaisingAfterDoneProvider((), fail=None)),
+        CompletionRequest.user("Continue"),
         user_id=OWNER,
         task_key="test.stream",
     )

@@ -24,7 +24,8 @@ from app.kernel.contracts.models import Chunk, Document
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
-from app.kernel.llm import FakeProvider
+from app.kernel.llm.contract import TextProvider  # noqa: TC001  the helper's parameter
+from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 
@@ -32,6 +33,22 @@ pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
 PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
+
+
+def _resolved(provider: TextProvider) -> ResolvedProvider:
+    """A fake-tier resolved carrier for a stand-in provider the tests inject."""
+    return ResolvedProvider(
+        provider=provider,
+        profile_id=None,
+        kind="fake",
+        model="fake",
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
 
 
 @pytest.mark.parametrize("fail", [False, True])
@@ -42,7 +59,7 @@ async def test_audit_failure_does_not_truncate_the_response(
     provider = StreamProbeProvider(fail=fail)
     # This user does not exist: the audit's real database commit must fail.
     response = FinalizingStreamingResponse(
-        _events(provider, "audit-private-prompt", [], uuid4()),
+        _events(_resolved(provider), "audit-private-prompt", [], uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -75,7 +92,7 @@ async def test_audit_failure_does_not_replace_a_disconnect(
     waiting = Event() if interruption == "waiting" else None
     provider = StreamProbeProvider(waiting=waiting)
     response = FinalizingStreamingResponse(
-        _events(provider, "question", [], uuid4()),
+        _events(_resolved(provider), "question", [], uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -109,7 +126,7 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
     waiting = Event() if frame == "waiting" else None
     provider = StreamProbeProvider(fail=frame == "event: error", waiting=waiting)
     response = FinalizingStreamingResponse(
-        _events(provider, "question", [], LOCAL_USER_ID),
+        _events(_resolved(provider), "question", [], LOCAL_USER_ID),
         media_type="text/event-stream",
         headers={},
     )
@@ -148,9 +165,7 @@ async def test_the_route_hands_back_the_finalizing_response() -> None:
     await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
     async with Session() as session:
         service = ChatService(session, LOCAL_USER_ID, FakeEmbeddingProvider())
-        response = await ask(
-            ChatRequest(question="Wo war der Leuchtturm?"), service, FakeProvider(), LOCAL_USER_ID
-        )
+        response = await ask(ChatRequest(question="Wo war der Leuchtturm?"), service, LOCAL_USER_ID)
     assert isinstance(response, FinalizingStreamingResponse)
 
 

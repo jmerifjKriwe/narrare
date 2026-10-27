@@ -10,8 +10,8 @@ the ``CompletionRequest`` shape every consumer builds.
 
 import json
 
-from app.kernel.llm import FakeProvider
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
+from app.kernel.llm.fake import FakeProvider
 
 
 async def _events(prompt: str) -> list[CompletionEvent]:

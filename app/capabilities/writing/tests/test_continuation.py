@@ -10,8 +10,10 @@ from anyio import Event
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
+from app.capabilities.writing import router as writing_router
 from app.capabilities.writing.prompts import continuity_prompt
 from app.capabilities.writing.router import (
     _continuation_events,  # pyright: ignore[reportPrivateUsage]  test the stream's finalizer
@@ -21,14 +23,31 @@ from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm import FakeProvider, get_provider
-from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta
+from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta, TextProvider
+from app.kernel.llm.fake import FakeProvider
+from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
 
 pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
+
+
+def _resolved(provider: TextProvider) -> ResolvedProvider:
+    """A fake-tier resolved carrier for a stand-in provider the tests inject."""
+    return ResolvedProvider(
+        provider=provider,
+        profile_id=None,
+        kind="fake",
+        model="fake",
+        context_window=None,
+        max_output_tokens=None,
+        temperature=None,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
 
 
 @pytest.mark.parametrize("fail", [False, True])
@@ -39,7 +58,7 @@ async def test_audit_failure_does_not_truncate_the_response(
     provider = StreamProbeProvider(fail=fail)
     # This user does not exist: the audit's real database commit must fail.
     response = FinalizingStreamingResponse(
-        _continuation_events(provider, "audit-private-prompt", uuid4(), uuid4()),
+        _continuation_events(_resolved(provider), "audit-private-prompt", uuid4(), uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -74,7 +93,7 @@ async def test_audit_failure_does_not_replace_a_disconnect(
     waiting = Event() if interruption == "waiting" else None
     provider = StreamProbeProvider(waiting=waiting)
     response = FinalizingStreamingResponse(
-        _continuation_events(provider, "question", uuid4(), uuid4()),
+        _continuation_events(_resolved(provider), "question", uuid4(), uuid4()),
         media_type="text/event-stream",
         headers={},
     )
@@ -111,7 +130,7 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
     provider = StreamProbeProvider(fail=frame == "event: error", waiting=waiting)
     novel_id = uuid4()
     response = FinalizingStreamingResponse(
-        _continuation_events(provider, "question", novel_id, LOCAL_USER_ID),
+        _continuation_events(_resolved(provider), "question", novel_id, LOCAL_USER_ID),
         media_type="text/event-stream",
         headers={},
     )
@@ -232,15 +251,18 @@ class _DyingProvider:
         raise RuntimeError("the provider died")
 
 
-async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure() -> None:
+async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verify partial provider output is preserved with an error event and a failed audit."""
-    app.dependency_overrides[get_provider] = lambda: _DyingProvider()
-    try:
-        async with _client() as client:
-            chapter_id = await _create_chapter(client)
-            response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
-    finally:
-        app.dependency_overrides.clear()
+
+    async def _dying(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return _resolved(_DyingProvider())
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _dying)
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
     assert _deltas(response.text) == ["Halb"]  # what arrived, arrived
@@ -265,7 +287,7 @@ async def test_the_route_hands_back_the_finalizing_response() -> None:
         chapter_id = await _create_chapter(client)
     async with Session() as session:
         service = WritingService(session, LOCAL_USER_ID)
-        response = await continue_chapter(UUID(chapter_id), service, FakeProvider(), LOCAL_USER_ID)
+        response = await continue_chapter(UUID(chapter_id), service, LOCAL_USER_ID)
     assert isinstance(response, FinalizingStreamingResponse)
 
 

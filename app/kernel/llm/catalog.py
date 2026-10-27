@@ -8,6 +8,7 @@ table (design D4) turns what the catalog knows into what a call cost.
 """
 
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from json import loads
 from pathlib import Path
 
@@ -35,8 +36,15 @@ class ModelInfo:
     supports_vision: bool
 
 
+@lru_cache(maxsize=1)
 def load_catalog() -> dict[str, ModelInfo]:
-    """Every vendored model, keyed by its full ``vendor/model`` id."""
+    """Every vendored model, keyed by its full ``vendor/model`` id.
+
+    Parsed once per process: the snapshot is static and 2.5 MB, and the
+    resolver's per-call lookups must not re-read it. Tests that need their
+    own snapshot replace this module attribute, which the cache never hides.
+    The shared dict is read-only to its callers — treat it as such.
+    """
     payload = loads(SNAPSHOT.read_text())
     return {model_id: ModelInfo(**entry) for model_id, entry in payload["models"].items()}
 

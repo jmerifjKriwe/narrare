@@ -204,3 +204,13 @@ def test_the_snapshot_carries_a_date_and_at_least_one_price() -> None:
         info.input_price_per_mtok is not None and info.output_price_per_mtok is not None
         for info in load_catalog().values()
     )
+
+
+def test_the_snapshot_is_parsed_once_per_process() -> None:
+    """Verify the catalog is cached: the second read returns the first's own object.
+
+    The resolver and the audit look the catalog up per call, and the snapshot
+    is 2.5 MB of static JSON — re-parsing it per call would price every row
+    with a file read.
+    """
+    assert load_catalog() is load_catalog()

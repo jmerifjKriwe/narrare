@@ -11,11 +11,11 @@ moment it happens.
 from logging import getLogger
 
 from app.kernel.embeddings import get_embedding_provider
-from app.kernel.llm import get_provider
+from app.kernel.llm.resolution import environment_provider
 
 
 def validate_configuration() -> None:
-    text = get_provider()
+    text = environment_provider().provider
     embeddings = get_embedding_provider()
     for boundary, provider in (("llm", text), ("embedding", embeddings)):
         problems = provider.configuration_problems()

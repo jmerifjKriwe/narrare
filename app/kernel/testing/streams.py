@@ -7,8 +7,8 @@ import pytest
 from anyio import Event, sleep_forever
 from starlette.requests import ClientDisconnect
 
-from app.kernel.llm import FakeProvider
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
+from app.kernel.llm.fake import FakeProvider
 
 if TYPE_CHECKING:
     from starlette.responses import StreamingResponse

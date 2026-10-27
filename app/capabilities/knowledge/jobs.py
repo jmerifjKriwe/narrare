@@ -27,8 +27,9 @@ from app.capabilities.knowledge.repository import (
     EntitySuggestionRepository,
 )
 from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
-from app.kernel.llm import get_provider, provider_facts
 from app.kernel.llm.audit import record_call
+from app.kernel.llm.catalog import effective_info
+from app.kernel.llm.resolution import resolve_provider
 
 from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
@@ -316,7 +317,12 @@ async def extract_entities(
     body = chapter.body
     truncated = len(body) > BODY_LIMIT
     prompt = extraction_prompt(chapter_title=chapter.title, body=body[:BODY_LIMIT])
-    kind, model = provider_facts()
+    resolved = await resolve_provider(session, job.user_id, "knowledge.extract-entities")
+    info = effective_info(
+        resolved.model,
+        profile_context_window=resolved.context_window,
+        profile_max_output_tokens=resolved.max_output_tokens,
+    )
 
     async def audit(call: AuditedCall) -> None:
         # The audit row rides the handler's terminal commit with the rows it
@@ -328,8 +334,8 @@ async def extract_entities(
             session,
             user_id=job.user_id,
             task_key="knowledge.extract-entities",
-            provider_kind=kind,
-            model=model,
+            provider_kind=resolved.kind,
+            model=resolved.model,
             latency_ms=call.latency_ms,
             status="ok",
             prompt_text=call.prompt,
@@ -337,10 +343,13 @@ async def extract_entities(
             input_tokens=call.usage.input_tokens if call.usage else None,
             output_tokens=call.usage.output_tokens if call.usage else None,
             novel_id=chapter.novel_id,
+            profile_id=resolved.profile_id,
+            base_url=resolved.base_url,
+            info=info,
         )
 
     entities = await ask_structured(
-        get_provider(),
+        resolved.provider,
         prompt,
         schema=ENTITIES_SCHEMA,
         parse=parse_entities,
@@ -438,7 +447,12 @@ async def check_consistency(
 
     canon = [(entity.name, entity.type) for entity in entities]
     groups, skipped = _chapter_groups(chapters)
-    kind, model = provider_facts()
+    resolved = await resolve_provider(session, job.user_id, "knowledge.check-consistency")
+    info = effective_info(
+        resolved.model,
+        profile_context_window=resolved.context_window,
+        profile_max_output_tokens=resolved.max_output_tokens,
+    )
 
     async def audit(call: AuditedCall) -> None:
         # One row per pass, riding the terminal commit with the findings: a
@@ -448,8 +462,8 @@ async def check_consistency(
             session,
             user_id=job.user_id,
             task_key="knowledge.check-consistency",
-            provider_kind=kind,
-            model=model,
+            provider_kind=resolved.kind,
+            model=resolved.model,
             latency_ms=call.latency_ms,
             status="ok",
             prompt_text=call.prompt,
@@ -457,6 +471,9 @@ async def check_consistency(
             input_tokens=call.usage.input_tokens if call.usage else None,
             output_tokens=call.usage.output_tokens if call.usage else None,
             novel_id=novel_id,
+            profile_id=resolved.profile_id,
+            base_url=resolved.base_url,
+            info=info,
         )
 
     findings: list[ParsedFinding] = []
@@ -472,7 +489,7 @@ async def check_consistency(
             chapters=[(chapter.title, chapter.body) for chapter in group],
         )
         found = await ask_structured(
-            get_provider(),
+            resolved.provider,
             prompt,
             schema=FINDINGS_SCHEMA,
             parse=parse_findings,
