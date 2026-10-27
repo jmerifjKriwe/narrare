@@ -8,15 +8,15 @@ assigned in entry order; `Opened` records when the finding was found. A `—` in
 
 | ID | Opened | Topic | Trigger | Where | Severity | Origin | Status |
 |---|---|---|---|---|---|---|---|
-| F-01 | 2026-10-27 | `settings.test` assignment has no effect | A profile other than the clicked one is assigned to `settings.test`; Test probes the clicked profile, not the assignee — the key is audit-only | `app/capabilities/settings/web/ProvidersPanel.tsx:83-95` | minor | WP2a final review | open |
-| F-02 | 2026-10-27 | `base_url` syntax unvalidated | `base_url: "not-a-url"` saves with 200 and fails at call time as a failed test or an error frame, never a 422 | `app/capabilities/settings/profiles_service.py:147-155` | minor | WP2a final review | open |
+| F-01 | 2026-10-27 | `settings.test` assignment has no effect | A profile other than the clicked one is assigned to `settings.test`; Test probes the clicked profile, not the assignee — the key is audit-only | `app/capabilities/settings/web/ProvidersPanel.tsx:83-95` | minor | WP2a final review | closed faf0808e |
+| F-02 | 2026-10-27 | `base_url` syntax unvalidated | `base_url: "not-a-url"` saves with 200 and fails at call time as a failed test or an error frame, never a 422 | `app/capabilities/settings/profiles_service.py:147-155` | minor | WP2a final review | closed faf0808e |
 | F-03 | 2026-10-27 | Catalog scans on every non-exact lookup | An unknown or prefix model id sorts ~9k keys per lookup, four sorts per audited call | `app/kernel/llm/catalog.py:111-126` | minor | WP2a final review | open |
 | F-04 | 2026-10-27 | `for_prefix` LIKE wildcard | A task key containing `%` or `_` reaches the LIKE wildcard; callers pass hardcoded constants today | `app/kernel/llm/profiles.py:239` | minor | WP2a T1 review | open |
 | F-05 | 2026-10-27 | Malformed catalog snapshot | A damaged `models.json` from a bad manual refresh raises bare `KeyError`/`TypeError` at the first lookup | `app/kernel/llm/catalog.py` (`load_catalog`) | minor | WP2a T2 review | open |
 | F-06 | 2026-10-27 | Duplicated error and merge helpers | `_error_events` and the `effective_info` merge are copied per consumer; a change in one copy drifts from the other | `app/capabilities/{writing,chat}` handlers, `app/kernel/llm/audit.py`, jobs | minor | WP2a T3 review | open |
 | F-07 | 2026-10-27 | Mutable catalog | `load_catalog` returns a plain dict; a caller mutation leaks into every later lookup, forbidden only by docstring | `app/kernel/llm/catalog.py` | minor | WP2a T3 review | open |
 | F-08 | 2026-10-27 | Usage comment contradicts code | `openai_chat.py:180-182` says usage takes precedence while the code yields both; unreachable in practice | `app/kernel/llm/openai_chat.py:180-182` | minor | WP2a T4 review | open |
-| F-09 | 2026-10-27 | PATCH `name: null` returns 500 | A hand-crafted `PATCH` with a null name raises `IntegrityError` → 500 instead of 422; the UI cannot send it | `app/capabilities/settings/router.py`, `profiles_service.py` | minor | WP2a T4 review | open |
+| F-09 | 2026-10-27 | PATCH `name: null` returns 500 | A hand-crafted `PATCH` with a null name raises `IntegrityError` → 500 instead of 422; the UI cannot send it | `app/capabilities/settings/router.py`, `profiles_service.py` | minor | WP2a T4 review | closed faf0808e |
 | F-10 | 2026-10-27 | Keyring write precedes commit | A failed commit after the keyring write leaves a stored secret with no row; the ordering is undocumented | `app/capabilities/settings/profiles_service.py` | minor | WP2a T4 review | open |
 | F-11 | 2026-10-27 | Concurrent creates both default | Two creates racing both set the default; unreachable for a local single-user instance | `app/capabilities/settings/profiles_service.py` | minor | WP2a T4 review | open |
 | F-12 | 2026-10-27 | Secondary actions fail silently | A transport failure on test or assign renders nothing; server-reachable failures do render | `app/capabilities/settings/web/ProvidersPanel.tsx` | minor | WP2a T5 review | open |
@@ -45,13 +45,14 @@ assigned in entry order; `Opened` records when the finding was found. A `—` in
 | F-35 | 2026-10-26 | `str()` coercion of corrupt proposals | `None`-typed proposals coerce to "None"; unreachable because the parse refuses non-strings. Re-open only if parsing loosens. | `—` | minor | WP1 final review | parked |
 | F-36 | 2026-10-26 | `IntegrityError` fallbacks mislabel non-unique | Deadlocks are not `IntegrityError`, so the fallback labels them as absence; unreachable today. Re-open if the error mapping changes. | `—` | minor | WP1 final review | parked |
 | F-37 | 2026-10-26 | `_resolve_proposals` 500 on a corrupt row | Unreachable; the parse refuses the row first. Re-open if parsing loosens. | `—` | minor | WP1 final review | parked |
-| F-38 | 2026-10-26 | `add_relation` and Accept discriminate one constraint differently | The two paths handle the same constraint differently. Re-open if a free-text type path appears. | `—` | minor | WP1 final review | parked |
+| F-38 | 2026-10-26 | `add_relation` and Accept discriminate one constraint differently | The two paths handle the same constraint differently. Re-open if a path with a free-text type appears. | `—` | minor | WP1 final review | parked |
 | F-39 | 2026-10-26 | Fake candidate "Der" | Ruling-accepted fake output. Re-open only if fake behavior changes. | `—` | minor | WP1 final review | parked |
 | F-40 | 2026-10-26 | `entityTypeLabel` shares the prototype slot | Unreachable because types are validated. Re-open if free-text types are allowed. | `—` | minor | WP1 final review | parked |
 | F-41 | 2026-10-26 | Direct-API note `""` stored verbatim | Backend normalization is out of scope. Re-open if a new consumer normalizes notes. | `—` | minor | WP1 final review | parked |
 | F-42 | 2026-10-26 | Relations key without `novelId` | Entity UUIDs are global and the server scopes reads. Re-open with a new consumer of the key. | `—` | minor | WP1 final review | parked |
 | F-43 | 2026-10-26 | Missing relations pending state | Cosmetic; no spinner while relations load. Re-open if the load becomes user-visible. | `—` | minor | WP1 final review | parked |
 | F-44 | 2026-10-26 | E2E does not pin announced-once, queue order, the eight-type filter or merge fold | Covered unit- and API-side; an E2E regression would be silent. Re-open when the E2E covers the extraction surface. | `—` | minor | WP1 final review | parked |
+| F-45 | 2026-10-27 | The task list hides prefix inheritance | A task without an exact assignment shows "Automatic" while resolution can serve a sibling's prefix assignment; the copy no longer claims the default, but the page still does not show the effective provider | `app/capabilities/settings/web/ProvidersPanel.tsx`, `app/kernel/llm/resolution.py` | minor | CodeRabbit PR #296 | open |
 
 A row closes by setting `Status` to `closed <sha>`; the fix commit is the evidence.
 `parked` means decided; the re-open condition is in `Trigger`.

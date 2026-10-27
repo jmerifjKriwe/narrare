@@ -24,20 +24,30 @@ has none of it — this design rebuilds it on v2 data.
 - **`app/kernel/context.py`, one allocator:** input is the resolved profile's
   `context_window` and `max_output_tokens`; `chars_per_token` is a **kernel constant
   in this module** (default **3.5** — German is token-hungry; not a profile field,
-  WP2a D8). Output is a named character budget per slice: the four budgets sum to
-  `(context_window − max_output_tokens) × chars_per_token` — the output reservation
-  is not part of the input budget, so input + output never exceed the real window
-  (the anti-goal). Defaults when no profile resolves (environment tier, fake):
-  `context_window` 8 192, `max_output_tokens` 1 024. The allocator is pure: same
-  inputs, same budgets. Prompt scaffolding (section headings, title lines, the
-  instruction) counts inside its slice — nothing rides free.
+  WP2a D8). Output is a named character budget per slice. The budgets are **derived
+  in characters and are an estimate, not a token guarantee**: real token counts vary
+  by tokenizer, model and content, so the arithmetic keeps the margin implicit in
+  3.5 rather than claiming exact token accounting (a provider-specific tokenizer is
+  the trigger to revisit). The four budgets sum to
+  `floor((context_window − max_output_tokens) × chars_per_token)` under one integer
+  rule: every slice takes its floor, the remainder goes to the immediate-text slice,
+  and a slice whose floor is zero stays zero — it is omitted at assembly time, never
+  given free space (a small window loses style hints before it distorts the ratio).
+  The output reservation is not part of the input budget, so input + output never
+  exceed the real window (the anti-goal). A profile carrying **one unset limit** gets
+  that limit's default alone (`context_window` 8 192, `max_output_tokens` 1 024) —
+  the allocator never receives `None`. The allocator is pure: same inputs, same
+  budgets. Prompt scaffolding (section headings, title lines, the instruction)
+  counts inside its slice — nothing rides free.
 - **Continuation slices, 60/25/10/5 (code defaults):**
   - *Immediate text (60 %):* the chapter tail, as today, but budget-bounded instead of
     `NARRE_CONTEXT_CHARS`-bounded.
   - *Referenced entities (25 %):* the novel's entities whose `name` or an alias
     appears **case-insensitively** in the immediate text; their Markdown bodies in
     order of first occurrence until the slice is full; a body that no longer fits
-    degrades to name + type rather than disappearing.
+    degrades to name + type; **if even that floor exceeds the remaining slice, the
+    entity is skipped** — the slice never overflows, and the skip is silent (the
+    budget is a bound, not a queue). A unit test pins both degradations.
   - *Recent chapters (10 %):* predecessors in `position` order, nearest first, their
     tails, until the slice is full.
   - *Style hints (5 %):* the novel's `genre` and `blurb`.
@@ -47,9 +57,11 @@ has none of it — this design rebuilds it on v2 data.
   continuation sends exactly what it sends today), and the D3 defaults feed only the
   budget arithmetic.
 - **The fake's `Usage` follows the constant:** the fake's `len // 4` divisor becomes
-  `len / chars_per_token` from `kernel/context.py` — the replacement WP0-A's plan
-  promised WP2 (kernel-internal import, no boundary crossing); the pinning test moves
-  with it.
+  integer division by the kernel constant — `int(len(text) / chars_per_token)` (floor,
+  the same integer rule) — because `Usage` carries integer counts and the audit stores
+  them as such; `compute_cost` never sees a fractional token count. The replacement
+  WP0-A's plan promised WP2 (kernel-internal import, no boundary crossing); the
+  pinning test moves with it.
 - **Boundary:** writing reads novels, chapters and entities through the kernel's scoped
   repository base over the shared `kernel/contracts` models — no capability import
   (the models are shared domain by construction; `ENTITY_TYPES` in contracts is the
@@ -96,9 +108,10 @@ asserted on `LlmCall.prompt_text`, not on prose.
 3. **Allocator + continuation assembly** — **chosen** (product owner, 2026-10-26).
    Tasks, house pattern:
    - **T1** `kernel/context.py` allocator: budgets, defaults, token↔char; property
-     tests (`hypothesis`, accepted in §2): the four char budgets sum exactly to
-     `(context_window − max_output_tokens) × chars_per_token`, no slice negative or
-     empty for sane windows.
+     tests (`hypothesis`, accepted in §2): the four integer budgets sum exactly to
+     `floor((context_window − max_output_tokens) × chars_per_token)`, no slice
+     negative, zero-floor slices stay zero and are omitted at assembly, one unset
+     limit falls back alone, and a tiny window degrades deterministically.
    - **T2** Assembly in writing: reference scan, predecessor tails, style hints; the
      rebuilt prompt; unit tests over fixture novels (entities found by alias,
      case-insensitive; predecessor order nearest-first; slice fill stops at budget).
@@ -119,12 +132,17 @@ asserted on `LlmCall.prompt_text`, not on prose.
   landed symbols (`ResolvedProvider` and its facts) from the tree, not from a design;
   the small-`context_window` E2E profile is created through the real settings form,
   which WP2a ships.
+- **D6 — Integer rule:** per-slice floor, remainder to the immediate-text slice,
+  zero-floor slices omitted at assembly (never padded); the arithmetic is an estimate
+  in characters, not a token guarantee.
+- **D7 — Missing limits:** each unset limit falls back to its default independently
+  (8 192 / 1 024); the allocator never receives `None`.
 
 ## Left to the builder
 
 - Prompt section wording (English prompt text) and slice headings.
-- Body degradation mechanics (name+type floor; hard cut at the budget, no sentence
-  surgery).
+- Body degradation mechanics (name+type floor, skip when the floor does not fit; hard
+  cut at the budget, no sentence surgery).
 - Unit vs E2E split; i18n surface is minimal (no new UI beyond what exists).
 
 ## Done criterion
@@ -135,7 +153,9 @@ assert on `LlmCall.prompt_text` that the referenced entity's name/body, a
 predecessor's tail and the genre are present. With a small-`context_window` profile
 the same prompt measurably shrinks (slice bounds hold — assert the prompt's section
 lengths against the computed budgets). Ghost text still streams; `assert_accessible`;
-`just verify` green. `NARRE_CONTEXT_CHARS` gone from the tree (`rg` clean).
+`just verify` green. `NARRE_CONTEXT_CHARS` gone from the **runtime source files**
+(`rg -n NARRE_CONTEXT_CHARS app web` clean; design and history documents may name
+it — this document does).
 
 ## Carry-forward
 
