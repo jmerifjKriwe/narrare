@@ -1,9 +1,9 @@
 """The LlmCall audit: the table, then the writer, then what handlers record.
 
 Plan §3.4: one row per provider call — prompt and answer capped at 64 KB,
-tokens, latency, status. cost_usd stays NULL until WP2's catalog prices it
-and no profile_id exists until a profile table does; the column set is pinned
-here so a drift fails at its first commit instead of in WP2's evidence.
+tokens, latency, status. cost_usd stays NULL until WP2's catalog prices it;
+the column set is pinned here so a drift fails at its first commit instead
+of in WP2's evidence.
 """
 
 from collections.abc import AsyncIterator  # noqa: TC003
@@ -25,6 +25,7 @@ LLM_CALL_COLUMNS = {
     "id",
     "user_id",
     "novel_id",
+    "profile_id",
     "task_key",
     "prompt_key",
     "provider_kind",
