@@ -1,9 +1,9 @@
 """The LlmCall audit: the table, then the writer, then what handlers record.
 
 Plan §3.4: one row per provider call — prompt and answer capped at 64 KB,
-tokens, latency, status. cost_usd stays NULL until WP2's catalog prices it;
-the column set is pinned here so a drift fails at its first commit instead
-of in WP2's evidence.
+tokens, latency, status, and the price the catalog's truth table computes.
+The column set is pinned here so a drift fails at its first commit instead
+of in later work's evidence.
 """
 
 from collections.abc import AsyncIterator  # noqa: TC003
@@ -18,6 +18,7 @@ from app.kernel.db.base import Base
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.audit import CAP, audited_stream, record_call
+from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.models import LlmCall
 
@@ -60,6 +61,7 @@ def test_the_jobs_and_contracts_tables_are_still_registered() -> None:
 
 
 OWNER = uuid4()
+PROFILE = uuid4()
 
 
 @pytest.fixture
@@ -148,8 +150,8 @@ async def test_exactly_the_cap_is_kept_whole_and_not_marked_truncated() -> None:
 
 @pytest.mark.usefixtures("a_user")
 async def test_a_short_call_is_kept_whole_with_a_null_cost() -> None:
-    """Verify short texts remain intact and unknown cost stays NULL."""
-    # D5, pinned: no catalog prices the call yet, and an unknown price is not
+    """Verify short texts remain intact and a caller without info stays NULL."""
+    # Pinned: the helper passes no catalog info, and an unknown price is not
     # a free call — NULL, never 0.
     await _record(prompt_text="PURPOSE: extract-entities", response_text="[]")
 
@@ -158,6 +160,58 @@ async def test_a_short_call_is_kept_whole_with_a_null_cost() -> None:
     assert row.response_text == "[]"
     assert row.truncated is False
     assert row.cost_usd is None
+
+
+ACME_TURBO = ModelInfo(
+    context_window=100_000,
+    max_output_tokens=4_096,
+    input_price_per_mtok=3.0,
+    output_price_per_mtok=15.0,
+    supports_json_schema=True,
+    supports_tools=True,
+    supports_vision=False,
+)
+
+
+async def _record_priced(base_url: str) -> None:
+    """Record one priced remote-style call carrying a profile id."""
+    async with Session() as session:
+        await record_call(
+            session,
+            user_id=OWNER,
+            task_key="chat.ask",
+            provider_kind="openai-chat",
+            model="acme/turbo-3",
+            latency_ms=120,
+            status="ok",
+            prompt_text="Weiter",
+            response_text="[]",
+            input_tokens=1_000,
+            output_tokens=2_000,
+            profile_id=PROFILE,
+            base_url=base_url,
+            info=ACME_TURBO,
+        )
+        await session.commit()
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_record_call_prices_a_priced_remote_call() -> None:
+    """Verify the catalog's Mtok sum and the profile id land on the row."""
+    await _record_priced("https://api.vendor.example/v1")
+
+    row = await _the_row()
+    assert row.cost_usd == pytest.approx(0.033)  # 1 000 * 3.0 + 2 000 * 15.0
+    assert row.profile_id == PROFILE
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_record_call_prices_a_local_call_at_zero() -> None:
+    """Verify a priced model on a local endpoint is recorded as free (D4)."""
+    await _record_priced("http://127.0.0.1:11434/v1")
+
+    row = await _the_row()
+    assert row.cost_usd == 0.0
 
 
 @pytest.mark.usefixtures("a_user")

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.db.session import Session
 from app.kernel.llm import provider_facts
+from app.kernel.llm.catalog import ModelInfo, compute_cost
 from app.kernel.llm.contract import (
     CompletionEvent,
     CompletionRequest,
@@ -58,6 +59,9 @@ async def record_call(
     novel_id: UUID | None = None,
     prompt_key: str | None = None,
     error: str | None = None,
+    profile_id: UUID | None = None,
+    base_url: str | None = None,
+    info: ModelInfo | None = None,
 ) -> None:
     """Add one audit row on the caller's session; the caller's commit lands it.
 
@@ -66,8 +70,10 @@ async def record_call(
     ``latency_ms`` is the caller's elapsed time in milliseconds; absent token
     counts remain NULL. This function neither flushes nor commits the session.
 
-    cost_usd is never set here: WP2's catalog prices the call, and until then
-    the column stays NULL — an unknown price is not a free call (D5).
+    The cost comes from the caller's facts: ``info`` is the catalog entry for
+    the model (None when no tier reaches it) and ``base_url`` decides
+    locality — a local endpoint is free, an unknown price stays NULL, never 0
+    (the truth table, design D4).
     """
     prompt_text, prompt_clipped = _capped(prompt_text)
     response_text, response_clipped = _capped(response_text)
@@ -87,6 +93,10 @@ async def record_call(
             prompt_key=prompt_key,
             error=error,
             truncated=prompt_clipped or response_clipped,
+            profile_id=profile_id,
+            cost_usd=compute_cost(
+                info, input_tokens=input_tokens, output_tokens=output_tokens, base_url=base_url
+            ),
         )
     )
 
