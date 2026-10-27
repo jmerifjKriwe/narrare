@@ -41,13 +41,12 @@ has none of it — this design rebuilds it on v2 data.
   `max_output_tokens ≥ context_window` (shipped), so the clamp is the defence for
   catalog/default-merged pairs; T1's property tests pin equality, greater-than and
   an ordered pair. The output reservation is not part of the input budget, so the
-  input never exceeds `context_window − max_output_tokens`. **What reaches the wire
-  is narrower than that bound:** continuation sends the reservation as `max_tokens`
-  when the profile sets `max_output_tokens`; when it is unset the request keeps
-  omitting the field (D3), the reservation remains a planning bound, and the
-  endpoint's own default output limit applies — so "input + reserved output never
-  exceed the window" holds only where the reservation is sent. Trigger to revisit:
-  an endpoint whose default output overruns the window. A profile carrying **one
+  input never exceeds `context_window − max_output_tokens`. **The reservation
+  reaches the wire unconditionally:** continuation always sends `max_tokens` — the
+  profile's `max_output_tokens`, or the 1 024 fallback when it is unset — so the
+  reserve that sized the input budget is also the output limit the endpoint
+  enforces, and input + reserved output never exceed the window (the anti-goal).
+  `temperature` is sent only when the profile sets it. A profile carrying **one
   unset limit** gets that limit's default alone (`context_window` 8 192,
   `max_output_tokens` 1 024) — the allocator never receives `None`. The allocator is
   pure: same inputs, same budgets. Prompt scaffolding (section headings, title
@@ -65,10 +64,11 @@ has none of it — this design rebuilds it on v2 data.
     tails, until the slice is full.
   - *Style hints (5 %):* the novel's `genre` and `blurb`.
 - **`NARRE_CONTEXT_CHARS` is deleted** from the tree; the allocator is the one context
-  path. Continuation sends `temperature`/`max_tokens` from the profile **when the
-  profile sets them** — unset fields stay absent from the request (an env-tier
-  continuation sends exactly what it sends today), and the D3 defaults feed only the
-  budget arithmetic.
+  path. Continuation sends `temperature` when the profile sets it, and **always**
+  sends `max_tokens` — the profile's `max_output_tokens` or the 1 024 fallback — so
+  the reserve is a wire cap, not a planning number (an environment-tier or fake
+  continuation therefore sends `max_tokens=1024` where it today sends nothing;
+  recorded as the intended change).
 - **The fake's `Usage` follows the constant:** the fake's `len // 4` divisor becomes
   integer division by the kernel constant — `int(len(text) / chars_per_token)` (floor,
   the same integer rule) — because `Usage` carries integer counts and the audit stores
@@ -130,8 +130,9 @@ asserted on `LlmCall.prompt_text`, not on prose.
    - **T2** Assembly in writing: reference scan, predecessor tails, style hints; the
      rebuilt prompt; unit tests over fixture novels (entities found by alias,
      case-insensitive; predecessor order nearest-first; slice fill stops at budget).
-   - **T3** Wiring: profile facts flow into the request (`temperature`, `max_tokens`);
-     `NARRE_CONTEXT_CHARS` deleted; existing continuation tests green.
+   - **T3** Wiring: profile facts flow into the request (`temperature` when set;
+     `max_tokens` always — the effective reservation); `NARRE_CONTEXT_CHARS`
+     deleted; existing continuation tests green.
    - **T4** E2E + Fahrplan overwrite (§5.4 narrowed as above).
 
 ## Decisions (2026-10-26, product owner)
@@ -141,7 +142,8 @@ asserted on `LlmCall.prompt_text`, not on prose.
 - **D2 — Reference detection** is the case-insensitive exact name/alias scan over the
   immediate text, first-occurrence order; no fuzzy tier (that is §9.1, later).
 - **D3 — Budget defaults** 8 192 / 1 024 when no profile resolves; they feed the
-  arithmetic only, never the request (which keeps omitting unset fields).
+  arithmetic **and** the request: the effective reservation is sent as `max_tokens`
+  (profile value or fallback), while `temperature` stays absent when unset.
 - **D4 — WP0-C caps stay** (see Non-goals); recorded against §5.4.
 - **D5 — Baseline:** the WP2b plan is written against **merged WP2a**, naming the
   landed symbols (`ResolvedProvider` and its facts) from the tree, not from a design;
