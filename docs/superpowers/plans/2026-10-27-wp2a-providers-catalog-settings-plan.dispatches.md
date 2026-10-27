@@ -15,8 +15,8 @@ the pins.
 
 | Time | Task | Role | Agent | Model | Child session |
 |---|---|---|---|---|---|
-| 10-27 07:25 | Design builder check WP2a | review | general | zai-coding-plan/glm-5.3 (high) | ses_e842dcdbeffeowlUr1XeLHz7cm |
-| 10-27 07:25 | Design builder check WP2b | review | general | zai-coding-plan/glm-5.3 (high) | ses_e842dcdbcffeVKLWQybF3tm8XB |
+| 10-27 07:25 | Design builder check WP2a | design check | general | zai-coding-plan/glm-5.3 (high) | ses_e842dcdbeffeowlUr1XeLHz7cm |
+| 10-27 07:25 | Design builder check WP2b | design check | general | zai-coding-plan/glm-5.3 (high) | ses_e842dcdbcffeVKLWQybF3tm8XB |
 | 10-27 09:16 | T1 implement — initial (usage-limit cutoff, partial work kept in tree) | implement | general | zai-coding-plan/glm-5.3 (high) | ses_e83c82ce1ffeG3z4NkJQqojGlV |
 | — | T1 implement — resume (owner-directed, no restart) | implement | general | zai-coding-plan/glm-5.3 (high) | ses_e83c82ce1ffeG3z4NkJQqojGlV |
 | 10-27 13:15 | T1 task review | review | general | zai-coding-plan/glm-5.3 (high) | ses_e82ed1eb2ffeMMT5f9Uxg26Lcm |
