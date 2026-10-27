@@ -223,12 +223,11 @@
   "settings.profiles.keyOnce": "Le profil « {name} » a été enregistré. La clé API n'est affichée qu'une seule fois: {key}",
   "settings.profiles.keyOnceDone": "Compris",
   "settings.assignments": "Tâches",
-  "settings.assignments.auto": "Automatique (profil par défaut)",
+  "settings.assignments.auto": "Automatique",
   "settings.task.writing.continuation": "Continuer à écrire",
   "settings.task.chat.ask": "Chat, questions",
   "settings.task.knowledge.extract-entities": "Savoir, trouver des entités",
   "settings.task.knowledge.check-consistency": "Savoir, contrôle de cohérence",
-  "settings.task.settings.test": "Paramètres, test de connexion",
   "jobs.truncated": "Seuls les 20 000 premiers caractères ont été lus.",
   "jobs.skippedChapters": "Ignorés, trop longs : {titles}"
 }

@@ -130,6 +130,8 @@ class ProfileService:
         if profile is None:
             raise ProfileNotFoundError(f"no profile {profile_id}")
         set_fields = payload.model_fields_set
+        if "name" in set_fields and payload.name is None:
+            raise ProfileRefusedError(("name",), "a profile name cannot be cleared")
 
         base_url = (
             (payload.base_url.rstrip("/") if payload.base_url else None)
@@ -286,21 +288,27 @@ class ProfileService:
     def _gate(self, *, kind: str, base_url: str | None, model: str | None, has_key: bool) -> None:
         """Refuse a configuration that could never answer, naming the fields.
 
-        ``openai-chat`` needs a ``model``, and an ``api_key`` when the
-        endpoint is remote (a local server may answer without one); broken
-        config never reaches a model call (design, the settings surface).
+        ``openai-chat`` needs a ``model``, an ``api_key`` when the endpoint is
+        remote (a local server may answer without one), and an ``https://``
+        endpoint whenever the key would cross the network — a remote ``http://``
+        address would carry the bearer credential in cleartext. Broken config
+        never reaches a model call (design, the settings surface).
         """
         if kind != "openai-chat":
             return
         fields: list[str] = []
         if not model:
             fields.append("model")
-        if not has_key and needs_api_key(base_url or DEFAULT_BASE_URL):
+        endpoint = base_url or DEFAULT_BASE_URL
+        if not has_key and needs_api_key(endpoint):
             fields.append("api_key")
+        if needs_api_key(endpoint) and not endpoint.lower().startswith("https://"):
+            fields.append("base_url")
         if fields:
             raise ProfileRefusedError(
                 tuple(fields),
-                f"a half-configured openai-chat profile is refused; missing: {', '.join(fields)}",
+                "a half-configured openai-chat profile is refused; "
+                f"missing or unusable: {', '.join(fields)}",
             )
 
     def _store_key(self, profile_id: UUID, plaintext: str) -> tuple[str, str | None]:

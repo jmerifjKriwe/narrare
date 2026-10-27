@@ -211,6 +211,95 @@ async def test_an_update_can_half_configure_a_profile_and_is_refused() -> None:
         assert (await client.get("/api/settings/profiles")).json()[0]["model"] == "vendor-mini"
 
 
+async def test_a_remote_http_endpoint_carrying_a_key_is_refused() -> None:
+    """A key would cross the network in cleartext: the gate refuses the URL."""
+    async with _client() as client:
+        clear = await client.post(
+            "/api/settings/profiles",
+            json={
+                "name": "Klar",
+                "kind": "openai-chat",
+                "base_url": "http://api.vendor.example/v1",
+                "model": "vendor-mini",
+                "api_key": SECRET,
+            },
+        )
+        assert clear.status_code == 422
+        assert "base_url" in clear.text
+        assert (await client.get("/api/settings/profiles")).json() == []
+
+        # The secure twin saves, so the refusal is the scheme's, not the remote host's.
+        secure = await client.post(
+            "/api/settings/profiles",
+            json={
+                "name": "Sicher",
+                "kind": "openai-chat",
+                "base_url": REMOTE,
+                "model": "vendor-mini",
+                "api_key": SECRET,
+            },
+        )
+        assert secure.status_code == 201, secure.text
+
+
+async def test_a_bare_endpoint_without_scheme_is_refused() -> None:
+    """``not-a-url`` has no host, so it counts as remote and never as https."""
+    async with _client() as client:
+        response = await client.post(
+            "/api/settings/profiles",
+            json={
+                "name": "Kaputt",
+                "kind": "openai-chat",
+                "base_url": "not-a-url",
+                "model": "vendor-mini",
+                "api_key": SECRET,
+            },
+        )
+        assert response.status_code == 422
+        assert "base_url" in response.text
+
+
+async def test_a_local_http_endpoint_still_needs_no_key() -> None:
+    """Loopback plainly serves without a key; the scheme rule spares the local case."""
+    async with _client() as client:
+        response = await client.post(
+            "/api/settings/profiles",
+            json={
+                "name": "Lokal ohne Schlüssel",
+                "kind": "openai-chat",
+                "base_url": "http://127.0.0.1:9/v1",
+                "model": "vendor-mini",
+            },
+        )
+        assert response.status_code == 201, response.text
+
+
+async def test_a_patch_to_a_remote_http_endpoint_is_refused_with_a_stored_key() -> None:
+    """Redirecting a stored credential to a cleartext endpoint is refused too."""
+    async with _client() as client:
+        profile = await _create(client, "Weiterleitung")
+        response = await client.patch(
+            f"/api/settings/profiles/{profile['id']}",
+            json={"base_url": "http://api.vendor.example/v1"},
+        )
+        assert response.status_code == 422
+        assert "base_url" in response.text
+        stored = (await client.get("/api/settings/profiles")).json()[0]
+        assert stored["base_url"] == "http://127.0.0.1:9/v1"
+
+
+async def test_a_patch_cannot_clear_the_name() -> None:
+    """``name`` is NOT NULL; a present null is refused with the field, not a 500."""
+    async with _client() as client:
+        profile = await _create(client, "Bleibt")
+        response = await client.patch(
+            f"/api/settings/profiles/{profile['id']}", json={"name": None}
+        )
+        assert response.status_code == 422
+        assert "name" in response.text
+        assert (await client.get("/api/settings/profiles")).json()[0]["name"] == "Bleibt"
+
+
 async def test_the_connection_test_hits_the_vendor_and_audits_settings_test() -> None:
     """One cheap completion against the endpoint, one ``settings.test`` audit row."""
     with chat_vendor() as vendor:

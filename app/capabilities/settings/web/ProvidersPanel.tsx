@@ -34,7 +34,6 @@ const KNOWN_TASKS: readonly { key: string; labelKey: MessageKey }[] = [
     key: "knowledge.check-consistency",
     labelKey: "settings.task.knowledge.check-consistency",
   },
-  { key: "settings.test", labelKey: "settings.task.settings.test" },
 ];
 
 /** One text field of the profile form, as the input holds it. */

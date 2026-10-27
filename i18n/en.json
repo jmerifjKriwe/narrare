@@ -223,12 +223,11 @@
   "settings.profiles.keyOnce": "The profile “{name}” was stored. This is the only time the API key is shown: {key}",
   "settings.profiles.keyOnceDone": "Got it",
   "settings.assignments": "Tasks",
-  "settings.assignments.auto": "Automatic (default profile)",
+  "settings.assignments.auto": "Automatic",
   "settings.task.writing.continuation": "Continue writing",
   "settings.task.chat.ask": "Chat, questions",
   "settings.task.knowledge.extract-entities": "Knowledge, find entities",
   "settings.task.knowledge.check-consistency": "Knowledge, consistency check",
-  "settings.task.settings.test": "Settings, connection test",
   "jobs.truncated": "Only the first 20,000 characters were read.",
   "jobs.skippedChapters": "Skipped, too long: {titles}"
 }
