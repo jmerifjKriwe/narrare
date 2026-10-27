@@ -33,12 +33,25 @@ has none of it — this design rebuilds it on v2 data.
   rule: every slice takes its floor, the remainder goes to the immediate-text slice,
   and a slice whose floor is zero stays zero — it is omitted at assembly time, never
   given free space (a small window loses style hints before it distorts the ratio).
-  The output reservation is not part of the input budget, so input + output never
-  exceed the real window (the anti-goal). A profile carrying **one unset limit** gets
-  that limit's default alone (`context_window` 8 192, `max_output_tokens` 1 024) —
-  the allocator never receives `None`. The allocator is pure: same inputs, same
-  budgets. Prompt scaffolding (section headings, title lines, the instruction)
-  counts inside its slice — nothing rides free.
+  The window arithmetic **clamps at zero**: `max(0, context_window −
+  max_output_tokens)` — equality yields a zero input budget (all four slices zero,
+  the prompt carries no context, which is deterministic and legal), greater-than
+  clamps identically instead of going negative, so the "no negative slice" invariant
+  holds by construction. WP2a's gate refuses a both-set pair where
+  `max_output_tokens ≥ context_window` (shipped), so the clamp is the defence for
+  catalog/default-merged pairs; T1's property tests pin equality, greater-than and
+  an ordered pair. The output reservation is not part of the input budget, so the
+  input never exceeds `context_window − max_output_tokens`. **What reaches the wire
+  is narrower than that bound:** continuation sends the reservation as `max_tokens`
+  when the profile sets `max_output_tokens`; when it is unset the request keeps
+  omitting the field (D3), the reservation remains a planning bound, and the
+  endpoint's own default output limit applies — so "input + reserved output never
+  exceed the window" holds only where the reservation is sent. Trigger to revisit:
+  an endpoint whose default output overruns the window. A profile carrying **one
+  unset limit** gets that limit's default alone (`context_window` 8 192,
+  `max_output_tokens` 1 024) — the allocator never receives `None`. The allocator is
+  pure: same inputs, same budgets. Prompt scaffolding (section headings, title
+  lines, the instruction) counts inside its slice — nothing rides free.
 - **Continuation slices, 60/25/10/5 (code defaults):**
   - *Immediate text (60 %):* the chapter tail, as today, but budget-bounded instead of
     `NARRE_CONTEXT_CHARS`-bounded.
@@ -109,9 +122,11 @@ asserted on `LlmCall.prompt_text`, not on prose.
    Tasks, house pattern:
    - **T1** `kernel/context.py` allocator: budgets, defaults, token↔char; property
      tests (`hypothesis`, accepted in §2): the four integer budgets sum exactly to
-     `floor((context_window − max_output_tokens) × chars_per_token)`, no slice
-     negative, zero-floor slices stay zero and are omitted at assembly, one unset
-     limit falls back alone, and a tiny window degrades deterministically.
+     `floor((context_window − max_output_tokens) × chars_per_token)` on ordered
+     pairs, equality yields a zero input budget, greater-than clamps to zero (never
+     negative), no slice negative, zero-floor slices stay zero and are omitted at
+     assembly, one unset limit falls back alone, and a tiny window degrades
+     deterministically.
    - **T2** Assembly in writing: reference scan, predecessor tails, style hints; the
      rebuilt prompt; unit tests over fixture novels (entities found by alias,
      case-insensitive; predecessor order nearest-first; slice fill stops at budget).
@@ -137,6 +152,10 @@ asserted on `LlmCall.prompt_text`, not on prose.
   in characters, not a token guarantee.
 - **D7 — Missing limits:** each unset limit falls back to its default independently
   (8 192 / 1 024); the allocator never receives `None`.
+- **D8 — Zero-room boundary:** the input budget is `max(0, context_window −
+  max_output_tokens)`; equality is a legal zero budget, greater-than clamps to zero,
+  and WP2a's gate refuses a both-set pair where the reservation does not fit — the
+  clamp covers catalog/default-merged pairs only.
 
 ## Left to the builder
 
