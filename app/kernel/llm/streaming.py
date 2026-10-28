@@ -10,16 +10,20 @@ if TYPE_CHECKING:
     from starlette.types import Receive, Scope, Send
 
 
-async def error_events() -> AsyncGenerator[str]:
-    """The one frame a stream ends with when no provider call could run.
+ERROR_FRAME = "event: error\ndata: {}\n\n"
+"""The one frame a stream ends with when no provider call could run.
 
-    Resolution failed before a call — a lost key, a budget that leaves no
-    room — so no provider was asked and no audit row exists; the stream
-    still ends the way a dead provider's does, so the reader sees one
-    message instead of an answer that silently stopped. Writing and chat
-    both send exactly this frame.
-    """
-    yield "event: error\ndata: {}\n\n"
+Resolution failed before a call — a lost key, a budget that leaves no
+room — so no provider was asked and no audit row exists; the stream still
+ends the way a dead provider's does, so the reader sees one message
+instead of an answer that silently stopped. Writing and chat both send
+exactly this frame; the constant is the single spelling.
+"""
+
+
+async def error_events() -> AsyncGenerator[str]:
+    """The one frame a stream ends with when no provider call could run."""
+    yield ERROR_FRAME
 
 
 class FinalizingStreamingResponse(StreamingResponse):

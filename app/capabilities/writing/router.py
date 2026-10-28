@@ -26,7 +26,7 @@ from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events
+from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
 from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
@@ -82,7 +82,7 @@ async def _continuation_events(
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
     except Exception:
         logger.exception("continuation stream failed")
-        yield "event: error\ndata: {}\n\n"
+        yield ERROR_FRAME
     else:
         yield "event: done\ndata: {}\n\n"
     finally:

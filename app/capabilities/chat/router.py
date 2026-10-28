@@ -17,7 +17,7 @@ from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events
+from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
 from app.kernel.secrets import KeyUnavailableError
 
@@ -71,7 +71,7 @@ async def _events(
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
     except Exception:
         logger.exception("chat stream failed")
-        yield "event: error\ndata: {}\n\n"
+        yield ERROR_FRAME
     else:
         yield "event: done\ndata: {}\n\n"
     finally:
