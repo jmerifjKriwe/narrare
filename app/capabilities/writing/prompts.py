@@ -51,8 +51,9 @@ def continuation_prompt(
     the line does not fit the entity is skipped, silently. A predecessor
     contributes its title and a tail hard-cut to what remains of its slice.
     Sections whose slice is zero — or too small for the heading and its
-    separator — are absent whole; the style section is also omitted when the
-    novel carries neither genre nor blurb.
+    separator — are absent whole, as is a section with no entries at all; the
+    style section is also omitted when the novel carries neither genre nor
+    blurb.
     """
     header = f"Novel: {novel_title}\nChapter: {chapter_title}\n\n"
     room = (
@@ -64,9 +65,9 @@ def continuation_prompt(
     )
     tail = body[-room:] if room > 0 else ""
     blocks = [header, f"Text so far:\n{tail}\n\n"]
-    if budgets.referenced_entities >= len(_ENTITIES_HEADING) + _SECTION_OVERHEAD:
+    if budgets.referenced_entities >= len(_ENTITIES_HEADING) + _SECTION_OVERHEAD and entities:
         blocks.append(_entities_block(entities, budgets.referenced_entities) + "\n\n")
-    if budgets.recent_chapters >= len(_PREDECESSORS_HEADING) + _SECTION_OVERHEAD:
+    if budgets.recent_chapters >= len(_PREDECESSORS_HEADING) + _SECTION_OVERHEAD and predecessors:
         blocks.append(_predecessors_block(predecessors, budgets.recent_chapters) + "\n\n")
     if budgets.style_hints >= len(_STYLE_HEADING) + _SECTION_OVERHEAD and (
         genre is not None or blurb is not None
@@ -110,7 +111,11 @@ def _predecessors_block(predecessors: Sequence[Chapter], budget: int) -> str:
 
 
 def _style_block(genre: str | None, blurb: str | None, budget: int) -> str:
-    """`Genre:`/`Blurb:` lines, truncated to the slice, separator included."""
+    """`Genre:`/`Blurb:` lines, truncated to the slice, separator included.
+
+    The cut reserves the trailing blank line: without it the next block (the
+    instruction) would glue onto the truncated prose.
+    """
     lines = "\n".join(
         line
         for line in (
@@ -120,4 +125,6 @@ def _style_block(genre: str | None, blurb: str | None, budget: int) -> str:
         if line is not None
     )
     section = f"{_STYLE_HEADING}\n{lines}\n\n"
-    return section[:budget]
+    if len(section) <= budget:
+        return section
+    return section[: budget - 2] + "\n\n"

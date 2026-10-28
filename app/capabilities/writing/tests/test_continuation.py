@@ -555,6 +555,21 @@ def test_a_zero_floor_slice_omits_its_section_entirely() -> None:
     assert "Mira" not in prompt
 
 
+def test_a_section_without_entries_is_absent_not_a_bare_heading() -> None:
+    """The ordinary first-chapter case: no entity and no predecessor section."""
+    budgets = ContextBudgets(
+        immediate_text=2000, referenced_entities=500, recent_chapters=400, style_hints=0
+    )
+    prompt = continuation_prompt(
+        budgets=budgets,
+        novel_title="Der Nebel",
+        chapter_title="Ankunft",
+        body="Der Nebel kam von See.",
+    )
+    assert "Referenced entities:" not in prompt
+    assert "Previous chapters:" not in prompt
+
+
 def test_an_entity_whose_body_exceeds_the_slice_degrades_to_name_and_type() -> None:
     """A body that no longer fits degrades to the name (type) line, never overflow."""
     budgets = ContextBudgets(
@@ -660,7 +675,8 @@ def test_predecessors_render_nearest_first_with_hard_cut_tails() -> None:
 
 
 def test_style_notes_truncate_to_the_style_budget() -> None:
-    """Genre and blurb render under their heading, hard-cut to the slice."""
+    """Genre and blurb render under their heading, hard-cut to the slice — and
+    the cut keeps the section separator, so the instruction never glues on."""
     budgets = ContextBudgets(
         immediate_text=2000, referenced_entities=0, recent_chapters=0, style_hints=60
     )
@@ -673,7 +689,9 @@ def test_style_notes_truncate_to_the_style_budget() -> None:
         blurb="A" * 100,
     )
     section = prompt[prompt.index("Style notes:") : prompt.index("Continue the chapter")]
-    assert section == "Style notes:\nGenre: Mystery\nBlurb: " + "A" * 25
+    assert section == "Style notes:\nGenre: Mystery\nBlurb: " + "A" * 23 + "\n\n"
+    assert section.endswith("\n\n")  # the separator survives the truncation
+    assert prompt.endswith("\n\n" + _INSTRUCTION_END)  # the instruction keeps its own line
 
 
 def test_style_notes_are_omitted_when_the_novel_carries_neither_genre_nor_blurb() -> None:
