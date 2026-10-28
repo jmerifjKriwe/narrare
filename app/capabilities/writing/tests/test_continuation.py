@@ -471,6 +471,44 @@ def test_an_entity_whose_line_does_not_fit_is_skipped_silently() -> None:
     assert "### Fuchs" not in prompt
 
 
+def test_a_slice_that_cannot_hold_its_heading_is_omitted_whole() -> None:
+    """Below heading + newline + separator the section is absent; at the threshold
+    the heading renders whole and the slice never overflows."""
+    prompt = continuation_prompt(
+        budgets=ContextBudgets(
+            immediate_text=2000, referenced_entities=22, recent_chapters=20, style_hints=0
+        ),
+        novel_title="Der Nebel",
+        chapter_title="Ankunft",
+        body="Der Nebel kam von See.",
+        entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
+        predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
+    )
+    assert "Referenced entities:" not in prompt  # 22 < 20 + 3
+    assert "Previous chapters:" not in prompt  # 20 < 18 + 3
+
+    whole = continuation_prompt(
+        budgets=ContextBudgets(
+            immediate_text=2000, referenced_entities=23, recent_chapters=21, style_hints=0
+        ),
+        novel_title="Der Nebel",
+        chapter_title="Ankunft",
+        body="Der Nebel kam von See.",
+        entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
+        predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
+    )
+    entities_section = whole[
+        whole.index("Referenced entities:") : whole.index("Previous chapters:")
+    ]
+    assert len(entities_section) <= 23
+    assert "Mira" not in whole  # no entry fits beside the heading: skipped silently
+    chapters_section = whole[
+        whole.index("Previous chapters:") : whole.index("Continue the chapter")
+    ]
+    assert len(chapters_section) <= 21
+    assert "Ursprung" not in whole  # the tail does not fit beside the heading: dropped
+
+
 def test_predecessors_render_nearest_first_with_hard_cut_tails() -> None:
     """Nearest predecessor first; the slice is filled greedily and never overflows."""
     budgets = ContextBudgets(
@@ -599,6 +637,31 @@ async def test_predecessors_arrive_nearest_first() -> None:
     assert "Der Ursprung: Mira kam von See." in prompt
     assert "Das Kapitel endet hier." in prompt  # the current chapter is the tail itself
     assert "### Drittes" not in prompt
+
+
+async def test_a_small_window_omits_sections_whose_heading_does_not_fit() -> None:
+    """Rooms of 10-35 put the small slices below their own headings (the real
+    allocator's floors): the sections are omitted whole — no truncated heading
+    rides into the prompt, and no section exceeds its slice."""
+    async with Session() as session:
+        novel = await _fixture_novel(session)
+        service = WritingService(session, LOCAL_USER_ID)
+        current = await service.create_chapter(novel.id, "Klein")
+        current.body = "Rest."
+        await session.commit()
+
+        # allocate(1000, 997): room 10 — entities 2, chapters 1, style 0.
+        prompt = await service.continuation_prompt(
+            current.id, context_window=1000, max_output_tokens=997, model="fake"
+        )
+        # allocate(1000, 990): room 35 — entities 8, chapters 3, style 1 with a
+        # genre set: still below the heading, so nothing partial may render.
+        wider = await service.continuation_prompt(
+            current.id, context_window=1000, max_output_tokens=990, model="fake"
+        )
+    scaffold = "Novel: Der Nebel\nChapter: Klein\n\nText so far:\n\n\n" + _INSTRUCTION_END
+    assert prompt == scaffold
+    assert wider == scaffold
 
 
 async def test_an_impossible_pair_is_refused_before_any_gathering() -> None:

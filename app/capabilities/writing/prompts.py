@@ -24,6 +24,14 @@ _INSTRUCTION = (
     "text. Return only the new text, without a heading or commentary."
 )
 
+_ENTITIES_HEADING = "Referenced entities:"
+_PREDECESSORS_HEADING = "Previous chapters:"
+_STYLE_HEADING = "Style notes:"
+# Heading + the heading's newline + the blank section separator. A slice below
+# this cannot hold its section whole, so the section is omitted — a slice never
+# overflows and no heading is ever truncated.
+_SECTION_OVERHEAD = 3
+
 
 def continuation_prompt(
     *,
@@ -45,8 +53,9 @@ def continuation_prompt(
     remaining room it degrades to the ``{name} ({type})`` line, and when even
     the line does not fit the entity is skipped, silently. A predecessor
     contributes its title and a tail hard-cut to what remains of its slice.
-    Sections whose slice is zero are absent; the style section is also omitted
-    when the novel carries neither genre nor blurb.
+    Sections whose slice is zero — or too small for the heading and its
+    separator — are absent whole; the style section is also omitted when the
+    novel carries neither genre nor blurb.
     """
     header = f"Novel: {novel_title}\nChapter: {chapter_title}\n\n"
     room = (
@@ -58,11 +67,13 @@ def continuation_prompt(
     )
     tail = body[-room:] if room > 0 else ""
     blocks = [header, f"Text so far:\n{tail}\n\n"]
-    if budgets.referenced_entities > 0:
+    if budgets.referenced_entities >= len(_ENTITIES_HEADING) + _SECTION_OVERHEAD:
         blocks.append(_entities_block(entities, budgets.referenced_entities) + "\n\n")
-    if budgets.recent_chapters > 0:
+    if budgets.recent_chapters >= len(_PREDECESSORS_HEADING) + _SECTION_OVERHEAD:
         blocks.append(_predecessors_block(predecessors, budgets.recent_chapters) + "\n\n")
-    if budgets.style_hints > 0 and (genre is not None or blurb is not None):
+    if budgets.style_hints >= len(_STYLE_HEADING) + _SECTION_OVERHEAD and (
+        genre is not None or blurb is not None
+    ):
         blocks.append(_style_block(genre, blurb, budgets.style_hints))
     blocks.append(_INSTRUCTION)
     return "".join(blocks)
@@ -70,9 +81,9 @@ def continuation_prompt(
 
 def _entities_block(entities: Sequence[Entity], budget: int) -> str:
     """Pack the entities into their slice; the skip is silent, the slice full."""
-    heading = "Referenced entities:"
+    heading = _ENTITIES_HEADING
     entries: list[str] = []
-    used = len(heading) + 1 + 2  # the heading's newline and the section separator
+    used = len(heading) + _SECTION_OVERHEAD
     for entity in entities:
         line = f"{entity.name} ({entity.type})"
         for entry in (f"### {line}\n{entity.content}", line):
@@ -86,9 +97,9 @@ def _entities_block(entities: Sequence[Entity], budget: int) -> str:
 
 def _predecessors_block(predecessors: Sequence[Chapter], budget: int) -> str:
     """Nearest first, each tail hard-cut to what the slice still has left."""
-    heading = "Previous chapters:"
+    heading = _PREDECESSORS_HEADING
     entries: list[str] = []
-    used = len(heading) + 1 + 2  # the heading's newline and the section separator
+    used = len(heading) + _SECTION_OVERHEAD
     for chapter in predecessors:
         join = 1 if entries else 0
         title_line = f"### {chapter.title}\n"
@@ -111,5 +122,5 @@ def _style_block(genre: str | None, blurb: str | None, budget: int) -> str:
         )
         if line is not None
     )
-    section = f"Style notes:\n{lines}\n\n"
+    section = f"{_STYLE_HEADING}\n{lines}\n\n"
     return section[:budget]
