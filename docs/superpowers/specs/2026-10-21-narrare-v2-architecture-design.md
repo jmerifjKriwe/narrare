@@ -76,7 +76,9 @@ Corrections and notes:
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
   `packages/`, tests included. The old value is stale, not wrong in method.
 - **Provider surfaces: the 15 → 1 consolidation is already banked** (ADR-099). One
-  hand-edited catalog feeds two generated artefacts (Python, TypeScript). The design
+  hand-edited catalog feeds two generated artefacts (Python, TypeScript). WP2a
+  replaced that file with per-user profiles and a vendored models.dev snapshot
+  (ADR-102); the row records the surface as it stood on 2026-10-21. The design
   therefore treats provider declaration as solved and only generalises the pattern.
 - **Intent surfaces: 8 is inherited, not verified today.** Marked *unverified*; the
   design removes the surfaces entirely, so the exact count does not change a decision.
@@ -93,26 +95,26 @@ model.
 ```
 app/
   kernel/
-    db/          session factory, scoped repository base, Alembic tree
+    db/          session factory, scoped repository base, schema from the models
     auth/        auth boundary interface + fixed local-user implementation
     jobs/        jobs table + the single worker
     contracts/   shared domain types: Novel, Chapter, Scene, User
     events/      post-response recording (usage, statistics, memory writes)
-    llm/         provider catalog, fetch strategies, fake provider
+    llm/         provider profiles, vendored model catalog, audit, one chat adapter
     prompts/     composition primitives shared by capabilities
   capabilities/
-    writing/          capability.yaml, prompt, api/service/repository, tests, web/, e2e/
-    knowledge-base/   same shape
+    writing/          capability.yaml, prompts, router/service/repository, tests, web/, e2e/
+    knowledge/        same shape
     chat/             same shape
     setup/            same shape
   api/           FastAPI app: mounts capability routers, emits OpenAPI
 web/             shell: frame, root route, API client, i18n, primitives, generated tables
 i18n/            message catalogs (en, de, fr); user docs are generated from here
-generated/       capability registry (Python + TypeScript), docs index, TS client
+app/generated/       capability registry (Python); web/lib/generated/ the TS views
 docs/
-  adr/           ≤ 15 decisions
-  user/          generated user documentation (en, de, fr)
-scripts/         generate · new-capability  (two, not 84)
+  architecture/decisions/  ≤ 15 ADRs
+  user/              generated user documentation (en, de, fr)
+scripts/             generate · new-capability · export-openapi · secrets
 ```
 
 The frontend has two homes, and the tree carries both. `web/` is the **shell**: the frame
@@ -128,8 +130,8 @@ the generated tables.
 
 Two rules make this tree do work. **Dependencies point one way**: `api/ → capabilities/
 → kernel/`. A capability never imports another capability. **There is no central
-registry**: the four capability folders and the files under `generated/` are the only
-places a capability is named.
+registry**: the four capability folders and the files under `app/generated/` and
+`web/lib/generated/` are the only places a capability is named.
 
 `kernel/` holds what two or more capabilities need. Today that is a short list —
 novel, chapter, scene, user, sessions, jobs, events, provider routing, prompt
@@ -147,19 +149,20 @@ that owns its tables; its schemas; its tests; and an `e2e/` spec that drives the
 UI (§7). Its frontend lives in a subfolder of the same capability folder and is
 composed into the shell by the generated route table.
 
-`capability.yaml` holds facts only: id, user-visible label key, category, mode,
-budget profile, locales, and the provider/model requirement. It has no behaviour, no
+`capability.yaml` holds facts only: `id`, `title` (a user-visible label key),
+`path`, `needs` and `nav`. It has no behaviour, no
 schema, no prompt body. Its fields exist because at least two generated views read
 them; a field nobody reads is deleted.
 
 The generator aggregates all capability files into views that are never hand-edited:
-the Python registry and types, the TypeScript types, the docs index, and any
-provider-catalog-derived artefacts a capability needs. Generated files carry a
+the Python registry, the TypeScript views, the docs index, and the typed web client.
+Generated files carry a
 "DO NOT EDIT" header and a named source. Where a view is simply derivable from
 OpenAPI, there is no capability field for it at all.
 
 New capability: one folder, its facts file, prompt, code, tests, `e2e/`. New
-provider: one catalog entry, plus one fetch strategy only if it is a new API shape.
+provider: one profile row in `/settings`, plus an adapter and one `PROFILE_KINDS`
+value only if it is a new API shape (ADR-102).
 New capability *field*: a change to the generator and every reading view — which is
 why fields are added rarely and removed readily.
 
@@ -245,8 +248,8 @@ backend and real database** and is green. Unit and integration tests support tha
 claim; they never replace it.
 
 **The only fake sits at the outermost boundary: the LLM provider** — and any other
-external, paid or non-deterministic service. The fake provider is a first-class
-provider-catalog entry with the same interface as the real ones, so routing, prompt
+external, paid or non-deterministic service. The fake provider is a provider profile
+of kind `fake` with the same interface as the real ones, so routing, prompt
 composition, streaming and persistence all execute the production code path. Choosing
 it is a configuration value, not a test branch.
 
@@ -381,8 +384,9 @@ verdict enters the build. Exactly three registered features in the four core are
 were never built: WRITE-008 (multi-draft generation), WRITE-013 (writing workflows)
 and KB-010 (editor-integrated knowledge graph). They are parked with the other
 unbuilt candidates, never ported silently. The feature files themselves are not
-migrated: a capability's user-visible documentation is generated (D5), and git
-history keeps the old corpus.
+migrated into a capability: a capability's user-visible documentation is generated
+(D5), and `docs/features/` stays in the tree as the v1 product history, explicitly
+non-binding — its `INDEX.md` says so.
 
 **Cutover (D16).** The old application stays runnable until the last core capability is
 ported, then is deleted in one change. Work happens on a dedicated branch and worktree;
@@ -398,7 +402,7 @@ not by a document:
 
 1. **Adding a capability touches only its folder** plus generated output. A reviewer
    can confirm this from the diff alone.
-2. **Adding a provider is one catalog entry** — and a fetch strategy only for a new API
+2. **Adding a provider is one profile row** — and an adapter only for a new API
    shape.
 3. **A capability is done only with a green E2E** through the real UI, real backend and
    real database, with the fake provider at the boundary.
@@ -485,3 +489,8 @@ trigger that would build the missing piece.
   to an explicit `tsc --noEmit` in `just typecheck`, keeping `just check`'s
   coverage unchanged. i18n stays framework-free JSON: the compiler, not a
   library, checks the catalogs.
+- **Providers are data, not a catalog file (§4, §12.2).** Per-user
+  `ProviderProfile` rows with per-task assignment, a vendored models.dev snapshot
+  for prices and limits, and two key-storage tiers: OS keychain first, then
+  Fernet under `NARRE_SECRET_KEY` (`app/kernel/secrets.py`). The audit names the
+  profile and a real cost. The decision and its consequences are ADR-102.
