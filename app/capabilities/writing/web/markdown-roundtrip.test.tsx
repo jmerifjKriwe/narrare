@@ -4,13 +4,17 @@
  * serializers, two gates — the kernel suite pins the ENGINE's serializer as a
  * byte fixed point over these same files; this gate pins the EDITOR's).
  *
- * Every demo chapter and knowledge-base body is loaded into a real TipTap
- * instance (StarterKit + @tiptap/markdown, exactly the extensions the
- * shared MarkdownEditor composes) and read back with `getMarkdown()`. The
- * result must equal the input, modulo the differences named in
- * `NAMED_NORMALISATIONS` below — each entry carries what normalises and why
- * the shape is accepted. A drift not produced by that list fails here until
- * it is named and justified; nothing drifts silently into the store.
+ * The gate drives the shared component — a real mounted `MarkdownEditor`,
+ * exactly the editor a chapter page or the entity dialog gets — and reads
+ * each body back through `instance.getMarkdown()` handed out by `onReady`.
+ * A hand-assembled Editor here would let the gate stay green while the
+ * component gained an extension or changed how it parses.
+ *
+ * Every demo chapter and knowledge-base body must survive: the result must
+ * equal the input, modulo the differences named in `NAMED_NORMALISATIONS`
+ * below — each entry carries what normalises and why the shape is accepted.
+ * A drift not produced by that list fails here until it is named and
+ * justified; nothing drifts silently into the store.
  *
  * The corpus is read with node:fs relative to the repo root (this file's own
  * URL, resolved — not cwd, which depends on the runner's invocation
@@ -19,13 +23,14 @@
  * removed); frontmatter never passes through an editor, so it is out of this
  * gate's scope.
  */
-import { Editor } from "@tiptap/core";
-import { Markdown } from "@tiptap/markdown";
-import StarterKit from "@tiptap/starter-kit";
+import { cleanup, render, waitFor } from "@testing-library/react";
+import type { Editor } from "@tiptap/core";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
+
+import { MarkdownEditor } from "@shell/ui/markdown-editor";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const demosRoot = join(repoRoot, "app/kernel/interchange/demos");
@@ -51,6 +56,37 @@ function bodyOf(rel: string): string {
   if (lines[0] !== "---") return lines.join("\n");
   const closing = lines.findIndex((line, index) => index > 0 && line === "---");
   return lines.slice(closing + 1).join("\n").replace(/^[\r\n]+/, "");
+}
+
+/** What a mounted MarkdownEditor holds for `value`: the document as its
+ *  `getMarkdown()` spells it. Every editor this mounts is destroyed before
+ *  the helper returns — the first pass and the fixed-point pass alike. */
+async function markdownOf(value: string): Promise<string> {
+  // A holder, not a bare `let`: the instance is assigned from the onReady
+  // closure, and TypeScript's control flow cannot see through that — a bare
+  // let reads back as `never` after the callback.
+  const holder: { editor: Editor | null } = { editor: null };
+  const view = render(
+    <MarkdownEditor
+      label="Rundlauf"
+      value={value}
+      onChange={() => {}}
+      onReady={(editor) => {
+        holder.editor = editor;
+      }}
+    />,
+  );
+  try {
+    // immediatelyRender: false — the instance arrives after mount.
+    return await waitFor(() => {
+      if (!holder.editor) throw new Error("the editor never mounted");
+      return holder.editor.getMarkdown();
+    });
+  } finally {
+    holder.editor?.destroy();
+    view.unmount();
+    cleanup();
+  }
 }
 
 /**
@@ -118,26 +154,24 @@ function normalised(body: string): string {
 }
 
 describe("the editor's Markdown round trip over the demo corpus", () => {
-  test.each(corpusFiles())("editor round-trips %s without unexplained drift", (rel) => {
+  // The shipped corpus, pinned: a gate that walks an empty or half-moved
+  // directory passes vacuously. The count is the same golden-fixture spirit
+  // as the kernel suite's per-demo chapter/entity counts — a demo added or
+  // removed updates it consciously.
+  test("the corpus is the shipped golden fixture", () => {
+    expect(corpusFiles()).toHaveLength(39);
+  });
+
+  test.each(corpusFiles())("editor round-trips %s without unexplained drift", async (rel) => {
     const body = bodyOf(rel);
-    const editor = new Editor({
-      extensions: [StarterKit, Markdown],
-      content: body,
-      contentType: "markdown",
-    });
-    const once = editor.getMarkdown();
+    expect(body.length).toBeGreaterThan(0);
+    const once = await markdownOf(body);
     expect(once).toEqual(normalised(body));
 
     // The output is a fixed point of the editor: what a save writes, the
     // next open reads back unchanged — an edited chapter does not drift
     // further with every pass.
-    const second = new Editor({
-      extensions: [StarterKit, Markdown],
-      content: once,
-      contentType: "markdown",
-    }).getMarkdown();
+    const second = await markdownOf(once);
     expect(second).toEqual(once);
-
-    editor.destroy();
   });
 });

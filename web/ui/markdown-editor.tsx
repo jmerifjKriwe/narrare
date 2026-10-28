@@ -4,6 +4,11 @@ import { Markdown } from "@tiptap/markdown";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef } from "react";
 
+/** The omitted-extensions default, one identity for the component's life:
+ *  the memo that appends it would recompute on every render if each render
+ *  handed it a fresh `[]`. */
+const NO_EXTENSIONS: Extensions = [];
+
 /**
  * The shell's Markdown editor: one TipTap instance whose content is Markdown
  * in and Markdown out. `value` initializes the document as Markdown source
@@ -30,7 +35,7 @@ export function MarkdownEditor({
   value,
   onChange,
   label,
-  extensions = [],
+  extensions = NO_EXTENSIONS,
   onReady,
   className,
 }: {

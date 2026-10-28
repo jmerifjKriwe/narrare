@@ -1014,6 +1014,16 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     expect(detail.get_by_text("## Herkunft")).to_be_visible()
     expect(detail).to_contain_text("Mira wuchs an der Bucht auf.")
 
+    # The save kept the document as Markdown source — the heading is there
+    # as written, and no HTML serialization of the document went out instead
+    # (a rendering-only check alone would pass an editor that dropped the
+    # content or stored `<p>` padding).
+    with httpx.Client(base_url=API, timeout=30) as api:
+        stored = api.get(f"/api/knowledge/novels/{novel_id}/entities").json()
+        mira = next(entity for entity in stored if entity["name"] == "Mira")
+        assert "## Herkunft" in mira["content"]
+        assert "<p>" not in mira["content"]
+
     # Reopening shows what the save kept: chip and body persist — the body
     # as the editor holds it now, rich text: the heading is a real heading,
     # the sentence the paragraph under it.
