@@ -1751,6 +1751,17 @@
       },
       "SetupRequest": {
         "properties": {
+          "demo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo"
+          },
           "novel_title": {
             "maxLength": 200,
             "minLength": 1,

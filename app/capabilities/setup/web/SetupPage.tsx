@@ -4,18 +4,41 @@ import { useState } from "react";
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 
-/** The setup page: the first novel's title, then straight into the editor. */
+/**
+ * The demo corpus as the picker shows it, mirroring the kernel manifest
+ * (`app/kernel/interchange/demos.py`, same order, same slugs): the demos are
+ * content in their own language, so their titles are not catalog keys — only
+ * the labels around them are. The counts are the bundled archives' facts;
+ * the kernel round-trip test pins the same numbers, and a demo added there
+ * without a card here shows up as a missing picker entry in review.
+ */
+const DEMOS = [
+  { slug: "im-stillen-wald", title: "Im Stillen Wald", language: "de", chapters: 2, entities: 6 },
+  { slug: "dead-signal", title: "Dead Signal", language: "en", chapters: 3, entities: 8 },
+  {
+    slug: "echoes-of-the-thornwall",
+    title: "Echoes of the Thornwall",
+    language: "en",
+    chapters: 4,
+    entities: 16,
+  },
+] as const;
+
+/** The setup page: start blank or from a demo, then straight into the editor. */
 export function SetupPage() {
   const t = useTranslation();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
+  const [demo, setDemo] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (title.trim() === "") return;
     const { data, response } = await client.POST("/api/setup", {
-      body: { novel_title: title },
+      // The blank path sends no demo at all — absent, not null — so the
+      // request an older API sees is byte-for-byte the one it always saw.
+      body: { novel_title: title, ...(demo ? { demo } : {}) },
     });
     if (!response.ok || !data) {
       setFailed(true);
@@ -38,6 +61,46 @@ export function SetupPage() {
               className="rounded-md border border-border bg-background px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
             />
           </label>
+          <fieldset className="mt-2 flex flex-col gap-2">
+            <legend className="text-sm font-medium">{t("setup.demo.heading")}</legend>
+            <label className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary">
+              <input
+                type="radio"
+                name="demo"
+                value=""
+                checked={demo === null}
+                onChange={() => setDemo(null)}
+                className="mt-1 accent-primary"
+              />
+              <span className="flex flex-col">
+                <span className="font-medium">{t("setup.demo.blank")}</span>
+                <span className="text-muted">{t("setup.demo.blankHint")}</span>
+              </span>
+            </label>
+            {DEMOS.map((entry) => (
+              <label
+                key={entry.slug}
+                className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary"
+              >
+                <input
+                  type="radio"
+                  name="demo"
+                  value={entry.slug}
+                  checked={demo === entry.slug}
+                  onChange={() => setDemo(entry.slug)}
+                  className="mt-1 accent-primary"
+                />
+                <span className="flex flex-col">
+                  <span className="font-medium">{entry.title}</span>
+                  <span className="text-muted">
+                    {t("setup.demo.language", { language: entry.language })} ·{" "}
+                    {t("setup.demo.chapters", { count: entry.chapters })} ·{" "}
+                    {t("setup.demo.entities", { count: entry.entities })}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
           {failed ? (
             <p role="alert" className="text-sm text-danger">
               {t("setup.failed")}

@@ -1526,6 +1526,8 @@ export interface components {
         };
         /** SetupRequest */
         SetupRequest: {
+            /** Demo */
+            demo?: string | null;
             /** Novel Title */
             novel_title: string;
         };

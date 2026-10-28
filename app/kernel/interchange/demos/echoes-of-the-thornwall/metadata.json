@@ -1,0 +1,99 @@
+{
+  "title": "Echoes of the Thornwall",
+  "author": "Narrare Demo",
+  "genre": "Fantasy",
+  "blurb": "A young mage must navigate political intrigue between an ancient order and rising rebels while mastering forbidden magic tied to a mysterious relic.",
+  "language": "en",
+  "chapters": [
+    {
+      "file": "chapters/01-the-compass-points.md",
+      "position": 1
+    },
+    {
+      "file": "chapters/02-secrets-beneath-stone.md",
+      "position": 2
+    },
+    {
+      "file": "chapters/03-the-silent-keep.md",
+      "position": 3
+    },
+    {
+      "file": "chapters/04-the-archive-of-truth.md",
+      "position": 4
+    }
+  ],
+  "relations": [
+    {
+      "from": "Elara Thornwind",
+      "type": "related_to",
+      "to": "Master Verrick",
+      "note": "Trusts Master Verrick implicitly — perhaps too much. Oblivious to Kaelen's romantic interest. Fears High Chancellor Morven and his increasing inspections. Her discovered Thornwall relic resonates with her void magic in ways she doesn't understand. Has been practicing void magic in secret against Order rules."
+    },
+    {
+      "from": "Elara Thornwind",
+      "type": "related_to",
+      "to": "Kaelen Vane",
+      "note": "Trusts Master Verrick implicitly — perhaps too much. Oblivious to Kaelen's romantic interest. Fears High Chancellor Morven and his increasing inspections. Her discovered Thornwall relic resonates with her void magic in ways she doesn't understand. Has been practicing void magic in secret against Order rules."
+    },
+    {
+      "from": "Kaelen Vane",
+      "type": "related_to",
+      "to": "Elara Thornwind",
+      "note": "In love with Elara (secretly, two years). Respects Master Verrick but finds his encouragement of rule-bending confusing. Views High Chancellor Morven with awe — would follow extreme orders without question."
+    },
+    {
+      "from": "Kaelen Vane",
+      "type": "related_to",
+      "to": "Master Verrick",
+      "note": "In love with Elara (secretly, two years). Respects Master Verrick but finds his encouragement of rule-bending confusing. Views High Chancellor Morven with awe — would follow extreme orders without question."
+    },
+    {
+      "from": "High Chancellor Morven",
+      "type": "related_to",
+      "to": "Order of the Silver Flame",
+      "note": "Views Elara as a potential threat due to void affinity; testing her loyalty. Suspects Master Verrick is too soft on initiates but values his competence. Actively hunting the Ashen Covenant resistance."
+    },
+    {
+      "from": "High Chancellor Morven",
+      "type": "related_to",
+      "to": "The Ashen Covenant",
+      "note": "Views Elara as a potential threat due to void affinity; testing her loyalty. Suspects Master Verrick is too soft on initiates but values his competence. Actively hunting the Ashen Covenant resistance."
+    },
+    {
+      "from": "Sera",
+      "type": "related_to",
+      "to": "Elara Thornwind",
+      "note": "Guides Elara toward the truth about the Order without pressure. Tolerates Kaelen for Elara's sake but doesn't trust him — his loyalty to the Order makes him dangerous. Active information broker for the Ashen Covenant."
+    },
+    {
+      "from": "Sera",
+      "type": "related_to",
+      "to": "The Ashen Covenant",
+      "note": "Guides Elara toward the truth about the Order without pressure. Tolerates Kaelen for Elara's sake but doesn't trust him — his loyalty to the Order makes him dangerous. Active information broker for the Ashen Covenant."
+    },
+    {
+      "from": "Master Verrick",
+      "type": "related_to",
+      "to": "Elara Thornwind",
+      "note": "Secretly guides Elara toward independent thinking and her own choices rather than blindly following Order doctrine. Sees Kaelen's loyalty as both admirable and potentially dangerous. Carefully walks a line with Morven — doing enough to avoid suspicion while subtly undermining extreme measures. Has met with Ashen Covenant members."
+    },
+    {
+      "from": "Master Verrick",
+      "type": "related_to",
+      "to": "Kaelen Vane",
+      "note": "Secretly guides Elara toward independent thinking and her own choices rather than blindly following Order doctrine. Sees Kaelen's loyalty as both admirable and potentially dangerous. Carefully walks a line with Morven — doing enough to avoid suspicion while subtly undermining extreme measures. Has met with Ashen Covenant members."
+    },
+    {
+      "from": "Master Verrick",
+      "type": "related_to",
+      "to": "The Ashen Covenant",
+      "note": "Secretly guides Elara toward independent thinking and her own choices rather than blindly following Order doctrine. Sees Kaelen's loyalty as both admirable and potentially dangerous. Carefully walks a line with Morven — doing enough to avoid suspicion while subtly undermining extreme measures. Has met with Ashen Covenant members."
+    },
+    {
+      "from": "Master Verrick",
+      "type": "related_to",
+      "to": "High Chancellor Morven",
+      "note": "Secretly guides Elara toward independent thinking and her own choices rather than blindly following Order doctrine. Sees Kaelen's loyalty as both admirable and potentially dangerous. Carefully walks a line with Morven — doing enough to avoid suspicion while subtly undermining extreme measures. Has met with Ashen Covenant members."
+    }
+  ]
+}
