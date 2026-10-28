@@ -23,10 +23,6 @@ Open <http://localhost:3100> — a fresh database lands on `/setup`. There is no
 other setup variant: the schema comes from the models (`just db-init`), and
 `just db-reset` recreates the development database when the models change.
 
-**DevContainer (VS Code):** open the repository in VS Code and click
-"Reopen in Container" — it runs the same compose stack plus the devcontainer
-service and finishes with `.devcontainer/post-create.sh` (dependencies, hooks).
-
 ## Branch Model
 
 - All work happens on **feature branches** created from `main`.

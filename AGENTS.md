@@ -10,22 +10,11 @@ rules.
 
 ## Rules
 
-- One capability is one folder under `app/capabilities/<name>/`, including its
-  frontend under `web/`; routes are generated, so a new one needs `just generate`.
-  A capability never imports another capability; shared domain lives in
-  `app/kernel/`, shared UI in the shell.
-- A capability is done only with a green E2E that drives the real UI, the real backend
-  and the real database. The only permitted fake is the LLM provider at its boundary.
-- No side effect in the request path beyond the request's own transaction.
-- Every user-owned row carries `user_id`; data access goes through the scoped
-  repository base.
-- English in code, comments, tests and developer documentation. User-visible text in
-  en, de and fr through the i18n catalog; a missing key is a build error.
-- Never add a rule, registry, check script, hook, required field or mandatory document.
-  Report `NEEDS-APPROVAL` with the failure it prevents, the effort it creates per
-  change, and the cheaper alternative.
-- A boundary can be reopened. The spec's §8 names the procedure: three statements
-  and the product owner's explicit approval.
+The five standing rules, the shape of a capability, the reading order and the
+governance budget are normative in
+[`docs/_shared/CONSTRAINTS.md`](docs/_shared/CONSTRAINTS.md) and are
+not restated here — read that page before your first change. A change that
+violates one of its rules is a review finding, not a style question.
 
 ## Verify
 
@@ -58,7 +47,7 @@ recommendation, not a requirement: for structural questions (who calls X, what
 does X call, impact of a change, dead code) it is far cheaper and more precise
 than grep/read, but agents may use grep/read when the graph is unavailable or
 stale. Re-index after large structural changes (`index_repository`). Do not add
-a mandatory rule or gate for it (see Rules above).
+a mandatory rule or gate for it (the governance budget, spec §8).
 
 ## Git
 
