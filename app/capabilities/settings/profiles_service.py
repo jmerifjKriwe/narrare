@@ -175,7 +175,11 @@ class ProfileService:
 
         ``is_default: true`` hands the default over from its holder in the
         same transaction; ``false`` is refused — "profiles exist with no
-        default" is not a legal state.
+        default" is not a legal state. Two swaps in flight can both unset the
+        old holder before either raises its own profile, so the later
+        ``is_default = true`` flush trips the partial unique index; that one
+        flush is caught and named :class:`DefaultProfileRaceError` (the
+        create race's answer), never left as a bare ``IntegrityError``.
         """
         profiles = self._profiles()
         profile = await profiles.get(profile_id)
@@ -234,8 +238,15 @@ class ProfileService:
         if updates:
             await profiles.update(profile, **updates)
         if payload.is_default:
-            await self._unset_other_defaults(profile)
-            await profiles.update(profile, is_default=True)
+            try:
+                await self._unset_other_defaults(profile)
+                await profiles.update(profile, is_default=True)
+            except IntegrityError:
+                await self.session.rollback()
+                raise DefaultProfileRaceError(
+                    "another swap made its profile the default at the same"
+                    " moment; only one default can exist — reload and retry"
+                ) from None
         await self.session.commit()
         return profile
 
@@ -264,13 +275,25 @@ class ProfileService:
         await self.session.commit()
 
     async def set_default(self, profile_id: UUID) -> None:
-        """Make this profile the default, unsetting the holder in one transaction."""
+        """Make this profile the default, unsetting the holder in one transaction.
+
+        The flip has the same lost-update window as :meth:`update`; the
+        colliding ``is_default = true`` flush is the named race, never a bare
+        ``IntegrityError``.
+        """
         profiles = self._profiles()
         profile = await profiles.get(profile_id)
         if profile is None:
             raise ProfileNotFoundError(f"no profile {profile_id}")
-        await self._unset_other_defaults(profile)
-        await profiles.update(profile, is_default=True)
+        try:
+            await self._unset_other_defaults(profile)
+            await profiles.update(profile, is_default=True)
+        except IntegrityError:
+            await self.session.rollback()
+            raise DefaultProfileRaceError(
+                "another swap made its profile the default at the same"
+                " moment; only one default can exist — reload and retry"
+            ) from None
         await self.session.commit()
 
     async def test(self, profile_id: UUID) -> TestResult:
@@ -404,9 +427,10 @@ class ProfileService:
         whenever the key would cross the network — a remote ``http://`` address
         would carry the bearer credential in cleartext — and an output
         reservation that leaves room for input (``max_output_tokens`` below
-        ``context_window`` whenever both are known; the allocator still clamps
-        for catalog-merged pairs). Broken config never reaches a model call
-        (design, the settings surface).
+        ``context_window`` whenever both are known; a catalog-merged pair that
+        still leaves no room is refused by the allocator — never clamped, D8 —
+        and the writing router maps that refusal). Broken config never reaches
+        a model call (design, the settings surface).
         """
         if kind != "openai-chat":
             return

@@ -149,7 +149,12 @@ async def update_profile(
     """Apply the patch; an empty ``api_key`` keeps the stored one."""
     try:
         profile = await service.update(profile_id, payload)
-    except (ProfileNotFoundError, ProfileRefusedError, NoKeyStoreError) as error:
+    except (
+        ProfileNotFoundError,
+        ProfileRefusedError,
+        DefaultProfileRaceError,
+        NoKeyStoreError,
+    ) as error:
         raise _profile_errors(error) from None
     return _masked(profile)
 
