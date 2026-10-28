@@ -20,14 +20,15 @@ const KIND_LABELS: Record<string, MessageKey> = {
 /**
  * The task labels the catalog carries, keyed by task. The list of tasks comes
  * from the server (`KNOWN_TASK_KEYS`); this map only supplies words, and a key
- * without one renders as itself — a new kernel key needs no frontend change.
+ * without one renders as itself. An unlabelled row gets no assignment control:
+ * `settings.test` is audit-only (the probe uses the clicked profile, not the
+ * assignee), so an assignment there would be a control with no effect (F-01).
  */
 const TASK_LABELS: Record<string, MessageKey> = {
   "writing.continuation": "settings.task.writing.continuation",
   "chat.ask": "settings.task.chat.ask",
   "knowledge.extract-entities": "settings.task.knowledge.extract-entities",
   "knowledge.check-consistency": "settings.task.knowledge.check-consistency",
-  "settings.test": "settings.task.settings.test",
 };
 
 /** One text field of the profile form, as the input holds it. */
@@ -560,14 +561,30 @@ export function ProvidersPanel() {
           const assigned = assignments.find((row) => row.task_key === task.task_key);
           const labelKey = TASK_LABELS[task.task_key];
           const kindKey = KIND_LABELS[task.kind];
+          // What actually answers, not the stored choice: the cascade can
+          // serve a sibling's assignment or the default from here.
+          const effective =
+            task.profile_name !== null
+              ? t("settings.assignments.via", { profile: task.profile_name })
+              : t("settings.assignments.environment", {
+                  kind: kindKey === undefined ? task.kind : t(kindKey),
+                });
+          if (labelKey === undefined) {
+            // Known to the server but not routable from this page: shown so a
+            // new key is not invisible, but without a control that would do
+            // nothing (`settings.test` is audit-only, F-01).
+            return (
+              <p key={task.task_key} className="mt-3 text-sm text-muted">
+                {task.task_key} · {effective}
+              </p>
+            );
+          }
           return (
             <div
               key={task.task_key}
               className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
             >
-              <label htmlFor={`settings-task-${task.task_key}`}>
-                {labelKey === undefined ? task.task_key : t(labelKey)}
-              </label>
+              <label htmlFor={`settings-task-${task.task_key}`}>{t(labelKey)}</label>
               <select
                 id={`settings-task-${task.task_key}`}
                 value={assigned?.profile_id ?? ""}
@@ -582,17 +599,11 @@ export function ProvidersPanel() {
                   </option>
                 ))}
               </select>
-              {/* What actually answers, not the stored choice: the cascade can
-                  serve a sibling's assignment or the default from here. */}
               <p
                 id={`settings-task-effective-${task.task_key}`}
                 className="text-xs font-normal text-muted"
               >
-                {task.profile_name !== null
-                  ? t("settings.assignments.via", { profile: task.profile_name })
-                  : t("settings.assignments.environment", {
-                      kind: kindKey === undefined ? task.kind : t(kindKey),
-                    })}
+                {effective}
               </p>
             </div>
           );

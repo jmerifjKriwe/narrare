@@ -232,7 +232,6 @@
   "settings.task.chat.ask": "Chat, questions",
   "settings.task.knowledge.extract-entities": "Savoir, trouver des entités",
   "settings.task.knowledge.check-consistency": "Savoir, contrôle de cohérence",
-  "settings.task.settings.test": "Test de connexion",
   "jobs.truncated": "Seuls les 20 000 premiers caractères ont été lus.",
   "jobs.skippedChapters": "Ignorés, trop longs : {titles}"
 }

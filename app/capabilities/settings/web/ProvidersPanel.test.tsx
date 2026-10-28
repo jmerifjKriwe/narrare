@@ -74,6 +74,12 @@ const TASKS = [
     profile_name: "Default",
     kind: "fake",
   },
+  {
+    task_key: "settings.test",
+    profile_id: DEFAULT_PROFILE.id,
+    profile_name: "Default",
+    kind: "fake",
+  },
 ];
 
 function ok(): Response {
@@ -111,7 +117,7 @@ describe("the task list", () => {
     await renderPanel();
 
     const viaDefault = t("settings.assignments.via", { profile: "Default" });
-    expect(screen.getAllByText(viaDefault)).toHaveLength(2);
+    expect(screen.getAllByText(viaDefault, { exact: false })).toHaveLength(3);
   });
 
   it("shows the environment kind when no profile serves", async () => {
@@ -128,7 +134,17 @@ describe("the task list", () => {
 
     // No label key exists for it, so the raw key is the label: the server's
     // list is the source, and a new key needs no frontend change.
-    expect(screen.getByText("brandnew.task")).toBeTruthy();
+    expect(screen.getByText(/brandnew\.task/)).toBeTruthy();
+  });
+
+  it("shows the audit-only key without an assignment control", async () => {
+    await renderPanel();
+
+    // `settings.test` resolves but the probe uses the clicked profile, so an
+    // assignment there would be a control with no effect (F-01): the row is
+    // visible, the select is not.
+    expect(screen.getByText(/settings\.test/)).toBeTruthy();
+    expect(screen.queryByLabelText("settings.test")).toBeNull();
   });
 });
 

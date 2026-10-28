@@ -232,7 +232,6 @@
   "settings.task.chat.ask": "Chat, Fragen",
   "settings.task.knowledge.extract-entities": "Wissen, Entitäten finden",
   "settings.task.knowledge.check-consistency": "Wissen, Konsistenzprüfung",
-  "settings.task.settings.test": "Verbindungstest",
   "jobs.truncated": "Nur die ersten 20.000 Zeichen wurden gelesen.",
   "jobs.skippedChapters": "Übersprungen, zu lang: {titles}"
 }
