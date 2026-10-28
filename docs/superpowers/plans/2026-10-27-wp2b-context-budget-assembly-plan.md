@@ -297,3 +297,12 @@ Expected: PASS / green.
 ## Deviations from the design doc
 
 None at plan time. The build session records any here, with the root cause, as they occur.
+
+1. **Task 2, service signature gains defaults** (2026-10-28, coordinator ruling on
+   implementer's NEEDS_CONTEXT): `continuation_prompt(chapter_id, *, context_window=None,
+   max_output_tokens=None, model=None)` instead of no-default keywords. Root cause: the
+   untouched router (Task 3's rewiring) calls `service.continuation_prompt(chapter_id)` —
+   strict pyright and the pre-commit hook block the commit on missing arguments. The
+   defaults carry the honest "facts not resolved" semantics (allocate's own D7 fallback
+   applies); Task 3 passes the resolved facts explicitly, and the defaults stay as the
+   facts-absent path.
