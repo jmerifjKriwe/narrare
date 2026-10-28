@@ -6,8 +6,10 @@ the JSON deltas, the refusal path. The same shape serves OpenAI, OpenRouter,
 DeepSeek, Groq and local servers (Ollama, llama.cpp, vLLM).
 """
 
+from time import monotonic
+
 import pytest
-from openai import AuthenticationError
+from openai import APITimeoutError, AuthenticationError
 
 from app.kernel.llm.contract import DONE, CompletionRequest, Delta, Message, Usage
 from app.kernel.llm.openai_chat import OpenAIChatProvider
@@ -43,6 +45,29 @@ async def test_the_adapter_streams_the_events_in_order() -> None:
             event async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
         ]
     assert events == EXPECTED_EVENTS
+
+
+async def test_a_stored_request_timeout_reaches_the_socket() -> None:
+    """The profile's ``request_timeout`` bounds the wait: a slow vendor loses.
+
+    The vendor answers a whole second late; a 0.2 s timeout must give up well
+    before that. Without the wiring the call would simply succeed a second
+    later — a stored timeout that never reached the socket is invisible to
+    every other test.
+    """
+    with chat_vendor() as vendor:
+        vendor.delay_completions(1.0)
+        provider = OpenAIChatProvider(
+            base_url=vendor.base_url,
+            model="vendor-mini",
+            api_key="test-key",
+            request_timeout=0.2,
+        )
+        started = monotonic()
+        with pytest.raises(APITimeoutError):
+            [event async for event in provider.stream(CompletionRequest.user("Hi"))]
+        elapsed = monotonic() - started
+    assert elapsed < 1.0  # loose: even a slow machine beats the sleeping vendor
 
 
 async def test_done_is_last_without_the_wires_done_line_too() -> None:
