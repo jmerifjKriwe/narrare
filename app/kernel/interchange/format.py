@@ -122,16 +122,29 @@ def _slugify(text: str) -> str:
     return slug.strip("-") or "untitled"
 
 
-def _unique_slug(text: str, seen: set[str]) -> str:
-    """The slug, suffixed -2, -3, ... when an earlier file took the name."""
-    base = _slugify(text)
-    candidate = base
-    suffix = 2
-    while candidate in seen:
-        candidate = f"{base}-{suffix}"
-        suffix += 1
-    seen.add(candidate)
-    return candidate
+def _assign_slugs[K](keys: list[tuple[K, ...]]) -> list[str]:
+    """A slug per entry key; collisions are suffixed in sorted-key order.
+
+    Which same-slug name keeps the bare slug is a pure function of the key
+    set, never of list arrival: whichever entry sorts first wins `slug`, the
+    next wins `slug-2`, and so on. Serialize→parse→serialize is therefore a
+    fixed point (parse returns entities in file-name order, and
+    `anna-2.md` sorts before `anna.md`), and a swapped input list produces
+    the same files.
+    """
+    order = sorted(range(len(keys)), key=keys.__getitem__)
+    slugs: list[str] = [""] * len(keys)
+    taken: set[str] = set()
+    for index in order:
+        base = str(keys[index][0])
+        candidate = base
+        suffix = 2
+        while candidate in taken:
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        taken.add(candidate)
+        slugs[index] = candidate
+    return slugs
 
 
 def _deslug(stem: str) -> str:
@@ -193,6 +206,11 @@ def _file_bytes(frontmatter: str, body: str) -> bytes:
 
 
 def _fm_str(frontmatter: dict[str, Any], key: str, relpath: str) -> str | None:
+    """The value, or None when the key is absent or explicitly null.
+
+    An empty string is a value and is returned as one: callers decide by
+    presence, never by truthiness.
+    """
     value = frontmatter.get(key)
     if value is None:
         return None
@@ -350,8 +368,11 @@ def _parse_chapter(
 ) -> ChapterFile:
     text = _decode(tree.read_bytes(name), name)
     frontmatter, body = _split_frontmatter(text, name)
+    title = _fm_str(frontmatter, "title", name)
     return ChapterFile(
-        title=_fm_str(frontmatter, "title", name) or _deslug(_stem(name)),
+        # Presence, not truthiness: an exported `title: ''` is a value and must
+        # come back untitled, not be re-invented from the file stem.
+        title=title if title is not None else _deslug(_stem(name)),
         position=_fm_int(frontmatter, "position", name, indexed.get(name, appearance)),
         body=body,
         id=_fm_uuid(frontmatter, "id", name),
@@ -365,10 +386,13 @@ def _parse_entities(tree: ArchiveTree) -> list[EntityFile]:
     for name in tree.kb_names():
         text = _decode(tree.read_bytes(name), name)
         frontmatter, body = _split_frontmatter(text, name)
+        entity_name = _fm_str(frontmatter, "name", name)
+        entity_type = _fm_str(frontmatter, "type", name)
         entities.append(
             EntityFile(
-                name=_fm_str(frontmatter, "name", name) or _deslug(_stem(name)),
-                type=_fm_str(frontmatter, "type", name) or "generic",
+                # Presence, not truthiness: `name: ''` and `type: ''` are values.
+                name=entity_name if entity_name is not None else _deslug(_stem(name)),
+                type=entity_type if entity_type is not None else "generic",
                 aliases=_fm_str_list(frontmatter, "aliases", name),
                 tags=_fm_str_list(frontmatter, "tags", name),
                 body=body,
@@ -429,15 +453,17 @@ def _decode(raw: bytes, relpath: str) -> str:
 def serialize_archive(archive: NovelArchive) -> dict[str, bytes]:
     """The archive's files, `metadata.json` first, everything deterministic."""
     files: dict[str, bytes] = {}
-    chapter_slugs: set[str] = set()
+    chapter_keys = [
+        (_slugify(chapter.title), chapter.title, chapter.position) for chapter in archive.chapters
+    ]
+    chapter_slugs = _assign_slugs(chapter_keys)
     chapter_names = [
-        f"chapters/{chapter.position:02d}-{_unique_slug(chapter.title, chapter_slugs)}.md"
-        for chapter in archive.chapters
+        f"chapters/{chapter.position:02d}-{slug}.md"
+        for chapter, slug in zip(archive.chapters, chapter_slugs, strict=True)
     ]
-    entity_slugs: set[str] = set()
-    entity_names = [
-        f"kb/{_unique_slug(entity.name, entity_slugs)}.md" for entity in archive.entities
-    ]
+    entity_keys = [(_slugify(entity.name), entity.name) for entity in archive.entities]
+    entity_slugs = _assign_slugs(entity_keys)
+    entity_names = [f"kb/{slug}.md" for slug in entity_slugs]
 
     files[METADATA_NAME] = _metadata_bytes(archive, chapter_names)
     for name, chapter in zip(chapter_names, archive.chapters, strict=True):

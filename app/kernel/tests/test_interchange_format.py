@@ -54,8 +54,9 @@ def _archive() -> NovelArchive:
                 updated=_UPDATED,
             ),
             ChapterFile(title="Der Pfad", position=2, body="Zweiter Teil ohne id."),
+            ChapterFile(title="", position=3, body="Ohne Titel.\n"),
         ],
-        # Parse returns entities in kb-filename order: emile-zola before mira.
+        # Parse returns entities in kb-filename order: emile-zola, mira, untitled.
         entities=[
             EntityFile(
                 name="Émile Zola",
@@ -73,6 +74,7 @@ def _archive() -> NovelArchive:
                 tags=["protagonist"],
                 body="## Beschreibung\nJung.\n",
             ),
+            EntityFile(name="", type="", aliases=[], tags=[], body="Ohne Namen."),
         ],
         relations=[
             RelationEdge(
@@ -159,8 +161,10 @@ def test_serialize_is_deterministic() -> None:
         "metadata.json",
         "chapters/01-ankunft-am-tor.md",
         "chapters/02-der-pfad.md",
+        "chapters/03-untitled.md",  # an empty title exports the untitled slug
         "kb/emile-zola.md",
         "kb/mira.md",
+        "kb/untitled.md",
     }
 
     pinned = serialize_archive(
@@ -187,6 +191,49 @@ def test_serialize_is_deterministic() -> None:
     }
 
 
+def test_slug_collision_assignment_is_order_free() -> None:
+    """Which same-slug name keeps the bare slug is a pure function of the names.
+
+    "ANNA" sorts before "Anna", so ANNA rides `anna.md` regardless of list
+    order — and because parse returns entities in file-name order, the
+    re-serialization is a fixed point instead of swapping the two files.
+    """
+    files = serialize_archive(
+        NovelArchive(
+            title="S",
+            entities=[
+                EntityFile(name="Anna", type="generic", aliases=[], tags=[], body="Die Erste."),
+                EntityFile(name="ANNA", type="generic", aliases=[], tags=[], body="Die Zweite."),
+            ],
+        )
+    )
+    swapped = serialize_archive(
+        NovelArchive(
+            title="S",
+            entities=[
+                EntityFile(name="ANNA", type="generic", aliases=[], tags=[], body="Die Zweite."),
+                EntityFile(name="Anna", type="generic", aliases=[], tags=[], body="Die Erste."),
+            ],
+        )
+    )
+    assert files == swapped
+    assert set(files) == {"metadata.json", "kb/anna.md", "kb/anna-2.md"}
+    assert (
+        files["kb/anna.md"]
+        == serialize_archive(
+            NovelArchive(
+                title="S",
+                entities=[
+                    EntityFile(name="ANNA", type="generic", aliases=[], tags=[], body="Die Zweite.")
+                ],
+            )
+        )["kb/anna.md"]
+    )
+
+    again = serialize_archive(parse_archive(open_zip(zip_bytes(files))))
+    assert again == files
+
+
 def test_metadata_json_relations_parse() -> None:
     """Relations round-trip through metadata.json as from/type/to/note?."""
     files = serialize_archive(_archive())
@@ -200,6 +247,7 @@ def test_metadata_json_relations_parse() -> None:
         "chapters": [
             {"file": "chapters/01-ankunft-am-tor.md", "position": 1},
             {"file": "chapters/02-der-pfad.md", "position": 2},
+            {"file": "chapters/03-untitled.md", "position": 3},
         ],
         "relations": [
             {"from": "Mira", "type": "knows", "to": "Émile Zola", "note": "aus Briefen"},
