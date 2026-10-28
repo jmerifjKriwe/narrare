@@ -623,6 +623,17 @@
       },
       "NovelRead": {
         "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
           "blurb": {
             "anyOf": [
               {
@@ -655,6 +666,17 @@
             "title": "Id",
             "type": "string"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -670,6 +692,8 @@
           "title",
           "genre",
           "blurb",
+          "author",
+          "language",
           "created_at",
           "updated_at"
         ],

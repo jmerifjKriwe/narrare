@@ -25,6 +25,8 @@ class NovelRead(BaseModel):
     title: str
     genre: str | None
     blurb: str | None
+    author: str | None
+    language: str | None
     created_at: datetime
     updated_at: datetime
 

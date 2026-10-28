@@ -31,9 +31,24 @@ class NovelRepository(ScopedRepository[Novel]):
     async def get(self, novel_id: UUID) -> Novel | None:
         return await self.session.scalar(self.query().where(Novel.id == novel_id))
 
-    async def create(self, title: str, genre: str | None = None, blurb: str | None = None) -> Novel:
+    async def create(
+        self,
+        title: str,
+        genre: str | None = None,
+        blurb: str | None = None,
+        *,
+        author: str | None = None,
+        language: str | None = None,
+    ) -> Novel:
         """Flush a new novel for this user, leaving the commit to the caller."""
-        novel = Novel(user_id=self.user_id, title=title, genre=genre, blurb=blurb)
+        novel = Novel(
+            user_id=self.user_id,
+            title=title,
+            genre=genre,
+            blurb=blurb,
+            author=author,
+            language=language,
+        )
         self.session.add(novel)
         await self.session.flush()
         return novel

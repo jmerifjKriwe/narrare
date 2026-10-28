@@ -1040,6 +1040,8 @@ export interface components {
         };
         /** NovelRead */
         NovelRead: {
+            /** Author */
+            author: string | null;
             /** Blurb */
             blurb: string | null;
             /**
@@ -1054,6 +1056,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Language */
+            language: string | null;
             /** Title */
             title: string;
             /**
