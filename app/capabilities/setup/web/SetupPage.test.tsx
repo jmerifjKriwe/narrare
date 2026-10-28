@@ -77,7 +77,18 @@ describe("SetupPage", () => {
     await user.click(screen.getByRole("button", { name: t("setup.submit") }));
     const body = api.POST.mock.calls[0][1].body as Record<string, unknown>;
     expect(body.demo).toBe("dead-signal");
-    expect(body.novel_title).toBe("Ein Titel");
+    // the demo's own title names the novel; the typed one stays parked
+    expect(body.novel_title).toBe("Dead Signal");
+  });
+
+  it("a demo submit fires without a typed title, naming the demo's title", async () => {
+    render(<SetupPage />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("radio", { name: /Dead Signal/ }));
+    await user.click(screen.getByRole("button", { name: t("setup.submit") }));
+    expect(api.POST).toHaveBeenCalledWith("/api/setup", {
+      body: { novel_title: "Dead Signal", demo: "dead-signal" },
+    });
   });
 
   it("a selected demo disables the title input, names the demo's title, and keeps the typed title", async () => {
@@ -91,6 +102,10 @@ describe("SetupPage", () => {
     expect(title().disabled).toBe(true);
     expect(title().value).toBe("Mein Buch");
     expect(screen.getByText(t("setup.demo.titleReplaces", { title: "Dead Signal" }))).toBeTruthy();
+    // the hint is wired to the input, so a screen reader explains the disable
+    const describedBy = title().getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)?.textContent).toContain("Dead Signal");
     await user.click(
       screen.getByRole("radio", { name: new RegExp(t("setup.demo.blank")) }),
     );

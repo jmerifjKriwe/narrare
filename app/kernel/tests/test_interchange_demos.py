@@ -1,18 +1,16 @@
 """The bundled demo corpus as the WP's golden fixture.
 
 Everything the shipping demos are must hold here: all three parse into a
-complete novel (chapters, entities, valid types, resolvable edges), the
-engine's determinism survives real prose — parse → serialize reproduces the
-bundled bytes exactly, so a hand edit of any bundled file turns the gate red —
-and the setup page's picker manifest mirrors this one.
+complete novel (chapters, entities, valid types, resolvable edges), and the
+engine's determinism survives real prose — every bundled file is a byte
+fixed point of the format, so the corpus cannot drift from the parser.
+(The setup page's picker manifest is cross-checked against this one in the
+setup capability's own suite.)
 """
-
-import re
-from pathlib import Path
 
 from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.interchange import parse_archive, serialize_archive
-from app.kernel.interchange.demos import DEMOS, DemoInfo, demo_tree
+from app.kernel.interchange.demos import DEMOS, demo_tree
 
 # The corpus facts the manifest pins: title and language must match the
 # bundled metadata.json, and the counts are the ported v1 stats.
@@ -54,9 +52,12 @@ def test_every_demo_parses() -> None:
 
 
 def test_demo_golden_round_trip_is_byte_identical() -> None:
-    """The corpus-relative golden gate: what the engine produces from a demo is
-    the bundled bytes themselves. A hand edit of any bundled file — a key
-    reordered, a blank line added, a file renamed — turns this red."""
+    """The corpus-relative golden gate: every bundled file is a byte fixed
+    point of the format — what the engine produces from a demo is exactly
+    the bundled bytes. An edit that changes what the engine would write (a
+    key reordered, a value-bearing line moved or dropped, a file renamed)
+    turns this red; whitespace the format itself reproduces (an appended
+    EOF newline) is by definition not drift."""
     for info in DEMOS:
         tree = demo_tree(info.slug)
         bundled = {"metadata.json", *tree.chapter_names(), *tree.kb_names()}
@@ -64,18 +65,3 @@ def test_demo_golden_round_trip_is_byte_identical() -> None:
         assert set(files) == bundled
         for name, data in files.items():
             assert tree.read_bytes(name) == data, f"{info.slug}/{name} is not a format fixed point"
-
-
-def test_web_manifest_matches_the_python_manifest() -> None:
-    """The picker's TS constant in `SetupPage.tsx` mirrors the kernel manifest:
-    same slugs, same titles, same languages, same order. A demo added to one
-    side and not the other — or renamed, retitled, reordered — is red here."""
-    page = (
-        Path(__file__).parents[2] / "capabilities" / "setup" / "web" / "SetupPage.tsx"
-    ).read_text(encoding="utf-8")
-    entries = re.findall(
-        r'\{\s*slug:\s*"([^"]+)"\s*,\s*title:\s*"([^"]+)"\s*,\s*language:\s*"([^"]+)"',
-        page,
-    )
-    web = [DemoInfo(slug=slug, title=title, language=language) for slug, title, language in entries]
-    assert web == list(DEMOS)

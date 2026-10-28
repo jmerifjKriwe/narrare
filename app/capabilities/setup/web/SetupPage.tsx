@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -9,8 +9,9 @@ import { useTranslation } from "@shell/lib/i18n";
  * (`app/kernel/interchange/demos.py`, same order, same slugs): the demos are
  * content in their own language, so their titles are not catalog keys — only
  * the labels around them are. The counts are the bundled archives' facts;
- * the kernel round-trip test pins the same numbers, and a demo added there
- * without a card here shows up as a missing picker entry in review.
+ * the setup suite's `test_demo_manifest.py` cross-checks both manifests
+ * against each other and against the parsed archives, so a demo added on
+ * one side only — or a card with a wrong count — is a red test.
  */
 const DEMOS = [
   { slug: "im-stillen-wald", title: "Im Stillen Wald", language: "de", chapters: 2, entities: 6 },
@@ -32,14 +33,20 @@ export function SetupPage() {
   const [demo, setDemo] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const selected = demo === null ? undefined : DEMOS.find((entry) => entry.slug === demo);
+  const titleHintId = useId();
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (title.trim() === "") return;
+    // A demo names the novel itself, so it submits without a typed title;
+    // the blank path still needs one.
+    if (!selected && title.trim() === "") return;
     const { data, response } = await client.POST("/api/setup", {
       // The blank path sends no demo at all — absent, not null — so the
       // request an older API sees is byte-for-byte the one it always saw.
-      body: { novel_title: title, ...(demo ? { demo } : {}) },
+      body: {
+        novel_title: selected ? selected.title : title,
+        ...(selected ? { demo: selected.slug } : {}),
+      },
     });
     if (!response.ok || !data) {
       setFailed(true);
@@ -61,12 +68,13 @@ export function SetupPage() {
               // A demo names the novel itself, so a typed title is parked —
               // visibly disabled, never silently dropped — until blank wins.
               disabled={selected !== undefined}
+              aria-describedby={selected !== undefined ? titleHintId : undefined}
               onChange={(event) => setTitle(event.target.value)}
               className="rounded-md border border-border bg-background px-3 py-2 text-base font-normal focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
           {selected ? (
-            <p className="text-sm text-muted">
+            <p id={titleHintId} className="text-sm text-muted">
               {t("setup.demo.titleReplaces", { title: selected.title })}
             </p>
           ) : null}

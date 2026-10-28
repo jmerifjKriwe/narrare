@@ -7,9 +7,9 @@ and *Echoes of the Thornwall* (fantasy, en), ported from the v1 demo data.
 The corpus doubles as the WP's golden fixture — the kernel suite pins the
 bundled bytes as the parser's fixed point — and the setup page's picker
 carries its own TS manifest beside this one; the two manifests are
-cross-checked against each other by
-`test_web_manifest_matches_the_python_manifest` in the kernel suite, so a
-demo added to one side and not the other is a red test, not a missing card.
+cross-checked against each other and against the parsed archives by the
+setup capability's `test_demo_manifest.py`, so a demo added on one side
+only — or a card with a wrong count — is a red test, not a wrong picker.
 """
 
 from __future__ import annotations
