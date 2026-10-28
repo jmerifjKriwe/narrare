@@ -36,10 +36,13 @@ export function detailOf(error: unknown): unknown {
 }
 
 /**
- * The archive format's slug rule (`format.py` `_slugify`): lowercase,
- * ASCII-folded, non-alphanumerics to `-`, trimmed, empty falls back to
- * `untitled`. Client-side it drives the export path PROPOSAL only — the
- * server derives its own names, so a drift here can never corrupt data.
+ * A slug in the archive format's spirit: lowercase, ASCII-folded,
+ * non-alphanumerics to `-`, trimmed, empty falls back to `untitled`.
+ * PROPOSAL ONLY — the server derives the archive's own names, and this
+ * client-side rule deliberately does not chase byte parity with it (it
+ * strips combining marks where the server drops non-ASCII, so "Straße"
+ * proposes `stra-e` where the server would say `strae`). The prefill only
+ * needs to be a sensible folder name the user can edit.
  */
 export function slugify(text: string): string {
   const folded = text.normalize("NFKD").replace(/\p{M}/gu, "");

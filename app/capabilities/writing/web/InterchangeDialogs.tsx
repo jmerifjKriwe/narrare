@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import type { Novel } from "@shell/lib/api/client";
@@ -61,7 +61,13 @@ function FailureAlert({ message }: { message: string }) {
 export function ExportNovelDialog({ novel }: { novel: Novel }) {
   const t = useTranslation();
   return (
-    <Dialog title={t("shelf.exportTitle", { title: novel.title })} triggerLabel={t("shelf.export")}>
+    <Dialog
+      title={t("shelf.exportTitle", { title: novel.title })}
+      triggerLabel={t("shelf.export")}
+      // Every row shows the same word; the accessible name carries this
+      // novel, so a screen reader's button list stays unambiguous.
+      triggerAriaLabel={t("shelf.exportTitle", { title: novel.title })}
+    >
       {(close) => <ExportForm novel={novel} close={close} />}
     </Dialog>
   );
@@ -71,6 +77,7 @@ export function ExportNovelDialog({ novel }: { novel: Novel }) {
  *  dialog's own, never a previous one's leftovers. */
 function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
   const t = useTranslation();
+  const receiptId = useId();
   const [mode, setMode] = useState<ExportMode>("path");
   // The proposal is computed once at open: the user's edit is the answer
   // from there, not a suggestion the dialog keeps overwriting.
@@ -106,11 +113,27 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
         close();
         return;
       }
+      // The receipt replaces the form on screen; a non-visual reader gets
+      // the same answer in one line, because the form it was typing into
+      // just went away.
       setReceipt(result);
+      announce(
+        [
+          t("shelf.export.doneHeading"),
+          t("shelf.export.donePath", { path: result.path }),
+          t("shelf.export.doneChapters", { count: result.chapters }),
+          t("shelf.export.doneEntities", { count: result.entities }),
+        ].join(" "),
+      );
     } catch (error) {
+      const status = (error as InterchangeFailure).status;
       const detail = detailOf(error) as { code?: string; path?: string } | undefined;
       if (detail?.code === "target_not_empty") {
         setRefusal(t("shelf.export.targetNotEmpty", { path: detail.path ?? "" }));
+      } else if (status >= 400 && status < 500) {
+        // The server answered and named no fix: a typo path, a missing
+        // folder — the outage guess would blame the wrong thing.
+        setRefusal(t("shelf.export.refused"));
       } else {
         setRefusal(t("shelf.export.error"));
       }
@@ -123,8 +146,10 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
     <div className="mt-4 flex flex-col gap-3">
       {receipt ? (
         <>
-          <div className="flex flex-col gap-1 text-sm">
-            <p className="font-medium">{t("shelf.export.doneHeading")}</p>
+          <div aria-labelledby={receiptId} className="flex flex-col gap-1 text-sm">
+            <h3 id={receiptId} className="font-medium">
+              {t("shelf.export.doneHeading")}
+            </h3>
             <p>{t("shelf.export.donePath", { path: receipt.path })}</p>
             <p>{t("shelf.export.doneChapters", { count: receipt.chapters })}</p>
             <p>{t("shelf.export.doneEntities", { count: receipt.entities })}</p>
@@ -191,6 +216,34 @@ export function ImportArchiveDialog({ novels }: { novels: Novel[] }) {
  *  or an existing target picked without naming it. */
 type FormProblem = "both" | "none" | "target" | null;
 
+type Translate = ReturnType<typeof useTranslation>;
+
+/** The report's count lines, zeros dropped — the page shows all nine, the
+ *  one-line announcement carries only the classes that did something. */
+function reportSummary(report: ImportReport, t: Translate): string[] {
+  const classes: Array<[string, number]> = [
+    [t("shelf.report.chaptersNew", { count: report.chapters_new }), report.chapters_new],
+    [t("shelf.report.chaptersRevised", { count: report.chapters_revised }), report.chapters_revised],
+    [
+      t("shelf.report.chaptersUnchanged", { count: report.chapters_already_current }),
+      report.chapters_already_current,
+    ],
+    [t("shelf.report.entitiesNew", { count: report.entities_new }), report.entities_new],
+    [t("shelf.report.entitiesRevised", { count: report.entities_revised }), report.entities_revised],
+    [t("shelf.report.entitiesRenamed", { count: report.entities_renamed }), report.entities_renamed],
+    [
+      t("shelf.report.entitiesUnchanged", { count: report.entities_already_current }),
+      report.entities_already_current,
+    ],
+    [t("shelf.report.relationsCreated", { count: report.relations_created }), report.relations_created],
+    [
+      t("shelf.report.relationsUnchanged", { count: report.relations_already_current }),
+      report.relations_already_current,
+    ],
+  ];
+  return classes.filter(([, count]) => count > 0).map(([message]) => message);
+}
+
 function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
   const t = useTranslation();
   const [file, setFile] = useState<File | null>(null);
@@ -201,6 +254,9 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
   const [problem, setProblem] = useState<FormProblem>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Resetting a file input is the DOM's job, not React's: the ref is the
+  // one door that can empty it after a pick.
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const problemText =
     problem === "both"
@@ -210,6 +266,12 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
         : problem === "target"
           ? t("shelf.import.targetRequired")
           : null;
+
+  /** Drop the picked file from state and from the input itself. */
+  function removeFile() {
+    setFile(null);
+    if (fileInput.current !== null) fileInput.current.value = "";
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -239,7 +301,12 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
       // The shelf must show what this made: a new novel's row, a merged
       // novel's new "last touched" — the list's key, invalidated once.
       void queryClient.invalidateQueries({ queryKey: ["novels"] });
+      // The report replaces the form; a non-visual reader hears the
+      // summary, because the form it was typing into just went away.
       setReport(answer);
+      announce(
+        [t("shelf.report.heading"), ...reportSummary(answer, t)].join(" "),
+      );
     } catch (error) {
       const status = (error as InterchangeFailure).status;
       const detail = detailOf(error) as
@@ -256,6 +323,10 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
             reason: detail.reason ?? "",
           }),
         );
+      } else if (status >= 400 && status < 500) {
+        // The server answered and named no fix: a typo path, an archive
+        // this build cannot read — not evidence the service is down.
+        setRefusal(t("shelf.import.refused"));
       } else {
         setRefusal(t("shelf.import.error"));
       }
@@ -276,11 +347,21 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
           <label className="flex flex-col gap-1 text-sm font-medium">
             {t("shelf.import.fileLabel")}
             <input
+              ref={fileInput}
               type="file"
+              accept=".zip,application/zip"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               className="rounded-md border border-border bg-card px-3 py-2 text-sm font-normal file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
             />
           </label>
+          {file ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted">{file.name}</span>
+              <button type="button" onClick={removeFile} className={QUIET_BUTTON}>
+                {t("shelf.import.fileRemove")}
+              </button>
+            </div>
+          ) : null}
           <TextField
             label={t("shelf.import.pathLabel")}
             value={pathText}
@@ -338,10 +419,13 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
  */
 function ImportReportView({ report, close }: { report: ImportReport; close: () => void }) {
   const t = useTranslation();
+  const headingId = useId();
   return (
     <div className="flex flex-col gap-3 text-sm">
-      <p className="font-medium">{t("shelf.report.heading")}</p>
-      <ul className="flex flex-col gap-1">
+      <h3 id={headingId} className="font-medium">
+        {t("shelf.report.heading")}
+      </h3>
+      <ul aria-labelledby={headingId} className="flex flex-col gap-1">
         <li>{t("shelf.report.chaptersNew", { count: report.chapters_new })}</li>
         <li>{t("shelf.report.chaptersRevised", { count: report.chapters_revised })}</li>
         <li>{t("shelf.report.chaptersUnchanged", { count: report.chapters_already_current })}</li>

@@ -11,11 +11,12 @@
  * `file — reason` row, every metadata field — all of it text nodes, so an
  * archive-supplied name can never become markup.
  */
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Novel } from "@shell/lib/api/client";
+import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
 
 import { ExportNovelDialog, ImportArchiveDialog } from "./InterchangeDialogs";
@@ -79,6 +80,23 @@ const TARGET: Novel = {
   ...NOVEL,
   id: "a6f4c6d1-2f3e-4a5b-8c9d-0e1f2a3b4c5d",
   title: "Im Stillen Wald",
+};
+
+/** The report of an import that found every class already current: the
+ *  page still owes the reader its nine zero rows and the heading. */
+const EMPTY_REPORT = {
+  novel_id: TARGET.id,
+  chapters_new: 0,
+  chapters_revised: 0,
+  chapters_already_current: 0,
+  entities_new: 0,
+  entities_revised: 0,
+  entities_renamed: 0,
+  entities_already_current: 0,
+  relations_created: 0,
+  relations_already_current: 0,
+  conflicts: [],
+  metadata_conflicts: [],
 };
 
 /**
@@ -152,6 +170,7 @@ let revokedUrls: string[] = [];
 let anchorClicks: { href: string; download: string }[] = [];
 let savedUrlStatics: { create?: PropertyDescriptor; revoke?: PropertyDescriptor } = {};
 let savedAnchorClick: (() => void) | undefined;
+let seamCaptured = false;
 
 function captureDownloadSeam(): void {
   const urlStatics = globalThis.URL as unknown as Record<string, PropertyDescriptor | undefined>;
@@ -177,30 +196,45 @@ function captureDownloadSeam(): void {
   HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
     anchorClicks.push({ href: this.href, download: this.download });
   };
+  seamCaptured = true;
+}
+
+/** What the live region says across its log. Announcements linger for
+ *  seconds by design, so every test asserts a message only it can have
+ *  caused — the house idiom from the editor tests. */
+function announced(): string {
+  return document.querySelector("[data-live-announcer]")?.textContent ?? "";
 }
 
 beforeEach(() => {
   wire = [];
   answers = [];
+  sentBodies.length = 0;
   objectUrls = [];
   revokedUrls = [];
   anchorClicks = [];
   savedUrlStatics = {};
   savedAnchorClick = undefined;
+  seamCaptured = false;
   setFetchMock(fetchMock);
 });
 afterEach(() => {
   cleanup();
+  clearAnnouncements();
   vi.unstubAllGlobals();
-  const urlStatics = globalThis.URL as unknown as Record<string, PropertyDescriptor | undefined>;
-  for (const [key, descriptor] of [
-    ["createObjectURL", savedUrlStatics.create],
-    ["revokeObjectURL", savedUrlStatics.revoke],
-  ] as const) {
-    if (descriptor) Object.defineProperty(globalThis.URL, key, descriptor);
-    else delete urlStatics[key];
+  // Only the tests that captured the seam put anything on the URL
+  // constructor; the others must not touch it at all.
+  if (seamCaptured) {
+    const urlStatics = globalThis.URL as unknown as Record<string, PropertyDescriptor | undefined>;
+    for (const [key, descriptor] of [
+      ["createObjectURL", savedUrlStatics.create],
+      ["revokeObjectURL", savedUrlStatics.revoke],
+    ] as const) {
+      if (descriptor) Object.defineProperty(globalThis.URL, key, descriptor);
+      else delete urlStatics[key];
+    }
+    if (savedAnchorClick) HTMLAnchorElement.prototype.click = savedAnchorClick;
   }
-  if (savedAnchorClick) HTMLAnchorElement.prototype.click = savedAnchorClick;
 });
 
 describe("the export dialog", () => {
@@ -219,7 +253,7 @@ describe("the export dialog", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<ExportNovelDialog novel={NOVEL} />);
 
-    await user.click(screen.getByRole("button", { name: t("shelf.export") }));
+    await user.click(screen.getByRole("button", { name: t("shelf.exportTitle", { title: NOVEL.title }) }));
     const pathField = (await screen.findByLabelText(t("shelf.export.pathLabel"))) as HTMLInputElement;
     expect(pathField.value).toMatch(/^dead-signal-\d{8}-\d{4}$/);
 
@@ -232,11 +266,18 @@ describe("the export dialog", () => {
     expect(wire[0]!.method).toBe("POST");
     expect(wire[0]!.json).toEqual({ mode: "path", path: pathField.value });
 
-    // The receipt, not silence: where it went and how much.
-    expect(await screen.findByText(t("shelf.export.doneHeading"))).toBeTruthy();
-    expect(screen.getByText(t("shelf.export.donePath", { path: "/home/me/dead-signal" }))).toBeTruthy();
-    expect(screen.getByText(t("shelf.export.doneChapters", { count: 3 }))).toBeTruthy();
-    expect(screen.getByText(t("shelf.export.doneEntities", { count: 7 }))).toBeTruthy();
+    // The receipt, not silence: where it went and how much — on the page
+    // and in the live region, which is where a non-visual reader meets it.
+    expect(
+      await screen.findByRole("heading", { name: t("shelf.export.doneHeading") }),
+    ).toBeTruthy();
+    const receipt = within(screen.getByRole("dialog"));
+    expect(receipt.getByText(t("shelf.export.donePath", { path: "/home/me/dead-signal" }))).toBeTruthy();
+    expect(receipt.getByText(t("shelf.export.doneChapters", { count: 3 }))).toBeTruthy();
+    expect(receipt.getByText(t("shelf.export.doneEntities", { count: 7 }))).toBeTruthy();
+    await waitFor(() => expect(announced()).toContain(t("shelf.export.doneHeading")));
+    expect(announced()).toContain(t("shelf.export.donePath", { path: "/home/me/dead-signal" }));
+    expect(announced()).toContain(t("shelf.export.doneChapters", { count: 3 }));
   });
 
   it("delegates the ZIP to the browser — blob, anchor, revoke, no receipt", async () => {
@@ -245,7 +286,7 @@ describe("the export dialog", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<ExportNovelDialog novel={NOVEL} />);
 
-    await user.click(screen.getByRole("button", { name: t("shelf.export") }));
+    await user.click(screen.getByRole("button", { name: t("shelf.exportTitle", { title: NOVEL.title }) }));
     await screen.findByLabelText(t("shelf.export.pathLabel"));
     await user.click(screen.getByRole("radio", { name: t("shelf.export.modeZip") }));
     // The path question belongs to the path mode only; the ZIP needs no
@@ -268,9 +309,11 @@ describe("the export dialog", () => {
     const downloaded = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
     expect(downloaded).toBeInstanceOf(Blob);
 
-    // No dialog report: the dialog is gone and no receipt is on the page.
+    // No dialog report: the dialog is gone, the download itself is
+    // announced, and no receipt is on the page.
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.body.textContent).not.toContain(t("shelf.export.doneHeading"));
+    await waitFor(() => expect(announced()).toContain(t("shelf.export.zipDone")));
   });
 
   it("names a non-empty target instead of a generic failure", async () => {
@@ -280,7 +323,7 @@ describe("the export dialog", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<ExportNovelDialog novel={NOVEL} />);
 
-    await user.click(screen.getByRole("button", { name: t("shelf.export") }));
+    await user.click(screen.getByRole("button", { name: t("shelf.exportTitle", { title: NOVEL.title }) }));
     await screen.findByLabelText(t("shelf.export.pathLabel"));
     await user.click(screen.getByRole("button", { name: t("shelf.export.submit") }));
 
@@ -291,6 +334,21 @@ describe("the export dialog", () => {
     // The refusal is not the end of the form: the proposal is still there
     // to be corrected, and the dialog never claimed an export happened.
     expect(screen.queryByText(t("shelf.export.doneHeading"))).toBeNull();
+  });
+
+  it("names each novel on its trigger — N rows, N distinct buttons", () => {
+    // N novels render N "Export" buttons; the visible label stays short,
+    // the accessible name carries the novel so a screen reader's button
+    // list never shows a column of identical words.
+    render(
+      <>
+        <ExportNovelDialog novel={NOVEL} />
+        <ExportNovelDialog novel={TARGET} />
+      </>,
+    );
+    expect(screen.getAllByText(t("shelf.export"))).toHaveLength(2);
+    expect(screen.getByRole("button", { name: t("shelf.exportTitle", { title: NOVEL.title }) })).toBeTruthy();
+    expect(screen.getByRole("button", { name: t("shelf.exportTitle", { title: TARGET.title }) })).toBeTruthy();
   });
 });
 
@@ -331,8 +389,9 @@ describe("the import dialog", () => {
     expect(wire[0]!.form?.has("novel_id")).toBe(false);
 
     // Every class the report carries is on the page — the zeros included:
-    // nothing the engine counted may go silent.
-    expect(await screen.findByText(t("shelf.report.heading"))).toBeTruthy();
+    // nothing the engine counted may go silent. The live region carries
+    // the summary, so a non-visual reader hears it land too.
+    expect(await screen.findByRole("heading", { name: t("shelf.report.heading") })).toBeTruthy();
     expect(screen.getByText(t("shelf.report.chaptersNew", { count: 2 }))).toBeTruthy();
     expect(screen.getByText(t("shelf.report.chaptersRevised", { count: 1 }))).toBeTruthy();
     expect(screen.getByText(t("shelf.report.chaptersUnchanged", { count: 4 }))).toBeTruthy();
@@ -342,6 +401,12 @@ describe("the import dialog", () => {
     expect(screen.getByText(t("shelf.report.entitiesUnchanged", { count: 5 }))).toBeTruthy();
     expect(screen.getByText(t("shelf.report.relationsCreated", { count: 6 }))).toBeTruthy();
     expect(screen.getByText(t("shelf.report.relationsUnchanged", { count: 1 }))).toBeTruthy();
+    await waitFor(() => expect(announced()).toContain(t("shelf.report.heading")));
+    expect(announced()).toContain(t("shelf.report.chaptersNew", { count: 2 }));
+    expect(announced()).toContain(t("shelf.report.entitiesRenamed", { count: 2 }));
+    // A zero class has nothing to say — the page names it, the summary
+    // does not pad itself with rows that count nothing.
+    expect(announced()).not.toContain(t("shelf.report.entitiesRevised", { count: 0 }));
 
     // The conflict as a `file — reason` row — as a text node: the
     // archive-supplied name rides the catalog formatter, never markup.
@@ -361,22 +426,7 @@ describe("the import dialog", () => {
   });
 
   it("uploads a file into an existing novel — and refuses both sources at once", async () => {
-    answers.push(
-      jsonResponse(201, {
-        novel_id: TARGET.id,
-        chapters_new: 0,
-        chapters_revised: 0,
-        chapters_already_current: 0,
-        entities_new: 0,
-        entities_revised: 0,
-        entities_renamed: 0,
-        entities_already_current: 0,
-        relations_created: 0,
-        relations_already_current: 0,
-        conflicts: [],
-        metadata_conflicts: [],
-      }),
-    );
+    answers.push(jsonResponse(201, EMPTY_REPORT));
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<ImportArchiveDialog novels={[TARGET]} />);
 
@@ -409,9 +459,88 @@ describe("the import dialog", () => {
 
     // The empty report is still a report: the heading says what happened,
     // and the absent rows say why nothing else is listed.
-    expect(await screen.findByText(t("shelf.report.heading"))).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: t("shelf.report.heading") })).toBeTruthy();
     expect(screen.getByText(t("shelf.report.chaptersNew", { count: 0 }))).toBeTruthy();
     expect(screen.queryByText(t("shelf.report.conflictsHeading", { count: 1 }))).toBeNull();
     expect(screen.queryByText(t("shelf.report.metadataHeading", { count: 1 }))).toBeNull();
+  });
+
+  it("lets the picked file be removed — the refusal recovers without closing", async () => {
+    answers.push(jsonResponse(201, EMPTY_REPORT));
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    render(<ImportArchiveDialog novels={[TARGET]} />);
+
+    await user.click(screen.getByRole("button", { name: t("shelf.import") }));
+    const fileInput = await screen.findByLabelText(t("shelf.import.fileLabel"));
+    await user.upload(fileInput, new File(["PK"], "dead-signal.zip", { type: "application/zip" }));
+
+    // The file is named where it was picked, and one press removes it —
+    // input value included, which React cannot set on its own.
+    expect(screen.getByText("dead-signal.zip")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: t("shelf.import.fileRemove") }));
+    expect(screen.queryByText("dead-signal.zip")).toBeNull();
+    expect((fileInput as HTMLInputElement).value).toBe("");
+
+    // With the file gone and the path filled, the exact-one refusal has
+    // a way back: the path alone carries the submit.
+    await user.type(await screen.findByLabelText(t("shelf.import.pathLabel")), "/tmp/only-path.zip");
+    await user.click(screen.getByRole("button", { name: t("shelf.import.submit") }));
+
+    await waitFor(() => expect(wire).toHaveLength(1));
+    expect(wire[0]!.form?.get("path")).toBe("/tmp/only-path.zip");
+    expect(wire[0]!.form?.has("archive")).toBe(false);
+    expect(await screen.findByRole("heading", { name: t("shelf.report.heading") })).toBeTruthy();
+  });
+
+  it("tells the refusal families apart", async () => {
+    const cases = [
+      {
+        name: "an oversized archive says so",
+        status: 413,
+        body: null,
+        expected: t("shelf.import.tooLarge"),
+      },
+      {
+        name: "an embedding mismatch names the re-embed",
+        status: 409,
+        body: { detail: { code: "embedding-mismatch", stored: 384, found: 1536 } },
+        expected: t("shelf.import.embeddingMismatch"),
+      },
+      {
+        name: "an unreadable archive names its file and reason",
+        status: 422,
+        body: { detail: { code: "archive_invalid", file: "metadata.json", reason: "missing title" } },
+        expected: t("shelf.import.archiveInvalid", { file: "metadata.json", reason: "missing title" }),
+      },
+      {
+        name: "a vanished target novel is a refusal, not an outage",
+        status: 404,
+        body: { detail: "novel not found" },
+        expected: t("shelf.import.refused"),
+      },
+      {
+        name: "a server-side failure keeps the service-running guess",
+        status: 500,
+        body: { detail: "exploded" },
+        expected: t("shelf.import.error"),
+      },
+    ];
+    for (const testCase of cases) {
+      wire = [];
+      answers = [jsonResponse(testCase.status, testCase.body)];
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      const view = render(<ImportArchiveDialog novels={[TARGET]} />);
+
+      await user.click(screen.getByRole("button", { name: t("shelf.import") }));
+      await user.type(await screen.findByLabelText(t("shelf.import.pathLabel")), "/tmp/archives/a.zip");
+      await user.click(screen.getByRole("button", { name: t("shelf.import.submit") }));
+
+      expect(await screen.findByRole("alert"), testCase.name).toBeTruthy();
+      expect(screen.getByRole("alert").textContent, testCase.name).toBe(testCase.expected);
+      expect(wire, testCase.name).toHaveLength(1);
+
+      view.unmount();
+      cleanup();
+    }
   });
 });
