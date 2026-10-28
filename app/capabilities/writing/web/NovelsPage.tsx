@@ -8,6 +8,8 @@ import { formatRelative } from "@shell/lib/time";
 import { Dialog } from "@shell/ui/Dialog";
 import { TextField } from "@shell/ui/TextField";
 
+import { ExportNovelDialog, ImportArchiveDialog } from "./InterchangeDialogs";
+
 /** The start page: a continue-hero over the shelf, and the new-book dialog. */
 export function NovelsPage() {
   const t = useTranslation();
@@ -124,35 +126,38 @@ export function NovelsPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
         {!failedNow && (
-          <Dialog title={t("novels.new")} triggerLabel={t("novels.createBook")}>
-            {(close) => (
-              <form
-                onSubmit={(event) => void create(event, close)}
-                className="mt-4 flex flex-col gap-3"
-              >
-                <TextField
-                  label={t("novels.titleLabel")}
-                  value={title}
-                  onChange={setTitle}
-                  isInvalid={titleInvalid}
-                  validationMessage={titleInvalid ? t("novels.titleRequired") : undefined}
-                />
-                <TextField label={t("novels.genre")} value={genre} onChange={setGenre} />
-                <TextField label={t("novels.blurb")} value={blurb} onChange={setBlurb} multiline />
-                {createFailed ? (
-                  <p role="alert" className="text-sm text-danger">
-                    {t("novels.errorCreate")}
-                  </p>
-                ) : null}
-                <button
-                  type="submit"
-                  className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          <div className="flex items-center gap-2">
+            <ImportArchiveDialog novels={novels.data ?? []} />
+            <Dialog title={t("novels.new")} triggerLabel={t("novels.createBook")}>
+              {(close) => (
+                <form
+                  onSubmit={(event) => void create(event, close)}
+                  className="mt-4 flex flex-col gap-3"
                 >
-                  {t("novels.create")}
-                </button>
-              </form>
-            )}
-          </Dialog>
+                  <TextField
+                    label={t("novels.titleLabel")}
+                    value={title}
+                    onChange={setTitle}
+                    isInvalid={titleInvalid}
+                    validationMessage={titleInvalid ? t("novels.titleRequired") : undefined}
+                  />
+                  <TextField label={t("novels.genre")} value={genre} onChange={setGenre} />
+                  <TextField label={t("novels.blurb")} value={blurb} onChange={setBlurb} multiline />
+                  {createFailed ? (
+                    <p role="alert" className="text-sm text-danger">
+                      {t("novels.errorCreate")}
+                    </p>
+                  ) : null}
+                  <button
+                    type="submit"
+                    className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    {t("novels.create")}
+                  </button>
+                </form>
+              )}
+            </Dialog>
+          </div>
         )}
       </div>
       {failedNow ? (
@@ -198,11 +203,11 @@ export function NovelsPage() {
           )}
           <ul className="mt-6 flex flex-col gap-2">
             {(novels.data ?? []).map((novel) => (
-              <li key={novel.id} className="rounded-lg border border-border bg-card">
+              <li key={novel.id} className="flex items-stretch justify-between gap-2 rounded-lg border border-border bg-card">
                 <Link
                   to="/novels/$id"
                   params={{ id: novel.id }}
-                  className="block rounded-md px-4 py-3 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  className="block flex-1 rounded-md px-4 py-3 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                   <span className="font-medium">{novel.title}</span>
                   {novel.genre && (
@@ -212,6 +217,9 @@ export function NovelsPage() {
                     {t("novels.lastTouched", { time: formatRelative(novel.updated_at) })}
                   </span>
                 </Link>
+                <div className="flex items-center pr-4">
+                  <ExportNovelDialog novel={novel} />
+                </div>
               </li>
             ))}
           </ul>
