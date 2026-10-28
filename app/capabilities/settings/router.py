@@ -2,8 +2,8 @@
 
 The profile routes translate the service's closed error vocabulary into the
 HTTP one: a missing profile is 404, the gate's refusals are 422s naming their
-fields, the default guard and a create that lost the default race are 409s,
-a key store that cannot take or produce a key is a 503, and a discovery that
+fields, the default guard and a create or default swap that lost the race are
+409s, a key store that cannot take or produce a key is a 503, and a discovery that
 cannot reach its endpoint is a 502. A failed connection *test* is none of
 these — it is the 200 that carries the failure, because the test ran.
 """

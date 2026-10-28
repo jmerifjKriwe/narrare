@@ -64,7 +64,11 @@ class DefaultProfileError(RuntimeError):
 
 
 class DefaultProfileRaceError(RuntimeError):
-    """Another create made its profile the default first; only one may exist."""
+    """Another create or default swap made its profile the default first.
+
+    The create race and the two-swap race both land here; only one default may
+    exist.
+    """
 
 
 class NoEndpointError(RuntimeError):
