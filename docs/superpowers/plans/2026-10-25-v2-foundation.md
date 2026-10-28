@@ -442,6 +442,55 @@ relations); blank path unchanged.
 
 ---
 
+### 6.6 As built, 2026-10-29 (WP3)
+
+Branch `openchamber/wp3-markdown-export`; the record is
+`docs/superpowers/specs/2026-10-28-wp3-markdown-demo-export-design.md` (D1-D12,
+eight merge rules) and `docs/superpowers/plans/2026-10-28-wp3-markdown-demo-export-plan.md`.
+
+- **Markdown is canonical:** `@tiptap/markdown` 3.31.3 with `contentType: 'markdown'`
+  and `getMarkdown()` on save, behind one shared `MarkdownEditor` in the shell
+  (`web/ui/`); chapters and entity bodies use it (F-26 closed in `2b8542a5`). No
+  HTML-to-Markdown converter: `db-reset` is the migration (D8). Two gates, D12: the
+  engine's byte fixed point over the whole demo corpus, and the editor's fixed point
+  with `NAMED_NORMALISATIONS` naming every accepted drift.
+- **One interchange format.** `app/kernel/interchange/` owns `format.py` (dataclasses,
+  presence-checked frontmatter via pyyaml, deterministic slugs, `_MAX_LENGTHS` column
+  validation, `slugify()`), `tree.py` (directory and ZIP under one `ArchiveTree`;
+  reads only `metadata.json`, `chapters/*.md`, `kb/*.md`; total-byte cap; atomic
+  `write_directory` via staging + rename) and `engine.py` (export, merge, report).
+  The HTTP surface is the writing capability's (export path/ZIP; import upload/path;
+  named 404/409/413/422 — corrupted, encrypted and oversized archives included).
+  Delivery is both ways (D1), an export target is never overwritten (D10), and
+  conflicts carry `code` + `params` while `reason` stays the technical detail — the
+  receipt localizes in en/de/fr with a reason fallback.
+- **Merge rules as designed:** content-equality short-circuit before the timestamp
+  guard; the files are the truth with the index advisory; frontmatter position wins
+  and disagreements are reported for new files; entity renames are applied and
+  reported, the old name ceasing to resolve; edges are create-only; novel metadata is
+  not applied on merge (diffs reported); import maintains WP1's `search_text` and
+  embedding invariants; a merge that writes bumps the novel's `updated_at` so the
+  shelf's "last touched" and hero stay truthful. Import is a deliberate second birth
+  path for entities (WP1's review-only rule overwritten, recorded in the spec).
+- **Demos rebuilt in the C+ shape** from v1 (`96ae118a`): *Im stillen Wald* (de),
+  *Dead Signal*, *Echoes of the Thornwall* — bundled in the interchange format under
+  `app/kernel/interchange/demos/`, prose verbatim, v1 story facts as body sections,
+  v1 relationships as `related_to` edges; the setup wizard loads one through the same
+  engine (blank path unchanged), and a cross-check test pins manifest, picker and
+  archive counts together.
+- **E2E (the done gate):** `app/capabilities/writing/e2e/test_interchange_e2e.py` —
+  six flows, DB-asserted (demo load; ZIP export → identical re-import; outside-work
+  merge with receipts matching the database; stale import refused with prose
+  unchanged; non-empty target refused; blank path unchanged) plus the demo first-run
+  in the setup E2E. `just verify` green at the branch head.
+
+Corrections to this section as written above: §6.2's `metadata.json` carries `blurb`
+(no `logline`) and the novel columns gain `author`/`language` (D4); §6.3's findings
+half is overwritten — findings stay out of the export (D2) and §6.3 binds only when
+findings ever gain passage anchors.
+
+---
+
 ## 7. WP4 — Prompt overrides
 
 ### 7.1 Registry
