@@ -7,6 +7,7 @@ import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 type Profile = components["schemas"]["ProfileRead"];
 type ProfileTestResult = components["schemas"]["ProfileTestResult"];
 type Assignment = components["schemas"]["AssignmentRead"];
+type TaskEffective = components["schemas"]["TaskEffectiveRead"];
 
 /** The kinds the form offers; the server's vocabulary is exactly these two. */
 const KINDS: readonly string[] = ["fake", "openai-chat"];
@@ -17,24 +18,17 @@ const KIND_LABELS: Record<string, MessageKey> = {
 };
 
 /**
- * The tasks an assignment can name, in the order the page lists them. This
- * mirrors `KNOWN_TASK_KEYS` in `app/kernel/llm/resolution.py` — the kernel
- * constant serves readers of the cascade, this list serves the page; unknown
- * keys stay assignable through the API (forward-compatible), the page lists
- * the known ones.
+ * The task labels the catalog carries, keyed by task. The list of tasks comes
+ * from the server (`KNOWN_TASK_KEYS`); this map only supplies words, and a key
+ * without one renders as itself — a new kernel key needs no frontend change.
  */
-const KNOWN_TASKS: readonly { key: string; labelKey: MessageKey }[] = [
-  { key: "writing.continuation", labelKey: "settings.task.writing.continuation" },
-  { key: "chat.ask", labelKey: "settings.task.chat.ask" },
-  {
-    key: "knowledge.extract-entities",
-    labelKey: "settings.task.knowledge.extract-entities",
-  },
-  {
-    key: "knowledge.check-consistency",
-    labelKey: "settings.task.knowledge.check-consistency",
-  },
-];
+const TASK_LABELS: Record<string, MessageKey> = {
+  "writing.continuation": "settings.task.writing.continuation",
+  "chat.ask": "settings.task.chat.ask",
+  "knowledge.extract-entities": "settings.task.knowledge.extract-entities",
+  "knowledge.check-consistency": "settings.task.knowledge.check-consistency",
+  "settings.test": "settings.task.settings.test",
+};
 
 /** One text field of the profile form, as the input holds it. */
 type FormState = {
@@ -105,6 +99,7 @@ export function ProvidersPanel() {
   const t = useTranslation();
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [tasks, setTasks] = useState<TaskEffective[]>([]);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
@@ -121,12 +116,14 @@ export function ProvidersPanel() {
   }, []);
 
   async function reload(): Promise<void> {
-    const [profileList, assignmentList] = await Promise.all([
+    const [profileList, assignmentList, taskList] = await Promise.all([
       client.GET("/api/settings/profiles"),
       client.GET("/api/settings/assignments"),
+      client.GET("/api/settings/tasks"),
     ]);
     setProfiles(profileList.data ?? []);
     setAssignments(assignmentList.data ?? []);
+    setTasks(taskList.data ?? []);
   }
 
   /** One form field's change, by its key in the form state. */
@@ -518,17 +515,23 @@ export function ProvidersPanel() {
         <h2 id="settings-assignments-heading" className="text-lg font-semibold">
           {t("settings.assignments")}
         </h2>
-        {KNOWN_TASKS.map((task) => {
-          const assigned = assignments.find((row) => row.task_key === task.key);
+        {tasks.map((task) => {
+          const assigned = assignments.find((row) => row.task_key === task.task_key);
+          const labelKey = TASK_LABELS[task.task_key];
+          const kindKey = KIND_LABELS[task.kind];
           return (
-            <label
-              key={task.key}
+            <div
+              key={task.task_key}
               className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
             >
-              {t(task.labelKey)}
+              <label htmlFor={`settings-task-${task.task_key}`}>
+                {labelKey === undefined ? task.task_key : t(labelKey)}
+              </label>
               <select
+                id={`settings-task-${task.task_key}`}
                 value={assigned?.profile_id ?? ""}
-                onChange={(event) => void assign(task.key, event.target.value)}
+                onChange={(event) => void assign(task.task_key, event.target.value)}
+                aria-describedby={`settings-task-effective-${task.task_key}`}
                 className={`${field} sm:max-w-64`}
               >
                 <option value="">{t("settings.assignments.auto")}</option>
@@ -538,7 +541,19 @@ export function ProvidersPanel() {
                   </option>
                 ))}
               </select>
-            </label>
+              {/* What actually answers, not the stored choice: the cascade can
+                  serve a sibling's assignment or the default from here. */}
+              <p
+                id={`settings-task-effective-${task.task_key}`}
+                className="text-xs font-normal text-muted"
+              >
+                {task.profile_name !== null
+                  ? t("settings.assignments.via", { profile: task.profile_name })
+                  : t("settings.assignments.environment", {
+                      kind: kindKey === undefined ? task.kind : t(kindKey),
+                    })}
+              </p>
+            </div>
           );
         })}
       </section>

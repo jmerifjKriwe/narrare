@@ -224,10 +224,13 @@
   "settings.profiles.keyOnceDone": "Verstanden",
   "settings.assignments": "Aufgaben",
   "settings.assignments.auto": "Automatisch",
+  "settings.assignments.via": "über {profile}",
+  "settings.assignments.environment": "Umgebung ({kind})",
   "settings.task.writing.continuation": "Weiterschreiben",
   "settings.task.chat.ask": "Chat, Fragen",
   "settings.task.knowledge.extract-entities": "Wissen, Entitäten finden",
   "settings.task.knowledge.check-consistency": "Wissen, Konsistenzprüfung",
+  "settings.task.settings.test": "Verbindungstest",
   "jobs.truncated": "Nur die ersten 20.000 Zeichen wurden gelesen.",
   "jobs.skippedChapters": "Übersprungen, zu lang: {titles}"
 }

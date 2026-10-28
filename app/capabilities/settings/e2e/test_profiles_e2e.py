@@ -123,6 +123,9 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         page.reload()
         expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
         expect(page.get_by_label("Weiterschreiben")).to_have_value(_profile_id("Fake Eins"))
+        # The task list names the profile that actually serves the task — the
+        # assigned one, not a bare "Automatic" the cascade may contradict.
+        expect(page.get_by_text("über Fake Eins")).to_be_visible()
 
         # A vendor profile carries the masked-key round-trip and the probes,
         # and a tuning column the edit below will clear.

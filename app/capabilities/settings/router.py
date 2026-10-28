@@ -33,6 +33,7 @@ from app.capabilities.settings.schemas import (
     ProfileUpdate,
     SettingsRead,
     SettingsUpdate,
+    TaskEffectiveRead,
 )
 from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import SetupRequiredError, current_user_id
@@ -214,3 +215,21 @@ async def put_assignment(
     return AssignmentRead(
         task_key=task_key, profile_id=assignment.profile_id if assignment else None
     )
+
+
+@router.get("/tasks", response_model=list[TaskEffectiveRead])
+async def list_tasks(service: ProfileServiceDep) -> list[TaskEffectiveRead]:
+    """The effective provider per known task key, for the page's task list.
+
+    Reads only: each row is the resolution cascade's answer, never a write
+    and never an audit row.
+    """
+    return [
+        TaskEffectiveRead(
+            task_key=row.task_key,
+            profile_id=row.profile_id,
+            profile_name=row.profile_name,
+            kind=row.kind,
+        )
+        for row in await service.tasks()
+    ]

@@ -126,3 +126,18 @@ class AssignmentUpdate(BaseModel):
 class AssignmentRead(BaseModel):
     task_key: str
     profile_id: UUID | None
+
+
+class TaskEffectiveRead(BaseModel):
+    """One known task key and the tier that actually serves it.
+
+    ``profile_id`` and ``profile_name`` are ``None`` exactly when no profile
+    serves — the environment tier answers. ``kind`` names the serving adapter
+    either way (``fake`` or ``openai-chat``), so the page can say what answers
+    without claiming the cascade's stored choice.
+    """
+
+    task_key: str
+    profile_id: UUID | None
+    profile_name: str | None
+    kind: str
