@@ -6,18 +6,15 @@ the tail names, the previous chapters' tails and the novel's style hints — eac
 hard-cut to its slice, scaffolding included, so a slice never overflows. A
 slice whose floor is zero is omitted at assembly; nothing rides free.
 
-`MAX_CONTEXT_CHARS` still reads at import, like the database URL: the process
-decides its configuration once. The builder below no longer uses it; the
-constant dies here when its last caller is rewired.
+No environment variable remains here: the allocator is the one context
+authority, and the resolved profile's limits decide the budgets the caller
+passes in.
 """
 
 from collections.abc import Sequence  # noqa: TC003
-from os import environ
 
 from app.kernel.context import ContextBudgets  # noqa: TC001
 from app.kernel.contracts.models import Chapter, Entity  # noqa: TC001
-
-MAX_CONTEXT_CHARS = int(environ.get("NARRE_CONTEXT_CHARS", "4000"))
 
 _INSTRUCTION = (
     "Continue the chapter in the same voice. Keep the language of the existing "

@@ -10,6 +10,7 @@ import json
 import re
 from collections.abc import AsyncIterator  # noqa: TC003
 
+from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm.contract import (
     DONE,
@@ -190,8 +191,9 @@ class FakeProvider:
         that line is absent or empty. JSON answers arrive as a single piece.
         Only user-message contents, joined with newlines, form the prompt;
         other roles and completion options are ignored. Every shape ends with
-        Usage, then DONE. Counts follow D6: prompt and answer character lengths
-        divided by four, rounded down.
+        Usage, then DONE. Counts are deterministic: prompt and answer character
+        lengths divided by the kernel's CHARS_PER_TOKEN, truncated to whole
+        tokens — the same constant the allocator budgets with.
         """
         prompt = "\n".join(
             message.content for message in request.messages if message.role == "user"
@@ -208,7 +210,10 @@ class FakeProvider:
             # One piece is still a stream: the consumer sees the same protocol.
             await asyncio.sleep(0)
             yield Delta(text=answer)
-            yield Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer) // 4)
+            yield Usage(
+                input_tokens=int(len(prompt) / CHARS_PER_TOKEN),
+                output_tokens=int(len(answer) / CHARS_PER_TOKEN),
+            )
             yield DONE
             return
         source = _first_source(prompt)
@@ -219,5 +224,8 @@ class FakeProvider:
             await asyncio.sleep(0)
             yield Delta(text=chunk)
         answer_text = "".join(chunks)
-        yield Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer_text) // 4)
+        yield Usage(
+            input_tokens=int(len(prompt) / CHARS_PER_TOKEN),
+            output_tokens=int(len(answer_text) / CHARS_PER_TOKEN),
+        )
         yield DONE

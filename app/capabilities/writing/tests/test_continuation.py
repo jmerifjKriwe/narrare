@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
 from app.capabilities.writing import router as writing_router
+from app.capabilities.writing import service as writing_service
 from app.capabilities.writing.prompts import continuation_prompt
 from app.capabilities.writing.repository import EntityRepository
 from app.capabilities.writing.router import (
@@ -27,7 +28,13 @@ from app.kernel.context import BudgetImpossibleError, ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.contract import CompletionEvent, CompletionRequest, Delta, TextProvider
+from app.kernel.llm.contract import (
+    DONE,
+    CompletionEvent,
+    CompletionRequest,
+    Delta,
+    TextProvider,
+)
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.profiles import ProfileRepository
 from app.kernel.llm.resolution import ResolvedProvider
@@ -315,6 +322,113 @@ async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_fr
         assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
 
 
+async def test_an_impossible_budget_pair_ends_the_stream_with_the_one_error_frame(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The allocator refusing an impossible pair is the one error frame, no audit row.
+
+    Resolution has already succeeded — the refusal comes from the builder the
+    route calls second — so the stream ends the way a lost key ends it: one
+    error frame, no provider call, no llm_calls row claiming either.
+    """
+
+    def _impossible(**_: object) -> ContextBudgets:
+        raise BudgetImpossibleError(
+            "no input room: max_output_tokens 5000 fills or exceeds context_window 4096"
+        )
+
+    monkeypatch.setattr(writing_service, "allocate", _impossible)
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+
+    assert response.status_code == 200
+    assert response.text == "event: error\ndata: {}\n\n"
+    async with Session() as session:
+        assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
+    refusals = [
+        record for record in caplog.records if record.getMessage() == "continuation budget refused"
+    ]
+    assert len(refusals) == 1
+    assert refusals[0].exc_info is not None
+
+
+class _RequestProbe:
+    """A provider boundary that keeps the request the route built.
+
+    It sits exactly where the real one does — behind the boundary the route
+    resolves — so the assertion is on the CompletionRequest the wire would
+    carry, not on a re-derived copy of it.
+    """
+
+    def __init__(self) -> None:
+        self.request: CompletionRequest | None = None
+
+    def describe(self) -> str:
+        """Identify the probe for startup logging symmetry."""
+        return "probe"
+
+    def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Keep the request, then answer a fixed prose piece with the done event."""
+        self.request = request
+        yield Delta(text="Antwort.")
+        yield DONE
+
+
+@pytest.mark.parametrize(
+    ("window", "output", "temperature", "expected_max_tokens"),
+    [
+        # The fake/env tier's facts are unset: the default reservation rides.
+        (None, None, None, 1024),
+        # A profile's facts: its own value, its temperature.
+        (8192, 777, 0.3, 777),
+    ],
+)
+async def test_the_continuation_request_carries_the_reservation_and_set_facts_only(
+    monkeypatch: pytest.MonkeyPatch,
+    window: int | None,
+    output: int | None,
+    temperature: float | None,
+    expected_max_tokens: int,
+) -> None:
+    """max_tokens is always on the wire: the profile's value, else the default;
+    temperature rides only when the resolved facts set it."""
+    probe = _RequestProbe()
+    resolved = ResolvedProvider(
+        provider=probe,
+        profile_id=None,
+        kind="fake",
+        model="fake",
+        context_window=window,
+        max_output_tokens=output,
+        temperature=temperature,
+        request_timeout=None,
+        base_url=None,
+        api_key=None,
+    )
+
+    async def _resolved_probe(
+        session: AsyncSession, user_id: UUID, task_key: str
+    ) -> ResolvedProvider:
+        return resolved
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _resolved_probe)
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+
+    assert response.status_code == 200
+    assert "event: done" in response.text
+    assert probe.request is not None
+    assert probe.request.messages[0].role == "user"
+    assert probe.request.max_tokens == expected_max_tokens
+    assert probe.request.temperature == temperature
+
+
 async def test_the_route_hands_back_the_finalizing_response() -> None:
     """The endpoint itself — not a hand-built wrapper — is what carries the audit.
 
@@ -360,6 +474,17 @@ async def test_another_users_chapter_cannot_be_continued() -> None:
     async with _client() as client:
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
         assert response.status_code == 404
+
+
+async def test_a_missing_chapter_is_still_a_404_on_the_plain_tier() -> None:
+    """Resolution first moved the builder behind it; the normal paths keep 404.
+
+    No profile anywhere and the environment tier resolving to the fake: the
+    missing chapter is refused with HTTP 404 exactly as before the reorder.
+    """
+    async with _client() as client:
+        response = await client.post(f"/api/writing/chapters/{uuid4()}/continue")
+    assert response.status_code == 404
 
 
 _INSTRUCTION_END = (

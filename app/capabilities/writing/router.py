@@ -20,10 +20,11 @@ from app.capabilities.writing.schemas import (
 )
 from app.capabilities.writing.service import NotFoundError, WritingService
 from app.kernel.auth import SetupRequiredError, current_user_id
+from app.kernel.context import DEFAULT_MAX_OUTPUT_TOKENS, BudgetImpossibleError
 from app.kernel.contracts.models import Chapter
 from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
-from app.kernel.llm.contract import CompletionRequest, Delta
+from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.secrets import KeyUnavailableError
@@ -57,13 +58,25 @@ async def _continuation_events(
     """Deltas, then done — or an error frame if the provider dies mid-stream.
 
     The editor appends what arrived and autosaves it; a silent close would look
-    like a finished continuation. However the stream ends — done, error,
-    disconnect, cancel — the call is audited (§3.4): success and failure alike
-    leave their row, a disconnect records "stream interrupted".
+    like a finished continuation. The request carries the wire facts: the
+    resolved profile's temperature where it sets one, and ``max_tokens`` always
+    — the output reservation is a wire cap, so the profile's value rides, or
+    the kernel default when the facts leave it unset. However the stream ends
+    — done, error, disconnect, cancel — the call is audited (§3.4): success and
+    failure alike leave their row, a disconnect records "stream interrupted".
     """
+    request = CompletionRequest(
+        messages=(Message(role="user", content=prompt),),
+        temperature=resolved.temperature,
+        max_tokens=(
+            resolved.max_output_tokens
+            if resolved.max_output_tokens is not None
+            else DEFAULT_MAX_OUTPUT_TOKENS
+        ),
+    )
     events = audited_stream(
         resolved,
-        CompletionRequest.user(prompt),
+        request,
         user_id=user_id,
         task_key="writing.continuation",
         novel_id=novel_id,
@@ -207,19 +220,9 @@ async def continue_chapter(
     chapter_id: UUID, service: ServiceDep, user_id: UserDep
 ) -> FinalizingStreamingResponse:
     """Stream a continuation for an owned chapter; return HTTP 404 when it is not found."""
-    try:
-        prompt = await service.continuation_prompt(chapter_id)
-    except NotFoundError:
-        raise HTTPException(status_code=404, detail="chapter not found") from None
-    # The audit names the novel, so read its id before the response starts,
-    # while the request's session is still open — one scalar, scoped to the
-    # owner continuation_prompt already proved (plan §3.4).
-    novel_id = await service.session.scalar(
-        select(Chapter.novel_id).where(Chapter.id == chapter_id, Chapter.user_id == user_id)
-    )
     # Resolution reads the user's profiles on the request's own session, so it
-    # too must run before the connection goes back. A profile whose key its
-    # tier can no longer produce ends the stream with the error frame a dead
+    # must run before the connection goes back. A profile whose key its tier
+    # can no longer produce ends the stream with the error frame a dead
     # provider gets — no call ran, so no audit row.
     try:
         resolved = await resolve_provider(service.session, user_id, "writing.continuation")
@@ -228,6 +231,29 @@ async def continue_chapter(
         return FinalizingStreamingResponse(
             _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
         )
+    # The builder sizes its slices from the resolved facts; a pair whose output
+    # reserve fills the window refused there — mapped like the lost key above:
+    # the one error frame, no provider call, no audit row.
+    try:
+        prompt = await service.continuation_prompt(
+            chapter_id,
+            context_window=resolved.context_window,
+            max_output_tokens=resolved.max_output_tokens,
+            model=resolved.model,
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+    except BudgetImpossibleError:
+        logger.exception("continuation budget refused")
+        return FinalizingStreamingResponse(
+            _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+        )
+    # The audit names the novel, so read its id before the response starts,
+    # while the request's session is still open — one scalar, scoped to the
+    # owner continuation_prompt already proved (plan §3.4).
+    novel_id = await service.session.scalar(
+        select(Chapter.novel_id).where(Chapter.id == chapter_id, Chapter.user_id == user_id)
+    )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.
     await service.session.close()
