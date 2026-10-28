@@ -9,15 +9,22 @@ hold the vendored file to the shape the rules assume.
 """
 
 from json import loads
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from app.kernel.llm import catalog
-from app.kernel.llm.catalog import ModelInfo, compute_cost, effective_info, load_catalog
+from app.kernel.llm.catalog import (
+    CatalogError,
+    ModelInfo,
+    compute_cost,
+    effective_info,
+    load_catalog,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     # What the vendoring fixture installs: the snapshot effective_info reads.
     Install = Callable[[dict[str, ModelInfo]], None]
@@ -246,3 +253,71 @@ def test_the_snapshot_is_parsed_once_per_process() -> None:
     with a file read.
     """
     assert load_catalog() is load_catalog()
+
+
+# Damage, mutability, and lookup cost: the hardening a hand-refreshed 2.5 MB
+# file needs before every caller can trust it.
+
+
+DAMAGED_SNAPSHOTS = (
+    "not json at all",
+    '{"snapshot_date": "2026-10-27"}',  # no models object
+    '{"models": {"acme/broken": {"context_window": 4096}}}',  # fields missing
+)
+
+
+@pytest.mark.parametrize("contents", DAMAGED_SNAPSHOTS)
+def test_a_damaged_snapshot_raises_catalogerror_naming_the_file(
+    contents: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify a bad manual refresh fails at load with a readable, named error."""
+    damaged = tmp_path / "models.json"
+    damaged.write_text(contents)
+    monkeypatch.setattr(catalog, "SNAPSHOT", damaged)
+    monkeypatch.setattr(catalog, "_catalog", None)  # the cache must re-read
+
+    with pytest.raises(CatalogError, match=r"models\.json"):
+        load_catalog()
+
+
+def test_the_catalog_view_refuses_mutation() -> None:
+    """Verify an assignment into the returned mapping raises TypeError.
+
+    ``load_catalog`` returns one shared, cached structure; a caller that
+    mutated it would leak the change into every later lookup. The view makes
+    that a ``TypeError`` instead of trusting a docstring.
+    """
+    entries = load_catalog()
+    writable = cast("dict[str, ModelInfo]", entries)  # the lie the test needs
+    with pytest.raises(TypeError):
+        writable["acme/injected"] = priced()
+
+
+def test_two_unknown_id_lookups_run_without_a_sort(
+    vendoring: Install, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify the normalized and prefix indexes are prebuilt at load.
+
+    An unknown id walks both fallback tiers; if either still sorted the
+    catalog per lookup, the patched ``sorted`` would fail the lookup instead
+    of quietly costing four sorts per audited call.
+    """
+    vendoring({"aaa/turbo-3": priced(), "meta/llama-3": priced()})
+    effective_info("turbo-3", profile_context_window=None, profile_max_output_tokens=None)
+
+    def no_sorting(iterable: object) -> object:
+        """Refuse to sort: a per-lookup sort is exactly what must not happen."""
+        raise AssertionError("sorted() ran during a lookup — the indexes are not prebuilt")
+
+    # ``sorted`` is a builtin, not a module attribute: setting it (raising
+    # off) shadows it for everything defined in ``catalog``, so a lookup
+    # that still sorts fails here instead of quietly costing the sort.
+    monkeypatch.setattr(catalog, "sorted", no_sorting, raising=False)
+    assert (
+        effective_info("unknown-one", profile_context_window=None, profile_max_output_tokens=None)
+        is None
+    )
+    assert (
+        effective_info("unknown/two", profile_context_window=None, profile_max_output_tokens=None)
+        is None
+    )
