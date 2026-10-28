@@ -234,6 +234,44 @@ async def test_for_prefix_matches_dotted_children_never_the_bare_key() -> None:
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_for_prefix_treats_like_wildcards_in_the_prefix_literally() -> None:
+    """A ``%`` in the prefix matches a literal ``%``, never any character.
+
+    The task keys callers pass are hardcoded constants today, and the read
+    must not depend on that: unescaped, ``a%b`` matched ``axe.b.continue``
+    (``%`` stood in for ``xe.``) and handed the segment's tasks a profile
+    the user never assigned.
+    """
+    async with Session() as session:
+        profiles = ProfileRepository(session, OWNER)
+        profile = await profiles.create(name="One", kind="fake")
+        assignments = AssignmentRepository(session, OWNER)
+        await assignments.set("axe.b.continue", profile.id)
+        await session.commit()
+
+    async with Session() as session:
+        assignments = AssignmentRepository(session, OWNER)
+        assert await assignments.for_prefix("a%b") is None
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_for_prefix_still_finds_a_key_carrying_a_literal_percent() -> None:
+    """Escaping narrows the read; it must not stop matching the literal key."""
+    async with Session() as session:
+        profiles = ProfileRepository(session, OWNER)
+        profile = await profiles.create(name="One", kind="fake")
+        assignments = AssignmentRepository(session, OWNER)
+        await assignments.set("a%b.continue", profile.id)
+        await session.commit()
+
+    async with Session() as session:
+        assignments = AssignmentRepository(session, OWNER)
+        found = await assignments.for_prefix("a%b")
+        assert found is not None
+        assert found.task_key == "a%b.continue"
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_clear_removes_the_assignment_and_stays_quiet_without_one() -> None:
     """Verify clear drops the user's assignment and tolerates a missing one."""
     async with Session() as session:
