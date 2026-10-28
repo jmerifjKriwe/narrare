@@ -160,3 +160,31 @@ For now.
 *Not today. But someday.*
 
 *—END—*
+
+## volume
+
+1
+
+## status
+
+draft
+
+## word_count
+
+520
+
+## pov_character
+
+char-maya
+
+## pov_type
+
+first-person
+
+## timeline_position
+
+Day 2, 0300 hours
+
+## location
+
+loc-horizon

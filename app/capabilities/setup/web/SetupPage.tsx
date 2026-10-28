@@ -31,6 +31,7 @@ export function SetupPage() {
   const [title, setTitle] = useState("");
   const [demo, setDemo] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const selected = demo === null ? undefined : DEMOS.find((entry) => entry.slug === demo);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -57,10 +58,18 @@ export function SetupPage() {
             {t("setup.titleLabel")}
             <input
               value={title}
+              // A demo names the novel itself, so a typed title is parked —
+              // visibly disabled, never silently dropped — until blank wins.
+              disabled={selected !== undefined}
               onChange={(event) => setTitle(event.target.value)}
-              className="rounded-md border border-border bg-background px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
+              className="rounded-md border border-border bg-background px-3 py-2 text-base font-normal focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
+          {selected ? (
+            <p className="text-sm text-muted">
+              {t("setup.demo.titleReplaces", { title: selected.title })}
+            </p>
+          ) : null}
           <fieldset className="mt-2 flex flex-col gap-2">
             <legend className="text-sm font-medium">{t("setup.demo.heading")}</legend>
             <label className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary">

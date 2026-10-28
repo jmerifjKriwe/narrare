@@ -116,3 +116,31 @@ Anna ging, und der Weg zurück ins Dorf war länger als der Weg hin. Sie hatte k
 *„Ich bin hier“, sagte die Stimme. „Ich war immer hier. Und ich werde immer hier sein, solange es den Wald gibt.“*
 
 *Anna wachte auf, und das Echo der Stimme war noch in ihr, wie eine Erinnerung an etwas, das sie vergessen hatte, ohne es jemals gewusst zu haben.*
+
+## volume
+
+1
+
+## status
+
+draft
+
+## word_count
+
+680
+
+## pov_character
+
+char-anna
+
+## pov_type
+
+third-limited
+
+## timeline_position
+
+Tag 1
+
+## location
+
+loc-foersterhaus

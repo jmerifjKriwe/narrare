@@ -61,7 +61,3 @@ ruins
 ## first_appearance
 
 ch-en-001
-
-## parent_location
-
-

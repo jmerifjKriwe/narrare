@@ -112,3 +112,31 @@ The ship approached on sensors—a Xenex Corporation vessel, fast and armed. Kav
 Two impossible choices. One engineer who had to pick one.
 
 I just wish I knew which one Lila would want me to make.
+
+## volume
+
+1
+
+## status
+
+draft
+
+## word_count
+
+490
+
+## pov_character
+
+char-maya
+
+## pov_type
+
+first-person
+
+## timeline_position
+
+Day 1, 1800 hours
+
+## location
+
+loc-horizon

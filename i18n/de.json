@@ -33,6 +33,7 @@
   "setup.demo.chapters": "{count, plural, one {# Kapitel} other {# Kapitel}}",
   "setup.demo.entities": "{count, plural, one {# Wissenseintrag} other {# Wissenseinträge}}",
   "setup.demo.language": "{language, select, de {Deutsch} en {Englisch} other {{language}}}",
+  "setup.demo.titleReplaces": "Ein Demo-Roman bringt seinen eigenen Titel mit — dieser Roman wird „{title}“ heißen.",
   "chapters.continue": "Weiterschreiben",
   "knowledge.heading": "Wissen",
   "knowledge.fileLabel": "Dokument",

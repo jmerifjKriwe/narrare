@@ -70,3 +70,35 @@ Toward whatever came next.
 *She wasn't the victim the Order claimed all void mages were. She was powerful. Powerful enough to challenge them, if she chose. Powerful enough that they would destroy her if they realized how much she knew.*
 
 *The time for choosing was coming faster than she'd thought.*
+
+## volume
+
+1
+
+## part
+
+1
+
+## status
+
+draft
+
+## word_count
+
+485
+
+## pov_character
+
+char-elara
+
+## pov_type
+
+third-limited
+
+## timeline_position
+
+Day 6
+
+## location
+
+loc-temple-silent-flames

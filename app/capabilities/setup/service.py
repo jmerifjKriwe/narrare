@@ -41,6 +41,12 @@ class SetupService:
             # `novel_title` is the blank path's input, not the demo's.
             report = await import_archive(self.session, LOCAL_USER_ID, demo_tree(demo), None)
             novel = await self.session.get(Novel, report.novel_id)
-            assert novel is not None  # import_archive created and committed it
+            if novel is None:
+                # Unreachable while the engine reports what it created in this
+                # same session; an explicit named error, not an assert that
+                # `python -O` strips into an AttributeError.
+                raise RuntimeError(
+                    f"demo import reported novel {report.novel_id} but it is not in this session"
+                )
         await self.session.commit()
         return novel

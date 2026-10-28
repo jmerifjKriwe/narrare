@@ -176,3 +176,31 @@ Anna wachte auf, und sie wusste, dass sie zurückkehren würde. Nicht nur einmal
 *Und das genügte.*
 
 *—ENDE—*
+
+## volume
+
+1
+
+## status
+
+draft
+
+## word_count
+
+670
+
+## pov_character
+
+char-anna
+
+## pov_type
+
+third-limited
+
+## timeline_position
+
+Tag 7
+
+## location
+
+loc-wald

@@ -59,7 +59,3 @@ natural
 ## first_appearance
 
 ch-de-001
-
-## parent_location
-
-

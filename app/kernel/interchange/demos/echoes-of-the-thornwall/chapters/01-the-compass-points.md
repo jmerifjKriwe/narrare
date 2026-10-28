@@ -50,3 +50,35 @@ The compass pulsed against her chest. It had secrets. And for the first time in 
 *Back at the fortress that night, Elara examined the compass by candlelight. The blue needle pointed to her, yes, but also to something else. Something beneath the fortress itself. The Secret Archives, forbidden to all initiates.*
 
 *She would need a distraction. And perhaps, she realized with sudden clarity, she would need to stop being the kind of initiate who followed all the rules.*
+
+## volume
+
+1
+
+## part
+
+1
+
+## status
+
+draft
+
+## word_count
+
+420
+
+## pov_character
+
+char-elara
+
+## pov_type
+
+third-limited
+
+## timeline_position
+
+Day 1
+
+## location
+
+loc-thornwall

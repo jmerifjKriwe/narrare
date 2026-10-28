@@ -71,9 +71,31 @@ describe("SetupPage", () => {
   it("a demo selection sends the slug", async () => {
     render(<SetupPage />);
     const user = userEvent.setup();
+    // the title goes in first: a selected demo parks the input
+    await user.type(screen.getByLabelText(t("setup.titleLabel")), "Ein Titel");
     await user.click(screen.getByRole("radio", { name: /Dead Signal/ }));
-    await typeTitleAndSubmit();
+    await user.click(screen.getByRole("button", { name: t("setup.submit") }));
     const body = api.POST.mock.calls[0][1].body as Record<string, unknown>;
     expect(body.demo).toBe("dead-signal");
+    expect(body.novel_title).toBe("Ein Titel");
+  });
+
+  it("a selected demo disables the title input, names the demo's title, and keeps the typed title", async () => {
+    render(<SetupPage />);
+    const user = userEvent.setup();
+    const title = (): HTMLInputElement =>
+      screen.getByLabelText(t("setup.titleLabel")) as HTMLInputElement;
+    await user.type(title(), "Mein Buch");
+    await user.click(screen.getByRole("radio", { name: /Dead Signal/ }));
+    // the demo names the novel — visibly, so nothing is silently dropped
+    expect(title().disabled).toBe(true);
+    expect(title().value).toBe("Mein Buch");
+    expect(screen.getByText(t("setup.demo.titleReplaces", { title: "Dead Signal" }))).toBeTruthy();
+    await user.click(
+      screen.getByRole("radio", { name: new RegExp(t("setup.demo.blank")) }),
+    );
+    // back to blank: the input behaves exactly as before, text intact
+    expect(title().disabled).toBe(false);
+    expect(title().value).toBe("Mein Buch");
   });
 });

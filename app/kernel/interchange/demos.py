@@ -4,10 +4,12 @@ as data under this package and loaded through the one archive parser.
 The demos are hand-maintained source (no `id`/`updated` in their
 frontmatter): *Im Stillen Wald* (literary, de), *Dead Signal* (sci-fi, en)
 and *Echoes of the Thornwall* (fantasy, en), ported from the v1 demo data.
-The corpus doubles as the WP's golden fixture — the round-trip test over it
-runs in the kernel suite — so the manifest here and the folders beside this
-module move together: a demo added to one and not the other fails
-`test_every_demo_parses` on the mismatch.
+The corpus doubles as the WP's golden fixture — the kernel suite pins the
+bundled bytes as the parser's fixed point — and the setup page's picker
+carries its own TS manifest beside this one; the two manifests are
+cross-checked against each other by
+`test_web_manifest_matches_the_python_manifest` in the kernel suite, so a
+demo added to one side and not the other is a red test, not a missing card.
 """
 
 from __future__ import annotations

@@ -86,3 +86,35 @@ The compass pulsed against her chest, warm and alive.
 *Thus ends Volume 1, Part 1 of Echoes of the Thornwall. Elara has learned the truth, made her choice, and begun her journey toward rebellion. But the real challenges lie ahead: gaining the Covenant's trust, convincing others of the truth, and stopping Morven before he can execute his plan to use her as a vessel for the void entity.*
 
 *The war for the future of magic—and the kingdom—has begun.*
+
+## volume
+
+1
+
+## part
+
+1
+
+## status
+
+draft
+
+## word_count
+
+460
+
+## pov_character
+
+char-elara
+
+## pov_type
+
+third-limited
+
+## timeline_position
+
+Day 8
+
+## location
+
+loc-silver-flame-fortress

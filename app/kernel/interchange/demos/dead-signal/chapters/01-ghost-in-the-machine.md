@@ -84,3 +84,31 @@ I stared at the waveform on the display—my sister's voice, frozen in digital f
 *I spent the next two hours working with a focus I'd never summoned before. ARIA and I modified the quantum sensors, boosted the power output, and prepared to send a message across 12 light-years and the barrier between life and death. I didn't know if it would work. I didn't know if I believed in what I was doing. But I knew I couldn't not try.*
 
 *Lila was out there. And I was going to bring her home.*
+
+## volume
+
+1
+
+## status
+
+draft
+
+## word_count
+
+470
+
+## pov_character
+
+char-maya
+
+## pov_type
+
+first-person
+
+## timeline_position
+
+Day 1, 1400 hours
+
+## location
+
+loc-horizon
