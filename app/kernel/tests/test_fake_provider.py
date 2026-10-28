@@ -10,6 +10,7 @@ the ``CompletionRequest`` shape every consumer builds.
 
 import json
 
+from app.kernel.context import CHARS_PER_TOKEN
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.fake import FakeProvider
 
@@ -223,14 +224,24 @@ async def test_every_shape_yields_usage_then_done_last() -> None:
         assert isinstance(events[-2], Usage)
 
 
-async def test_usage_is_a_quarter_of_the_prompt_and_answer_lengths() -> None:
-    """Verify deterministic token counts use integer quarters of prompt and answer lengths."""
-    # D6, pinned: deterministic counts — a quarter of the joined user-message
-    # contents and of the answer, so WP2 can replace them with the profile's
-    # chars_per_token and nothing else moves.
-    prompt = "Sources:\nSOURCE: Der Leuchtturm war seit Jahren dunkel.\n"
-    events = await _events(prompt)
-    answer = "".join(event.text for event in events if isinstance(event, Delta))
-    usage = next(event for event in events if isinstance(event, Usage))
+async def test_usage_divides_by_chars_per_token_on_both_answer_shapes() -> None:
+    """Verify both Usage sites divide by the kernel's CHARS_PER_TOKEN.
 
-    assert usage == Usage(input_tokens=len(prompt) // 4, output_tokens=len(answer) // 4)
+    Pinned on the two shapes the fake streams — a purpose-marked JSON answer
+    and the chat prose — so a drift at one site cannot hide behind the other.
+    The old quarter-divisor is gone: the same constant the allocator computes
+    with decides the deterministic token counts (D6, as built in WP2b).
+    """
+    shapes = (
+        "PURPOSE: extract-entities\n\nText:\nSOURCE: Mira kam von See.\n",
+        "Sources:\nSOURCE: Der Leuchtturm war seit Jahren dunkel.\n",
+    )
+    for prompt in shapes:
+        events = await _events(prompt)
+        answer = "".join(event.text for event in events if isinstance(event, Delta))
+        usage = next(event for event in events if isinstance(event, Usage))
+
+        assert usage == Usage(
+            input_tokens=int(len(prompt) / CHARS_PER_TOKEN),
+            output_tokens=int(len(answer) / CHARS_PER_TOKEN),
+        )

@@ -578,6 +578,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tasks
+         * @description The effective provider per known task key, for the page's task list.
+         *
+         *     Reads only: each row is the resolution cascade's answer, never a write
+         *     and never an audit row. A profile whose key its tier can no longer
+         *     produce fails the read by name — 502, as discovery maps the same class —
+         *     so a lost key is never a bare 500.
+         */
+        get: operations["list_tasks_api_settings_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/setup": {
         parameters: {
             query?: never;
@@ -1379,6 +1404,29 @@ export interface components {
             status: string;
             /** Type */
             type: string;
+        };
+        /**
+         * TaskEffectiveRead
+         * @description One known task key and the tier that actually serves it.
+         *
+         *     ``profile_id`` and ``profile_name`` are ``None`` exactly when no profile
+         *     serves — the environment tier answers. ``kind`` names the serving adapter
+         *     either way (``fake`` or ``openai-chat``), so the page can say what answers
+         *     without claiming the cascade's stored choice. An audit-only key has no
+         *     serving tier: ``kind`` is ``audit``, the profile fields are ``None``, and
+         *     ``assignable`` is ``False``.
+         */
+        TaskEffectiveRead: {
+            /** Assignable */
+            assignable: boolean;
+            /** Kind */
+            kind: string;
+            /** Profile Id */
+            profile_id: string | null;
+            /** Profile Name */
+            profile_name: string | null;
+            /** Task Key */
+            task_key: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -2393,6 +2441,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_api_settings_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskEffectiveRead"][];
                 };
             };
         };

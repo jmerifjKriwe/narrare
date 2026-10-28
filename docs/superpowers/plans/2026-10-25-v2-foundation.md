@@ -327,11 +327,24 @@ HTTP surface.
 
 ### 5.4 Context budget
 
-- `app/kernel/context.py`: one allocator, named slices, token estimates
-  (`chars_per_token` on the profile, default 3.5 — German is token-hungry).
-- Replaces `NARRE_CONTEXT_CHARS` and every ad-hoc cap. Continuation keeps the
-  60/25/10/5 split (immediate text, referenced entities, recent chapters, style hints).
-- The check and the extraction use the budget per chapter (§3.2).
+As built (WP2b, 2026-10-28; `docs/superpowers/specs/2026-10-26-wp2b-context-budget-assembly-design.md`
+is the record):
+
+- `app/kernel/context.py`: one allocator, named slices, token estimates.
+  `chars_per_token` is a kernel constant (3.5 — German is token-hungry), not a
+  profile column; the defaults are 8 192 window / 1 024 output, and each unset
+  limit falls back on its own (D3, D7). Floors per slice, the remainder to the
+  immediate-text slice, a zero slice omitted at assembly (D1, D6).
+- `NARRE_CONTEXT_CHARS` is deleted. The allocator replaces it and every ad-hoc
+  cap — of the old caps, that environment variable was the only one. A pair
+  whose output reserve fills or exceeds the window raises
+  `BudgetImpossibleError`: refused, never clamped (D8); the router ends the
+  continuation with the one error frame and no audit row.
+- The check and the extraction keep WP0-C's caps (D4): the 20 000-character
+  extraction bound and the check's chapter grouping are data limits, not
+  context composition. The continuation's wire carries `max_tokens` always —
+  the profile's output reserve or the kernel default — and `temperature`
+  where the profile sets one.
 
 ### 5.5 Resolution
 
@@ -371,7 +384,12 @@ from WP5 (D2): the route with Sprache and Provider sections and the top-bar
 gear landed here. D3–D8 and the rest of the WP2a decisions live in
 `docs/superpowers/specs/2026-10-26-wp2a-providers-catalog-settings-design.md`,
 which is the record; of this section, §5.4's `chars_per_token` moved to WP2b as
-a kernel constant instead of a profile column (D8).
+a kernel constant instead of a profile column (D8). WP2b landed, WP2 closed:
+the context allocator, the budgeted continuation assembly and the wire facts
+are in, and the capability-done gate
+(`app/capabilities/writing/e2e/test_context_budget_e2e.py`) runs green on the
+real stack; `docs/superpowers/specs/2026-10-26-wp2b-context-budget-assembly-design.md`
+is the record.
 
 ---
 

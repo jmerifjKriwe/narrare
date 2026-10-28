@@ -25,7 +25,7 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.kernel.llm.catalog import effective_info
+from app.kernel.llm.catalog import ModelInfo, effective_info
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the dataclass field names it
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.models import PROFILE_KINDS, ProviderProfile
@@ -42,6 +42,15 @@ KNOWN_TASK_KEYS: tuple[str, ...] = (
     "settings.test",
 )
 
+AUDIT_ONLY_TASK_KEYS: tuple[str, ...] = ("settings.test",)
+"""Known keys that are audited but never routed.
+
+The settings surface's connection probe audits its call under ``settings.test``
+while it tests the profile the user clicked, not the cascade's answer, so the
+key has no serving tier to report. Readers that list effective providers skip
+it; assignment remains API-accepted but has no consumer.
+"""
+
 ENV_PROVIDERS: dict[str, Callable[[], TextProvider]] = {
     "fake": FakeProvider,
     "openai-compatible": OpenAIChatProvider.from_environment,
@@ -56,9 +65,12 @@ class ResolvedProvider:
     ``provider`` answers; everything else describes the choice. The numeric
     fields are the profile's stored columns merged with the catalog's
     (:func:`app.kernel.llm.catalog.effective_info`) — ``None`` when neither
-    knows. ``api_key`` is the plaintext the profile's tier produced; it never
-    reaches a log line, a response, an audit row, or a repr — the dataclass
-    keeps it out of the generated one.
+    knows. ``info`` is that merge itself, computed once here: the audit and
+    the job handlers price the call from it instead of merging again. A
+    ``None`` info means no catalog tier reached the model; ``api_key`` is
+    the plaintext the profile's tier produced; it never reaches a log line,
+    a response, an audit row, or a repr — the dataclass keeps it out of the
+    generated one.
     """
 
     provider: TextProvider
@@ -71,6 +83,7 @@ class ResolvedProvider:
     request_timeout: float | None
     base_url: str | None
     api_key: str | None = field(default=None, repr=False)
+    info: ModelInfo | None = None
 
 
 async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
@@ -121,7 +134,7 @@ def environment_provider() -> ResolvedProvider:
         provider = ENV_PROVIDERS[name]()
         kind, model = "fake", "fake"
         base_url = api_key = None
-    context_window, max_output_tokens = _merged(model, None, None)
+    info, context_window, max_output_tokens = _merged(model, None, None)
     return ResolvedProvider(
         provider=provider,
         profile_id=None,
@@ -133,6 +146,7 @@ def environment_provider() -> ResolvedProvider:
         request_timeout=None,
         base_url=base_url,
         api_key=api_key,
+        info=info,
     )
 
 
@@ -168,7 +182,7 @@ def from_profile(profile: ProviderProfile) -> ResolvedProvider:
             f"profile {profile.id} carries unknown kind {profile.kind!r};"
             f" known: {'|'.join(PROFILE_KINDS)}"
         )
-    context_window, max_output_tokens = _merged(
+    info, context_window, max_output_tokens = _merged(
         model, profile.context_window, profile.max_output_tokens
     )
     return ResolvedProvider(
@@ -183,6 +197,7 @@ def from_profile(profile: ProviderProfile) -> ResolvedProvider:
         # A fake has no endpoint to name; an openai-chat profile always does.
         base_url=base_url or None,
         api_key=api_key or None,
+        info=info,
     )
 
 
@@ -203,12 +218,21 @@ def _profile_key(profile: ProviderProfile, base_url: str) -> str:
 
 def _merged(
     model: str, context_window: int | None, max_output_tokens: int | None
-) -> tuple[int | None, int | None]:
-    """The two window tunables: the caller's stored value, else the catalog's."""
+) -> tuple[ModelInfo | None, int | None, int | None]:
+    """The one merge: the catalog's facts, and the two windows after the override.
+
+    ``effective_info`` already applies the caller's stored windows over the
+    catalog's, so the returned info *is* the merged fact sheet. The two ints
+    keep the stored value where the profile set one — even on a model no
+    tier reaches, where the info is ``None`` and the profile's numbers are
+    the only source. Every consumer takes its facts from here instead of
+    merging a second time.
+    """
     info = effective_info(
         model, profile_context_window=context_window, profile_max_output_tokens=max_output_tokens
     )
     return (
+        info,
         context_window if context_window is not None else (info.context_window if info else None),
         max_output_tokens
         if max_output_tokens is not None

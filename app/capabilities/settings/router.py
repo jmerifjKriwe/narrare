@@ -2,10 +2,10 @@
 
 The profile routes translate the service's closed error vocabulary into the
 HTTP one: a missing profile is 404, the gate's refusals are 422s naming their
-fields, the default guard is a 409 naming the way out, a key store that
-cannot take or produce a key is a 503, and a discovery that cannot reach its
-endpoint is a 502. A failed connection *test* is none of these — it is the
-200 that carries the failure, because the test ran.
+fields, the default guard and a create or default swap that lost the race are
+409s, a key store that cannot take or produce a key is a 503, and a discovery that
+cannot reach its endpoint is a 502. A failed connection *test* is none of
+these — it is the 200 that carries the failure, because the test ran.
 """
 
 from logging import getLogger
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.settings.profiles_service import (
     DefaultProfileError,
+    DefaultProfileRaceError,
     NoEndpointError,
     ProfileNotFoundError,
     ProfileRefusedError,
@@ -32,6 +33,7 @@ from app.capabilities.settings.schemas import (
     ProfileUpdate,
     SettingsRead,
     SettingsUpdate,
+    TaskEffectiveRead,
 )
 from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import SetupRequiredError, current_user_id
@@ -99,6 +101,8 @@ def _profile_errors(error: Exception) -> HTTPException:
         return _refusal(error)
     if isinstance(error, DefaultProfileError | NoEndpointError):
         return HTTPException(status_code=409, detail=str(error))
+    if isinstance(error, DefaultProfileRaceError):
+        return HTTPException(status_code=409, detail=str(error))
     if isinstance(error, NoKeyStoreError):
         return HTTPException(status_code=503, detail=str(error))
     return HTTPException(status_code=500, detail=str(error))
@@ -131,6 +135,8 @@ async def create_profile(payload: ProfileCreate, service: ProfileServiceDep) -> 
         profile, api_key = await service.create(payload)
     except ProfileRefusedError as error:
         raise _refusal(error) from None
+    except DefaultProfileRaceError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except NoKeyStoreError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     return ProfileCreated(**_masked(profile).model_dump(), api_key=api_key)
@@ -143,7 +149,12 @@ async def update_profile(
     """Apply the patch; an empty ``api_key`` keeps the stored one."""
     try:
         profile = await service.update(profile_id, payload)
-    except (ProfileNotFoundError, ProfileRefusedError, NoKeyStoreError) as error:
+    except (
+        ProfileNotFoundError,
+        ProfileRefusedError,
+        DefaultProfileRaceError,
+        NoKeyStoreError,
+    ) as error:
         raise _profile_errors(error) from None
     return _masked(profile)
 
@@ -209,3 +220,28 @@ async def put_assignment(
     return AssignmentRead(
         task_key=task_key, profile_id=assignment.profile_id if assignment else None
     )
+
+
+@router.get("/tasks", response_model=list[TaskEffectiveRead])
+async def list_tasks(service: ProfileServiceDep) -> list[TaskEffectiveRead]:
+    """The effective provider per known task key, for the page's task list.
+
+    Reads only: each row is the resolution cascade's answer, never a write
+    and never an audit row. A profile whose key its tier can no longer
+    produce fails the read by name — 502, as discovery maps the same class —
+    so a lost key is never a bare 500.
+    """
+    try:
+        rows = await service.tasks()
+    except KeyUnavailableError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
+    return [
+        TaskEffectiveRead(
+            task_key=row.task_key,
+            profile_id=row.profile_id,
+            profile_name=row.profile_name,
+            kind=row.kind,
+            assignable=row.assignable,
+        )
+        for row in rows
+    ]

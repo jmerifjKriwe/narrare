@@ -60,12 +60,11 @@ def extraction_prompt(*, chapter_title: str, body: str) -> str:
     types = "|".join(ENTITY_TYPES)
     return (
         f"{PURPOSE_PREFIX}extract-entities\n\n"
-        "Extract the entities that appear in the chapter below: the characters, "
-        "the places and the things that matter to the story. For each one judge "
+        "Extract the entities that appear in the chapter below. For each one judge "
         f"a type — {types} — and write a one-sentence description of its role. "
         "Then, for each entity, name the relations it has to the other entities "
         "you found: a relation names its target entity and carries a short type "
-        '(for example "related_to", "lives_in", "member_of"). '
+        '(for example "related_to", "member_of", "located_in"). '
         'Answer with a JSON object containing an "items" array of objects '
         '{"name": string, "type": string, "description": string, '
         '"relations": [{"target": string, "type": string}]} and nothing else: '

@@ -76,7 +76,7 @@ class AssignmentRepository(ScopedRepository[TaskAssignment]):
         """
         result = await self.session.scalars(
             self.query()
-            .where(TaskAssignment.task_key.startswith(f"{prefix}."))
+            .where(TaskAssignment.task_key.startswith(f"{prefix}.", autoescape=True))
             .order_by(TaskAssignment.task_key)
             .limit(1)
         )

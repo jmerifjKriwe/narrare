@@ -20,6 +20,7 @@ import json
 import math
 import re
 import threading
+import time
 from collections.abc import Generator  # noqa: TC003
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -150,6 +151,16 @@ class ChatVendor:
         return self._server.received
 
     @property
+    def completions(self) -> int:
+        """How many chat completions the vendor finished serving.
+
+        A timed-out read never gets here: the answer is counted only once the
+        delayed reply was written, so a timeout test can prove deterministically
+        that the answer never arrived.
+        """
+        return self._server.completions
+
+    @property
     def last(self) -> dict[str, Any]:
         """The most recent request the vendor saw."""
         return self._server.received[-1]
@@ -161,6 +172,16 @@ class ChatVendor:
     def omit_done_marker(self) -> None:
         """End the SSE answer without the wire's ``[DONE]`` line, like a local server."""
         self._server.done_line = False
+
+    def delay_completions(self, seconds: float) -> None:
+        """Sleep ``seconds`` before every completions answer from now on.
+
+        The slow endpoint a stored ``request_timeout`` exists for: the read
+        timeout tests need a vendor that takes longer to answer than the
+        profile allows, or a timeout that never reached the socket would
+        pass unnoticed.
+        """
+        self._server.delay = seconds
 
     def close(self) -> None:
         self._server.shutdown()
@@ -205,11 +226,16 @@ class _ChatHandler(BaseHTTPRequestHandler):
             payload = json.dumps({"error": {"message": "Incorrect API key provided"}}).encode()
             self._reply(401, "application/json", payload)
             return
+        if server.delay:
+            # The slow answer the read-timeout tests need: this request's own
+            # thread sleeps, so other requests are unaffected.
+            time.sleep(server.delay)
         self._reply(
             200,
             "text/event-stream",
             _chat_frames(done_line=server.done_line).encode(),
         )
+        server.completions += 1
 
     def do_GET(self) -> None:
         if self.path != "/v1/models":
@@ -238,7 +264,9 @@ def chat_vendor() -> Generator[ChatVendor]:
     server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _ChatHandler)
     server.refuse = False
     server.done_line = True
+    server.delay = 0.0
     server.received = []
+    server.completions = 0
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:

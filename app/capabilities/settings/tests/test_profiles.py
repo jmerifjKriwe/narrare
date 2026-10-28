@@ -8,6 +8,8 @@ The default guard, the cascade, the half-configuration refusals and the two
 probes (test, discovery) run against the stand-in chat vendor over real HTTP.
 """
 
+import asyncio
+from collections.abc import Sequence  # noqa: TC003
 from uuid import UUID
 
 import pytest
@@ -15,10 +17,18 @@ from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
 from keyring.errors import KeyringError
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
+from app.capabilities.settings.profiles_service import (
+    DefaultProfileRaceError,
+    ProfileService,
+)
+from app.capabilities.settings.schemas import ProfileUpdate
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.llm.models import ProviderProfile
+from app.kernel.llm.profiles import ProfileRepository
 from app.kernel.testing.vendor import chat_vendor
 
 pytestmark = pytest.mark.timeout(30)
@@ -132,6 +142,172 @@ async def test_setting_a_new_default_flips_the_old_one() -> None:
         by_default = {str(profile["id"]): profile["is_default"] for profile in listed}
         assert by_default[str(first["id"])] is False
         assert by_default[str(second["id"])] is True
+
+
+async def test_two_concurrent_creates_keep_one_default_and_the_loser_gets_a_409() -> None:
+    """The database decides the race: two first-profiles, exactly one default.
+
+    Both requests read an empty table and both raise their profile to the
+    default; the partial unique index lets exactly one insert commit, and
+    the loser is a named 409 — never two defaults the resolver would pick
+    between arbitrarily. The loser's row is rolled back with its insert.
+    """
+    payload: dict[str, object] = {
+        "name": "Race",
+        "kind": "openai-chat",
+        "base_url": REMOTE,
+        "model": "vendor-mini",
+        "api_key": SECRET,
+    }
+    async with _client() as first, _client() as second:
+        responses = await asyncio.gather(
+            first.post("/api/settings/profiles", json=payload),
+            second.post("/api/settings/profiles", json=payload | {"name": "Race two"}),
+        )
+
+    created = [response for response in responses if response.status_code == 201]
+    refused = [response for response in responses if response.status_code == 409]
+    assert (len(created), len(refused)) == (1, 1)
+    assert "default" in refused[0].json()["detail"].lower()
+
+    async with Session() as session:
+        rows = await session.scalar(text("SELECT count(*) FROM provider_profiles"))
+        defaults = await session.scalar(
+            text("SELECT count(*) FROM provider_profiles WHERE is_default")
+        )
+    assert (rows, defaults) == (1, 1)
+
+
+async def test_two_concurrent_default_swaps_keep_one_default_and_a_named_loser() -> None:
+    """Two sessions swap the default at once: one default survives, never a 500.
+
+    Both requests unset the old holder before raising their own profile. Under
+    READ COMMITTED the second unset can still act on the pre-swap row, so both
+    flush ``is_default = true`` and the partial unique index refuses the later
+    one; the service rolls that transaction back and raises the same
+    ``DefaultProfileRaceError`` the create race maps, so the loser is a named
+    409. When the transactions serialize instead, both are 200 and the later
+    committer is the single holder. Either outcome is legal — two defaults are
+    not. Through ASGI's transport the two requests here serialize, so this test
+    pins the retry-success branch; the frozen-window test below pins the 409.
+    """
+    async with _client() as client:
+        await _create(client, "First")
+        second = await _create(client, "Second")
+        third = await _create(client, "Third")
+
+    async with _client() as left, _client() as right:
+        responses = await asyncio.gather(
+            left.patch(f"/api/settings/profiles/{second['id']}", json={"is_default": True}),
+            right.patch(f"/api/settings/profiles/{third['id']}", json={"is_default": True}),
+        )
+
+    statuses = sorted(response.status_code for response in responses)
+    assert statuses in ([200, 200], [200, 409]), [response.text for response in responses]
+    refused = [response for response in responses if response.status_code == 409]
+    if refused:
+        assert "default" in refused[0].json()["detail"].lower()
+
+    async with Session() as session:
+        defaults = await session.scalar(
+            text("SELECT count(*) FROM provider_profiles WHERE is_default")
+        )
+        holder = await session.scalar(text("SELECT name FROM provider_profiles WHERE is_default"))
+    assert defaults == 1
+    assert holder in ("Second", "Third")
+
+
+async def test_a_stale_default_read_loses_the_swap_as_a_named_race(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The update guard: a swap that read the old holder before a sibling's
+    commit collides on the partial index and is the named race, not a 500.
+
+    The window is frozen at the read: the left session keeps the holder list
+    it read, the right session completes its swap, then the left flush of
+    ``is_default = true`` meets the new holder. Real ASGI requests serialize
+    too narrowly to hit this window on demand, so the test holds the read.
+    """
+    async with _client() as client:
+        await _create(client, "First")
+        second = await _create(client, "Second")
+        third = await _create(client, "Third")
+
+    left_snapshot = asyncio.Event()
+    sibling_done = asyncio.Event()
+    left_sessions: list[AsyncSession] = []
+    original_ordered = ProfileRepository.ordered
+
+    async def held_ordered(self: ProfileRepository) -> Sequence[ProviderProfile]:
+        snapshot = await original_ordered(self)
+        if left_sessions and self.session is left_sessions[0]:
+            left_snapshot.set()
+            await sibling_done.wait()
+        else:
+            await left_snapshot.wait()
+        return snapshot
+
+    monkeypatch.setattr(ProfileRepository, "ordered", held_ordered)
+
+    async with Session() as left, Session() as right:
+        left_sessions.append(left)
+        left_service = ProfileService(left, LOCAL_USER_ID)
+        right_service = ProfileService(right, LOCAL_USER_ID)
+
+        async def lose() -> None:
+            with pytest.raises(DefaultProfileRaceError):
+                await left_service.update(UUID(str(second["id"])), ProfileUpdate(is_default=True))
+
+        async def win() -> None:
+            await right_service.update(UUID(str(third["id"])), ProfileUpdate(is_default=True))
+            sibling_done.set()
+
+        await asyncio.gather(lose(), win())
+
+    async with Session() as session:
+        defaults = await session.scalar(
+            text("SELECT count(*) FROM provider_profiles WHERE is_default")
+        )
+        holder = await session.scalar(text("SELECT name FROM provider_profiles WHERE is_default"))
+    assert (defaults, holder) == (1, "Third")
+
+
+async def test_a_lost_swap_on_patch_is_a_named_409(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The update route maps the service's race to 409, never a bare 500."""
+    async with _client() as client:
+        profile = await _create(client)
+
+        async def lost(self: ProfileService, profile_id: UUID, payload: ProfileUpdate) -> None:
+            raise DefaultProfileRaceError("another swap made its profile the default first")
+
+        monkeypatch.setattr(ProfileService, "update", lost)
+        response = await client.patch(
+            f"/api/settings/profiles/{profile['id']}", json={"is_default": True}
+        )
+    assert response.status_code == 409
+    assert "default" in response.json()["detail"]
+
+
+async def test_set_default_flips_the_old_default_out_before_raising_the_new() -> None:
+    """The swap keeps a single default through both flushes, index in force."""
+    async with _client() as client:
+        await _create(client, "First")
+        second = await _create(client, "Second")
+
+    async with Session() as session:
+        await ProfileService(session, LOCAL_USER_ID).set_default(UUID(str(second["id"])))
+
+    async with Session() as session:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT name, is_default FROM provider_profiles ORDER BY is_default DESC, name"
+                )
+            )
+        ).all()
+    assert [(row.name, row.is_default) for row in rows] == [("Second", True), ("First", False)]
+    defaults = sum(1 for row in rows if row.is_default)
+    assert defaults == 1
 
 
 async def test_a_profile_cannot_be_patched_out_of_being_the_default() -> None:
@@ -305,7 +481,7 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> N
 
     Equality leaves a zero input budget and greater-than a negative one; the gate
     refuses both where the pair is known, so the allocator only ever sees ordered
-    pairs (a catalog-merged degenerate pair is the allocator's clamp, WP2b).
+    pairs (a catalog-merged degenerate pair is refused there, never clamped, D8).
     """
     payload = {
         "name": "Grenze",

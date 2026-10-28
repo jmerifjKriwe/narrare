@@ -2,7 +2,7 @@
 # app/generated/capabilities.py, web/lib/generated/capabilities.ts and
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: settings
-title: settings.language # i18n key; must exist in en, de and fr
+title: settings.heading # i18n key; must exist in en, de and fr
 path: /settings # the gear in the top bar is the door
 needs: []
 nav: false # a control in the shell, not a destination

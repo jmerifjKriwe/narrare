@@ -15,7 +15,7 @@ from anyio import CancelScope
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.db.session import Session
-from app.kernel.llm.catalog import ModelInfo, compute_cost, effective_info
+from app.kernel.llm.catalog import ModelInfo, compute_cost
 from app.kernel.llm.contract import (
     CompletionEvent,
     CompletionRequest,
@@ -119,11 +119,11 @@ async def audited_stream(
     One finalizer for every streaming capability. The row names the resolved
     configuration — kind, model, profile id — and prices the call from the
     same facts: the resolved kind (the fake tier is free), the catalog entry
-    for the resolved model, the resolved endpoint deciding locality. It is
-    written in a ``finally`` under a shielded cancel scope, so a
-    disconnecting client or a cancelled task cannot take it with it; a failed
-    audit is logged, never raised into a finished response (§3.4 — a log
-    row, not user data).
+    the resolution carried (``resolved.info``), the resolved endpoint
+    deciding locality. It is written in a ``finally`` under a shielded
+    cancel scope, so a disconnecting client or a cancelled task cannot take
+    it with it; a failed audit is logged, never raised into a finished
+    response (§3.4 — a log row, not user data).
     Status names the call, not the delivery: ``ok`` once the provider ended
     cleanly — a ``Done`` event, when the provider sends one, ends it — ``error``
     when the provider raised (the error text rides along), and ``error`` with
@@ -136,11 +136,6 @@ async def audited_stream(
     started = monotonic()
     status = ERROR
     error: str | None = "stream interrupted"
-    info = effective_info(
-        resolved.model,
-        profile_context_window=resolved.context_window,
-        profile_max_output_tokens=resolved.max_output_tokens,
-    )
     try:
         async for event in resolved.provider.stream(request):
             if isinstance(event, Delta):
@@ -182,7 +177,7 @@ async def audited_stream(
                         profile_id=resolved.profile_id,
                         base_url=resolved.base_url,
                         kind=resolved.kind,
-                        info=info,
+                        info=resolved.info,
                     )
                     await session.commit()
             except Exception:

@@ -112,7 +112,6 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         expect(eins.get_by_text("Standard", exact=True)).to_have_count(0)
 
         # The task tier beats the default: continuation serves from Fake Eins.
-        # The task tier beats the default: continuation serves from Fake Eins.
         continuation = page.get_by_label("Weiterschreiben")
         continuation.select_option(label="Fake Eins")
         # The PUT's refetch is what moves the select; wait for it before
@@ -123,6 +122,16 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         page.reload()
         expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
         expect(page.get_by_label("Weiterschreiben")).to_have_value(_profile_id("Fake Eins"))
+        # The task list names the profile that actually serves the task — the
+        # assigned one, not a bare "Automatic" the cascade may contradict.
+        expect(page.get_by_text("über Fake Eins")).to_be_visible()
+        # The audit-only key is labelled and explained: never printed as its
+        # internal key, never offered as an assignment, never given a provider.
+        expect(page.get_by_text("Verbindungstest")).to_be_visible()
+        expect(
+            page.get_by_text("Der Einstellungstest prüft das Profil, das du auswählst")
+        ).to_be_visible()
+        expect(page.get_by_text("settings.test")).to_have_count(0)
 
         # A vendor profile carries the masked-key round-trip and the probes,
         # and a tuning column the edit below will clear.
@@ -177,7 +186,8 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
 
     # The workbench continuation runs on the assigned profile, in the real
     # database's audit — the default profile never answers this task.
-    page.get_by_role("link", name="Alle Romane").click()
+    # The settings page's own back control, in the reader's language.
+    page.get_by_role("link", name="Zurück").click()
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Die Anbieterprobe")
     page.get_by_role("button", name="Anlegen").click()
@@ -226,6 +236,7 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("heading", name="Anbieter")).to_be_visible()
     expect(page.get_by_role("heading", name="Aufgaben")).to_be_visible()
     expect(page.get_by_role("link", name="Einstellungen")).to_be_visible()
+    expect(page.get_by_role("link", name="Zurück")).to_be_visible()
 
     # The bar's quick switch drives the page's language (on /settings the
     # control exists twice; the bar's is the one in the banner).
@@ -235,12 +246,14 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("heading", name="Providers")).to_be_visible()
     expect(page.get_by_role("heading", name="Tasks")).to_be_visible()
     expect(page.get_by_role("link", name="Settings")).to_be_visible()
+    expect(page.get_by_role("link", name="Back")).to_be_visible()
 
     switcher.select_option("fr")
     expect(page.get_by_role("heading", name="Paramètres")).to_be_visible()
     expect(page.get_by_role("heading", name="Fournisseurs")).to_be_visible()
     expect(page.get_by_role("heading", name="Tâches")).to_be_visible()
     expect(page.get_by_role("link", name="Paramètres")).to_be_visible()
+    expect(page.get_by_role("link", name="Retour")).to_be_visible()
 
     switcher.select_option("de")
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()

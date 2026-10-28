@@ -18,7 +18,7 @@ export function SettingsPage() {
       <h1 className="text-2xl font-semibold tracking-tight">{t("settings.heading")}</h1>
       <p className="mt-2 text-sm text-muted">
         <Link to="/" className="underline-offset-4 hover:underline">
-          {t("nav.back")}
+          {t("settings.back")}
         </Link>
       </p>
 

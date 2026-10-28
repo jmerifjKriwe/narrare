@@ -7,6 +7,7 @@ import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 type Profile = components["schemas"]["ProfileRead"];
 type ProfileTestResult = components["schemas"]["ProfileTestResult"];
 type Assignment = components["schemas"]["AssignmentRead"];
+type TaskEffective = components["schemas"]["TaskEffectiveRead"];
 
 /** The kinds the form offers; the server's vocabulary is exactly these two. */
 const KINDS: readonly string[] = ["fake", "openai-chat"];
@@ -17,24 +18,19 @@ const KIND_LABELS: Record<string, MessageKey> = {
 };
 
 /**
- * The tasks an assignment can name, in the order the page lists them. This
- * mirrors `KNOWN_TASK_KEYS` in `app/kernel/llm/resolution.py` — the kernel
- * constant serves readers of the cascade, this list serves the page; unknown
- * keys stay assignable through the API (forward-compatible), the page lists
- * the known ones.
+ * The task labels the catalog carries, keyed by task. The list of tasks comes
+ * from the server (`KNOWN_TASK_KEYS`); this map only supplies words. The
+ * server's `assignable` decides whether a row gets a select, so a new key is
+ * routable without a frontend edit and only needs its label (a missing label
+ * falls back to the generic one, never to the raw key).
  */
-const KNOWN_TASKS: readonly { key: string; labelKey: MessageKey }[] = [
-  { key: "writing.continuation", labelKey: "settings.task.writing.continuation" },
-  { key: "chat.ask", labelKey: "settings.task.chat.ask" },
-  {
-    key: "knowledge.extract-entities",
-    labelKey: "settings.task.knowledge.extract-entities",
-  },
-  {
-    key: "knowledge.check-consistency",
-    labelKey: "settings.task.knowledge.check-consistency",
-  },
-];
+const TASK_LABELS: Record<string, MessageKey> = {
+  "writing.continuation": "settings.task.writing.continuation",
+  "chat.ask": "settings.task.chat.ask",
+  "knowledge.extract-entities": "settings.task.knowledge.extract-entities",
+  "knowledge.check-consistency": "settings.task.knowledge.check-consistency",
+  "settings.test": "settings.tasks.settings.test",
+};
 
 /** One text field of the profile form, as the input holds it. */
 type FormState = {
@@ -105,10 +101,12 @@ export function ProvidersPanel() {
   const t = useTranslation();
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [tasks, setTasks] = useState<TaskEffective[]>([]);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [failure, setFailure] = useState<MessageKey | null>(null);
   const [deleteRefused, setDeleteRefused] = useState<"default" | "other" | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProfileTestResult>>({});
   const [models, setModels] = useState<Record<string, string[] | "failed">>({});
@@ -116,17 +114,44 @@ export function ProvidersPanel() {
   useEffect(() => {
     // Both views load on mount: the assignment selects display their values
     // out of this list, so a fresh visit must show the stored choices — not
-    // "automatic" until some later mutation happens to refetch them.
-    void reload();
+    // "automatic" until some later mutation happens to refetch them. A
+    // navigation away during that first fetch must not write into an
+    // unmounted panel; the flag is the smallest guard, and React's no-op
+    // setState is not a contract to rely on.
+    let cancelled = false;
+    void reload(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function reload(): Promise<void> {
-    const [profileList, assignmentList] = await Promise.all([
+  async function reload(cancelled: () => boolean = () => false): Promise<void> {
+    // The three reads fail independently: a lost key that fails /tasks must
+    // not also hide the profiles and assignments that did arrive. Settled
+    // results keep every success, and the panel's alert names the failure.
+    const [profileList, assignmentList, taskList] = await Promise.allSettled([
       client.GET("/api/settings/profiles"),
       client.GET("/api/settings/assignments"),
+      client.GET("/api/settings/tasks"),
     ]);
-    setProfiles(profileList.data ?? []);
-    setAssignments(assignmentList.data ?? []);
+    if (cancelled()) return;
+    let failed = false;
+    if (profileList.status === "fulfilled" && profileList.value.response.ok) {
+      setProfiles(profileList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    if (assignmentList.status === "fulfilled" && assignmentList.value.response.ok) {
+      setAssignments(assignmentList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    if (taskList.status === "fulfilled" && taskList.value.response.ok) {
+      setTasks(taskList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    setFailure(failed ? "settings.profiles.errorLoad" : null);
   }
 
   /** One form field's change, by its key in the form state. */
@@ -211,11 +236,22 @@ export function ProvidersPanel() {
   }
 
   async function makeDefault(profile: Profile): Promise<void> {
-    await client.PATCH("/api/settings/profiles/{profile_id}", {
-      params: { path: { profile_id: profile.id } },
-      body: { is_default: true },
-    });
-    await reload();
+    setFailure(null);
+    try {
+      const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
+        params: { path: { profile_id: profile.id } },
+        body: { is_default: true },
+      });
+      if (!response.ok) {
+        setFailure("settings.profiles.errorAction");
+        return;
+      }
+      await reload();
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
+      setFailure("settings.profiles.errorAction");
+    }
   }
 
   async function remove(profile: Profile): Promise<void> {
@@ -233,11 +269,18 @@ export function ProvidersPanel() {
   }
 
   async function testConnection(profile: Profile): Promise<void> {
-    const { data, response } = await client.POST("/api/settings/profiles/{profile_id}/test", {
-      params: { path: { profile_id: profile.id } },
-    });
-    if (response.ok && data) {
-      setTestResults((current) => ({ ...current, [profile.id]: data }));
+    setFailure(null);
+    try {
+      const { data, response } = await client.POST("/api/settings/profiles/{profile_id}/test", {
+        params: { path: { profile_id: profile.id } },
+      });
+      if (response.ok && data) {
+        setTestResults((current) => ({ ...current, [profile.id]: data }));
+        return;
+      }
+      setFailure("settings.profiles.errorAction");
+    } catch {
+      setFailure("settings.profiles.errorAction");
     }
   }
 
@@ -254,11 +297,20 @@ export function ProvidersPanel() {
   }
 
   async function assign(taskKey: string, profileId: string): Promise<void> {
-    const { response } = await client.PUT("/api/settings/assignments/{task_key}", {
-      params: { path: { task_key: taskKey } },
-      body: { profile_id: profileId === "" ? null : profileId },
-    });
-    if (response.ok) await reload();
+    setFailure(null);
+    try {
+      const { response } = await client.PUT("/api/settings/assignments/{task_key}", {
+        params: { path: { task_key: taskKey } },
+        body: { profile_id: profileId === "" ? null : profileId },
+      });
+      if (!response.ok) {
+        setFailure("settings.profiles.errorAction");
+        return;
+      }
+      await reload();
+    } catch {
+      setFailure("settings.profiles.errorAction");
+    }
   }
 
   const field =
@@ -294,6 +346,11 @@ export function ProvidersPanel() {
             {deleteRefused === "default"
               ? t("settings.profiles.errorDefaultDelete")
               : t("settings.profiles.errorDelete")}
+          </p>
+        ) : null}
+        {failure !== null ? (
+          <p role="alert" className="mt-3 text-sm text-danger">
+            {t(failure)}
           </p>
         ) : null}
 
@@ -518,17 +575,45 @@ export function ProvidersPanel() {
         <h2 id="settings-assignments-heading" className="text-lg font-semibold">
           {t("settings.assignments")}
         </h2>
-        {KNOWN_TASKS.map((task) => {
-          const assigned = assignments.find((row) => row.task_key === task.key);
+        {tasks.map((task) => {
+          const assigned = assignments.find((row) => row.task_key === task.task_key);
+          const labelKey = TASK_LABELS[task.task_key];
+          const label = labelKey === undefined ? t("settings.tasks.unknown") : t(labelKey);
+          const kindKey = KIND_LABELS[task.kind];
+          if (!task.assignable) {
+            // An audit-only key (the settings probe's) has no serving tier and
+            // no assignment to offer: one labelled line explains what it is.
+            return (
+              <div
+                key={task.task_key}
+                className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
+              >
+                <span>{label}</span>
+                <p className="text-xs font-normal text-muted">
+                  {t("settings.profiles.taskAuditOnly")}
+                </p>
+              </div>
+            );
+          }
+          // What actually answers, not the stored choice: the cascade can
+          // serve a sibling's assignment or the default from here.
+          const effective =
+            task.profile_name !== null
+              ? t("settings.assignments.via", { profile: task.profile_name })
+              : t("settings.assignments.environment", {
+                  kind: kindKey === undefined ? task.kind : t(kindKey),
+                });
           return (
-            <label
-              key={task.key}
+            <div
+              key={task.task_key}
               className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
             >
-              {t(task.labelKey)}
+              <label htmlFor={`settings-task-${task.task_key}`}>{label}</label>
               <select
+                id={`settings-task-${task.task_key}`}
                 value={assigned?.profile_id ?? ""}
-                onChange={(event) => void assign(task.key, event.target.value)}
+                onChange={(event) => void assign(task.task_key, event.target.value)}
+                aria-describedby={`settings-task-effective-${task.task_key}`}
                 className={`${field} sm:max-w-64`}
               >
                 <option value="">{t("settings.assignments.auto")}</option>
@@ -538,7 +623,13 @@ export function ProvidersPanel() {
                   </option>
                 ))}
               </select>
-            </label>
+              <p
+                id={`settings-task-effective-${task.task_key}`}
+                className="text-xs font-normal text-muted"
+              >
+                {effective}
+              </p>
+            </div>
           );
         })}
       </section>

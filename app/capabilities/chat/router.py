@@ -17,7 +17,7 @@ from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import FinalizingStreamingResponse
+from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
 from app.kernel.secrets import KeyUnavailableError
 
@@ -38,11 +38,6 @@ def _service(session: SessionDep, user_id: UserDep, embeddings: EmbeddingsDep) -
 
 
 ServiceDep = Annotated[ChatService, Depends(_service)]
-
-
-async def _error_events() -> AsyncGenerator[str]:
-    """The one frame a stream ends with when no provider call could run."""
-    yield "event: error\ndata: {}\n\n"
 
 
 async def _events(
@@ -76,7 +71,7 @@ async def _events(
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
     except Exception:
         logger.exception("chat stream failed")
-        yield "event: error\ndata: {}\n\n"
+        yield ERROR_FRAME
     else:
         yield "event: done\ndata: {}\n\n"
     finally:
@@ -125,7 +120,7 @@ async def ask(
     except KeyUnavailableError:
         logger.exception("chat provider resolution failed")
         return FinalizingStreamingResponse(
-            _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.

@@ -178,8 +178,9 @@ class OpenAIChatProvider:
             )
             async for chunk in completion:
                 if chunk.usage is not None:
-                    # Reported usage takes precedence over text in the same
-                    # frame, and the counts arrive validated by the SDK.
+                    # A usage frame yields its counts; the same frame's text
+                    # deltas still follow below — both events yield, neither
+                    # takes precedence. The counts arrive validated by the SDK.
                     yield Usage(
                         input_tokens=chunk.usage.prompt_tokens,
                         output_tokens=chunk.usage.completion_tokens,

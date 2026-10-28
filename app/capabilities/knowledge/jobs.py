@@ -28,7 +28,6 @@ from app.capabilities.knowledge.repository import (
 )
 from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
 from app.kernel.llm.audit import record_call
-from app.kernel.llm.catalog import effective_info
 from app.kernel.llm.resolution import resolve_provider
 
 from .structured import AuditedCall, MalformedAnswerError, ask_structured
@@ -318,11 +317,6 @@ async def extract_entities(
     truncated = len(body) > BODY_LIMIT
     prompt = extraction_prompt(chapter_title=chapter.title, body=body[:BODY_LIMIT])
     resolved = await resolve_provider(session, job.user_id, "knowledge.extract-entities")
-    info = effective_info(
-        resolved.model,
-        profile_context_window=resolved.context_window,
-        profile_max_output_tokens=resolved.max_output_tokens,
-    )
 
     async def audit(call: AuditedCall) -> None:
         # The audit row rides the handler's terminal commit with the rows it
@@ -346,7 +340,7 @@ async def extract_entities(
             profile_id=resolved.profile_id,
             base_url=resolved.base_url,
             kind=resolved.kind,
-            info=info,
+            info=resolved.info,
         )
 
     entities = await ask_structured(
@@ -449,11 +443,6 @@ async def check_consistency(
     canon = [(entity.name, entity.type) for entity in entities]
     groups, skipped = _chapter_groups(chapters)
     resolved = await resolve_provider(session, job.user_id, "knowledge.check-consistency")
-    info = effective_info(
-        resolved.model,
-        profile_context_window=resolved.context_window,
-        profile_max_output_tokens=resolved.max_output_tokens,
-    )
 
     async def audit(call: AuditedCall) -> None:
         # One row per pass, riding the terminal commit with the findings: a
@@ -475,7 +464,7 @@ async def check_consistency(
             profile_id=resolved.profile_id,
             base_url=resolved.base_url,
             kind=resolved.kind,
-            info=info,
+            info=resolved.info,
         )
 
     findings: list[ParsedFinding] = []
