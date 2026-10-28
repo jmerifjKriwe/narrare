@@ -92,6 +92,15 @@ class ProfileService:
 
         Returns the row and the plaintext key exactly once — the one response
         that may carry it is the create's.
+
+        The keyring write precedes the commit: ``_store_key`` runs on the
+        flushed row, so a key tier that fails there aborts before anything a
+        reader could see is committed. The reverse order would let a visible
+        row point at a key that was never written. The cost of this order is
+        the orphaned secret: a commit that fails after the write leaves a
+        stored key no row names, until the next save for that profile id
+        overwrites it. It is the rarer failure, and it is documented here
+        rather than cleaned up (F-10 records the ordering).
         """
         base_url = payload.base_url.rstrip("/") if payload.base_url else None
         self._gate(
