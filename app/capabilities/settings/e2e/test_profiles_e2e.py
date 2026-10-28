@@ -112,7 +112,6 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         expect(eins.get_by_text("Standard", exact=True)).to_have_count(0)
 
         # The task tier beats the default: continuation serves from Fake Eins.
-        # The task tier beats the default: continuation serves from Fake Eins.
         continuation = page.get_by_label("Weiterschreiben")
         continuation.select_option(label="Fake Eins")
         # The PUT's refetch is what moves the select; wait for it before
