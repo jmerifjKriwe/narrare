@@ -3133,7 +3133,7 @@
     },
     "/api/settings/tasks": {
       "get": {
-        "description": "The effective provider per known task key, for the page's task list.\n\nReads only: each row is the resolution cascade's answer, never a write\nand never an audit row.",
+        "description": "The effective provider per known task key, for the page's task list.\n\nReads only: each row is the resolution cascade's answer, never a write\nand never an audit row. A profile whose key its tier can no longer\nproduce fails the read by name — 502, as discovery maps the same class —\nso a lost key is never a bare 500.",
         "operationId": "list_tasks_api_settings_tasks_get",
         "responses": {
           "200": {

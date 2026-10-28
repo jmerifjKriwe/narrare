@@ -222,8 +222,14 @@ async def list_tasks(service: ProfileServiceDep) -> list[TaskEffectiveRead]:
     """The effective provider per known task key, for the page's task list.
 
     Reads only: each row is the resolution cascade's answer, never a write
-    and never an audit row.
+    and never an audit row. A profile whose key its tier can no longer
+    produce fails the read by name — 502, as discovery maps the same class —
+    so a lost key is never a bare 500.
     """
+    try:
+        rows = await service.tasks()
+    except KeyUnavailableError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
     return [
         TaskEffectiveRead(
             task_key=row.task_key,
@@ -232,5 +238,5 @@ async def list_tasks(service: ProfileServiceDep) -> list[TaskEffectiveRead]:
             kind=row.kind,
             assignable=row.assignable,
         )
-        for row in await service.tasks()
+        for row in rows
     ]

@@ -106,7 +106,7 @@ export function ProvidersPanel() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
-  const [actionFailed, setActionFailed] = useState(false);
+  const [failure, setFailure] = useState<MessageKey | null>(null);
   const [deleteRefused, setDeleteRefused] = useState<"default" | "other" | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProfileTestResult>>({});
   const [models, setModels] = useState<Record<string, string[] | "failed">>({});
@@ -126,15 +126,32 @@ export function ProvidersPanel() {
   }, []);
 
   async function reload(cancelled: () => boolean = () => false): Promise<void> {
-    const [profileList, assignmentList, taskList] = await Promise.all([
+    // The three reads fail independently: a lost key that fails /tasks must
+    // not also hide the profiles and assignments that did arrive. Settled
+    // results keep every success, and the panel's alert names the failure.
+    const [profileList, assignmentList, taskList] = await Promise.allSettled([
       client.GET("/api/settings/profiles"),
       client.GET("/api/settings/assignments"),
       client.GET("/api/settings/tasks"),
     ]);
     if (cancelled()) return;
-    setProfiles(profileList.data ?? []);
-    setAssignments(assignmentList.data ?? []);
-    setTasks(taskList.data ?? []);
+    let failed = false;
+    if (profileList.status === "fulfilled" && profileList.value.response.ok) {
+      setProfiles(profileList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    if (assignmentList.status === "fulfilled" && assignmentList.value.response.ok) {
+      setAssignments(assignmentList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    if (taskList.status === "fulfilled" && taskList.value.response.ok) {
+      setTasks(taskList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    setFailure(failed ? "settings.profiles.errorLoad" : null);
   }
 
   /** One form field's change, by its key in the form state. */
@@ -219,21 +236,21 @@ export function ProvidersPanel() {
   }
 
   async function makeDefault(profile: Profile): Promise<void> {
-    setActionFailed(false);
+    setFailure(null);
     try {
       const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
         params: { path: { profile_id: profile.id } },
         body: { is_default: true },
       });
       if (!response.ok) {
-        setActionFailed(true);
+        setFailure("settings.profiles.errorAction");
         return;
       }
       await reload();
     } catch {
       // A rejected fetch has no response to inspect: the page still says so,
       // in the same place a server-reachable failure appears.
-      setActionFailed(true);
+      setFailure("settings.profiles.errorAction");
     }
   }
 
@@ -252,7 +269,7 @@ export function ProvidersPanel() {
   }
 
   async function testConnection(profile: Profile): Promise<void> {
-    setActionFailed(false);
+    setFailure(null);
     try {
       const { data, response } = await client.POST("/api/settings/profiles/{profile_id}/test", {
         params: { path: { profile_id: profile.id } },
@@ -261,9 +278,9 @@ export function ProvidersPanel() {
         setTestResults((current) => ({ ...current, [profile.id]: data }));
         return;
       }
-      setActionFailed(true);
+      setFailure("settings.profiles.errorAction");
     } catch {
-      setActionFailed(true);
+      setFailure("settings.profiles.errorAction");
     }
   }
 
@@ -280,19 +297,19 @@ export function ProvidersPanel() {
   }
 
   async function assign(taskKey: string, profileId: string): Promise<void> {
-    setActionFailed(false);
+    setFailure(null);
     try {
       const { response } = await client.PUT("/api/settings/assignments/{task_key}", {
         params: { path: { task_key: taskKey } },
         body: { profile_id: profileId === "" ? null : profileId },
       });
       if (!response.ok) {
-        setActionFailed(true);
+        setFailure("settings.profiles.errorAction");
         return;
       }
       await reload();
     } catch {
-      setActionFailed(true);
+      setFailure("settings.profiles.errorAction");
     }
   }
 
@@ -331,9 +348,9 @@ export function ProvidersPanel() {
               : t("settings.profiles.errorDelete")}
           </p>
         ) : null}
-        {actionFailed ? (
+        {failure !== null ? (
           <p role="alert" className="mt-3 text-sm text-danger">
-            {t("settings.profiles.errorAction")}
+            {t(failure)}
           </p>
         ) : null}
 

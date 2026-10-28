@@ -222,6 +222,7 @@
   "settings.profiles.errorDefaultDelete": "Das Standard-Profil kann nicht gelöscht werden. Lege ein zweites Profil an, mache es zum Standard und lösche dann dieses.",
   "settings.profiles.errorDelete": "Das Profil konnte nicht gelöscht werden.",
   "settings.profiles.errorAction": "Die Aktion konnte nicht ausgeführt werden. Läuft der lokale Dienst?",
+  "settings.profiles.errorLoad": "Die Einstellungen konnten nicht geladen werden. Läuft der lokale Dienst?",
   "settings.profiles.taskAuditOnly": "Der Einstellungstest prüft das Profil, das du auswählst",
   "settings.profiles.keyOnce": "Das Profil „{name}“ wurde gespeichert. Der API-Schlüssel wird nur dieses eine Mal angezeigt: {key}",
   "settings.profiles.keyOnceDone": "Verstanden",

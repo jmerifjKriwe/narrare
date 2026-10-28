@@ -145,6 +145,53 @@ describe("the task list", () => {
   });
 });
 
+describe("the mount's reads", () => {
+  /** The profile list survives a task-list failure, with the alert beside it. */
+  async function expectProfilesSurvive(): Promise<void> {
+    render(<ProvidersPanel />);
+    expect(await screen.findByRole("listitem")).toBeTruthy();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorLoad"));
+  }
+
+  it("keeps the profile list when the task list rejects", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      switch (path) {
+        case "/api/settings/profiles":
+          return { data: [DEFAULT_PROFILE], response: ok() };
+        case "/api/settings/assignments":
+          return { data: [], response: ok() };
+        case "/api/settings/tasks":
+          throw new TypeError("Failed to fetch");
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+
+    await expectProfilesSurvive();
+  });
+
+  it("keeps the profile list when the task list answers 502", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      switch (path) {
+        case "/api/settings/profiles":
+          return { data: [DEFAULT_PROFILE], response: ok() };
+        case "/api/settings/assignments":
+          return { data: [], response: ok() };
+        case "/api/settings/tasks":
+          return {
+            error: { detail: "the stored key cannot be produced" },
+            response: new Response(null, { status: 502 }),
+          };
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+
+    await expectProfilesSurvive();
+  });
+});
+
 describe("a secondary action whose request cannot be sent", () => {
   /** The panel's error surface, once the rejected fetch has been handled. */
   async function expectFailure(): Promise<void> {

@@ -8,12 +8,14 @@ leaves the assignments untouched.
 """
 
 import pytest
+from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
 from app.kernel.db.session import Session
 from app.kernel.llm.resolution import KNOWN_TASK_KEYS
+from app.kernel.secrets import KeyUnavailableError
 
 pytestmark = pytest.mark.timeout(30)
 
@@ -150,3 +152,37 @@ async def test_listing_tasks_writes_nothing_and_audits_nothing() -> None:
     async with Session() as session:
         calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert calls == 0
+
+
+async def test_a_lost_profile_key_is_a_named_502(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A key its tier can no longer produce fails the read, not the whole page.
+
+    The list resolves every routable key, so a lost key is the read's failure:
+    the router names it as a 502 (as discovery already does), and the client
+    can keep the profiles it did receive.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with _client() as client:
+        created = await client.post(
+            "/api/settings/profiles",
+            json={
+                "name": "Lost key",
+                "kind": "openai-chat",
+                "base_url": "http://127.0.0.1:9/v1",
+                "model": "vendor-mini",
+                "api_key": "sk-lost-key",
+            },
+        )
+        assert created.status_code == 201, created.text
+
+        from app.kernel.llm import resolution
+
+        def broken_key(profile_id: object, column: str) -> str:
+            raise KeyUnavailableError("the stored key cannot be produced")
+
+        monkeypatch.setattr(resolution, "load_key", broken_key)
+        response = await client.get("/api/settings/tasks")
+
+    assert response.status_code == 502
+    assert "key" in response.json()["detail"]

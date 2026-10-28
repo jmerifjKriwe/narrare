@@ -590,7 +590,9 @@ export interface paths {
          * @description The effective provider per known task key, for the page's task list.
          *
          *     Reads only: each row is the resolution cascade's answer, never a write
-         *     and never an audit row.
+         *     and never an audit row. A profile whose key its tier can no longer
+         *     produce fails the read by name — 502, as discovery maps the same class —
+         *     so a lost key is never a bare 500.
          */
         get: operations["list_tasks_api_settings_tasks_get"];
         put?: never;
