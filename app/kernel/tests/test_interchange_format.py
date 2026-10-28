@@ -8,7 +8,10 @@ deterministic (slug rule, zero-padded positions, `metadata.json` first), and
 relations ride `metadata.json` as `from`/`type`/`to`/`note?`.
 """
 
+import io
 import json
+import struct
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -28,6 +31,7 @@ from app.kernel.interchange import (
     write_directory,
     zip_bytes,
 )
+from app.kernel.interchange.tree import MAX_UNCOMPRESSED_BYTES
 
 _CHAPTER_ID = UUID("0f0e8d4a-7b3c-4d5e-8f90-1a2b3c4d5e6f")
 _ENTITY_ID = UUID("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d")
@@ -187,7 +191,7 @@ def test_metadata_index_lends_its_position() -> None:
     parsed = parse_archive(open_zip(zip_bytes(files)))
 
     indexed = next(c for c in parsed.chapters if c.title == "indexed")
-    assert indexed.position == 4  # the index lent it; appearance would say 1
+    assert indexed.position == 4  # the index lent it; appearance would say 2
     assert indexed.indexed_position == 4
     disputed = next(c for c in parsed.chapters if c.title == "Disputed")
     assert disputed.position == 9  # the frontmatter wins for placement
@@ -207,6 +211,110 @@ def test_malformed_frontmatter_names_the_file() -> None:
 
     assert raised.value.path == "chapters/01-x.md"
     assert "chapters/01-x.md" in str(raised.value)
+
+
+def test_directory_reads_only_the_format_surface(tmp_path: Path) -> None:
+    """A directory is not a filesystem walk: the format's three groups are the
+    archive, and everything beside them (a checkout, a binary, a stray note)
+    is never opened — typing `.` must not read the whole repository."""
+    target = tmp_path / "archive"
+    (target / "chapters").mkdir(parents=True)
+    (target / "kb").mkdir()
+    (target / "metadata.json").write_text('{"title": "Der Wanderer"}', encoding="utf-8")
+    (target / "chapters" / "01-start.md").write_text("Der Anfang.\n", encoding="utf-8")
+    (target / "kb" / "mira.md").write_text("Mira.\n", encoding="utf-8")
+    # Foreign files, one of them invalid UTF-8: reading it would refuse a parse
+    # of a perfectly good archive.
+    (target / ".venv" / "lib").mkdir(parents=True)
+    (target / ".venv" / "lib" / "huge.py").write_bytes(b"\xff" * 4096)
+    (target / "notes.txt").write_text("not part of the archive", encoding="utf-8")
+    (target / "kb" / "notes.txt").write_bytes(b"\xff\xfe not markdown")
+
+    parsed = parse_archive(open_directory(target))
+
+    assert parsed.title == "Der Wanderer"
+    assert [chapter.file for chapter in parsed.chapters] == ["chapters/01-start.md"]
+    assert [entity.file for entity in parsed.entities] == ["kb/mira.md"]
+
+
+def test_zip_claiming_more_than_the_uncompressed_cap_is_refused_named() -> None:
+    """A ZIP whose entry claims to expand past the cap refuses before it is
+    read — the compressed upload cap does not bound what `read()` would hold."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as bundle:
+        bundle.writestr(zipfile.ZipInfo("metadata.json"), b"{}")
+    data = bytearray(buffer.getvalue())
+    for signature, offset in ((b"PK\x03\x04", 22), (b"PK\x01\x02", 24)):
+        struct.pack_into("<I", data, data.find(signature) + offset, MAX_UNCOMPRESSED_BYTES + 1)
+
+    with pytest.raises(ArchiveError) as raised:
+        open_zip(bytes(data))
+
+    assert raised.value.path == "metadata.json"
+    assert str(MAX_UNCOMPRESSED_BYTES) in raised.value.reason
+
+
+def test_directory_over_the_uncompressed_cap_is_refused_named(tmp_path: Path) -> None:
+    """A directory whose files total past the cap refuses, naming the path."""
+    target = tmp_path / "archive"
+    (target / "chapters").mkdir(parents=True)
+    (target / "metadata.json").write_text('{"title": "X"}', encoding="utf-8")
+    with (target / "chapters" / "01-big.md").open("wb") as handle:
+        handle.truncate(MAX_UNCOMPRESSED_BYTES + 1)  # sparse: the size is what counts
+
+    with pytest.raises(ArchiveError) as raised:
+        open_directory(target)
+
+    assert raised.value.path == str(target)
+    assert str(MAX_UNCOMPRESSED_BYTES) in raised.value.reason
+
+
+def test_over_long_metadata_title_is_refused_by_name() -> None:
+    """A field wider than its column refuses at parse, naming field and limit —
+    never a database error halfway through the import."""
+    files = {
+        "metadata.json": json.dumps({"title": "x" * 201}).encode(),
+        "chapters/a.md": b"Text.\n",
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "metadata.json"
+    assert "title" in raised.value.reason
+    assert "200" in raised.value.reason
+
+
+def test_over_long_chapter_title_is_refused_by_name() -> None:
+    """A chapter title past the column width is the same named refusal, and it
+    names the chapter file that carries it."""
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "chapters/01-lang.md": ("---\ntitle: " + "x" * 201 + "\n---\n\nText.\n").encode(),
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "chapters/01-lang.md"
+    assert "title" in raised.value.reason
+    assert "200" in raised.value.reason
+
+
+def test_over_long_relation_type_is_refused_by_name() -> None:
+    """A relation type wider than its column refuses, naming the relation."""
+    files = {
+        "metadata.json": json.dumps(
+            {"title": "X", "relations": [{"from": "A", "type": "t" * 81, "to": "B"}]}
+        ).encode(),
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "metadata.json"
+    assert "relation #1" in raised.value.reason
+    assert "80" in raised.value.reason
 
 
 def test_serialize_is_deterministic() -> None:

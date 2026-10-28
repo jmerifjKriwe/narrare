@@ -93,6 +93,25 @@ def _encrypted_zip() -> bytes:
     return bytes(data)
 
 
+def _corrupted_zip() -> bytes:
+    """Valid ZIP bytes whose one deflated entry carries a broken stream.
+
+    The first payload byte is overwritten with an invalid deflate block type
+    (BTYPE 11): `zipfile` surfaces that as `zlib.error` on `read()`, not as
+    `BadZipFile` — the shape a damaged or truncated transfer arrives in. The
+    archive is otherwise well-formed, so the container check passes it.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("metadata.json", b'{"title": "' + b"x" * 500 + b'"}')
+    data = bytearray(buffer.getvalue())
+    local = data.find(b"PK\x03\x04")
+    name_length = struct.unpack_from("<H", data, local + 26)[0]
+    extra_length = struct.unpack_from("<H", data, local + 28)[0]
+    data[local + 30 + name_length + extra_length] = 0x07
+    return bytes(data)
+
+
 async def test_export_zip_round_trips() -> None:
     """mode=zip answers application/zip whose bytes parse back into the same novel."""
     async with _client() as client:
@@ -318,6 +337,20 @@ async def test_encrypted_archive_is_422_with_file_named() -> None:
         assert "encrypted" in detail["reason"].lower()
 
 
+async def test_corrupted_archive_payload_is_422_with_file_named() -> None:
+    """A damaged deflate stream raises zlib.error at read; it is the archive's
+    fault, named in the 422 — never an unhandled 500 the UI reads as an outage."""
+    async with _client() as client:
+        response = await client.post(
+            "/api/writing/novels/import", files={"archive": ("corrupt.zip", _corrupted_zip())}
+        )
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert detail["code"] == "archive_invalid"
+        assert detail["file"] == "<archive>"
+        assert detail["reason"]
+
+
 async def test_import_path_source_unreachable_is_422_named(tmp_path: Path) -> None:
     """A server-side path that is not there is a 422 naming `path`, with the
     OS reason — not a 500 and not a 404."""
@@ -366,7 +399,10 @@ async def test_import_reports_conflicts_with_file_and_reason() -> None:
         assert report["entities_new"] == 0
         assert len(report["conflicts"]) == 1
         conflict = report["conflicts"][0]
+        assert set(conflict) == {"file", "reason", "code", "params"}
         assert conflict["file"] == "kb/drache.md"
+        assert conflict["code"] == "unknown_type"
+        assert conflict["params"] == {"type": "dragon"}
         assert "unknown entity type 'dragon'" in conflict["reason"]
 
         # The refused item was not created: the novel has no entity.

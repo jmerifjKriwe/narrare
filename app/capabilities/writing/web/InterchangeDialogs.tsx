@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 
 import type { Novel } from "@shell/lib/api/client";
 import { announce } from "@shell/lib/announce";
-import { useTranslation } from "@shell/lib/i18n";
+import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
 import { Dialog } from "@shell/ui/Dialog";
 import { TextField } from "@shell/ui/TextField";
@@ -218,6 +218,39 @@ type FormProblem = "both" | "none" | "target" | null;
 
 type Translate = ReturnType<typeof useTranslation>;
 
+type ConflictRow = ImportReport["conflicts"][number];
+
+/**
+ * The catalog key per refusal code the engine emits. The message is the
+ * user's language, with the engine's `params` interpolated; a code this
+ * build does not know (an archive from a newer engine, a future rule)
+ * falls back to the engine's technical `reason` — a named refusal, never a
+ * blank row or a raw code.
+ */
+const CONFLICT_MESSAGES = {
+  stale_revision: "shelf.report.conflict.stale_revision",
+  type_discrepancy: "shelf.report.conflict.type_discrepancy",
+  edge_note_differs: "shelf.report.conflict.edge_note_differs",
+  edge_target_missing: "shelf.report.conflict.edge_target_missing",
+  metadata_differs: "shelf.report.conflict.metadata_differs",
+  position_disagree: "shelf.report.conflict.position_disagree",
+  unknown_type: "shelf.report.conflict.unknown_type",
+  ambiguous_name: "shelf.report.conflict.ambiguous_name",
+  ambiguous_edge_end: "shelf.report.conflict.ambiguous_edge_end",
+} satisfies Record<string, MessageKey>;
+
+/** One refusal's reason in the reader's language, or the technical fallback. */
+function conflictReason(conflict: ConflictRow, t: Translate): string {
+  const key = (CONFLICT_MESSAGES as Record<string, MessageKey>)[conflict.code];
+  return key === undefined ? conflict.reason : t(key, conflict.params);
+}
+
+/** The refusals shown in the conflicts section: metadata diffs have their
+ *  own section below, listed once with the field names. */
+function refusedRows(report: ImportReport): ConflictRow[] {
+  return report.conflicts.filter((conflict) => conflict.code !== "metadata_differs");
+}
+
 /** The report's count lines, zeros dropped — the page shows all nine, the
  *  one-line announcement carries only the classes that did something. */
 function reportSummary(report: ImportReport, t: Translate): string[] {
@@ -244,6 +277,20 @@ function reportSummary(report: ImportReport, t: Translate): string[] {
   return classes.filter(([, count]) => count > 0).map(([message]) => message);
 }
 
+/** The whole report as the live region says it: what changed, what was
+ *  refused, and — when nothing did — that nothing did. */
+function reportAnnouncement(report: ImportReport, t: Translate): string {
+  const summary = reportSummary(report, t);
+  const refused = refusedRows(report).length;
+  const lines = [t("shelf.report.heading"), ...summary];
+  if (summary.length === 0) lines.push(t("shelf.report.nothingChanged"));
+  if (refused > 0) lines.push(t("shelf.report.conflictsHeading", { count: refused }));
+  if (report.metadata_conflicts.length > 0) {
+    lines.push(t("shelf.report.metadataHeading", { count: report.metadata_conflicts.length }));
+  }
+  return lines.join(" ");
+}
+
 function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
   const t = useTranslation();
   const novelSelectId = useId();
@@ -268,8 +315,10 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
           ? t("shelf.import.targetRequired")
           : null;
 
-  /** Drop the picked file from state and from the input itself. */
+  /** Drop the picked file from state and from the input itself, and with it
+   *  the "both sources" mark: the reason for the refusal is gone. */
   function removeFile() {
+    setProblem(null);
     setFile(null);
     if (fileInput.current !== null) fileInput.current.value = "";
   }
@@ -305,9 +354,7 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
       // The report replaces the form; a non-visual reader hears the
       // summary, because the form it was typing into just went away.
       setReport(answer);
-      announce(
-        [t("shelf.report.heading"), ...reportSummary(answer, t)].join(" "),
-      );
+      announce(reportAnnouncement(answer, t));
     } catch (error) {
       const status = (error as InterchangeFailure).status;
       const detail = detailOf(error) as
@@ -417,13 +464,15 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
 /**
  * The import's receipt: all nine count classes (the zeros included — a
  * class the engine carried may not go silent), each refused item as a
- * `file — reason` row, each untouched metadata field named. Every string
- * the archive supplied is interpolated into a message and rendered as a
- * text node; React escapes it, and no attribute ever executes it.
+ * `file — reason` row with the reason in the reader's language, each
+ * untouched metadata field named once. Every string the archive supplied is
+ * interpolated into a message and rendered as a text node; React escapes it,
+ * and no attribute ever executes it.
  */
 function ImportReportView({ report, close }: { report: ImportReport; close: () => void }) {
   const t = useTranslation();
   const headingId = useId();
+  const refused = refusedRows(report);
   return (
     <div className="flex flex-col gap-3 text-sm">
       <h3 id={headingId} className="font-medium">
@@ -440,14 +489,19 @@ function ImportReportView({ report, close }: { report: ImportReport; close: () =
         <li>{t("shelf.report.relationsCreated", { count: report.relations_created })}</li>
         <li>{t("shelf.report.relationsUnchanged", { count: report.relations_already_current })}</li>
       </ul>
-      {report.conflicts.length > 0 ? (
+      {refused.length > 0 ? (
         <section className="flex flex-col gap-1">
           <p className="font-medium">
-            {t("shelf.report.conflictsHeading", { count: report.conflicts.length })}
+            {t("shelf.report.conflictsHeading", { count: refused.length })}
           </p>
           <ul className="flex flex-col gap-1">
-            {report.conflicts.map((conflict, index) => (
-              <li key={index}>{t("shelf.report.conflictRow", conflict)}</li>
+            {refused.map((conflict, index) => (
+              <li key={index}>
+                {t("shelf.report.conflictRow", {
+                  file: conflict.file,
+                  reason: conflictReason(conflict, t),
+                })}
+              </li>
             ))}
           </ul>
         </section>

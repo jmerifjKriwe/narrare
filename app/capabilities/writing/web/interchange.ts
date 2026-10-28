@@ -141,8 +141,10 @@ export async function importArchive(input: ImportInput): Promise<ImportReport> {
 
 /**
  * Hand a blob to the browser as a download: a temporary anchor with the
- * `download` attribute, clicked once, removed, its object URL revoked —
- * the archive lives in the user's Downloads folder, not on the page.
+ * `download` attribute, clicked once, removed, its object URL revoked — the
+ * archive lives in the user's Downloads folder, not on the page. The revoke
+ * is deferred one task: the navigation reads the URL asynchronously, and a
+ * revoke in the click's own turn can outrun the download it served.
  */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -152,5 +154,5 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

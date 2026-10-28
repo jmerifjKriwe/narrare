@@ -47,6 +47,19 @@ METADATA_NAME = "metadata.json"
 _YAML_WIDTH = 10**6
 """No line wrapping: the frontmatter is a data file, not prose."""
 
+_MAX_LENGTHS: dict[str, int] = {
+    # The column widths the archive writes into. Validated at parse, so a
+    # hostile or careless file is a named 422 instead of a database error
+    # halfway through the import's one transaction.
+    "title": 200,  # novels.title, chapters.title
+    "author": 200,  # novels.author
+    "genre": 80,  # novels.genre
+    "language": 16,  # novels.language
+    "name": 200,  # entities.name
+    "relation_type": 80,  # entity_relations.relation_type
+}
+"""The longest a value may be, per semantic field — the database's own widths."""
+
 
 class ArchiveError(Exception):
     """A malformed archive: the offending file (or path) and the reason."""
@@ -131,11 +144,21 @@ class NovelArchive:
 # ---------------------------------------------------------------------------
 
 
-def _slugify(text: str) -> str:
+def slugify(text: str) -> str:
     """Lowercase, ASCII-folded, non-alphanumerics to `-`, trimmed; empty -> untitled."""
     folded = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-z0-9]+", "-", folded.lower())
     return slug.strip("-") or "untitled"
+
+
+def _check_length(value: str, relpath: str, field: str, limit: int, label: str = "") -> None:
+    """Refuse a value wider than its column, naming the field and the limit."""
+    if len(value) > limit:
+        prefix = f"{label}: " if label else ""
+        raise ArchiveError(
+            relpath,
+            f"{prefix}'{field}' is {len(value)} characters — the format allows {limit}",
+        )
 
 
 def _assign_slugs[K](keys: list[tuple[K, ...]]) -> list[str]:
@@ -330,6 +353,8 @@ def _meta_str(metadata: dict[str, Any], key: str) -> str | None:
         return None
     if not isinstance(value, str):
         raise ArchiveError(METADATA_NAME, f"'{key}' is not a string")
+    if key in _MAX_LENGTHS:
+        _check_length(value, METADATA_NAME, key, _MAX_LENGTHS[key])
     return value
 
 
@@ -388,10 +413,12 @@ def _parse_chapter(
     # The index is keyed by the bare file name (`_chapter_index` strips the
     # `chapters/` prefix); look the chapter up under the same key.
     index_position = indexed.get(name.removeprefix("chapters/"))
+    # Presence, not truthiness: an exported `title: ''` is a value and must
+    # come back untitled, not be re-invented from the file stem.
+    effective_title = title if title is not None else _deslug(_stem(name))
+    _check_length(effective_title, name, "title", _MAX_LENGTHS["title"])
     return ChapterFile(
-        # Presence, not truthiness: an exported `title: ''` is a value and must
-        # come back untitled, not be re-invented from the file stem.
-        title=title if title is not None else _deslug(_stem(name)),
+        title=effective_title,
         position=_fm_int(
             frontmatter,
             "position",
@@ -414,10 +441,12 @@ def _parse_entities(tree: ArchiveTree) -> list[EntityFile]:
         frontmatter, body = _split_frontmatter(text, name)
         entity_name = _fm_str(frontmatter, "name", name)
         entity_type = _fm_str(frontmatter, "type", name)
+        # Presence, not truthiness: `name: ''` and `type: ''` are values.
+        effective_name = entity_name if entity_name is not None else _deslug(_stem(name))
+        _check_length(effective_name, name, "name", _MAX_LENGTHS["name"])
         entities.append(
             EntityFile(
-                # Presence, not truthiness: `name: ''` and `type: ''` are values.
-                name=entity_name if entity_name is not None else _deslug(_stem(name)),
+                name=effective_name,
                 type=entity_type if entity_type is not None else "generic",
                 aliases=_fm_str_list(frontmatter, "aliases", name),
                 tags=_fm_str_list(frontmatter, "tags", name),
@@ -445,18 +474,20 @@ def _parse_relations(metadata: dict[str, Any]) -> list[RelationEdge]:
         note = relation.get("note")
         if note is not None and not isinstance(note, str):
             raise ArchiveError(METADATA_NAME, f"{label}: 'note' is not a string")
+        relation_type = _meta_required(relation, "type", label)
+        _check_length(relation_type, METADATA_NAME, "type", _MAX_LENGTHS["relation_type"], label)
         edges.append(
             RelationEdge(
-                from_name=_meta_required(metadata, relation, "from", label),
-                relation_type=_meta_required(metadata, relation, "type", label),
-                to_name=_meta_required(metadata, relation, "to", label),
+                from_name=_meta_required(relation, "from", label),
+                relation_type=relation_type,
+                to_name=_meta_required(relation, "to", label),
                 note=note,
             )
         )
     return edges
 
 
-def _meta_required(metadata: dict[str, Any], relation: dict[str, Any], key: str, label: str) -> str:
+def _meta_required(relation: dict[str, Any], key: str, label: str) -> str:
     value = relation.get(key)
     if value is None:
         raise ArchiveError(METADATA_NAME, f"{label} has no '{key}'")
@@ -481,14 +512,14 @@ def serialize_archive(archive: NovelArchive) -> dict[str, bytes]:
     """The archive's files, `metadata.json` first, everything deterministic."""
     files: dict[str, bytes] = {}
     chapter_keys = [
-        (_slugify(chapter.title), chapter.title, chapter.position) for chapter in archive.chapters
+        (slugify(chapter.title), chapter.title, chapter.position) for chapter in archive.chapters
     ]
     chapter_slugs = _assign_slugs(chapter_keys)
     chapter_names = [
         f"chapters/{chapter.position:02d}-{slug}.md"
         for chapter, slug in zip(archive.chapters, chapter_slugs, strict=True)
     ]
-    entity_keys = [(_slugify(entity.name), entity.name) for entity in archive.entities]
+    entity_keys = [(slugify(entity.name), entity.name) for entity in archive.entities]
     entity_slugs = _assign_slugs(entity_keys)
     entity_names = [f"kb/{slug}.md" for slug in entity_slugs]
 

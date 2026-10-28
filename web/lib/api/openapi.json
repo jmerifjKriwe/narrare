@@ -273,11 +273,22 @@
         "type": "object"
       },
       "ConflictRead": {
-        "description": "One item the merge rules refused: which archive file, and why.\n\n`file` carries the archive-side path the parse stamped on the item —\nuntrusted text, a plain string by contract.",
+        "description": "One item the merge rules refused: which archive file, and why.\n\n`file` carries the archive-side path the parse stamped on the item —\nuntrusted text, a plain string by contract. `code` is the stable key the\nreceipt localizes, with `params` interpolated; `reason` is the technical\ndetail, and the fallback for a code the client does not know.",
         "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
           "file": {
             "title": "File",
             "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
           },
           "reason": {
             "title": "Reason",
@@ -286,7 +297,9 @@
         },
         "required": [
           "file",
-          "reason"
+          "reason",
+          "code",
+          "params"
         ],
         "title": "ConflictRead",
         "type": "object"

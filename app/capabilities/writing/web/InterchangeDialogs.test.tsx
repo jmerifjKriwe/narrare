@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Novel } from "@shell/lib/api/client";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
+import { applyLocale } from "@shell/lib/locale";
 
 import { ExportNovelDialog, ImportArchiveDialog } from "./InterchangeDialogs";
 import { proposeExportPath } from "./interchange";
@@ -301,11 +302,12 @@ describe("the export dialog", () => {
 
     // The browser got the bytes: one object URL, one anchor click named
     // after the Content-Disposition, one revoke — the temporary anchor
-    // leaves nothing behind.
+    // leaves nothing behind. The revoke is one task later, after the
+    // download it served has read the URL.
     await waitFor(() => expect(anchorClicks).toHaveLength(1));
     expect(anchorClicks[0]!.download).toBe("dead-signal.zip");
     expect(anchorClicks[0]!.href).toBe(objectUrls[0]);
-    expect(revokedUrls).toEqual(objectUrls);
+    await waitFor(() => expect(revokedUrls).toEqual(objectUrls));
     const downloaded = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
     expect(downloaded).toBeInstanceOf(Blob);
 
@@ -367,7 +369,19 @@ describe("the import dialog", () => {
         entities_already_current: 5,
         relations_created: 6,
         relations_already_current: 1,
-        conflicts: [{ file: hostileFile, reason: "unreadable frontmatter" }],
+        // A code this build does not carry: the row falls back to the
+        // engine's technical reason, with the archive-supplied name in it.
+        // The second is a metadata diff: it belongs to the metadata section
+        // below, not a second row here.
+        conflicts: [
+          { file: hostileFile, reason: "unreadable frontmatter", code: "future_rule", params: {} },
+          {
+            file: "metadata.json",
+            reason: "genre differs — not applied",
+            code: "metadata_differs",
+            params: { field: "genre" },
+          },
+        ],
         metadata_conflicts: ["genre", "language"],
       }),
     );
@@ -407,6 +421,10 @@ describe("the import dialog", () => {
     // A zero class has nothing to say — the page names it, the summary
     // does not pad itself with rows that count nothing.
     expect(announced()).not.toContain(t("shelf.report.entitiesRevised", { count: 0 }));
+    // The refusals are announced too, counted the way the page lists them:
+    // the non-metadata ones here, the metadata fields beside them.
+    expect(announced()).toContain(t("shelf.report.conflictsHeading", { count: 1 }));
+    expect(announced()).toContain(t("shelf.report.metadataHeading", { count: 2 }));
 
     // The conflict as a `file — reason` row — as a text node: the
     // archive-supplied name rides the catalog formatter, never markup.
@@ -419,10 +437,78 @@ describe("the import dialog", () => {
     expect(document.body.innerHTML).not.toContain("<script");
     expect(document.querySelectorAll("script")).toHaveLength(0);
 
-    // The metadata fields the merge refused to touch, named one by one.
+    // The metadata fields the merge refused to touch, named one by one —
+    // and nowhere twice: the conflicts section lists only the other rows.
+    expect(screen.getByText(t("shelf.report.conflictsHeading", { count: 1 }))).toBeTruthy();
+    expect(screen.queryByText(/metadata\.json/)).toBeNull();
     expect(screen.getByText(t("shelf.report.metadataHeading", { count: 2 }))).toBeTruthy();
-    expect(screen.getByText("genre")).toBeTruthy();
+    expect(screen.getAllByText("genre")).toHaveLength(1);
     expect(screen.getByText("language")).toBeTruthy();
+  });
+
+  it("speaks a refusal reason in the interface language, by code", async () => {
+    applyLocale("de");
+    try {
+      const fileUpdated = "2000-01-01T00:00:00+00:00";
+      const stockUpdated = "2026-10-28T10:00:00+00:00";
+      answers.push(
+        jsonResponse(201, {
+          ...EMPTY_REPORT,
+          conflicts: [
+            {
+              file: "chapters/00-ankunft.md",
+              reason: "stale revision: the file's updated ... is older — not applied",
+              code: "stale_revision",
+              params: { file_updated: fileUpdated, stock_updated: stockUpdated },
+            },
+            {
+              file: "kb/unbekannt.md",
+              reason: "technical detail from a rule this build does not know",
+              code: "a_future_rule",
+              params: {},
+            },
+          ],
+        }),
+      );
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      render(<ImportArchiveDialog novels={[TARGET]} />);
+
+      await user.click(screen.getByRole("button", { name: t("shelf.import") }));
+      await user.type(await screen.findByLabelText(t("shelf.import.pathLabel")), "/tmp/a.zip");
+      await user.click(screen.getByRole("button", { name: t("shelf.import.submit") }));
+
+      // The known code is the catalog's German sentence, parameters filled in
+      // — not the engine's English technical text.
+      expect(
+        await screen.findByText(
+          t("shelf.report.conflictRow", {
+            file: "chapters/00-ankunft.md",
+            reason: t("shelf.report.conflict.stale_revision", {
+              file_updated: fileUpdated,
+              stock_updated: stockUpdated,
+            }),
+          }),
+        ),
+      ).toBeTruthy();
+      expect(document.body.textContent).toContain("veraltete Fassung");
+      expect(document.body.textContent).not.toContain("stale revision");
+
+      // An unknown code is still a named refusal: the technical reason.
+      expect(
+        screen.getByText(
+          t("shelf.report.conflictRow", {
+            file: "kb/unbekannt.md",
+            reason: "technical detail from a rule this build does not know",
+          }),
+        ),
+      ).toBeTruthy();
+      // Both refused rows are counted; no count class did anything.
+      expect(screen.getByText(t("shelf.report.conflictsHeading", { count: 2 }))).toBeTruthy();
+      await waitFor(() => expect(announced()).toContain(t("shelf.report.nothingChanged")));
+      applyLocale(null);
+    } finally {
+      applyLocale(null);
+    }
   });
 
   it("uploads a file into an existing novel — and refuses both sources at once", async () => {
@@ -463,11 +549,13 @@ describe("the import dialog", () => {
     expect(wire[0]!.form?.has("path")).toBe(false);
 
     // The empty report is still a report: the heading says what happened,
-    // and the absent rows say why nothing else is listed.
+    // the absent rows say why nothing else is listed, and — because no class
+    // did anything — the announcement says so in words.
     expect(await screen.findByRole("heading", { name: t("shelf.report.heading") })).toBeTruthy();
     expect(screen.getByText(t("shelf.report.chaptersNew", { count: 0 }))).toBeTruthy();
     expect(screen.queryByText(t("shelf.report.conflictsHeading", { count: 1 }))).toBeNull();
     expect(screen.queryByText(t("shelf.report.metadataHeading", { count: 1 }))).toBeNull();
+    await waitFor(() => expect(announced()).toContain(t("shelf.report.nothingChanged")));
   });
 
   it("lets the picked file be removed — the refusal recovers without closing", async () => {
@@ -479,16 +567,23 @@ describe("the import dialog", () => {
     const fileInput = await screen.findByLabelText(t("shelf.import.fileLabel"));
     await user.upload(fileInput, new File(["PK"], "dead-signal.zip", { type: "application/zip" }));
 
+    // Both sources filled: refused by name, nothing sent.
+    await user.type(await screen.findByLabelText(t("shelf.import.pathLabel")), "/tmp/only-path.zip");
+    await user.click(screen.getByRole("button", { name: t("shelf.import.submit") }));
+    expect(screen.getByRole("alert").textContent).toBe(t("shelf.import.bothSources"));
+    expect(wire).toHaveLength(0);
+
     // The file is named where it was picked, and one press removes it —
-    // input value included, which React cannot set on its own.
+    // input value included, which React cannot set on its own. The "both
+    // sources" mark goes with it: its reason no longer exists.
     expect(screen.getByText("dead-signal.zip")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: t("shelf.import.fileRemove") }));
     expect(screen.queryByText("dead-signal.zip")).toBeNull();
     expect((fileInput as HTMLInputElement).value).toBe("");
+    expect(screen.queryByRole("alert")).toBeNull();
 
-    // With the file gone and the path filled, the exact-one refusal has
-    // a way back: the path alone carries the submit.
-    await user.type(await screen.findByLabelText(t("shelf.import.pathLabel")), "/tmp/only-path.zip");
+    // With the file gone and the path filled, the question has an answer
+    // again: the path alone carries the submit.
     await user.click(screen.getByRole("button", { name: t("shelf.import.submit") }));
 
     await waitFor(() => expect(wire).toHaveLength(1));

@@ -10,15 +10,17 @@ module), then drives the interchange dialogs a user drives:
   and relations equal in the database, row for row;
 * export to a folder, revise one chapter file, drop one bare chapter and
   one bare knowledge file beside it, and merge — the receipt's counts are
-  exactly what the database then holds (Review Focus 3);
+  exactly what the database then holds (Review Focus 3), the novel's
+  `updated_at` moves, and the shelf's continue-hero is that novel;
 * craft a chapter file whose `updated` predates the row's `updated_at` and
-  merge — the conflict is named in the receipt and the stored prose is
-  untouched (Review Focus 1);
+  merge — the conflict is named in the receipt, in German, and the stored
+  prose is untouched (Review Focus 1);
 * export to the same folder twice — the second attempt is refused by name
   and the first backup is not shrunk (Review Focus 2).
 
 Every flow ends on the accessibility floor, with the receipt still on
-screen where that flow's answer is.
+screen where that flow's answer is; the ZIP dialog gets the floor with its
+radio selected, before the download leaves.
 """
 
 import asyncio
@@ -26,9 +28,11 @@ import json
 import re
 import shutil
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 from playwright.sync_api import Locator, Page, expect
 from sqlalchemy import text
@@ -43,6 +47,7 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 BASE = "http://127.0.0.1:3100"
+API = "http://127.0.0.1:8000"
 DATABASE = "narrare_v2_e2e"  # the stack's own database (e2e/conftest.py)
 
 APP = Path(__file__).resolve().parents[3]
@@ -132,6 +137,17 @@ def _chapter_body(novel_id: str, title: str) -> str:
         {"novel_id": novel_id, "title": title},
     )
     return str(row[0])
+
+
+def _novel_api(novel_id: str) -> dict[str, object]:
+    """One novel as the API answers it — the status first, then the body."""
+    with httpx.Client(base_url=API, timeout=30) as api:
+        response = api.get(f"/api/writing/novels/{novel_id}")
+        # The status first: a 4xx/5xx body is not a novel, and `.json()` on
+        # an error page would blame the assertion that follows.
+        response.raise_for_status()
+        body: dict[str, object] = response.json()
+    return body
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +272,9 @@ def _export_zip(page: Page, title: str, destination: Path) -> Path:
     """Export as a ZIP download and save it where the import can pick it up."""
     dialog = _open_export(page, title)
     dialog.get_by_role("radio", name="ZIP-Download").check()
+    # The ZIP mode is its own surface — the path field stepped aside — so the
+    # floor is checked with the radio selected, before the download leaves.
+    assert_accessible(page)
     with page.expect_download() as caught:
         dialog.get_by_role("button", name="Jetzt exportieren").click()
     caught.value.save_as(str(destination))
@@ -309,6 +328,7 @@ def test_merge_outside_work(page: Page, stack: Stack, tmp_path: Path) -> None:
     title = "Der Nachtrag"
     _seed_novel(page, _copy_demo(tmp_path / "quelle", title), title)
     [novel_id] = _novel_ids(title)
+    touched_before = str(_novel_api(novel_id)["updated_at"])
 
     export = tmp_path / "export"
     _export_path(page, title, export)
@@ -369,6 +389,15 @@ def test_merge_outside_work(page: Page, stack: Stack, tmp_path: Path) -> None:
     # Edges are create-only and these three were already there: no fourth.
     assert len(_relations_of(novel_id)) == DEMO_RELATIONS
 
+    # The merge wrote, so the novel is now the most recently touched one —
+    # the shelf's hero reads `updated_at`, and a book merged into behind the
+    # user's back must not fall off the "continue" card.
+    touched_after = str(_novel_api(novel_id)["updated_at"])
+    assert datetime.fromisoformat(touched_after) > datetime.fromisoformat(touched_before)
+    _close_report(page)
+    hero = page.locator("section[aria-labelledby='novels-continue']")
+    expect(hero).to_contain_text(title)
+
 
 def test_stale_import_is_refused(page: Page, stack: Stack, tmp_path: Path) -> None:
     """An archive that predates the prose it names is refused, prose intact."""
@@ -410,9 +439,10 @@ def test_stale_import_is_refused(page: Page, stack: Stack, tmp_path: Path) -> No
 
     dialog = _import_merge(page, export, title)
     expect(dialog.get_by_role("heading", name="Importbericht")).to_be_visible()
-    # The refusal is named where the retry is: the file, and why.
+    # The refusal is named where the retry is: the file, and why — in the
+    # interface's language, the engine's code localized by the catalog.
     expect(dialog).to_contain_text("Ein Eintrag wurde abgelehnt:")
-    refused = dialog.get_by_role("listitem").filter(has_text="stale revision")
+    refused = dialog.get_by_role("listitem").filter(has_text="veraltete Fassung")
     expect(refused).to_be_visible()
     expect(refused).to_contain_text(archive_path)
     expect(

@@ -4,7 +4,7 @@ D9 (WP3 design): two capabilities need this (setup's demo load, writing's
 HTTP surface), so it lives in the kernel. Tasks 3-5 import from here:
 
     ArchiveError, NovelArchive, ChapterFile, EntityFile, RelationEdge,
-    parse_archive, serialize_archive          (this package, via format.py)
+    parse_archive, serialize_archive, slugify   (this package, via format.py)
     ArchiveTree, open_directory, open_zip, write_directory, zip_bytes  (tree.py)
 """
 
@@ -17,6 +17,7 @@ from app.kernel.interchange.format import (
     RelationEdge,
     parse_archive,
     serialize_archive,
+    slugify,
 )
 from app.kernel.interchange.tree import (
     ArchiveTree,
@@ -38,6 +39,7 @@ __all__ = [
     "open_zip",
     "parse_archive",
     "serialize_archive",
+    "slugify",
     "write_directory",
     "zip_bytes",
 ]

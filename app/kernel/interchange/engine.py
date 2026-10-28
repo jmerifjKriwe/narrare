@@ -71,9 +71,9 @@ from app.kernel.interchange.format import (
     EntityFile,
     NovelArchive,
     RelationEdge,
-    _slugify,  # pyright: ignore[reportPrivateUsage]  the export slug IS the format's slug rule
     parse_archive,
     serialize_archive,
+    slugify,
 )
 from app.kernel.retrieval import EmbeddingMismatchError
 
@@ -110,10 +110,15 @@ class Conflict:
     onto the file (`chapters/…`, `kb/…`), falling back to the chapter title
     or entity name when the file was constructed without one, the edge label
     `from -type-> to` for relations, and `metadata.json` for metadata diffs.
+    `code` is the stable machine key the receipt localizes, with `params`
+    interpolated; `reason` stays the technical detail — the logs', the tests'
+    and the fallback a client uses for a code it does not know.
     """
 
     file: str
     reason: str
+    code: str
+    params: dict[str, str] = field(default_factory=dict[str, str])
 
 
 @dataclass
@@ -456,7 +461,7 @@ async def export_novel(
             for relation in edges
         ],
     )
-    return _slugify(novel.title), serialize_archive(archive)
+    return slugify(novel.title), serialize_archive(archive)
 
 
 # ---------------------------------------------------------------------------
@@ -504,6 +509,19 @@ async def import_archive(
     await _merge_chapters(session, user_id, novel, archive, report)
     names = await _merge_entities(session, user_id, novel, archive, report, provider)
     await _merge_relations(session, user_id, novel, archive, report, names)
+    # The shelf's hero is the last-touched novel, and the chapter write path
+    # bumps `novel.updated_at` on every edit. A merge that wrote anything is a
+    # touch like any other; one that only confirmed the stock is not.
+    wrote = (
+        report.chapters_new
+        + report.chapters_revised
+        + report.entities_new
+        + report.entities_revised
+        + report.entities_renamed
+        + report.relations_created
+    )
+    if novel_id is not None and wrote:
+        novel.updated_at = datetime.now(UTC)
     await session.commit()
     return report
 
@@ -537,6 +555,11 @@ async def _merge_chapters(
                         "position disagreement: the metadata index says "
                         f"{file_chapter.indexed_position}, the frontmatter says "
                         f"{file_chapter.position} — the frontmatter wins for placement",
+                        code="position_disagree",
+                        params={
+                            "index_position": str(file_chapter.indexed_position),
+                            "file_position": str(file_chapter.position),
+                        },
                     )
                 )
             await chapters.create(novel.id, file_chapter.title, position, file_chapter.body)
@@ -558,6 +581,11 @@ async def _merge_chapters(
                     "stale revision: the file's updated "
                     f"({file_updated.isoformat()}) is older than the chapter's "
                     f"updated_at ({row.updated_at.isoformat()}) — not applied",
+                    code="stale_revision",
+                    params={
+                        "file_updated": file_updated.isoformat(),
+                        "stock_updated": row.updated_at.isoformat(),
+                    },
                 )
             )
 
@@ -596,6 +624,8 @@ async def _merge_entities(
                     conflict_file,
                     f"unknown entity type '{file_entity.type}' — not one of "
                     f"{'|'.join(ENTITY_TYPES)}; nothing created",
+                    code="unknown_type",
+                    params={"type": file_entity.type},
                 )
             )
             continue
@@ -607,6 +637,8 @@ async def _merge_entities(
                     Conflict(
                         conflict_file,
                         "the name matches several entities of this novel — not applied",
+                        code="ambiguous_name",
+                        params={"name": file_entity.name},
                     )
                 )
                 continue
@@ -630,6 +662,8 @@ async def _merge_entities(
                     conflict_file,
                     f"type discrepancy: the file says '{file_entity.type}', "
                     f"the stock row is '{row.type}' — not applied",
+                    code="type_discrepancy",
+                    params={"file_type": file_entity.type, "stock_type": row.type},
                 )
             )
             continue
@@ -651,6 +685,11 @@ async def _merge_entities(
                     "stale revision: the file's updated "
                     f"({file_updated.isoformat()}) is older than the entity's "
                     f"updated_at ({row.updated_at.isoformat()}) — not applied",
+                    code="stale_revision",
+                    params={
+                        "file_updated": file_updated.isoformat(),
+                        "stock_updated": row.updated_at.isoformat(),
+                    },
                 )
             )
             continue
@@ -695,6 +734,8 @@ async def _merge_relations(
                 Conflict(
                     label,
                     f"'{edge.from_name}' does not name an entity of this novel — edge not created",
+                    code="edge_target_missing",
+                    params={"name": edge.from_name},
                 )
             )
             continue
@@ -703,6 +744,8 @@ async def _merge_relations(
                 Conflict(
                     label,
                     f"'{edge.from_name}' matches several entities of this novel — edge not created",
+                    code="ambiguous_edge_end",
+                    params={"edge": label, "name": edge.from_name},
                 )
             )
             continue
@@ -712,6 +755,8 @@ async def _merge_relations(
                 Conflict(
                     label,
                     f"'{edge.to_name}' does not name an entity of this novel — edge not created",
+                    code="edge_target_missing",
+                    params={"name": edge.to_name},
                 )
             )
             continue
@@ -720,6 +765,8 @@ async def _merge_relations(
                 Conflict(
                     label,
                     f"'{edge.to_name}' matches several entities of this novel — edge not created",
+                    code="ambiguous_edge_end",
+                    params={"edge": label, "name": edge.to_name},
                 )
             )
             continue
@@ -734,6 +781,8 @@ async def _merge_relations(
                         label,
                         f"the edge exists with note {existing.note!r}, "
                         f"the file says {edge.note!r} — not applied",
+                        code="edge_note_differs",
+                        params={"edge": label},
                     )
                 )
             continue
@@ -760,4 +809,11 @@ def _report_metadata_conflicts(
             continue
         if metadata[key] != value:
             report.metadata_conflicts.append(key)
-            report.conflicts.append(Conflict(METADATA_NAME, f"{key} differs — not applied"))
+            report.conflicts.append(
+                Conflict(
+                    METADATA_NAME,
+                    f"{key} differs — not applied",
+                    code="metadata_differs",
+                    params={"field": key},
+                )
+            )

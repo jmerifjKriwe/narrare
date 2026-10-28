@@ -1,5 +1,6 @@
 """Writing logic. Routers delegate here; this module knows the unit of work."""
 
+import zlib
 from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
 from typing import Literal
@@ -219,11 +220,19 @@ class WritingService:
         except ArchiveError:
             # write_directory's one refusal: the target exists and is non-empty.
             raise TargetNotEmptyError(path) from None
-        except OSError as error:
-            raise FieldRefusedError(("path",), f"{path}: {error.strerror or error}") from None
+        except (OSError, ValueError) as error:
+            # OSError is the filesystem's answer (an unreachable mount, a denied
+            # permission); ValueError is `path` naming nothing (an empty file
+            # name). Both are the request's fault and come back named.
+            reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
+            raise FieldRefusedError(("path",), f"{path}: {reason}") from None
         tree = ArchiveTree(files)
         return ExportDone(
-            path=path, chapters=len(tree.chapter_names()), entities=len(tree.kb_names())
+            # The directory actually written: a relative target is resolved so
+            # the receipt names what the user can go and open.
+            path=str(Path(path).resolve()),
+            chapters=len(tree.chapter_names()),
+            entities=len(tree.kb_names()),
         )
 
     async def import_novel(
@@ -251,17 +260,25 @@ class WritingService:
                 tree = open_directory(source)
             except OSError as error:
                 raise FieldRefusedError(("path",), f"{path}: {error.strerror or error}") from None
+            except ArchiveError as error:
+                # The directory's files expand past the cap: refused by name,
+                # before the read, like the ZIP transport's own refusal.
+                raise ArchiveInvalidError(error.path, error.reason) from None
         elif archive is not None:
             if len(archive) > MAX_ARCHIVE_BYTES:
                 raise ArchiveTooLargeError
             try:
                 tree = open_zip(archive)
-            except (BadZipFile, RuntimeError, NotImplementedError) as error:
+            except (BadZipFile, RuntimeError, NotImplementedError, zlib.error, EOFError) as error:
                 # BadZipFile is the malformed container; RuntimeError is an
                 # encrypted entry (password required), NotImplementedError an
-                # unsupported compression method. All three are the archive's
-                # fault, never the server's.
+                # unsupported compression method; zlib.error is a damaged or
+                # truncated deflate stream and EOFError one that ends before
+                # its marker. All are the archive's fault, never the server's.
                 raise ArchiveInvalidError(_ARCHIVE, str(error)) from None
+            except ArchiveError as error:
+                # The entry claiming more than the uncompressed cap: named.
+                raise ArchiveInvalidError(error.path, error.reason) from None
         else:
             raise FieldRefusedError(
                 ("archive", "path"), "exactly one of archive or path is required"

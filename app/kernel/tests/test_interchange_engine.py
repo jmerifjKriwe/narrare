@@ -242,6 +242,7 @@ async def test_reimport_same_archive_is_already_current(a_user: None) -> None:
     _, files = await _export(novel_id)
     before = {c.id: c.updated_at for c in await _chapters(novel_id)}
     before |= {e.id: e.updated_at for e in await _entities(novel_id)}
+    novel_before = (await _novel_row(novel_id)).updated_at
 
     report = await _import(ArchiveTree(files), novel_id)
 
@@ -263,6 +264,29 @@ async def test_reimport_same_archive_is_already_current(a_user: None) -> None:
     after = {c.id: c.updated_at for c in await _chapters(novel_id)}
     after |= {e.id: e.updated_at for e in await _entities(novel_id)}
     assert after == before  # already current writes nothing, bumps nothing
+    # Nor does the novel move: the shelf's "last touched" stays true.
+    assert (await _novel_row(novel_id)).updated_at == novel_before
+
+
+async def test_merge_with_writes_moves_the_novel_timestamp(a_user: None) -> None:
+    """A merge that writes leaves the novel the most recently touched one.
+
+    The start page's hero reads `novel.updated_at`; the chapter write path
+    bumps it on every edit, so an import that adds a row must bump it too —
+    otherwise the book the user just merged into is not the one the shelf
+    offers to continue.
+    """
+    novel_id = await _seed_novel()
+    async with Session() as session:
+        novel = await session.get(Novel, novel_id)
+        assert novel is not None
+        novel.updated_at = STALE_BASE
+        await session.commit()
+
+    report = await _import(ArchiveTree({"chapters/neu.md": b"Eine neue Zeile.\n"}), novel_id)
+
+    assert report.chapters_new == 1
+    assert (await _novel_row(novel_id)).updated_at > STALE_BASE
 
 
 async def test_stale_revision_is_refused(a_user: None) -> None:
@@ -291,6 +315,8 @@ async def test_stale_revision_is_refused(a_user: None) -> None:
     assert len(report.conflicts) == 1
     conflict = report.conflicts[0]
     assert conflict.file == "chapters/00-ankunft.md"  # the archive path, not the title
+    assert conflict.code == "stale_revision"
+    assert set(conflict.params) == {"file_updated", "stock_updated"}
     assert "stale" in conflict.reason
 
     fresh = await _chapters(novel_id)
@@ -380,6 +406,8 @@ async def test_unknown_entity_type_is_a_conflict(a_user: None) -> None:
     assert report.entities_new == 0
     assert len(report.conflicts) == 1
     assert report.conflicts[0].file == "kb/smaug.md"  # the archive path (parse-stamped)
+    assert report.conflicts[0].code == "unknown_type"
+    assert report.conflicts[0].params == {"type": "dragon"}
     assert "dragon" in report.conflicts[0].reason
     _, entities, _ = await _rows(novel_id)
     assert sorted(e.name for e in entities) == ["Mira", "Émile Zola"]  # nothing created
@@ -400,6 +428,8 @@ async def test_type_discrepancy_is_a_conflict(a_user: None) -> None:
     assert report.entities_renamed == 0 and report.entities_already_current == 1
     assert len(report.conflicts) == 1
     assert report.conflicts[0].file == "kb/mira.md"  # the archive path, not the name
+    assert report.conflicts[0].code == "type_discrepancy"
+    assert report.conflicts[0].params == {"file_type": "location", "stock_type": "character"}
     assert "type" in report.conflicts[0].reason
 
     _, entities, edges = await _rows(novel_id)
@@ -432,8 +462,12 @@ async def test_edges_are_create_only(a_user: None) -> None:
     assert len(report.conflicts) == 2
     reasons = [c.reason for c in report.conflicts]
     assert any("ANDERS" in reason or "note" in reason for reason in reasons)
+    differing = next(c for c in report.conflicts if c.code == "edge_note_differs")
+    assert differing.params == {"edge": "Mira -knows-> Émile Zola"}
     absent = next(c for c in report.conflicts if "mentors" in c.file)
     assert absent.file == "Émile Zola -mentors-> Caspar"  # the conflict names the edge
+    assert absent.code == "edge_target_missing"
+    assert absent.params == {"name": "Caspar"}
 
     _, _, edges = await _rows(novel_id)
     assert len(edges) == 1  # nothing created
@@ -456,6 +490,8 @@ async def test_merge_does_not_touch_novel_metadata(a_user: None) -> None:
         "metadata.json",
         "metadata.json",
     ]
+    assert [c.code for c in report.conflicts] == ["metadata_differs", "metadata_differs"]
+    assert [c.params for c in report.conflicts] == [{"field": "title"}, {"field": "genre"}]
     novel = await _novel_row(novel_id)
     assert novel.title == "Der Wanderer"  # the row is unchanged
     assert novel.genre == "Fantasy"  # the archive's "Sci-Fi" was not applied
@@ -618,6 +654,8 @@ async def test_rename_refreshes_the_name_index(a_user: None) -> None:
     assert len(report.conflicts) == 1
     stale = report.conflicts[0]  # the export's edge still spells the old name
     assert stale.file == "Mira -knows-> Émile Zola"
+    assert stale.code == "edge_target_missing"
+    assert stale.params == {"name": "Mira"}
     assert "does not name" in stale.reason
 
     _, _, edges = await _rows(novel_id)
@@ -667,6 +705,8 @@ async def test_index_disagreement_on_a_new_file_is_reported(a_user: None) -> Non
     assert len(report.conflicts) == 1
     conflict = report.conflicts[0]
     assert conflict.file == "chapters/neu.md"  # the conflict carries the archive path
+    assert conflict.code == "position_disagree"
+    assert conflict.params == {"index_position": "1", "file_position": "7"}
     assert "1" in conflict.reason and "7" in conflict.reason
 
     fresh = await _chapters(novel_id)

@@ -74,13 +74,17 @@ class ConflictRead(BaseModel):
     """One item the merge rules refused: which archive file, and why.
 
     `file` carries the archive-side path the parse stamped on the item —
-    untrusted text, a plain string by contract.
+    untrusted text, a plain string by contract. `code` is the stable key the
+    receipt localizes, with `params` interpolated; `reason` is the technical
+    detail, and the fallback for a code the client does not know.
     """
 
     model_config = ConfigDict(from_attributes=True)
 
     file: str
     reason: str
+    code: str
+    params: dict[str, str]
 
 
 class ImportReportRead(BaseModel):
