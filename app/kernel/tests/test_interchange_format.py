@@ -38,7 +38,13 @@ _UPDATED = datetime(2026, 1, 15, 12, 30, tzinfo=UTC)
 
 
 def _archive() -> NovelArchive:
-    """A small but complete archive: unicode, colons, ids, notes, empty lists."""
+    """A small but complete archive: unicode, colons, ids, notes, empty lists.
+
+    `file` and `indexed_position` ride on chapters and entities because the
+    round trip below compares a *parsed* archive: parse stamps the paths it
+    read from and the index positions the metadata lent, and serialize must
+    forget both again (byte-identical files, no provenance in the format).
+    """
     return NovelArchive(
         title="Der Wanderer",
         author="E. A. Guest",
@@ -52,9 +58,23 @@ def _archive() -> NovelArchive:
                 body="Der Regen hörte auf.\n",
                 id=_CHAPTER_ID,
                 updated=_UPDATED,
+                file="chapters/01-ankunft-am-tor.md",
+                indexed_position=1,
             ),
-            ChapterFile(title="Der Pfad", position=2, body="Zweiter Teil ohne id."),
-            ChapterFile(title="", position=3, body="Ohne Titel.\n"),
+            ChapterFile(
+                title="Der Pfad",
+                position=2,
+                body="Zweiter Teil ohne id.",
+                file="chapters/02-der-pfad.md",
+                indexed_position=2,
+            ),
+            ChapterFile(
+                title="",
+                position=3,
+                body="Ohne Titel.\n",
+                file="chapters/03-untitled.md",
+                indexed_position=3,
+            ),
         ],
         # Parse returns entities in kb-filename order: emile-zola, mira, untitled.
         entities=[
@@ -66,6 +86,7 @@ def _archive() -> NovelArchive:
                 body="Schriftsteller.",
                 id=_ENTITY_ID,
                 updated=_UPDATED,
+                file="kb/emile-zola.md",
             ),
             EntityFile(
                 name="Mira",
@@ -73,8 +94,16 @@ def _archive() -> NovelArchive:
                 aliases=["Die Wanderin"],
                 tags=["protagonist"],
                 body="## Beschreibung\nJung.\n",
+                file="kb/mira.md",
             ),
-            EntityFile(name="", type="", aliases=[], tags=[], body="Ohne Namen."),
+            EntityFile(
+                name="",
+                type="",
+                aliases=[],
+                tags=[],
+                body="Ohne Namen.",
+                file="kb/untitled.md",
+            ),
         ],
         relations=[
             RelationEdge(
@@ -124,7 +153,14 @@ def test_bare_md_without_frontmatter_uses_defaults() -> None:
     assert parsed.blurb is None and parsed.language is None
     assert parsed.relations == []
     assert parsed.chapters == [
-        ChapterFile(title="the quest", position=1, body="Ein Kapitel ohne Frontmatter.\n")
+        ChapterFile(
+            title="the quest",
+            position=1,
+            body="Ein Kapitel ohne Frontmatter.\n",
+            file="chapters/the-quest.md",
+            # No metadata.json, no index: the position rides on appearance.
+            indexed_position=None,
+        )
     ]
     assert parsed.entities == [
         EntityFile(
@@ -133,8 +169,33 @@ def test_bare_md_without_frontmatter_uses_defaults() -> None:
             aliases=[],
             tags=[],
             body="## Beschreibung\nEin alter Zauberer.\n",
+            file="kb/wizard.md",
         )
     ]
+
+
+def test_metadata_index_lends_its_position() -> None:
+    """A file without a frontmatter position takes the index's; with one, the
+    frontmatter wins and the disagreement is visible as provenance."""
+    files = {
+        "metadata.json": (
+            b'{"title": "X", "chapters": ['
+            b'{"file": "chapters/indexed.md", "position": 4},'
+            b'{"file": "chapters/disputed.md", "position": 4}]}'
+        ),
+        "chapters/indexed.md": b"Kein Frontmatter-Position.\n",
+        "chapters/disputed.md": b"---\ntitle: Disputed\nposition: 9\n---\n\nNeun.\n",
+    }
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+
+    indexed = next(c for c in parsed.chapters if c.title == "indexed")
+    assert indexed.position == 4  # the index lent it; appearance would say 1
+    assert indexed.indexed_position == 4
+    disputed = next(c for c in parsed.chapters if c.title == "Disputed")
+    assert disputed.position == 9  # the frontmatter wins for placement
+    assert disputed.indexed_position == 4  # the disagreement is visible to the engine
+    assert parsed.chapters == sorted(parsed.chapters, key=lambda c: (c.position, c.file or ""))
 
 
 def test_malformed_frontmatter_names_the_file() -> None:

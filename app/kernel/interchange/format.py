@@ -59,18 +59,33 @@ class ArchiveError(Exception):
 
 @dataclass
 class ChapterFile:
-    """One chapter as the format holds it: frontmatter plus body."""
+    """One chapter as the format holds it: frontmatter plus body.
+
+    `file` and `indexed_position` are parse provenance, not serialized
+    format: the archive-relative path the chapter was read from (None on a
+    file constructed in code), and the position `metadata.json`'s index lent
+    it (None when the index does not name the file). `position` is the
+    effective one — the frontmatter's when present — so a disagreement
+    between the two is visible here and is the merge engine's reported
+    conflict; the frontmatter still wins for placement.
+    """
 
     title: str
     position: int
     body: str
     id: UUID | None = None
     updated: datetime | None = None
+    file: str | None = None
+    indexed_position: int | None = None
 
 
 @dataclass
 class EntityFile:
-    """One knowledge-base entry as the format holds it."""
+    """One knowledge-base entry as the format holds it.
+
+    `file` is parse provenance, not serialized format: the archive-relative
+    path the entry was read from, None on a file constructed in code.
+    """
 
     name: str
     type: str
@@ -79,6 +94,7 @@ class EntityFile:
     body: str
     id: UUID | None = None
     updated: datetime | None = None
+    file: str | None = None
 
 
 @dataclass
@@ -369,14 +385,24 @@ def _parse_chapter(
     text = _decode(tree.read_bytes(name), name)
     frontmatter, body = _split_frontmatter(text, name)
     title = _fm_str(frontmatter, "title", name)
+    # The index is keyed by the bare file name (`_chapter_index` strips the
+    # `chapters/` prefix); look the chapter up under the same key.
+    index_position = indexed.get(name.removeprefix("chapters/"))
     return ChapterFile(
         # Presence, not truthiness: an exported `title: ''` is a value and must
         # come back untitled, not be re-invented from the file stem.
         title=title if title is not None else _deslug(_stem(name)),
-        position=_fm_int(frontmatter, "position", name, indexed.get(name, appearance)),
+        position=_fm_int(
+            frontmatter,
+            "position",
+            name,
+            appearance if index_position is None else index_position,
+        ),
         body=body,
         id=_fm_uuid(frontmatter, "id", name),
         updated=_fm_datetime(frontmatter, "updated", name),
+        file=name,
+        indexed_position=index_position,
     )
 
 
@@ -398,6 +424,7 @@ def _parse_entities(tree: ArchiveTree) -> list[EntityFile]:
                 body=body,
                 id=_fm_uuid(frontmatter, "id", name),
                 updated=_fm_datetime(frontmatter, "updated", name),
+                file=name,
             )
         )
     return entities

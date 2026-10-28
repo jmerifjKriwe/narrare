@@ -21,15 +21,22 @@ the vector only), width-guarded against the stored corpus like accept does.
 The provider is the kernel's env-selected one — the engine takes no
 dependency argument, these signatures are the HTTP surface's contract.
 
-Two format facts are recorded here rather than papered over: `parse_archive`
-returns chapter titles and entity names, not archive file names, so
-`Conflict.file` carries that identifier instead of a path; and the
-frontmatter-vs-index position precedence is settled inside the parser
-(frontmatter wins, then the index, then file order), so a hand-edited
-disagreement between the two cannot be detected or reported here. Carrying
-the file name in the parsed dataclasses is the one-line format change that
-would close both; it belongs to the format's own task, not to a
-re-implementation of its parser in the engine.
+The report's `Conflict.file` carries the archive path parse stamps onto
+every chapter and entity file (`file` on the dataclasses), falling back to
+the chapter title, the entity name, the edge label, or `metadata.json` when
+no path is known. A hand-edited disagreement between `metadata.json`'s
+index position and a new file's frontmatter position is a reported conflict —
+the frontmatter still wins for placement; on matched (revised or
+already-current) chapters disagreements are ignored, the stock's position
+being the truth merged into.
+
+The name index mirrors each row's *current* name and aliases: a revision
+re-registers its row, so the file's own edges follow a rename, and the
+pre-rename name stops resolving the moment the rename applies — a later
+id-less file still spelling it is a new entity, an edge still spelling it
+is a reported absence, never a silent fold. Entity identity matching (rule
+1) consults names only; aliases serve edge ends (rule 6), where they are
+the WP1 resolution the spec names.
 
 Chapters: new ones append after `max(position) + 1` — 0 on an empty novel,
 the house `next_position` convention — in the archive's reading order, which
@@ -44,6 +51,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
+from uuid import UUID  # noqa: TC003  runtime: Task 4 serializes ImportReport via get_type_hints
 
 from sqlalchemy import select
 
@@ -71,7 +79,6 @@ from app.kernel.retrieval import EmbeddingMismatchError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from uuid import UUID
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,11 +97,10 @@ _ARCHIVE = "<archive>"
 class Conflict:
     """One item the rules refused, with why.
 
-    `file` names the archive side the reason is about. Parse hands the engine
-    titles and names, not paths (the format's dataclasses carry no file
-    name), so it holds the chapter title, the entity name, an edge label of
-    the shape `from -type-> to`, or `metadata.json` — the receipt renders
-    `file — reason` either way.
+    `file` names the archive side the reason is about: the path parse stamps
+    onto the file (`chapters/…`, `kb/…`), falling back to the chapter title
+    or entity name when the file was constructed without one, the edge label
+    `from -type-> to` for relations, and `metadata.json` for metadata diffs.
     """
 
     file: str
@@ -272,11 +278,15 @@ class _Edges(ScopedRepository[EntityRelation]):
     model = EntityRelation
 
     async def list_for_novel(self, entity_ids: Sequence[UUID]) -> Sequence[EntityRelation]:
-        """Every edge whose source is one of the novel's entities, scoped."""
+        """Every edge whose source is one of the novel's entities, scoped,
+        oldest first with the id as tie-break — the order that keeps an
+        export's `relations` array byte-stable across exports."""
         if not entity_ids:
             return []
         result = await self.session.scalars(
-            self.query().where(EntityRelation.from_entity_id.in_(entity_ids))
+            self.query()
+            .where(EntityRelation.from_entity_id.in_(entity_ids))
+            .order_by(EntityRelation.created_at, EntityRelation.id)
         )
         return result.all()
 
@@ -296,25 +306,62 @@ class _Edges(ScopedRepository[EntityRelation]):
 
 
 class _NameIndex:
-    """A novel's entities by name and alias, trimmed and casefolded — the
-    resolution WP1's suggestion-accept uses. Entities the import births join
-    the pool, so a new novel's edges resolve against its own just-created
-    rows."""
+    """A novel's entities by name and by alias, trimmed and casefolded.
+
+    Two resolutions, kept apart on purpose: :meth:`resolve_name` is the
+    entity identity match (rule 1 — `id`, else exact casefold *name*), where
+    an alias is never consulted, because an alias points at a canon row
+    without being one; :meth:`resolve` adds the aliases and serves the edge
+    ends (rule 6), where the WP1 suggestion-accept resolution the spec names
+    reads both. Entities the import births join the pool, and a revision
+    re-registers its row: the index always mirrors the row's current name
+    and aliases, so the file's own edges follow a rename while the
+    pre-rename name stops resolving the moment the rename applies — a later
+    id-less file still spelling it is a new entity, an edge still spelling
+    it a reported absence, never a silent fold.
+    """
 
     def __init__(self, entities: Sequence[Entity]) -> None:
         self._by_name: dict[str, list[Entity]] = {}
         self._by_alias: dict[str, list[Entity]] = {}
+        self._keys: dict[UUID, tuple[str, tuple[str, ...]]] = {}
         for entity in entities:
             self.add(entity)
 
     def add(self, entity: Entity) -> None:
-        self._by_name.setdefault(entity.name.strip().casefold(), []).append(entity)
-        for alias in entity.aliases:
-            self._by_alias.setdefault(alias.strip().casefold(), []).append(entity)
+        name_key = entity.name.strip().casefold()
+        alias_keys = tuple(alias.strip().casefold() for alias in entity.aliases)
+        self._by_name.setdefault(name_key, []).append(entity)
+        for key in alias_keys:
+            self._by_alias.setdefault(key, []).append(entity)
+        self._keys[entity.id] = (name_key, alias_keys)
+
+    def replace(self, entity: Entity) -> None:
+        """Re-register a revised row: the stale keys are released before the
+        current name and aliases bind, so no old spelling keeps pointing at
+        the row it no longer names. (Releasing an unregistered id filters by
+        row id and is a no-op.)"""
+        old_name_key, old_alias_keys = self._keys.get(entity.id, ("", ()))
+        rows = [row for row in self._by_name.get(old_name_key, []) if row.id != entity.id]
+        if rows:
+            self._by_name[old_name_key] = rows
+        else:
+            self._by_name.pop(old_name_key, None)
+        for key in old_alias_keys:
+            rows = [row for row in self._by_alias.get(key, []) if row.id != entity.id]
+            if rows:
+                self._by_alias[key] = rows
+            else:
+                self._by_alias.pop(key, None)
+        self.add(entity)
+
+    def resolve_name(self, wanted: str) -> list[Entity]:
+        """Exact trimmed-casefold NAME matches — entity identity only."""
+        return list(self._by_name.get(wanted.strip().casefold(), []))
 
     def resolve(self, wanted: str) -> list[Entity]:
-        """Exact trimmed-casefold matches over names and aliases, deduped;
-        empty means absent, several means ambiguous — both are reported."""
+        """Exact trimmed-casefold matches over names and aliases — the edge
+        ends' resolution; empty means absent, several means ambiguous."""
         key = wanted.strip().casefold()
         found = {entity.id: entity for entity in self._by_name.get(key, [])}
         for entity in self._by_alias.get(key, []):
@@ -415,14 +462,16 @@ async def import_archive(
     required, author/genre/blurb/language applied), otherwise merged into the
     existing novel by the spec's eight rules. Commits once, at the end.
 
-    An archive carrying no chapters and no entities refuses outright — a
-    `zip -r` envelope of empty directories must not merge as a silent 0/0
-    success. A novel that does not exist or belongs to someone else raises
-    `LookupError`.
+    An archive carrying no chapters, no entities and no relations refuses
+    outright — a `zip -r` envelope of empty directories must not merge as a
+    silent 0/0 success. A novel that does not exist or belongs to someone
+    else raises `LookupError`.
     """
     archive = parse_archive(tree)
-    if not archive.chapters and not archive.entities:
-        raise ArchiveError(_ARCHIVE, "the archive carries no chapters and no entities")
+    if not archive.chapters and not archive.entities and not archive.relations:
+        raise ArchiveError(
+            _ARCHIVE, "the archive carries no chapters, no entities and no relations"
+        )
 
     if novel_id is None:
         if not archive.title.strip():
@@ -457,7 +506,10 @@ async def _merge_chapters(
 
     Chapters match by frontmatter `id` alone — a hand-written file without
     one is new. The stock's position is the truth: revisions never move it,
-    and new chapters take append slots, not their file's position.
+    and new chapters take append slots, not their file's position. A new
+    file whose frontmatter position disagrees with `metadata.json`'s index
+    position still imports (the frontmatter wins for placement) and the
+    disagreement is a reported conflict; on matched chapters it is ignored.
     """
     chapters = _Chapters(session, user_id)
     stock = await chapters.list_for_novel(novel.id)
@@ -466,6 +518,18 @@ async def _merge_chapters(
     for file_chapter in archive.chapters:
         row = by_id.get(file_chapter.id) if file_chapter.id is not None else None
         if row is None:
+            if (
+                file_chapter.indexed_position is not None
+                and file_chapter.indexed_position != file_chapter.position
+            ):
+                report.conflicts.append(
+                    Conflict(
+                        file_chapter.file or file_chapter.title,
+                        "position disagreement: the metadata index says "
+                        f"{file_chapter.indexed_position}, the frontmatter says "
+                        f"{file_chapter.position} — the frontmatter wins for placement",
+                    )
+                )
             await chapters.create(novel.id, file_chapter.title, position, file_chapter.body)
             position += 1
             report.chapters_new += 1
@@ -481,7 +545,7 @@ async def _merge_chapters(
         else:
             report.conflicts.append(
                 Conflict(
-                    file_chapter.title,
+                    file_chapter.file or file_chapter.title,
                     "stale revision: the file's updated "
                     f"({file_updated.isoformat()}) is older than the chapter's "
                     f"updated_at ({row.updated_at.isoformat()}) — not applied",
@@ -502,19 +566,25 @@ async def _merge_entities(
     A type outside the vocabulary refuses the item outright; a type
     discrepancy between a matched file and its stock row is a conflict that
     leaves the row untouched — checked before the content checks, so even an
-    otherwise-identical file cannot sneak a type change through. A rename
-    tallies once as renamed and never also as revised. Every birth and every
-    revision recomputes `search_text` and the vector in this transaction.
+    otherwise-identical file cannot sneak a type change through. Identity is
+    the id, else the exact casefold NAME — never an alias, which would fold
+    a new row into the canon entry it merely points at. A rename tallies
+    once as renamed and never also as revised, and the name index is
+    re-registered after every applied revision so the file's own edges
+    follow the new name while the old one stops resolving. Every birth and
+    every revision recomputes `search_text` and the vector in this
+    transaction.
     """
     entities = _Entities(session, user_id)
     stock = await entities.list_for_novel(novel.id)
     by_id = {entity.id: entity for entity in stock}
     names = _NameIndex(stock)
     for file_entity in archive.entities:
+        conflict_file = file_entity.file or file_entity.name
         if file_entity.type not in ENTITY_TYPES:
             report.conflicts.append(
                 Conflict(
-                    file_entity.name,
+                    conflict_file,
                     f"unknown entity type '{file_entity.type}' — not one of "
                     f"{'|'.join(ENTITY_TYPES)}; nothing created",
                 )
@@ -522,11 +592,11 @@ async def _merge_entities(
             continue
         row = by_id.get(file_entity.id) if file_entity.id is not None else None
         if row is None:
-            matches = names.resolve(file_entity.name)
+            matches = names.resolve_name(file_entity.name)
             if len(matches) > 1:
                 report.conflicts.append(
                     Conflict(
-                        file_entity.name,
+                        conflict_file,
                         "the name matches several entities of this novel — not applied",
                     )
                 )
@@ -548,7 +618,7 @@ async def _merge_entities(
         if row.type != file_entity.type:
             report.conflicts.append(
                 Conflict(
-                    file_entity.name,
+                    conflict_file,
                     f"type discrepancy: the file says '{file_entity.type}', "
                     f"the stock row is '{row.type}' — not applied",
                 )
@@ -568,7 +638,7 @@ async def _merge_entities(
         if file_updated is not None and file_updated < row.updated_at:
             report.conflicts.append(
                 Conflict(
-                    file_entity.name,
+                    conflict_file,
                     "stale revision: the file's updated "
                     f"({file_updated.isoformat()}) is older than the entity's "
                     f"updated_at ({row.updated_at.isoformat()}) — not applied",
@@ -580,6 +650,7 @@ async def _merge_entities(
         row.aliases = list(file_entity.aliases)
         row.tags = list(file_entity.tags)
         row.search_text = _search_text(row.name, row.aliases, row.tags)
+        names.replace(row)
         await _embed_entity(session, user_id, row, provider)
         if renamed:
             report.entities_renamed += 1

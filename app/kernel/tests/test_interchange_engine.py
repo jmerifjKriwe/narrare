@@ -44,6 +44,13 @@ async def a_user(empty_tables: None) -> None:
     await seed_user(OWNER)
 
 
+@pytest.fixture(autouse=True)
+def fake_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No engine test may reach a network: the import embeds through the
+    env-selected provider, so every test pins the fake before it runs."""
+    monkeypatch.setenv("NARRE_EMBEDDING_PROVIDER", "fake")
+
+
 async def _seed_novel() -> UUID:
     """The stock novel: two chapters, two entities, one edge between them."""
     async with Session() as session:
@@ -180,6 +187,8 @@ async def test_export_then_import_as_new_is_identical(a_user: None) -> None:
     """Export → import as a new novel: same content, all-new UUIDs."""
     novel_id = await _seed_novel()
     slug, files = await _export(novel_id)
+    slug_again, files_again = await _export(novel_id)  # byte-stable, edges included
+    assert (slug_again, files_again) == (slug, files)
     assert slug == "der-wanderer"
 
     report = await _import(ArchiveTree(files), None)
@@ -281,7 +290,7 @@ async def test_stale_revision_is_refused(a_user: None) -> None:
     assert report.chapters_already_current == 1
     assert len(report.conflicts) == 1
     conflict = report.conflicts[0]
-    assert conflict.file == "Ankunft"
+    assert conflict.file == "chapters/00-ankunft.md"  # the archive path, not the title
     assert "stale" in conflict.reason
 
     fresh = await _chapters(novel_id)
@@ -370,7 +379,7 @@ async def test_unknown_entity_type_is_a_conflict(a_user: None) -> None:
 
     assert report.entities_new == 0
     assert len(report.conflicts) == 1
-    assert report.conflicts[0].file == "Smaug"
+    assert report.conflicts[0].file == "kb/smaug.md"  # the archive path (parse-stamped)
     assert "dragon" in report.conflicts[0].reason
     _, entities, _ = await _rows(novel_id)
     assert sorted(e.name for e in entities) == ["Mira", "Émile Zola"]  # nothing created
@@ -390,7 +399,7 @@ async def test_type_discrepancy_is_a_conflict(a_user: None) -> None:
     assert report.entities_new == 0 and report.entities_revised == 0
     assert report.entities_renamed == 0 and report.entities_already_current == 1
     assert len(report.conflicts) == 1
-    assert report.conflicts[0].file == "Mira"
+    assert report.conflicts[0].file == "kb/mira.md"  # the archive path, not the name
     assert "type" in report.conflicts[0].reason
 
     _, entities, edges = await _rows(novel_id)
@@ -406,17 +415,6 @@ async def test_edges_are_create_only(a_user: None) -> None:
     novel_id = await _seed_novel()
     archive = NovelArchive(
         title="Der Wanderer",
-        # One already-current entity keeps the archive non-empty (an archive
-        # with no chapters and no entities refuses outright).
-        entities=[
-            EntityFile(
-                name="Mira",
-                type="character",
-                aliases=["Die Wanderin"],
-                tags=["protagonist"],
-                body="Jung.\n",
-            )
-        ],
         relations=[
             RelationEdge(
                 from_name="Mira", relation_type="knows", to_name="Émile Zola", note="aus Briefen"
@@ -430,7 +428,6 @@ async def test_edges_are_create_only(a_user: None) -> None:
 
     report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
 
-    assert report.entities_already_current == 1
     assert (report.relations_created, report.relations_already_current) == (0, 1)
     assert len(report.conflicts) == 2
     reasons = [c.reason for c in report.conflicts]
@@ -550,8 +547,9 @@ async def test_import_maintains_search_text_and_embedding(a_user: None) -> None:
 
 
 async def test_empty_archive_is_refused(a_user: None) -> None:
-    """A `zip -r` envelope — directories, no chapters, no entities — refuses
-    on both paths instead of merging as a silent 0/0 success."""
+    """A `zip -r` envelope — directories, no chapters, no entities, no
+    relations — refuses on both paths instead of merging as a silent 0/0
+    success. An archive that carries at least one of the three imports."""
     novel_id = await _seed_novel()
     envelope = ArchiveTree(
         {
@@ -569,3 +567,159 @@ async def test_empty_archive_is_refused(a_user: None) -> None:
     assert await _novel_count() == 1  # the refused new-novel path created nothing
     chapters, entities, _ = await _rows(novel_id)
     assert len(chapters) == 2 and len(entities) == 2
+
+
+async def test_an_alias_is_never_an_identity(a_user: None) -> None:
+    """Rule 1 matches id, else exact casefold NAME: an id-less file named as
+    an existing entity's alias is a new entity, never a silent overwrite of
+    the canon row it merely points at."""
+    novel_id = await _seed_novel()
+    archive = NovelArchive(
+        title="Der Wanderer",
+        entities=[
+            EntityFile(name="Die Wanderin", type="character", aliases=[], tags=[], body="Neu.\n")
+        ],
+    )
+
+    report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+    assert report.entities_new == 1
+    assert report.entities_renamed == 0 and report.entities_revised == 0
+    assert report.conflicts == []
+
+    _, entities, _ = await _rows(novel_id)
+    mira = next(e for e in entities if e.name == "Mira")
+    assert mira.content == "Jung.\n"  # the canon row is untouched
+    wanderin = next(e for e in entities if e.name == "Die Wanderin")
+    assert wanderin.id != mira.id
+
+
+async def test_rename_refreshes_the_name_index(a_user: None) -> None:
+    """After the rename applies, the file's own name-based edges resolve
+    against the new name; the old name stops resolving — an edge still
+    spelling it is a reported absence, never a silent fold."""
+    novel_id = await _seed_novel()
+    _, files = await _export(novel_id)
+    archive = parse_archive(ArchiveTree(files))
+    mira = next(entity for entity in archive.entities if entity.name == "Mira")
+    mira.name = "Mira Winter"
+    archive.relations.append(
+        RelationEdge(
+            from_name="Émile Zola",
+            relation_type="mentors",
+            to_name="Mira Winter",
+            note="aus Briefen",
+        )
+    )
+    report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+    assert report.entities_renamed == 1
+    assert report.relations_created == 1  # the new-name edge resolved and was created
+    assert len(report.conflicts) == 1
+    stale = report.conflicts[0]  # the export's edge still spells the old name
+    assert stale.file == "Mira -knows-> Émile Zola"
+    assert "does not name" in stale.reason
+
+    _, _, edges = await _rows(novel_id)
+    assert len(edges) == 2
+
+
+async def test_a_renamed_row_s_old_name_does_not_resurrect_it(a_user: None) -> None:
+    """The stale-key regression: once the rename applies, a second id-less
+    file spelling the old name is a NEW entity — not the renamed row folded
+    back through a key the index no longer holds."""
+    novel_id = await _seed_novel()
+    _, files = await _export(novel_id)
+    archive = parse_archive(ArchiveTree(files))
+    mira = next(entity for entity in archive.entities if entity.name == "Mira")
+    mira.name = "Mira Winter"
+    archive.entities.append(
+        EntityFile(name="Mira", type="character", aliases=[], tags=[], body="Die Alte.\n")
+    )
+    report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+    assert report.entities_renamed == 1 and report.entities_new == 1
+
+    _, entities, _ = await _rows(novel_id)
+    assert sorted(e.name for e in entities) == ["Mira", "Mira Winter", "Émile Zola"]
+    winter = next(e for e in entities if e.name == "Mira Winter")
+    assert winter.content == "Jung.\n"  # the renamed row kept its own body
+    resurrected = next(e for e in entities if e.name == "Mira")
+    assert resurrected.content == "Die Alte.\n"  # the new row carries the second file
+    assert resurrected.id != winter.id
+
+
+async def test_index_disagreement_on_a_new_file_is_reported(a_user: None) -> None:
+    """A hand-written file whose frontmatter position disagrees with the
+    metadata index still imports (frontmatter wins for placement) and the
+    disagreement is a reported conflict naming the archive path."""
+    novel_id = await _seed_novel()
+    files = {
+        "metadata.json": (
+            b'{"title": "Der Wanderer", "chapters": [{"file": "chapters/neu.md", "position": 1}]}'
+        ),
+        "chapters/neu.md": b"---\ntitle: Neu\nposition: 7\n---\n\nSieben.\n",
+    }
+
+    report = await _import(ArchiveTree(files), novel_id)
+
+    assert report.chapters_new == 1  # the file imports regardless
+    assert len(report.conflicts) == 1
+    conflict = report.conflicts[0]
+    assert conflict.file == "chapters/neu.md"  # the conflict carries the archive path
+    assert "1" in conflict.reason and "7" in conflict.reason
+
+    fresh = await _chapters(novel_id)
+    assert [c.position for c in fresh] == [0, 1, 2]  # appended after the stock
+    assert fresh[2].title == "Neu"
+
+
+async def test_edges_only_archive_is_not_refused(a_user: None) -> None:
+    """No chapters, no entities — but relations: the widened refusal keeps
+    only truly empty archives out; a resolvable edges-only archive merges."""
+    novel_id = await _seed_novel()
+    archive = NovelArchive(
+        title="Der Wanderer",
+        relations=[
+            RelationEdge(
+                from_name="Émile Zola",
+                relation_type="mentors",
+                to_name="Mira",
+                note="aus Briefen",
+            )
+        ],
+    )
+
+    report = await _import(ArchiveTree(serialize_archive(archive)), novel_id)
+
+    assert report.relations_created == 1
+    assert report.conflicts == []
+    _, _, edges = await _rows(novel_id)
+    assert len(edges) == 2
+
+
+async def test_missing_or_foreign_novel_is_a_lookup_error(a_user: None) -> None:
+    """The scoped absence is one answer: export and merge-import on a novel
+    that is missing or belongs to someone else raise LookupError."""
+    novel_id = await _seed_novel()
+    other = uuid4()
+    await seed_user(other)
+    async with Session() as session:
+        foreign = Novel(user_id=other, title="Fremd")
+        session.add(foreign)
+        await session.commit()
+        foreign_id = foreign.id
+
+    async with Session() as session:
+        with pytest.raises(LookupError):
+            await export_novel(session, OWNER, uuid4())  # missing
+        with pytest.raises(LookupError):
+            await export_novel(session, other, novel_id)  # another user's
+    chapter_tree = ArchiveTree({"chapters/neu.md": b"Text.\n"})  # non-empty: passes the refusal
+    async with Session() as session:
+        with pytest.raises(LookupError):
+            await import_archive(session, OWNER, chapter_tree, uuid4())  # missing
+        with pytest.raises(LookupError):
+            await import_archive(session, OWNER, chapter_tree, foreign_id)  # another user's
+
+    assert await _novel_count() == 1  # this user's one novel; nothing was created
