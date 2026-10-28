@@ -24,7 +24,7 @@ from app.capabilities.settings.profiles_service import (
     DefaultProfileRaceError,
     ProfileService,
 )
-from app.capabilities.settings.schemas import ProfileUpdate
+from app.capabilities.settings.schemas import ProfileCreate, ProfileUpdate
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.llm.models import ProviderProfile
@@ -144,13 +144,18 @@ async def test_setting_a_new_default_flips_the_old_one() -> None:
         assert by_default[str(second["id"])] is True
 
 
-async def test_two_concurrent_creates_keep_one_default_and_the_loser_gets_a_409() -> None:
-    """The database decides the race: two first-profiles, exactly one default.
+async def test_two_concurrent_creates_keep_one_default_and_a_named_loser() -> None:
+    """Two first-profiles at once: one default survives, never a 500.
 
-    Both requests read an empty table and both raise their profile to the
-    default; the partial unique index lets exactly one insert commit, and
-    the loser is a named 409 — never two defaults the resolver would pick
-    between arbitrarily. The loser's row is rolled back with its insert.
+    Both requests can read an empty table and both raise their profile to the
+    default; the partial unique index then refuses the later insert and the
+    service maps it to ``DefaultProfileRaceError`` — the router's 409, whose
+    row is rolled back with its insert. When the transport serializes the two
+    requests instead, the second reads the first's default and creates a
+    non-default profile: both 201. Either outcome is legal — two defaults are
+    not. The frozen-window test below pins the 409 deterministically; this one
+    must not insist on an interleaving it cannot force (it flaked at ~1 in 20
+    under CI load before the split).
     """
     payload: dict[str, object] = {
         "name": "Race",
@@ -165,10 +170,66 @@ async def test_two_concurrent_creates_keep_one_default_and_the_loser_gets_a_409(
             second.post("/api/settings/profiles", json=payload | {"name": "Race two"}),
         )
 
-    created = [response for response in responses if response.status_code == 201]
+    statuses = sorted(response.status_code for response in responses)
+    assert statuses in ([201, 201], [201, 409]), [response.text for response in responses]
     refused = [response for response in responses if response.status_code == 409]
-    assert (len(created), len(refused)) == (1, 1)
-    assert "default" in refused[0].json()["detail"].lower()
+    if refused:
+        assert "default" in refused[0].json()["detail"].lower()
+
+    created = [response for response in responses if response.status_code == 201]
+    async with Session() as session:
+        rows = await session.scalar(text("SELECT count(*) FROM provider_profiles"))
+        defaults = await session.scalar(
+            text("SELECT count(*) FROM provider_profiles WHERE is_default")
+        )
+    assert defaults == 1
+    assert rows == len(created)
+
+
+async def test_a_stale_first_profile_read_loses_the_create_as_a_named_race(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The create guard: a create that read an empty table before a sibling's
+    commit collides on the partial index and is the named race, not a 500.
+
+    Real ASGI requests serialize too narrowly to hit this window on demand, so
+    the read is held: the left session keeps the empty list it read, the right
+    session completes its create, then the left flush of ``is_default = true``
+    meets the new holder. Its row is rolled back with the insert.
+    """
+    left_snapshot = asyncio.Event()
+    sibling_done = asyncio.Event()
+    left_sessions: list[AsyncSession] = []
+    original_ordered = ProfileRepository.ordered
+
+    async def held_ordered(self: ProfileRepository) -> Sequence[ProviderProfile]:
+        if left_sessions and self.session is left_sessions[0]:
+            left_snapshot.set()
+            await sibling_done.wait()
+            return ()
+        await left_snapshot.wait()
+        return await original_ordered(self)
+
+    monkeypatch.setattr(ProfileRepository, "ordered", held_ordered)
+
+    payload = ProfileCreate(
+        name="Race", kind="openai-chat", base_url=REMOTE, model="vendor-mini", api_key=SECRET
+    )
+
+    async with Session() as left, Session() as right:
+        left_sessions.append(left)
+        left_service = ProfileService(left, LOCAL_USER_ID)
+        right_service = ProfileService(right, LOCAL_USER_ID)
+
+        async def lose() -> None:
+            with pytest.raises(DefaultProfileRaceError):
+                await left_service.create(payload)
+
+        async def win() -> None:
+            await right_service.create(payload)
+            sibling_done.set()
+
+        await asyncio.gather(lose(), win())
 
     async with Session() as session:
         rows = await session.scalar(text("SELECT count(*) FROM provider_profiles"))
