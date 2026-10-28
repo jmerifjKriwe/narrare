@@ -112,16 +112,24 @@ export function ProvidersPanel() {
   useEffect(() => {
     // Both views load on mount: the assignment selects display their values
     // out of this list, so a fresh visit must show the stored choices — not
-    // "automatic" until some later mutation happens to refetch them.
-    void reload();
+    // "automatic" until some later mutation happens to refetch them. A
+    // navigation away during that first fetch must not write into an
+    // unmounted panel; the flag is the smallest guard, and React's no-op
+    // setState is not a contract to rely on.
+    let cancelled = false;
+    void reload(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function reload(): Promise<void> {
+  async function reload(cancelled: () => boolean = () => false): Promise<void> {
     const [profileList, assignmentList, taskList] = await Promise.all([
       client.GET("/api/settings/profiles"),
       client.GET("/api/settings/assignments"),
       client.GET("/api/settings/tasks"),
     ]);
+    if (cancelled()) return;
     setProfiles(profileList.data ?? []);
     setAssignments(assignmentList.data ?? []);
     setTasks(taskList.data ?? []);
