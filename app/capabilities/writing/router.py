@@ -26,7 +26,7 @@ from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import FinalizingStreamingResponse
+from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events
 from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
@@ -45,11 +45,6 @@ def _service(session: SessionDep, user_id: UserDep) -> WritingService:
 
 
 ServiceDep = Annotated[WritingService, Depends(_service)]
-
-
-async def _error_events() -> AsyncGenerator[str]:
-    """The one frame a stream ends with when no provider call could run."""
-    yield "event: error\ndata: {}\n\n"
 
 
 async def _continuation_events(
@@ -229,7 +224,7 @@ async def continue_chapter(
     except KeyUnavailableError:
         logger.exception("continuation provider resolution failed")
         return FinalizingStreamingResponse(
-            _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The builder sizes its slices from the resolved facts; a pair whose output
     # reserve fills the window refused there — mapped like the lost key above:
@@ -246,7 +241,7 @@ async def continue_chapter(
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
-            _error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The audit names the novel, so read its id before the response starts,
     # while the request's session is still open — one scalar, scoped to the

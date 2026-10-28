@@ -393,6 +393,56 @@ async def test_the_resolver_merges_the_catalogs_tunables_with_the_profiles(
 
 
 @pytest.mark.usefixtures("two_users")
+async def test_the_resolved_info_is_the_one_merge_of_catalog_and_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The carrier prices the call from its own facts; no consumer re-merges.
+
+    A profile's stored windows override the catalog's; a catalog-only model
+    takes both from the catalog; an id no tier reaches carries no info at
+    all. The audit and the job handlers read ``resolved.info``, so these are
+    the facts their rows price with.
+    """
+    monkeypatch.setattr(catalog, "load_catalog", lambda: {"acme/turbo-3": ACME})
+    async with Session() as session:
+        await _fake_profile(
+            session, OWNER, name="Catalogued", model="acme/turbo-3", is_default=True
+        )
+        pinned = await _fake_profile(
+            session,
+            OWNER,
+            name="Pinned",
+            model="acme/turbo-3",
+            context_window=8_192,
+            max_output_tokens=512,
+        )
+        unknown = await _fake_profile(session, OWNER, name="Unknown", model="no-catalog-entry")
+        assignments = AssignmentRepository(session, OWNER)
+        await assignments.set("chat.ask", pinned.id)
+        await assignments.set("knowledge.check-consistency", unknown.id)
+        await session.commit()
+
+    catalogued = await _resolve(OWNER, "writing.continuation")
+    assert catalogued.info == ACME
+    assert (catalogued.context_window, catalogued.max_output_tokens) == (100_000, 4_096)
+
+    pinned_resolved = await _resolve(OWNER, "chat.ask")
+    assert pinned_resolved.info is not None
+    assert (
+        pinned_resolved.info.context_window,
+        pinned_resolved.info.max_output_tokens,
+    ) == (8_192, 512)
+    assert (
+        pinned_resolved.info.input_price_per_mtok,
+        pinned_resolved.info.output_price_per_mtok,
+    ) == (3.0, 15.0)
+
+    unknown_resolved = await _resolve(OWNER, "knowledge.check-consistency")
+    assert unknown_resolved.info is None
+    assert (unknown_resolved.context_window, unknown_resolved.max_output_tokens) == (None, None)
+
+
+@pytest.mark.usefixtures("two_users")
 async def test_stored_tunables_survive_an_uncatalogued_model() -> None:
     """Merge edge: on a model no tier reaches, the profile's stored values stand.
 
@@ -470,6 +520,7 @@ async def test_audited_stream_records_the_resolved_facts_and_the_computed_cost(
         request_timeout=None,
         base_url=REMOTE,
         api_key="sk-never-in-any-row",
+        info=ACME,
     )
 
     events = [
