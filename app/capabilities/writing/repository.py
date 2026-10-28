@@ -7,8 +7,18 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import func, select
 
-from app.kernel.contracts.models import Chapter, Novel
+from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.base import ScopedRepository
+
+
+class EntityRepository(ScopedRepository[Entity]):
+    model = Entity
+
+    async def list_for_novel(self, novel_id: UUID) -> Sequence[Entity]:
+        """Every kept entity of one novel, scoped to the user, any order —
+        the continuation scan orders by first occurrence itself."""
+        result = await self.session.scalars(self.query().where(Entity.novel_id == novel_id))
+        return result.all()
 
 
 class NovelRepository(ScopedRepository[Novel]):

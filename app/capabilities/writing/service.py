@@ -5,11 +5,12 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.writing.prompts import continuity_prompt
-from app.capabilities.writing.repository import ChapterRepository, NovelRepository
+from app.capabilities.writing.prompts import continuation_prompt
+from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
 from app.capabilities.writing.schemas import ChapterUpdate  # noqa: TC001
 from app.kernel.auth import SetupRequiredError
-from app.kernel.contracts.models import Chapter, Novel, User
+from app.kernel.context import allocate
+from app.kernel.contracts.models import Chapter, Entity, Novel, User
 
 
 class NotFoundError(Exception):
@@ -22,6 +23,7 @@ class WritingService:
         self.user_id = user_id
         self.novels = NovelRepository(session, user_id)
         self.chapters = ChapterRepository(session, user_id)
+        self.entities = EntityRepository(session, user_id)
 
     async def _require_user(self) -> None:
         """Writes belong to a user that setup created; without one there is
@@ -70,18 +72,56 @@ class WritingService:
             raise NotFoundError
         return chapter
 
-    async def continuation_prompt(self, chapter_id: UUID) -> str:
+    async def continuation_prompt(
+        self,
+        chapter_id: UUID,
+        *,
+        context_window: int | None = None,
+        max_output_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
         """The prompt for a continuation, or NotFoundError if the chapter is not ours.
 
-        Read-only: the streamed answer comes back to the editor, whose autosave
-        writes it. The request that streams has no side effect of its own (D14).
+        `allocate` runs before any gathering, so an impossible pair refuses
+        before the database is touched. The three facts default to unset —
+        the allocator's own not-yet-resolved fallbacks (D7); the router passes
+        the resolved profile's values. Read-only: the streamed answer comes
+        back to the editor, whose autosave writes it. The request that streams
+        has no side effect of its own (D14).
         """
+        budgets = allocate(
+            context_window=context_window, max_output_tokens=max_output_tokens, model=model
+        )
         chapter = await self.get_chapter(chapter_id)
         novel = await self.novels.get(chapter.novel_id)
-        return continuity_prompt(
+        tail = chapter.body[-budgets.immediate_text :] if budgets.immediate_text > 0 else ""
+        folded = tail.casefold()
+        ranked: list[tuple[int, Entity]] = []
+        for entity in await self.entities.list_for_novel(chapter.novel_id):
+            positions = [
+                index
+                for index in (
+                    folded.find(candidate.casefold())
+                    for candidate in (entity.name, *entity.aliases)
+                )
+                if index >= 0
+            ]
+            if positions:
+                ranked.append((min(positions), entity))
+        ranked.sort(key=lambda pair: pair[0])
+        chapters = await self.chapters.list_for_novel(chapter.novel_id)
+        predecessors = [
+            earlier for earlier in reversed(chapters) if earlier.position < chapter.position
+        ]
+        return continuation_prompt(
+            budgets=budgets,
             novel_title=novel.title if novel else "",
             chapter_title=chapter.title,
             body=chapter.body,
+            entities=[entity for _, entity in ranked],
+            predecessors=predecessors,
+            genre=novel.genre if novel else None,
+            blurb=novel.blurb if novel else None,
         )
 
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
