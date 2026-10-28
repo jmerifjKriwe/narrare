@@ -2,10 +2,10 @@
 
 The profile routes translate the service's closed error vocabulary into the
 HTTP one: a missing profile is 404, the gate's refusals are 422s naming their
-fields, the default guard is a 409 naming the way out, a key store that
-cannot take or produce a key is a 503, and a discovery that cannot reach its
-endpoint is a 502. A failed connection *test* is none of these — it is the
-200 that carries the failure, because the test ran.
+fields, the default guard and a create that lost the default race are 409s,
+a key store that cannot take or produce a key is a 503, and a discovery that
+cannot reach its endpoint is a 502. A failed connection *test* is none of
+these — it is the 200 that carries the failure, because the test ran.
 """
 
 from logging import getLogger
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.settings.profiles_service import (
     DefaultProfileError,
+    DefaultProfileRaceError,
     NoEndpointError,
     ProfileNotFoundError,
     ProfileRefusedError,
@@ -99,6 +100,8 @@ def _profile_errors(error: Exception) -> HTTPException:
         return _refusal(error)
     if isinstance(error, DefaultProfileError | NoEndpointError):
         return HTTPException(status_code=409, detail=str(error))
+    if isinstance(error, DefaultProfileRaceError):
+        return HTTPException(status_code=409, detail=str(error))
     if isinstance(error, NoKeyStoreError):
         return HTTPException(status_code=503, detail=str(error))
     return HTTPException(status_code=500, detail=str(error))
@@ -131,6 +134,8 @@ async def create_profile(payload: ProfileCreate, service: ProfileServiceDep) -> 
         profile, api_key = await service.create(payload)
     except ProfileRefusedError as error:
         raise _refusal(error) from None
+    except DefaultProfileRaceError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except NoKeyStoreError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     return ProfileCreated(**_masked(profile).model_dump(), api_key=api_key)

@@ -21,11 +21,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -45,13 +47,26 @@ settings service's gate (WP2a T4), not the database's."""
 class ProviderProfile(UserOwned):
     """One user's saved provider configuration: what to call and how to tune it.
 
-    ``is_default`` carries exactly-one-per-user semantics that the settings
-    service enforces in one transaction (design D7); the database stays
-    agnostic. ``api_key_hint`` holds the last four characters for masked
-    reads without a keychain round-trip — a hint, not a secret.
+    ``is_default`` carries exactly-one-per-user semantics: the settings
+    service keeps the flip in one transaction (design D7), and a partial
+    unique index makes the database the last word on it — two concurrent
+    creates cannot both mint a default. ``api_key_hint`` holds the last four
+    characters for masked reads without a keychain round-trip — a hint, not
+    a secret.
     """
 
     __tablename__ = "provider_profiles"
+    __table_args__ = (
+        # One default per user, decided by the database: two creates that
+        # both saw an empty table both raise themselves, and exactly one
+        # insert commits (F-11).
+        Index(
+            "uq_provider_profiles_one_default_per_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("is_default"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(120))

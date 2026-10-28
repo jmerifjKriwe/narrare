@@ -20,6 +20,7 @@ from time import monotonic
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003  the service's parameter annotations name it
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.llm.audit import audited_stream
@@ -55,6 +56,10 @@ class ProfileRefusedError(ValueError):
 
 class DefaultProfileError(RuntimeError):
     """The default profile cannot be deleted; the message names the way out."""
+
+
+class DefaultProfileRaceError(RuntimeError):
+    """Another create made its profile the default first; only one may exist."""
 
 
 class NoEndpointError(RuntimeError):
@@ -101,6 +106,13 @@ class ProfileService:
         stored key no row names, until the next save for that profile id
         overwrites it. It is the rarer failure, and it is documented here
         rather than cleaned up (F-10 records the ordering).
+
+        Two creates can race for the default: both read an empty table and
+        both insert an ``is_default`` row, which the partial unique index
+        refuses. The loser's insert is the one place an ``IntegrityError``
+        is caught; it rolls the transaction back and raises
+        :class:`DefaultProfileRaceError` for the router's 409. A non-default
+        create cannot collide, and no failure after the insert is caught.
         """
         base_url = payload.base_url.rstrip("/") if payload.base_url else None
         self._gate(
@@ -115,17 +127,27 @@ class ProfileService:
         # Before the flush: the first profile is what makes the new one the
         # default, and after the flush it would already be listed.
         is_default = not await profiles.ordered()
-        profile = await profiles.create(
-            name=payload.name,
-            kind=payload.kind,
-            base_url=base_url,
-            model=payload.model,
-            is_default=is_default,
-            context_window=payload.context_window,
-            max_output_tokens=payload.max_output_tokens,
-            temperature=payload.temperature,
-            request_timeout=payload.request_timeout,
-        )
+        fields: dict[str, object] = {
+            "name": payload.name,
+            "kind": payload.kind,
+            "base_url": base_url,
+            "model": payload.model,
+            "context_window": payload.context_window,
+            "max_output_tokens": payload.max_output_tokens,
+            "temperature": payload.temperature,
+            "request_timeout": payload.request_timeout,
+        }
+        if is_default:
+            try:
+                profile = await profiles.create(**fields, is_default=True)
+            except IntegrityError:
+                await self.session.rollback()
+                raise DefaultProfileRaceError(
+                    "another create made its profile the default at the same"
+                    " moment; only one default can exist — reload and retry"
+                ) from None
+        else:
+            profile = await profiles.create(**fields)
         column, hint = self._store_key(profile.id, payload.api_key or "")
         if hint is not None:
             await profiles.update(profile, api_key=column, api_key_hint=hint)

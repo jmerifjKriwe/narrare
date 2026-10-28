@@ -8,6 +8,7 @@ The default guard, the cascade, the half-configuration refusals and the two
 probes (test, discovery) run against the stand-in chat vendor over real HTTP.
 """
 
+import asyncio
 from uuid import UUID
 
 import pytest
@@ -17,6 +18,8 @@ from keyring.errors import KeyringError
 from sqlalchemy import text
 
 from app.api.main import app
+from app.capabilities.settings.profiles_service import ProfileService
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.llm.models import ProviderProfile
 from app.kernel.testing.vendor import chat_vendor
@@ -132,6 +135,62 @@ async def test_setting_a_new_default_flips_the_old_one() -> None:
         by_default = {str(profile["id"]): profile["is_default"] for profile in listed}
         assert by_default[str(first["id"])] is False
         assert by_default[str(second["id"])] is True
+
+
+async def test_two_concurrent_creates_keep_one_default_and_the_loser_gets_a_409() -> None:
+    """The database decides the race: two first-profiles, exactly one default.
+
+    Both requests read an empty table and both raise their profile to the
+    default; the partial unique index lets exactly one insert commit, and
+    the loser is a named 409 — never two defaults the resolver would pick
+    between arbitrarily. The loser's row is rolled back with its insert.
+    """
+    payload: dict[str, object] = {
+        "name": "Race",
+        "kind": "openai-chat",
+        "base_url": REMOTE,
+        "model": "vendor-mini",
+        "api_key": SECRET,
+    }
+    async with _client() as first, _client() as second:
+        responses = await asyncio.gather(
+            first.post("/api/settings/profiles", json=payload),
+            second.post("/api/settings/profiles", json=payload | {"name": "Race two"}),
+        )
+
+    created = [response for response in responses if response.status_code == 201]
+    refused = [response for response in responses if response.status_code == 409]
+    assert (len(created), len(refused)) == (1, 1)
+    assert "default" in refused[0].json()["detail"].lower()
+
+    async with Session() as session:
+        rows = await session.scalar(text("SELECT count(*) FROM provider_profiles"))
+        defaults = await session.scalar(
+            text("SELECT count(*) FROM provider_profiles WHERE is_default")
+        )
+    assert (rows, defaults) == (1, 1)
+
+
+async def test_set_default_flips_the_old_default_out_before_raising_the_new() -> None:
+    """The swap keeps a single default through both flushes, index in force."""
+    async with _client() as client:
+        await _create(client, "First")
+        second = await _create(client, "Second")
+
+    async with Session() as session:
+        await ProfileService(session, LOCAL_USER_ID).set_default(UUID(str(second["id"])))
+
+    async with Session() as session:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT name, is_default FROM provider_profiles ORDER BY is_default DESC, name"
+                )
+            )
+        ).all()
+    assert [(row.name, row.is_default) for row in rows] == [("Second", True), ("First", False)]
+    defaults = sum(1 for row in rows if row.is_default)
+    assert defaults == 1
 
 
 async def test_a_profile_cannot_be_patched_out_of_being_the_default() -> None:
