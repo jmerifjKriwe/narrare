@@ -151,6 +151,16 @@ class ChatVendor:
         return self._server.received
 
     @property
+    def completions(self) -> int:
+        """How many chat completions the vendor finished serving.
+
+        A timed-out read never gets here: the answer is counted only once the
+        delayed reply was written, so a timeout test can prove deterministically
+        that the answer never arrived.
+        """
+        return self._server.completions
+
+    @property
     def last(self) -> dict[str, Any]:
         """The most recent request the vendor saw."""
         return self._server.received[-1]
@@ -225,6 +235,7 @@ class _ChatHandler(BaseHTTPRequestHandler):
             "text/event-stream",
             _chat_frames(done_line=server.done_line).encode(),
         )
+        server.completions += 1
 
     def do_GET(self) -> None:
         if self.path != "/v1/models":
@@ -255,6 +266,7 @@ def chat_vendor() -> Generator[ChatVendor]:
     server.done_line = True
     server.delay = 0.0
     server.received = []
+    server.completions = 0
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:

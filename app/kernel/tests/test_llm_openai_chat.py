@@ -6,13 +6,17 @@ the JSON deltas, the refusal path. The same shape serves OpenAI, OpenRouter,
 DeepSeek, Groq and local servers (Ollama, llama.cpp, vLLM).
 """
 
-from time import monotonic
+from uuid import uuid4
 
 import pytest
 from openai import APITimeoutError, AuthenticationError
 
+from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import DONE, CompletionRequest, Delta, Message, Usage
 from app.kernel.llm.openai_chat import OpenAIChatProvider
+from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.resolution import resolve_provider
 from app.kernel.testing.vendor import CHAT_DELTAS, CHAT_USAGE, chat_vendor
 
 EXPECTED_EVENTS = [
@@ -51,9 +55,11 @@ async def test_a_stored_request_timeout_reaches_the_socket() -> None:
     """The profile's ``request_timeout`` bounds the wait: a slow vendor loses.
 
     The vendor answers a whole second late; a 0.2 s timeout must give up well
-    before that. Without the wiring the call would simply succeed a second
-    later — a stored timeout that never reached the socket is invisible to
-    every other test.
+    before that. The vendor's completion counter is the deterministic half:
+    the answer never reached the client (0 served), so the exception is the
+    configured read timeout firing — not a slow runner's wall clock and not
+    the delayed answer arriving. Without the wiring the call would succeed a
+    second later and the counter would read 1.
     """
     with chat_vendor() as vendor:
         vendor.delay_completions(1.0)
@@ -63,11 +69,41 @@ async def test_a_stored_request_timeout_reaches_the_socket() -> None:
             api_key="test-key",
             request_timeout=0.2,
         )
-        started = monotonic()
         with pytest.raises(APITimeoutError):
             [event async for event in provider.stream(CompletionRequest.user("Hi"))]
-        elapsed = monotonic() - started
-    assert elapsed < 1.0  # loose: even a slow machine beats the sleeping vendor
+        assert vendor.completions == 0  # the answer never arrived
+
+
+async def test_the_stored_request_timeout_reaches_the_socket_through_resolution(
+    empty_tables: None, schema: None
+) -> None:
+    """A stored profile's timeout survives ``from_profile`` and bounds the call.
+
+    The row is read back by the resolution cascade — not handed to the adapter
+    directly — so dropping ``request_timeout`` from ``from_profile`` lets the
+    delayed vendor answer and this test fail. The counter proves the answer
+    never arrived; the resolved fact sheet names the configured 0.2 seconds.
+    """
+    owner = uuid4()
+    await seed_user(owner)
+    with chat_vendor() as vendor:
+        vendor.delay_completions(1.0)
+        async with Session() as session:
+            await ProfileRepository(session, owner).create(
+                name="Stored",
+                kind="openai-chat",
+                base_url=vendor.base_url,
+                model="vendor-mini",
+                request_timeout=0.2,
+                is_default=True,
+            )
+            await session.commit()
+        async with Session() as session:
+            resolved = await resolve_provider(session, owner, "writing.continuation")
+            assert resolved.request_timeout == 0.2
+            with pytest.raises(APITimeoutError):
+                [event async for event in resolved.provider.stream(CompletionRequest.user("Hi"))]
+            assert vendor.completions == 0  # the answer never arrived
 
 
 async def test_done_is_last_without_the_wires_done_line_too() -> None:
