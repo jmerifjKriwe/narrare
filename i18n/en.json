@@ -190,6 +190,7 @@
   "settings.errorSave": "The language could not be saved.",
   "shell.settings": "Settings",
   "settings.heading": "Settings",
+  "settings.back": "Back",
   "settings.providers": "Providers",
   "settings.profiles.empty": "No provider profiles yet.",
   "settings.profiles.nameLabel": "Name",

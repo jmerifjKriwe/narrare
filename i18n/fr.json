@@ -190,6 +190,7 @@
   "settings.errorSave": "La langue n'a pas pu être enregistrée.",
   "shell.settings": "Paramètres",
   "settings.heading": "Paramètres",
+  "settings.back": "Retour",
   "settings.providers": "Fournisseurs",
   "settings.profiles.empty": "Aucun profil de fournisseur pour l'instant.",
   "settings.profiles.nameLabel": "Nom",
