@@ -230,7 +230,16 @@ def test_directory_reads_only_the_format_surface(tmp_path: Path) -> None:
     (target / "notes.txt").write_text("not part of the archive", encoding="utf-8")
     (target / "kb" / "notes.txt").write_bytes(b"\xff\xfe not markdown")
 
-    parsed = parse_archive(open_directory(target))
+    tree = open_directory(target)
+    parsed = parse_archive(tree)
+
+    # The tree itself is the contract: an `rglob("*")` reader parses the same
+    # archive and would pass the assertions below, so the foreign paths must
+    # be absent from the tree, not merely ignored by the parser.
+    with pytest.raises(FileNotFoundError):
+        tree.read_bytes(".venv/lib/huge.py")
+    with pytest.raises(FileNotFoundError):
+        tree.read_bytes("notes.txt")
 
     assert parsed.title == "Der Wanderer"
     assert [chapter.file for chapter in parsed.chapters] == ["chapters/01-start.md"]

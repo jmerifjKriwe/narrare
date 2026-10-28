@@ -50,6 +50,49 @@ describe("ICU message format", () => {
     expect(t("chapters.defaultTitle", { n: 7 })).not.toContain("{");
   });
 
+  it("renders the receipt's conflict details, not their placeholders", () => {
+    // The receipt formats each refusal with that code's `params`. A lone `'`
+    // in an ICU message starts a quoted literal, so `'{name}'` prints the
+    // braces instead of the name — and the English receipt did exactly that
+    // while de/fr used typographic quotes. Every locale must interpolate.
+    const paramsByCode: Record<string, Record<string, string>> = {
+      stale_revision: {
+        file_updated: "2026-01-01T00:00:00+00:00",
+        stock_updated: "2026-10-28T10:00:00+00:00",
+      },
+      type_discrepancy: { file_type: "character", stock_type: "place" },
+      edge_note_differs: { edge: "Mira -knows-> Toma" },
+      edge_target_missing: { name: "Mira" },
+      metadata_differs: { field: "genre" },
+      position_disagree: { index_position: "4", file_position: "9" },
+      unknown_type: { type: "planet" },
+      ambiguous_name: { name: "Mira" },
+      ambiguous_edge_end: { edge: "Mira -knows-> Toma", name: "Mira" },
+    };
+    const keys = Object.keys(catalogs.en).filter((key) =>
+      key.startsWith("shelf.report.conflict."),
+    );
+    const codes = keys.map((key) => key.slice("shelf.report.conflict.".length));
+
+    // Both directions: a catalog message with no engine code is dead, and a
+    // code with no message loses its localization silently.
+    expect(codes.sort()).toEqual(Object.keys(paramsByCode).sort());
+
+    for (const key of keys) {
+      const code = key.slice("shelf.report.conflict.".length);
+      const params = paramsByCode[code];
+      if (params === undefined) throw new Error(`no param set for ${code}`);
+      for (const candidate of locales) {
+        const message = catalogs[candidate][key as keyof typeof catalogs.en];
+        const rendered = String(new IntlMessageFormat(message, candidate).format(params));
+        expect(rendered, `${candidate}/${key}`).not.toMatch(/[{}]/);
+        for (const [param, value] of Object.entries(params)) {
+          expect(rendered, `${candidate}/${key}: {${param}}`).toContain(value);
+        }
+      }
+    }
+  });
+
   it("uses each locale's own plural rules", () => {
     const german = "{count, plural, one {# Kapitel} other {# Kapitel·n}}";
     expect(new IntlMessageFormat(german, "de").format({ count: 1 })).toBe("1 Kapitel");
