@@ -4,8 +4,8 @@
  * Each row names the profile that actually serves the task — the exact
  * assignment, a sibling's segment assignment or the default — and a task no
  * profile serves shows its environment kind. A key the frontend has never
- * heard of still renders (with the raw key as its label), which is the point
- * of the endpoint: the kernel's `KNOWN_TASK_KEYS` is the only list.
+ * heard of still renders, labelled by `settings.tasks.unknown`, which is the
+ * point of the endpoint: the kernel's `KNOWN_TASK_KEYS` is the only list.
  *
  * The API client is mocked at its module boundary: the cases here are about
  * what the panel says, and the requests are verified by the backend and E2E

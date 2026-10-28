@@ -28,7 +28,7 @@
 ## Review Focus
 
 1. **Zero-room pair via defaults:** a profile with `context_window = 1024` and `max_output_tokens` unset merges to 1024/1024 (the default fills the gap) — refused by name, error frame, no `llm_calls` row, no ghost. The settings gate cannot see this class. Tests in Tasks 2 and 4.
-2. **Tiny window degrades deterministically:** room of 1–3 characters leaves the 25/10/5 % floors at zero — those sections are omitted, never padded; the remainder lands in immediate text. Property test in Task 1, unit pin in Task 2.
+2. **Tiny window degrades deterministically:** room of 1–3 characters leaves the 25/10/5 % floors at zero — those sections are omitted, never padded; the remainder lands in immediate text. A tiny room still overflows the immediate slice by design until the parked builder-side overflow row lands. Property test in Task 1, unit pin in Task 2.
 3. **Entity slice never overflows:** a body that no longer fits degrades to name + type; a name+type line that does not fit skips silently — the slice stays within budget however many entities match. Test in Task 2.
 4. **Environment/fake tier unchanged in shape:** with no profile the defaults 8 192/1 024 apply, `max_tokens=1024` reaches the wire where nothing did, the prompt keeps its sections, and the existing ghost-text E2E stays green unmodified. Tests in Tasks 3 and 4.
 5. **German case-insensitivity:** the reference scan folds with `str.casefold()` (ß/umlaut names match their cased occurrences); an alias written in different case in the tail is found. Test in Task 2; E2E proves it on the real stack in Task 4.
@@ -306,3 +306,6 @@ None at plan time. The build session records any here, with the root cause, as t
    defaults carry the honest "facts not resolved" semantics (allocate's own D7 fallback
    applies); Task 3 passes the resolved facts explicitly, and the defaults stay as the
    facts-absent path.
+2. **Task 5's `/tasks` contract gains `assignable`; the kernel gains `AUDIT_ONLY_TASK_KEYS`**
+   (2026-10-28, settings fix wave, fix round 1): assignability is the server's answer — the
+   frontend keeps no mirror list — so an audit-only key stays visible and unassignable.

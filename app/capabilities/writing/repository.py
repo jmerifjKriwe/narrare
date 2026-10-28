@@ -1,4 +1,4 @@
-"""Novel and chapter persistence. Both scoped to one user."""
+"""Novel, chapter and entity persistence. Each repository is scoped to one user."""
 
 from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime
