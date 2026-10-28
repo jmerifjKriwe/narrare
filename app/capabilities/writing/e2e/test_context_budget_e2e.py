@@ -370,7 +370,7 @@ def test_a_small_window_shrinks_the_prompt(page: Page, stack: Stack) -> None:
     _create_profile_and_assign(page, SMALL_PROFILE, "2048")
     assert_accessible(page)
 
-    page.get_by_role("link", name="Alle Romane").click()
+    page.get_by_role("link", name="Zurück").click()
     _create_novel(page, SMALL_NOVEL)
     _write_chapter(page, CHAPTER_ONE)
     _accept_mira_and_file_alias(page)
@@ -404,7 +404,7 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
     _create_profile_and_assign(page, REFUSED_PROFILE, "1024")
     assert_accessible(page)
 
-    page.get_by_role("link", name="Alle Romane").click()
+    page.get_by_role("link", name="Zurück").click()
     _create_novel(page, REFUSED_NOVEL)
     _write_chapter(page, "Die stille Boje lag im Schilf.")
 
