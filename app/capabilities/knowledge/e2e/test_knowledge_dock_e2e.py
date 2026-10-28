@@ -952,10 +952,10 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
 
     Enter files an alias chip, a comma files a tag chip, and a case twin
     dedupes against the chip list — whose remove button answers the
-    keyboard too: Shift+Tab reaches it, Enter presses it. The body is
-    Markdown source: written as written, previewed as written — no
-    renderer turns the heading into one (WP3 brings the editor). Reopening
-    the dialog shows what the save kept.
+    keyboard too: Shift+Tab reaches it, Enter presses it. The body edits
+    as rich text and stores Markdown (F-26): the card previews the stored
+    source — the heading stays characters there — and reopening the dialog
+    shows the saved document as the editor renders it.
     """
     novel_id = _seed_entities("Die bearbeitete Bucht")
     page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
@@ -998,7 +998,8 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     page.keyboard.press("Enter")
     expect(dialog.get_by_text("Kathi", exact=True)).to_have_count(0)
 
-    # The body is the Markdown source itself.
+    # The body is prose edited as rich text and stored as Markdown (F-26);
+    # the card keeps previewing the stored source.
     dialog.get_by_label("Inhalt (Markdown)").fill("## Herkunft\n\nMira wuchs an der Bucht auf.")
     dialog.get_by_role("button", name="Speichern").click()
     expect(dialog).not_to_be_visible()
@@ -1007,19 +1008,21 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     )
 
     # The card reads the new fields: the chips, and the body's source —
-    # the heading stays characters, no renderer intervenes.
+    # the preview is the Markdown, not a rendering of it.
     expect(detail.get_by_text("Miri", exact=True)).to_be_visible()
     expect(detail.get_by_text("Hauptfigur", exact=True)).to_be_visible()
     expect(detail.get_by_text("## Herkunft")).to_be_visible()
     expect(detail).to_contain_text("Mira wuchs an der Bucht auf.")
 
-    # Reopening shows what the save kept: chip and body persist.
+    # Reopening shows what the save kept: chip and body persist — the body
+    # as the editor holds it now, rich text: the heading is a real heading,
+    # the sentence the paragraph under it.
     dock.get_by_role("region", name="Mira").get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
     expect(dialog.get_by_text("Miri", exact=True)).to_be_visible()
-    expect(dialog.get_by_label("Inhalt (Markdown)")).to_have_value(
-        "## Herkunft\n\nMira wuchs an der Bucht auf."
-    )
+    body_field = dialog.get_by_label("Inhalt (Markdown)")
+    expect(body_field.get_by_role("heading", name="Herkunft")).to_be_visible()
+    expect(body_field.get_by_text("Mira wuchs an der Bucht auf.", exact=True)).to_be_visible()
 
     assert_accessible(page)
 

@@ -17,6 +17,7 @@ import {
 import { ComboBox } from "@shell/ui/ComboBox";
 import { Dialog } from "@shell/ui/Dialog";
 import { GridList } from "@shell/ui/GridList";
+import { MarkdownEditor } from "@shell/ui/markdown-editor";
 import { TextField } from "@shell/ui/TextField";
 
 import { DANGER_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
@@ -525,11 +526,13 @@ function EditEntityDialog({
             onChange={setAliases}
           />
           <ChipsField label={t("knowledge.entityTagsLabel")} values={tags} onChange={setTags} />
-          <TextField
+          {/* F-26: the body is prose, edited as rich text and stored as
+              Markdown — the same shared editor the chapters use. A blank
+              editor still saves as a cleared body. */}
+          <MarkdownEditor
             label={t("knowledge.entityBodyLabel")}
             value={content}
             onChange={setContent}
-            multiline
           />
           <EntityRelationsSection
             entity={entity}
