@@ -164,6 +164,17 @@ async def test_the_prompts_declare_their_purpose_and_answer_shape() -> None:
     assert "SOURCE: Mira kam." in extraction
     # the relations ask rides the answer shape: per entity, a target and a type
     assert '"relations": [{"target": string, "type": string}]' in extraction
+    # The opening names no narrowing subset — the eight-type list is the ask,
+    # and the relation examples come from the Fahrplan §4.2 vocabulary
+    # ("lives_in" is not in it).
+    from app.kernel.contracts.models import ENTITY_TYPES
+
+    assert "characters, the places and the things" not in extraction
+    for entity_type in ENTITY_TYPES:
+        assert entity_type in extraction
+    for relation in ("related_to", "member_of", "located_in"):
+        assert f'"{relation}"' in extraction
+    assert "lives_in" not in extraction
 
     check = consistency_prompt(
         entities=[("Mira", "character")],
