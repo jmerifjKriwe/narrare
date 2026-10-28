@@ -93,6 +93,15 @@ _ARCHIVE = "<archive>"
 """The whole archive, when no single file is at fault."""
 
 
+class NovelNotFoundError(LookupError):
+    """The novel does not exist for this user.
+
+    A `LookupError` subclass for the engine's own callers (the previous
+    contract), distinct enough that a `KeyError` deep in the merge can never
+    masquerade as a missing novel at the HTTP surface.
+    """
+
+
 @dataclass
 class Conflict:
     """One item the rules refused, with why.
@@ -400,11 +409,11 @@ async def export_novel(
     """One novel as the interchange format: the title's slug and the files.
 
     Scoped to the user; a novel that does not exist or belongs to someone
-    else raises `LookupError` — the scoped absence is one answer.
+    else raises `NovelNotFoundError` — the scoped absence is one answer.
     """
     novel = await _Novels(session, user_id).get(novel_id)
     if novel is None:
-        raise LookupError(f"novel {novel_id} does not exist for this user")
+        raise NovelNotFoundError(f"novel {novel_id} does not exist for this user")
     chapters = await _Chapters(session, user_id).list_for_novel(novel_id)
     entities = await _Entities(session, user_id).list_for_novel(novel_id)
     by_id = {entity.id: entity for entity in entities}
@@ -465,7 +474,7 @@ async def import_archive(
     An archive carrying no chapters, no entities and no relations refuses
     outright — a `zip -r` envelope of empty directories must not merge as a
     silent 0/0 success. A novel that does not exist or belongs to someone
-    else raises `LookupError`.
+    else raises `NovelNotFoundError`.
     """
     archive = parse_archive(tree)
     if not archive.chapters and not archive.entities and not archive.relations:
@@ -487,7 +496,7 @@ async def import_archive(
     else:
         novel = await _Novels(session, user_id).get(novel_id)
         if novel is None:
-            raise LookupError(f"novel {novel_id} does not exist for this user")
+            raise NovelNotFoundError(f"novel {novel_id} does not exist for this user")
         report = ImportReport(novel_id=novel.id)
         _report_metadata_conflicts(novel, _metadata(tree), report)
 

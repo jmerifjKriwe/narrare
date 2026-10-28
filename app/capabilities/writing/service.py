@@ -1,20 +1,73 @@
 """Writing logic. Routers delegate here; this module knows the unit of work."""
 
 from collections.abc import Sequence  # noqa: TC003
+from pathlib import Path
+from typing import Literal
 from uuid import UUID  # noqa: TC003
+from zipfile import BadZipFile
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.writing.prompts import continuation_prompt
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
-from app.capabilities.writing.schemas import ChapterUpdate  # noqa: TC001
+from app.capabilities.writing.schemas import ChapterUpdate, ExportDone
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
+from app.kernel.interchange import (
+    ArchiveError,
+    ArchiveTree,
+    open_directory,
+    open_zip,
+    write_directory,
+    zip_bytes,
+)
+from app.kernel.interchange import engine as interchange_engine
 
 
 class NotFoundError(Exception):
     """The row does not exist or belongs to another user; the two are one answer."""
+
+
+class TargetNotEmptyError(Exception):
+    """The export target exists and is non-empty; `path` names it."""
+
+    def __init__(self, path: str) -> None:
+        super().__init__(f"target not empty: {path}")
+        self.path = path
+
+
+class ArchiveTooLargeError(Exception):
+    """The archive is larger than MAX_ARCHIVE_BYTES."""
+
+
+class ArchiveInvalidError(Exception):
+    """The archive is unreadable or malformed; `file` names the offender."""
+
+    def __init__(self, file: str, reason: str) -> None:
+        super().__init__(f"{file}: {reason}")
+        self.file = file
+        self.reason = reason
+
+
+class FieldRefusedError(ValueError):
+    """The request breaks a field contract; `fields` names them.
+
+    The settings gate's pattern: the router turns each field into a 422
+    loc entry, so the client learns exactly which input was refused.
+    """
+
+    def __init__(self, fields: tuple[str, ...], message: str) -> None:
+        super().__init__(message)
+        self.fields = fields
+
+
+MAX_ARCHIVE_BYTES = 20_000_000
+"""One archive, at most — read whole before it is parsed, so an unbounded
+upload would hold the worker for no good novel (the knowledge cap's reason)."""
+
+_ARCHIVE = "<archive>"
+"""The whole archive, when no single file is at fault — the engine's own word."""
 
 
 class WritingService:
@@ -133,3 +186,91 @@ class WritingService:
         chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))
         await self.session.commit()
         return chapter
+
+    async def export_novel(
+        self, novel_id: UUID, mode: Literal["path", "zip"], path: str | None
+    ) -> ExportDone | tuple[str, bytes]:
+        """Export one owned novel as a ZIP, or into a directory on disk.
+
+        `zip` returns the title's slug and the deterministic ZIP bytes; `path`
+        writes the archive to the target — refusing an existing non-empty
+        target, the engine's answer to a thinner re-export — and returns the
+        receipt. The kernel engine reads the rows and raises
+        `NovelNotFoundError` for a missing or foreign novel, which becomes
+        NotFoundError here; the transport's own failures are the caller's
+        named fields.
+        """
+        try:
+            slug, files = await interchange_engine.export_novel(
+                self.session, self.user_id, novel_id
+            )
+        except interchange_engine.NovelNotFoundError:
+            raise NotFoundError from None
+        if mode == "zip":
+            return slug, zip_bytes(files)
+        if path is None or not path.strip():
+            raise FieldRefusedError(("path",), "exporting to a path needs a target path")
+        # A file is not a target: say so, rather than call it a non-empty
+        # directory the caller could believe a retry's debris.
+        if Path(path).is_file():
+            raise FieldRefusedError(("path",), f"{path}: is a file")
+        try:
+            write_directory(Path(path), files)
+        except ArchiveError:
+            # write_directory's one refusal: the target exists and is non-empty.
+            raise TargetNotEmptyError(path) from None
+        except OSError as error:
+            raise FieldRefusedError(("path",), f"{path}: {error.strerror or error}") from None
+        tree = ArchiveTree(files)
+        return ExportDone(
+            path=path, chapters=len(tree.chapter_names()), entities=len(tree.kb_names())
+        )
+
+    async def import_novel(
+        self, *, archive: bytes | None, path: str | None, novel_id: UUID | None
+    ) -> interchange_engine.ImportReport:
+        """Import one archive — upload bytes or a server-side directory — as a
+        new novel when `novel_id` is None, merged into the owned novel otherwise.
+
+        Exactly one source is required, named by field when the request breaks
+        that; an oversized upload refuses before it is parsed; a malformed one
+        refuses with the offending file named. The engine commits once at the
+        end, so a refused or failing import writes nothing. A missing or
+        foreign target novel is NotFoundError; the corpus-width guard
+        (EmbeddingMismatchError) surfaces unchanged, the knowledge router's
+        mapping applies to it.
+        """
+        tree: ArchiveTree
+        if path is not None and archive is not None:
+            raise FieldRefusedError(("archive", "path"), "give archive or path, not both")
+        if path is not None:
+            source = Path(path)
+            if not source.is_dir():
+                raise FieldRefusedError(("path",), f"{path}: is not a directory")
+            try:
+                tree = open_directory(source)
+            except OSError as error:
+                raise FieldRefusedError(("path",), f"{path}: {error.strerror or error}") from None
+        elif archive is not None:
+            if len(archive) > MAX_ARCHIVE_BYTES:
+                raise ArchiveTooLargeError
+            try:
+                tree = open_zip(archive)
+            except (BadZipFile, RuntimeError, NotImplementedError) as error:
+                # BadZipFile is the malformed container; RuntimeError is an
+                # encrypted entry (password required), NotImplementedError an
+                # unsupported compression method. All three are the archive's
+                # fault, never the server's.
+                raise ArchiveInvalidError(_ARCHIVE, str(error)) from None
+        else:
+            raise FieldRefusedError(
+                ("archive", "path"), "exactly one of archive or path is required"
+            )
+        try:
+            return await interchange_engine.import_archive(
+                self.session, self.user_id, tree, novel_id
+            )
+        except interchange_engine.NovelNotFoundError:
+            raise NotFoundError from None
+        except ArchiveError as error:
+            raise ArchiveInvalidError(error.path, error.reason) from None

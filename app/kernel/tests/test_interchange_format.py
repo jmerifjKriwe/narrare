@@ -10,7 +10,7 @@ relations ride `metadata.json` as `from`/`type`/`to`/`note?`.
 
 import json
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from pathlib import Path
 from uuid import UUID
 
 import pytest
@@ -28,9 +28,6 @@ from app.kernel.interchange import (
     write_directory,
     zip_bytes,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _CHAPTER_ID = UUID("0f0e8d4a-7b3c-4d5e-8f90-1a2b3c4d5e6f")
 _ENTITY_ID = UUID("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d")
@@ -318,3 +315,45 @@ def test_metadata_json_relations_parse() -> None:
 
     parsed = parse_archive(open_zip(zip_bytes(files)))
     assert parsed.relations == _archive().relations
+
+
+def test_write_failure_leaves_no_partial_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A write that dies mid-loop leaves no target for the retry to trip on.
+
+    The originals: a full disk (ENOSPC) or a permission change (EACCES) part
+    way through. Nothing of the half-written tree may survive, or the retry
+    would meet its own debris as `target not empty`.
+    """
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "chapters/00-erstes-kapitel.md": b"Der Anfang.\n",
+    }
+    real_write = Path.write_bytes
+
+    def die_on_the_chapter(self: Path, data: bytes) -> int:
+        if self.name == "00-erstes-kapitel.md":
+            raise OSError(28, "No space left on device")
+        return real_write(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", die_on_the_chapter)
+    target = tmp_path / "export"
+
+    with pytest.raises(OSError):
+        write_directory(target, files)
+
+    assert not target.exists()
+    assert list(tmp_path.iterdir()) == []  # nor a staging directory
+
+
+def test_write_into_an_existing_empty_target_succeeds(tmp_path: Path) -> None:
+    """The atomic rename may replace an empty directory, the one non-empty refuses."""
+    target = tmp_path / "export"
+    target.mkdir()
+    files = {"metadata.json": b"{}"}
+
+    write_directory(target, files)
+
+    assert (target / "metadata.json").read_bytes() == b"{}"
+    assert list(tmp_path.iterdir()) == [target]

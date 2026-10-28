@@ -11,8 +11,10 @@ the same ZIP.
 from __future__ import annotations
 
 import io
+import shutil
 import zipfile
 from pathlib import Path, PurePosixPath
+from uuid import uuid4
 
 from app.kernel.interchange.format import ArchiveError
 
@@ -72,14 +74,28 @@ def open_zip(data: bytes) -> ArchiveTree:
 
 
 def write_directory(path: Path, files: dict[str, bytes]) -> None:
-    """Write the files under `path`; an existing non-empty target refuses."""
+    """Write the files under `path`; an existing non-empty target refuses.
+
+    The tree lands in a sibling staging directory and is renamed into place
+    only when complete: a write that dies mid-loop (a full disk, a permission
+    revoked) leaves no partial target behind, so a retry meets an absent
+    target instead of its own debris as `target not empty`.
+    """
     if path.exists() and (not path.is_dir() or any(path.iterdir())):
         raise ArchiveError(str(path), "target not empty")
-    path.mkdir(parents=True, exist_ok=True)
-    for relpath, data in files.items():
-        target = path.joinpath(*PurePosixPath(relpath).parts)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
+    staging = path.with_name(f".{path.name}.tmp-{uuid4().hex}")
+    try:
+        staging.mkdir(parents=True)
+        for relpath, data in files.items():
+            target = staging.joinpath(*PurePosixPath(relpath).parts)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        if path.exists():
+            path.rmdir()  # the guard above leaves only an empty directory here
+        staging.rename(path)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
 
 
 def zip_bytes(files: dict[str, bytes]) -> bytes:
