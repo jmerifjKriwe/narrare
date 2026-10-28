@@ -246,6 +246,7 @@ function reportSummary(report: ImportReport, t: Translate): string[] {
 
 function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
   const t = useTranslation();
+  const novelSelectId = useId();
   const [file, setFile] = useState<File | null>(null);
   const [pathText, setPathText] = useState("");
   const [target, setTarget] = useState<"new" | "existing">("new");
@@ -382,9 +383,12 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
               onPick={() => setTarget("existing")}
             />
             {target === "existing" ? (
-              <label className="mt-1 flex flex-col gap-1 text-sm font-medium">
-                {t("shelf.import.targetNovelLabel")}
+              <div className="mt-1 flex flex-col gap-1 text-sm font-medium">
+                <label htmlFor={novelSelectId}>
+                  {t("shelf.import.targetNovelLabel")}
+                </label>
                 <select
+                  id={novelSelectId}
                   value={targetId}
                   onChange={(event) => setTargetId(event.target.value)}
                   className="rounded-md border border-border bg-card px-3 py-2 text-sm font-normal"
@@ -396,7 +400,7 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             ) : null}
           </fieldset>
           {problemText ? <FailureAlert message={problemText} /> : null}

@@ -446,7 +446,12 @@ describe("the import dialog", () => {
     // an existing novel picked from the shelf's own list.
     await user.clear(await screen.findByLabelText(t("shelf.import.pathLabel")));
     await user.click(screen.getByRole("radio", { name: t("shelf.import.targetExisting") }));
-    const select = (await screen.findByLabelText(t("shelf.import.targetNovelLabel"))) as HTMLSelectElement;
+    // The picker's name is its label alone — a wrapping label would fold
+    // the chosen option's text into the name, so the name moved with the
+    // selection ("RomanBitte wähle einen Roman.").
+    const select = (await screen.findByRole("combobox", {
+      name: t("shelf.import.targetNovelLabel"),
+    })) as HTMLSelectElement;
     await user.selectOptions(select, TARGET.id);
     await user.click(screen.getByRole("button", { name: t("shelf.import.submit") }));
 
