@@ -42,6 +42,15 @@ KNOWN_TASK_KEYS: tuple[str, ...] = (
     "settings.test",
 )
 
+AUDIT_ONLY_TASK_KEYS: tuple[str, ...] = ("settings.test",)
+"""Known keys that are audited but never routed.
+
+The settings surface's connection probe audits its call under ``settings.test``
+while it tests the profile the user clicked, not the cascade's answer, so the
+key has no serving tier to report. Readers that list effective providers skip
+it; assignment remains API-accepted but has no consumer.
+"""
+
 ENV_PROVIDERS: dict[str, Callable[[], TextProvider]] = {
     "fake": FakeProvider,
     "openai-compatible": OpenAIChatProvider.from_environment,

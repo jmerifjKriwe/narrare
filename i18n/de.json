@@ -222,6 +222,7 @@
   "settings.profiles.errorDefaultDelete": "Das Standard-Profil kann nicht gelöscht werden. Lege ein zweites Profil an, mache es zum Standard und lösche dann dieses.",
   "settings.profiles.errorDelete": "Das Profil konnte nicht gelöscht werden.",
   "settings.profiles.errorAction": "Die Aktion konnte nicht ausgeführt werden. Läuft der lokale Dienst?",
+  "settings.profiles.taskAuditOnly": "Der Einstellungstest prüft das Profil, das du auswählst",
   "settings.profiles.keyOnce": "Das Profil „{name}“ wurde gespeichert. Der API-Schlüssel wird nur dieses eine Mal angezeigt: {key}",
   "settings.profiles.keyOnceDone": "Verstanden",
   "settings.assignments": "Aufgaben",
@@ -232,6 +233,8 @@
   "settings.task.chat.ask": "Chat, Fragen",
   "settings.task.knowledge.extract-entities": "Wissen, Entitäten finden",
   "settings.task.knowledge.check-consistency": "Wissen, Konsistenzprüfung",
+  "settings.tasks.settings.test": "Verbindungstest",
+  "settings.tasks.unknown": "Aufgabe",
   "jobs.truncated": "Nur die ersten 20.000 Zeichen wurden gelesen.",
   "jobs.skippedChapters": "Übersprungen, zu lang: {titles}"
 }

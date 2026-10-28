@@ -1410,9 +1410,13 @@ export interface components {
          *     ``profile_id`` and ``profile_name`` are ``None`` exactly when no profile
          *     serves — the environment tier answers. ``kind`` names the serving adapter
          *     either way (``fake`` or ``openai-chat``), so the page can say what answers
-         *     without claiming the cascade's stored choice.
+         *     without claiming the cascade's stored choice. An audit-only key has no
+         *     serving tier: ``kind`` is ``audit``, the profile fields are ``None``, and
+         *     ``assignable`` is ``False``.
          */
         TaskEffectiveRead: {
+            /** Assignable */
+            assignable: boolean;
             /** Kind */
             kind: string;
             /** Profile Id */

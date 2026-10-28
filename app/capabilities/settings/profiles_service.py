@@ -28,7 +28,12 @@ from app.kernel.llm.contract import CompletionRequest
 from app.kernel.llm.models import ProviderProfile, TaskAssignment  # noqa: TC001
 from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, client_for, keyless_headers
 from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
-from app.kernel.llm.resolution import KNOWN_TASK_KEYS, from_profile, resolve_provider
+from app.kernel.llm.resolution import (
+    AUDIT_ONLY_TASK_KEYS,
+    KNOWN_TASK_KEYS,
+    from_profile,
+    resolve_provider,
+)
 from app.kernel.secrets import NoKeyStoreError, erase_key, save_key
 from app.kernel.vendor import needs_api_key
 
@@ -83,6 +88,7 @@ class TaskEffective:
     profile_id: UUID | None
     profile_name: str | None
     kind: str
+    assignable: bool
 
 
 class ProfileService:
@@ -323,16 +329,31 @@ class ProfileService:
     async def tasks(self) -> Sequence[TaskEffective]:
         """One row per known task key, naming the provider that serves it.
 
-        Each key is resolved on this request's read-only session, through the
-        same cascade a generation uses, so the answer is what the next call
-        will get: the exact assignment, a sibling's segment assignment, the
-        default profile, or the environment tier. ``profile_name`` is ``None``
-        exactly when no profile serves. Resolution never writes, so reading
-        the list creates no assignment and audits no call.
+        Each routable key is resolved on this request's read-only session,
+        through the same cascade a generation uses, so the answer is what the
+        next call will get: the exact assignment, a sibling's segment
+        assignment, the default profile, or the environment tier.
+        ``profile_name`` is ``None`` exactly when no profile serves.
+        Audit-only keys (:data:`AUDIT_ONLY_TASK_KEYS`) are never routed — the
+        settings probe audits its call under ``settings.test`` but tests the
+        clicked profile — so they report ``kind="audit"`` and are not
+        assignable, without consulting the cascade. Resolution never writes,
+        so reading the list creates no assignment and audits no call.
         """
         names = {profile.id: profile.name for profile in await self._profiles().ordered()}
         rows: list[TaskEffective] = []
         for task_key in KNOWN_TASK_KEYS:
+            if task_key in AUDIT_ONLY_TASK_KEYS:
+                rows.append(
+                    TaskEffective(
+                        task_key=task_key,
+                        profile_id=None,
+                        profile_name=None,
+                        kind="audit",
+                        assignable=False,
+                    )
+                )
+                continue
             resolved = await resolve_provider(self.session, self.user_id, task_key)
             rows.append(
                 TaskEffective(
@@ -340,6 +361,7 @@ class ProfileService:
                     profile_id=resolved.profile_id,
                     profile_name=names.get(resolved.profile_id) if resolved.profile_id else None,
                     kind=resolved.kind,
+                    assignable=True,
                 )
             )
         return rows

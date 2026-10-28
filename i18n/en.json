@@ -222,6 +222,7 @@
   "settings.profiles.errorDefaultDelete": "The default profile cannot be deleted. Create a second profile, make it the default, then delete this one.",
   "settings.profiles.errorDelete": "The profile could not be deleted.",
   "settings.profiles.errorAction": "The action could not be completed. Is the local service running?",
+  "settings.profiles.taskAuditOnly": "The settings probe tests the profile you pick",
   "settings.profiles.keyOnce": "The profile “{name}” was stored. This is the only time the API key is shown: {key}",
   "settings.profiles.keyOnceDone": "Got it",
   "settings.assignments": "Tasks",
@@ -232,6 +233,8 @@
   "settings.task.chat.ask": "Chat, questions",
   "settings.task.knowledge.extract-entities": "Knowledge, find entities",
   "settings.task.knowledge.check-consistency": "Knowledge, consistency check",
+  "settings.tasks.settings.test": "Connection test",
+  "settings.tasks.unknown": "Task",
   "jobs.truncated": "Only the first 20,000 characters were read.",
   "jobs.skippedChapters": "Skipped, too long: {titles}"
 }

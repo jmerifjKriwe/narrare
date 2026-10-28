@@ -125,6 +125,13 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
         # The task list names the profile that actually serves the task — the
         # assigned one, not a bare "Automatic" the cascade may contradict.
         expect(page.get_by_text("über Fake Eins")).to_be_visible()
+        # The audit-only key is labelled and explained: never printed as its
+        # internal key, never offered as an assignment, never given a provider.
+        expect(page.get_by_text("Verbindungstest")).to_be_visible()
+        expect(
+            page.get_by_text("Der Einstellungstest prüft das Profil, das du auswählst")
+        ).to_be_visible()
+        expect(page.get_by_text("settings.test")).to_have_count(0)
 
         # A vendor profile carries the masked-key round-trip and the probes,
         # and a tuning column the edit below will clear.

@@ -19,16 +19,17 @@ const KIND_LABELS: Record<string, MessageKey> = {
 
 /**
  * The task labels the catalog carries, keyed by task. The list of tasks comes
- * from the server (`KNOWN_TASK_KEYS`); this map only supplies words, and a key
- * without one renders as itself. An unlabelled row gets no assignment control:
- * `settings.test` is audit-only (the probe uses the clicked profile, not the
- * assignee), so an assignment there would be a control with no effect (F-01).
+ * from the server (`KNOWN_TASK_KEYS`); this map only supplies words. The
+ * server's `assignable` decides whether a row gets a select, so a new key is
+ * routable without a frontend edit and only needs its label (a missing label
+ * falls back to the generic one, never to the raw key).
  */
 const TASK_LABELS: Record<string, MessageKey> = {
   "writing.continuation": "settings.task.writing.continuation",
   "chat.ask": "settings.task.chat.ask",
   "knowledge.extract-entities": "settings.task.knowledge.extract-entities",
   "knowledge.check-consistency": "settings.task.knowledge.check-consistency",
+  "settings.test": "settings.tasks.settings.test",
 };
 
 /** One text field of the profile form, as the input holds it. */
@@ -560,7 +561,23 @@ export function ProvidersPanel() {
         {tasks.map((task) => {
           const assigned = assignments.find((row) => row.task_key === task.task_key);
           const labelKey = TASK_LABELS[task.task_key];
+          const label = labelKey === undefined ? t("settings.tasks.unknown") : t(labelKey);
           const kindKey = KIND_LABELS[task.kind];
+          if (!task.assignable) {
+            // An audit-only key (the settings probe's) has no serving tier and
+            // no assignment to offer: one labelled line explains what it is.
+            return (
+              <div
+                key={task.task_key}
+                className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
+              >
+                <span>{label}</span>
+                <p className="text-xs font-normal text-muted">
+                  {t("settings.profiles.taskAuditOnly")}
+                </p>
+              </div>
+            );
+          }
           // What actually answers, not the stored choice: the cascade can
           // serve a sibling's assignment or the default from here.
           const effective =
@@ -569,22 +586,12 @@ export function ProvidersPanel() {
               : t("settings.assignments.environment", {
                   kind: kindKey === undefined ? task.kind : t(kindKey),
                 });
-          if (labelKey === undefined) {
-            // Known to the server but not routable from this page: shown so a
-            // new key is not invisible, but without a control that would do
-            // nothing (`settings.test` is audit-only, F-01).
-            return (
-              <p key={task.task_key} className="mt-3 text-sm text-muted">
-                {task.task_key} · {effective}
-              </p>
-            );
-          }
           return (
             <div
               key={task.task_key}
               className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
             >
-              <label htmlFor={`settings-task-${task.task_key}`}>{t(labelKey)}</label>
+              <label htmlFor={`settings-task-${task.task_key}`}>{label}</label>
               <select
                 id={`settings-task-${task.task_key}`}
                 value={assigned?.profile_id ?? ""}

@@ -55,8 +55,9 @@ async def test_the_environment_tier_reports_the_fake_and_names_no_profile(
     async with _client() as client:
         rows = (await client.get("/api/settings/tasks")).json()
 
-    assert {row["kind"] for row in rows} == {"fake"}
-    assert all(row["profile_id"] is None and row["profile_name"] is None for row in rows)
+    routed = [row for row in rows if row["assignable"]]
+    assert {row["kind"] for row in routed} == {"fake"}
+    assert all(row["profile_id"] is None and row["profile_name"] is None for row in routed)
 
 
 async def test_the_environment_tier_reports_its_adapter(
@@ -68,8 +69,9 @@ async def test_the_environment_tier_reports_its_adapter(
     async with _client() as client:
         rows = (await client.get("/api/settings/tasks")).json()
 
-    assert {row["kind"] for row in rows} == {"openai-chat"}
-    assert all(row["profile_id"] is None and row["profile_name"] is None for row in rows)
+    routed = [row for row in rows if row["assignable"]]
+    assert {row["kind"] for row in routed} == {"openai-chat"}
+    assert all(row["profile_id"] is None and row["profile_name"] is None for row in routed)
 
 
 async def test_an_exact_assignment_names_that_profile() -> None:
@@ -85,9 +87,26 @@ async def test_an_exact_assignment_names_that_profile() -> None:
         "profile_id": second["id"],
         "profile_name": "Second",
         "kind": "fake",
+        "assignable": True,
     }
     # The keys without an assignment still follow the default profile.
     assert _row(rows, "writing.continuation")["profile_name"] == "Default"
+
+
+async def test_the_audit_only_key_is_not_routed_and_not_assignable() -> None:
+    """``settings.test`` is audited by the probe, never served by the cascade."""
+    async with _client() as client:
+        await _create_fake(client, "Default")
+        rows = (await client.get("/api/settings/tasks")).json()
+
+    assert _row(rows, "settings.test") == {
+        "task_key": "settings.test",
+        "profile_id": None,
+        "profile_name": None,
+        "kind": "audit",
+        "assignable": False,
+    }
+    assert all(row["assignable"] is True for row in rows if row["task_key"] != "settings.test")
 
 
 async def test_a_task_inherits_the_segment_prefix_assignment() -> None:
@@ -114,6 +133,8 @@ async def test_a_task_without_an_assignment_inherits_the_default() -> None:
         rows = (await client.get("/api/settings/tasks")).json()
 
     for row in rows:
+        if not row["assignable"]:
+            continue
         assert row["profile_id"] == default["id"]
         assert row["profile_name"] == "Default"
 

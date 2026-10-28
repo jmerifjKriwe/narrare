@@ -230,6 +230,7 @@ async def list_tasks(service: ProfileServiceDep) -> list[TaskEffectiveRead]:
             profile_id=row.profile_id,
             profile_name=row.profile_name,
             kind=row.kind,
+            assignable=row.assignable,
         )
         for row in await service.tasks()
     ]

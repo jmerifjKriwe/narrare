@@ -66,19 +66,21 @@ const TASKS = [
     profile_id: DEFAULT_PROFILE.id,
     profile_name: "Default",
     kind: "fake",
+    assignable: true,
   },
-  { task_key: "chat.ask", profile_id: null, profile_name: null, kind: "openai-chat" },
   {
-    task_key: "brandnew.task",
-    profile_id: DEFAULT_PROFILE.id,
-    profile_name: "Default",
-    kind: "fake",
+    task_key: "chat.ask",
+    profile_id: null,
+    profile_name: null,
+    kind: "openai-chat",
+    assignable: true,
   },
   {
     task_key: "settings.test",
-    profile_id: DEFAULT_PROFILE.id,
-    profile_name: "Default",
-    kind: "fake",
+    profile_id: null,
+    profile_name: null,
+    kind: "audit",
+    assignable: false,
   },
 ];
 
@@ -117,7 +119,7 @@ describe("the task list", () => {
     await renderPanel();
 
     const viaDefault = t("settings.assignments.via", { profile: "Default" });
-    expect(screen.getAllByText(viaDefault, { exact: false })).toHaveLength(3);
+    expect(screen.getAllByText(viaDefault, { exact: false })).toHaveLength(1);
   });
 
   it("shows the environment kind when no profile serves", async () => {
@@ -129,22 +131,17 @@ describe("the task list", () => {
     expect(screen.getByText(environment)).toBeTruthy();
   });
 
-  it("renders a task key the frontend has never heard of", async () => {
+  it("labels the audit-only key and offers it no assignment control", async () => {
     await renderPanel();
 
-    // No label key exists for it, so the raw key is the label: the server's
-    // list is the source, and a new key needs no frontend change.
-    expect(screen.getByText(/brandnew\.task/)).toBeTruthy();
-  });
-
-  it("shows the audit-only key without an assignment control", async () => {
-    await renderPanel();
-
-    // `settings.test` resolves but the probe uses the clicked profile, so an
-    // assignment there would be a control with no effect (F-01): the row is
-    // visible, the select is not.
-    expect(screen.getByText(/settings\.test/)).toBeTruthy();
-    expect(screen.queryByLabelText("settings.test")).toBeNull();
+    // The server marks `settings.test` audit-only: the probe tests the clicked
+    // profile, so the row must not claim an effective provider, must not offer
+    // an assignment, and must not print the internal key.
+    const label = t("settings.tasks.settings.test");
+    expect(screen.getByText(label)).toBeTruthy();
+    expect(screen.getByText(t("settings.profiles.taskAuditOnly"))).toBeTruthy();
+    expect(screen.queryByLabelText(label)).toBeNull();
+    expect(screen.queryByText(/settings\.test/)).toBeNull();
   });
 });
 
