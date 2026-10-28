@@ -220,6 +220,7 @@
   "settings.profiles.errorModels": "Les modèles n'ont pas pu être chargés. Le point de terminaison est-il accessible?",
   "settings.profiles.errorDefaultDelete": "Le profil par défaut ne peut pas être supprimé. Créez un second profil, définissez-le par défaut, puis supprimez celui-ci.",
   "settings.profiles.errorDelete": "Le profil n'a pas pu être supprimé.",
+  "settings.profiles.errorAction": "L'action n'a pas pu être effectuée. Le service local est-il démarré?",
   "settings.profiles.keyOnce": "Le profil « {name} » a été enregistré. La clé API n'est affichée qu'une seule fois: {key}",
   "settings.profiles.keyOnceDone": "Compris",
   "settings.assignments": "Tâches",

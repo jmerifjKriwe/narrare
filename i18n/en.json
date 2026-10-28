@@ -220,6 +220,7 @@
   "settings.profiles.errorModels": "The models could not be loaded. Is the endpoint reachable?",
   "settings.profiles.errorDefaultDelete": "The default profile cannot be deleted. Create a second profile, make it the default, then delete this one.",
   "settings.profiles.errorDelete": "The profile could not be deleted.",
+  "settings.profiles.errorAction": "The action could not be completed. Is the local service running?",
   "settings.profiles.keyOnce": "The profile “{name}” was stored. This is the only time the API key is shown: {key}",
   "settings.profiles.keyOnceDone": "Got it",
   "settings.assignments": "Tasks",

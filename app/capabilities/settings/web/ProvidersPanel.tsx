@@ -104,6 +104,7 @@ export function ProvidersPanel() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [actionFailed, setActionFailed] = useState(false);
   const [deleteRefused, setDeleteRefused] = useState<"default" | "other" | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProfileTestResult>>({});
   const [models, setModels] = useState<Record<string, string[] | "failed">>({});
@@ -208,11 +209,22 @@ export function ProvidersPanel() {
   }
 
   async function makeDefault(profile: Profile): Promise<void> {
-    await client.PATCH("/api/settings/profiles/{profile_id}", {
-      params: { path: { profile_id: profile.id } },
-      body: { is_default: true },
-    });
-    await reload();
+    setActionFailed(false);
+    try {
+      const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
+        params: { path: { profile_id: profile.id } },
+        body: { is_default: true },
+      });
+      if (!response.ok) {
+        setActionFailed(true);
+        return;
+      }
+      await reload();
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
+      setActionFailed(true);
+    }
   }
 
   async function remove(profile: Profile): Promise<void> {
@@ -230,11 +242,18 @@ export function ProvidersPanel() {
   }
 
   async function testConnection(profile: Profile): Promise<void> {
-    const { data, response } = await client.POST("/api/settings/profiles/{profile_id}/test", {
-      params: { path: { profile_id: profile.id } },
-    });
-    if (response.ok && data) {
-      setTestResults((current) => ({ ...current, [profile.id]: data }));
+    setActionFailed(false);
+    try {
+      const { data, response } = await client.POST("/api/settings/profiles/{profile_id}/test", {
+        params: { path: { profile_id: profile.id } },
+      });
+      if (response.ok && data) {
+        setTestResults((current) => ({ ...current, [profile.id]: data }));
+        return;
+      }
+      setActionFailed(true);
+    } catch {
+      setActionFailed(true);
     }
   }
 
@@ -251,11 +270,20 @@ export function ProvidersPanel() {
   }
 
   async function assign(taskKey: string, profileId: string): Promise<void> {
-    const { response } = await client.PUT("/api/settings/assignments/{task_key}", {
-      params: { path: { task_key: taskKey } },
-      body: { profile_id: profileId === "" ? null : profileId },
-    });
-    if (response.ok) await reload();
+    setActionFailed(false);
+    try {
+      const { response } = await client.PUT("/api/settings/assignments/{task_key}", {
+        params: { path: { task_key: taskKey } },
+        body: { profile_id: profileId === "" ? null : profileId },
+      });
+      if (!response.ok) {
+        setActionFailed(true);
+        return;
+      }
+      await reload();
+    } catch {
+      setActionFailed(true);
+    }
   }
 
   const field =
@@ -291,6 +319,11 @@ export function ProvidersPanel() {
             {deleteRefused === "default"
               ? t("settings.profiles.errorDefaultDelete")
               : t("settings.profiles.errorDelete")}
+          </p>
+        ) : null}
+        {actionFailed ? (
+          <p role="alert" className="mt-3 text-sm text-danger">
+            {t("settings.profiles.errorAction")}
           </p>
         ) : null}
 

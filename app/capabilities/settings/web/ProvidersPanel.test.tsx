@@ -12,6 +12,7 @@
  * suites against the real stack.
  */
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@shell/lib/i18n";
@@ -128,5 +129,48 @@ describe("the task list", () => {
     // No label key exists for it, so the raw key is the label: the server's
     // list is the source, and a new key needs no frontend change.
     expect(screen.getByText("brandnew.task")).toBeTruthy();
+  });
+});
+
+describe("a secondary action whose request cannot be sent", () => {
+  /** The panel's error surface, once the rejected fetch has been handled. */
+  async function expectFailure(): Promise<void> {
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorAction"));
+  }
+
+  it("names a test connection that never reaches the service", async () => {
+    await renderPanel();
+    api.POST.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const [test] = screen.getAllByRole("button", {
+      name: t("settings.profiles.test"),
+    });
+    await userEvent.click(test);
+
+    await expectFailure();
+  });
+
+  it("names an assignment that never reaches the service", async () => {
+    await renderPanel();
+    api.PUT.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.task.writing.continuation")),
+      SECOND_PROFILE.id,
+    );
+
+    await expectFailure();
+  });
+
+  it("names a default flip that never reaches the service", async () => {
+    await renderPanel();
+    api.PATCH.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: t("settings.profiles.makeDefault") }),
+    );
+
+    await expectFailure();
   });
 });
