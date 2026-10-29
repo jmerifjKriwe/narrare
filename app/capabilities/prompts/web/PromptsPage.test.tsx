@@ -88,10 +88,15 @@ const SUMMARIES = [
 const BUNDLED = "Continue the story in the same voice.";
 const OVERRIDE = "Continue the story in the voice of a sea captain.";
 const NOVEL_OVERRIDE = "Continue the story in this novel's own voice.";
+const CONSISTENCY_BUNDLED = "Check the findings against the chapters.";
 
-/** The detail the editor loads, per key: the continuation's scope answer is
- *  the global tier, the consistency check's is its own novel row. */
-function detailFor(key: string): object {
+/** The detail the editor loads, per key and per requested tier. The reads are
+ *  scope-aware, so a test wired to the wrong tier reads the wrong words: the
+ *  consistency check's global read shows the bundled template, its novel read
+ *  shows the novel's own row. The continuation's novel tier is empty, so both
+ *  of its reads inherit the global text — the tier a request targets is
+ *  visible in the request itself, and the tests assert exactly that. */
+function detailFor(key: string, novelId?: string): object {
   if (key === "writing.continuation") {
     return {
       bundled_content: BUNDLED,
@@ -104,12 +109,14 @@ function detailFor(key: string): object {
     };
   }
   if (key === "knowledge.check-consistency") {
-    return {
-      bundled_content: "Check the findings against the chapters.",
+    const shared = {
+      bundled_content: CONSISTENCY_BUNDLED,
       variables: [{ name: "findings", example: "Two chapters disagree." }],
-      override: { scope: "novel", content: NOVEL_OVERRIDE },
-      effective_content: NOVEL_OVERRIDE,
     };
+    if (novelId === undefined) {
+      return { ...shared, override: null, effective_content: CONSISTENCY_BUNDLED };
+    }
+    return { ...shared, override: { scope: "novel", content: NOVEL_OVERRIDE }, effective_content: NOVEL_OVERRIDE };
   }
   return {
     bundled_content: BUNDLED,
@@ -138,7 +145,10 @@ function mockApi(): void {
       case "/api/prompts":
         return { data: SUMMARIES, response: ok() };
       case "/api/prompts/{key}":
-        return { data: detailFor(options?.params?.path?.key ?? ""), response: ok() };
+        return {
+          data: detailFor(options?.params?.path?.key ?? "", options?.params?.query?.novel_id),
+          response: ok(),
+        };
       case "/api/prompts/{key}/diff":
         return {
           data: { bundled_content: BUNDLED, override_content: OVERRIDE },
@@ -214,6 +224,17 @@ describe("the summary list", () => {
     ).toBeTruthy();
 
     await userEvent.click(within(card).getByRole("button", { name: t("prompts.create") }));
+
+    // The editor asks for the novel tier, and the heading names the novel:
+    // a create wired to the global tier is the silent fork the contract
+    // forbids, and this is where it cannot hide.
+    expect(api.GET).toHaveBeenCalledWith("/api/prompts/{key}", {
+      params: { path: { key: "writing.continuation" }, query: { novel_id: NOVEL_ID } },
+    });
+    expect(
+      await screen.findByText(`${t("settings.task.writing.continuation")} · ${NOVELS[0].title}`),
+    ).toBeTruthy();
+
     const box = await screen.findByRole("textbox", {
       name: t("prompts.editor.contentLabel"),
     });
@@ -242,7 +263,10 @@ describe("a save", () => {
     const card = cardOf(t("settings.task.knowledge.check-consistency"));
     await userEvent.click(within(card).getByRole("button", { name: t("prompts.editNovel") }));
     await screen.findByRole("textbox", { name: t("prompts.editor.contentLabel") });
-    api.PUT.mockResolvedValue({ data: detailFor("knowledge.check-consistency"), response: ok() });
+    api.PUT.mockResolvedValue({
+      data: detailFor("knowledge.check-consistency", NOVEL_ID),
+      response: ok(),
+    });
 
     await userEvent.click(screen.getByRole("button", { name: t("prompts.editor.save") }));
 
@@ -265,6 +289,42 @@ describe("a save", () => {
     expect(api.PUT).toHaveBeenCalledWith("/api/prompts/{key}", {
       params: { path: { key: "writing.continuation" } },
       body: { content: OVERRIDE },
+    });
+  });
+
+  it("keeps an open editor's words and target when the novel filter moves", async () => {
+    await renderPage();
+    await selectNovel();
+
+    const card = cardOf(t("settings.task.knowledge.check-consistency"));
+    await userEvent.click(within(card).getByRole("button", { name: t("prompts.editNovel") }));
+    const box = await screen.findByRole("textbox", { name: t("prompts.editor.contentLabel") });
+    await userEvent.clear(box);
+    await userEvent.type(box, "A fresh voice for this one novel.");
+
+    // The filter moves on; the editor's target was captured at open time,
+    // so nothing it holds may drift or wipe.
+    await userEvent.selectOptions(screen.getByLabelText(t("prompts.filter")), "");
+    const kept = screen.getByRole("textbox", {
+      name: t("prompts.editor.contentLabel"),
+    }) as HTMLTextAreaElement;
+    expect(kept.value).toBe("A fresh voice for this one novel.");
+    // The heading still names the novel the editor was opened for.
+    expect(
+      screen.getByText(`${t("settings.task.knowledge.check-consistency")} · ${NOVELS[0].title}`),
+    ).toBeTruthy();
+
+    api.PUT.mockResolvedValue({
+      data: detailFor("knowledge.check-consistency", NOVEL_ID),
+      response: ok(),
+    });
+    await userEvent.click(screen.getByRole("button", { name: t("prompts.editor.save") }));
+
+    // The save writes the novel it was opened for — never an empty
+    // novel_id, never the global row.
+    expect(api.PUT).toHaveBeenCalledWith("/api/prompts/{key}", {
+      params: { path: { key: "knowledge.check-consistency" } },
+      body: { content: "A fresh voice for this one novel.", novel_id: NOVEL_ID },
     });
   });
 
@@ -318,6 +378,45 @@ describe("a reset", () => {
     expect(api.DELETE).toHaveBeenCalledWith("/api/prompts/{key}", {
       params: { path: { key: "writing.continuation" } },
     });
+  });
+});
+
+describe("a failed editor load", () => {
+  it("offers retry and a way out when the detail cannot load", async () => {
+    let detailCalls = 0;
+    api.GET.mockImplementation(async (path: string, options?: GetOptions) => {
+      if (path === "/api/prompts/{key}") {
+        detailCalls += 1;
+        if (detailCalls === 1) throw new TypeError("Failed to fetch");
+        return { data: detailFor(options?.params?.path?.key ?? ""), response: ok() };
+      }
+      switch (path) {
+        case "/api/writing/novels":
+          return { data: NOVELS, response: ok() };
+        case "/api/prompts":
+          return { data: SUMMARIES, response: ok() };
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+
+    await renderPage();
+    const card = cardOf(t("settings.task.writing.continuation"));
+    await userEvent.click(within(card).getByRole("button", { name: t("prompts.edit") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("prompts.editor.detailFailed"));
+
+    // Retry recovers; cancel leaves the page — no dead editor, no reload.
+    await userEvent.click(screen.getByRole("button", { name: t("prompts.editor.retry") }));
+    expect(
+      await screen.findByRole("textbox", { name: t("prompts.editor.contentLabel") }),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: t("prompts.editor.cancel") }));
+    expect(
+      screen.queryByRole("textbox", { name: t("prompts.editor.contentLabel") }),
+    ).toBeNull();
+    expect(detailCalls).toBe(2);
   });
 });
 

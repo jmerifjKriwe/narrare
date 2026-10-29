@@ -325,6 +325,7 @@
   "prompts.editor.save": "Save",
   "prompts.editor.cancel": "Cancel",
   "prompts.editor.reset": "Reset",
+  "prompts.editor.retry": "Retry",
   "prompts.editor.diff": "Show diff",
   "prompts.editor.hideDiff": "Hide diff",
   "prompts.editor.detailFailed": "The prompt could not be loaded.",

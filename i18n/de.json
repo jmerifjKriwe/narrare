@@ -325,6 +325,7 @@
   "prompts.editor.save": "Speichern",
   "prompts.editor.cancel": "Abbrechen",
   "prompts.editor.reset": "Zurücksetzen",
+  "prompts.editor.retry": "Erneut versuchen",
   "prompts.editor.diff": "Unterschied zeigen",
   "prompts.editor.hideDiff": "Unterschied verbergen",
   "prompts.editor.detailFailed": "Der Prompt konnte nicht geladen werden.",

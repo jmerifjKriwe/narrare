@@ -143,17 +143,22 @@ function Chip({ children }: { children: string }) {
  * reset of the scope it was opened from, and the side-by-side diff. The body
  * of a save names its scope — `novel_id` present for the novel tier, absent
  * for the global one — which is what keeps a novel edit off the global row.
+ *
+ * The novel the editor writes is captured at open time and named in the
+ * heading: the page's novel filter can move on while the editor stands, and
+ * neither the typed words nor the write's target may follow it.
  */
 function PromptEditor(props: {
   promptKey: string;
   keyLabel: string;
   scope: PromptScope;
   novelId: string;
+  novelTitle: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const t = useTranslation();
-  const { promptKey, keyLabel, scope, novelId, onClose, onSaved } = props;
+  const { promptKey, keyLabel, scope, novelId, novelTitle, onClose, onSaved } = props;
   const headingId = useId();
   const [detail, setDetail] = useState<PromptDetail | null>(null);
   const [detailFailed, setDetailFailed] = useState(false);
@@ -162,11 +167,16 @@ function PromptEditor(props: {
   const [actionFailed, setActionFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [diff, setDiff] = useState<PromptDiff | "failed" | null>(null);
+  // Bumped by the retry button: the one way a failed detail load asks again
+  // without leaving the editor.
+  const [attempt, setAttempt] = useState(0);
 
   // The detail load fills the editor's words: the text starts as the source
   // this scope would render with — the fork from an inherited tier happens on
   // visible words, never on a blank. A navigation away during the fetch must
-  // not write into an unmounted editor; the flag is the smallest guard.
+  // not write into an unmounted editor; the flag is the smallest guard. The
+  // novel id in the dependencies is the captured one, so a filter change on
+  // the page cannot re-run this load under the editor.
   useEffect(() => {
     let cancelled = false;
     setDetail(null);
@@ -197,7 +207,7 @@ function PromptEditor(props: {
     return () => {
       cancelled = true;
     };
-  }, [promptKey, scope, novelId]);
+  }, [promptKey, scope, novelId, attempt]);
 
   async function save(): Promise<void> {
     setBusy(true);
@@ -278,7 +288,12 @@ function PromptEditor(props: {
   // an action. The other tier is never touched, server-side or here.
   const resettable =
     detail !== null && detail.override !== null && detail.override.scope === scope;
-  const scopeName = t(scope === "global" ? "prompts.scope.global" : "prompts.scope.novel");
+  // The novel editor names the novel it writes, not just the tier: the
+  // filter on the page may since have moved, and the target must not.
+  const scopeName =
+    scope === "global" || novelTitle === null
+      ? t(scope === "global" ? "prompts.scope.global" : "prompts.scope.novel")
+      : novelTitle;
 
   return (
     <section
@@ -290,9 +305,23 @@ function PromptEditor(props: {
       </h3>
       {detail === null ? (
         detailFailed ? (
-          <p role="alert" className="mt-2 text-sm text-danger">
-            {t("prompts.editor.detailFailed")}
-          </p>
+          <>
+            <p role="alert" className="mt-2 text-sm text-danger">
+              {t("prompts.editor.detailFailed")}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setAttempt((current) => current + 1)}
+                className={action}
+              >
+                {t("prompts.editor.retry")}
+              </button>
+              <button type="button" onClick={onClose} className={action}>
+                {t("prompts.editor.cancel")}
+              </button>
+            </div>
+          </>
         ) : (
           <p className="mt-2 text-sm text-muted">{t("prompts.loading")}</p>
         )
@@ -333,7 +362,7 @@ function PromptEditor(props: {
             </p>
           ) : null}
           {diff === null ? null : diff === "failed" ? (
-            <p role="status" className="mt-2 text-sm text-muted">
+            <p role="alert" className="mt-2 text-sm text-danger">
               {t("prompts.editor.diffFailed")}
             </p>
           ) : (
@@ -349,14 +378,14 @@ function PromptEditor(props: {
                   {sideBySide(diff.bundled_content, diff.override_content).map((row, index) => (
                     <Fragment key={index}>
                       <pre
-                        className={`whitespace-pre-wrap ${
+                        className={`min-w-0 break-words whitespace-pre-wrap ${
                           row.right === null ? "border-l-2 border-danger pl-1" : "text-muted"
                         }`}
                       >
                         {row.left}
                       </pre>
                       <pre
-                        className={`whitespace-pre-wrap ${
+                        className={`min-w-0 break-words whitespace-pre-wrap ${
                           row.left === null ? "border-l-2 border-primary pl-1" : "text-muted"
                         }`}
                       >
@@ -398,21 +427,20 @@ function PromptEditor(props: {
 function PromptCard(props: {
   summary: PromptSummary;
   novelSelected: boolean;
-  novelId: string;
-  editorScope: PromptScope | null;
+  editor: { scope: PromptScope; novelId: string; novelTitle: string | null } | null;
   onEdit: (scope: PromptScope) => void;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const t = useTranslation();
-  const { summary, novelSelected, novelId, editorScope, onEdit, onClose, onSaved } = props;
+  const { summary, novelSelected, editor, onEdit, onClose, onSaved } = props;
   const label = keyLabelOf(summary.key, t);
   return (
     <li className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-      <p className="flex flex-wrap items-baseline gap-2 font-medium">
+      <h2 className="flex flex-wrap items-baseline gap-2 text-sm font-medium">
         {label}
         <code className="text-xs font-normal text-muted">{summary.key}</code>
-      </p>
+      </h2>
       <p className="mt-1 text-muted">{summary.bundled_summary}</p>
 
       <div className="mt-3 flex flex-col gap-3">
@@ -456,12 +484,13 @@ function PromptCard(props: {
         ) : null}
       </div>
 
-      {editorScope === null ? null : (
+      {editor === null ? null : (
         <PromptEditor
           promptKey={summary.key}
           keyLabel={label}
-          scope={editorScope}
-          novelId={novelId}
+          scope={editor.scope}
+          novelId={editor.novelId}
+          novelTitle={editor.novelTitle}
           onClose={onClose}
           onSaved={onSaved}
         />
@@ -478,11 +507,19 @@ function PromptCard(props: {
  */
 export function PromptsPage() {
   const t = useTranslation();
+  const filterId = useId();
   const [novels, setNovels] = useState<Novel[]>([]);
   const [novelId, setNovelId] = useState("");
   const [rows, setRows] = useState<PromptSummary[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [editor, setEditor] = useState<{ key: string; scope: PromptScope } | null>(null);
+  // The open editor carries the novel it was opened for — captured here, at
+  // open time, so the filter's later moves cannot re-target its save or wipe
+  // its words. A filter change leaves it exactly as it stands.
+  const [editor, setEditor] = useState<{
+    key: string;
+    scope: PromptScope;
+    novelId: string;
+  } | null>(null);
   // Bumped when a save or reset lands: the list refetches through the effect
   // instead of a handler patching rows by hand.
   const [refresh, setRefresh] = useState(0);
@@ -523,9 +560,9 @@ export function PromptsPage() {
       <h1 className="text-2xl font-semibold tracking-tight">{t("prompts.heading")}</h1>
 
       <div className="mt-6 flex max-w-64 flex-col gap-1 text-sm font-medium">
-        <label htmlFor="prompts-novel-filter">{t("prompts.filter")}</label>
+        <label htmlFor={filterId}>{t("prompts.filter")}</label>
         <select
-          id="prompts-novel-filter"
+          id={filterId}
           value={novelId}
           onChange={(event) => setNovelId(event.target.value)}
           className={field}
@@ -546,7 +583,9 @@ export function PromptsPage() {
       ) : null}
 
       {rows === null ? (
-        <p className="mt-4 text-sm text-muted">{t("prompts.loading")}</p>
+        loadFailed ? null : (
+          <p className="mt-4 text-sm text-muted">{t("prompts.loading")}</p>
+        )
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
           {rows.map((summary) => (
@@ -554,9 +593,17 @@ export function PromptsPage() {
               key={summary.key}
               summary={summary}
               novelSelected={novelId !== ""}
-              novelId={novelId}
-              editorScope={editor?.key === summary.key ? editor.scope : null}
-              onEdit={(scope) => setEditor({ key: summary.key, scope })}
+              editor={
+                editor?.key === summary.key
+                  ? {
+                      scope: editor.scope,
+                      novelId: editor.novelId,
+                      novelTitle:
+                        novels.find((novel) => novel.id === editor.novelId)?.title ?? null,
+                    }
+                  : null
+              }
+              onEdit={(scope) => setEditor({ key: summary.key, scope, novelId })}
               onClose={() => setEditor(null)}
               onSaved={() => {
                 setEditor(null);

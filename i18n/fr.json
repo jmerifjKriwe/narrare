@@ -325,6 +325,7 @@
   "prompts.editor.save": "Enregistrer",
   "prompts.editor.cancel": "Annuler",
   "prompts.editor.reset": "Réinitialiser",
+  "prompts.editor.retry": "Réessayer",
   "prompts.editor.diff": "Afficher les différences",
   "prompts.editor.hideDiff": "Masquer les différences",
   "prompts.editor.detailFailed": "Le prompt n'a pas pu être chargé.",
