@@ -15,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.knowledge.prompts import (
     BODY_LIMIT,
+    CONSISTENCY_KEY,
+    EXTRACTION_KEY,
     ParsedEntity,
     ParsedFinding,
     ParsedRelation,
-    consistency_prompt,
-    extraction_prompt,
+    consistency_variables,
+    extraction_variables,
 )
 from app.capabilities.knowledge.repository import (
     ConsistencyFindingRepository,
@@ -29,6 +31,7 @@ from app.capabilities.knowledge.repository import (
 from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.resolution import resolve_provider
+from app.kernel.prompts import render
 
 from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
@@ -315,7 +318,18 @@ async def extract_entities(
 
     body = chapter.body
     truncated = len(body) > BODY_LIMIT
-    prompt = extraction_prompt(chapter_title=chapter.title, body=body[:BODY_LIMIT])
+    # The prompt renders through the registry's effective chain — the novel's
+    # override, else the user's global one, else the bundled template. The cut
+    # stays here: the body behind the marker is never over the bound. A render
+    # the chain refuses raises PromptRenderError, which fails this row the way
+    # a MalformedAnswerError does — a failed, named job, nothing written.
+    prompt = await render(
+        session,
+        job.user_id,
+        EXTRACTION_KEY,
+        extraction_variables(chapter_title=chapter.title, body=body[:BODY_LIMIT]),
+        novel_id=chapter.novel_id,
+    )
     resolved = await resolve_provider(session, job.user_id, "knowledge.extract-entities")
 
     async def audit(call: AuditedCall) -> None:
@@ -475,9 +489,16 @@ async def check_consistency(
         # A re-run must not inherit the previous run's percentage.
         await report(0)
     for group in groups:
-        prompt = consistency_prompt(
-            entities=canon,
-            chapters=[(chapter.title, chapter.body) for chapter in group],
+        # Same chain render as the extraction: the cut lives in the grouping
+        # (a group is under BODY_LIMIT), a refusal fails the row by name.
+        prompt = await render(
+            session,
+            job.user_id,
+            CONSISTENCY_KEY,
+            consistency_variables(
+                entities=canon, chapters=[(chapter.title, chapter.body) for chapter in group]
+            ),
+            novel_id=novel_id,
         )
         found = await ask_structured(
             resolved.provider,
