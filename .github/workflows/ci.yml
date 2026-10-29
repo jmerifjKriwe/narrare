@@ -239,6 +239,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
+          fail_ci_if_error: true
       # A second run of the same action with `report_type`, not Codecov's
       # separate test-results-action: that one is deprecated in favor of this
       # (it says so on every run) and would be the only Node-20 action left in
@@ -249,6 +250,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
+          fail_ci_if_error: true
           report_type: test_results
 
   e2e:
