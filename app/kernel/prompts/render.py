@@ -285,15 +285,22 @@ async def render(
     Render failures re-raise ``PromptRenderError`` with their named reason.
 
     Includes resolve through the same chain in the same scope (same session,
-    user and ``novel_id``): the repository owns the preference, and one
-    resolved key costs exactly one row lookup. Jinja's loader is synchronous
-    while the chain's reads are async, so the render runs off the event loop
-    and each include walks back onto it — the loop stays free to serve the
-    read, the session never leaves its loop, and a render of a template
-    without includes never enters the bridge. A key the chain cannot resolve
-    reaches the loader as its ``KeyError`` and is refused
-    ``include-missing``; every other failure of the lookup — the database
-    being down — passes through untranslated, an outage and not a refusal.
+    user and ``novel_id``): the repository owns the preference, and each
+    resolved key costs one ``effective()`` lookup — the novel tier first when
+    scoped, the global tier behind it; a key included twice costs nothing the
+    second time, the environment caching what it loaded. Jinja's loader is
+    synchronous while the chain's reads are async, so the render runs off the
+    event loop and each include walks back onto it — the loop stays free to
+    serve the read, the session never leaves its loop, and a render of a
+    template without includes never enters the bridge. A cancelled request
+    cannot strand that bridge: the render is shielded and waited out before
+    the cancellation is raised, so it — its include reads included — always
+    finishes while the session is still the request's, and a cancellation
+    re-delivered while the wait lasts is swallowed until the wait is over.
+    A key the chain cannot resolve reaches the loader as its
+    ``KeyError`` and is refused ``include-missing``; every other failure of
+    the lookup — the database being down — passes through untranslated, an
+    outage and not a refusal.
 
     Read-only: no write here, the caller owns the transaction as always.
     """
@@ -306,9 +313,28 @@ async def render(
     loop = asyncio.get_running_loop()
 
     def include(name: str) -> str:
-        """The include chain: the same walk, one row lookup for the named key."""
+        """The include chain: the same walk, one ``effective()`` lookup for the key."""
         included_spec = registry.spec(name)  # unknown -> KeyError -> include-missing
         row = asyncio.run_coroutine_threadsafe(repository.effective(name, novel_id), loop).result()
         return row.content if row is not None else included_spec.template
 
-    return await asyncio.to_thread(render_source, source, variables, include=include)
+    inner = asyncio.ensure_future(
+        asyncio.to_thread(render_source, source, variables, include=include)
+    )
+    try:
+        return await asyncio.shield(inner)
+    except asyncio.CancelledError:
+        # The request is going away, but the session is still ours until this
+        # coroutine returns: wait the render out so its include reads land on
+        # the live session. Cancellation may be re-delivered while we wait
+        # (a cancelling scope keeps re-cancelling until its task exits); each
+        # delivery is swallowed — the shield keeps the render itself
+        # uncancelled — and the caller's cancellation is raised afterwards.
+        while not inner.done():
+            try:
+                await asyncio.shield(inner)
+            except asyncio.CancelledError:
+                continue
+            except Exception:
+                break  # the render failed on its own; the cancellation wins
+        raise

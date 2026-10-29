@@ -11,9 +11,14 @@ target (override, not bundled), an unknown key a ``KeyError`` for the
 caller's 404 while an unknown *include* is the named ``include-missing``
 refusal — also under ``ignore missing``, which is out of contract: a
 missing key is refused by name, never silently skipped — and
-``syntax``/``include-depth`` flowing through the stored path unchanged.
+``syntax``/``include-depth``/``include-cycle`` flowing through the stored
+path unchanged. The bridge the chain walks is pinned at both ends: a
+database-shaped lookup failure passes through untranslated (an outage,
+not a refusal), and a cancelled render is waited out — its include reads
+finish on the live session before the cancellation is raised.
 """
 
+import asyncio
 from uuid import UUID, uuid4
 
 import pytest
@@ -24,7 +29,7 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.prompts import PromptRegistry, PromptRenderError, render
 from app.kernel.prompts import registry as prompts_registry
-from app.kernel.prompts.models import PromptTemplateRepository
+from app.kernel.prompts.models import PromptTemplate, PromptTemplateRepository
 
 OWNER = uuid4()
 OTHER = uuid4()
@@ -43,6 +48,8 @@ def toy_registry(monkeypatch: pytest.MonkeyPatch) -> PromptRegistry:
         "toy.ask", template="bundled ask {{ q }}", sample_variables=lambda: {"q": "s"}
     )
     registry.register("toy.frame", template="bundled frame", sample_variables=lambda: {})
+    registry.register("toy.a", template="bundled a", sample_variables=lambda: {})
+    registry.register("toy.b", template="bundled b", sample_variables=lambda: {})
     registry.register("toy.k6", template="END", sample_variables=lambda: {})
     for depth in range(6):
         registry.register(
@@ -204,3 +211,95 @@ async def test_stored_chain_deeper_than_five_is_include_depth() -> None:
         with pytest.raises(PromptRenderError) as error:
             await render(session, OWNER, "toy.k0", {})
     assert error.value.reason == "include-depth"
+
+
+@pytest.mark.usefixtures("two_users", "toy_registry")
+async def test_stored_cycle_is_include_cycle() -> None:
+    """``a`` → ``b`` → ``a`` through saved rows: the guard sees chains from the database."""
+    async with Session() as session:
+        repo = PromptTemplateRepository(session, OWNER)
+        await repo.save("toy.a", "{% include 'toy.b' %}", None)
+        await repo.save("toy.b", "{% include 'toy.a' %}", None)
+        await session.commit()
+        with pytest.raises(PromptRenderError) as error:
+            await render(session, OWNER, "toy.a", {})
+    assert error.value.reason == "include-cycle"
+
+
+@pytest.mark.usefixtures("two_users", "toy_registry")
+async def test_include_lookup_failure_passes_through_untranslated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A database-shaped failure of the include lookup is an outage, not a refusal.
+
+    The exception crosses ``Future.result()`` → worker thread → the loader's
+    sentinel → ``render_source``: exactly the seam a refactor breaks, and
+    breaking it would frame an outage as a refusal the API maps to an error
+    frame. The lookup fails only for the included key, so the top-level read
+    proves the path itself works.
+    """
+    real_effective = PromptTemplateRepository.effective
+
+    async def broken_effective(
+        self: PromptTemplateRepository, prompt_key: str, novel_id: UUID | None
+    ) -> PromptTemplate | None:
+        if prompt_key == "toy.frame":
+            raise OSError("db down")
+        return await real_effective(self, prompt_key, novel_id)
+
+    monkeypatch.setattr(PromptTemplateRepository, "effective", broken_effective)
+
+    async with Session() as session:
+        repo = PromptTemplateRepository(session, OWNER)
+        await repo.save("toy.ask", "A[{% include 'toy.frame' %}]", None)
+        await session.commit()
+        with pytest.raises(OSError, match="db down"):
+            await render(session, OWNER, "toy.ask", {})
+
+
+@pytest.mark.usefixtures("two_users", "toy_registry")
+async def test_cancellation_waits_for_the_render_to_finish(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cancelled request cannot strand an include read on a torn-down session.
+
+    The render's wait does not abandon its worker: the cancellation surfaces
+    only after the render — its include reads included — has finished, so no
+    read is scheduled against a session the request already closed. The gate
+    holds the include read until the cancellation is in flight; without the
+    wait, the task unwinds before the read completes and ``completed`` stops
+    at the top-level key.
+    """
+    real_effective = PromptTemplateRepository.effective
+    started = asyncio.Event()
+    release = asyncio.Event()
+    completed: list[str] = []
+
+    async def gated_effective(
+        self: PromptTemplateRepository, prompt_key: str, novel_id: UUID | None
+    ) -> PromptTemplate | None:
+        if prompt_key == "toy.frame" and not started.is_set():
+            started.set()
+            await release.wait()
+        row = await real_effective(self, prompt_key, novel_id)
+        completed.append(prompt_key)
+        return row
+
+    monkeypatch.setattr(PromptTemplateRepository, "effective", gated_effective)
+
+    async with Session() as session:
+        repo = PromptTemplateRepository(session, OWNER)
+        await repo.save("toy.ask", "A[{% include 'toy.frame' %}]", None)
+        await repo.save("toy.frame", "FRAME", None)
+        await session.commit()
+
+        task = asyncio.create_task(render(session, OWNER, "toy.ask", {}))
+        await started.wait()
+        task.cancel()
+        await asyncio.sleep(0)  # let the cancellation reach the render's wait
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert task.cancelled()
+        # the include read completed on the live session before the unwind
+        assert completed == ["toy.ask", "toy.frame"]
