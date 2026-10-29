@@ -222,13 +222,24 @@ jobs:
       - name: Tests with coverage
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+      # `!cancelled()` on both uploads: a report is worth uploading even when a
+      # test failed, and a report that stays away is worse than a red one. A
+      # bare `if:` carries `success()`, so the coverage upload skipped itself on
+      # every failing `main` push: 0a468e49 reached Codecov as a commit with no
+      # report at all (`state: pending`, `totals: null`), and the dashboard kept
+      # showing the previous merge — the failing run is exactly the one whose
+      # coverage matters. `always()` would be wrong in the other direction: it
+      # also uploads from a run `concurrency` cancelled mid-suite, which is
+      # partial by construction. A hard crash that leaves no `coverage.xml`
+      # still fails the upload step, and should: on a green run that is a real
+      # defect.
       - name: Upload coverage reports to Codecov
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
-      # `!cancelled()`: a report is worth uploading even when a test failed.
+          fail_ci_if_error: true
       # A second run of the same action with `report_type`, not Codecov's
       # separate test-results-action: that one is deprecated in favor of this
       # (it says so on every run) and would be the only Node-20 action left in
@@ -239,6 +250,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
+          fail_ci_if_error: true
           report_type: test_results
 
   e2e:
