@@ -67,10 +67,13 @@ MAX_INCLUDE_DEPTH = 5
 class _IncludeGuard:
     """The render-time include stack: cycle and depth, refused before deeper rendering.
 
-    One guard per render. Every included level's stream enters as its first
-    event and pops in a ``finally``, so the stack holds exactly the keys
-    whose bodies are rendering above the current point — a key on the stack
-    is a cycle, a stack already at the limit is a chain too deep.
+    One guard per render. A deeper body only runs in two places — the eager
+    without-context load (``_get_default_module``) and the with-context
+    render through ``root_render_func`` — and each of those is bracketed:
+    the guard enters before the body runs and pops in a ``finally`` after
+    it, so the stack holds exactly the keys whose bodies are rendering
+    above the current point — a key on the stack is a cycle, a stack
+    already at the limit is a chain too deep.
     """
 
     def __init__(self, limit: int) -> None:
@@ -194,7 +197,7 @@ def _guarded(template: Template, guard: _IncludeGuard) -> Template:
     A template that was not loaded by name — a ``Template`` object passed
     through the variables, outside the prompt contract — has no key to guard
     under and passes through raw. The cast is the wrapper's contract: it
-    answers the include node's members and nothing more.
+    answers the include and extends nodes' members and nothing more.
     """
     if template.name is None:
         return template

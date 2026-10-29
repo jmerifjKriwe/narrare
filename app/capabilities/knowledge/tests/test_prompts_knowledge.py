@@ -427,7 +427,8 @@ async def test_a_refused_consistency_render_fails_the_job_row_and_writes_nothing
     handler, same failed, named row, nothing written.
 
     The novel carries one checkable chapter, so a group exists and the render
-    actually runs; no provider is resolved, no call is made.
+    actually runs; the provider is resolved before the render loop but is
+    never asked — no call, no audit row.
     """
     from app.kernel.db.session import Session
     from app.kernel.prompts.models import PromptTemplateRepository
