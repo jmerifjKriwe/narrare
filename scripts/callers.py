@@ -23,6 +23,7 @@ import subprocess  # nosec B404 - controlled pyright-langserver invocation, no s
 import sys
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any, TypedDict, cast
@@ -93,14 +94,37 @@ class LanguageServer:
             cwd=cwd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
         )
         self._messages: queue.Queue[dict[str, Any] | None] = queue.Queue()
+        # The last stderr lines are the only explanation a crash leaves behind.
+        self._stderr: deque[str] = deque(maxlen=8)
         self._next_id = 1
-        stdout = self._proc.stdout
-        if stdout is None:  # pragma: no cover - Popen above guarantees it
-            raise RuntimeError("pyright-langserver has no stdout")
-        threading.Thread(target=self._read, args=(stdout,), daemon=True).start()
+        stdout, stderr = self._proc.stdout, self._proc.stderr
+        if stdout is None or stderr is None:  # pragma: no cover - Popen guarantees both
+            raise RuntimeError("pyright-langserver has no pipes")
+        self._threads = [
+            threading.Thread(target=self._read, args=(stdout,), daemon=True),
+            threading.Thread(target=self._drain_stderr, args=(stderr,), daemon=True),
+        ]
+        for thread in self._threads:
+            thread.start()
+
+    def _drain_stderr(self, stream: IO[bytes]) -> None:
+        """Keep the tail of whatever the server complained about."""
+        for line in stream:
+            text = line.decode(errors="replace").strip()
+            if text:
+                self._stderr.append(text)
+
+    def _failure(self, method: str) -> RuntimeError:
+        """Name the exit, not a timeout: a dead server and a slow one differ."""
+        code = self._proc.poll()
+        cause = " | ".join(self._stderr) or "nothing on stderr"
+        return RuntimeError(
+            f"pyright-langserver closed its output before answering {method} "
+            f"(exit code {code}: {cause})"
+        )
 
     def _read(self, stream: IO[bytes]) -> None:
         """Signal the end of server output even when frame parsing fails."""
@@ -138,7 +162,10 @@ class LanguageServer:
         if stdin is None:  # pragma: no cover - Popen above guarantees it
             raise RuntimeError("pyright-langserver has no stdin")
         stdin.write(f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
-        stdin.flush()
+        try:
+            stdin.flush()
+        except BrokenPipeError:
+            raise self._failure(str(message.get("method", "?"))) from None
 
     def notify(self, method: str, params: dict[str, Any]) -> None:
         """Send a notification that does not expect a response."""
@@ -161,9 +188,7 @@ class LanguageServer:
                     f"pyright did not answer {method} within {timeout:.0f}s"
                 ) from None
             if message is None:
-                raise RuntimeError(
-                    f"pyright-langserver closed its output before answering {method}"
-                )
+                raise self._failure(method)
             if message.get("id") != request_id:
                 continue
             error = message.get("error")
@@ -173,9 +198,14 @@ class LanguageServer:
 
     def close(self) -> None:
         """Terminate and reap the language server, then release its pipes."""
-        self._proc.kill()
+        if self._proc.poll() is None:
+            self._proc.kill()
         self._proc.wait(timeout=5)
-        for stream in (self._proc.stdin, self._proc.stdout):
+        # The readers own the pipes; joining them first keeps interpreter
+        # shutdown from finalising a file another thread still reads.
+        for thread in self._threads:
+            thread.join(timeout=2)
+        for stream in (self._proc.stdin, self._proc.stdout, self._proc.stderr):
             if stream is not None:
                 stream.close()
 
@@ -206,10 +236,14 @@ def position_for(source: list[str], line_index: int, name: str) -> dict[str, int
     }
 
 
-def collect_calls(result: list[IncomingCall]) -> list[CallSite]:
-    """Normalize incoming call ranges into unique, sorted, 1-based call sites."""
+def collect_calls(result: list[IncomingCall] | None) -> list[CallSite]:
+    """Normalize incoming call ranges into unique, sorted, 1-based call sites.
+
+    Pyright answers `null` instead of an empty list for files outside its
+    workspace, so an absent answer is a legitimate "no callers".
+    """
     sites: list[CallSite] = []
-    for call in result:
+    for call in result or []:
         origin = call.get("from")
         if origin is None:
             continue
@@ -260,7 +294,8 @@ def symbol_on_line(source: list[str], line_index: int) -> str:
 def parse_target(argv: list[str]) -> tuple[Path, str, int | None]:
     """Resolve a file target with an optional symbol and inline line number."""
     if not argv or len(argv) > 2:
-        raise ValueError("usage: callers <path.py> <symbol>  |  callers <path.py:line>")
+        surplus = f"; drop {argv[2:]!r}" if len(argv) > 2 else ""
+        raise ValueError(f"usage: callers <path.py> <symbol>  |  callers <path.py:line>{surplus}")
     target = argv[0]
     inline_line = None
     if ":" in target and target.rsplit(":", 1)[1].isdigit():

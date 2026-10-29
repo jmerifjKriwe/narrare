@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess  # nosec B404 - controlled just invocation, no shell
 import sys
+import time
 from pathlib import Path
 from typing import cast
 
@@ -237,3 +238,26 @@ def test_a_record_without_a_range_falls_back_to_the_callers_own_selection() -> N
         ],
     )
     assert collect_calls(with_selection) == [CallSite("/x.py", 4, "caller")]
+
+
+def test_the_surplus_argument_is_named() -> None:
+    with pytest.raises(ValueError, match="typo"):
+        parse_target(["app/kernel/llm/profiles.py", "ordered", "typo"])
+
+
+def test_no_call_records_means_no_callers() -> None:
+    """Pyright answers null for a file outside its workspace; that is zero callers."""
+    assert collect_calls([]) == []
+    assert collect_calls(None) == []
+
+
+def test_a_server_that_exits_silently_names_its_exit_code() -> None:
+    server = LanguageServer(["/bin/true"], ROOT)
+    try:
+        started = time.monotonic()
+        with pytest.raises(RuntimeError, match="closed its output before answering") as error:
+            server.request("initialize", {}, timeout=30)
+        assert time.monotonic() - started < 5
+        assert "exit code" in str(error.value)
+    finally:
+        server.close()
