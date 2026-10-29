@@ -6,20 +6,21 @@ its body carries, a delete removes exactly the row, a merge re-points the
 source's edges and folds its fields into the survivor instead of dropping
 them (D3), and the list filters by type and tag or fuzzy-finds a misspelt
 name over the maintained search_text. Every write that moves identity
-words recomputes search_text and the vector, and the vector stays inside
-the one-width corpus rule — a model switch is refused like an upload. The
-scoping answer is the product's one answer everywhere: another user's row
-is a 404, indistinguishable from no row at all.
+words recomputes search_text; nothing here reaches the embedding boundary.
+The scoping answer is the product's one answer everywhere: another user's
+row is a 404, indistinguishable from no row at all.
 """
 
 import asyncio
-from uuid import uuid4
+from collections.abc import Sequence  # noqa: TC003  the exploding provider names it
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.main import app
 from app.capabilities.knowledge.repository import EntityRepository, RelationRepository
+from app.capabilities.knowledge.schemas import EntityUpdate
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
@@ -41,9 +42,8 @@ async def _entities(*rows: tuple[str, str, str]) -> list[Entity]:
 
     The CRUD contract is about rows that exist, not about how they were
     born — review's own tests pin the birth. Seeding rides the repository
-    so the derived columns (search_text) are written by the code under
-    test, never by hand; the vector is left unset, which is the seeded
-    row's honest state — the width guard only reads set vectors.
+    so the derived column (search_text) is written by the code under
+    test, never by hand.
     """
     async with Session() as session:
         novel = Novel(user_id=LOCAL_USER_ID, title="Die Korrektur")
@@ -51,7 +51,7 @@ async def _entities(*rows: tuple[str, str, str]) -> list[Entity]:
         await session.flush()
         repository = EntityRepository(session, LOCAL_USER_ID)
         created = [
-            await repository.create(novel.id, name, type_, content, [], [], None)
+            await repository.create(novel.id, name, type_, content, [], [])
             for name, type_, content in rows
         ]
         await session.commit()
@@ -68,7 +68,7 @@ async def _labeled_entities(
         await session.flush()
         repository = EntityRepository(session, LOCAL_USER_ID)
         created = [
-            await repository.create(novel.id, name, type_, content, aliases, tags, None)
+            await repository.create(novel.id, name, type_, content, aliases, tags)
             for name, type_, content, aliases, tags in rows
         ]
         await session.commit()
@@ -179,7 +179,7 @@ async def test_a_patch_validates_and_dedupes_aliases_and_tags() -> None:
         assert listed.json()[0]["tags"] == []
 
 
-async def test_an_update_recomputes_search_text_and_vector() -> None:
+async def test_an_update_recomputes_search_text() -> None:
     [mira] = await _entities(("Mira", "character", ""))
     async with _client() as client:
         patched = await client.patch(
@@ -199,37 +199,6 @@ async def test_an_update_recomputes_search_text_and_vector() -> None:
         row = await session.get(Entity, mira.id)
     assert row is not None
     assert row.search_text == "Mira Rhea protagonist"
-    assert row.embedding is not None  # the vector rode the update too
-
-
-async def test_an_update_at_another_embedding_width_is_refused_like_an_upload() -> None:
-    async with Session() as session:
-        novel = Novel(user_id=LOCAL_USER_ID, title="Die Weite")
-        session.add(novel)
-        await session.flush()
-        entity = Entity(
-            user_id=LOCAL_USER_ID,
-            novel_id=novel.id,
-            name="Mira",
-            type="character",
-            search_text="Mira",
-            embedding=[0.1, 0.2, 0.3],  # a corpus embedded at width 3
-        )
-        session.add(entity)
-        await session.commit()
-
-    async with _client() as client:
-        refused = await client.patch(
-            f"/api/knowledge/entities/{entity.id}", json={"content": "Neuer Text."}
-        )
-        assert refused.status_code == 409
-        # a dict, not a sentence: the UI localizes this error and needs a code
-        assert refused.json()["detail"]["code"] == "embedding-mismatch"
-        assert refused.json()["detail"]["stored"] == 3
-
-        # the refusal wrote nothing
-        listed = await client.get(f"/api/knowledge/novels/{novel.id}/entities")
-        assert listed.json()[0]["content"] == ""
 
 
 async def test_the_list_filters_by_type_tag_and_finds_a_misspelt_name() -> None:
@@ -314,12 +283,12 @@ async def test_a_merge_repoints_the_edges_and_folds_the_fields() -> None:
         entities = EntityRepository(session, LOCAL_USER_ID)
         relations = RelationRepository(session, LOCAL_USER_ID)
         mira = await entities.create(
-            novel.id, "Mira", "character", "Miras Kapitel.", ["Miralam"], ["protagonist"], None
+            novel.id, "Mira", "character", "Miras Kapitel.", ["Miralam"], ["protagonist"]
         )
         haus = await entities.create(
-            novel.id, "Haus", "location", "Das alte Haus.", ["The House"], ["building"], None
+            novel.id, "Haus", "location", "Das alte Haus.", ["The House"], ["building"]
         )
-        see = await entities.create(novel.id, "See", "location", "", [], [], None)
+        see = await entities.create(novel.id, "See", "location", "", [], [])
         await relations.create(mira.id, see.id, "lebt_am", None)  # outgoing, moves
         await relations.create(see.id, mira.id, "erwähnt", "Kapitel 1")  # incoming, moves
         await relations.create(haus.id, haus.id, "kennt", None)  # the survivor's own edge
@@ -366,7 +335,6 @@ async def test_a_merge_repoints_the_edges_and_folds_the_fields() -> None:
         row = await session.get(Entity, haus.id)
     assert row is not None
     assert row.search_text == "Haus The House Miralam Mira building protagonist"
-    assert row.embedding is not None  # the survivor was re-embedded
 
 
 async def test_a_merge_of_same_named_rows_keeps_the_name_once() -> None:
@@ -420,34 +388,6 @@ async def test_the_list_orders_by_similarity_not_creation() -> None:
         assert [row["name"] for row in found.json()] == ["Katharina", "Katharinka"]
 
 
-async def test_a_merge_at_another_embedding_width_is_refused_and_deletes_nothing() -> None:
-    """The fold re-embeds the survivor (D5): a width mismatch refuses the merge
-    like an upload — before the source is deleted, so nothing is lost."""
-    async with Session() as session:
-        novel = Novel(user_id=LOCAL_USER_ID, title="Die Weite")
-        session.add(novel)
-        await session.flush()
-        entities = EntityRepository(session, LOCAL_USER_ID)
-        target = await entities.create(novel.id, "Haus", "location", "", [], [], [0.1, 0.2, 0.3])
-        source = await entities.create(
-            novel.id, "Mira", "character", "Miras Kapitel.", [], [], None
-        )
-        await session.commit()
-
-    async with _client() as client:
-        refused = await client.post(
-            f"/api/knowledge/entities/{source.id}/merge", json={"target_id": str(target.id)}
-        )
-        assert refused.status_code == 409
-        # a dict, not a sentence: the UI localizes this error and needs a code
-        assert refused.json()["detail"]["code"] == "embedding-mismatch"
-
-        # the refusal folded and deleted nothing
-        listed = await client.get(f"/api/knowledge/novels/{novel.id}/entities")
-        assert [row["name"] for row in listed.json()] == ["Haus", "Mira"]
-        assert listed.json()[1]["content"] == "Miras Kapitel."
-
-
 async def test_an_entity_cannot_merge_into_itself() -> None:
     mira, _haus = await _entities(("Mira", "character", ""), ("Haus", "location", ""))
     async with _client() as client:
@@ -471,8 +411,9 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
     both fold from the same pre-fold row, and the later commit would
     overwrite the earlier fold while both sources are deleted — one fold
     unrecoverable. The race is driven at the service seam, like the
-    relation race tests: the first merge's embed is the window, and the
-    second merge (a fresh session, a second service) runs inside it.
+    relation race tests: the first merge's two row locks are the window,
+    and the second merge (a fresh session, a second service) runs inside
+    it.
     """
 
     async with Session() as session:
@@ -481,13 +422,13 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
         await session.flush()
         entities = EntityRepository(session, LOCAL_USER_ID)
         haus = await entities.create(
-            novel.id, "Haus", "location", "Das alte Haus.", ["The House"], ["building"], None
+            novel.id, "Haus", "location", "Das alte Haus.", ["The House"], ["building"]
         )
         mira = await entities.create(
-            novel.id, "Mira", "character", "Miras Kapitel.", ["Miralam"], ["protagonist"], None
+            novel.id, "Mira", "character", "Miras Kapitel.", ["Miralam"], ["protagonist"]
         )
         see = await entities.create(
-            novel.id, "See", "location", "Der See liegt tief.", ["Der See"], ["Schauplatz"], None
+            novel.id, "See", "location", "Der See liegt tief.", ["Der See"], ["Schauplatz"]
         )
         await session.commit()
 
@@ -495,13 +436,17 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
         service_a = KnowledgeService(session_a, LOCAL_USER_ID, FakeEmbeddingProvider())
         service_b = KnowledgeService(session_b, LOCAL_USER_ID, FakeEmbeddingProvider())
         race: dict[str, asyncio.Task[Entity]] = {}
-        original_embed = KnowledgeService._embed_entity  # pyright: ignore[reportPrivateUsage]  the window is the embed, the one seam the interleaving can pause
+        original_locked = EntityRepository.locked
+        locks = [0]
 
-        async def racing_embed(self: KnowledgeService, entity: Entity) -> None:
-            await original_embed(self, entity)
-            if self is not service_a:
-                return
-            # The second merge runs while the first holds its reads: with
+        async def racing_locked(self: EntityRepository, entity_id: UUID) -> Entity | None:
+            row = await original_locked(self, entity_id)
+            if self.session is not session_a:
+                return row
+            locks[0] += 1
+            if locks[0] != 2:
+                return row
+            # The second merge runs while the first holds both locks: with
             # the locks it blocks on the survivor until the first commit;
             # without them it completes here and its fold is lost to the
             # first merge's stale overwrite. The final assertions tell the
@@ -511,8 +456,9 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
                 if race["task"].done():
                     break
                 await asyncio.sleep(0.01)
+            return row
 
-        monkeypatch.setattr(KnowledgeService, "_embed_entity", racing_embed)
+        monkeypatch.setattr(EntityRepository, "locked", racing_locked)
         await service_a.merge_entities(mira.id, haus.id)
         await race["task"]
 
@@ -527,6 +473,54 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
         )
         assert await session.get(Entity, mira.id) is None
         assert await session.get(Entity, see.id) is None
+
+
+class _ExplodingEmbedding:
+    """An embedding boundary that proves it was not asked."""
+
+    def describe(self) -> str:
+        return "exploding"
+
+    def configuration_problems(self) -> list[str]:
+        return []
+
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        raise AssertionError(f"an entity write must not embed: {texts!r}")
+
+
+async def test_entity_writes_never_reach_the_embedding_provider() -> None:
+    """Accept, update and merge are entity writes, not corpus writes.
+
+    No read path consumes an entity vector — the document vector is the corpus
+    chat retrieves — so none of the three may wait for the provider or be
+    refused by its width rule.
+    """
+    async with Session() as session:
+        novel = Novel(user_id=LOCAL_USER_ID, title="Der Stille Wald")
+        session.add(novel)
+        await session.flush()
+        chapter = Chapter(user_id=LOCAL_USER_ID, novel_id=novel.id, title="Ankunft", position=0)
+        session.add(chapter)
+        await session.flush()
+        suggestion = EntitySuggestion(
+            user_id=LOCAL_USER_ID,
+            novel_id=novel.id,
+            chapter_id=chapter.id,
+            name="Mira",
+            type="character",
+            description="Mira erscheint.",
+            status="pending",
+        )
+        session.add(suggestion)
+        repository = EntityRepository(session, LOCAL_USER_ID)
+        haus = await repository.create(novel.id, "Haus", "location", "Das Haus.", [], [])
+        see = await repository.create(novel.id, "See", "location", "Der See.", [], [])
+        await session.commit()
+
+        service = KnowledgeService(session, LOCAL_USER_ID, _ExplodingEmbedding())
+        await service.accept_suggestion(suggestion.id)
+        await service.update_entity(haus.id, EntityUpdate(name="Haus am See"))
+        await service.merge_entities(see.id, haus.id)
 
 
 async def test_a_merge_cannot_cross_novels() -> None:

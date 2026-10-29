@@ -197,13 +197,6 @@ async def accept_suggestion(suggestion_id: UUID, service: ServiceDep) -> AcceptR
         # dedupe, but if the unique constraint catches one anyway, the answer
         # is add_relation's — the conflict, not a crash.
         raise HTTPException(status_code=409, detail="this relation exists already") from None
-    except EmbeddingMismatchError as error:
-        # Birth embeds (D5); a model that answers at another width than the
-        # entity corpus is the upload's refusal, same code, same fix.
-        raise HTTPException(
-            status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
-        ) from None
     return AcceptRead(
         entity=EntityRead.model_validate(entity),
         skipped_relations=[
@@ -297,10 +290,9 @@ async def dismiss_finding(finding_id: UUID, service: ServiceDep) -> FindingRead:
 async def update_entity(entity_id: UUID, payload: EntityUpdate, service: ServiceDep) -> EntityRead:
     """Correct an entity by hand: only the fields the body carries change.
 
-    Return the entity; raise HTTP 404 for an absent or unowned entity,
+    Return the entity; raise HTTP 404 for an absent or unowned entity, or
     HTTP 422 for an invalid name, type, alias or tag — a null content
-    clears the body — or HTTP 409 when the configured embedding model
-    answers at another width than the entity corpus was embedded at.
+    clears the body.
     """
     try:
         entity = await service.update_entity(entity_id, payload)
@@ -308,11 +300,6 @@ async def update_entity(entity_id: UUID, payload: EntityUpdate, service: Service
         raise HTTPException(status_code=404, detail="entity not found") from None
     except InvalidEntityUpdateError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
-    except EmbeddingMismatchError as error:
-        raise HTTPException(
-            status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
-        ) from None
     return EntityRead.model_validate(entity)
 
 
@@ -406,9 +393,7 @@ async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDe
     survivor.
 
     Return the folded target; raise HTTP 404 if either entity is absent or
-    unowned, HTTP 422 for a self-merge or a target in another novel, or
-    HTTP 409 when the configured embedding model answers at another width
-    than the entity corpus was embedded at.
+    unowned, or HTTP 422 for a self-merge or a target in another novel.
     """
     try:
         target = await service.merge_entities(entity_id, payload.target_id)
@@ -419,10 +404,5 @@ async def merge_entity(entity_id: UUID, payload: EntityMerge, service: ServiceDe
     except CrossNovelMergeError:
         raise HTTPException(
             status_code=422, detail="an entity cannot merge into another novel's entity"
-        ) from None
-    except EmbeddingMismatchError as error:
-        raise HTTPException(
-            status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
     return EntityRead.model_validate(target)

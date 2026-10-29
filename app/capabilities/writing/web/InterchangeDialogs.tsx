@@ -362,8 +362,6 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
         | undefined;
       if (status === 413) {
         setRefusal(t("shelf.import.tooLarge"));
-      } else if (detail?.code === "embedding-mismatch") {
-        setRefusal(t("shelf.import.embeddingMismatch"));
       } else if (detail?.code === "archive_invalid") {
         setRefusal(
           t("shelf.import.archiveInvalid", {

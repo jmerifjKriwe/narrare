@@ -14,12 +14,9 @@ actually carries is reported. Every insert mints a fresh UUID: `id` and
 the receipt — counts per class plus one `Conflict` row per refusal, nothing
 silent — and the whole import commits once, at the end.
 
-The WP1 invariants travel with the rows: every entity the import births or
-revises gets `search_text` (name, aliases, tags) and the synchronous
-embedding (identity words plus the body, capped at 20 000 characters for
-the vector only), width-guarded against the stored corpus like accept does.
-The provider is the kernel's env-selected one — the engine takes no
-dependency argument, these signatures are the HTTP surface's contract.
+The WP1 invariant travels with the rows: every entity the import births or
+revises gets `search_text` (name, aliases, tags). No vector is written — no
+read path consumes an entity vector.
 
 The report's `Conflict.file` carries the archive path parse stamps onto
 every chapter and entity file (`file` on the dataclasses), falling back to
@@ -53,8 +50,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID  # noqa: TC003  runtime: Task 4 serializes ImportReport via get_type_hints
 
-from sqlalchemy import select
-
 from app.kernel.contracts.models import (
     ENTITY_TYPES,
     Chapter,
@@ -63,7 +58,6 @@ from app.kernel.contracts.models import (
     Novel,
 )
 from app.kernel.db.base import ScopedRepository
-from app.kernel.embeddings import get_embedding_provider
 from app.kernel.interchange.format import (
     METADATA_NAME,
     ArchiveError,
@@ -75,19 +69,13 @@ from app.kernel.interchange.format import (
     serialize_archive,
     slugify,
 )
-from app.kernel.retrieval import EmbeddingMismatchError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from app.kernel.embeddings import EmbeddingProvider
     from app.kernel.interchange.tree import ArchiveTree
-
-EMBEDDING_CONTENT_LIMIT = 20_000
-"""The most body an embedding text carries, in characters (D5) — the knowledge
-capability's exact cap. Storage keeps the full body."""
 
 _ARCHIVE = "<archive>"
 """The whole archive, when no single file is at fault."""
@@ -158,18 +146,6 @@ def _search_text(name: str, aliases: Sequence[str], tags: Sequence[str]) -> str:
     return " ".join([name, *aliases, *tags])
 
 
-def _embedding_text(entity: Entity) -> str:
-    """The text a vector is built from: identity words, then the capped body."""
-    return " ".join(
-        [
-            entity.name,
-            *entity.aliases,
-            *entity.tags,
-            entity.content[:EMBEDDING_CONTENT_LIMIT],
-        ]
-    )
-
-
 class _Entities(ScopedRepository[Entity]):
     model = Entity
 
@@ -203,34 +179,6 @@ class _Entities(ScopedRepository[Entity]):
         self.session.add(entity)
         await self.session.flush()
         return entity
-
-    async def stored_entity_width(self) -> int | None:
-        """The width this user's entity corpus was embedded at; None when none is."""
-        result = await self.session.scalars(
-            select(Entity.embedding)
-            .where(Entity.user_id == self.user_id, Entity.embedding.is_not(None))
-            .order_by(Entity.created_at)
-            .limit(1)
-        )
-        widths = [len(vector) for vector in result.all() if vector is not None]
-        return widths[0] if widths else None
-
-
-async def _embed_entity(
-    session: AsyncSession, user_id: UUID, entity: Entity, provider: EmbeddingProvider
-) -> None:
-    """Embed in the import's transaction, width-guarded like accept does.
-
-    The corpus keeps one width: the first set vector's width is the user's,
-    and a model answering at another width raises instead of silently
-    degrading search. The assignment stays in-memory until the caller's
-    single commit.
-    """
-    [vector] = await provider.embed([_embedding_text(entity)])
-    stored = await _Entities(session, user_id).stored_entity_width()
-    if stored is not None and stored != len(vector):
-        raise EmbeddingMismatchError(stored, len(vector))
-    entity.embedding = vector
 
 
 # ---------------------------------------------------------------------------
@@ -505,9 +453,8 @@ async def import_archive(
         report = ImportReport(novel_id=novel.id)
         _report_metadata_conflicts(novel, _metadata(tree), report)
 
-    provider = get_embedding_provider()
     await _merge_chapters(session, user_id, novel, archive, report)
-    names = await _merge_entities(session, user_id, novel, archive, report, provider)
+    names = await _merge_entities(session, user_id, novel, archive, report)
     await _merge_relations(session, user_id, novel, archive, report, names)
     # The shelf's hero is the last-touched novel, and the chapter write path
     # bumps `novel.updated_at` on every edit. A merge that wrote anything is a
@@ -596,7 +543,6 @@ async def _merge_entities(
     novel: Novel,
     archive: NovelArchive,
     report: ImportReport,
-    provider: EmbeddingProvider,
 ) -> _NameIndex:
     """Rules 1, 3, 5: match, guard, apply body/aliases/tags/name.
 
@@ -653,7 +599,6 @@ async def _merge_entities(
                 file_entity.tags,
             )
             names.add(created)
-            await _embed_entity(session, user_id, created, provider)
             report.entities_new += 1
             continue
         if row.type != file_entity.type:
@@ -699,7 +644,6 @@ async def _merge_entities(
         row.tags = list(file_entity.tags)
         row.search_text = _search_text(row.name, row.aliases, row.tags)
         names.replace(row)
-        await _embed_entity(session, user_id, row, provider)
         if renamed:
             report.entities_renamed += 1
         else:

@@ -112,10 +112,9 @@ export interface paths {
          * Update Entity
          * @description Correct an entity by hand: only the fields the body carries change.
          *
-         *     Return the entity; raise HTTP 404 for an absent or unowned entity,
+         *     Return the entity; raise HTTP 404 for an absent or unowned entity, or
          *     HTTP 422 for an invalid name, type, alias or tag — a null content
-         *     clears the body — or HTTP 409 when the configured embedding model
-         *     answers at another width than the entity corpus was embedded at.
+         *     clears the body.
          */
         patch: operations["update_entity_api_knowledge_entities__entity_id__patch"];
         trace?: never;
@@ -136,9 +135,7 @@ export interface paths {
          *     survivor.
          *
          *     Return the folded target; raise HTTP 404 if either entity is absent or
-         *     unowned, HTTP 422 for a self-merge or a target in another novel, or
-         *     HTTP 409 when the configured embedding model answers at another width
-         *     than the entity corpus was embedded at.
+         *     unowned, or HTTP 422 for a self-merge or a target in another novel.
          */
         post: operations["merge_entity_api_knowledge_entities__entity_id__merge_post"];
         delete?: never;
@@ -723,8 +720,7 @@ export interface paths {
          *     HTTP 413 for an oversized archive, HTTP 422 naming the field for a
          *     source contract break or an unreachable path, HTTP 422 with the offending
          *     file named for an unreadable or malformed archive, or HTTP 409 for a
-         *     new-novel import before setup (`setup required`) or when the configured
-         *     embedding model answers at another width than the entity corpus.
+         *     new-novel import before setup (`setup required`).
          */
         post: operations["import_novel_api_writing_novels_import_post"];
         delete?: never;
@@ -1421,16 +1417,14 @@ export interface components {
         };
         /**
          * ReembedResult
-         * @description What a re-embed rebuilt: every document, every chunk of it, every
-         *     entity — the corpus ends at one width, documents and entities alike.
+         * @description What a re-embed rebuilt: every document and every chunk of it — the
+         *     corpus ends at one width again.
          */
         ReembedResult: {
             /** Chunks */
             chunks: number;
             /** Documents */
             documents: number;
-            /** Entities */
-            entities: number;
         };
         /**
          * RelationCreate
@@ -2930,7 +2924,7 @@ export interface operations {
                     "application/json": components["schemas"]["WritingErrorRead"];
                 };
             };
-            /** @description Setup is required (a new-novel import needs the user setup creates), or the embedding model answers at another width than the entity corpus */
+            /** @description Setup is required (a new-novel import needs the user setup creates) */
             409: {
                 headers: {
                     [name: string]: unknown;

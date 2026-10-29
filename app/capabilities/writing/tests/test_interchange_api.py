@@ -3,8 +3,7 @@
 Export and import are a novel's door: the ZIP round trip preserves the novel,
 the path export writes real files and refuses to shrink an existing export,
 and the import needs exactly one source, refuses what it cannot parse, and
-reports what it merged. No fakes but the embedding provider, pinned at the
-kernel boundary like the engine suite pins it.
+reports what it merged. No fakes at all.
 """
 
 import io
@@ -20,7 +19,7 @@ from starlette.datastructures import UploadFile
 
 from app.api.main import app
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Entity, Novel, User
+from app.kernel.contracts.models import Novel, User
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.interchange import (
@@ -39,13 +38,6 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.timeout(60)
 
 OTHER_USER = UUID("00000000-0000-0000-0000-000000000002")
-
-
-@pytest.fixture(autouse=True)
-def fake_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The import embeds through the env-selected provider; pin the fake so no
-    test reaches a network (the engine suite's own rule)."""
-    monkeypatch.setenv("NARRE_EMBEDDING_PROVIDER", "fake")
 
 
 def _client() -> AsyncClient:
@@ -441,39 +433,6 @@ async def test_export_path_mode_needs_a_path() -> None:
         assert response.status_code == 422
         detail = response.json()["detail"]
         assert ["body", "path"] in [entry["loc"] for entry in detail]
-
-
-async def test_import_embedding_mismatch_is_409_and_writes_nothing() -> None:
-    """A corpus embedded at another width than the provider answers aborts
-    uncommitted: the knowledge router's 409 code, and no novel row."""
-    async with _client() as client:
-        novel_id = await _create_novel(client, "Der Nebel")
-        async with Session() as session:
-            session.add(
-                Entity(
-                    user_id=LOCAL_USER_ID,
-                    novel_id=novel_id,
-                    name="Breit",
-                    type="generic",
-                    content="Siebenhundertvierundsechzig.\n",
-                    aliases=[],
-                    tags=[],
-                    search_text="Breit",
-                    embedding=[0.5] * 768,
-                )
-            )
-            await session.commit()
-        before = (await client.get("/api/writing/novels")).json()
-
-        mismatch = await client.post(
-            "/api/writing/novels/import", files={"archive": ("x.zip", _archive_zip("Der Import"))}
-        )
-        assert mismatch.status_code == 409
-        assert mismatch.json() == {
-            "detail": {"code": "embedding-mismatch", "stored": 768, "found": 384}
-        }
-        # The aborted import committed nothing: the novel list is unchanged.
-        assert (await client.get("/api/writing/novels")).json() == before
 
 
 async def test_foreign_novel_is_404() -> None:

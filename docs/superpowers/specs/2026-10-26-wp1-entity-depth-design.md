@@ -105,6 +105,10 @@ Embedding in the request's own transaction follows the document-ingestion patter
   at 20 000 characters **for the vector only** (storage unaffected). No job; if
   entities ever make this slow, §9.3's reembed-job trigger applies as for documents.
   One embedding model per user (corpus guard); a switch re-embeds entities too.
+
+  > **Superseded 2026-10-29 (entities only):** the entity vector, its width guard and
+  > its re-embed branch were removed — no read path consumed them. The document guard
+  > stands. See `docs/superpowers/plans/2026-10-29-entity-embedding-removal.md`.
 - **D6 — Search:** `q` is server-side trigram over `search_text` = name + aliases +
   tags, ranked by **`word_similarity(query, search_text)`** with a threshold measured
   in T1 against realistic misspellings (start at 0.5), debounced; it **replaces**
