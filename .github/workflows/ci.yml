@@ -233,12 +233,27 @@ jobs:
       # partial by construction. A hard crash that leaves no `coverage.xml`
       # still fails the upload step, and should: on a green run that is a real
       # defect.
+      #
+      # `version` pins the CLI the action downloads, which is unchecked by
+      # default: without it every run pulls `cli.codecov.io/latest` — v11.3.2
+      # when this line was written — so an upstream release would land in this
+      # job unreviewed. Dependabot follows the action's SHA and cannot see this
+      # input: the bump is manual.
+      #
+      # `fail_ci_if_error` on the coverage upload only. The report is what the
+      # dashboard reads, so a run that could not deliver it says so instead of
+      # going green with nothing to show — that silence is what left the
+      # dashboard on an older merge. It cannot gate anything: both uploads run
+      # only on a `main` push, so `tests` blocks a merge on a red suite and
+      # never on Codecov. The junit upload keeps the default, because test
+      # analytics failing should not red an otherwise green suite.
       - name: Upload coverage reports to Codecov
         if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
+          version: v11.3.2
           fail_ci_if_error: true
       # A second run of the same action with `report_type`, not Codecov's
       # separate test-results-action: that one is deprecated in favor of this
@@ -250,7 +265,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: junit.xml
-          fail_ci_if_error: true
+          version: v11.3.2
           report_type: test_results
 
   e2e:
