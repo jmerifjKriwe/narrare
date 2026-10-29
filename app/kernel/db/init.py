@@ -14,14 +14,15 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # The schema is registered by import on the shared Base: contracts holds the
-# domain vocabulary, jobs and llm their own tables — kernel machinery, not
-# domain — and both drop_all/create_all passes below see every table only
-# because all three modules are imported here.
+# domain vocabulary, jobs, llm and prompts their own tables — kernel
+# machinery, not domain — and both drop_all/create_all passes below see
+# every table only because all four modules are imported here.
 from app.kernel.contracts import models
 from app.kernel.jobs import models as jobs_models
 from app.kernel.llm import models as llm_models
+from app.kernel.prompts import models as prompts_models
 
-del jobs_models, llm_models  # the imports are for their registration side effect
+del jobs_models, llm_models, prompts_models  # the imports are for their registration side effect
 
 
 async def init_schema(database_url: str) -> None:
