@@ -25,12 +25,17 @@ the capability's E2E. A gate counts only when its output was read.
 
 ## Follow-ups
 
-`docs/superpowers/follow-ups.md` is the one list of findings that survive an
-implementation. After the final review's triage and its fix wave, before the
-branch merges, append every still-open finding — mostly minors — as one row:
-topic, the trigger that makes it bite, where it lives, severity and origin.
-Entries are never deleted; a fix closes the row with its commit. Nothing is
-dropped for being minor.
+A finding that survives an implementation becomes a GitHub issue before the branch
+merges — one per finding, label `follow-up`, hung under its wave's index issue. The
+issue carries the trigger that makes it bite and where it lives; nothing is dropped
+for being minor. A fix closes it from its own commit (`Closes #<n>`); an issue that
+will not be acted on is closed with the condition that re-opens it, and an index
+closes with its last child.
+
+The list is `gh issue list --label follow-up --state open --limit 300`. Index issues
+carry `follow-up-index` and sit in `docs/superpowers/follow-ups.md` beside the decided
+findings; a new wave adds its row there when it opens. That page is not a second list
+of open work.
 
 ## Plan mode
 

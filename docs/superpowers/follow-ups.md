@@ -1,47 +1,36 @@
 # Follow-ups
 
-Findings that survived an implementation. One row per finding; append before the
-branch merges, never delete — a fix closes the row with its commit. `Trigger` is
-the condition that makes it bite, with the behavior observed today. IDs are
-assigned in entry order; `Opened` records when the finding was found. A `—` in
-`Where` means the handing-off review did not record a path.
+Open findings are GitHub issues, one per finding, label `follow-up`:
+
+    gh issue list --label follow-up --state open --limit 300
+
+Each wave's findings sit under an index issue that lists them. The index carries
+`follow-up-index`, not `follow-up`, so the query above returns findings only, and an
+index closes with its last child. Every open finding's body names the id it carried on
+this page ("Formerly `F-46`"), so the plans and commit messages that cite an open id
+still resolve; a closed id is in the table the Archive section points to.
+
+| Findings from | Index |
+|---|---|
+| WP1 entity depth | #305 |
+| WP2b context budget | #306 |
+| WP3 markdown, demo, export | #307 |
+| Reviews and audits outside a wave | #308 |
+
+A new wave opens its index and adds a row here. A fix closes its issue from the
+commit that lands it: `Closes #<n>`. Nothing is dropped for being minor:
+`severity: minor` is a defect the product survives, `severity: major` is one it
+should not ship again.
+
+## Decided not to act
+
+The ten rows below are the set settled before this page became an index, and they are
+frozen — not a place to file new decisions. A finding decided against today closes as
+an issue carrying the condition that re-opens it. `Trigger` carries that condition for
+these ten; re-open one as a new issue and leave its row alone.
 
 | ID | Opened | Topic | Trigger | Where | Severity | Origin | Status |
 |---|---|---|---|---|---|---|---|
-| F-01 | 2026-10-27 | `settings.test` assignment has no effect | A profile other than the clicked one is assigned to `settings.test`; Test probes the clicked profile, not the assignee — the key is audit-only | `app/capabilities/settings/web/ProvidersPanel.tsx:83-95` | minor | WP2a final review | closed faf0808e |
-| F-02 | 2026-10-27 | `base_url` syntax unvalidated | `base_url: "not-a-url"` saves with 200 and fails at call time as a failed test or an error frame, never a 422 | `app/capabilities/settings/profiles_service.py:147-155` | minor | WP2a final review | closed faf0808e |
-| F-03 | 2026-10-27 | Catalog scans on every non-exact lookup | An unknown or prefix model id sorts ~9k keys per lookup, four sorts per audited call | `app/kernel/llm/catalog.py:111-126` | minor | WP2a final review | closed 5995765a |
-| F-04 | 2026-10-27 | `for_prefix` LIKE wildcard | A task key containing `%` or `_` reaches the LIKE wildcard; callers pass hardcoded constants today | `app/kernel/llm/profiles.py:239` | minor | WP2a T1 review | closed 94316f04 |
-| F-05 | 2026-10-27 | Malformed catalog snapshot | A damaged `models.json` from a bad manual refresh raises bare `KeyError`/`TypeError` at the first lookup | `app/kernel/llm/catalog.py` (`load_catalog`) | minor | WP2a T2 review | closed 5995765a |
-| F-06 | 2026-10-27 | Duplicated error and merge helpers | `_error_events` and the `effective_info` merge are copied per consumer; a change in one copy drifts from the other | `app/capabilities/{writing,chat}` handlers, `app/kernel/llm/audit.py`, jobs | minor | WP2a T3 review | closed 913d04d9 |
-| F-07 | 2026-10-27 | Mutable catalog | `load_catalog` returns a plain dict; a caller mutation leaks into every later lookup, forbidden only by docstring | `app/kernel/llm/catalog.py` | minor | WP2a T3 review | closed 5995765a |
-| F-08 | 2026-10-27 | Usage comment contradicts code | `openai_chat.py:180-182` says usage takes precedence while the code yields both; unreachable in practice | `app/kernel/llm/openai_chat.py:180-182` | minor | WP2a T4 review | closed 7869121b |
-| F-09 | 2026-10-27 | PATCH `name: null` returns 500 | A hand-crafted `PATCH` with a null name raises `IntegrityError` → 500 instead of 422; the UI cannot send it | `app/capabilities/settings/router.py`, `profiles_service.py` | minor | WP2a T4 review | closed faf0808e |
-| F-10 | 2026-10-27 | Keyring write precedes commit | A failed commit after the keyring write leaves a stored secret with no row; the ordering is undocumented | `app/capabilities/settings/profiles_service.py` | minor | WP2a T4 review | closed 7869121b |
-| F-11 | 2026-10-27 | Concurrent creates both default | Two creates racing both set the default; unreachable for a local single-user instance | `app/capabilities/settings/profiles_service.py` | minor | WP2a T4 review | closed e3620826 |
-| F-12 | 2026-10-27 | Secondary actions fail silently | A transport failure on test or assign renders nothing; server-reachable failures do render | `app/capabilities/settings/web/ProvidersPanel.tsx` | minor | WP2a T5 review | closed 6c9a69ca |
-| F-13 | 2026-10-27 | `KNOWN_TASKS` mirrored | A new key in `KNOWN_TASK_KEYS` is invisible to the web list until the mirror is edited; no generated bridge | `app/kernel/llm/resolution.py:37`, `app/capabilities/settings/web/ProvidersPanel.tsx:26` | minor | WP2a T5 review | closed dcb8c3aa |
-| F-14 | 2026-10-27 | INDEX title shows the path | `just generate` renders "Language \| /settings" instead of the heading; the title points at a row label | `app/capabilities/settings/capability.yaml:5` | minor | WP2a T5 review | closed 6fac59b4 |
-| F-15 | 2026-10-27 | `nav.back` wording | The settings back control reuses `nav.back`; the label does not fit the destination | `i18n/{en,de,fr}.json` | minor | WP2a T5 review | closed 3f515f1e |
-| F-16 | 2026-10-27 | Duplicated E2E comment | The same comment appears twice at the top of the profile E2E | `app/capabilities/settings/e2e/test_profiles_e2e.py:114-115` | minor | WP2a T5 review | closed 46b252eb |
-| F-17 | 2026-10-27 | Mount-effect setState after unmount | Navigating away during the initial fetch calls setState on an unmounted component; React 18 makes it a no-op | `app/capabilities/settings/web/ProvidersPanel.tsx` | minor | WP2a T5 review | closed da41161f |
-| F-18 | 2026-10-27 | No test for a stored `request_timeout` | A stored timeout that never reaches the socket cannot fail a test; the wiring is only correct by construction | `app/kernel/llm/openai_chat.py`, `app/kernel/llm/resolution.py` | minor | WP2a final review | closed aa5fba3c |
-| F-19 | 2026-10-26 | Prompt prose vs §4.2 vocabulary | The prompt still says "characters, places, things" and carries a `lives_in` example outside §4.2, so a real provider could under-propose factions, systems, timelines and events. Fires with the first real provider (WP2). | `—` | minor | WP1 final review | closed cdd24c8c |
-| F-20 | 2026-10-26 | Duplicate-relation 409 renders as an outage | A duplicate relation shows "Is the local service running?" — an outage suspicion for a user error. Fires at WP5 (UI-coherence error pass). | `—` | minor | WP1 final review | open |
-| F-21 | 2026-10-26 | Filter select keeps a vanished value | A filter select can hold a value that disappeared from its own options, so the list shows "no matches" with no visible filter. Fires at WP5. | `—` | minor | WP1 final review | open |
-| F-22 | 2026-10-26 | Case-sensitive label resolution | Typing "verbündet mit" without picking an entry stores the raw label instead of `ally_of`. Fires at WP5. | `—` | minor | WP1 final review | open |
-| F-23 | 2026-10-26 | Direction glyphs have no catalog keys | Incoming and outgoing expose only → and ←; screen readers get no label because the planned `incoming`/`outgoing` keys are missing. Fires at WP5 (a11y pass). | `—` | minor | WP1 final review | open |
-| F-24 | 2026-10-26 | Dialog buttons lack double-submit guards | A second click sends a second request; the relation 409 then renders as an outage. Fires at WP5. | `—` | minor | WP1 final review | open |
-| F-25 | 2026-10-26 | Relation subtitle is a paragraph | The subtitle is a `<p>`, so heading navigation cannot reach it. Fires at WP5. | `—` | minor | WP1 final review | open |
-| F-26 | 2026-10-26 | §4.5 drift: markdown body vs D2 | The spec says "markdown body (same editor as chapters)" while D2 ships a text field; the editor decision lands in WP3 and the line is corrected there. Fires at WP3. | `docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md` §4.5 | minor | WP1 final review | closed 2b8542a5 |
-| F-27 | 2026-10-26 | Merge vs concurrent relation write | Merge locks entities but not the relation paths, so a concurrent edge write can be lost; predates the branch and is no regression. Fires on the first lost-edge report or with relation work. | `—` | minor | WP1 final review | open |
-| F-28 | 2026-10-26 | Blur filing between mousedown and mouseup | In overflowing dialogs the chip row inserts between mousedown and mouseup, so Save occasionally needs two clicks. Fires on a "save needs two clicks" report; otherwise reserve the height. | `—` | minor | WP1 final review | open |
-| F-29 | 2026-10-26 | Accept 409 to announce path untested | The announce path (`query.ts:437-448` plus `ExtractionPanel`) has no test; a regression that drops the detail would be silent. Fires with the next extraction test work. | `query.ts:437-448`, `ExtractionPanel` | minor | WP1 final review | closed b294dbed |
-| F-30 | 2026-10-26 | 20k-character vector cap untested | D5 caps only the vector and stores the full text; no test pins the cap. Fires with the next knowledge test work. | `—` | minor | WP1 final review | closed b294dbed |
-| F-31 | 2026-10-26 | `SkippedRelation` docstring wording | The docstring says "as it was stored" but means "the stripped form accept would store"; the API artefact needs a regen. Fires on the next API-schema touch. | `—` | minor | WP1 final review | open |
-| F-32 | 2026-10-26 | `query.ts` comment contradicts the client | The comment says "create sends it explicitly" while the client omits the field; the behavior is correct. Fires on the next relations touch. | `query.ts` | minor | WP1 final review | open |
-| F-33 | 2026-10-26 | Merge lock order relies on dict evaluation | The order hangs on dict display evaluation; named locals would show the invariant in the control flow. Fires on the next merge touch. | `—` | minor | WP1 final review | open |
-| F-34 | 2026-10-26 | Race test indexes a missing key | The test reads `race["task"]` and raises `KeyError` instead of a readable failure. Fires with the next test work on merge. | `—` | minor | WP1 final review | open |
 | F-35 | 2026-10-26 | `str()` coercion of corrupt proposals | `None`-typed proposals coerce to "None"; unreachable because the parse refuses non-strings. Re-open only if parsing loosens. | `—` | minor | WP1 final review | parked |
 | F-36 | 2026-10-26 | `IntegrityError` fallbacks mislabel non-unique | Deadlocks are not `IntegrityError`, so the fallback labels them as absence; unreachable today. Re-open if the error mapping changes. | `—` | minor | WP1 final review | parked |
 | F-37 | 2026-10-26 | `_resolve_proposals` 500 on a corrupt row | Unreachable; the parse refuses the row first. Re-open if parsing loosens. | `—` | minor | WP1 final review | parked |
@@ -52,64 +41,11 @@ assigned in entry order; `Opened` records when the finding was found. A `—` in
 | F-42 | 2026-10-26 | Relations key without `novelId` | Entity UUIDs are global and the server scopes reads. Re-open with a new consumer of the key. | `—` | minor | WP1 final review | parked |
 | F-43 | 2026-10-26 | Missing relations pending state | Cosmetic; no spinner while relations load. Re-open if the load becomes user-visible. | `—` | minor | WP1 final review | parked |
 | F-44 | 2026-10-26 | E2E does not pin announced-once, queue order, the eight-type filter or merge fold | Covered unit- and API-side; an E2E regression would be silent. Re-open when the E2E covers the extraction surface. | `—` | minor | WP1 final review | parked |
-| F-45 | 2026-10-27 | The task list hides prefix inheritance | A task without an exact assignment shows "Automatic" while resolution can serve a sibling's prefix assignment; the copy no longer claims the default, but the page still does not show the effective provider | `app/capabilities/settings/web/ProvidersPanel.tsx`, `app/kernel/llm/resolution.py` | minor | CodeRabbit PR #296 | closed dcb8c3aa |
-| F-46 | 2026-10-28 | Entity scan reads the wrong tail | The scan ranks `body[-immediate_text:]` while the builder renders only `immediate_text − header − scaffolding − instruction`; an entity mentioned only in the dropped ~186 characters is ranked and spends entity budget | `app/capabilities/writing/service.py:97`, `app/capabilities/writing/prompts.py:58-65` | minor | WP2b final review | open |
-| F-47 | 2026-10-28 | Immediate slice overflows when the fixed scaffold exceeds it | A window within ~60 tokens of the output reserve leaves an immediate slice smaller than the uncuttable scaffold (`allocate(1000, 997)` → 7-character budget vs 186-character scaffold); the builder holds the scaffold length and should raise `BudgetImpossibleError` when it does not fit | `app/capabilities/writing/prompts.py:58-65` | minor | WP2b final review | open |
-| F-48 | 2026-10-28 | Predecessor skip continues past the nearest chapter | The nearest chapter's title does not fit its slice; `continue` reaches an older chapter that fills the slice while the nearest is skipped | `app/capabilities/writing/prompts.py` (`_predecessors_block`) | minor | WP2b final review | open |
-| F-49 | 2026-10-28 | Entity rank tie-break follows database order | Two entities first appear at the same index; their prompt order changes with the database's row order instead of a stable `(index, name)` | `app/capabilities/writing/service.py:113-115` | minor | WP2b final review | open |
-| F-50 | 2026-10-28 | Broken key and missing chapter together are unpinned | A future reorder resolves the chapter before the provider; a broken key plus a missing chapter would then be a 404 instead of the error frame, and no test drives that pair | `app/capabilities/writing/tests/test_continuation.py` | minor | WP2b final review | open |
-| F-51 | 2026-10-28 | Prompt content reaching the provider is unasserted | The probe pins `messages[0].role` only; a prompt built from the wrong text still passes it | `app/capabilities/writing/tests/test_continuation.py:391-421` | minor | WP2b final review | open |
-| F-52 | 2026-10-28 | Four E2E slice pins barely discriminate | A regression that ignores a slice's budget still passes: entity 27 of 896 characters, chapters ~230 of 358, style 131 of 179, and the immediate pin ~170 characters loose (instruction excluded; pin 1983 or `len + instruction`) | `app/capabilities/writing/e2e/test_context_budget_e2e.py:388-391` | minor | WP2b final review | open |
-| F-53 | 2026-10-28 | Zero-room E2E cannot tell the refusal from other failures | Any pre-call failure yields the same error frame; a 1025-window sibling that streams would discriminate the refusal | `app/capabilities/writing/e2e/test_context_budget_e2e.py:415-430` | minor | WP2b final review | open |
-| F-54 | 2026-10-28 | Ghost check runs only after the error frame | A ghost written before the error frame, or on another path, is never asserted | `app/capabilities/writing/e2e/test_context_budget_e2e.py:416` | minor | WP2b final review | open |
-| F-55 | 2026-10-28 | Create docstring's orphan-secret note does not fit the create path | A create whose commit fails leaves a stored key no row names; the next save uses a new profile id, so the documented overwrite never happens — consider `erase_key` on the commit failure | `app/capabilities/settings/profiles_service.py:117-124` | minor | WP2b final review | open |
-| F-56 | 2026-10-28 | Catalog shape check accepts JSON booleans as integers | A snapshot with `true` for a window or price passes `isinstance(value, int)` and sizes a budget from 1 | `app/kernel/llm/catalog.py:126-131` | minor | WP2b final review | open |
-| F-57 | 2026-10-28 | Vendor delay handler writes after the client has gone | A client timeout during a delayed fake response leaves the handler writing to a closed socket | `app/kernel/testing/vendor.py:219-222` | minor | WP2b final review | open |
-| F-58 | 2026-10-28 | Unknown-task fallback label is untested | A future key without a label renders `settings.tasks.unknown`; two such keys become indistinguishable and no test pins the fallback | `app/capabilities/settings/web/ProvidersPanel.tsx:580-581` | minor | WP2b final review | open |
-| F-59 | 2026-10-28 | The `/tasks` 502 alert names an outage, not the lost key | A key its tier can no longer produce fails the task list; the alert asks "Is the local service running?" while the remedy is re-entering the key | `i18n/{en,de,fr}.json`, `app/capabilities/settings/web/ProvidersPanel.tsx:149-154` | minor | WP2b final review | open |
-| F-60 | 2026-10-28 | Two provider actions still leak rejected fetches | A transport failure in remove or discover models escapes the panel's error handling — the rest of F-12's scope | `app/capabilities/settings/web/ProvidersPanel.tsx:257-269,287-297` | minor | WP2b final review | open |
-| F-61 | 2026-10-28 | A failed refetch reports the landed write as failed | The write succeeds but `await reload()` inside the try rejects; the panel says the action failed | `app/capabilities/settings/web/ProvidersPanel.tsx:238-255,299-314` | minor | WP2b final review | open |
-| F-62 | 2026-10-28 | Environment copy nests parentheses | The environment tier's kind label renders inside the copy's own parentheses: `Environment (Fake (deterministic, no network))` | `i18n/en.json:232` and the kind labels | minor | WP2b final review | open |
-| F-63 | 2026-10-28 | The zero-room refusal reaches the editor without a reason | `BudgetImpossibleError` ends the stream with `data: {}`; the editor only shows `chapters.continueError`, so the design's "the user sees why" is unmet — `web/lib/stream.ts:10-12` carries an optional error string, so a reason code plus one i18n key would close it | `app/capabilities/writing/router.py:229-245`, `web/lib/stream.ts:10-12`, `ChapterEditor.tsx:227-231` | minor | WP2b final review | open |
-| F-64 | 2026-10-28 | A non-empty entry list can still render a bare heading | The section is present because the input list is non-empty, but every entry is skipped (the slice holds no name or title); the heading renders alone | `app/capabilities/writing/prompts.py:80-93,96-110` | minor | WP2b final review | open |
-| F-65 | 2026-10-28 | Update's race rollback orphans a freshly stored key | A PATCH carrying a new `api_key` loses the default swap; the rollback discards `api_key`/`api_key_hint` after `_store_key` already wrote the keyring — the update-path twin of F-55 | `app/capabilities/settings/profiles_service.py:234-249` | minor | WP2b final review | open |
-| F-66 | 2026-10-28 | The done frame is still duplicated | Consolidating the error frame left `"event: done\ndata: {}\n\n"` in both routers; a change in one drifts from the other | `app/capabilities/writing/router.py`, `app/capabilities/chat/router.py` | minor | WP2b final review | open |
-| F-67 | 2026-10-28 | No check covers the truth of doc paths | Nothing verifies that paths a doc names exist on disk — the spec's `generated/` line survived this change's own sweep because no pattern included it; hand-picked greps are the only guard | `docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`, `.pre-commit-config.yaml` | minor | architecture-authority final review | open |
-| F-68 | 2026-10-29 | Novel-null assertions absent | The two null metadata fields are pinned structurally but not asserted by name in the create/list test | `app/capabilities/writing/tests/test_novels.py:55-62` | minor | WP3 T1 review | open |
-| F-69 | 2026-10-29 | `write_directory` joinpath unguarded | An absolute or `..` relpath key would escape the target; keys are serializer-internal today | `app/kernel/interchange/tree.py` | minor | WP3 T2 review | open |
-| F-70 | 2026-10-29 | `<nn>` is two digits | A bare (frontmatter-less) archive with ≥100 chapter files orders lexically wrong; exports carry positions and are unaffected | `app/kernel/interchange/format.py` | minor | WP3 T2 review | open |
-| F-71 | 2026-10-29 | Tie-handling for byte-identical keys | Two chapters with the same title and position swap files across re-serialization; unreachable for sane data (positions unique) | `app/kernel/interchange/format.py`, `engine.py` | minor | WP3 final review | open |
-| F-72 | 2026-10-29 | Order-dependent identity within one archive | An id-less file spelling an old name that sorts before the id-matched renaming file revises the row first; the later rename overwrites its content with no conflict | `app/kernel/interchange/engine.py` | minor | WP3 T3 review | open |
-| F-73 | 2026-10-29 | N+1 embedding calls | One `provider.embed` and one width read per entity; a 500-entity import makes 500 calls and 500 selects | `app/kernel/interchange/engine.py` | minor | WP3 T3 review | closed b294dbed |
-| F-74 | 2026-10-29 | Edges-only archive on the new-novel path | The three-way refusal lets a relations-only archive create a title-only novel whose edges all conflict; same state as setup's blank novel | `app/kernel/interchange/engine.py` | minor | WP3 final review | open |
-| F-75 | 2026-10-29 | Symlinked empty target refuses on `rmdir` | An empty export target that is a symlink now fails (NotADirectoryError → 422) where the base wrote through it | `app/kernel/interchange/tree.py` | minor | WP3 T4 review | open |
-| F-76 | 2026-10-29 | Starlette buffers the multipart part | The size pre-check avoids only the extra read copy, not the upload buffering itself | `app/capabilities/writing/router.py` | minor | WP3 final review | open |
-| F-77 | 2026-10-29 | Dead v1 ids in demo chapter facts | `pov_character: char-maya` and similar are verbatim v1 facts naming rows that do not exist | `app/kernel/interchange/demos/*/chapters/*.md` | minor | WP3 T5 review | closed fc3c5d59 |
-| F-78 | 2026-10-29 | Hint on a disabled input | The "title is replaced" hint sits on a disabled input; focus-driven screen readers may never hear it | `app/capabilities/setup/web/SetupPage.tsx` | minor | WP3 T5 review | open |
-| F-79 | 2026-10-29 | Card facts in three places | Picker constant, kernel manifest and tests each carry slug/title/language/counts; a cross-check test guards them, no generated bridge | `app/capabilities/setup/web/SetupPage.tsx`, `app/kernel/interchange/demos.py` | minor | WP3 T5 review | open |
-| F-80 | 2026-10-29 | `previewText` double-decodes | `&amp;lt;` previews as `<`; decode order (`&lt;`/`&gt;` before `&amp;`) fixes it; code spans decode too | `app/capabilities/knowledge/web/preview.ts` | minor | WP3 T6 review | closed fc3c5d59 |
-| F-81 | 2026-10-29 | Preview decode call site unpinned | Reverting the card to the raw content leaves every test green; a card assertion with `&`/`_` content closes it | `app/capabilities/knowledge/web/EntitiesPanel.tsx` | minor | WP3 T6 review | open |
-| F-82 | 2026-10-29 | ChapterEditor load flake | One occurrence in five runs; not reproduced in four later runs | `app/capabilities/writing/web/ChapterEditor.test.tsx` | minor | WP3 final review | open |
-| F-83 | 2026-10-29 | Entity body field lost its visible label | The shared editor exposes only `aria-label`; the dialog field no longer looks like a labelled field | `app/capabilities/knowledge/web/EntitiesPanel.tsx` | minor | WP3 T6 review | open |
-| F-84 | 2026-10-29 | Long archive filename overflows | An unbroken archive name can push the 360 px dialog; needs truncate/break-all | `app/capabilities/writing/web/InterchangeDialogs.tsx` | minor | WP3 final review | open |
-| F-85 | 2026-10-29 | Export receipt labelling inert | `aria-labelledby` on a roleless div does nothing; the live announcement carries the meaning | `app/capabilities/writing/web/InterchangeDialogs.tsx` | minor | WP3 final review | open |
-| F-86 | 2026-10-29 | Report section headings are paragraphs | Conflict and metadata section headings are `<p>`, so heading navigation cannot reach them | `app/capabilities/writing/web/InterchangeDialogs.tsx` | minor | WP3 final review | open |
-| F-87 | 2026-10-29 | Identity E2E seeds through the import dialog | A field dropped on every import path would be invisible to that flow; the engine tests and demo gate mitigate | `app/capabilities/writing/e2e/test_interchange_e2e.py` | minor | WP3 T8 review | open |
-| F-88 | 2026-10-29 | Relation ordering by timestamp/UUID | Semantic sort (source, type, target, note) would make the E2E independent of insertion order | `app/capabilities/writing/e2e/test_interchange_e2e.py` | minor | WP3 T8 review | open |
-| F-89 | 2026-10-29 | Duplicated E2E DB helper | The thread + engine `_rows` helper exists in three places | `app/capabilities/{writing,setup}/e2e/`, `app/kernel/testing/stack.py` | minor | WP3 final review | open |
-| F-90 | 2026-10-29 | Fresh-instance reset list is hand-kept | A first-run side effect outside the five known tables would leak between tests | `app/capabilities/setup/e2e/conftest.py` | minor | WP3 T8 review | open |
-| F-91 | 2026-10-29 | 0-based `<nn>` undocumented | Exports number from 0, bundled demos from 1; a hand-written archive should not have to discover it | `app/kernel/interchange/format.py` doc, Fahrplan §6.6 | minor | WP3 T8 review | open |
-| F-92 | 2026-10-29 | Metadata section shows raw field names | `metadata_conflicts` renders bare identifiers in a German receipt and the localizable key is unreachable | `app/capabilities/writing/web/InterchangeDialogs.tsx`, `i18n/{en,de,fr}.json` | minor | WP3 final re-review | open |
-| F-93 | 2026-10-29 | Known code with a missing param crashes the receipt | `intl-messageformat` throws instead of falling back to the technical reason; reachable only with a stale bundle | `app/capabilities/writing/web/InterchangeDialogs.tsx` | minor | WP3 final re-review | open |
-| F-94 | 2026-10-29 | Blob revoke deferral unpinned | The test passes with the old synchronous revoke; assert the URL survives the click's tick | `app/capabilities/writing/web/InterchangeDialogs.test.tsx` | minor | WP3 final re-review | open |
-| F-95 | 2026-10-29 | Entity-name width check untested | The `_MAX_LENGTHS` entry for entity names has no covering test (shared helper) | `app/kernel/tests/test_interchange_format.py` | minor | WP3 final re-review | open |
-| F-96 | 2026-10-29 | Directory-cap 422 untested at API level | The tree refuses named, but nothing pins that the path import answers 422 rather than 500 | `app/capabilities/writing/service.py` | minor | WP3 final re-review | open |
-| F-97 | 2026-10-29 | Nested chapter docs imported | `rglob("*.md")` reads `chapters/drafts/x.md` although the docstring says `chapters/*.md`; harmless, parity with ZIP | `app/kernel/interchange/tree.py` | minor | WP3 final re-review | open |
-| F-98 | 2026-10-29 | Merge-hero flow lacks axe | The flow ends on the shelf hero without `assert_accessible` | `app/capabilities/writing/e2e/test_interchange_e2e.py` | minor | WP3 final re-review | open |
-| F-99 | 2026-10-29 | E2E compares an unresolved path | The receipt prints the resolved path; a symlinked `TMPDIR` would turn the comparison red | `app/capabilities/writing/e2e/test_interchange_e2e.py` | minor | WP3 final re-review | open |
-| F-100 | 2026-10-29 | CSRF: cross-origin writes accepted | The local service takes every write route with the fixed local user and no Origin/CORS check; the import route extends the class, and hardening only it would be inconsistent. Bites on any deployment beyond loopback, or a browser that allows public→loopback posts; local-first single-user today | `app/api/main.py` assembly | minor | CodeRabbit PR #299 | open |
 
-| F-101 | 2026-10-29 | Embedding boundary defaults to `fake` | A fresh install logs `providers llm=fake embedding=fake` and nothing in the UI says so: document search and chat citations are ranked by 384-dim word hashing and shown as similarity. The LLM has profiles in `/settings`; embeddings have only `NARRE_EMBEDDING_PROVIDER`, so a real LLM still retrieves through the fake. Choosing a real embedding model afterwards answers 409 on every upload and search until the re-embed, which re-encodes the whole corpus in one request | `app/kernel/embeddings/__init__.py` (the `fake` default), `app/kernel/configuration.py`, `app/capabilities/knowledge/web/KnowledgePage.tsx` | major | v2 session audit | open |
+## Archive
 
-A row closes by setting `Status` to `closed <sha>`; the fix commit is the evidence.
-`parked` means decided; the re-open condition is in `Trigger`.
+Until 2026-10-29 this page carried every finding as a table: 101 rows. The 26
+closed ones name their fix commit in `Status`; the 65 open ones became issues
+#309 to #373. The table is this file one commit before the commit that replaced it:
+`git show <sha>^:docs/superpowers/follow-ups.md`, where `git log --diff-filter=M --
+docs/superpowers/follow-ups.md` names the candidates, newest first.
