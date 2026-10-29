@@ -6,7 +6,7 @@ database mints fresh UUIDs but identical content, re-importing an archive is
 idempotent without touching a timestamp, a stale file never overwrites newer
 prose, renames ride the foreign keys, unknown types and note-differing edges
 are reported conflicts, novel metadata is not applied on merge, and the
-WP1 invariants — `search_text` and the synchronous embedding — hold for every
+WP1 invariant — `search_text` — holds for every
 entity the import births or revises.
 """
 
@@ -19,7 +19,6 @@ from sqlalchemy import func, select
 from app.kernel.contracts.models import Chapter, Entity, EntityRelation, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.embeddings import FakeEmbeddingProvider
 from app.kernel.interchange import (
     ArchiveError,
     ArchiveTree,
@@ -42,13 +41,6 @@ STALE_BASE = datetime(2026, 1, 10, 12, 0, tzinfo=UTC)
 async def a_user(empty_tables: None) -> None:
     """The users row every user-owned row of this suite reaches."""
     await seed_user(OWNER)
-
-
-@pytest.fixture(autouse=True)
-def fake_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No engine test may reach a network: the import embeds through the
-    env-selected provider, so every test pins the fake before it runs."""
-    monkeypatch.setenv("NARRE_EMBEDDING_PROVIDER", "fake")
 
 
 async def _seed_novel() -> UUID:
@@ -523,17 +515,15 @@ async def test_new_novel_applies_metadata(a_user: None) -> None:
     assert report.conflicts == []
 
 
-async def test_import_maintains_search_text_and_embedding(a_user: None) -> None:
-    """New and content-changed entities carry search_text and the vector;
-    an already-current entity is untouched, sentinel embedding and all."""
+async def test_import_maintains_search_text(a_user: None) -> None:
+    """New and content-changed entities carry search_text; an already-current
+    entity is untouched, sentinel search text and all."""
     novel_id = await _seed_novel()
-    sentinel = [0.5] * 384
     async with Session() as session:
         mira = await session.scalar(
             select(Entity).where(Entity.novel_id == novel_id, Entity.name == "Mira")
         )
         assert mira is not None
-        mira.embedding = sentinel
         mira.search_text = "sentinel"
         await session.commit()
     mira_updated_at = next(
@@ -560,24 +550,14 @@ async def test_import_maintains_search_text_and_embedding(a_user: None) -> None:
 
     _, entities, _ = await _rows(novel_id)
     by_name = {e.name: e for e in entities}
-    fake = FakeEmbeddingProvider()
 
     caspar = by_name["Caspar"]
     assert caspar.search_text == "Caspar Der See ort"
-    [expected] = await fake.embed(["Caspar Der See ort Ein See.\n"])
-    assert caspar.embedding is not None
-    assert caspar.embedding == pytest.approx(expected)
-    assert len(caspar.embedding) == 384
 
     emile_row = by_name["Émile Zola"]
     assert emile_row.search_text == "Émile Zola"
-    [expected] = await fake.embed(["Émile Zola Schriftsteller und Mentor.\n"])
-    assert emile_row.embedding is not None
-    assert emile_row.embedding == pytest.approx(expected)
 
     mira_row = by_name["Mira"]
-    assert mira_row.embedding is not None
-    assert list(mira_row.embedding) == sentinel  # untouched
     assert mira_row.search_text == "sentinel"
     assert mira_row.updated_at == mira_updated_at
 

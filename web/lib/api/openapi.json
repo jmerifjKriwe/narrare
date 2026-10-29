@@ -1529,7 +1529,7 @@
         "type": "object"
       },
       "ReembedResult": {
-        "description": "What a re-embed rebuilt: every document, every chunk of it, every\nentity — the corpus ends at one width, documents and entities alike.",
+        "description": "What a re-embed rebuilt: every document and every chunk of it — the\ncorpus ends at one width again.",
         "properties": {
           "chunks": {
             "title": "Chunks",
@@ -1538,16 +1538,11 @@
           "documents": {
             "title": "Documents",
             "type": "integer"
-          },
-          "entities": {
-            "title": "Entities",
-            "type": "integer"
           }
         },
         "required": [
           "documents",
-          "chunks",
-          "entities"
+          "chunks"
         ],
         "title": "ReembedResult",
         "type": "object"
@@ -2260,7 +2255,7 @@
         ]
       },
       "patch": {
-        "description": "Correct an entity by hand: only the fields the body carries change.\n\nReturn the entity; raise HTTP 404 for an absent or unowned entity,\nHTTP 422 for an invalid name, type, alias or tag — a null content\nclears the body — or HTTP 409 when the configured embedding model\nanswers at another width than the entity corpus was embedded at.",
+        "description": "Correct an entity by hand: only the fields the body carries change.\n\nReturn the entity; raise HTTP 404 for an absent or unowned entity, or\nHTTP 422 for an invalid name, type, alias or tag — a null content\nclears the body.",
         "operationId": "update_entity_api_knowledge_entities__entity_id__patch",
         "parameters": [
           {
@@ -2314,7 +2309,7 @@
     },
     "/api/knowledge/entities/{entity_id}/merge": {
       "post": {
-        "description": "Fold this entity into another: the target survives, the source is\ndeleted, and the source's edges re-point and its fields fold into the\nsurvivor.\n\nReturn the folded target; raise HTTP 404 if either entity is absent or\nunowned, HTTP 422 for a self-merge or a target in another novel, or\nHTTP 409 when the configured embedding model answers at another width\nthan the entity corpus was embedded at.",
+        "description": "Fold this entity into another: the target survives, the source is\ndeleted, and the source's edges re-point and its fields fold into the\nsurvivor.\n\nReturn the folded target; raise HTTP 404 if either entity is absent or\nunowned, or HTTP 422 for a self-merge or a target in another novel.",
         "operationId": "merge_entity_api_knowledge_entities__entity_id__merge_post",
         "parameters": [
           {
@@ -3798,7 +3793,7 @@
     },
     "/api/writing/novels/import": {
       "post": {
-        "description": "Import one archive as a new novel, or merged into an owned one.\n\nThe archive arrives as an upload or as a server-side path — exactly one\nof the two. Respond with HTTP 404 for an absent or unowned target novel,\nHTTP 413 for an oversized archive, HTTP 422 naming the field for a\nsource contract break or an unreachable path, HTTP 422 with the offending\nfile named for an unreadable or malformed archive, or HTTP 409 for a\nnew-novel import before setup (`setup required`) or when the configured\nembedding model answers at another width than the entity corpus.",
+        "description": "Import one archive as a new novel, or merged into an owned one.\n\nThe archive arrives as an upload or as a server-side path — exactly one\nof the two. Respond with HTTP 404 for an absent or unowned target novel,\nHTTP 413 for an oversized archive, HTTP 422 naming the field for a\nsource contract break or an unreachable path, HTTP 422 with the offending\nfile named for an unreadable or malformed archive, or HTTP 409 for a\nnew-novel import before setup (`setup required`).",
         "operationId": "import_novel_api_writing_novels_import_post",
         "requestBody": {
           "content": {
@@ -3834,15 +3829,6 @@
             "content": {
               "application/json": {
                 "examples": {
-                  "embedding_mismatch": {
-                    "value": {
-                      "detail": {
-                        "code": "embedding-mismatch",
-                        "found": 1536,
-                        "stored": 384
-                      }
-                    }
-                  },
                   "setup_required": {
                     "value": {
                       "detail": "setup required"
@@ -3851,7 +3837,7 @@
                 }
               }
             },
-            "description": "Setup is required (a new-novel import needs the user setup creates), or the embedding model answers at another width than the entity corpus"
+            "description": "Setup is required (a new-novel import needs the user setup creates)"
           },
           "413": {
             "description": "The archive is larger than 20 000 000 bytes"

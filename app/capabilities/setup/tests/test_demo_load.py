@@ -14,13 +14,6 @@ from app.kernel.db.session import Session
 pytestmark = pytest.mark.timeout(60)
 
 
-@pytest.fixture(autouse=True)
-def fake_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The demo import embeds every entity it births through the env-selected
-    provider; no test here may reach a network, so the fake is pinned."""
-    monkeypatch.setenv("NARRE_EMBEDDING_PROVIDER", "fake")
-
-
 async def test_complete_with_demo_loads_archive() -> None:
     async with Session() as session:
         novel = await SetupService(session).complete("ignored for a demo", demo="dead-signal")

@@ -578,7 +578,7 @@ async def _seed_canon(*rows: tuple[str, list[str]]) -> tuple[UUID, list[Entity]]
         await session.flush()
         repository = EntityRepository(session, LOCAL_USER_ID)
         created = [
-            await repository.create(novel.id, name, "character", "", aliases, [], None)
+            await repository.create(novel.id, name, "character", "", aliases, [])
             for name, aliases in rows
         ]
         await session.commit()

@@ -601,12 +601,6 @@ describe("the import dialog", () => {
         expected: t("shelf.import.tooLarge"),
       },
       {
-        name: "an embedding mismatch names the re-embed",
-        status: 409,
-        body: { detail: { code: "embedding-mismatch", stored: 384, found: 1536 } },
-        expected: t("shelf.import.embeddingMismatch"),
-      },
-      {
         name: "an unreadable archive names its file and reason",
         status: 422,
         body: { detail: { code: "archive_invalid", file: "metadata.json", reason: "missing title" } },

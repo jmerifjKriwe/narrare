@@ -28,12 +28,11 @@ class SearchHit(BaseModel):
 
 
 class ReembedResult(BaseModel):
-    """What a re-embed rebuilt: every document, every chunk of it, every
-    entity — the corpus ends at one width, documents and entities alike."""
+    """What a re-embed rebuilt: every document and every chunk of it — the
+    corpus ends at one width again."""
 
     documents: int
     chunks: int
-    entities: int
 
 
 class ExtractionRequest(BaseModel):

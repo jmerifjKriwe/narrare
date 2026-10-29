@@ -57,7 +57,7 @@ def test_a_model_change_is_refused_and_reembedding_restores_search(
     page.get_by_role("button", name="Suchen").click()
     expect(page.get_by_text("Das Embedding-Modell hat sich geändert")).to_be_visible()
 
-    page.get_by_role("button", name="Dokumente und Entitäten neu einbetten").click()
+    page.get_by_role("button", name="Dokumente neu einbetten").click()
     expect(page.get_by_text("Das Embedding-Modell hat sich geändert")).not_to_be_visible()
 
     page.get_by_role("button", name="Suchen").click()
