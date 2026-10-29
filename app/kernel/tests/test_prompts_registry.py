@@ -18,7 +18,7 @@ refuses, five renders, a self-include is a cycle) and on ``{% extends %}``.
 A trailing newline survives rendering. ``get_registry`` is the process-wide
 instance — a discovered module's registration lands in it, a failed build
 leaves nothing published, a missing capabilities directory is skipped —
-and, today, empty: no capability ``prompts.py`` registers anything yet.
+and, with the first capability docked, carries ``writing.continuation``.
 """
 
 import sys
@@ -313,10 +313,16 @@ def test_discovered_registration_reaches_the_singleton(
     assert get_registry() is registry
 
 
-def test_get_registry_idempotent_and_empty_today() -> None:
+def test_get_registry_idempotent_and_first_capability_docked() -> None:
+    """The one registry, and the writing capability's bundled key rides in it.
+
+    The "empty today" era ended when ``writing.continuation`` docked: the
+    discovered module registers at import, so the singleton holds it — and
+    stays the one instance across calls.
+    """
     first = get_registry()
     assert get_registry() is first
-    assert first.keys() == ()
+    assert "writing.continuation" in first.keys()  # noqa: SIM118  the registry is no dict
 
 
 def test_failed_discovery_does_not_publish_a_partial_registry(

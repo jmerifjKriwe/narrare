@@ -39,9 +39,10 @@ OTHER = uuid4()
 def toy_registry(monkeypatch: pytest.MonkeyPatch) -> PromptRegistry:
     """A private registry, published in place of the process's one.
 
-    The real registry is empty today — the four bundled keys dock in
-    tasks 4-6 — and these tests must not leak registrations into it:
-    ``monkeypatch`` swaps the singleton and restores it after each test.
+    The real registry carries the bundled keys as they dock
+    (``writing.continuation`` already does; three keys follow) and these
+    tests must not leak registrations into it: ``monkeypatch`` swaps the
+    singleton and restores it after each test.
     """
     registry = PromptRegistry()
     registry.register(

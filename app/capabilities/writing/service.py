@@ -9,7 +9,7 @@ from zipfile import BadZipFile
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.writing.prompts import continuation_prompt
+from app.capabilities.writing.prompts import render_continuation
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
 from app.capabilities.writing.schemas import ChapterUpdate, ExportDone
 from app.kernel.auth import SetupRequiredError
@@ -139,9 +139,11 @@ class WritingService:
         `allocate` runs before any gathering, so an impossible pair refuses
         before the database is touched. The three facts default to unset —
         the allocator's own not-yet-resolved fallbacks (D7); the router passes
-        the resolved profile's values. Read-only: the streamed answer comes
-        back to the editor, whose autosave writes it. The request that streams
-        has no side effect of its own (D14).
+        the resolved profile's values. The render walks the override chain at
+        the chapter's novel scope and can refuse by name (`PromptRenderError`)
+        when an override's glue grows past the immediate slice. Read-only: the
+        streamed answer comes back to the editor, whose autosave writes it.
+        The request that streams has no side effect of its own (D14).
         """
         budgets = allocate(
             context_window=context_window, max_output_tokens=max_output_tokens, model=model
@@ -167,7 +169,10 @@ class WritingService:
         predecessors = [
             earlier for earlier in reversed(chapters) if earlier.position < chapter.position
         ]
-        return continuation_prompt(
+        return await render_continuation(
+            self.session,
+            self.user_id,
+            chapter.novel_id,
             budgets=budgets,
             novel_title=novel.title if novel else "",
             chapter_title=chapter.title,
