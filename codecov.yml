@@ -2,6 +2,9 @@
 # green E2E (AGENTS.md), so neither status blocks a merge. The targets are
 # Codecov's defaults, written down so a change on their side cannot silently
 # turn this into a gate.
+#
+# A report that cannot be delivered does fail the `tests` run, but only on a
+# `main` push: the uploads never run on a PR, so no merge waits on Codecov.
 codecov:
   require_ci_to_pass: true
 
