@@ -25,7 +25,7 @@
 
 ## Review Focus
 
-- **Stale dev database:** after Task 3 every entity query fails with `UndefinedColumn` until `just db-reset`; `db-init` creates missing tables but never alters one. Expected behavior: the plan's reset step, recorded in the commit body.
+- **Existing dev database:** after Task 3 entity queries no longer reference `embedding`, so an existing database may retain the nullable column; no reset is required to keep this change running. `just db-reset` recreates the database with the new schema but deletes all development data. `just db-init` creates missing tables but does not alter existing ones.
 - **Update path:** a change to name, aliases, tags or body must still rewrite `search_text` (the trigram search's only writer); a type-only change must still skip the rewrite. Losing it silently breaks entity search.
 - **Merge:** the row locks must still serialize two concurrent merges into one survivor. The reworked race test must go red when `.with_for_update()` is removed from `EntityRepository.locked`.
 - **Import:** a failing import must still commit nothing, and `entities_new`/`entities_revised`/`entities_already_current` must keep their current counts.
