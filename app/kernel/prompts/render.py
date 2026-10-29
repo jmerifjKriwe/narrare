@@ -6,8 +6,10 @@ text — nothing else touches a template. The environment is
 trailing newline kept (a saved template renders byte-identical), built fresh
 per call: a render carries no state a later render can see. Its loader
 resolves ``{% include 'key' %}`` through the caller's ``include`` callback —
-the effective chain (novel row → user-global row → bundled) is the caller's
-decision; this module only turns a name into source.
+``render_source`` only turns a name into source. :func:`render` is the chain
+walker on top: it picks the source through the effective chain (novel row →
+user-global row → bundled) and feeds ``render_source`` the callback that
+resolves every include through the same chain in the same scope.
 
 Every refusal names itself with a ``PromptRenderError`` reason: a broken
 ``{% %}`` is ``syntax``, an unknown ``{{ var }}`` is ``undefined-variable``,
@@ -30,6 +32,7 @@ the ``KeyError`` of a key it cannot resolve, which becomes
 module's.
 """
 
+import asyncio
 from collections.abc import (  # noqa: TC003  signatures evaluate
     Callable,
     Iterable,
@@ -38,6 +41,7 @@ from collections.abc import (  # noqa: TC003  signatures evaluate
     MutableMapping,
 )
 from typing import Any, cast
+from uuid import UUID  # noqa: TC003  signatures evaluate
 
 from jinja2 import (
     Environment,
@@ -51,8 +55,10 @@ from jinja2.exceptions import SecurityError
 from jinja2.loaders import BaseLoader
 from jinja2.runtime import Context  # noqa: TC002  signatures evaluate
 from jinja2.sandbox import SandboxedEnvironment
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.kernel.prompts.registry import PromptRenderError
+from app.kernel.prompts.models import PromptTemplateRepository
+from app.kernel.prompts.registry import PromptRenderError, get_registry
 
 MAX_INCLUDE_DEPTH = 5
 """The include depth limit: an include that would render one level deeper is refused."""
@@ -259,3 +265,50 @@ def render_source(
         raise PromptRenderError("forbidden", str(error)) from None
     except Exception as error:
         raise PromptRenderError("runtime", str(error)) from error
+
+
+async def render(
+    session: AsyncSession,
+    user_id: UUID,
+    key: str,
+    variables: Mapping[str, object],
+    *,
+    novel_id: UUID | None = None,
+) -> str:
+    """Render the prompt ``key`` through the effective chain and return the text.
+
+    The source is the user's override in force for the scope — the novel's
+    row, else the global one (:meth:`PromptTemplateRepository.effective`) —
+    and the registry's bundled template when neither exists. An unknown key
+    is a ``KeyError`` before any read: the key set is closed, users override
+    keys they never invent them, and the caller frames that as its 404.
+    Render failures re-raise ``PromptRenderError`` with their named reason.
+
+    Includes resolve through the same chain in the same scope (same session,
+    user and ``novel_id``): the repository owns the preference, and one
+    resolved key costs exactly one row lookup. Jinja's loader is synchronous
+    while the chain's reads are async, so the render runs off the event loop
+    and each include walks back onto it — the loop stays free to serve the
+    read, the session never leaves its loop, and a render of a template
+    without includes never enters the bridge. A key the chain cannot resolve
+    reaches the loader as its ``KeyError`` and is refused
+    ``include-missing``; every other failure of the lookup — the database
+    being down — passes through untranslated, an outage and not a refusal.
+
+    Read-only: no write here, the caller owns the transaction as always.
+    """
+    registry = get_registry()
+    spec = registry.spec(key)  # an unknown key is the caller's 404, not a refusal
+    repository = PromptTemplateRepository(session, user_id)
+    override = await repository.effective(key, novel_id)
+    source = override.content if override is not None else spec.template
+
+    loop = asyncio.get_running_loop()
+
+    def include(name: str) -> str:
+        """The include chain: the same walk, one row lookup for the named key."""
+        included_spec = registry.spec(name)  # unknown -> KeyError -> include-missing
+        row = asyncio.run_coroutine_threadsafe(repository.effective(name, novel_id), loop).result()
+        return row.content if row is not None else included_spec.template
+
+    return await asyncio.to_thread(render_source, source, variables, include=include)
