@@ -2,9 +2,11 @@
 symbol an agent ends up asking about. `path:line` once resolved to `async` instead
 of the method name and answered about nothing; `find_symbol` is the other half,
 where a wrong pick silently answers for a different function of the same file.
-Neither needs the language server to pin, so neither test spawns one.
+The LSP transport tests use a small subprocess to exercise responses and EOF
+without starting Pyright.
 """
 
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -14,8 +16,10 @@ from scripts.callers import (
     ROOT,
     CallSite,
     IncomingCall,
+    LanguageServer,
     collect_calls,
     find_symbol,
+    main,
     parse_target,
     position_for,
     symbol_on_line,
@@ -71,6 +75,56 @@ def test_a_target_without_a_symbol_or_a_line_is_refused() -> None:
 def test_a_missing_file_is_named() -> None:
     with pytest.raises(FileNotFoundError, match=r"gibtsnicht\.py"):
         parse_target(["gibtsnicht.py", "ordered"])
+
+
+@pytest.mark.parametrize("target", ["app/kernel/llm/profiles.py", "app/kernel/llm/profiles.py:26"])
+def test_surplus_arguments_are_refused_before_starting_pyright(
+    target: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main([target, "ordered", "typo"]) == 2
+    assert "usage: callers" in capsys.readouterr().err
+
+
+def test_a_line_target_still_accepts_an_explicit_symbol() -> None:
+    path, symbol, line = parse_target(["app/kernel/llm/profiles.py:26", "ordered"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "ordered", 26)
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        (b"", None),
+        (b"Content-Length: 10\r\n\r\n{}", None),
+        (
+            b'Content-Length: 20\r\n\r\n{"method":"message"}'
+            b'Content-Length: 24\r\n\r\n{"id":99,"result":false}'
+            b'Content-Length: 22\r\n\r\n{"id":1,"result":true}',
+            True,
+        ),
+    ],
+    ids=["eof-before-header", "eof-mid-body", "response-before-eof"],
+)
+def test_server_output_end_fails_fast_without_losing_responses(
+    output: bytes, expected: bool | None
+) -> None:
+    program = (
+        "import sys\n"
+        "stream = sys.stdin.buffer\n"
+        "length = int(stream.readline().split(b':', 1)[1])\n"
+        "stream.readline()\n"
+        "stream.read(length)\n"
+        f"sys.stdout.buffer.write({output!r})\n"
+        "sys.stdout.buffer.flush()\n"
+    )
+    server = LanguageServer([sys.executable, "-c", program], cwd=ROOT)
+    try:
+        if expected is None:
+            with pytest.raises(RuntimeError, match="closed its output before answering initialize"):
+                server.request("initialize", {}, timeout=2)
+        else:
+            assert server.request("initialize", {}, timeout=2) is expected
+    finally:
+        server.close()
 
 
 def test_call_sites_are_deduped_and_graded() -> None:

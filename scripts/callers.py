@@ -77,6 +77,7 @@ class CallSite:
 
     @property
     def is_test(self) -> bool:
+        """Classify callers by test directories or the test file prefix."""
         parts = self.path.split("/")
         return "tests" in parts or "e2e" in parts or Path(self.path).name.startswith("test_")
 
@@ -85,6 +86,7 @@ class LanguageServer:
     """The slice of LSP this needs: framing, one request, one response."""
 
     def __init__(self, command: list[str], cwd: Path) -> None:
+        """Start the server and read its framed output on a background thread."""
         self._proc = subprocess.Popen(  # noqa: S603  # nosec  # fixed argv, no shell
             command,
             cwd=cwd,
@@ -92,7 +94,7 @@ class LanguageServer:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
-        self._messages: queue.Queue[dict[str, Any]] = queue.Queue()
+        self._messages: queue.Queue[dict[str, Any] | None] = queue.Queue()
         self._next_id = 1
         stdout = self._proc.stdout
         if stdout is None:  # pragma: no cover - Popen above guarantees it
@@ -100,6 +102,14 @@ class LanguageServer:
         threading.Thread(target=self._read, args=(stdout,), daemon=True).start()
 
     def _read(self, stream: IO[bytes]) -> None:
+        """Signal the end of server output even when frame parsing fails."""
+        try:
+            self._read_frames(stream)
+        finally:
+            self._messages.put(None)
+
+    def _read_frames(self, stream: IO[bytes]) -> None:
+        """Queue decoded LSP messages until EOF or an incomplete frame."""
         while True:
             length: int | None = None
             while True:
@@ -121,6 +131,7 @@ class LanguageServer:
                 continue
 
     def _send(self, message: dict[str, Any]) -> None:
+        """Write and flush one JSON-RPC message with its LSP length header."""
         body = json.dumps(message).encode()
         stdin = self._proc.stdin
         if stdin is None:  # pragma: no cover - Popen above guarantees it
@@ -129,9 +140,11 @@ class LanguageServer:
         stdin.flush()
 
     def notify(self, method: str, params: dict[str, Any]) -> None:
+        """Send a notification that does not expect a response."""
         self._send({"jsonrpc": "2.0", "method": method, "params": params})
 
     def request(self, method: str, params: dict[str, Any], timeout: float) -> object:
+        """Wait for this request's response, failing on server EOF or timeout."""
         request_id = self._next_id
         self._next_id += 1
         self._send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
@@ -146,6 +159,10 @@ class LanguageServer:
                 raise TimeoutError(
                     f"pyright did not answer {method} within {timeout:.0f}s"
                 ) from None
+            if message is None:
+                raise RuntimeError(
+                    f"pyright-langserver closed its output before answering {method}"
+                )
             if message.get("id") != request_id:
                 continue
             error = message.get("error")
@@ -154,8 +171,12 @@ class LanguageServer:
             return message.get("result")
 
     def close(self) -> None:
+        """Terminate and reap the language server, then release its pipes."""
         self._proc.kill()
         self._proc.wait(timeout=5)
+        for stream in (self._proc.stdin, self._proc.stdout):
+            if stream is not None:
+                stream.close()
 
 
 def find_symbol(source: list[str], name: str) -> int:
@@ -185,6 +206,7 @@ def position_for(source: list[str], line_index: int, name: str) -> dict[str, int
 
 
 def collect_calls(result: list[IncomingCall]) -> list[CallSite]:
+    """Normalize incoming call ranges into unique, sorted, 1-based call sites."""
     sites: list[CallSite] = []
     for call in result:
         origin = call.get("from")
@@ -211,6 +233,7 @@ def collect_calls(result: list[IncomingCall]) -> list[CallSite]:
 
 
 def _resolve_server() -> list[str]:
+    """Find the pinned environment's language server, falling back to PATH."""
     candidate = Path(sys.executable).with_name("pyright-langserver")
     if candidate.exists():
         return [str(candidate), "--stdio"]
@@ -234,7 +257,8 @@ def symbol_on_line(source: list[str], line_index: int) -> str:
 
 
 def parse_target(argv: list[str]) -> tuple[Path, str, int | None]:
-    if not argv:
+    """Resolve a file target with an optional symbol and inline line number."""
+    if not argv or len(argv) > 2:
         raise ValueError("usage: callers <path.py> <symbol>  |  callers <path.py:line>")
     target = argv[0]
     inline_line = None
@@ -253,6 +277,7 @@ def parse_target(argv: list[str]) -> tuple[Path, str, int | None]:
 
 
 def main(argv: list[str]) -> int:
+    """Resolve a target, query Pyright, and print production and test callers."""
     try:
         path, symbol, inline_line = parse_target(argv)
     except (ValueError, FileNotFoundError) as error:
