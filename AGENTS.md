@@ -21,7 +21,7 @@ violates one of its rules is a review finding, not a style question.
 `just check` (fast) · `just test-file <path>` (inner loop) · `just verify` (full gate) ·
 the capability's E2E. A gate counts only when its output was read.
 
-`just --list` is the whole command surface: 21 recipes, no hidden gates.
+`just --list` is the whole command surface: 22 recipes, no hidden gates.
 
 ## Follow-ups
 
@@ -41,13 +41,18 @@ both. Move, never copy: one state, not two.
 
 ## Tools (optional)
 
-`codebase-memory-mcp` is available as an MCP server and indexes this repo into a
-persistent knowledge graph (functions, classes, call chains, routes). It is a
-recommendation, not a requirement: for structural questions (who calls X, what
-does X call, impact of a change, dead code) it is far cheaper and more precise
-than grep/read, but agents may use grep/read when the graph is unavailable or
-stale. Re-index after large structural changes (`index_repository`). Do not add
-a mandatory rule or gate for it (the governance budget, spec §8).
+`just callers <path> <symbol>` answers "who calls X" from pyright's own call
+hierarchy — the analysis `just typecheck` already runs. It sees through the
+`service: Service = Depends(...)` receivers that a separate index cannot, and
+there is nothing to keep fresh. Everything else (where a symbol is defined,
+which files mention it) is `rg`. Neither is a required step: both are cheaper
+than reading when grep already answers.
+
+A whole-repo index was measured against this repo on 2026-10-29 and removed:
+codebase-memory-mcp needed a re-index nobody ran (five days and 201 commits
+behind), its extractor found 0 of 3 dependency-injected callers, and its tool
+schemas cost about 4.5k tokens of every session whether used or not. Do not add
+a mandatory rule or gate for tooling of this kind (the governance budget, spec §8).
 
 ## Git
 
