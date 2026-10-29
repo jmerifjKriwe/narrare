@@ -6,6 +6,10 @@ The LSP transport tests use a small subprocess to exercise responses and EOF
 without starting Pyright.
 """
 
+import json
+import os
+import shutil
+import subprocess  # nosec B404 - controlled just invocation, no shell
 import sys
 from pathlib import Path
 from typing import cast
@@ -91,6 +95,35 @@ def test_a_line_target_still_accepts_an_explicit_symbol() -> None:
 
 
 @pytest.mark.parametrize(
+    "args",
+    [
+        ["folder with spaces/profiles.py", "ordered"],
+        ["folder with spaces/profiles.py:26"],
+        ["folder/$HOME/[ab]*'profile.py", "ordered"],
+        [],
+    ],
+)
+def test_callers_recipe_preserves_argument_boundaries(tmp_path: Path, args: list[str]) -> None:
+    """Forward literal CLI arguments through just without shell expansion."""
+    just = shutil.which("just")
+    assert just is not None, "The repository task runner just is required"
+    uv = tmp_path / "uv"
+    uv.write_text(
+        f"#!{sys.executable}\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n",
+        encoding="utf-8",
+    )
+    uv.chmod(0o755)
+    result = subprocess.run(  # noqa: S603  # nosec - fixed command, synthetic arguments
+        [just, "--justfile", str(ROOT / "justfile"), "callers", *args],
+        env={**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout) == ["run", "python", "-m", "scripts.callers", *args]
+
+
+@pytest.mark.parametrize(
     ("output", "expected"),
     [
         (b"", None),
@@ -168,6 +201,20 @@ def test_a_caller_outside_the_repository_keeps_its_absolute_path() -> None:
     assert collect_calls(result)[0].path == "/elsewhere/mod.py"
     assert collect_calls(result)[0].line == 7
     assert not Path(collect_calls(result)[0].path).is_relative_to(ROOT)
+
+
+@pytest.mark.parametrize("base", [ROOT, Path("/elsewhere")])
+def test_caller_uris_decode_spaces_and_reserved_characters(base: Path) -> None:
+    """Decode a file URI exactly once, preserving literal plus and percent signs."""
+    path = base / "folder with spaces" / "café #+%20.py"
+    result: list[IncomingCall] = [
+        {
+            "from": {"uri": path.as_uri(), "name": "caller"},
+            "fromRanges": [{"start": {"line": 6, "character": 0}}],
+        }
+    ]
+    expected = str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+    assert collect_calls(result) == [CallSite(expected, 7, "caller")]
 
 
 def test_a_record_without_a_range_falls_back_to_the_callers_own_selection() -> None:

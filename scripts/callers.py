@@ -26,6 +26,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any, TypedDict, cast
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -213,7 +214,7 @@ def collect_calls(result: list[IncomingCall]) -> list[CallSite]:
         if origin is None:
             continue
         uri = origin.get("uri", "")
-        path = uri.removeprefix("file://")
+        path = unquote(uri.removeprefix("file://"))
         relative = str(Path(path).relative_to(ROOT)) if path.startswith(str(ROOT)) else path
         ranges = call.get("fromRanges")
         if not ranges:
@@ -299,7 +300,7 @@ def main(argv: list[str]) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
-    uri = f"file://{path}"
+    uri = path.as_uri()
     server: LanguageServer | None = None
     try:
         server = LanguageServer(_resolve_server(), cwd=ROOT)
@@ -307,9 +308,9 @@ def main(argv: list[str]) -> int:
             "initialize",
             {
                 "processId": None,
-                "rootUri": f"file://{ROOT}",
+                "rootUri": ROOT.as_uri(),
                 "capabilities": {"textDocument": {"callHierarchy": {"dynamicRegistration": False}}},
-                "workspaceFolders": [{"uri": f"file://{ROOT}", "name": ROOT.name}],
+                "workspaceFolders": [{"uri": ROOT.as_uri(), "name": ROOT.name}],
             },
             timeout=120,
         )

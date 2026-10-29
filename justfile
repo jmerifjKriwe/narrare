@@ -61,8 +61,9 @@ typecheck:
     pnpm --dir web typecheck
 
 # Who calls a symbol: just callers app/kernel/llm/profiles.py ordered
+[positional-arguments]
 callers *args:
-    uv run python -m scripts.callers {{args}}
+    uv run python -m scripts.callers "$@"
 
 # Apply formatting and the import fixes ruff can make.
 format:
