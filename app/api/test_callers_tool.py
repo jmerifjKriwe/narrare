@@ -296,8 +296,40 @@ def test_a_server_that_exits_silently_names_its_exit_code() -> None:
         with pytest.raises(RuntimeError, match="closed its output before answering") as error:
             server.request("initialize", {}, timeout=30)
         assert time.monotonic() - started < 5
-        assert "exit code" in str(error.value)
+        assert "exit code 0" in str(error.value)
         with pytest.raises(RuntimeError, match="closed its output before answering"):
             server.notify("large-notification", {"text": "x" * 65536})
+    finally:
+        server.close()
+
+
+@pytest.mark.parametrize("exit_delay", [0.1, 10])
+def test_failure_waits_for_exit_diagnostics_with_a_bounded_fallback(exit_delay: float) -> None:
+    """Collect a late exit and stderr, but still fail if the server stays alive."""
+    program = (
+        "import os, sys, time\n"
+        "stream = sys.stdin.buffer\n"
+        "length = int(stream.readline().split(b':', 1)[1])\n"
+        "stream.readline()\n"
+        "stream.read(length)\n"
+        "os.close(1)\n"
+        f"time.sleep({exit_delay!r})\n"
+        "sys.stderr.write('final startup failure\\n')\n"
+        "sys.exit(7)\n"
+    )
+    server = LanguageServer([sys.executable, "-c", program], ROOT)
+    try:
+        started = time.monotonic()
+        with pytest.raises(
+            RuntimeError, match="closed its output before answering initialize"
+        ) as error:
+            server.request("initialize", {}, timeout=30)
+        assert time.monotonic() - started < 7
+        expected = (
+            "exit code 7: final startup failure"
+            if exit_delay < 1
+            else "exit code None: nothing on stderr"
+        )
+        assert expected in str(error.value)
     finally:
         server.close()

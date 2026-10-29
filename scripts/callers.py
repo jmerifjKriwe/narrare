@@ -120,7 +120,12 @@ class LanguageServer:
 
     def _failure(self, method: str) -> RuntimeError:
         """Name the exit, not a timeout: a dead server and a slow one differ."""
-        code = self._proc.poll()
+        try:
+            code = self._proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            code = None
+        for thread in self._threads:
+            thread.join(timeout=2)
         cause = " | ".join(self._stderr) or "nothing on stderr"
         return RuntimeError(
             f"pyright-langserver closed its output before answering {method} "
