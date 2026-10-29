@@ -107,6 +107,7 @@ assigned in entry order; `Opened` records when the finding was found. A `—` in
 | F-97 | 2026-10-29 | Merge-hero flow lacks axe | The flow ends on the shelf hero without `assert_accessible` | `app/capabilities/writing/e2e/test_interchange_e2e.py` | minor | WP3 final re-review | open |
 | F-98 | 2026-10-29 | E2E compares an unresolved path | The receipt prints the resolved path; a symlinked `TMPDIR` would turn the comparison red | `app/capabilities/writing/e2e/test_interchange_e2e.py` | minor | WP3 final re-review | open |
 | F-99 | 2026-10-29 | CSRF: cross-origin writes accepted | The local service takes every write route with the fixed local user and no Origin/CORS check; the import route extends the class, and hardening only it would be inconsistent. Bites on any deployment beyond loopback, or a browser that allows public→loopback posts; local-first single-user today | `app/api/main.py` assembly | minor | CodeRabbit PR #299 | open |
+| F-100 | 2026-10-28 | No check covers the truth of doc paths | Nothing verifies that paths a doc names exist on disk — the spec's `generated/` line survived this change's own sweep because no pattern included it; hand-picked greps are the only guard | `docs/superpowers/specs/2026-10-21-narrare-v2-architecture-design.md`, `.pre-commit-config.yaml` | minor | architecture-authority final review | open |
 
 A row closes by setting `Status` to `closed <sha>`; the fix commit is the evidence.
 `parked` means decided; the re-open condition is in `Trigger`.
