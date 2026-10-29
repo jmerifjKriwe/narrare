@@ -176,10 +176,11 @@ key at sample scope, includes included).
   the kernel measures the frame (rendered total minus tail minus sections)
   and re-cuts the tail to `immediate_text − frame`; pass 2 renders final.
   If pass 2 still does not fit — a template whose glue grows when the tail
-  shrinks — at most one more pass; a frame that still exceeds its slice is
-  the named refusal above (`PromptRenderError`, budget reason), never a
-  cut. Sections are never cut; the spec's invariant holds by refusal, not
-  by mangling.
+  shrinks — at most one more pass; a frame that keeps growing after the
+  bounded passes is the named refusal above (`PromptRenderError`, budget
+  reason), never a cut. Sections are never cut; a stable frame that
+  exceeds a degenerate window ships with an empty tail — today's scaffold
+  floor, with only cuttable content obeying the slices.
 
 ### Data model
 
