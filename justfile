@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 21 public recipes; private helpers start with `_`.
+# 22 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -59,6 +59,11 @@ lint:
 typecheck:
     uv run pyright
     pnpm --dir web typecheck
+
+# Who calls a symbol: just callers app/kernel/llm/profiles.py ordered
+[positional-arguments]
+callers *args:
+    uv run python -m scripts.callers "$@"
 
 # Apply formatting and the import fixes ruff can make.
 format:
