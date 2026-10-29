@@ -1,6 +1,6 @@
 # ADR-102 — Provider profiles, per-task assignment and tiered key storage
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-10-28
 > **Deciders:** Product owner
 > **Supersedes:** none — amends the provider model in the v2 architecture spec
