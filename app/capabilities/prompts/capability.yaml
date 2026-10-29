@@ -5,4 +5,4 @@ id: prompts
 title: prompts.heading # i18n key; must exist in en, de and fr
 path: /prompts
 needs: []
-nav: false # a nav entry needs the mounted route; the page's commit flips this
+nav: true # the mounted route is in this commit's page; the top bar links it

@@ -37,7 +37,7 @@ CAPABILITIES: tuple[Capability, ...] = (
         title_key="prompts.heading",
         path="/prompts",
         needs=(),
-        in_nav=False,
+        in_nav=True,
     ),
     Capability(
         id="settings",
