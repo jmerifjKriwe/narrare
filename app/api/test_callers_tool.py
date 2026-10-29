@@ -6,6 +6,7 @@ The LSP transport tests use a small subprocess to exercise responses and EOF
 without starting Pyright.
 """
 
+import ast
 import json
 import os
 import shutil
@@ -93,6 +94,43 @@ def test_surplus_arguments_are_refused_before_starting_pyright(
 def test_a_line_target_still_accepts_an_explicit_symbol() -> None:
     path, symbol, line = parse_target(["app/kernel/llm/profiles.py:26", "ordered"])
     assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "ordered", 26)
+
+
+@pytest.mark.parametrize("explicit_symbol", [False, True])
+def test_line_queries_report_the_async_methods_actual_callers(
+    explicit_symbol: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Exercise line conversion and cursor placement against the real Pyright server."""
+    path = ROOT / "app/kernel/llm/profiles.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    line = next(
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "ordered"
+    )
+    args = [f"{path}:{line}"]
+    if explicit_symbol:
+        args.append("ordered")
+    assert main(args) == 0
+    output = capsys.readouterr().out
+    assert f"ordered — app/kernel/llm/profiles.py:{line} (method)" in output
+    assert "app/capabilities/settings/profiles_service.py:" in output
+
+
+@pytest.mark.parametrize(
+    ("line", "message"), [(1, "no declaration"), (3, "list index out of range")]
+)
+def test_line_queries_reject_non_declarations_and_lines_past_eof(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], line: int, message: str
+) -> None:
+    """Invalid source positions return a CLI error instead of a traceback."""
+    path = tmp_path / "empty.py"
+    path.write_text("# no declaration on this line\n", encoding="utf-8")
+    assert main([f"{path}:{line}"]) == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "error:" in output.err
+    assert message in output.err
 
 
 @pytest.mark.parametrize(
@@ -259,5 +297,7 @@ def test_a_server_that_exits_silently_names_its_exit_code() -> None:
             server.request("initialize", {}, timeout=30)
         assert time.monotonic() - started < 5
         assert "exit code" in str(error.value)
+        with pytest.raises(RuntimeError, match="closed its output before answering"):
+            server.notify("large-notification", {"text": "x" * 65536})
     finally:
         server.close()

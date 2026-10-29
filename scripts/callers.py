@@ -24,6 +24,7 @@ import sys
 import threading
 import time
 from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any, TypedDict, cast
@@ -161,8 +162,8 @@ class LanguageServer:
         stdin = self._proc.stdin
         if stdin is None:  # pragma: no cover - Popen above guarantees it
             raise RuntimeError("pyright-langserver has no stdin")
-        stdin.write(f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
         try:
+            stdin.write(f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
             stdin.flush()
         except BrokenPipeError:
             raise self._failure(str(message.get("method", "?"))) from None
@@ -207,7 +208,8 @@ class LanguageServer:
             thread.join(timeout=2)
         for stream in (self._proc.stdin, self._proc.stdout, self._proc.stderr):
             if stream is not None:
-                stream.close()
+                with suppress(BrokenPipeError):
+                    stream.close()
 
 
 def find_symbol(source: list[str], name: str) -> int:
