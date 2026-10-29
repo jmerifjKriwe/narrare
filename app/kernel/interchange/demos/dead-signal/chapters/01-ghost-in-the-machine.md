@@ -7,7 +7,7 @@ I was in the middle of recalibrating the quantum sensors—again—when ARIA's v
 
 "Maya. Incoming transmission on the emergency frequency."
 
-I didn't look up from the console. " Probably another false positive from the coronal mass ejection detector. That thing's been jumpy since the flare last week."
+I didn't look up from the console. "Probably another false positive from the coronal mass ejection detector. That thing's been jumpy since the flare last week."
 
 "Negative. This is... different."
 
@@ -99,7 +99,7 @@ draft
 
 ## pov_character
 
-char-maya
+Maya
 
 ## pov_type
 
@@ -111,4 +111,4 @@ Day 1, 1400 hours
 
 ## location
 
-loc-horizon
+Horizon Station

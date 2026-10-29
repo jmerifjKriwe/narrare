@@ -722,9 +722,9 @@ export interface paths {
          *     of the two. Respond with HTTP 404 for an absent or unowned target novel,
          *     HTTP 413 for an oversized archive, HTTP 422 naming the field for a
          *     source contract break or an unreachable path, HTTP 422 with the offending
-         *     file named for an unreadable or malformed archive, or HTTP 409 when the
-         *     configured embedding model answers at another width than the entity
-         *     corpus.
+         *     file named for an unreadable or malformed archive, or HTTP 409 for a
+         *     new-novel import before setup (`setup required`) or when the configured
+         *     embedding model answers at another width than the entity corpus.
          */
         post: operations["import_novel_api_writing_novels_import_post"];
         delete?: never;
@@ -2930,21 +2930,12 @@ export interface operations {
                     "application/json": components["schemas"]["WritingErrorRead"];
                 };
             };
-            /** @description The embedding model answers at another width than the corpus */
+            /** @description Setup is required (a new-novel import needs the user setup creates), or the embedding model answers at another width than the entity corpus */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "detail": {
-                     *         "code": "embedding-mismatch",
-                     *         "found": 1536,
-                     *         "stored": 384
-                     *       }
-                     *     }
-                     */
                     "application/json": unknown;
                 };
             };

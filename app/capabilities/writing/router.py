@@ -209,11 +209,24 @@ async def export_novel(
     responses={
         404: {"model": WritingErrorRead, "description": "Novel not found"},
         409: {
-            "description": "The embedding model answers at another width than the corpus",
+            "description": (
+                "Setup is required (a new-novel import needs the user setup "
+                "creates), or the embedding model answers at another width "
+                "than the entity corpus"
+            ),
             "content": {
                 "application/json": {
-                    "example": {
-                        "detail": {"code": "embedding-mismatch", "stored": 384, "found": 1536}
+                    "examples": {
+                        "setup_required": {"value": {"detail": "setup required"}},
+                        "embedding_mismatch": {
+                            "value": {
+                                "detail": {
+                                    "code": "embedding-mismatch",
+                                    "stored": 384,
+                                    "found": 1536,
+                                }
+                            }
+                        },
                     }
                 }
             },
@@ -240,9 +253,9 @@ async def import_novel(
     of the two. Respond with HTTP 404 for an absent or unowned target novel,
     HTTP 413 for an oversized archive, HTTP 422 naming the field for a
     source contract break or an unreachable path, HTTP 422 with the offending
-    file named for an unreadable or malformed archive, or HTTP 409 when the
-    configured embedding model answers at another width than the entity
-    corpus.
+    file named for an unreadable or malformed archive, or HTTP 409 for a
+    new-novel import before setup (`setup required`) or when the configured
+    embedding model answers at another width than the entity corpus.
     """
     # The cap is checked on the upload's reported size before `read()` loads
     # it; the service keeps the authoritative check on the actual bytes.
@@ -253,6 +266,8 @@ async def import_novel(
         report = await service.import_novel(archive=data, path=path, novel_id=novel_id)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
     except ArchiveTooLargeError:
         raise HTTPException(status_code=413, detail="archive too large") from None
     except ArchiveInvalidError as error:

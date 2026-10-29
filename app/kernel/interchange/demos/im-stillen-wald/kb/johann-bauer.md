@@ -24,7 +24,7 @@ Seit fünfzig Jahren lebt Johann in seinem Försterhaus, allein bis auf den Wald
 - **Haare**: Grau, struppig, immer mit Nadeln und Blättern darin
 - **Augen**: Dunkelgrün, kaum von der Waldfarbe zu unterscheiden
 - **Hände**: Rissig und narbig, vom jahrelangen Arbeiten im Wald
-- **Kleidung**: Alte Lederkleidung, immer gewohnheitsmäßig nach geflickt
+- **Kleidung**: Alte Lederkleidung, immer wieder geflickt
 
 ## Persönlichkeit
 
@@ -66,7 +66,7 @@ Brücke zwischen menschlicher Welt und dem Wald, der jenseits der menschlichen O
 
 ## first_appearance
 
-ch-de-001
+Das Flüstern im Wald
 
 ## pov_character
 

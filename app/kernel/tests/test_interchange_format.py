@@ -77,7 +77,7 @@ def _archive() -> NovelArchive:
                 indexed_position=3,
             ),
         ],
-        # Parse returns entities in kb-filename order: emile-zola, mira, untitled.
+        # Parse returns entities in kb-filename order: emile-zola, mira, unbenannt.
         entities=[
             EntityFile(
                 name="Émile Zola",
@@ -98,12 +98,12 @@ def _archive() -> NovelArchive:
                 file="kb/mira.md",
             ),
             EntityFile(
-                name="",
-                type="",
+                name="Unbenannt",
+                type="generic",
                 aliases=[],
                 tags=[],
                 body="Ohne Namen.",
-                file="kb/untitled.md",
+                file="kb/unbenannt.md",
             ),
         ],
         relations=[
@@ -326,6 +326,79 @@ def test_over_long_relation_type_is_refused_by_name() -> None:
     assert "80" in raised.value.reason
 
 
+def test_blank_entity_name_is_refused_by_name() -> None:
+    """A nameless entity has nothing other rows can point at: a present-but-
+    blank `name` refuses at parse, naming the file and the field — while an
+    absent `name` still falls back to the file stem."""
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "kb/leer.md": b"---\ntype: character\nname: ''\n---\n\nLeer.\n",
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "kb/leer.md"
+    assert "name" in raised.value.reason
+
+    whitespace = {
+        "metadata.json": b'{"title": "X"}',
+        "kb/leer.md": b"---\ntype: character\nname: '   '\n---\n\nLeer.\n",
+    }
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(whitespace)))
+
+    assert raised.value.path == "kb/leer.md"
+    assert "name" in raised.value.reason
+
+
+def test_blank_explicit_entity_type_is_refused_by_name() -> None:
+    """An explicit `type: ''` refuses — a typeless entity is as illegitimate
+    as a nameless one; an absent type still defaults to `generic`."""
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "kb/typlos.md": b"---\ntype: ''\nname: Etwas\n---\n\nEtwas.\n",
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "kb/typlos.md"
+    assert "type" in raised.value.reason
+
+
+def test_blank_relation_type_is_refused_by_name() -> None:
+    """A blank relation type refuses, naming the relation."""
+    files = {
+        "metadata.json": json.dumps(
+            {"title": "X", "relations": [{"from": "A", "type": "  ", "to": "B"}]}
+        ).encode(),
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "metadata.json"
+    assert "relation #1" in raised.value.reason
+    assert "type" in raised.value.reason
+
+
+def test_empty_chapter_title_still_round_trips() -> None:
+    """`title: ''` stays legal — an untitled chapter is a real state, and the
+    blank title survives serialize → parse → serialize unchanged."""
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "chapters/01-ohne.md": b"---\ntitle: ''\nposition: 1\n---\n\nOhne Titel.\n",
+    }
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+    assert [chapter.title for chapter in parsed.chapters] == [""]
+
+    first = serialize_archive(parsed)
+    again = parse_archive(open_zip(zip_bytes(first)))
+    assert serialize_archive(again) == first
+
+
 def test_serialize_is_deterministic() -> None:
     """Twice the same archive, twice the same bytes; slug and padding pinned."""
     first = serialize_archive(_archive())
@@ -339,7 +412,7 @@ def test_serialize_is_deterministic() -> None:
         "chapters/03-untitled.md",  # an empty title exports the untitled slug
         "kb/emile-zola.md",
         "kb/mira.md",
-        "kb/untitled.md",
+        "kb/unbenannt.md",
     }
 
     pinned = serialize_archive(

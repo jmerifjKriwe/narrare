@@ -127,7 +127,7 @@ draft
 
 ## pov_character
 
-char-maya
+Maya
 
 ## pov_type
 
@@ -139,4 +139,4 @@ Day 1, 1800 hours
 
 ## location
 
-loc-horizon
+Horizon Station

@@ -18,7 +18,8 @@ writing order, file names are slugs with a numeric suffix on collision and a
 zero-padded position prefix on chapters.
 
 Frontmatter parsing is strict where lying would corrupt a novel (a non-string
-title, a non-integer position) and forgiving where a hand-written file can
+title, a non-integer position, a present-but-blank entity name or type, a
+blank relation type) and forgiving where a hand-written file can
 simply omit things: a file without frontmatter parses with defaults — the
 chapter title from the de-slugged filename stem, the position from the order
 of appearance (the metadata index wins over appearance, frontmatter over the
@@ -159,6 +160,19 @@ def _check_length(value: str, relpath: str, field: str, limit: int, label: str =
             relpath,
             f"{prefix}'{field}' is {len(value)} characters — the format allows {limit}",
         )
+
+
+def _check_non_blank(value: str, relpath: str, field: str, label: str = "") -> None:
+    """Refuse a value that is present but empty or only whitespace, naming
+    the field.
+
+    Omission defaults (untitled chapter, stem-named entity, `generic` type);
+    an explicit blank is a value the database would carry as an unusable row
+    — a nameless entity has nothing relations can point at, a typeless one
+    has no type to resolve. Refused at parse, like the length caps."""
+    if not value.strip():
+        prefix = f"{label}: " if label else ""
+        raise ArchiveError(relpath, f"{prefix}'{field}' is blank")
 
 
 def _assign_slugs[K](keys: list[tuple[K, ...]]) -> list[str]:
@@ -441,7 +455,15 @@ def _parse_entities(tree: ArchiveTree) -> list[EntityFile]:
         frontmatter, body = _split_frontmatter(text, name)
         entity_name = _fm_str(frontmatter, "name", name)
         entity_type = _fm_str(frontmatter, "type", name)
-        # Presence, not truthiness: `name: ''` and `type: ''` are values.
+        # Presence, not truthiness — but a present value must be usable:
+        # `name: ''` and `type: ''` are blanks, and blanks refuse, while an
+        # absent name falls back to the file stem and an absent type to
+        # `generic`. (`title: ''` on chapters stays legal — an untitled
+        # chapter is a real state, and nothing else points at it.)
+        if entity_name is not None:
+            _check_non_blank(entity_name, name, "name")
+        if entity_type is not None:
+            _check_non_blank(entity_type, name, "type")
         effective_name = entity_name if entity_name is not None else _deslug(_stem(name))
         _check_length(effective_name, name, "name", _MAX_LENGTHS["name"])
         entities.append(
@@ -475,6 +497,7 @@ def _parse_relations(metadata: dict[str, Any]) -> list[RelationEdge]:
         if note is not None and not isinstance(note, str):
             raise ArchiveError(METADATA_NAME, f"{label}: 'note' is not a string")
         relation_type = _meta_required(relation, "type", label)
+        _check_non_blank(relation_type, METADATA_NAME, "type", label)
         _check_length(relation_type, METADATA_NAME, "type", _MAX_LENGTHS["relation_type"], label)
         edges.append(
             RelationEdge(

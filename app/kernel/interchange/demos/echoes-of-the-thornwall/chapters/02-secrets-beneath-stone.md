@@ -105,7 +105,7 @@ draft
 
 ## pov_character
 
-char-elara
+Elara
 
 ## pov_type
 
@@ -117,4 +117,4 @@ Day 3
 
 ## location
 
-loc-aethelgard-city
+Aethelgard (Capital City)

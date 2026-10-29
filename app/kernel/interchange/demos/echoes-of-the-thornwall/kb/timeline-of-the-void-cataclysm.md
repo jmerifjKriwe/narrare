@@ -18,7 +18,7 @@ The events leading up to, during, and following the magical catastrophe that res
 
 **VC -3**: Archmage Solara assembles a team to develop practical applications for void magic. Their goal: dimensional travel, instantaneous communication, and healing by manipulating reality's fundamental structure. The team includes young apprentices who will later found the Order of the Silver Flame.
 
-**VC -2**: Early experiments succeed. The team demonstrates limited teleportation and creates the first void compass (later known as the Thornwell Compass). The academy celebrates these breakthroughs.
+**VC -2**: Early experiments succeed. The team demonstrates limited teleportation and begins working with one of the void compasses the founders of the Temple of Silent Flames had created five hundred years earlier—the compass later known as the Thornwell Compass. The academy celebrates these breakthroughs.
 
 **VC -1**: Tensions emerge within the research team. Some members want to proceed cautiously; others push for more ambitious experiments. Archmage Solara argues for patience and continued research. A faction led by Morven (then known as Master Morven) advocates faster progress and military applications.
 

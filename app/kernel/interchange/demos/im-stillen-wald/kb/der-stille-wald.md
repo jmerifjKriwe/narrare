@@ -46,7 +46,7 @@ Die Dorfbewohner erzählen viele Geschichten über den Wald:
 
 Der Wald ist wirklich. Nicht die Legenden, aber das, was dahintersteckt. Der Wald ist ein Ort, an dem die Grenze zwischen Leben und Tod dünner ist als anderswo. Er bewahrt Erinnerungen an Dinge, die vor langer Zeit geschehen sind. Manchmal, in den stillen Momenten, sind diese Erinnerungen fast greifbar.
 
-Johann weiß das. Anna wird es lernen. Der Waldgeist ist manifestation dieser Wahrheit—die Grenze selbst, in einer Gestalt, die Menschen wahrnehmen können.
+Johann weiß das. Anna wird es lernen. Der Waldgeist ist eine Manifestation dieser Wahrheit—die Grenze selbst, in einer Gestalt, die Menschen wahrnehmen können.
 
 ## Rolle in der Geschichte
 
@@ -58,4 +58,4 @@ natural
 
 ## first_appearance
 
-ch-de-001
+Das Flüstern im Wald

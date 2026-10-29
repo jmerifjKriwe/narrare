@@ -34,7 +34,7 @@ Johann ist einer der wenigen Menschen, die den Waldgeist wahrnehmen können. Der
 
 ## Verbindung zu Anna
 
-Anna sieht den Waldgeist zuerst nicht. Sie ist zu sehr in ihrer Logik verankert, um wahrzunehmen, was jenseits der Logik liegt. Doch langsam, sehr langsam, lernt sie, anders zu sehen. Der Waldgeist geduldigt sie. Er weiß, dass die Menschen Zeit brauchen, um zu lernen, wie man wieder glaubt.
+Anna sieht den Waldgeist zuerst nicht. Sie ist zu sehr in ihrer Logik verankert, um wahrzunehmen, was jenseits der Logik liegt. Doch langsam, sehr langsam, lernt sie, anders zu sehen. Der Waldgeist hat Geduld mit ihr. Er weiß, dass die Menschen Zeit brauchen, um zu lernen, wie man wieder glaubt.
 
 ## Rolle in der Geschichte
 
@@ -62,7 +62,7 @@ Die Prüfung für Anna und Bestätigung für Johann - das Geheimnis des Waldes m
 
 ## first_appearance
 
-ch-de-001
+Das Flüstern im Wald
 
 ## pov_character
 

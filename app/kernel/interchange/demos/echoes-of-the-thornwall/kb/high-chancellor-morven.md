@@ -79,7 +79,7 @@ Willing to sacrifice everything to prevent another magical cataclysm
 
 ## first_appearance
 
-ch-en-001
+The Compass Points
 
 ## pov_character
 

@@ -15,11 +15,12 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete
 from starlette.datastructures import UploadFile
 
 from app.api.main import app
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Entity, Novel
+from app.kernel.contracts.models import Entity, Novel, User
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.interchange import (
@@ -362,6 +363,24 @@ async def test_import_path_source_unreachable_is_422_named(tmp_path: Path) -> No
         detail = response.json()["detail"]
         assert ["body", "path"] in [entry["loc"] for entry in detail]
         assert "is not a directory" in detail[0]["msg"]
+
+
+async def test_import_new_novel_without_the_setup_user_is_409_and_writes_nothing() -> None:
+    """A new-novel import writes rows owned by a user; on an instance setup
+    has not created, it answers the create route's 409 and writes nothing."""
+    async with Session() as session:
+        await session.execute(delete(User).where(User.id == LOCAL_USER_ID))
+        await session.commit()
+
+    async with _client() as client:
+        response = await client.post(
+            "/api/writing/novels/import",
+            files={"archive": ("der-import.zip", _archive_zip("Der Import"))},
+        )
+        assert response.status_code == 409
+        assert response.json() == {"detail": "setup required"}
+        # The refused import committed nothing: no novel on the shelf.
+        assert (await client.get("/api/writing/novels")).json() == []
 
 
 async def test_import_into_foreign_novel_is_404() -> None:

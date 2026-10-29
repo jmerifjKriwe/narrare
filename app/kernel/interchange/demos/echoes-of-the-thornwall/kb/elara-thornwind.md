@@ -66,7 +66,7 @@ From obedient initiate to rebellious mage embracing forbidden void magic
 
 ## first_appearance
 
-ch-en-001
+The Compass Points
 
 ## pov_character
 

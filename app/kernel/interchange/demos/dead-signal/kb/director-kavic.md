@@ -67,7 +67,7 @@ Seeks to exploit quantum resonance regardless of ethical cost
 
 ## first_appearance
 
-ch-en-ds-001
+Ghost in the Machine
 
 ## pov_character
 

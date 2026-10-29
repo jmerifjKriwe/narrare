@@ -70,7 +70,7 @@ Must decide whether to openly oppose Morven or continue helping from within
 
 ## first_appearance
 
-ch-en-001
+The Compass Points
 
 ## pov_character
 

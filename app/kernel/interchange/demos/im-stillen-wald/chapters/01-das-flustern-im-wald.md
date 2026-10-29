@@ -7,7 +7,7 @@ Anna Müller kannte das Försterhaus vom Hörensagen. Die Dorfbewohner sprachen 
 
 Anna glaubte kein Wort davon. Sie war Lehrerin, sie war eine Frau der Logik, sie brauchte Beweise für Dinge, bevor sie sie glaubte. Aber die Kinder in ihrer Klasse sprachen auch vom Förster und seinen Geschichten, und irgendwann musste sie selbst nachsehen, worum es eigentlich ging.
 
-Sie ging an einem Dienstagabend, als der Schon mal schwarz vor Abend war und der Wind schon fröstelte durch die Straßen. Der Weg zum Försterhaus war nicht gut ausgeschildert—kein Wunder, dachten die Dorfbewohner, schließlich ging niemand dort hin, der nicht genau wusste, was er wollte. Aber Anna hatte Johann einmal im Dorf gesehen, und sie hatte sich gemerkt, wie er ging, wie er sich bewegte, wie er aussah, als hätte er den Wald in sich und nicht nur um sich herum.
+Sie ging an einem Dienstagabend, als der Himmel schon einmal schwarz vor Abend war und der Wind schon fröstelte durch die Straßen. Der Weg zum Försterhaus war nicht gut ausgeschildert—kein Wunder, dachten die Dorfbewohner, schließlich ging niemand dort hin, der nicht genau wusste, was er wollte. Aber Anna hatte Johann einmal im Dorf gesehen, und sie hatte sich gemerkt, wie er ging, wie er sich bewegte, wie er aussah, als hätte er den Wald in sich und nicht nur um sich herum.
 
 Das Försterhaus stand am Waldrand, so nah, dass die Bäume fast an die Wände lehnten. Es war kein schönes Haus, aber es war ein festes Haus, und als Anna anklopfte und die Tür öffnete, roch es nach Holz und nach Feuer und nach etwas, das sie nicht benennen konnte.
 
@@ -131,7 +131,7 @@ draft
 
 ## pov_character
 
-char-anna
+Anna Müller
 
 ## pov_type
 
@@ -143,4 +143,4 @@ Tag 1
 
 ## location
 
-loc-foersterhaus
+Das Försterhaus

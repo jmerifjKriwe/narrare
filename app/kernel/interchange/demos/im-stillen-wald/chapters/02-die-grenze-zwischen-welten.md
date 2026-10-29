@@ -49,7 +49,7 @@ Johann drehte sich vom Fenster ab. „Und Sie denken, er ist im Wald?"
 
 „Ist es das?" Johann sah sie an. „Oder ist es nur anders, als wir es gewohnt sind?"
 
-Anna wusste nicht, was sie sagen sollte. Sie war gekommen, weil sie Angst hatte—Angast um das Kind, aber auch Angst vor dem, was sie vielleicht finden würde. Die Logik, die sie immer geschützt hatte, fühlte sich plötzlich nicht mehr sicher an.
+Anna wusste nicht, was sie sagen sollte. Sie war gekommen, weil sie Angst hatte—Angst um das Kind, aber auch Angst vor dem, was sie vielleicht finden würde. Die Logik, die sie immer geschützt hatte, fühlte sich plötzlich nicht mehr sicher an.
 
 „Wir müssen ihn suchen", sagte sie.
 
@@ -143,7 +143,7 @@ Dann kam Max zurück. „Ich bin bereit."
 
 Sie gingen zurück, und diesmal war der Wald nicht mehr derselbe. Anna hatte Dinge gesehen, Dinge gehört, Dinge gefühlt, die sie nicht erklären konnte. Die Logik, die sie immer geschützt hatte, war nicht mehr genug. Sie brauchte etwas anderes—etwas, das sie nicht benennen konnte, aber das sie trotzdem brauchte.
 
-„Was gesehen Sie?" fragte Johann, als sie das Försterhaus erreichten.
+„Was haben Sie gesehen?“ fragte Johann, als sie das Försterhaus erreichten.
 
 „Ich weiß nicht", sagte Anna. „Aber ich weiß, dass es real war."
 
@@ -191,7 +191,7 @@ draft
 
 ## pov_character
 
-char-anna
+Anna Müller
 
 ## pov_type
 
@@ -203,4 +203,4 @@ Tag 7
 
 ## location
 
-loc-wald
+Der Stille Wald

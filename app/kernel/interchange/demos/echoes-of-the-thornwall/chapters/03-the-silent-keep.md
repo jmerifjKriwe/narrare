@@ -89,7 +89,7 @@ draft
 
 ## pov_character
 
-char-elara
+Elara
 
 ## pov_type
 
@@ -101,4 +101,4 @@ Day 6
 
 ## location
 
-loc-temple-silent-flames
+Temple of Silent Flames

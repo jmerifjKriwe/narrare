@@ -36,7 +36,7 @@ Das Haus ist ruhig, so ruhig wie der Wald selbst. Es gibt kein Radio, keinen Fer
 
 Das Försterhaus ist Johanns Welt. Es ist der Ort, an dem er der Mann ist, der er ist. Es ist der Ort, an dem er Anna lernt kennen—als sie ihn besucht, um Fragen zu stellen, die er nicht immer beantworten kann. Es ist der Ort, an dem die Grenze zwischen Wald und Dorf, zwischen Johann und Anna, sichtbar wird.
 
-Wenn Anna das Haus betritt, betritt sie Johanns Welt. Wenn Johann das Haus verlässt, betritt er die Welt des Dorfes. Das Haus ist die Schwelle zwischen beiden Welten, und in dieser Schwelowelt geschieht das Wichtigste—das langsame Verstehen, das langsame Öffnen, die langsame Freundschaft zwischen zwei Menschen, die anders sind und doch dasselbe suchen.
+Wenn Anna das Haus betritt, betritt sie Johanns Welt. Wenn Johann das Haus verlässt, betritt er die Welt des Dorfes. Das Haus ist die Schwelle zwischen beiden Welten, und in dieser Schwellenwelt geschieht das Wichtigste—das langsame Verstehen, das langsame Öffnen, die langsame Freundschaft zwischen zwei Menschen, die anders sind und doch dasselbe suchen.
 
 ## location_type
 
@@ -44,8 +44,8 @@ building
 
 ## first_appearance
 
-ch-de-001
+Das Flüstern im Wald
 
 ## parent_location
 
-loc-wald
+Der Stille Wald

@@ -9,8 +9,8 @@
  */
 export function previewText(content: string): string {
   return content
-    .replaceAll("&amp;", "&")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&")
     .replace(/\\([\\`*_\[\]~])/g, "$1");
 }

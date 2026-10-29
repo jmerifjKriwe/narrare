@@ -54,8 +54,8 @@ artifact
 
 ## owner
 
-char-elara
+Elara
 
 ## first_appearance
 
-ch-en-001
+The Compass Points

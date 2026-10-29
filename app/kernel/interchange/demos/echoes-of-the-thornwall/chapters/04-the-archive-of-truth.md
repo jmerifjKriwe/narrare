@@ -105,7 +105,7 @@ draft
 
 ## pov_character
 
-char-elara
+Elara
 
 ## pov_type
 
@@ -117,4 +117,4 @@ Day 8
 
 ## location
 
-loc-silver-flame-fortress
+Silver Flame Fortress

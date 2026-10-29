@@ -175,7 +175,7 @@ draft
 
 ## pov_character
 
-char-maya
+Maya
 
 ## pov_type
 
@@ -183,8 +183,8 @@ first-person
 
 ## timeline_position
 
-Day 2, 0300 hours
+Day 1, 2000 hours
 
 ## location
 
-loc-horizon
+Horizon Station

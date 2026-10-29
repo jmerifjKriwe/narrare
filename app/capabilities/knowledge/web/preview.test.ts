@@ -18,6 +18,14 @@ describe("the entity card's preview text", () => {
     expect(previewText("kleiner &lt; als &gt; dort")).toBe("kleiner < als > dort");
   });
 
+  it("reads a double-encoded entity as the document wrote it: &amp;lt; is the characters, not <", () => {
+    // The document literally says `&lt;` (stored as `&amp;lt;`): the stored
+    // `&amp;` decodes to the `&` the reader should see, and the resulting
+    // `&lt;` stays — it is text, not an entity the serializer wrote.
+    expect(previewText("schreibe &amp;lt; hier")).toBe("schreibe &lt; hier");
+    expect(previewText("a &amp;amp; b")).toBe("a &amp; b");
+  });
+
   it("strips the serializer's backslash escapes", () => {
     expect(previewText("## word\\_count")).toBe("## word_count");
     expect(previewText("ein \\* Stern, ein \\[ Klammer, ein \\~ Tilde")).toBe(

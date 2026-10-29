@@ -69,7 +69,7 @@ Confronts impossible signal and repressed memories about her sister's death
 
 ## first_appearance
 
-ch-en-ds-001
+Ghost in the Machine
 
 ## pov_character
 

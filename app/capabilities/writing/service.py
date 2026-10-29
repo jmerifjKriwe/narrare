@@ -243,12 +243,17 @@ class WritingService:
 
         Exactly one source is required, named by field when the request breaks
         that; an oversized upload refuses before it is parsed; a malformed one
-        refuses with the offending file named. The engine commits once at the
-        end, so a refused or failing import writes nothing. A missing or
+        refuses with the offending file named. A new-novel import writes rows
+        a user must own, so without the setup-created user it refuses as
+        `create_novel` does — before the engine's first insert turns the
+        missing owner into a foreign-key error. The engine commits once at
+        the end, so a refused or failing import writes nothing. A missing or
         foreign target novel is NotFoundError; the corpus-width guard
         (EmbeddingMismatchError) surfaces unchanged, the knowledge router's
         mapping applies to it.
         """
+        if novel_id is None:
+            await self._require_user()
         tree: ArchiveTree
         if path is not None and archive is not None:
             raise FieldRefusedError(("archive", "path"), "give archive or path, not both")

@@ -3798,7 +3798,7 @@
     },
     "/api/writing/novels/import": {
       "post": {
-        "description": "Import one archive as a new novel, or merged into an owned one.\n\nThe archive arrives as an upload or as a server-side path — exactly one\nof the two. Respond with HTTP 404 for an absent or unowned target novel,\nHTTP 413 for an oversized archive, HTTP 422 naming the field for a\nsource contract break or an unreachable path, HTTP 422 with the offending\nfile named for an unreadable or malformed archive, or HTTP 409 when the\nconfigured embedding model answers at another width than the entity\ncorpus.",
+        "description": "Import one archive as a new novel, or merged into an owned one.\n\nThe archive arrives as an upload or as a server-side path — exactly one\nof the two. Respond with HTTP 404 for an absent or unowned target novel,\nHTTP 413 for an oversized archive, HTTP 422 naming the field for a\nsource contract break or an unreachable path, HTTP 422 with the offending\nfile named for an unreadable or malformed archive, or HTTP 409 for a\nnew-novel import before setup (`setup required`) or when the configured\nembedding model answers at another width than the entity corpus.",
         "operationId": "import_novel_api_writing_novels_import_post",
         "requestBody": {
           "content": {
@@ -3833,16 +3833,25 @@
           "409": {
             "content": {
               "application/json": {
-                "example": {
-                  "detail": {
-                    "code": "embedding-mismatch",
-                    "found": 1536,
-                    "stored": 384
+                "examples": {
+                  "embedding_mismatch": {
+                    "value": {
+                      "detail": {
+                        "code": "embedding-mismatch",
+                        "found": 1536,
+                        "stored": 384
+                      }
+                    }
+                  },
+                  "setup_required": {
+                    "value": {
+                      "detail": "setup required"
+                    }
                   }
                 }
               }
             },
-            "description": "The embedding model answers at another width than the corpus"
+            "description": "Setup is required (a new-novel import needs the user setup creates), or the embedding model answers at another width than the entity corpus"
           },
           "413": {
             "description": "The archive is larger than 20 000 000 bytes"

@@ -72,7 +72,7 @@ Guide for Elara's introduction to the resistance
 
 ## first_appearance
 
-ch-en-002
+Secrets Beneath Stone
 
 ## pov_character
 

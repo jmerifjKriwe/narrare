@@ -71,7 +71,7 @@ Evolves from station AI to questioning her own nature and humanity
 
 ## first_appearance
 
-ch-en-ds-001
+Ghost in the Machine
 
 ## pov_character
 

@@ -39,7 +39,7 @@ The compass flared brighter. For a heartbeat, Elara saw everything: the academy 
 
 The vision faded. Elara stood in a ruined room, compass in hand, Kaelen staring from the archway, and the terrible knowledge that she'd just crossed a line she couldn't uncross.
 
-"Nothing," she said, hiding the compass in her robes. "Just... old memories trapped in the stone."
+"Nothing," she said, hiding the compass in her robes. "Just... old memories trapped in the stone." Her old compass had gone dark at the archway—needle still, case cold, spent the instant the blue light flared—and the compass she carried from that day on was the one Thornwall had kept for forty years.
 
 Kaelen didn't look convinced. But he also didn't report her. For that, Elara was grateful—and suspicious. How much did he really know? How much did anyone know about what had happened at Thornwall forty years ago?
 
@@ -69,7 +69,7 @@ draft
 
 ## pov_character
 
-char-elara
+Elara
 
 ## pov_type
 
@@ -81,4 +81,4 @@ Day 1
 
 ## location
 
-loc-thornwall
+Thornwall Ruins
