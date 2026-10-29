@@ -17,12 +17,17 @@ a sandbox violation is ``forbidden``, any other template-time exception is
 ``include-cycle`` (a key already being rendered above) and ``include-depth``
 (deeper than the limit) — both before the deeper body renders. The stack
 lives where template text cannot reach it: the environment hands Jinja every
-loaded include wrapped so the bracket enters before the included body's
-events and pops in a ``finally`` after them — the source carries no guard
-calls and no guard callable is a template global, so a template naming one
+loaded include wrapped so the bracket enters where the deeper body actually
+renders and pops in a ``finally`` after it — the eager without-context load
+and the ``root_render_func`` render, with ``{% extends %}`` drawing its
+parent through the same bracket — and the source carries no guard calls and
+no guard callable is a template global, so a template naming one
 finds only StrictUndefined. What the ``include`` callback itself raises
-passes through untouched, except that one ``KeyError``. ``budget`` is later
-callers' refusal, not this module's.
+passes through untouched — the callback owns its chain's errors;
+infrastructure failing under the chain is an outage, not a refusal — except
+the ``KeyError`` of a key it cannot resolve, which becomes
+``include-missing``. ``budget`` is later callers' refusal, not this
+module's.
 """
 
 from collections.abc import (  # noqa: TC003  signatures evaluate
@@ -84,12 +89,28 @@ class _IncludeGuard:
         self._stack.pop()
 
 
+class _CallbackError(Exception):
+    """Marks a non-``KeyError`` include-callback failure for untranslated re-raise.
+
+    The callback owns its chain's errors: infrastructure failing under the
+    chain is not a prompt refusal, and framing it as one would hide the
+    outage behind a 422. The loader wraps the failure only to carry it out
+    of Jinja untouched — :func:`render_source` re-raises the original. A
+    ``KeyError`` never rides this: it is the ruled ``include-missing``.
+    """
+
+    def __init__(self, original: BaseException) -> None:
+        super().__init__(str(original))
+        self.original = original
+
+
 class _IncludeLoader(BaseLoader):
     """A loader whose source is the caller's ``include`` callback.
 
     A ``KeyError`` from the callback means the chain has no source for the
-    key — the one callback error translated, to ``include-missing``; anything
-    else the callback raises passes through, the callback's own contract.
+    key — the one callback error translated, to ``include-missing``. Any
+    other callback failure rides :class:`_CallbackError` out untranslated:
+    the callback owns its chain's errors, this module only carries them.
     """
 
     def __init__(self, include: Callable[[str], str]) -> None:
@@ -105,41 +126,27 @@ class _IncludeLoader(BaseLoader):
                 "include-missing",
                 f"the include chain has no source for '{template}' ({error})",
             ) from error
+        except Exception as error:
+            raise _CallbackError(error) from error
         return source, f"<prompt:{template}>", None
-
-
-class _GuardedModule:
-    """A loaded module whose event stream is bracketed by the guard.
-
-    The without-context include renders through the module's ``_body_stream``;
-    this proxy brackets exactly that stream.
-    """
-
-    def __init__(self, key: str, guard: _IncludeGuard, inner: TemplateModule) -> None:
-        self._key = key
-        self._guard = guard
-        self._inner = inner
-
-    @property
-    def _body_stream(self) -> Iterator[str]:
-        self._guard.enter(self._key)
-        try:
-            yield from self._inner._body_stream  # pyright: ignore[reportPrivateUsage]  jinja names no public accessor for the stream
-        finally:
-            self._guard.exit()
 
 
 class _GuardedTemplate:
     """A loaded include whose render is bracketed by the guard stack.
 
-    Jinja's include node drives the nested render itself — through
-    ``root_render_func``/``new_context`` with context, through
-    ``_get_default_module``/``_body_stream`` without — so the wrapper owns
-    exactly those members: each stream enters the guard as its first event
-    and pops in a ``finally``, so a refusal or a mid-render exception cannot
-    leave the stack unbalanced. The wrapper satisfies the include node's
-    protocol and nothing more; :func:`render_source` hands it to Jinja
-    behind a ``cast``, and no name on it is reachable from template text.
+    The bracket sits on the load and the render — the two places a deeper
+    body actually runs — not on the replay of an already-rendered one: the
+    without-context include renders its body eagerly inside
+    ``_get_default_module`` (the module's event stream is a materialized
+    list), so the guard enters before that call and pops in a ``finally``
+    after it; the with-context include renders through
+    ``root_render_func``/``new_context``, bracketed the same way, and
+    ``{% extends %}`` renders its parent through that bracketed function
+    while the extends node reads ``blocks`` off this wrapper. A refusal or a
+    mid-render exception cannot leave the stack unbalanced. The wrapper
+    satisfies the include and extends nodes' members and nothing more;
+    :func:`render_source` hands it to Jinja behind a ``cast``, and no name
+    on it is reachable from template text.
     """
 
     def __init__(self, key: str, guard: _IncludeGuard, inner: Template) -> None:
@@ -162,12 +169,17 @@ class _GuardedTemplate:
         finally:
             self._guard.exit()
 
-    def _get_default_module(self, ctx: Context | None = None) -> _GuardedModule:
-        return _GuardedModule(
-            self._key,
-            self._guard,
-            self._inner._get_default_module(ctx),  # pyright: ignore[reportPrivateUsage]  the without-context include path
-        )
+    def _get_default_module(self, ctx: Context | None = None) -> TemplateModule:
+        self._guard.enter(self._key)
+        try:
+            return self._inner._get_default_module(ctx)  # pyright: ignore[reportPrivateUsage]  the without-context include path
+        finally:
+            self._guard.exit()
+
+    @property
+    def blocks(self) -> dict[str, Callable[..., Iterator[str]]]:
+        """The parent's block table, for the extends node's block chaining."""
+        return self._inner.blocks
 
 
 def _guarded(template: Template, guard: _IncludeGuard) -> Template:
@@ -237,6 +249,8 @@ def render_source(
         return environment.from_string(source).render(dict(variables))
     except PromptRenderError:
         raise
+    except _CallbackError as failure:
+        raise failure.original from None
     except TemplateSyntaxError as error:
         raise PromptRenderError("syntax", str(error)) from None
     except UndefinedError as error:

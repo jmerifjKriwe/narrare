@@ -127,10 +127,12 @@ def get_registry() -> PromptRegistry:
     ``get_registry()`` — the registration idiom, running inside the loop —
     must find the registry being built, not build a second one. The build
     holds a reentrant lock, so a concurrent first call waits for the
-    complete registry instead of racing a partial one. A missing
-    capabilities directory and a prompt module that fails to import both
-    contribute nothing rather than taking the process down; the smoke suite
-    that renders every bundled prompt catches a registration gone missing.
+    complete registry instead of racing a partial one, and a build that
+    raises rolls the publication back — a partial registry never sticks, a
+    retry rebuilds. A missing capabilities directory and a prompt module
+    that fails to import both contribute nothing rather than taking the
+    process down; the smoke suite that renders every bundled prompt catches
+    a registration gone missing.
     """
     global _registry
     with _BUILD_LOCK:
@@ -138,14 +140,18 @@ def get_registry() -> PromptRegistry:
             return _registry
         registry = PromptRegistry()
         _registry = registry
-        capabilities = _capabilities_dir()
-        if capabilities.is_dir():
-            for folder in sorted(capabilities.iterdir()):
-                module = folder / "prompts.py"
-                if folder.is_dir() and module.is_file():
-                    name = ".".join(
-                        module.relative_to(capabilities.parent.parent).with_suffix("").parts
-                    )
-                    with suppress(Exception):
-                        import_module(name)
+        try:
+            capabilities = _capabilities_dir()
+            if capabilities.is_dir():
+                for folder in sorted(capabilities.iterdir()):
+                    module = folder / "prompts.py"
+                    if folder.is_dir() and module.is_file():
+                        name = ".".join(
+                            module.relative_to(capabilities.parent.parent).with_suffix("").parts
+                        )
+                        with suppress(Exception):
+                            import_module(name)
+        except Exception:
+            _registry = None
+            raise
         return registry
