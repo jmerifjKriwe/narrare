@@ -104,6 +104,10 @@ async def test_a_novel_override_reorders_the_sections() -> None:
     async with Session() as session:
         novel = Novel(user_id=LOCAL_USER_ID, title=NOVEL_TITLE)
         session.add(novel)
+        # The id exists only after a flush — saving with it before would write
+        # the GLOBAL row and this test would pass through the global fallback
+        # (the mistake test_prompts_knowledge documents at its own flush).
+        await session.flush()
         await PromptTemplateRepository(session, LOCAL_USER_ID).save(
             "writing.continuation", override, novel.id
         )
@@ -128,6 +132,24 @@ async def test_a_novel_override_reorders_the_sections() -> None:
     assert "### Mira (character)\nDie Wanderin." in prompt
     assert "### Ursprung\nMira kam." in prompt
     assert prompt.endswith(BODY)
+    # The override lives on the novel's row only: without a novel scope the
+    # chain answers bundled — a save that wrote the global row instead fails
+    # here, so this test bites for the tier it names.
+    async with Session() as session:
+        global_prompt = await render_continuation(
+            session,
+            LOCAL_USER_ID,
+            None,
+            budgets=BUDGETS,
+            novel_title=NOVEL_TITLE,
+            chapter_title=CHAPTER_TITLE,
+            body=BODY,
+            entities=ENTITIES,
+            predecessors=PREDECESSORS,
+            genre=GENRE,
+            blurb=BLURB,
+        )
+    assert global_prompt == GOLDEN
 
 
 async def test_a_huge_frame_shrinks_the_tail_and_holds_the_total() -> None:
