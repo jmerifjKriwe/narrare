@@ -25,9 +25,23 @@ CHAT_TEMPLATE = (
 )
 
 
+_SAMPLE_QUESTION: Final = "Wo war der Leuchtturm?"
+_SAMPLE_PASSAGE: Final = "Der Leuchtturm am Horizont war seit Jahren dunkel."
+
+
+def _source_line(text: str) -> str:
+    """One marked source line — the one place the marker and text are joined.
+
+    ``sources_block`` builds the runtime lines with it and ``sample_variables``
+    builds the sample's line with it, so the payload the contract binds cannot
+    drift from the format an override actually receives.
+    """
+    return f"{SOURCE_PREFIX}{text}"
+
+
 def sources_block(passages: Sequence[Passage]) -> str:
     """The source lines, each behind the kernel's marker — today's join."""
-    return "\n".join(f"{SOURCE_PREFIX}{passage.text}" for passage in passages)
+    return "\n".join(_source_line(passage.text) for passage in passages)
 
 
 def sample_variables() -> dict[str, object]:
@@ -37,14 +51,27 @@ def sample_variables() -> dict[str, object]:
     what its author may reorder, never rewrite.
     """
     return {
-        "question": "Wo war der Leuchtturm?",
-        "sources": f"{SOURCE_PREFIX}Der Leuchtturm am Horizont war seit Jahren dunkel.",
+        "question": _SAMPLE_QUESTION,
+        "sources": _source_line(_SAMPLE_PASSAGE),
     }
 
 
+_SAMPLE_SOURCES: Final[str] = str(sample_variables()["sources"])
+"""The sample's own marked sources line: the payload the contract binds whole."""
+
+
 def chat_contract(rendered: str) -> bool:
-    """A re-voice may reorder the frame, never drop the marked sources."""
-    return SOURCE_PREFIX in rendered
+    """A re-voice may reorder the frame, never drop the marked sources.
+
+    Content-bound, mirroring the knowledge capability's settled shape (the
+    predicate is duplicated, not imported — one capability does not reach
+    into another): the marker alone is not enough. The sample's own marked
+    sources line must ride the render whole, so a template that drops
+    ``{{ sources }}`` — or keeps only a bare ``SOURCE: `` line, or merely
+    mentions the marker in prose — fails the save-time gate instead of
+    reaching the model and answering ungrounded.
+    """
+    return SOURCE_PREFIX in rendered and _SAMPLE_SOURCES in rendered
 
 
 def chat_prompt(*, question: str, passages: Sequence[Passage]) -> str:

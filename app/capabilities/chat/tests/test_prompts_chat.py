@@ -86,7 +86,7 @@ async def test_a_global_override_revoices_the_frame_and_the_fake_still_quotes_th
     The rendered prompt drives the fake provider the way the kernel tests do:
     its answer quotes the passage, so a re-voice cannot strand retrieval.
     """
-    from app.capabilities.chat.prompts import CHAT_KEY
+    from app.capabilities.chat.prompts import CHAT_KEY, chat_contract
     from app.capabilities.chat.service import ChatService
     from app.kernel.contracts.models import Chunk, Document
     from app.kernel.db.session import Session
@@ -124,6 +124,9 @@ async def test_a_global_override_revoices_the_frame_and_the_fake_still_quotes_th
 
     assert prompt.startswith("Answer strictly from the sources.")
     assert SOURCE_PREFIX + FIRST_PASSAGE in prompt
+    # The accept side of the contract pair: the override as rendered passes
+    # the gate it saved under, not only GOLDEN and the sample.
+    assert chat_contract(prompt) is True
     assert [passage.text for passage in passages] == [FIRST_PASSAGE]
     events = [event async for event in FakeProvider().stream(CompletionRequest.user(prompt))]
     answer = "".join(event.text for event in events if isinstance(event, Delta))
@@ -141,6 +144,37 @@ def test_the_contract_refuses_a_render_without_the_source_marker() -> None:
     dropped = render_source("Asked: {{ question }}", {"question": QUESTION}, include=no_includes)
     assert chat_contract(dropped) is False
     assert chat_contract(GOLDEN) is True
+
+
+def test_the_contract_refuses_a_bare_marker_without_the_sample_payload() -> None:
+    """A marker line the payload never follows is refused, prefix and all.
+
+    ``SOURCE: `` alone is the prefix, not the sources: a re-voice that keeps
+    a literal marker line but drops ``{{ sources }}`` renders it bare, and
+    the contract binds the sample's own marked payload whole.
+    """
+    from app.capabilities.chat.prompts import chat_contract
+
+    bare = f"The sources follow.\n{SOURCE_PREFIX}\nAsked: {QUESTION}"
+    assert chat_contract(bare) is False
+
+
+def test_the_marker_mentioned_in_prose_alone_does_not_pass_the_contract() -> None:
+    """The prefix-only false positive: marker words, no payload — refused.
+
+    A frame that only mentions the marker (``each source line begins with
+    SOURCE: -- read them.``) satisfied the prefix check while carrying no
+    sources at all — the render's answer drew on nothing. The content bound
+    refuses it, at the save gate the contract runs under.
+    """
+    from app.capabilities.chat.prompts import chat_contract
+
+    repro = (
+        "Answer using the sources. Each source line begins with "
+        f"{SOURCE_PREFIX}-- read them.\n\nQuestion: {QUESTION}"
+    )
+    assert SOURCE_PREFIX in repro  # the prefix-only contract accepted this
+    assert chat_contract(repro) is False
 
 
 def test_the_sample_renders_through_the_contract() -> None:
