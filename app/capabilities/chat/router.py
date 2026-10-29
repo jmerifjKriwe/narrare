@@ -18,6 +18,7 @@ from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
+from app.kernel.prompts import PromptRenderError
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
 from app.kernel.secrets import KeyUnavailableError
 
@@ -111,6 +112,14 @@ async def ask(
             status_code=409,
             detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
+    except PromptRenderError:
+        # A prompt the effective chain refuses (an override that cannot render)
+        # ends the stream the way the lost key below does: the one error frame,
+        # refused by name and never swapped for the bundled template.
+        logger.exception("chat prompt refused")
+        return FinalizingStreamingResponse(
+            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+        )
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
     # can no longer produce ends the stream with the error frame a dead
