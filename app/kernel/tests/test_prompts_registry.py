@@ -5,13 +5,21 @@ The boundaries the kernel owns here: a spec round-trips through
 kept), and ``render_source`` returns the rendered text when every variable is
 given — while each failure mode refuses with ``PromptRenderError`` and its
 exact reason: an unknown ``{{ var }}`` is ``undefined-variable``, a broken
-``{% %}`` is ``syntax``, a key already being rendered is ``include-cycle``,
-and an include chain below the depth limit is ``include-depth``. The include
-tracking must be a true render-time stack, not a seen-set: a diamond (two
-sibling includes of one key) renders, and a chain of exactly five includes —
-the limit — still renders. ``get_registry`` is the process-wide instance and,
-today, empty: no capability ``prompts.py`` registers anything yet.
+``{% %}`` is ``syntax``, a sandbox violation is ``forbidden``, a key the
+include callback cannot resolve is ``include-missing``, any other
+template-time exception is ``runtime``, a key already being rendered is
+``include-cycle``, and an include chain deeper than the limit is
+``include-depth``. The include tracking must be a true render-time stack that
+template text cannot reach, not a seen-set: a diamond (two sibling includes
+of one key) renders, a chain of exactly five includes — the limit — still
+renders, and a guard-looking name in template text is simply undefined. A
+trailing newline survives rendering. ``get_registry`` is the process-wide
+instance — a discovered module's registration lands in it — and, today,
+empty: no capability ``prompts.py`` registers anything yet.
 """
+
+import sys
+from pathlib import Path  # noqa: TC003  signatures evaluate
 
 import pytest
 
@@ -22,6 +30,7 @@ from app.kernel.prompts import (
     get_registry,
     render_source,
 )
+from app.kernel.prompts import registry as prompts_registry
 
 
 def _toy_registry() -> PromptRegistry:
@@ -77,6 +86,11 @@ def test_render_with_all_variables() -> None:
     assert text == "Hello Ada!"
 
 
+def test_render_keeps_trailing_newline() -> None:
+    text = render_source("line\n", {}, include=lambda key: "")
+    assert text == "line\n"
+
+
 def test_render_undefined_variable() -> None:
     with pytest.raises(PromptRenderError) as error:
         render_source("Hello {{ missing }}!", {}, include=lambda key: "")
@@ -88,6 +102,30 @@ def test_render_syntax_error() -> None:
     with pytest.raises(PromptRenderError) as error:
         render_source("Hello {% if %}!", {"name": "Ada"}, include=lambda key: "")
     assert error.value.reason == "syntax"
+    assert error.value.detail
+
+
+def test_render_sandbox_violation_is_forbidden() -> None:
+    with pytest.raises(PromptRenderError) as error:
+        render_source("{{ ''.__class__ }}", {}, include=lambda key: "")
+    assert error.value.reason == "forbidden"
+    assert error.value.detail
+
+
+def test_render_template_runtime_error_is_runtime() -> None:
+    with pytest.raises(PromptRenderError) as error:
+        render_source("{{ 1/0 }}", {}, include=lambda key: "")
+    assert error.value.reason == "runtime"
+    assert error.value.detail
+
+
+def test_render_missing_include_is_include_missing() -> None:
+    def missing(key: str) -> str:
+        raise KeyError(key)
+
+    with pytest.raises(PromptRenderError) as error:
+        render_source("{% include 'gone' %}", {}, include=missing)
+    assert error.value.reason == "include-missing"
     assert error.value.detail
 
 
@@ -109,6 +147,20 @@ def test_render_include_cycle() -> None:
         render_source(sources["a"], {}, include=sources.__getitem__)
     assert error.value.reason == "include-cycle"
     assert error.value.detail
+
+
+def test_render_include_cycle_without_context() -> None:
+    """The without-context include path is bracketed like the with-context one."""
+    sources = {"a": "{% include 'b' %}", "b": "{% include 'a' without context %}"}
+    with pytest.raises(PromptRenderError) as error:
+        render_source(sources["a"], {}, include=sources.__getitem__)
+    assert error.value.reason == "include-cycle"
+
+
+def test_render_include_without_context_renders() -> None:
+    sources = {"outer": "A{% include 'inner' without context %}B", "inner": "i"}
+    text = render_source(sources["outer"], {}, include=sources.__getitem__)
+    assert text == "AiB"
 
 
 def test_render_include_chain_deeper_than_five() -> None:
@@ -137,6 +189,16 @@ def test_render_diamond_include_renders() -> None:
     assert text == "X[d]Y(d)Z"
 
 
+def test_template_text_cannot_reach_the_guard() -> None:
+    """A guard-looking name in template text is undefined — never a stack move."""
+    with pytest.raises(PromptRenderError) as error:
+        render_source("{{ _prompt_exit() }}", {}, include=lambda key: "")
+    assert error.value.reason == "undefined-variable"
+    with pytest.raises(PromptRenderError) as error:
+        render_source("{{ _prompt_enter('x') }}", {}, include=lambda key: "")
+    assert error.value.reason == "undefined-variable"
+
+
 def test_render_uses_include_callback_for_nested_variables() -> None:
     sources = {
         "outer": "Dear {{ who }},\n{% include 'inner' %}",
@@ -144,6 +206,36 @@ def test_render_uses_include_callback_for_nested_variables() -> None:
     }
     text = render_source(sources["outer"], {"who": "Ada"}, include=sources.__getitem__)
     assert text == "Dear Ada,\n— Ada"
+
+
+def test_discovered_registration_reaches_the_singleton(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A discovered module's get_registry() must find the registry being built.
+
+    The registration idiom is a module-level call at import time — which
+    happens inside discovery, before the outer call has published anything.
+    If the singleton is only assigned after the loop, the nested call builds
+    a second registry, the registrations land there, and the outer call
+    discards them: this test fails exactly that way.
+    """
+    package = tmp_path / "discovery_pkg"
+    (package / "caps" / "discovered").mkdir(parents=True)
+    for folder in (package, package / "caps", package / "caps" / "discovered"):
+        (folder / "__init__.py").write_text("")
+    (package / "caps" / "discovered" / "prompts.py").write_text(
+        "from app.kernel.prompts import get_registry\n"
+        "\n"
+        "get_registry().register(\n"
+        "    'discovered.key', template='x', sample_variables=lambda: {}\n"
+        ")\n"
+    )
+    monkeypatch.setattr(sys, "path", [str(tmp_path), *sys.path])
+    monkeypatch.setattr(prompts_registry, "_capabilities_dir", lambda: package / "caps")
+    monkeypatch.setattr(prompts_registry, "_registry", None)
+    registry = get_registry()
+    assert registry.spec("discovered.key").key == "discovered.key"
+    assert get_registry() is registry
 
 
 def test_get_registry_idempotent_and_empty_today() -> None:
@@ -158,5 +250,8 @@ def test_reason_vocabulary_exact() -> None:
         "undefined-variable",
         "include-depth",
         "include-cycle",
+        "include-missing",
+        "forbidden",
+        "runtime",
         "budget",
     )

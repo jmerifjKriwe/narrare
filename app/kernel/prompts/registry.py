@@ -16,15 +16,20 @@ overrides dock here later, on the ``ProviderProfile`` precedent.
 """
 
 from collections.abc import Callable  # noqa: TC003  the dataclass fields evaluate
+from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
+from threading import RLock
 
 REASONS: tuple[str, ...] = (
     "syntax",
     "undefined-variable",
     "include-depth",
     "include-cycle",
+    "include-missing",
+    "forbidden",
+    "runtime",
     "budget",
 )
 """The closed refusal vocabulary a ``PromptRenderError.reason`` draws from.
@@ -106,22 +111,41 @@ class PromptRegistry:
 
 _registry: PromptRegistry | None = None
 
+_BUILD_LOCK = RLock()
+"""Serializes the one build; reentrant, so a discovered module's lookup re-enters."""
+
+
+def _capabilities_dir() -> Path:
+    """The capabilities folder the discovery scans; the seam the tests point elsewhere."""
+    return Path(__file__).resolve().parents[2] / "capabilities"
+
 
 def get_registry() -> PromptRegistry:
     """The process's one registry, discovering the capability prompt modules once.
 
-    The first call imports every ``app/capabilities/*/prompts.py`` — the
-    folders without one are skipped — and their registrations land in the
-    order the sorted folder names give. Later calls return the same instance;
-    a module's import runs once, so its registrations happen once.
+    The instance is published before discovery: a discovered module's
+    ``get_registry()`` — the registration idiom, running inside the loop —
+    must find the registry being built, not build a second one. The build
+    holds a reentrant lock, so a concurrent first call waits for the
+    complete registry instead of racing a partial one. A missing
+    capabilities directory and a prompt module that fails to import both
+    contribute nothing rather than taking the process down; the smoke suite
+    that renders every bundled prompt catches a registration gone missing.
     """
     global _registry
-    if _registry is not None:
-        return _registry
-    registry = PromptRegistry()
-    capabilities = Path(__file__).resolve().parents[2] / "capabilities"
-    for folder in sorted(capabilities.iterdir()):
-        if folder.is_dir() and (folder / "prompts.py").is_file():
-            import_module(f"app.capabilities.{folder.name}.prompts")
-    _registry = registry
-    return registry
+    with _BUILD_LOCK:
+        if _registry is not None:
+            return _registry
+        registry = PromptRegistry()
+        _registry = registry
+        capabilities = _capabilities_dir()
+        if capabilities.is_dir():
+            for folder in sorted(capabilities.iterdir()):
+                module = folder / "prompts.py"
+                if folder.is_dir() and module.is_file():
+                    name = ".".join(
+                        module.relative_to(capabilities.parent.parent).with_suffix("").parts
+                    )
+                    with suppress(Exception):
+                        import_module(name)
+        return registry
