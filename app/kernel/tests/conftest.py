@@ -25,7 +25,16 @@ def schema() -> None:
 
 
 @pytest.fixture
-async def empty_tables() -> None:
+async def empty_tables(schema: None) -> None:
+    """Start a database test from empty tables, in a schema that exists.
+
+    The ``schema`` argument is the point: pytest-randomly orders modules and
+    functions, and a fresh CI database has no tables at all, so any database
+    test can be the first one of a run. Without the dependency it truncates
+    tables nobody has built yet. The capability suites make their schema
+    autouse; this suite keeps it opt-in so a run that never touches the
+    database never rebuilds it.
+    """
     # Imported here: the module reads its URL once, at import.
     from app.kernel.db.session import Session
 
