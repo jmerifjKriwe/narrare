@@ -302,5 +302,6 @@
   "settings.tasks.settings.test": "Verbindungstest",
   "settings.tasks.unknown": "Aufgabe",
   "jobs.truncated": "Nur die ersten 20.000 Zeichen wurden gelesen.",
-  "jobs.skippedChapters": "Übersprungen, zu lang: {titles}"
+  "jobs.skippedChapters": "Übersprungen, zu lang: {titles}",
+  "prompts.heading": "Prompts"
 }

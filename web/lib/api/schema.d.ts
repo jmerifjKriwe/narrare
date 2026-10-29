@@ -427,6 +427,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/prompts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Prompts
+         * @description Every bundled prompt with its facts and its two override tiers.
+         */
+        get: operations["list_prompts_api_prompts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/prompts/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Prompt
+         * @description One prompt as the editor shows it: bundled source, legend, override.
+         */
+        get: operations["get_prompt_api_prompts__key__get"];
+        /**
+         * Put Prompt
+         * @description Validate and save the override for the scope; the fresh detail answers.
+         */
+        put: operations["put_prompt_api_prompts__key__put"];
+        post?: never;
+        /**
+         * Delete Prompt
+         * @description Reset the override for the scope; the other tier is untouched.
+         */
+        delete: operations["delete_prompt_api_prompts__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/prompts/{key}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Prompt Diff
+         * @description The bundled template against the override in force for the scope.
+         */
+        get: operations["get_prompt_diff_api_prompts__key__diff_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -1402,6 +1470,82 @@ export interface components {
             temperature?: number | null;
         };
         /**
+         * PromptDetail
+         * @description One key as the editor shows it: the bundled source, the variable
+         *     legend, the override in force, the source a render would use.
+         */
+        PromptDetail: {
+            /** Bundled Content */
+            bundled_content: string;
+            /** Effective Content */
+            effective_content: string;
+            override: components["schemas"]["PromptOverride"] | null;
+            /** Variables */
+            variables: components["schemas"]["PromptVariable"][];
+        };
+        /**
+         * PromptDiff
+         * @description The bundled template against the override in force for the scope.
+         */
+        PromptDiff: {
+            /** Bundled Content */
+            bundled_content: string;
+            /** Override Content */
+            override_content: string | null;
+        };
+        /**
+         * PromptOverride
+         * @description The override in force for the scope: which tier answered, its content.
+         */
+        PromptOverride: {
+            /** Content */
+            content: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "global" | "novel";
+        };
+        /**
+         * PromptSave
+         * @description One override write. ``novel_id`` absent or null saves the global tier.
+         */
+        PromptSave: {
+            /** Content */
+            content: string;
+            /** Novel Id */
+            novel_id?: string | null;
+        };
+        /**
+         * PromptSummary
+         * @description One bundled key in the list, with its two override tiers as facts.
+         *
+         *     ``override_novel`` is meaningful only when the read carried a
+         *     ``novel_id``; without one there is no novel tier to ask.
+         */
+        PromptSummary: {
+            /** Bundled Summary */
+            bundled_summary: string;
+            /** Key */
+            key: string;
+            /** Novel Scopable */
+            novel_scopable: boolean;
+            /** Override Global */
+            override_global: boolean;
+            /** Override Novel */
+            override_novel: boolean;
+        };
+        /**
+         * PromptVariable
+         * @description One variable of the template, with the sample value as its example.
+         */
+        PromptVariable: {
+            /** Example */
+            example: string;
+            /** Name */
+            name: string;
+        };
+        /**
          * ProposedRelationRead
          * @description One proposed relation as review reads it: the target's name and the type.
          *
@@ -2333,6 +2477,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuggestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_prompts_api_prompts_get: {
+        parameters: {
+            query?: {
+                novel_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_prompt_api_prompts__key__get: {
+        parameters: {
+            query?: {
+                novel_id?: string | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_prompt_api_prompts__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromptSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_prompt_api_prompts__key__delete: {
+        parameters: {
+            query?: {
+                novel_id?: string | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_prompt_diff_api_prompts__key__diff_get: {
+        parameters: {
+            query?: {
+                novel_id?: string | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptDiff"];
                 };
             };
             /** @description Validation Error */

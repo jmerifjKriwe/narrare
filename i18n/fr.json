@@ -302,5 +302,6 @@
   "settings.tasks.settings.test": "Test de connexion",
   "settings.tasks.unknown": "Tâche",
   "jobs.truncated": "Seuls les 20 000 premiers caractères ont été lus.",
-  "jobs.skippedChapters": "Ignorés, trop longs : {titles}"
+  "jobs.skippedChapters": "Ignorés, trop longs : {titles}",
+  "prompts.heading": "Prompts"
 }

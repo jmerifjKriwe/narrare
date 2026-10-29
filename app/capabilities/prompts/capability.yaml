@@ -1,0 +1,8 @@
+# Facts only (spec §4): every field is read by at least two generated views —
+# app/generated/capabilities.py, web/lib/generated/capabilities.ts and
+# docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
+id: prompts
+title: prompts.heading # i18n key; must exist in en, de and fr
+path: /prompts
+needs: []
+nav: false # a nav entry needs the mounted route; the page's commit flips this

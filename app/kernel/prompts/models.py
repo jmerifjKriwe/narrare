@@ -25,6 +25,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.kernel.db.base import ScopedRepository, UserOwned
@@ -84,16 +85,24 @@ class PromptTemplateRepository(ScopedRepository[PromptTemplate]):
 
     model = PromptTemplate
 
-    async def _row(self, prompt_key: str, novel_id: UUID | None) -> PromptTemplate | None:
-        """The user's row for exactly this scope: one novel, or the global tier."""
-        return await self.session.scalar(
-            self.query().where(
-                PromptTemplate.prompt_key == prompt_key,
-                PromptTemplate.novel_id.is_(None)
-                if novel_id is None
-                else PromptTemplate.novel_id == novel_id,
-            )
+    async def _row(
+        self, prompt_key: str, novel_id: UUID | None, *, fresh: bool = False
+    ) -> PromptTemplate | None:
+        """The user's row for exactly this scope: one novel, or the global tier.
+
+        ``fresh`` overwrites an instance the session already holds, so a
+        caller that loaded the row earlier in its transaction cannot answer
+        from its pre-write state.
+        """
+        statement = self.query().where(
+            PromptTemplate.prompt_key == prompt_key,
+            PromptTemplate.novel_id.is_(None)
+            if novel_id is None
+            else PromptTemplate.novel_id == novel_id,
         )
+        if fresh:
+            statement = statement.execution_options(populate_existing=True)
+        return await self.session.scalar(statement)
 
     async def effective(self, prompt_key: str, novel_id: UUID | None) -> PromptTemplate | None:
         """The override in force for the scope: the novel's row, else the global one."""
@@ -104,16 +113,49 @@ class PromptTemplateRepository(ScopedRepository[PromptTemplate]):
         return await self._row(prompt_key, None)
 
     async def save(self, prompt_key: str, content: str, novel_id: UUID | None) -> PromptTemplate:
-        """Write the override for the scope, replacing its row in place."""
-        row = await self._row(prompt_key, novel_id)
-        if row is None:
-            row = PromptTemplate(
-                user_id=self.user_id, prompt_key=prompt_key, novel_id=novel_id, content=content
+        """Write the override for the scope, replacing its row in place.
+
+        One statement: ``insert ... on_conflict_do_update`` against the
+        scope's constraint — the three-column constraint for a novel, the
+        partial index for the global tier, where NULL is distinct. Two
+        concurrent saves on an empty scope then serialize at the database:
+        the later one takes the update path instead of drawing an
+        ``IntegrityError`` from its flush, so a double submit or a true race
+        is one saved row, never a 500. The commit stays with the caller, as
+        everywhere.
+        """
+        values: dict[str, object] = {
+            "user_id": self.user_id,
+            "prompt_key": prompt_key,
+            "novel_id": novel_id,
+            "content": content,
+        }
+        # The ORM's onupdate does not fire on the DO UPDATE arm, so the
+        # timestamp rides the set_ explicitly.
+        update = {"content": content, "updated_at": datetime.now(UTC)}
+        if novel_id is None:
+            statement = (
+                insert(PromptTemplate)
+                .values(values)
+                .on_conflict_do_update(
+                    index_elements=["user_id", "prompt_key"],
+                    index_where=text("novel_id IS NULL"),
+                    set_=update,
+                )
             )
-            self.session.add(row)
         else:
-            row.content = content
-        await self.session.flush()
+            statement = (
+                insert(PromptTemplate)
+                .values(values)
+                .on_conflict_do_update(
+                    index_elements=["user_id", "novel_id", "prompt_key"],
+                    set_=update,
+                )
+            )
+        await self.session.execute(statement)
+        row = await self._row(prompt_key, novel_id, fresh=True)
+        if row is None:  # the upsert wrote the scope; the read cannot miss
+            raise RuntimeError("the prompt override upsert wrote no readable row")
         return row
 
     async def delete(self, prompt_key: str, novel_id: UUID | None) -> bool:
