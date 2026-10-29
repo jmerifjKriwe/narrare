@@ -11,6 +11,10 @@
  * nothing, an accept while an autosave PUT is in flight loses no text,
  * and the arriving ghost owns the caret without waiting for a frame.
  *
+ * The document the editor saves is Markdown (the storage format): a body
+ * prop arrives as Markdown source, and every autosave PUT carries the
+ * document as Markdown — never an HTML serialization of it.
+ *
  * The first import re-bases fetch onto a real local HTTP server (see
  * editorApiServer) — no module is mocked and no editor is faked; holding the
  * server's first response is what makes a save "in flight", and its scripted
@@ -257,10 +261,13 @@ describe("ChapterEditor's ghost text", () => {
     expect(documentText()).toContain("Nimm mich auf.");
     await waitFor(() => expect(announced()).toContain(t("editor.ghostAccepted")));
     expect(resolved).toEqual([true]);
-    // The debounced autosave (800 ms) persists exactly what was accepted.
+    // The debounced autosave (800 ms) persists exactly what was accepted —
+    // as Markdown source: the words are there, and no HTML serialization of
+    // the document went out instead.
     await waitFor(() => expect(editorServer.requests.length).toBe(1), { timeout: 4_000 });
     expect(editorServer.requests[0].url).toContain(`/api/writing/chapters/${CHAPTER}`);
     expect(editorServer.requests[0].body).toContain("Nimm mich auf.");
+    expect(editorServer.requests[0].body).not.toContain("<p>");
   });
 
   it("drops the ghost on Escape without document, save or window", { timeout: 10_000 }, async () => {

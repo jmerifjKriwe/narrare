@@ -54,6 +54,10 @@ class Novel(UserOwned):
     title: Mapped[str] = mapped_column(String(200))
     genre: Mapped[str | None] = mapped_column(String(80))
     blurb: Mapped[str | None] = mapped_column(Text)
+    # The export's front matter. The language is a BCP-47-ish code (`de`,
+    # `en`); both are nullable — a novel without an answer does not lie.
+    author: Mapped[str | None] = mapped_column(String(200))
+    language: Mapped[str | None] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

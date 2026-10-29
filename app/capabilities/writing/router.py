@@ -6,7 +6,7 @@ from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,11 +14,24 @@ from app.capabilities.writing.schemas import (
     ChapterCreate,
     ChapterRead,
     ChapterUpdate,
+    ExportDone,
+    ExportRequest,
+    FieldRefusalsRead,
+    ImportRefusalsRead,
+    ImportReportRead,
     NovelCreate,
     NovelRead,
     WritingErrorRead,
 )
-from app.capabilities.writing.service import NotFoundError, WritingService
+from app.capabilities.writing.service import (
+    MAX_ARCHIVE_BYTES,
+    ArchiveInvalidError,
+    ArchiveTooLargeError,
+    FieldRefusedError,
+    NotFoundError,
+    TargetNotEmptyError,
+    WritingService,
+)
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.context import DEFAULT_MAX_OUTPUT_TOKENS, BudgetImpossibleError
 from app.kernel.contracts.models import Chapter
@@ -27,6 +40,7 @@ from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
+from app.kernel.retrieval import EmbeddingMismatchError
 from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
@@ -45,6 +59,18 @@ def _service(session: SessionDep, user_id: UserDep) -> WritingService:
 
 
 ServiceDep = Annotated[WritingService, Depends(_service)]
+
+
+def _refusal(error: FieldRefusedError) -> HTTPException:
+    """A refused field contract as a 422 naming each field — the settings
+    router's answer, so the client learns exactly which input was refused."""
+    return HTTPException(
+        status_code=422,
+        detail=[
+            {"loc": ["body", field], "msg": str(error), "type": "value_error"}
+            for field in error.fields
+        ],
+    )
 
 
 async def _continuation_events(
@@ -124,6 +150,141 @@ async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
     return NovelRead.model_validate(novel)
+
+
+@router.post(
+    "/novels/{novel_id}/export",
+    response_model=ExportDone,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {
+            "description": "The target exists and is non-empty",
+            "content": {
+                "application/json": {
+                    "example": {"detail": {"code": "target_not_empty", "path": "/home/me/export"}}
+                }
+            },
+        },
+        422: {
+            "model": FieldRefusalsRead,
+            "description": ("A missing, unwritable or file target path, named in `detail[].loc`"),
+        },
+    },
+)
+async def export_novel(
+    novel_id: UUID, payload: ExportRequest, service: ServiceDep
+) -> ExportDone | Response:
+    """Export an owned novel as a ZIP download or into a directory on disk.
+
+    The ZIP answer carries ``Content-Disposition: attachment`` named after the
+    title's slug; the path answer is the receipt: where it went and how much.
+    Respond with HTTP 404 for an absent or unowned novel, HTTP 409 when the
+    target exists and is non-empty, or HTTP 422 naming the field for a
+    missing, unwritable or file target path.
+    """
+    try:
+        result = await service.export_novel(novel_id, payload.mode, payload.path)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except TargetNotEmptyError as error:
+        raise HTTPException(
+            status_code=409, detail={"code": "target_not_empty", "path": error.path}
+        ) from None
+    except FieldRefusedError as error:
+        raise _refusal(error) from None
+    if isinstance(result, tuple):
+        slug, data = result
+        return Response(
+            content=data,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{slug}.zip"'},
+        )
+    return result
+
+
+@router.post(
+    "/novels/import",
+    response_model=ImportReportRead,
+    status_code=201,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {
+            "description": (
+                "Setup is required (a new-novel import needs the user setup "
+                "creates), or the embedding model answers at another width "
+                "than the entity corpus"
+            ),
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "setup_required": {"value": {"detail": "setup required"}},
+                        "embedding_mismatch": {
+                            "value": {
+                                "detail": {
+                                    "code": "embedding-mismatch",
+                                    "stored": 384,
+                                    "found": 1536,
+                                }
+                            }
+                        },
+                    }
+                }
+            },
+        },
+        413: {"description": "The archive is larger than 20 000 000 bytes"},
+        422: {
+            "model": ImportRefusalsRead,
+            "description": (
+                "A source contract break, named in `detail[].loc`, or an "
+                "unreadable archive whose file is named in `detail.file`"
+            ),
+        },
+    },
+)
+async def import_novel(
+    service: ServiceDep,
+    archive: Annotated[UploadFile | None, File()] = None,
+    path: Annotated[str | None, Form()] = None,
+    novel_id: Annotated[UUID | None, Form()] = None,
+) -> ImportReportRead:
+    """Import one archive as a new novel, or merged into an owned one.
+
+    The archive arrives as an upload or as a server-side path — exactly one
+    of the two. Respond with HTTP 404 for an absent or unowned target novel,
+    HTTP 413 for an oversized archive, HTTP 422 naming the field for a
+    source contract break or an unreachable path, HTTP 422 with the offending
+    file named for an unreadable or malformed archive, or HTTP 409 for a
+    new-novel import before setup (`setup required`) or when the configured
+    embedding model answers at another width than the entity corpus.
+    """
+    # The cap is checked on the upload's reported size before `read()` loads
+    # it; the service keeps the authoritative check on the actual bytes.
+    if archive is not None and archive.size is not None and archive.size > MAX_ARCHIVE_BYTES:
+        raise HTTPException(status_code=413, detail="archive too large")
+    data = await archive.read() if archive is not None else None
+    try:
+        report = await service.import_novel(archive=data, path=path, novel_id=novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    except ArchiveTooLargeError:
+        raise HTTPException(status_code=413, detail="archive too large") from None
+    except ArchiveInvalidError as error:
+        # A dict, not a sentence: the UI localizes this error and needs a code,
+        # and `file` carries the archive-supplied path as a plain string.
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "archive_invalid", "file": error.file, "reason": error.reason},
+        ) from None
+    except FieldRefusedError as error:
+        raise _refusal(error) from None
+    except EmbeddingMismatchError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
+        ) from None
+    return ImportReportRead.model_validate(report, from_attributes=True)
 
 
 @router.get(

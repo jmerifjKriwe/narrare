@@ -1,5 +1,3 @@
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
@@ -7,14 +5,17 @@ import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { SaveIndicator, type SaveStatus } from "@shell/lib/save";
 import { readFrames } from "@shell/lib/stream";
+import { MarkdownEditor } from "@shell/ui/markdown-editor";
+import type { Editor } from "@tiptap/core";
 
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
 
 /**
  * Edit a chapter, with proposals kept as ghost text until accepted. Saving is
  * the page's, not the editor's: it receives the autosave's `status` (shown
- * beside the text) and `schedule` (fed on every update). `body` initializes
- * the editor; remount with a new key when switching chapters.
+ * beside the text) and `schedule` (fed on every update with the document as
+ * Markdown — the storage format). `body` initializes the editor; remount
+ * with a new key when switching chapters.
  */
 export function ChapterEditor({
   chapterId,
@@ -40,6 +41,10 @@ export function ChapterEditor({
   const [failed, setFailed] = useState(false);
   // What this component's own stream has proposed so far.
   const [streamed, setStreamed] = useState<string | null>(null);
+  // The editor instance, handed back by the shared MarkdownEditor once
+  // mounted — the ghost machinery drives the view, so it needs the editor,
+  // not only the component.
+  const [editor, setEditor] = useState<Editor | null>(null);
 
   const resolve = useRef(onProposalResolve);
   resolve.current = onProposalResolve;
@@ -76,28 +81,9 @@ export function ChapterEditor({
     },
   };
 
-  const extensions = useMemo(() => [StarterKit, ghostText(handlers)], []);
-  const editor = useEditor({
-    extensions,
-    content: body,
-    immediatelyRender: false,
-    onUpdate: ({ editor: instance }) => schedule(instance.getHTML()),
-    editorProps: {
-      attributes: {
-        class: "prose",
-        // @tiptap/core injects role="textbox" in createView, but the React
-        // binding strips it again: EditorContent.init() re-parents the view
-        // and setOptions({element}) re-props it from the raw editorProps.
-        // The explicit role keeps aria-label valid here — axe computes
-        // "generic" for the roleless div and flags aria-prohibited-attr
-        // deterministically while the editor is empty (it defers the rule
-        // once text exists).
-        role: "textbox",
-        "aria-multiline": "true",
-        "aria-label": t("chapters.editorLabel"),
-      },
-    },
-  });
+  // Ghost text rides the shared editor as an extra extension; nothing about
+  // the ghost contract changes with the storage format.
+  const extensions = useMemo(() => [ghostText(handlers)], []);
 
   // The two proposal sources: the prop (the bus drives the same contract) and
   // this component's own stream. The prop wins when it has an opinion.
@@ -229,7 +215,14 @@ export function ChapterEditor({
           {t("chapters.continueError")}
         </p>
       ) : null}
-      <EditorContent editor={editor} className="mt-6" />
+      <MarkdownEditor
+        className="mt-6"
+        label={t("chapters.editorLabel")}
+        value={body}
+        onChange={schedule}
+        extensions={extensions}
+        onReady={setEditor}
+      />
     </div>
   );
 }

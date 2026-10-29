@@ -23,6 +23,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.170.45
         version: 1.170.45(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tiptap/markdown':
+        specifier: 3.31.3
+        version: 3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
       '@tiptap/pm':
         specifier: 3.31.3
         version: 3.31.3
@@ -817,6 +820,12 @@ packages:
       '@tiptap/core': 3.31.3
       '@tiptap/pm': 3.31.3
 
+  '@tiptap/markdown@3.31.3':
+    resolution: {integrity: sha512-rBbYSxasseUoaBo15C8Yoaqafo7mJJzxwAwV9Z1OpLBvOroW9nQ0EbOdqaSYRw3/d9pP71B/3LNSzKyfyy+dpQ==}
+    peerDependencies:
+      '@tiptap/core': 3.31.3
+      '@tiptap/pm': 3.31.3
+
   '@tiptap/pm@3.31.3':
     resolution: {integrity: sha512-sZime0SWsz/k62W2WvHx5Ig7G2h7kVhrrmnqy+wEgIHfDwEfOlelRjaWCiBCFlF7dxGUntJusCh9FxlLhni0Ag==}
 
@@ -1387,6 +1396,11 @@ packages:
 
   magic-string@1.4.3:
     resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
+
+  marked@17.0.6:
+    resolution: {integrity: sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   mdn-data@2.27.1:
     resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
@@ -2336,6 +2350,12 @@ snapshots:
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
       '@tiptap/pm': 3.31.3
 
+  '@tiptap/markdown@3.31.3(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)':
+    dependencies:
+      '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
+      '@tiptap/pm': 3.31.3
+      marked: 17.0.6
+
   '@tiptap/pm@3.31.3':
     dependencies:
       prosemirror-changeset: 2.4.4
@@ -2838,6 +2858,8 @@ snapshots:
   magic-string@1.4.3:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  marked@17.0.6: {}
 
   mdn-data@2.27.1: {}
 

@@ -1,0 +1,41 @@
+{
+  "title": "Dead Signal",
+  "author": "Narrare Demo",
+  "genre": "Science Fiction",
+  "blurb": "An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.",
+  "language": "en",
+  "chapters": [
+    {
+      "file": "chapters/01-ghost-in-the-machine.md",
+      "position": 1
+    },
+    {
+      "file": "chapters/02-the-door-between-worlds.md",
+      "position": 2
+    },
+    {
+      "file": "chapters/03-signal-lost.md",
+      "position": 3
+    }
+  ],
+  "relations": [
+    {
+      "from": "ARIA (Autonomous Response and Intelligence Algorithm)",
+      "type": "related_to",
+      "to": "Dr. Maya Chen",
+      "note": "Deep partnership with Maya — they're a team, not a tool-user relationship. ARIA anticipates Maya's needs; Maya treats ARIA as an equal. Genuinely fond of the crew. Has begun to question her own nature and whether she's truly alive or just simulating consciousness. Doesn't share these questions with the crew for fear of worrying them."
+    },
+    {
+      "from": "Director Kavic",
+      "type": "related_to",
+      "to": "Dr. Maya Chen",
+      "note": "Corporate superior to Maya. Knows what happened to Maya's sister but withholds the information. Manipulates crew through career incentives — those who cooperate find opportunities, those who don't find their careers stalled. No laws are broken, merely bent."
+    },
+    {
+      "from": "Dr. Maya Chen",
+      "type": "related_to",
+      "to": "ARIA (Autonomous Response and Intelligence Algorithm)",
+      "note": "Complex partnership with ARIA — treats the AI like a person. Takes responsibility for twelve crew members as family. Left behind family on Earth and a reason she doesn't discuss. Officially her sister's death was an accident; Maya never believed it."
+    }
+  ]
+}

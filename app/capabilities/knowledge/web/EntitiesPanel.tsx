@@ -17,10 +17,12 @@ import {
 import { ComboBox } from "@shell/ui/ComboBox";
 import { Dialog } from "@shell/ui/Dialog";
 import { GridList } from "@shell/ui/GridList";
+import { MarkdownEditor } from "@shell/ui/markdown-editor";
 import { TextField } from "@shell/ui/TextField";
 
 import { DANGER_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
 import { EntityRelationsSection } from "./EntityRelationsSection";
+import { previewText } from "./preview";
 import { relationTypeLabel } from "./relations";
 
 // The extraction contract's types (kernel contracts' ENTITY_TYPES), as
@@ -278,10 +280,12 @@ function EntityDetail({
         <ChipRow label={t("knowledge.entityTagsLabel")} values={entity.tags} />
       ) : null}
       {entity.content ? (
-        // The body's source, cut for the glance: no renderer intervenes
-        // (WP3 brings the editor), so what was written is what is shown.
+        // The body as the glance reads it: the stored Markdown's display
+        // copy — entities decoded, serializer escapes stripped (preview.ts)
+        // — cut for a glance. The store keeps the canonical bytes; the
+        // editor, not the preview, is where the document renders.
         <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-          {truncate(entity.content)}
+          {truncate(previewText(entity.content))}
         </p>
       ) : null}
       {relations.isError ? (
@@ -525,11 +529,13 @@ function EditEntityDialog({
             onChange={setAliases}
           />
           <ChipsField label={t("knowledge.entityTagsLabel")} values={tags} onChange={setTags} />
-          <TextField
+          {/* F-26: the body is prose, edited as rich text and stored as
+              Markdown — the same shared editor the chapters use. A blank
+              editor still saves as a cleared body. */}
+          <MarkdownEditor
             label={t("knowledge.entityBodyLabel")}
             value={content}
             onChange={setContent}
-            multiline
           />
           <EntityRelationsSection
             entity={entity}

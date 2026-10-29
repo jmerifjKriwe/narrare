@@ -20,15 +20,23 @@ import type { ReactNode } from "react";
 export function Dialog({
   title,
   triggerLabel,
+  triggerAriaLabel,
   children,
 }: {
   title: string;
   triggerLabel: string;
+  /** The accessible name of the trigger, when the visible label is not
+   *  enough to tell one trigger from its siblings (a row of identical
+   *  "Export" buttons names its novel here; the visible label stays). */
+  triggerAriaLabel?: string;
   children: (close: () => void) => ReactNode;
 }) {
   return (
     <DialogTrigger>
-      <Button className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground data-focus-visible:outline-none data-focus-visible:ring-2 data-focus-visible:ring-focus">
+      <Button
+        aria-label={triggerAriaLabel}
+        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground data-focus-visible:outline-none data-focus-visible:ring-2 data-focus-visible:ring-focus"
+      >
         {triggerLabel}
       </Button>
       <ModalOverlay

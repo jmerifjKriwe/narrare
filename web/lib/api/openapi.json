@@ -22,6 +22,31 @@
         "title": "AcceptRead",
         "type": "object"
       },
+      "ArchiveInvalidRead": {
+        "description": "The 422 detail when the archive itself is unreadable or malformed.",
+        "properties": {
+          "code": {
+            "const": "archive_invalid",
+            "title": "Code",
+            "type": "string"
+          },
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "file",
+          "reason"
+        ],
+        "title": "ArchiveInvalidRead",
+        "type": "object"
+      },
       "AssignmentRead": {
         "properties": {
           "profile_id": {
@@ -68,6 +93,47 @@
           "profile_id"
         ],
         "title": "AssignmentUpdate",
+        "type": "object"
+      },
+      "Body_import_novel_api_writing_novels_import_post": {
+        "properties": {
+          "archive": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "title": "Body_import_novel_api_writing_novels_import_post",
         "type": "object"
       },
       "Body_upload_document_api_knowledge_documents_post": {
@@ -204,6 +270,38 @@
           "question"
         ],
         "title": "ChatRequest",
+        "type": "object"
+      },
+      "ConflictRead": {
+        "description": "One item the merge rules refused: which archive file, and why.\n\n`file` carries the archive-side path the parse stamped on the item —\nuntrusted text, a plain string by contract. `code` is the stable key the\nreceipt localizes, with `params` interpolated; `reason` is the technical\ndetail, and the fallback for a code the client does not know.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "reason",
+          "code",
+          "params"
+        ],
+        "title": "ConflictRead",
         "type": "object"
       },
       "ConsistencyAccepted": {
@@ -430,6 +528,59 @@
         "title": "EntityUpdate",
         "type": "object"
       },
+      "ExportDone": {
+        "description": "The receipt of a path export: where it went and how much.",
+        "properties": {
+          "chapters": {
+            "title": "Chapters",
+            "type": "integer"
+          },
+          "entities": {
+            "title": "Entities",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "chapters",
+          "entities"
+        ],
+        "title": "ExportDone",
+        "type": "object"
+      },
+      "ExportRequest": {
+        "description": "One export: into a directory on disk, or as a ZIP download.",
+        "properties": {
+          "mode": {
+            "enum": [
+              "path",
+              "zip"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
+      },
       "ExtractionAccepted": {
         "description": "The enqueue's whole answer: what to poll.",
         "properties": {
@@ -458,6 +609,50 @@
           "chapter_id"
         ],
         "title": "ExtractionRequest",
+        "type": "object"
+      },
+      "FieldRefusalRead": {
+        "description": "One refused field inside a 422 body — `loc` names the request part.",
+        "properties": {
+          "loc": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "FieldRefusalRead",
+        "type": "object"
+      },
+      "FieldRefusalsRead": {
+        "description": "The 422 body when the request breaks a field contract.",
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/FieldRefusalRead"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "FieldRefusalsRead",
         "type": "object"
       },
       "FindingRead": {
@@ -519,6 +714,106 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImportRefusalsRead": {
+        "description": "The import's 422 body: a refused field, or the offending archive file.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldRefusalRead"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/ArchiveInvalidRead"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ImportRefusalsRead",
+        "type": "object"
+      },
+      "ImportReportRead": {
+        "description": "What one import did, per class — the engine's report, field by field.\n\nEvery matched item lands in exactly one of new / revised / renamed /\nalready_current; an item a conflict refused increments nothing.",
+        "properties": {
+          "chapters_already_current": {
+            "title": "Chapters Already Current",
+            "type": "integer"
+          },
+          "chapters_new": {
+            "title": "Chapters New",
+            "type": "integer"
+          },
+          "chapters_revised": {
+            "title": "Chapters Revised",
+            "type": "integer"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictRead"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "entities_already_current": {
+            "title": "Entities Already Current",
+            "type": "integer"
+          },
+          "entities_new": {
+            "title": "Entities New",
+            "type": "integer"
+          },
+          "entities_renamed": {
+            "title": "Entities Renamed",
+            "type": "integer"
+          },
+          "entities_revised": {
+            "title": "Entities Revised",
+            "type": "integer"
+          },
+          "metadata_conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Metadata Conflicts",
+            "type": "array"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "relations_already_current": {
+            "title": "Relations Already Current",
+            "type": "integer"
+          },
+          "relations_created": {
+            "title": "Relations Created",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "novel_id",
+          "chapters_new",
+          "chapters_revised",
+          "chapters_already_current",
+          "entities_new",
+          "entities_revised",
+          "entities_renamed",
+          "entities_already_current",
+          "relations_created",
+          "relations_already_current",
+          "conflicts",
+          "metadata_conflicts"
+        ],
+        "title": "ImportReportRead",
         "type": "object"
       },
       "JobRead": {
@@ -623,6 +918,17 @@
       },
       "NovelRead": {
         "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
           "blurb": {
             "anyOf": [
               {
@@ -655,6 +961,17 @@
             "title": "Id",
             "type": "string"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -670,6 +987,8 @@
           "title",
           "genre",
           "blurb",
+          "author",
+          "language",
           "created_at",
           "updated_at"
         ],
@@ -1445,6 +1764,17 @@
       },
       "SetupRequest": {
         "properties": {
+          "demo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo"
+          },
           "novel_title": {
             "maxLength": 200,
             "minLength": 1,
@@ -3466,6 +3796,83 @@
         ]
       }
     },
+    "/api/writing/novels/import": {
+      "post": {
+        "description": "Import one archive as a new novel, or merged into an owned one.\n\nThe archive arrives as an upload or as a server-side path — exactly one\nof the two. Respond with HTTP 404 for an absent or unowned target novel,\nHTTP 413 for an oversized archive, HTTP 422 naming the field for a\nsource contract break or an unreachable path, HTTP 422 with the offending\nfile named for an unreadable or malformed archive, or HTTP 409 for a\nnew-novel import before setup (`setup required`) or when the configured\nembedding model answers at another width than the entity corpus.",
+        "operationId": "import_novel_api_writing_novels_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_novel_api_writing_novels_import_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "embedding_mismatch": {
+                    "value": {
+                      "detail": {
+                        "code": "embedding-mismatch",
+                        "found": 1536,
+                        "stored": 384
+                      }
+                    }
+                  },
+                  "setup_required": {
+                    "value": {
+                      "detail": "setup required"
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Setup is required (a new-novel import needs the user setup creates), or the embedding model answers at another width than the entity corpus"
+          },
+          "413": {
+            "description": "The archive is larger than 20 000 000 bytes"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRefusalsRead"
+                }
+              }
+            },
+            "description": "A source contract break, named in `detail[].loc`, or an unreadable archive whose file is named in `detail.file`"
+          }
+        },
+        "summary": "Import Novel",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
     "/api/writing/novels/{novel_id}": {
       "get": {
         "description": "Return an owned novel; respond with HTTP 404 when it is not found.",
@@ -3645,6 +4052,83 @@
           }
         },
         "summary": "Create Chapter",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/novels/{novel_id}/export": {
+      "post": {
+        "description": "Export an owned novel as a ZIP download or into a directory on disk.\n\nThe ZIP answer carries ``Content-Disposition: attachment`` named after the\ntitle's slug; the path answer is the receipt: where it went and how much.\nRespond with HTTP 404 for an absent or unowned novel, HTTP 409 when the\ntarget exists and is non-empty, or HTTP 422 naming the field for a\nmissing, unwritable or file target path.",
+        "operationId": "export_novel_api_writing_novels__novel_id__export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDone"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "code": "target_not_empty",
+                    "path": "/home/me/export"
+                  }
+                }
+              }
+            },
+            "description": "The target exists and is non-empty"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldRefusalsRead"
+                }
+              }
+            },
+            "description": "A missing, unwritable or file target path, named in `detail[].loc`"
+          }
+        },
+        "summary": "Export Novel",
         "tags": [
           "writing"
         ]

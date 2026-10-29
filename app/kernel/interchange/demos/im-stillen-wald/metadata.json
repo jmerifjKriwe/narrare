@@ -1,0 +1,37 @@
+{
+  "title": "Im Stillen Wald",
+  "author": "Narrare Demo",
+  "genre": "Literary",
+  "blurb": "Ein Förster entdeckt in seinem abgelegenen Waldstück Geheimnisse, die die Grenze zwischen Leben und Tod verschwimmen lassen.",
+  "language": "de",
+  "chapters": [
+    {
+      "file": "chapters/01-das-flustern-im-wald.md",
+      "position": 1
+    },
+    {
+      "file": "chapters/02-die-grenze-zwischen-welten.md",
+      "position": 2
+    }
+  ],
+  "relations": [
+    {
+      "from": "Anna Müller",
+      "type": "related_to",
+      "to": "Johann Bauer",
+      "note": "Fasziniert von Johann, der alles ist, was sie nicht ist: ein Mann, der im Wald lebt, keine Beweise braucht, Dinge weiß, die man nicht lernen kann. Sie fordert ihn heraus mit ihren Fragen. Langsam beginnt sie zu verstehen, was er meint — der Wald lehrt sie Dinge, die keine Universität lehren kann."
+    },
+    {
+      "from": "Johann Bauer",
+      "type": "related_to",
+      "to": "Der Waldgeist",
+      "note": "Einer der wenigen Menschen, die den Waldgeist wahrnehmen können. Der Waldgeist respektiert ihn, weil er den Wald respektiert. Von den Dorfbewohnern respektiert, aber nicht verstanden. Seine Verbindung zu Anna ist eine Brücke — sie fordert ihn heraus mit ihren Fragen, und langsam lehrt er sie, anders zu sehen. Manchmal sprechen er und der Waldgeist miteinander, nicht mit Worten, aber mit der Verständigung, die entsteht, wenn zwei Dinge dasselbe lieben."
+    },
+    {
+      "from": "Der Waldgeist",
+      "type": "related_to",
+      "to": "Johann Bauer",
+      "note": "Johann ist einer der wenigen Menschen, die den Waldgeist wahrnehmen können. Der Waldgeist respektiert Johann, weil Johann den Wald respektiert. In stillen Nächten sprechen sie miteinander — nicht mit Worten, aber mit der Verständigung, die entsteht, wenn zwei Dinge dasselbe lieben. Anna sieht den Waldgeist zuerst nicht — sie ist zu sehr in ihrer Logik verankert. Der Waldgeist hat Geduld mit ihr; er weiß, dass Menschen Zeit brauchen, um zu lernen, wie man wieder glaubt."
+    }
+  ]
+}
