@@ -298,7 +298,9 @@ async def extract_entities(
 
     ``job.payload['chapter_id']`` identifies the chapter as a UUID. Missing or invalid IDs,
     or a chapter missing from the owner's rows, raise ValueError. Invalid
-    answers raise MalformedAnswerError; provider and database errors propagate.
+    answers raise MalformedAnswerError; a prompt render the chain refuses
+    raises PromptRenderError the same way — a failed, named row; provider and
+    database errors propagate.
     Success commits suggestions and the call audit, reports progress=100
     through the lane's callback, and returns ``suggestions`` as the parsed
     entity count, including duplicates skipped during filing. Provider or
@@ -429,7 +431,9 @@ async def check_consistency(
 
     ``job.payload['novel_id']`` identifies the novel as a UUID. Missing or invalid IDs,
     or a novel missing from the owner's rows, raise ValueError. Invalid answers
-    raise MalformedAnswerError; provider and database errors propagate.
+    raise MalformedAnswerError; a prompt render the chain refuses raises
+    PromptRenderError the same way — a failed, named row; provider and
+    database errors propagate.
     Progress is reported through the lane's callback after each group; success
     commits findings and every call's audit together, and returns ``findings``
     as the filed count plus ``skipped_chapters``. A failure writes no audit row.

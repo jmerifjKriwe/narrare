@@ -11,9 +11,10 @@ The bundled arrangements are `EXTRACTION_TEMPLATE` and `CONSISTENCY_TEMPLATE`;
 an override of either key — per novel or global — replaces it through the
 registry's effective chain. Both templates are over variables only: the
 markers arrive inside `purpose_line` and the payload variables and are never
-written by a template, and the content-bound contracts refuse a re-voice
-that loses the purpose line or the marked payload at save time — a bare
-``SOURCE: `` line is a refusal, not a passage.
+written by a template, and the content-bound contracts are what the save-time
+gate runs — the prompts surface, still to dock — so a re-voice that loses the
+purpose line or the marked payload is refused, and a bare ``SOURCE: `` line
+is a refusal, not a passage.
 
 :class:`ParsedEntity`, :class:`ParsedRelation` and :class:`ParsedFinding`
 live here: a contract's ask and its answer shapes are one thing, and both the
@@ -184,8 +185,9 @@ def purpose_contract_factory(purpose: str) -> Callable[[str], bool]:
     contract therefore binds content, not prefixes: the sample's own purpose
     line and the sample's own marked payload (the marked chapter or chapters)
     must ride the render whole. A template that drops ``{{ purpose_line }}``,
-    renames the purpose, or keeps the marker as a bare ``SOURCE: `` line is
-    refused at save time — not discovered as an empty extraction at job time.
+    renames the purpose, or keeps the marker as a bare ``SOURCE: `` line
+    fails the contract — refused by the save-time gate the prompts surface
+    runs it under, not discovered as an empty extraction at job time.
     """
     sample = _SAMPLES[purpose]()
     payloads = [

@@ -112,6 +112,13 @@ async def _enqueue_extraction(client: AsyncClient, novel_id: str, chapter_id: st
     return response.json()["job_id"]
 
 
+async def _enqueue_consistency(client: AsyncClient, novel_id: str) -> str:
+    """Enqueue one consistency run, asserting the contract's 202."""
+    response = await client.post(f"/api/knowledge/consistency/{novel_id}")
+    assert response.status_code == 202
+    return response.json()["job_id"]
+
+
 async def _chapter(client: AsyncClient) -> tuple[str, str]:
     """A novel with one written chapter carrying CHAPTER_BODY, both the caller's own."""
     novel = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
@@ -186,16 +193,23 @@ def test_both_keys_are_registered_novel_scopable() -> None:
 
 
 async def test_a_novel_override_revoices_the_consistency_frame_and_keeps_the_chapters() -> None:
-    """The novel's row is the source: its arrangement is what the caller gets,
-    with the marked purpose line and both marked chapters riding it."""
+    """The novel's row outranks the global tier: its arrangement is what the
+    caller gets, with the marked purpose line and both marked chapters riding
+    it."""
     from app.capabilities.knowledge.prompts import CONSISTENCY_KEY, consistency_variables
     from app.kernel.contracts.models import Novel
     from app.kernel.db.session import Session
     from app.kernel.prompts import render
     from app.kernel.prompts.models import PromptTemplateRepository
 
-    override = (
-        "Read the two chapters as one story. Name every contradiction.\n\n"
+    novel_override = (
+        "Read the two chapters as one story, the novel's way.\n\n"
+        "{{ purpose_line }}\n\n"
+        "Canon:\n{{ grounding }}\n\n"
+        "{{ chapters }}\n"
+    )
+    global_override = (
+        "Read the two chapters as one story, the global way.\n\n"
         "{{ purpose_line }}\n\n"
         "Canon:\n{{ grounding }}\n\n"
         "{{ chapters }}\n"
@@ -203,9 +217,13 @@ async def test_a_novel_override_revoices_the_consistency_frame_and_keeps_the_cha
     async with Session() as session:
         novel = Novel(user_id=LOCAL_USER_ID, title="Der Nebel")
         session.add(novel)
-        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
-            CONSISTENCY_KEY, override, novel.id
-        )
+        # The row's key exists only after a flush: a pending Novel carries no
+        # id yet, and a save with novel_id=None would write the global tier —
+        # the exact slip a novel-scope test must not make silently.
+        await session.flush()
+        repository = PromptTemplateRepository(session, LOCAL_USER_ID)
+        await repository.save(CONSISTENCY_KEY, global_override, None)
+        await repository.save(CONSISTENCY_KEY, novel_override, novel.id)
         await session.commit()
         prompt = await render(
             session,
@@ -214,7 +232,8 @@ async def test_a_novel_override_revoices_the_consistency_frame_and_keeps_the_cha
             consistency_variables(entities=CANON, chapters=CHAPTERS),
             novel_id=novel.id,
         )
-    assert prompt.startswith("Read the two chapters as one story.")
+    assert prompt.startswith("Read the two chapters as one story, the novel's way.")
+    assert "the global way" not in prompt
     assert "PURPOSE: check-consistency" in prompt
     assert "Mira (character)" in prompt
     assert prompt.index("Mira (character)") < prompt.index("Chapter:")
@@ -399,4 +418,44 @@ async def test_a_refused_render_fails_the_job_row_and_writes_nothing() -> None:
         suggestions = await session.scalar(text("SELECT count(*) FROM entity_suggestions"))
         calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
     assert suggestions == 0
+    assert calls == 0  # a failed job writes no audit row (D3)
+
+
+async def test_a_refused_consistency_render_fails_the_job_row_and_writes_nothing() -> None:
+    """The symmetric pin for the check: a render the chain refuses fails the
+    job the way a malformed answer does — same uncaught-render shape in the
+    handler, same failed, named row, nothing written.
+
+    The novel carries one checkable chapter, so a group exists and the render
+    actually runs; no provider is resolved, no call is made.
+    """
+    from app.kernel.db.session import Session
+    from app.kernel.prompts.models import PromptTemplateRepository
+
+    override = "Checked for: {{ ghost }}"  # an unknown variable: refused
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
+            "knowledge.check-consistency", override, None
+        )
+        await session.commit()
+
+    async with _client() as client:
+        novel_id, _chapter_id = await _chapter(client)
+        job_id = await _enqueue_consistency(client, novel_id)
+
+        # The failure earns exactly one re-run (MAX_ATTEMPTS = 2), then fails.
+        assert await _run_lane_once() is True
+        assert await _run_lane_once() is True
+        assert await _run_lane_once() is False  # nothing queued anymore
+
+        job = (await client.get(f"/api/jobs/{job_id}")).json()
+        assert job["status"] == "failed"
+        assert job["error"] is not None
+        assert "undefined-variable" in job["error"]
+        assert job["result"] is None
+
+    async with Session() as session:
+        findings = await session.scalar(text("SELECT count(*) FROM consistency_findings"))
+        calls = await session.scalar(text("SELECT count(*) FROM llm_calls"))
+    assert findings == 0
     assert calls == 0  # a failed job writes no audit row (D3)
