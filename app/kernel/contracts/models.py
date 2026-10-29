@@ -94,9 +94,7 @@ class Entity(UserOwned):
     it — so the table holds the story's canon, not the model's proposals.
     ``search_text`` is the maintained concatenation the trigram search runs
     over (name, aliases, tags); it is written by the same paths that write
-    those fields, never by the client. The embedding is nullable: a seeded
-    or not-yet-embedded row is honest about it, and the width guard reads
-    only set vectors.
+    those fields, never by the client.
     """
 
     __tablename__ = "entities"
@@ -116,7 +114,6 @@ class Entity(UserOwned):
     # searches this column with word_similarity, so the GIN trigram index
     # below is what keeps it off a sequential scan.
     search_text: Mapped[str] = mapped_column(Text, default="")
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -51,10 +51,6 @@ MAX_UPLOAD_BYTES = 1_000_000
 """One document, at most. Ingestion embeds in-request; an unbounded upload would
 hold the worker and, with a paid provider, bill without limit."""
 
-EMBEDDING_CONTENT_LIMIT = 20_000
-"""The most body an embedding text carries, in characters (D5). The cap is
-for the vector only: storage keeps the full body."""
-
 MAX_LABEL_LENGTH = 200
 """The width an alias or tag may carry, the name column's own limit."""
 
@@ -114,21 +110,6 @@ class SkippedRelation(NamedTuple):
 
     target_name: str
     relation_type: str
-
-
-def _embedding_text(entity: Entity) -> str:
-    """The text a vector is built from: identity words, then the body.
-
-    The body is capped for the vector only (D5) — storage keeps everything.
-    """
-    return " ".join(
-        [
-            entity.name,
-            *entity.aliases,
-            *entity.tags,
-            entity.content[:EMBEDDING_CONTENT_LIMIT],
-        ]
-    )
 
 
 def _clean_labels(values: list[str] | None, what: str) -> list[str]:
@@ -229,15 +210,11 @@ class KnowledgeService:
         return await self.passages.search(vector, limit)
 
     async def reembed(self) -> ReembedResult:
-        """Re-embed every chunk and every entity through the configured model.
+        """Re-embed every chunk through the configured model.
 
-        The fix the mismatch refusal asks for: chunk texts are stored, and an
-        entity's embedding text is derived from its stored columns, so this is
-        a pure data operation — no upload, no schema change. The corpus ends
-        at one width again, the one the configured model answers with — the
-        documents' and the entities' alike (D5): a switch that re-embedded
-        only the documents would leave every accept, update and merge
-        refusing on the entities' stale width.
+        The fix the mismatch refusal asks for: chunk texts are stored, so this
+        is a pure data operation — no upload, no schema change. The corpus ends
+        at one width again, the one the configured model answers with.
         """
         if await self.session.get(User, self.user_id) is None:
             raise SetupRequiredError
@@ -252,13 +229,8 @@ class KnowledgeService:
                 chunk.embedding = list(vector)
             document.embedding_width = len(vectors[0])
             chunk_count += len(chunks)
-        entities = await self.entities.list()
-        if entities:
-            vectors = await self.embeddings.embed([_embedding_text(entity) for entity in entities])
-            for entity, vector in zip(entities, vectors, strict=True):
-                entity.embedding = list(vector)
         await self.session.commit()
-        return ReembedResult(documents=len(documents), chunks=chunk_count, entities=len(entities))
+        return ReembedResult(documents=len(documents), chunks=chunk_count)
 
     async def _own_novel(self, novel_id: UUID) -> Novel:
         """The novel or NotFoundError — every list below answers per novel.
@@ -298,21 +270,6 @@ class KnowledgeService:
         await self.session.commit()
         return job
 
-    async def _embed_entity(self, entity: Entity) -> None:
-        """Embed one entity in the request's transaction, guarded like upload.
-
-        The corpus keeps one width: the first set vector's width is the
-        user's, and a model that answers at another width is a refusal that
-        names the fix (EmbeddingMismatchError, HTTP 409) — never silently
-        degraded search. The assignments stay in-memory until the caller's
-        single commit, so a refusal leaves the row exactly as it was.
-        """
-        [vector] = await self.embeddings.embed([_embedding_text(entity)])
-        stored = await self.entities.stored_entity_width()
-        if stored is not None and stored != len(vector):
-            raise EmbeddingMismatchError(stored, len(vector))
-        entity.embedding = vector
-
     async def list_entities(
         self, novel_id: UUID, type: str | None = None, tag: str | None = None, q: str | None = None
     ) -> Sequence[Entity]:
@@ -342,7 +299,7 @@ class KnowledgeService:
         is no state in which the entity exists and the suggestion is still
         pending, nor the other way around. Birth per D5: the description
         becomes the body, aliases and tags start empty, and the search text
-        and the vector are computed before the commit. The proposals resolve
+        is computed before the commit. The proposals resolve
         per D8: trimmed, case-insensitive exact match against the novel's
         existing entities' names and aliases, the just-created entity
         included; multiple matches mean ambiguous, no match means absent,
@@ -350,9 +307,8 @@ class KnowledgeService:
         it.
 
         Return the entity and the skipped proposals. Raise NotFoundError for
-        an absent or unowned suggestion, AlreadyReviewedError if not pending,
-        or EmbeddingMismatchError when the configured model answers at
-        another width than the entity corpus was embedded at.
+        an absent or unowned suggestion, or AlreadyReviewedError if not
+        pending.
         """
         suggestion = await self.suggestions.locked(suggestion_id)
         if suggestion is None:
@@ -366,9 +322,7 @@ class KnowledgeService:
             suggestion.description or "",
             aliases=[],
             tags=[],
-            embedding=None,
         )
-        await self._embed_entity(entity)
         skipped = await self._resolve_proposals(entity, suggestion)
         suggestion.status = ACCEPTED
         await self.session.commit()
@@ -518,13 +472,11 @@ class KnowledgeService:
         refused. ``model_fields_set`` is what makes the update partial: a
         field the body does not carry is not a change, and a carried
         ``null`` content is one (the cleared state, not the skipped field).
-        A write that moves the identity words or the body recomputes
-        search_text and the vector (D5), guarded like upload.
+        A write that moves the identity words recomputes search_text.
 
         Commit and return the entity. Raise NotFoundError if it is absent or
-        unowned, InvalidEntityUpdateError for an invalid name, type, alias
-        or tag, or EmbeddingMismatchError when the configured model answers
-        at another width than the entity corpus was embedded at.
+        unowned, or InvalidEntityUpdateError for an invalid name, type, alias
+        or tag.
         """
         entity = await self.entities.get(entity_id)
         if entity is None:
@@ -556,11 +508,10 @@ class KnowledgeService:
         if "content" in provided:
             entity.content = changes.content or ""
         if provided & {"name", "aliases", "tags", "content"}:
-            # the identity words or the body moved: search_text and the
-            # vector ride the same commit (D5). A type change alone moves
-            # neither, so it is a plain column write.
+            # the identity words moved: search_text rides the same commit. A
+            # body-only edit moves no identity word, and a type change alone
+            # moves nothing, so those are plain column writes.
             entity.search_text = entity_search_text(entity.name, entity.aliases, entity.tags)
-            await self._embed_entity(entity)
         await self.session.commit()
         return entity
 
@@ -705,8 +656,8 @@ class KnowledgeService:
         name is why both rows existed — aliases and tags union
         (case-insensitively), the source's body is appended under a
         ``## <source name>`` heading when it is non-empty, and the
-        survivor's type wins. Then search_text and the vector are
-        recomputed for the folded row (D5), guarded like upload.
+        survivor's type wins. Then search_text is recomputed for the folded
+        row.
 
         Both ends are read scoped to the caller: the other user's row is
         the same absence as no row, whichever end of the pair it is. Both
@@ -760,6 +711,13 @@ class KnowledgeService:
             edge.from_entity_id = moved_from
             edge.to_entity_id = moved_to
 
+        # Flush the edge work while the source still exists. The two mappers
+        # carry no relationship, so one unit of work is free to delete the
+        # entity first; the database's ON DELETE CASCADE would then take the
+        # row a duplicate delete below still expects, and that DELETE would
+        # match nothing.
+        await self.session.flush()
+
         # The fields, per D3: name to alias, unions, body under a heading,
         # the survivor's type untouched. The survivor's own name seeds the
         # alias dedupe: two rows of one name fold without aliasing the name
@@ -776,7 +734,6 @@ class KnowledgeService:
                 folded if not target.content.strip() else f"{target.content}\n\n{folded}"
             )
         target.search_text = entity_search_text(target.name, target.aliases, target.tags)
-        await self._embed_entity(target)
         await self.entities.delete(source)
         await self.session.commit()
         return target

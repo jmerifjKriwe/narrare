@@ -1,10 +1,9 @@
 """The interchange gate: export, re-import, merge, and the two named refusals.
 
-Four flows over the real browser, the real API and the real database — no
-LLM involved beyond the embedding model's fake. Each seeds its own novel
-through the shelf's import dialog from a copy of the bundled
-*Im Stillen Wald* demo (unique title, so pytest-randomly may shuffle the
-module), then drives the interchange dialogs a user drives:
+Four flows over the real browser, the real API and the real database. Each
+seeds its own novel through the shelf's import dialog from a copy of the
+bundled *Im Stillen Wald* demo (unique title, so pytest-randomly may shuffle
+the module), then drives the interchange dialogs a user drives:
 
 * export as a ZIP and re-import it as a new novel — titles, types, bodies
   and relations equal in the database, row for row;

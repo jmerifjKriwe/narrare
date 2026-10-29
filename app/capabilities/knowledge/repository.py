@@ -4,7 +4,7 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func, select
+from sqlalchemy import func
 
 from app.kernel.contracts.models import (
     Chunk,
@@ -151,7 +151,6 @@ class EntityRepository(ScopedRepository[Entity]):
         content: str,
         aliases: Sequence[str],
         tags: Sequence[str],
-        embedding: Sequence[float] | None,
     ) -> Entity:
         """Flush a new entity for this user without committing the transaction.
 
@@ -167,7 +166,6 @@ class EntityRepository(ScopedRepository[Entity]):
             aliases=list(aliases),
             tags=list(tags),
             search_text=entity_search_text(name, aliases, tags),
-            embedding=list(embedding) if embedding is not None else None,
         )
         self.session.add(entity)
         await self.session.flush()
@@ -191,22 +189,6 @@ class EntityRepository(ScopedRepository[Entity]):
         return await self.session.scalar(
             self.query().where(Entity.id == entity_id).with_for_update()
         )
-
-    async def stored_entity_width(self) -> int | None:
-        """The width the user's entities were embedded at; None when none is.
-
-        The entity corpus keeps the document guard's rule: one embedding
-        model per user, so the first set vector's width is the corpus's.
-        Rows without a vector are honest nulls and say nothing about width.
-        """
-        result = await self.session.scalars(
-            select(Entity.embedding)
-            .where(Entity.user_id == self.user_id, Entity.embedding.is_not(None))
-            .order_by(Entity.created_at)
-            .limit(1)
-        )
-        widths = [len(vector) for vector in result.all() if vector is not None]
-        return widths[0] if widths else None
 
 
 class RelationRepository(ScopedRepository[EntityRelation]):

@@ -9,10 +9,8 @@ from sqlalchemy import text as sql
 
 from app.api.main import app
 from app.capabilities.knowledge.chunking import chunk_text
-from app.capabilities.knowledge.repository import EntityRepository
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import Chapter, Entity, EntitySuggestion, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
@@ -162,78 +160,27 @@ async def test_the_refusal_is_machine_readable_through_the_api() -> None:
 
 
 async def test_reembed_rebuilds_the_corpus_at_the_new_width() -> None:
-    """The switch's fix, both halves of the corpus: the documents' chunks
-    and the entities' vectors (D5). An entity left at the stale width would
-    refuse every accept, update and merge with 409 embedding-mismatch — so
-    the re-embed walks the entities too, and the refused birth goes through
-    afterwards."""
+    """The switch's fix: every stored chunk is re-embedded at the model's
+    width, so the corpus answers again. The refusal is the document guard's;
+    entities carry no vector and are not part of the corpus."""
     await _ingest("Leuchtturm am Horizont.", "Erstes")
     await _ingest("Nebel über dem See.", "Zweites")
-
-    # One entity carrying the old model's vector, plus a pending suggestion
-    # whose accept must stay refused until the re-embed has run. Both are
-    # written through the session: the switch happens under live rows.
-    async with Session() as session:
-        novel = Novel(user_id=LOCAL_USER_ID, title="Die Weite")
-        session.add(novel)
-        await session.flush()
-        chapter = Chapter(user_id=LOCAL_USER_ID, novel_id=novel.id, title="Ankunft", position=0)
-        session.add(chapter)
-        await session.flush()
-        repository = EntityRepository(session, LOCAL_USER_ID)
-        await repository.create(
-            novel.id,
-            "Mira",
-            "character",
-            "",
-            [],
-            [],
-            [0.5] * 384,  # the old model's width
-        )
-        suggestion = EntitySuggestion(
-            user_id=LOCAL_USER_ID,
-            novel_id=novel.id,
-            chapter_id=chapter.id,
-            name="Haus",
-            type="location",
-            description="Ein Haus am See.",
-            relations=[],
-            status="pending",
-        )
-        session.add(suggestion)
-        await session.commit()
-        novel_id = novel.id
-        suggestion_id = suggestion.id
 
     app.dependency_overrides[get_embedding_provider] = lambda: _OtherModel()
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            # The stale entity width refuses the birth before anything lands.
-            refused = await client.post(f"/api/knowledge/suggestions/{suggestion_id}/accept")
+            # The configured model answers at another width than the corpus:
+            # the search is refused before it reads a single row.
+            refused = await client.post("/api/knowledge/search", json={"query": "Leuchtturm"})
             assert refused.status_code == 409
             assert refused.json()["detail"]["code"] == "embedding-mismatch"
 
-            # And the update: the same corpus guard, the same code.
-            listed = await client.get(f"/api/knowledge/novels/{novel_id}/entities")
-            mira = listed.json()[0]
-            patched = await client.patch(
-                f"/api/knowledge/entities/{mira['id']}", json={"content": "Neuer Körper"}
-            )
-            assert patched.status_code == 409
-            assert patched.json()["detail"]["code"] == "embedding-mismatch"
-
             response = await client.post("/api/knowledge/reembed")
             assert response.status_code == 200
-            assert response.json() == {"documents": 2, "chunks": 2, "entities": 1}
+            assert response.json() == {"documents": 2, "chunks": 2}
 
             # The corpus answers in the new model's width: search works again.
             searched = await client.post("/api/knowledge/search", json={"query": "Leuchtturm"})
-
-            # The re-embed lifted the refusal: the birth goes through, with
-            # a vector at the new width.
-            accepted = await client.post(f"/api/knowledge/suggestions/{suggestion_id}/accept")
-            assert accepted.status_code == 200
-            born_id = accepted.json()["entity"]["id"]
     finally:
         app.dependency_overrides.clear()
     assert searched.status_code == 200
@@ -241,14 +188,10 @@ async def test_reembed_rebuilds_the_corpus_at_the_new_width() -> None:
     async with Session() as session:
         widths = await session.scalars(sql("SELECT DISTINCT embedding_width FROM documents"))
     assert list(widths) == [768]
-    async with Session() as session:
-        born = await session.get(Entity, UUID(str(born_id)))
-    assert born is not None
-    assert born.embedding is not None and len(born.embedding) == 768  # the fresh width
 
 
 async def test_reembed_on_an_empty_corpus_is_a_no_op() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/api/knowledge/reembed")
     assert response.status_code == 200
-    assert response.json() == {"documents": 0, "chunks": 0, "entities": 0}
+    assert response.json() == {"documents": 0, "chunks": 0}

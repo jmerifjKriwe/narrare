@@ -40,7 +40,6 @@ from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
-from app.kernel.retrieval import EmbeddingMismatchError
 from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
@@ -209,24 +208,11 @@ async def export_novel(
     responses={
         404: {"model": WritingErrorRead, "description": "Novel not found"},
         409: {
-            "description": (
-                "Setup is required (a new-novel import needs the user setup "
-                "creates), or the embedding model answers at another width "
-                "than the entity corpus"
-            ),
+            "description": ("Setup is required (a new-novel import needs the user setup creates)"),
             "content": {
                 "application/json": {
                     "examples": {
                         "setup_required": {"value": {"detail": "setup required"}},
-                        "embedding_mismatch": {
-                            "value": {
-                                "detail": {
-                                    "code": "embedding-mismatch",
-                                    "stored": 384,
-                                    "found": 1536,
-                                }
-                            }
-                        },
                     }
                 }
             },
@@ -254,8 +240,7 @@ async def import_novel(
     HTTP 413 for an oversized archive, HTTP 422 naming the field for a
     source contract break or an unreachable path, HTTP 422 with the offending
     file named for an unreadable or malformed archive, or HTTP 409 for a
-    new-novel import before setup (`setup required`) or when the configured
-    embedding model answers at another width than the entity corpus.
+    new-novel import before setup (`setup required`).
     """
     # The cap is checked on the upload's reported size before `read()` loads
     # it; the service keeps the authoritative check on the actual bytes.
@@ -279,11 +264,6 @@ async def import_novel(
         ) from None
     except FieldRefusedError as error:
         raise _refusal(error) from None
-    except EmbeddingMismatchError as error:
-        raise HTTPException(
-            status_code=409,
-            detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
-        ) from None
     return ImportReportRead.model_validate(report, from_attributes=True)
 
 
