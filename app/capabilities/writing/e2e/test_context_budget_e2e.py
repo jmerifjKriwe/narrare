@@ -207,11 +207,13 @@ def _sliced_sections(prompt: str) -> tuple[str, str, str, str]:
 
 
 def _open_settings(page: Page) -> None:
-    """The gear's door: from the shelf's top bar to /settings."""
+    """The gear's door: from the shelf's top bar through the hub to the provider page."""
     page.goto(BASE + "/")
     page.get_by_role("link", name="Einstellungen").click()
     expect(page).to_have_url(f"{BASE}/settings")
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
+    page.get_by_role("region", name="Anbieter").get_by_role("link", name="Anbieter").click()
+    expect(page).to_have_url(f"{BASE}/settings/provider")
 
 
 def _create_profile_and_assign(page: Page, name: str, context_window: str) -> None:

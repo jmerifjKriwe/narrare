@@ -1,39 +1,42 @@
 import { Link } from "@tanstack/react-router";
 
-import { LanguageSwitcher } from "@shell/components/LanguageSwitcher";
+import { settingsPages } from "@shell/lib/generated/settingsPages";
 import { useTranslation } from "@shell/lib/i18n";
 
-import { ProvidersPanel } from "./ProvidersPanel";
+import { CLUSTERS } from "./SettingsLayout";
 
 /**
- * The settings destination: the language and the provider profiles. The top
- * bar's gear is the door; the quick switch stays in the bar for the language
- * alone.
+ * The hub, the area's landing: one card per cluster — the two settings owns,
+ * then every page the registry contributes — so the gear's click names all
+ * of the area's doors at once. The card's title is the door; its
+ * description says what lives behind it. The registry's rows carry no
+ * description: the title is the whole card until the contributing
+ * capability's page says more.
  */
 export function SettingsPage() {
   const t = useTranslation();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("settings.heading")}</h1>
-      <p className="mt-2 text-sm text-muted">
-        <Link to="/" className="underline-offset-4 hover:underline">
-          {t("settings.back")}
-        </Link>
-      </p>
-
-      <section className="mt-8" aria-labelledby="settings-language-heading">
-        <h2 id="settings-language-heading" className="text-lg font-semibold">
-          {t("settings.language")}
-        </h2>
-        {/* The bar's own control, reused here: one language surface, not two
-            implementations of it. */}
-        <div className="mt-3">
-          <LanguageSwitcher />
-        </div>
-      </section>
-
-      <ProvidersPanel />
-    </div>
+    <>
+      {[...CLUSTERS, ...settingsPages].map((cluster) => (
+        <section
+          key={cluster.id}
+          aria-labelledby={`settings-cluster-${cluster.id}`}
+          className="mt-8 rounded-lg border border-border bg-card px-4 py-4"
+        >
+          <h2 id={`settings-cluster-${cluster.id}`} className="text-lg font-semibold">
+            <Link
+              to={cluster.path}
+              className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              {t(cluster.titleKey)}
+            </Link>
+          </h2>
+          {"descriptionKey" in cluster ? (
+            <p className="mt-1 text-sm text-muted">{t(cluster.descriptionKey)}</p>
+          ) : null}
+        </section>
+      ))}
+    </>
   );
 }

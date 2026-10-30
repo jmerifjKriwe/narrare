@@ -1,4 +1,4 @@
-"""The /settings flow on the real stack: profiles, assignments, the audit.
+"""The provider cluster's flow on the real stack: profiles, assignments, the audit.
 
 Everything the provider profiles promise, proven through the UI: two fake
 profiles created in the browser, the default flipped, ``writing.continuation``
@@ -89,14 +89,18 @@ def _create_profile(
 
 
 def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
-    """The whole /settings surface, driven as a user drives it."""
+    """The whole provider cluster, driven as a user drives it."""
     with chat_vendor() as vendor:
-        # The gear in the top bar is the door to the settings.
+        # The gear in the top bar is the door to the settings; the hub names
+        # the clusters, and the Anbieter card is the door to the provider
+        # page, where the whole flow below happens.
         page.goto(BASE + "/")
         page.get_by_role("link", name="Einstellungen").click()
         expect(page).to_have_url(re.compile(r"/settings$"))
         expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
         assert_accessible(page)
+        page.get_by_role("region", name="Anbieter").get_by_role("link", name="Anbieter").click()
+        expect(page).to_have_url(re.compile(r"/settings/provider$"))
 
         # Two fake profiles; the first becomes the default on its own.
         _create_profile(page, "Fake Eins", "modell-eins")
@@ -228,18 +232,21 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
 
 
 def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None:
-    """The gear and the settings page render in de, en and fr."""
+    """The gear, the hub and the provider page render in de, en and fr."""
     page.goto(BASE + "/settings")
 
-    # The browser speaks de-DE and nobody chose: German renders.
+    # The browser speaks de-DE and nobody chose: German renders. The hub
+    # lists the clusters; the provider surface is a page of its own.
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
+    expect(page.get_by_role("heading", name="Sprache")).to_be_visible()
     expect(page.get_by_role("heading", name="Anbieter")).to_be_visible()
-    expect(page.get_by_role("heading", name="Aufgaben")).to_be_visible()
     expect(page.get_by_role("link", name="Einstellungen")).to_be_visible()
     expect(page.get_by_role("link", name="Zurück")).to_be_visible()
 
-    # The bar's quick switch drives the page's language (on /settings the
-    # control exists twice; the bar's is the one in the banner).
+    page.goto(BASE + "/settings/provider")
+    expect(page.get_by_role("heading", name="Aufgaben")).to_be_visible()
+
+    # The bar's quick switch drives every page's language.
     switcher = page.get_by_role("banner").get_by_role("combobox")
     switcher.select_option("en")
     expect(page.get_by_role("heading", name="Settings")).to_be_visible()
