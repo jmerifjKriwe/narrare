@@ -101,6 +101,22 @@ const TWO_CHAPTERS = [
   },
 ];
 
+const OTHER_NOVEL_ID = "8e2c3a52-9d3e-4f6e-8df5-7db9df0f4a53";
+const OTHER_CHAPTER_ID = "ba11b163-2c8f-4a6f-9e07-6f5f2c8d1b65";
+/** The other book's own rows — its last-touched chapter is its only one. */
+const OTHER_NOVEL = { ...NOVEL, id: OTHER_NOVEL_ID, title: "Das andere Buch" };
+const OTHER_CHAPTERS = [
+  {
+    id: OTHER_CHAPTER_ID,
+    novel_id: OTHER_NOVEL_ID,
+    title: "",
+    body: "Anderer Anfang.",
+    position: 0,
+    created_at: "2026-10-30T09:00:00Z",
+    updated_at: "2026-10-30T09:30:00Z",
+  },
+];
+
 function ok(): Response {
   return new Response(null, { status: 200 });
 }
@@ -162,7 +178,7 @@ const homeRoute = createRoute({
   component: NovelsPage,
 });
 
-function renderAt(path: string): void {
+function renderAt(path: string) {
   const router = createRouter({
     routeTree: rootRoute.addChildren([homeRoute, novelRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
@@ -172,6 +188,7 @@ function renderAt(path: string): void {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 /** The mounted editor, once TipTap has put it in the DOM. */
@@ -473,6 +490,47 @@ describe("the created chapter's selection", () => {
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("");
     expect(novelReads).toBe(2);
+  });
+});
+
+describe("the palette's novel jump", () => {
+  it("a same-mount jump to another book selects that book's last-touched chapter", { timeout: 10_000 }, async () => {
+    // Both books answer, each with its own rows: the palette's jump is an
+    // ordinary navigation, and the route stays mounted while only the param
+    // changes — exactly the case a latch keyed to nothing got wrong, by
+    // keeping the first book's row as the second book's answer.
+    api.GET.mockImplementation(
+      async (path: string, init?: { params?: { path?: { novel_id?: string } } }) => {
+        if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+        const novelId = init?.params?.path?.novel_id;
+        if (path === "/api/writing/novels/{novel_id}") {
+          return { data: novelId === NOVEL_ID ? NOVEL : OTHER_NOVEL, response: ok() };
+        }
+        if (path === "/api/writing/novels/{novel_id}/chapters") {
+          return { data: novelId === NOVEL_ID ? CHAPTERS : OTHER_CHAPTERS, response: ok() };
+        }
+        throw new Error(`unexpected GET ${path}`);
+      },
+    );
+    const router = renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+
+    await act(async () => {
+      await router.navigate({ to: "/novels/$id", params: { id: OTHER_NOVEL_ID } });
+    });
+
+    // The other book's own last-touched chapter is selected — the new
+    // book's choice, not the first book's row carried across, and not
+    // nothing.
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) })
+          .getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anderer Anfang.");
+    expect(screen.getByRole("heading", { name: OTHER_NOVEL.title })).toBeTruthy();
   });
 });
 

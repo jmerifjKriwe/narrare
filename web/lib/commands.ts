@@ -56,11 +56,25 @@ function normalize(text: string): string {
  * display shows the active locale, but the index reads all of them — a
  * German word finds the row from an English UI, and a mid-session language
  * switch rebuilds nothing. The catalogs are already in the bundle
- * (`web/lib/generated/catalogs.ts`).
+ * (`web/lib/generated/catalogs.ts`). The query is trimmed here: the palette
+ * hands the field's value through whole, and whitespace must not become
+ * part of the needle.
  */
 export function matchesAllLocales(titleKey: MessageKey, query: string): boolean {
-  const needle = normalize(query);
+  const needle = normalize(query.trim());
   return Object.values(catalogs).some((catalog) =>
     normalize(catalog[titleKey]).includes(needle),
   );
+}
+
+/**
+ * The palette's matcher for rows that own their words instead of a catalog
+ * key — a chapter's title (and its localized default), an entity's name,
+ * aliases and tags, a novel's title. The same normalization and the same
+ * trim as `matchesAllLocales`, so one search semantics covers the keyed
+ * rows and the data rows alike.
+ */
+export function matchesAnyText(query: string, texts: string[]): boolean {
+  const needle = normalize(query.trim());
+  return texts.some((text) => normalize(text).includes(needle));
 }

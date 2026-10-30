@@ -358,5 +358,16 @@
   "prompts.reason.contract": "Contract broken",
   "commands.openSettings": "Open settings",
   "commands.openPrompts": "Open prompts",
-  "commands.openWissenDock": "Open Wissen dock"
+  "commands.openWissenDock": "Open Wissen dock",
+  "commands.newChapter": "New chapter",
+  "commands.exportNovel": "Export novel",
+  "palette.title": "Jump to",
+  "palette.searchLabel": "Search chapters, entities, pages and commands",
+  "palette.chapters": "Chapters",
+  "palette.entities": "Entities",
+  "palette.novels": "Novels",
+  "palette.pages": "Docks & pages",
+  "palette.commands": "Commands",
+  "palette.noResults": "Nothing matches.",
+  "workspace.shortcutHints": "F9 focus · Esc step back or discard · ⌘K palette"
 }

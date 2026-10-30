@@ -4,11 +4,13 @@
  * parametrized over the generated aggregation — ids unique, every title
  * present in all three catalogs (walking the generated map, never a hand
  * list), `enabled` answering an expectation table at both novelId states,
- * and every `run` navigating through a real router. A new command cannot
- * land uncovered: it must join the two expectation tables below. The
+ * and each `run`'s observable effect — a navigation through a real router,
+ * a POST that feeds one, or a route that stays put. The expectation tables
+ * are bidirectional: they and the aggregation name exactly each other, so
+ * a new command cannot land uncovered — it must join both tables. The
  * matcher's search reads every catalog regardless of the active language —
- * pinned with the German word an English UI must still find, and with a
- * query no rendering carries.
+ * pinned with the German word an English UI must still find, with the
+ * trimmed query, and with a query no rendering carries.
  */
 import {
   createMemoryHistory,
@@ -18,12 +20,23 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { client } from "./api/client";
 import { type Command, type CommandContext, matchesAllLocales } from "./commands";
 import { catalogs, locales } from "./generated/catalogs";
 import { commands } from "./generated/commands";
 import { applyLocale } from "./locale";
+
+// The client's methods as plain mocks: the rows here navigate, and the
+// new-chapter row POSTs — the request's answer is the mock's, the
+// navigation's landing is what the test reads.
+vi.mock("./api/client", () => ({
+  client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
+}));
+
+const api = client as unknown as Record<"POST", ReturnType<typeof vi.fn>>;
+const POSTED_CHAPTER = { id: "71bfa163-2c8f-4a6f-9e07-6f5f2c8d1b63" };
 
 // The aggregation's literal tuple, read through the contract — the same
 // view the palette renders. `enabled` is optional per row; the union of
@@ -91,10 +104,14 @@ describe("the generated commands", () => {
     }
   });
 
-  // The expectation table — a command lands only together with its row.
-  // Rows without their own `enabled` are always on; the Wissen dock lives
-  // at a novel, so without one it is off.
+  // The expectation table — a command lands only together with its row,
+  // and the rows only together with their table entries: the key sets are
+  // equal both ways (the test below). Rows without their own `enabled` are
+  // always on; the Wissen dock and the writing commands live at a novel,
+  // so without one they are off.
   const enabledAt: Record<string, { novel: boolean; bare: boolean }> = {
+    "new-chapter": { novel: true, bare: false },
+    "export-novel": { novel: true, bare: false },
     "open-settings": { novel: true, bare: true },
     "open-prompts": { novel: true, bare: true },
     "open-wissen-dock": { novel: true, bare: false },
@@ -113,15 +130,29 @@ describe("the generated commands", () => {
     }
   });
 
+  it("and the tables name exactly the aggregation — both ways, no orphans either side", () => {
+    const rowIds = rows.map((command) => command.id).sort();
+    expect(Object.keys(enabledAt).sort()).toEqual(rowIds);
+    expect(Object.keys(destinations).sort()).toEqual(rowIds);
+  });
+
   // Where each run must land, and the novel the context carries — extend
-  // with the command.
+  // with the command. A row that navigates nowhere names its start: the
+  // settled location is the assertion (the export row hands the modal slot
+  // its dialog and moves no route).
   const destinations: Record<string, { novelId: string | null; path: string }> = {
+    "new-chapter": { novelId: "7", path: "/novels/7" },
+    "export-novel": { novelId: "7", path: "/" },
     "open-settings": { novelId: null, path: "/settings" },
     "open-prompts": { novelId: null, path: "/settings/prompts" },
     "open-wissen-dock": { novelId: "7", path: "/novels/7/wissen" },
   };
 
   it("navigate to their destination through a real router", async () => {
+    api.POST.mockResolvedValue({
+      data: POSTED_CHAPTER,
+      response: new Response(null, { status: 200 }),
+    });
     for (const command of rows) {
       const expected = destinations[command.id];
       expect(expected, `no table entry for ${command.id}`).toBeDefined();
@@ -136,14 +167,19 @@ describe("the generated commands", () => {
   it("leave the Wissen dock unmoved without a novel", async () => {
     // A disabled row never runs; the guard in `run` is the behavior, not a
     // crash — a stale context must not navigate the dock to a novel-less
-    // path.
+    // path. The assertion is the settled state, not a timer: the navigate
+    // the context carries is spied, so a leaked navigation would be visible
+    // in the calls, not only in a location that raced the wait.
     const dock = rows.find((command) => command.id === "open-wissen-dock");
     if (!dock) throw new Error("open-wissen-dock missing from the aggregation");
     const router = makeRouter();
+    const navigate = vi.spyOn(router, "navigate").mockResolvedValue(undefined as never);
     render(<RouterProvider router={router} />);
     dock.run(contextFor(router, null));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await Promise.resolve();
+    expect(navigate).not.toHaveBeenCalled();
     expect(router.state.location.pathname).toBe("/");
+    navigate.mockRestore();
   });
 });
 
@@ -160,12 +196,31 @@ describe("matchesAllLocales", () => {
   });
 
   it("does not match a query no rendering carries", () => {
-    // "export" belongs to the export-novel row (Task 9); nothing that
+    // "export" belongs to the export-novel row; nothing that
     // openPrompts renders contains it, in any language — a matcher that
     // degraded to always-true would surface here first.
     for (const locale of locales) {
       applyLocale(locale);
       expect(matchesAllLocales("commands.openPrompts", "export"), locale).toBe(false);
+    }
+  });
+
+  it("finds the export row through its English word in every active locale", () => {
+    // The ruled carry-over: "export" must find commands.exportNovel —
+    // "Export novel", "Roman exportieren", "Exporter le roman" all carry
+    // it — whatever the UI speaks.
+    for (const locale of locales) {
+      applyLocale(locale);
+      expect(matchesAllLocales("commands.exportNovel", "export"), locale).toBe(true);
+    }
+  });
+
+  it("trims the query before matching", () => {
+    // The field's value is handed through whole; the matcher, not the
+    // caller, keeps whitespace out of the needle.
+    for (const locale of locales) {
+      applyLocale(locale);
+      expect(matchesAllLocales("commands.openSettings", "  einstell  "), locale).toBe(true);
     }
   });
 });

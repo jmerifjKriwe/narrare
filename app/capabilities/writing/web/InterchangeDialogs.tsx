@@ -57,8 +57,20 @@ function FailureAlert({ message }: { message: string }) {
  * is prefilled with a timestamped proposal so the common export lands on
  * a fresh folder and the refusal on non-empty targets stays the exception
  * it is meant to be.
+ *
+ * Controlled open, for an opener that is not a trigger on this page: the
+ * palette's modal slot mounts the dialog already open, the palette row
+ * having been the press. Absent keeps the trigger shape the shelf uses.
  */
-export function ExportNovelDialog({ novel }: { novel: Novel }) {
+export function ExportNovelDialog({
+  novel,
+  isOpen,
+  onOpenChange,
+}: {
+  novel: Novel;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const t = useTranslation();
   return (
     <Dialog
@@ -67,6 +79,8 @@ export function ExportNovelDialog({ novel }: { novel: Novel }) {
       // Every row shows the same word; the accessible name carries this
       // novel, so a screen reader's button list stays unambiguous.
       triggerAriaLabel={t("shelf.exportTitle", { title: novel.title })}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
     >
       {(close) => <ExportForm novel={novel} close={close} />}
     </Dialog>

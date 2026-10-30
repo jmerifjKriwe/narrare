@@ -120,11 +120,13 @@ export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
 
 /**
  * A novel's chapters in position order, cached under `["chapters", novelId]`.
- * The workbench's rail and editor read the list here, and the write paths (a
- * settled save, a created chapter) invalidate the key instead of patching the
- * cached array by hand — every view of the key refetches from the rows that
- * changed. An answer that is not ok throws, so the cache holds either the
- * list or the failure — never a half-current list.
+ * The workbench's rail and editor read the list here, and the write paths
+ * refresh the key: a created chapter invalidates it outright; a settled save
+ * patches the saved body into the cached array first, then asks the key to
+ * refetch — the patch holds the page's ground while the ask is outstanding,
+ * and every view of the key still refetches from the rows that changed. An
+ * answer that is not ok throws, so the cache holds either the list or the
+ * failure — never a half-current list.
  */
 export function useChaptersQuery(novelId: string): UseQueryResult<Chapter[]> {
   return useQuery({

@@ -2,6 +2,7 @@ import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
 
+import { Palette } from "../components/Palette";
 import { TopBar } from "../components/TopBar";
 import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale } from "../lib/locale";
@@ -30,6 +31,40 @@ function Shell() {
     document.title = t("app.title");
   }, [t]);
 
+  // The palette's key. A window listener, not a route's: ⌘K must answer on
+  // every page, and no page should have to know the palette exists. A held
+  // key repeats, a composition emits keydown mid-word, and a key another
+  // handler has already claimed is left alone — the same refusals the
+  // workbench's own shortcuts make. ⌘K toggles, so the same press that
+  // opened it closes it again.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.repeat || event.isComposing) return;
+      if (event.defaultPrevented) return;
+      if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "K")) {
+        event.preventDefault();
+        setPaletteOpen((value) => {
+          // Opening over a live dialog would stack a second focus trap on
+          // the first: typing would drive a page the dialog shadows, and
+          // the dialog would survive onto whatever route the palette then
+          // jumps to. A dialog owns the stage, ⌘K refuses to open — its own
+          // closing is untouched. The installed React Aria deliberately
+          // omits aria-modal on the dialog element (a documented Safari
+          // workaround; modality comes from aria-hidden outside), so the
+          // check reads the role alone — and every modal in the app is a
+          // React Aria dialog, wherever it was opened from.
+          if (!value && document.querySelector('[role="dialog"]') !== null) {
+            return value;
+          }
+          return !value;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKeydown);
+    return () => window.removeEventListener("keydown", onKeydown);
+  }, []);
+
   if (!ready) return null;
 
   return (
@@ -48,6 +83,9 @@ function Shell() {
           <Outlet />
         </Suspense>
       </main>
+      {/* The keyboard surface, mounted with the shell: one instance, every
+          route, and its ⌘K listener above. */}
+      <Palette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </>
   );
 }

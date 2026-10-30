@@ -76,22 +76,37 @@ export function NovelPage() {
   // The selection's address is the URL: a `chapter` param that names one of
   // the book's own rows is the open chapter, full stop. Without it — or with
   // one the book does not have — the page falls back to the chapter last
-  // written in, and that fallback is latched, not re-derived: the first
-  // list that answers fills it, and a refetch may never move the selection,
-  // because only a gated navigation may. (A create's refetch brings a newer
-  // updated_at; a re-derived fallback would flip the editor to the new row
-  // outside the gate and drop the unsaved body with it.) Nothing about the
+  // written in, and that fallback is latched, not re-derived: the first list
+  // that yields a chapter fills it, and a refetch may never move the
+  // selection, because only a gated navigation may. (A create's refetch
+  // brings a newer updated_at; a re-derived fallback would flip the editor
+  // to the new row outside the gate and drop the unsaved body with it. An
+  // empty list is no answer of this kind: the latch waits, and the first
+  // chapter's refetch fills it.) The latch is the
+  // book's, not the page's: a palette jump to another novel keeps this route
+  // mounted and changes only the param, and the old book's row must not
+  // survive as the new book's answer — the latch resets, and the new book's
+  // own last-touched chapter fills it once its list lands. Nothing about the
   // fallback is written back: an arrival without a param leaves the address
   // bare, so a reload still proves the server's choice.
-  const [fallback, setFallback] = useState<string | null>(null);
+  const [fallback, setFallback] = useState<{
+    novel: string;
+    chapter: string | null;
+  } | null>(null);
   useEffect(() => {
     if (chaptersQuery.data === undefined) return;
-    setFallback((previous) => previous ?? activeChapterFallback(chaptersQuery.data));
-  }, [chaptersQuery.data]);
+    setFallback((previous) =>
+      previous?.novel === novelId && previous.chapter !== null
+        ? previous
+        : { novel: novelId, chapter: activeChapterFallback(chaptersQuery.data) },
+    );
+  }, [chaptersQuery.data, novelId]);
   const active =
     chapterParam !== undefined && chapters.some((chapter) => chapter.id === chapterParam)
       ? chapterParam
-      : fallback;
+      : fallback?.novel === novelId
+        ? fallback.chapter
+        : null;
 
   // The selection writes itself into the address — a push, so the back
   // button walks the chapters. The navigation is the whole switch: the

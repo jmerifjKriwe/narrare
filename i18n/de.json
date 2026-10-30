@@ -358,5 +358,16 @@
   "prompts.reason.contract": "Vertrag verletzt",
   "commands.openSettings": "Einstellungen öffnen",
   "commands.openPrompts": "Prompts öffnen",
-  "commands.openWissenDock": "Wissen-Dock öffnen"
+  "commands.openWissenDock": "Wissen-Dock öffnen",
+  "commands.newChapter": "Neues Kapitel",
+  "commands.exportNovel": "Roman exportieren",
+  "palette.title": "Springen zu",
+  "palette.searchLabel": "Kapitel, Entitäten, Seiten und Befehle suchen",
+  "palette.chapters": "Kapitel",
+  "palette.entities": "Entitäten",
+  "palette.novels": "Romane",
+  "palette.pages": "Docks & Seiten",
+  "palette.commands": "Befehle",
+  "palette.noResults": "Nichts passt.",
+  "workspace.shortcutHints": "F9 Fokus · Esc zurück oder verwerfen · ⌘K Palette"
 }
