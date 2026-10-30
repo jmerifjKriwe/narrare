@@ -62,3 +62,32 @@ class PromptDiff(BaseModel):
 
     bundled_content: str
     override_content: str | None
+
+
+class PromptRefusal(BaseModel):
+    """The save gate's 422 body: which rule refused, and what it said."""
+
+    reason: str
+    detail: str
+
+
+class PromptKeyNotFound(BaseModel):
+    """The 404 body: no bundled prompt carries the key."""
+
+    detail: str
+
+
+class ValidationItem(BaseModel):
+    """One of the framework's request-validation failures, mirrored so the
+    documented 422 union covers both bodies a route can answer with."""
+
+    loc: list[str | int]
+    msg: str
+    type: str
+
+
+class ValidationBody(BaseModel):
+    """The framework's own 422 body, mirrored for the union beside the
+    refusal — FastAPI builds its schema from a dict, so nothing imports."""
+
+    detail: list[ValidationItem]

@@ -7,7 +7,7 @@ unknown key is a 404 on every route. The save answers with the fresh detail;
 the reset is the house's no-content 204, idempotent for a scope with no row.
 """
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -16,8 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.capabilities.prompts.schemas import (
     PromptDetail,
     PromptDiff,
+    PromptKeyNotFound,
+    PromptRefusal,
     PromptSave,
     PromptSummary,
+    ValidationBody,
 )
 from app.capabilities.prompts.service import (
     PromptNotFoundError,
@@ -39,6 +42,24 @@ def _service(session: SessionDep, user_id: UserDep) -> PromptService:
 
 ServiceDep = Annotated[PromptService, Depends(_service)]
 
+# The declared failure contracts, shared by every route that can hit them.
+# The 422 model is a union: the gate's refusal body beside the framework's
+# own request-validation body — a declared model replaces the canned
+# validation schema, so the union keeps both honest for the typed client.
+# The list route takes no key, so it documents no 404. The annotation is
+# the framework's own parameter type — ``Any`` carries its model-or-schema
+# slot, nothing else.
+_REFUSED_RESPONSES: dict[int | str, dict[str, Any]] = {
+    422: {
+        "description": "Refused by name — or the request failed validation.",
+        "model": PromptRefusal | ValidationBody,
+    },
+}
+_NOT_FOUND_RESPONSES: dict[int | str, dict[str, Any]] = {
+    404: {"description": "No bundled prompt carries this key.", "model": PromptKeyNotFound},
+}
+_KEY_RESPONSES = _NOT_FOUND_RESPONSES | _REFUSED_RESPONSES
+
 
 def _refused(error: PromptRefusedError) -> HTTPException:
     """The gate's refusal as a 422 naming its reason and its detail."""
@@ -54,7 +75,7 @@ def _errors(error: Exception) -> HTTPException:
     return HTTPException(status_code=500, detail=str(error))
 
 
-@router.get("", response_model=list[PromptSummary])
+@router.get("", response_model=list[PromptSummary], responses=_REFUSED_RESPONSES)
 async def list_prompts(service: ServiceDep, novel_id: UUID | None = None) -> list[PromptSummary]:
     """Every bundled prompt with its facts and its two override tiers."""
     try:
@@ -63,7 +84,7 @@ async def list_prompts(service: ServiceDep, novel_id: UUID | None = None) -> lis
         raise _refused(error) from None
 
 
-@router.get("/{key}", response_model=PromptDetail)
+@router.get("/{key}", response_model=PromptDetail, responses=_KEY_RESPONSES)
 async def get_prompt(
     service: ServiceDep,
     key: Annotated[str, Path(min_length=1)],
@@ -76,7 +97,7 @@ async def get_prompt(
         raise _errors(error) from None
 
 
-@router.put("/{key}", response_model=PromptDetail)
+@router.put("/{key}", response_model=PromptDetail, responses=_KEY_RESPONSES)
 async def put_prompt(
     service: ServiceDep,
     key: Annotated[str, Path(min_length=1)],
@@ -89,7 +110,7 @@ async def put_prompt(
         raise _errors(error) from None
 
 
-@router.delete("/{key}", status_code=204)
+@router.delete("/{key}", status_code=204, responses=_KEY_RESPONSES)
 async def delete_prompt(
     service: ServiceDep,
     key: Annotated[str, Path(min_length=1)],
@@ -102,7 +123,7 @@ async def delete_prompt(
         raise _errors(error) from None
 
 
-@router.get("/{key}/diff", response_model=PromptDiff)
+@router.get("/{key}/diff", response_model=PromptDiff, responses=_KEY_RESPONSES)
 async def get_prompt_diff(
     service: ServiceDep,
     key: Annotated[str, Path(min_length=1)],

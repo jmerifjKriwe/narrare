@@ -1573,6 +1573,20 @@
         "title": "PromptDiff",
         "type": "object"
       },
+      "PromptKeyNotFound": {
+        "description": "The 404 body: no bundled prompt carries the key.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "PromptKeyNotFound",
+        "type": "object"
+      },
       "PromptOverride": {
         "description": "The override in force for the scope: which tier answered, its content.",
         "properties": {
@@ -1594,6 +1608,25 @@
           "content"
         ],
         "title": "PromptOverride",
+        "type": "object"
+      },
+      "PromptRefusal": {
+        "description": "The save gate's 422 body: which rule refused, and what it said.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "detail"
+        ],
+        "title": "PromptRefusal",
         "type": "object"
       },
       "PromptSave": {
@@ -2116,6 +2149,23 @@
         "title": "TaskEffectiveRead",
         "type": "object"
       },
+      "ValidationBody": {
+        "description": "The framework's own 422 body, mirrored for the union beside the\nrefusal — FastAPI builds its schema from a dict, so nothing imports.",
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationItem"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ValidationBody",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -2154,6 +2204,40 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationItem": {
+        "description": "One of the framework's request-validation failures, mirrored so the\ndocumented 422 union covers both bodies a route can answer with.",
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationItem",
         "type": "object"
       },
       "WritingErrorRead": {
@@ -3277,11 +3361,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 List Prompts Api Prompts Get"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Refused by name — or the request failed validation."
           }
         },
         "summary": "List Prompts",
@@ -3327,15 +3419,33 @@
           "204": {
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Delete Prompt Api Prompts  Key  Delete"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Refused by name — or the request failed validation."
           }
         },
         "summary": "Delete Prompt",
@@ -3386,15 +3496,33 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Get Prompt Api Prompts  Key  Get"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Refused by name — or the request failed validation."
           }
         },
         "summary": "Get Prompt",
@@ -3438,15 +3566,33 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Put Prompt Api Prompts  Key  Put"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Refused by name — or the request failed validation."
           }
         },
         "summary": "Put Prompt",
@@ -3499,15 +3645,33 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Get Prompt Diff Api Prompts  Key  Diff Get"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Refused by name — or the request failed validation."
           }
         },
         "summary": "Get Prompt Diff",

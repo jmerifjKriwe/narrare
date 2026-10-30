@@ -1494,6 +1494,14 @@ export interface components {
             override_content: string | null;
         };
         /**
+         * PromptKeyNotFound
+         * @description The 404 body: no bundled prompt carries the key.
+         */
+        PromptKeyNotFound: {
+            /** Detail */
+            detail: string;
+        };
+        /**
          * PromptOverride
          * @description The override in force for the scope: which tier answered, its content.
          */
@@ -1505,6 +1513,16 @@ export interface components {
              * @enum {string}
              */
             scope: "global" | "novel";
+        };
+        /**
+         * PromptRefusal
+         * @description The save gate's 422 body: which rule refused, and what it said.
+         */
+        PromptRefusal: {
+            /** Detail */
+            detail: string;
+            /** Reason */
+            reason: string;
         };
         /**
          * PromptSave
@@ -1760,6 +1778,15 @@ export interface components {
             /** Task Key */
             task_key: string;
         };
+        /**
+         * ValidationBody
+         * @description The framework's own 422 body, mirrored for the union beside the
+         *     refusal — FastAPI builds its schema from a dict, so nothing imports.
+         */
+        ValidationBody: {
+            /** Detail */
+            detail: components["schemas"]["ValidationItem"][];
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -1771,6 +1798,19 @@ export interface components {
             /** Message */
             msg: string;
             /** Error Type */
+            type: string;
+        };
+        /**
+         * ValidationItem
+         * @description One of the framework's request-validation failures, mirrored so the
+         *     documented 422 union covers both bodies a route can answer with.
+         */
+        ValidationItem: {
+            /** Loc */
+            loc: (string | number)[];
+            /** Msg */
+            msg: string;
+            /** Type */
             type: string;
         };
         /**
@@ -2510,13 +2550,13 @@ export interface operations {
                     "application/json": components["schemas"]["PromptSummary"][];
                 };
             };
-            /** @description Validation Error */
+            /** @description Refused by name — or the request failed validation. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
                 };
             };
         };
@@ -2543,13 +2583,22 @@ export interface operations {
                     "application/json": components["schemas"]["PromptDetail"];
                 };
             };
-            /** @description Validation Error */
+            /** @description No bundled prompt carries this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptKeyNotFound"];
+                };
+            };
+            /** @description Refused by name — or the request failed validation. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
                 };
             };
         };
@@ -2578,13 +2627,22 @@ export interface operations {
                     "application/json": components["schemas"]["PromptDetail"];
                 };
             };
-            /** @description Validation Error */
+            /** @description No bundled prompt carries this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptKeyNotFound"];
+                };
+            };
+            /** @description Refused by name — or the request failed validation. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
                 };
             };
         };
@@ -2609,13 +2667,22 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description No bundled prompt carries this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptKeyNotFound"];
+                };
+            };
+            /** @description Refused by name — or the request failed validation. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
                 };
             };
         };
@@ -2642,13 +2709,22 @@ export interface operations {
                     "application/json": components["schemas"]["PromptDiff"];
                 };
             };
-            /** @description Validation Error */
+            /** @description No bundled prompt carries this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromptKeyNotFound"];
+                };
+            };
+            /** @description Refused by name — or the request failed validation. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["PromptRefusal"] | components["schemas"]["ValidationBody"];
                 };
             };
         };

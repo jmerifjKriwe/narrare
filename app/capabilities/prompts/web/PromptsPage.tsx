@@ -60,10 +60,10 @@ function reasonLabelOf(reason: string, t: Translate): string {
 }
 
 /**
- * The save gate's refusal body. This router answers a refused write with
- * `{ reason, detail }`, but the generated client types every 422 as the
- * framework's validation error — the cast is the deliberate bridge, and the
- * component suite pins what the page then renders.
+ * The save gate's refusal body. A refused write answers 422 with
+ * `{ reason, detail }`; a request that failed validation answers with the
+ * framework's body — the typed client carries both as a union, and this
+ * guard narrows which one arrived before the page renders a reason.
  */
 function refusalOf(error: unknown): { reason: string; detail: string } | null {
   const body = (error as { detail?: unknown } | null | undefined)?.detail;
