@@ -39,7 +39,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: false
-        files: ^web/
+        files: (^web/|app/capabilities/|^i18n/)
         stages: [pre-commit]
 
       - id: web-tests
@@ -48,7 +48,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: false
-        files: ^web/
+        files: (^web/|app/capabilities/|^i18n/)
         stages: [pre-commit]
 
       - id: pyright-full
