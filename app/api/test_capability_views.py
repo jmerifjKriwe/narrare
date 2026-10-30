@@ -1,10 +1,10 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes eight views: the Python registry `app/api/main.py`
+`just generate` writes nine views: the Python registry `app/api/main.py`
 cross-checks at startup, the locale list the server validates against, the
 TypeScript nav data, the TypeScript catalog map, the TypeScript route table,
-the TypeScript dock registry, the TypeScript settings registry and the
-user-docs index. A stale view means the
+the TypeScript dock registry, the TypeScript settings registry, the
+TypeScript command registry and the user-docs index. A stale view means the
 UI or the startup check runs on old facts — the same failure mode the OpenAPI
 drift test guards — so forgetting `just generate` must be a red suite, not a
 wrong UI.
@@ -23,9 +23,11 @@ from scripts.generate_capabilities import (
     locales,
     python_locales,
     python_registry,
+    scan_commands,
     scan_docks,
     scan_settings,
     typescript_catalogs,
+    typescript_commands,
     typescript_docks,
     typescript_nav,
     typescript_routes,
@@ -96,6 +98,16 @@ def test_committed_typescript_settings_pages_match_the_route_sources() -> None:
     assert _committed("web", "lib", "generated", "settingsPages.ts") == typescript_settings_pages(
         ROOT
     ), "web/lib/generated/settingsPages.ts is stale: run `just generate` and commit the result"
+
+
+def test_committed_typescript_commands_match_the_command_modules() -> None:
+    # The command registry is generated from the command modules' presence,
+    # not the route sources: a capability that adds, renames or removes a
+    # commands file changes it, and a committed registry that missed the
+    # change is a palette running on rows that no longer exist as written.
+    assert _committed("web", "lib", "generated", "commands.ts") == typescript_commands(ROOT), (
+        "web/lib/generated/commands.ts is stale: run `just generate` and commit the result"
+    )
 
 
 def test_committed_docs_index_matches_the_facts() -> None:
@@ -319,3 +331,77 @@ def test_no_settings_exports_leave_an_empty_registry_and_no_route_block(
     assert "{ id:" not in pages
     table = typescript_routes(root)
     assert "settings" not in table.lower()
+
+
+# The commands convention in miniature: the file's presence is the whole
+# contract, so these fixtures are only files in the right place — nothing is
+# parsed from their contents, the way nothing is parsed from routes.tsx's
+# mere existence.
+_COMMAND_MODULE = 'export const commands = [{ id: "x", titleKey: "x.title" }] as const;'
+
+
+def _commands_repo(tmp_path: Path, capabilities: tuple[str, ...]) -> Path:
+    """A miniature repo whose command modules belong to exactly `capabilities`."""
+    capabilities_dir = tmp_path / "app" / "capabilities"
+    capabilities_dir.mkdir(parents=True)
+    for capability in capabilities:
+        folder = capabilities_dir / capability / "web"
+        folder.mkdir(parents=True)
+        (folder / "commands.ts").write_text(_COMMAND_MODULE, encoding="utf-8")
+    return tmp_path
+
+
+def test_commands_view_imports_and_aggregates_the_modules_in_palette_order(
+    tmp_path: Path,
+) -> None:
+    view = typescript_commands(_commands_repo(tmp_path, ("knowledge", "prompts", "settings")))
+    assert (
+        "import { commands as settingsCommands }"
+        ' from "../../../app/capabilities/settings/web/commands";\n' in view
+    )
+    assert (
+        "import { commands as promptsCommands }"
+        ' from "../../../app/capabilities/prompts/web/commands";\n' in view
+    )
+    # The palette's row order is a deliberate arrangement, not the folder
+    # sort: writing leads when it appears, and the rest follow that pinned
+    # order. A capability absent here contributes nothing to import.
+    assert view.index("  ...settingsCommands,\n") < view.index("  ...promptsCommands,\n")
+    assert view.index("  ...promptsCommands,\n") < view.index("  ...knowledgeCommands,\n")
+    # Writing owns no commands module yet: it leads the pinned order in the
+    # header, but contributes no import and no spread.
+    assert "writingCommands" not in view
+    assert "export const commands = [\n" in view
+    assert "] as const satisfies ReadonlyArray<Command>;" in view
+
+
+def test_no_command_modules_leave_an_empty_aggregation(tmp_path: Path) -> None:
+    # The pre-convention shape: no commands anywhere. The view is the empty
+    # registry and carries no capability import — the no-contributor output
+    # is what the generator wrote before the convention existed.
+    view = typescript_commands(_commands_repo(tmp_path, ()))
+    assert "export const commands = [] as const satisfies ReadonlyArray<Command>;" in view
+    assert 'from "../../../app/capabilities' not in view
+
+
+def test_a_module_outside_the_pinned_order_stops_the_scan(tmp_path: Path) -> None:
+    # A capability the generator has not placed in the palette's row order
+    # stops generation instead of silently sliding to the end of the
+    # aggregation: the order is a product arrangement, and the message names
+    # both the stranger and the fix.
+    with pytest.raises(SystemExit, match="outside the palette") as failure:
+        scan_commands(_commands_repo(tmp_path, ("chat",)))
+    assert "'chat'" in str(failure.value)
+
+
+def test_both_command_file_extensions_stop_the_scan(tmp_path: Path) -> None:
+    # The generated import is extension-less; with commands.ts and
+    # commands.tsx both present, which one defines the capability's commands
+    # is ambiguous. Generation stops naming the folder instead of importing
+    # one at random.
+    folder = tmp_path / "app" / "capabilities" / "chat" / "web"
+    folder.mkdir(parents=True)
+    (folder / "commands.ts").write_text(_COMMAND_MODULE, encoding="utf-8")
+    (folder / "commands.tsx").write_text(_COMMAND_MODULE, encoding="utf-8")
+    with pytest.raises(SystemExit, match=r"commands\.ts and commands\.tsx"):
+        scan_commands(tmp_path)

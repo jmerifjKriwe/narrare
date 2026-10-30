@@ -355,5 +355,8 @@
   "prompts.reason.budget": "Budget exceeded",
   "prompts.reason.novel-scope": "This key has no novel scope",
   "prompts.reason.unknown-novel": "Unknown novel",
-  "prompts.reason.contract": "Contract broken"
+  "prompts.reason.contract": "Contract broken",
+  "commands.openSettings": "Open settings",
+  "commands.openPrompts": "Open prompts",
+  "commands.openWissenDock": "Open Wissen dock"
 }

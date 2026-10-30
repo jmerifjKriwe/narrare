@@ -355,5 +355,8 @@
   "prompts.reason.budget": "Budget dépassé",
   "prompts.reason.novel-scope": "Cette clé n'a pas de périmètre roman",
   "prompts.reason.unknown-novel": "Roman inconnu",
-  "prompts.reason.contract": "Contrat non respecté"
+  "prompts.reason.contract": "Contrat non respecté",
+  "commands.openSettings": "Ouvrir les paramètres",
+  "commands.openPrompts": "Ouvrir les prompts",
+  "commands.openWissenDock": "Ouvrir le dock Savoir"
 }

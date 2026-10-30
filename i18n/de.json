@@ -355,5 +355,8 @@
   "prompts.reason.budget": "Budget überschritten",
   "prompts.reason.novel-scope": "Dieser Schlüssel hat keinen Roman-Geltungsbereich",
   "prompts.reason.unknown-novel": "Unbekannter Roman",
-  "prompts.reason.contract": "Vertrag verletzt"
+  "prompts.reason.contract": "Vertrag verletzt",
+  "commands.openSettings": "Einstellungen öffnen",
+  "commands.openPrompts": "Prompts öffnen",
+  "commands.openWissenDock": "Wissen-Dock öffnen"
 }
