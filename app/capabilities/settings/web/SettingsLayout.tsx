@@ -56,6 +56,11 @@ export function SettingsLayout() {
         ))}
       </nav>
 
+      {/* The frame owns the page's shape: this container and the area's
+          single <h1> above are its. A contributed settings page — whatever
+          this Outlet renders — brings sections under an <h2> and no
+          container or <h1> of its own; a second of either double-insets the
+          area or hands a screen reader two page titles. */}
       <Outlet />
     </div>
   );

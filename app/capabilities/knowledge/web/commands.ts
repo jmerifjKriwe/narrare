@@ -15,7 +15,16 @@ export const commands = [
     // runs an off row, so the guard only ever fires from a stale context.
     run: (ctx) => {
       if (ctx.novelId === null) return;
-      void ctx.navigate({ to: "/novels/$id/wissen", params: { id: ctx.novelId } });
+      void ctx.navigate({
+        to: "/novels/$id/wissen",
+        params: { id: ctx.novelId },
+        // The dock opens where the workbench stood: an absent `search` is
+        // the router's empty record, and it would wipe the address — the
+        // chapter a reload or share reads back, and the ?rail/?focus panel
+        // state. `search: true` carries it, the way the palette's dock rows
+        // and the workbench's own tabs do.
+        search: true,
+      });
     },
     enabled: (ctx) => ctx.novelId !== null,
   },

@@ -504,6 +504,9 @@ function PromptCard(props: {
  * novel filter that scopes the views, and per scope an editor that speaks the
  * save gate's language. The novels list is fetched over HTTP like any other
  * page's data — the writing capability's code stays behind its router.
+ * The settings area's frame owns the page's shape — the container and the
+ * area's single <h1> — so this page is a section under an <h2>, like every
+ * contributed settings page.
  */
 export function PromptsPage() {
   const t = useTranslation();
@@ -557,8 +560,10 @@ export function PromptsPage() {
   }, [novelId, refresh]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("prompts.heading")}</h1>
+    <section className="mt-8" aria-labelledby="settings-prompts-heading">
+      <h2 id="settings-prompts-heading" className="text-lg font-semibold">
+        {t("prompts.heading")}
+      </h2>
 
       <div className="mt-6 flex max-w-64 flex-col gap-1 text-sm font-medium">
         <label htmlFor={filterId}>{t("prompts.filter")}</label>
@@ -631,6 +636,6 @@ export function PromptsPage() {
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

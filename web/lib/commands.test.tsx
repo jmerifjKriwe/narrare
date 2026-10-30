@@ -37,6 +37,9 @@ vi.mock("./api/client", () => ({
 
 const api = client as unknown as Record<"POST", ReturnType<typeof vi.fn>>;
 const POSTED_CHAPTER = { id: "71bfa163-2c8f-4a6f-9e07-6f5f2c8d1b63" };
+// A chapter the workspace already held when the dock command ran — not the
+// POST's fresh row, so the pin cannot pass by coincidence.
+const HELD_CHAPTER = "3f1d5c47-8a2b-4e60-9c15-6d8b0a7f2e31";
 
 // The aggregation's literal tuple, read through the contract — the same
 // view the palette renders. `enabled` is optional per row; the union of
@@ -45,8 +48,9 @@ const rows: ReadonlyArray<Command> = commands;
 
 // One router per case: plain leaf routes at the three destinations, a home
 // to start from, no queries in the tree — the commands navigate, nothing
-// renders data.
-function makeRouter() {
+// renders data. The entry defaults to the shelf; a case that needs the
+// workspace's address names it.
+function makeRouter(initialEntry = "/") {
   const root = createRootRoute({});
   const tree = [
     createRoute({ getParentRoute: () => root, path: "/", component: () => <p>home</p> }),
@@ -68,7 +72,7 @@ function makeRouter() {
   ];
   return createRouter({
     routeTree: root.addChildren(tree),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
 }
 
@@ -162,6 +166,26 @@ describe("the generated commands", () => {
       await waitFor(() => expect(router.state.location.pathname).toBe(expected.path));
       cleanup();
     }
+  });
+
+  it("open-wissen-dock keeps the workspace's address — ?chapter= and a collapsed rail ride along", async () => {
+    // The dock opens where the workbench stood: the chapter address is what
+    // a reload or a share reads back, and the panel state lives in the same
+    // URL. The router reads an absent `search` as the empty record, so a
+    // writer that forgets it wipes the workspace's address — this pin is
+    // where that failure lands, not in a screenshot.
+    const router = makeRouter(`/novels/7?chapter=${HELD_CHAPTER}&rail=false`);
+    render(<RouterProvider router={router} />);
+    const dock = rows.find((command) => command.id === "open-wissen-dock");
+    if (!dock) throw new Error("open-wissen-dock missing from the aggregation");
+    dock.run(contextFor(router, "7"));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/novels/7/wissen"),
+    );
+    expect(router.state.location.search).toMatchObject({
+      chapter: HELD_CHAPTER,
+      rail: false,
+    });
   });
 
   it("leave the Wissen dock unmoved without a novel", async () => {
