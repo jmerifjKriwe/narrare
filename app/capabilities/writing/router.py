@@ -40,6 +40,7 @@ from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
 from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
+from app.kernel.prompts import PromptRenderError
 from app.kernel.secrets import KeyUnavailableError
 
 router = APIRouter(prefix="/api/writing", tags=["writing"])
@@ -369,7 +370,9 @@ async def continue_chapter(
         )
     # The builder sizes its slices from the resolved facts; a pair whose output
     # reserve fills the window refused there — mapped like the lost key above:
-    # the one error frame, no provider call, no audit row.
+    # the one error frame, no provider call, no audit row. A prompt the
+    # effective chain refuses (an override whose frame cannot hold its budget)
+    # is mapped the same way, refused by name and never truncated.
     try:
         prompt = await service.continuation_prompt(
             chapter_id,
@@ -381,6 +384,11 @@ async def continue_chapter(
         raise HTTPException(status_code=404, detail="chapter not found") from None
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
+        return FinalizingStreamingResponse(
+            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+        )
+    except PromptRenderError:
+        logger.exception("continuation prompt refused")
         return FinalizingStreamingResponse(
             error_events(), media_type="text/event-stream", headers=SSE_HEADERS
         )

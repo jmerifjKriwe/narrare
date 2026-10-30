@@ -1509,6 +1509,205 @@
         "title": "ProfileUpdate",
         "type": "object"
       },
+      "PromptDetail": {
+        "description": "One key as the editor shows it: the bundled source, the variable\nlegend, the override in force, the source a render would use.",
+        "properties": {
+          "bundled_content": {
+            "title": "Bundled Content",
+            "type": "string"
+          },
+          "effective_content": {
+            "title": "Effective Content",
+            "type": "string"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptOverride"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/PromptVariable"
+            },
+            "title": "Variables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "bundled_content",
+          "variables",
+          "override",
+          "effective_content"
+        ],
+        "title": "PromptDetail",
+        "type": "object"
+      },
+      "PromptDiff": {
+        "description": "The bundled template against the override in force for the scope.",
+        "properties": {
+          "bundled_content": {
+            "title": "Bundled Content",
+            "type": "string"
+          },
+          "override_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Content"
+          }
+        },
+        "required": [
+          "bundled_content",
+          "override_content"
+        ],
+        "title": "PromptDiff",
+        "type": "object"
+      },
+      "PromptKeyNotFound": {
+        "description": "The 404 body: no bundled prompt carries the key.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "PromptKeyNotFound",
+        "type": "object"
+      },
+      "PromptOverride": {
+        "description": "The override in force for the scope: which tier answered, its content.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "global",
+              "novel"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "content"
+        ],
+        "title": "PromptOverride",
+        "type": "object"
+      },
+      "PromptRefusal": {
+        "description": "The save gate's 422 body: which rule refused, and what it said.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "detail"
+        ],
+        "title": "PromptRefusal",
+        "type": "object"
+      },
+      "PromptSave": {
+        "description": "One override write. ``novel_id`` absent or null saves the global tier.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "novel_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Novel Id"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "PromptSave",
+        "type": "object"
+      },
+      "PromptSummary": {
+        "description": "One bundled key in the list, with its two override tiers as facts.\n\n``override_novel`` is meaningful only when the read carried a\n``novel_id``; without one there is no novel tier to ask.",
+        "properties": {
+          "bundled_summary": {
+            "title": "Bundled Summary",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "novel_scopable": {
+            "title": "Novel Scopable",
+            "type": "boolean"
+          },
+          "override_global": {
+            "title": "Override Global",
+            "type": "boolean"
+          },
+          "override_novel": {
+            "title": "Override Novel",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "novel_scopable",
+          "override_global",
+          "override_novel",
+          "bundled_summary"
+        ],
+        "title": "PromptSummary",
+        "type": "object"
+      },
+      "PromptVariable": {
+        "description": "One variable of the template, with the sample value as its example.",
+        "properties": {
+          "example": {
+            "title": "Example",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "example"
+        ],
+        "title": "PromptVariable",
+        "type": "object"
+      },
       "ProposedRelationRead": {
         "description": "One proposed relation as review reads it: the target's name and the type.\n\nThe stored proposals speak the extraction answer's keys (``target``,\n``type``); the read shape names them target_name and relation_type, and\nboth spellings validate.",
         "properties": {
@@ -1950,6 +2149,23 @@
         "title": "TaskEffectiveRead",
         "type": "object"
       },
+      "ValidationBody": {
+        "description": "The framework's own 422 body, mirrored for the union beside the\nrefusal — FastAPI builds its schema from a dict, so nothing imports.",
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationItem"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ValidationBody",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1988,6 +2204,40 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationItem": {
+        "description": "One of the framework's request-validation failures, mirrored so the\ndocumented 422 union covers both bodies a route can answer with.",
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationItem",
         "type": "object"
       },
       "WritingErrorRead": {
@@ -3066,6 +3316,367 @@
         "summary": "Discard Suggestion",
         "tags": [
           "knowledge"
+        ]
+      }
+    },
+    "/api/prompts": {
+      "get": {
+        "description": "Every bundled prompt with its facts and its two override tiers.",
+        "operationId": "list_prompts_api_prompts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PromptSummary"
+                  },
+                  "title": "Response List Prompts Api Prompts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 List Prompts Api Prompts Get"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          }
+        },
+        "summary": "List Prompts",
+        "tags": [
+          "prompts"
+        ]
+      }
+    },
+    "/api/prompts/{key}": {
+      "delete": {
+        "description": "Reset the override for the scope; the other tier is untouched.",
+        "operationId": "delete_prompt_api_prompts__key__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Delete Prompt Api Prompts  Key  Delete"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          }
+        },
+        "summary": "Delete Prompt",
+        "tags": [
+          "prompts"
+        ]
+      },
+      "get": {
+        "description": "One prompt as the editor shows it: bundled source, legend, override.",
+        "operationId": "get_prompt_api_prompts__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Get Prompt Api Prompts  Key  Get"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          }
+        },
+        "summary": "Get Prompt",
+        "tags": [
+          "prompts"
+        ]
+      },
+      "put": {
+        "description": "Validate and save the override for the scope; the fresh detail answers.",
+        "operationId": "put_prompt_api_prompts__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Put Prompt Api Prompts  Key  Put"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          }
+        },
+        "summary": "Put Prompt",
+        "tags": [
+          "prompts"
+        ]
+      }
+    },
+    "/api/prompts/{key}/diff": {
+      "get": {
+        "description": "The bundled template against the override in force for the scope.",
+        "operationId": "get_prompt_diff_api_prompts__key__diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "novel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptDiff"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptKeyNotFound"
+                }
+              }
+            },
+            "description": "No bundled prompt carries this key."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PromptRefusal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationBody"
+                    }
+                  ],
+                  "title": "Response 422 Get Prompt Diff Api Prompts  Key  Diff Get"
+                }
+              }
+            },
+            "description": "Refused by name — or the request failed validation."
+          }
+        },
+        "summary": "Get Prompt Diff",
+        "tags": [
+          "prompts"
         ]
       }
     },
