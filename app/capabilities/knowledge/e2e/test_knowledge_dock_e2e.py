@@ -189,10 +189,11 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     expect(dock).to_be_visible()
     expect(editor).to_be_visible()
 
-    # Extraction runs on the chapter the editor is showing — the active
-    # chapter reaches the dock through the shell seam, not the URL. The
-    # trigger closes while its job is outstanding: a second click could not
-    # stack a duplicate job — and a duplicate review queue — behind the first.
+    # Extraction runs on the chapter the editor is showing — the selection's
+    # address is the URL, and the panel reads the workspace's chapter param
+    # from it. The trigger closes while its job is outstanding: a second
+    # click could not stack a duplicate job — and a duplicate review queue —
+    # behind the first.
     extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
     extract.click()
     expect(extract).to_be_disabled()

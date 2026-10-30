@@ -140,6 +140,27 @@ export function useChaptersQuery(novelId: string): UseQueryResult<Chapter[]> {
 }
 
 /**
+ * The chapter last written in, by the server's `updated_at` — the
+ * workbench's param-less choice and the dock panels' fallback, read from
+ * one cached list so both surfaces answer the same question. Compared as
+ * parsed instants, because two ISO strings with different timezone offsets
+ * do not order as their moments do. Strict comparison: on equal instants
+ * the first row keeps the lead, and the list is in position order, so the
+ * choice stays deterministic even when two chapters tie.
+ */
+export function activeChapterFallback(chapters: Chapter[]): string | null {
+  return (
+    chapters.reduce<Chapter | null>(
+      (best, chapter) =>
+        best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
+          ? chapter
+          : best,
+      null,
+    )?.id ?? null
+  );
+}
+
+/**
  * A durable job's row (spec §9 D10): the UI polls the state, never a
  * connection to the work. The poll lives here as the one place that knows a
  * queued or running row is still provisional — `refetchInterval` answers a

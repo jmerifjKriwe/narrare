@@ -7,10 +7,17 @@
  * that stays, and data is the workbench. The page never claims the book could
  * not be loaded while its text is on screen.
  *
- * The invalidation rides the autosave's one success callback: a settled save
- * asks the chapters key and the novels prefix to refetch; a save that never
- * landed asks nothing, because a refetch would lay the server's old text over
- * the body the autosave holds for its retry.
+ * The selection is URL state: the rail writes `?chapter=`, an arrival without
+ * one falls back to the last chapter written in and writes nothing. Every
+ * navigation while text is unsaved passes the flush gate — the cases the
+ * browser-level suite cannot reach (the native confirm's two answers, a
+ * search-only switch meeting a refused write) are pinned here.
+ *
+ * The invalidation rides the autosave's one success callback, and the saved
+ * body reaches the cache before the ask: a settled save patches its text
+ * into the chapters key, then asks the key and the novels prefix to
+ * refetch; a save that never landed asks nothing, because a refetch would
+ * lay the server's old text over the body the autosave holds for its retry.
  *
  * The page stands in a real router (params, search, blocker) — the same
  * wrapper the shell's fallback tests use — and the API client is mocked at
@@ -42,7 +49,7 @@ vi.mock("@shell/lib/api/client", () => ({
   },
 }));
 
-import { client } from "@shell/lib/api/client";
+import { client, type Chapter } from "@shell/lib/api/client";
 
 import { NovelPage } from "./NovelPage";
 import { NovelsPage } from "./NovelsPage";
@@ -67,6 +74,7 @@ const NOVEL = {
 };
 
 const CHAPTER_ID = "71bfa163-2c8f-4a6f-9e07-6f5f2c8d1b63";
+const SECOND_CHAPTER_ID = "9c4e37a1-5b8d-4c2f-8a16-3e7f9d2c4b05";
 const CHAPTERS = [
   {
     id: CHAPTER_ID,
@@ -76,6 +84,20 @@ const CHAPTERS = [
     position: 0,
     created_at: "2026-10-30T09:00:00Z",
     updated_at: "2026-10-30T09:00:00Z",
+  },
+];
+
+/** The same book with a second chapter written in later than the first. */
+const TWO_CHAPTERS = [
+  ...CHAPTERS,
+  {
+    id: SECOND_CHAPTER_ID,
+    novel_id: NOVEL_ID,
+    title: "",
+    body: "",
+    position: 1,
+    created_at: "2026-10-30T09:00:00Z",
+    updated_at: "2026-10-30T09:01:00Z",
   },
 ];
 
@@ -104,6 +126,16 @@ function loadedAnswer(path: string): unknown {
 
 function mockLoaded(): void {
   api.GET.mockImplementation(async (path: string) => loadedAnswer(path));
+}
+
+/** The loaded answers with a second chapter in the rail's list. */
+function mockTwoChapters(): void {
+  api.GET.mockImplementation(async (path: string) => {
+    if (path === "/api/writing/novels/{novel_id}/chapters") {
+      return { data: TWO_CHAPTERS, response: ok() };
+    }
+    return loadedAnswer(path);
+  });
 }
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry
@@ -177,8 +209,12 @@ describe("the workbench's four cache states", () => {
 
     // The quiet note names the refresh; the workbench stays exactly as it
     // was — editor and rail keep their places, and the page does not claim
-    // the book could not be loaded while its text is on screen.
-    expect(await screen.findByText(t("chapters.refreshFailed"))).toBeTruthy();
+    // the book could not be loaded while its text is on screen. The note is
+    // background speech (`role="status"`), not an alert: the work on screen
+    // is unharmed, and a screen reader must still hear that the refresh it
+    // asked for did not arrive.
+    const note = await screen.findByText(t("chapters.refreshFailed"));
+    expect(note.getAttribute("role")).toBe("status");
     expect(screen.queryByText(t("chapters.errorLoad"))).toBeNull();
     expect(document.querySelector(".ProseMirror")).not.toBeNull();
     expect(screen.getByRole("button", { name: t("chapters.new") })).toBeTruthy();
@@ -276,6 +312,167 @@ describe("the save's invalidation", () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(invalidate).not.toHaveBeenCalled();
     invalidate.mockRestore();
+  });
+
+  it("patches the saved body into the chapters cache before the refetch can fail", { timeout: 10_000 }, async () => {
+    // The read that answers first, then silence: the refetch a settled save
+    // asks for never comes back, so the cache's own content is what a later
+    // switch would remount.
+    let chapterReads = 0;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") return { data: NOVEL, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        chapterReads += 1;
+        if (chapterReads === 1) return { data: CHAPTERS, response: ok() };
+        return new Promise(() => {});
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    api.PUT.mockResolvedValue({ response: ok() });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    await user.keyboard(" Ein Satz.");
+
+    // The save settled and its ask is still hanging, yet the cache already
+    // holds the saved text: the patch rides `onSaved` ahead of the
+    // invalidation, so a refetch that never answers cannot remount the
+    // pre-save row — with the freshness its updated_at stands for — over
+    // the writer's words.
+    await waitFor(
+      () => {
+        const rows = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+        const saved = rows?.find((row) => row.id === CHAPTER_ID);
+        expect(saved?.body).toContain("Ein Satz.");
+        expect(saved?.updated_at).not.toBe(CHAPTERS[0].updated_at);
+      },
+      { timeout: 4000 },
+    );
+  });
+});
+
+describe("the gate every navigation passes", () => {
+  /** The workbench on the chapter last written in — the fallback's choice,
+   *  the second row — with a refused write outstanding and the confirm's
+   *  answer mocked. */
+  async function renderWithFailedSave(confirmAnswer: boolean) {
+    mockTwoChapters();
+    api.PUT.mockResolvedValue({ response: refused() });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(confirmAnswer);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    await user.keyboard("Bleibt hier.");
+    await screen.findByText(t("save.failed"), undefined, { timeout: 4000 });
+    return { confirm, user };
+  }
+
+  it("asks before a switch drops a refused body, and a dismissed ask keeps it", { timeout: 10_000 }, async () => {
+    const { confirm, user } = await renderWithFailedSave(false);
+
+    // The switch to the first chapter is a navigation like any other, so
+    // the gate runs its flush — refused here — and asks. The ask is
+    // dismissed: the selection stays, and the refused body with it.
+    await user.click(screen.getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith(t("save.confirmLeave")));
+    expect(
+      screen
+        .getByRole("button", { name: t("chapters.defaultTitle", { n: 2 }) })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt hier.");
+  });
+
+  it("an accepted ask discards the refused body and completes the switch", { timeout: 10_000 }, async () => {
+    const { confirm, user } = await renderWithFailedSave(true);
+
+    // The same question answered yes: the user chose to leave the refused
+    // body behind, so the switch completes — the first chapter's text is
+    // what the editor holds, and the refused words are nowhere.
+    await user.click(screen.getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) })
+          .getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anfang.");
+    expect(confirm).toHaveBeenCalledWith(t("save.confirmLeave"));
+  });
+
+  it("an accepted ask on a panel toggle keeps the notice and the guard armed", { timeout: 10_000 }, async () => {
+    const { confirm, user } = await renderWithFailedSave(true);
+
+    // The toggle's navigation completes — the rail collapses — but the
+    // refused body is not dropped on the way: the panel moving is no
+    // chapter switch, so the failure notice stays beside the text.
+    await user.click(screen.getByRole("button", { name: t("workspace.collapseRail") }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.getByRole("button", { name: t("workspace.expandRail") })).toBeTruthy();
+    expect(screen.getByText(t("save.failed"))).toBeTruthy();
+
+    // And the gate is still armed: the next navigation asks again, because
+    // the body it would leave behind is still only in the browser.
+    await user.click(screen.getByRole("button", { name: t("workspace.expandRail") }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
+  });
+
+  it("a search-only navigation meets the gate too, and a dismissed ask keeps the panel", { timeout: 10_000 }, async () => {
+    const { confirm, user } = await renderWithFailedSave(false);
+
+    // Collapsing the rail is a navigation inside the book — a search-only
+    // one — and the widened gate asks for the refused body all the same.
+    // Dismissed, the panel state stays exactly where it was.
+    await user.click(screen.getByRole("button", { name: t("workspace.collapseRail") }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith(t("save.confirmLeave")));
+    expect(screen.getByRole("complementary")).toBeTruthy();
+    expect(screen.getByRole("button", { name: t("workspace.collapseRail") })).toBeTruthy();
+    expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt hier.");
+  });
+});
+
+describe("the created chapter's selection", () => {
+  it("moves to the new chapter once the list holds it, not waiting for the novels refetch", { timeout: 10_000 }, async () => {
+    // The novel row's refetch hangs: the create invalidates the ["novels"]
+    // prefix, and that ask never answers. The selection waits only for the
+    // chapters list it names.
+    let novelReads = 0;
+    let chapterReads = 0;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") {
+        novelReads += 1;
+        if (novelReads === 1) return { data: NOVEL, response: ok() };
+        return new Promise(() => {});
+      }
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        chapterReads += 1;
+        return { data: chapterReads === 1 ? CHAPTERS : TWO_CHAPTERS, response: ok() };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    api.POST.mockResolvedValue({ data: TWO_CHAPTERS[1], response: ok() });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    await user.click(screen.getByRole("button", { name: t("chapters.new") }));
+
+    // The list landed — the ask the selection waits for — and the editor
+    // flipped to the created chapter while the novel row's refetch was
+    // still outstanding: the flip never queues behind the rest of the
+    // book.
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t("chapters.defaultTitle", { n: 2 }) })
+          .getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    expect(document.querySelector(".ProseMirror")?.textContent).toBe("");
+    expect(novelReads).toBe(2);
   });
 });
 

@@ -2,11 +2,15 @@ import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useS
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { client, type Chapter } from "@shell/lib/api/client";
-import { publishActiveChapter } from "@shell/lib/activeChapter";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
-import { queryClient, useChaptersQuery, useNovelQuery } from "@shell/lib/query";
+import {
+  activeChapterFallback,
+  queryClient,
+  useChaptersQuery,
+  useNovelQuery,
+} from "@shell/lib/query";
 import { useAutosave, unsavedStatus } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
@@ -28,7 +32,7 @@ export function NovelPage() {
   // By route id, not the route object: the page stands apart from
   // routes.tsx, and the registered router still types `id` from the string.
   const { id: novelId } = useParams({ from: "/novels/$id" });
-  const { rail, focus: focusParam } = useSearch({ from: "/novels/$id" });
+  const { rail, focus: focusParam, chapter: chapterParam } = useSearch({ from: "/novels/$id" });
   // Absent means expanded: only an explicit collapsed encoding (validated to
   // false in routes.tsx) hides the rail.
   const collapsed = rail === false;
@@ -42,7 +46,6 @@ export function NovelPage() {
   const novelQuery = useNovelQuery(novelId);
   const chaptersQuery = useChaptersQuery(novelId);
   const chapters = chaptersQuery.data ?? [];
-  const [active, setActive] = useState<string | null>(null);
   // The four states of the contract, derived per read, none stored: a read's
   // error is judged against its own cache. An error with nothing from that
   // read on screen is the named outage — the retry asks again, and the page
@@ -70,25 +73,56 @@ export function NovelPage() {
     void chaptersQuery.refetch();
   }, [novelQuery, chaptersQuery]);
 
-  // The chapter to reopen on arrival is the last one written in, read from
-  // the server's updated_at — compared as parsed instants, because two
-  // ISO strings with different timezone offsets do not order as their
-  // moments do. Strict comparison: on equal instants the first row keeps
-  // the lead, and the list is in position order, so the choice stays
-  // deterministic even when two chapters tie. The refill only fills an empty
-  // selection — the user's own choice, once made, is never overwritten by a
-  // refetch that brings the same list back.
+  // The selection's address is the URL: a `chapter` param that names one of
+  // the book's own rows is the open chapter, full stop. Without it — or with
+  // one the book does not have — the page falls back to the chapter last
+  // written in, and that fallback is latched, not re-derived: the first
+  // list that answers fills it, and a refetch may never move the selection,
+  // because only a gated navigation may. (A create's refetch brings a newer
+  // updated_at; a re-derived fallback would flip the editor to the new row
+  // outside the gate and drop the unsaved body with it.) Nothing about the
+  // fallback is written back: an arrival without a param leaves the address
+  // bare, so a reload still proves the server's choice.
+  const [fallback, setFallback] = useState<string | null>(null);
   useEffect(() => {
     if (chaptersQuery.data === undefined) return;
-    const latest = chaptersQuery.data.reduce<Chapter | null>(
-      (best, chapter) =>
-        best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
-          ? chapter
-          : best,
-      null,
-    );
-    setActive((previous) => previous ?? latest?.id ?? null);
+    setFallback((previous) => previous ?? activeChapterFallback(chaptersQuery.data));
   }, [chaptersQuery.data]);
+  const active =
+    chapterParam !== undefined && chapters.some((chapter) => chapter.id === chapterParam)
+      ? chapterParam
+      : fallback;
+
+  // The selection writes itself into the address — a push, so the back
+  // button walks the chapters. The navigation is the whole switch: the
+  // flush gate below stands in front of it, and the param's landing is
+  // what moves the editor.
+  const select = useCallback(
+    (chapterId: string) => {
+      void navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, chapter: chapterId }),
+      });
+    },
+    [navigate],
+  );
+
+  // A param naming a chapter the book does not have is a dead link: the
+  // selection fell back above, and the dead value leaves the address — a
+  // replace, so the cleanup is not a history step the back button owns.
+  // Waiting for the rows before judging keeps a just-created chapter's
+  // address alive: the create selects only once the list that holds the
+  // row has landed, so this cleanup can never eat it.
+  useEffect(() => {
+    const rows = chaptersQuery.data;
+    if (chapterParam === undefined || rows === undefined) return;
+    if (rows.some((chapter) => chapter.id === chapterParam)) return;
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, chapter: undefined }),
+      replace: true,
+    });
+  }, [chapterParam, chaptersQuery.data, navigate]);
 
   // The proposal bus: the dock's panels (other capabilities) offer text
   // through the shell; the workbench subscribes and feeds the editor's
@@ -99,18 +133,6 @@ export function NovelPage() {
   const [offer, setOffer] = useState<string | null>(null);
   useEffect(() => subscribeProposal(setOffer), []);
   const resolveOffer = useCallback(() => setOffer(null), []);
-
-  // The active chapter is workspace state the docks beside the editor need
-  // — extraction reads the chapter the editor is showing. The shell seam
-  // (not a capability import) carries it: published on every selection
-  // change, null as the workspace goes, so a selection never outlives its
-  // owner.
-  useEffect(() => {
-    publishActiveChapter(active);
-    return () => {
-      publishActiveChapter(null);
-    };
-  }, [active]);
 
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
@@ -226,15 +248,19 @@ export function NovelPage() {
       // The rail's list is the cache now: the new row arrives through the
       // refetch this invalidation triggers, not through a hand-patched
       // array — every view of the key (the rail, later the palette) reads
-      // the same answer. Awaiting it keeps the selection and the row it
-      // names in step: the editor opens on a chapter the list already shows.
+      // the same answer. Awaiting it also orders the selection: the param
+      // is written only once the list that holds the row has landed, so
+      // the dead-param cleanup above can never mistake the new address
+      // for a dead one.
       await queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
       // The bookshelf hero names the last-touched book, and its truth is the
       // novel row's updated_at — a chapter write is the most common way that
       // changes, so the shelf's ["novels"] cache must not outlive this POST.
-      // The prefix covers the row this page reads as well.
-      await queryClient.invalidateQueries({ queryKey: ["novels"] });
-      setActive(chapter.id);
+      // The prefix covers the row this page reads as well. The ask rides
+      // alongside, not awaited: the selection waits only for the list it
+      // names, never for the rest of the book.
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+      select(chapter.id);
     } catch {
       // The service is not answering at all and the proxy refuses: the same
       // refusal the rail must name as any other.
@@ -242,17 +268,30 @@ export function NovelPage() {
     }
   }
 
-  const remember = useCallback(() => {
-    // The cache holds the chapters now: the saved body reaches it through
-    // the refetch this invalidation triggers. This callback is `onSaved` —
-    // it fires only on success — so a failed save never asks for anything,
-    // and no refetch can lay the server's old text over the body the
-    // autosave holds for its retry.
-    void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
-    // Same truth as the create path above: a settled save advanced the
-    // novel's updated_at, and the shelf's hero reads it through ["novels"].
-    void queryClient.invalidateQueries({ queryKey: ["novels"] });
-  }, [novelId]);
+  const remember = useCallback(
+    (chapterId: string, body: string) => {
+      // The saved body reaches the cache before the ask: the patch makes
+      // the settled text the key's own answer — the words and the freshness
+      // their updated_at stands for — so a refetch that never answers (or
+      // answers refused) cannot remount the pre-save row over them on a
+      // later switch. The refetch stays the truth; the patch only holds
+      // the page's ground until it lands.
+      queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
+        rows?.map((row) =>
+          row.id === chapterId
+            ? { ...row, body, updated_at: new Date().toISOString() }
+            : row,
+        ),
+      );
+      // This callback is `onSaved` — it fires only on success — so a failed
+      // save never asks for anything.
+      void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+      // Same truth as the create path above: a settled save advanced the
+      // novel's updated_at, and the shelf's hero reads it through ["novels"].
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+    [novelId],
+  );
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
@@ -274,30 +313,26 @@ export function NovelPage() {
   const unsavedNow = useRef(unsaved);
   unsavedNow.current = unsaved;
 
-  /** Leave a chapter: save first, ask only when the save did not land. */
-  async function leave(then: () => void) {
-    const outcome = await flush();
-    if (outcome === "failed" && !window.confirm(t("save.confirmLeave"))) return;
-    then();
-  }
-
-  // Every way out of the book — the shell's top bar, the shelf link, the
-  // browser's back and forward — is a router navigation, and this is the one
-  // place they all pass. A destination inside the book's own subtree (the
-  // dock's routes, a focus step, the rail) is no leave: the editor stays
-  // mounted and the body stays here.
-  // `enableBeforeUnload` is the same question for the tab close, which has no
-  // navigation to intercept.
+  // Every way out of the chapter — the rail, the docks and their panel
+  // state, history's back and forward, the shell's links, and whatever
+  // jump lands here later — is a router navigation, and this is the one
+  // place they all pass. While text is unsaved the gate flushes first;
+  // only a flush that did not land asks, and a dismissed ask keeps the
+  // work. The destination does not matter, because the body does: anything
+  // the router would move away from the editor is worth the same question.
+  // An accepted ask does not drop the body here, either: a panel toggle
+  // would wipe a refused write while the editor stayed mounted — the
+  // notice retracting, the next leave asking nothing — so the body is
+  // cleared only where the chapter really changes (the effect below) or
+  // the page really goes (the autosave's own teardown).
+  // `enableBeforeUnload` is the same question for the tab close, which has
+  // no navigation to intercept.
   useBlocker({
-    shouldBlockFn: async ({ next: to }) => {
-      const book = `/novels/${novelId}`;
-      if (to.pathname === book || to.pathname.startsWith(`${book}/`)) return false;
+    shouldBlockFn: async () => {
       if (!unsavedNow.current) return false;
       const outcome = await flush();
       if (outcome !== "failed") return false;
-      if (!window.confirm(t("save.confirmLeave"))) return true;
-      discard();
-      return false;
+      return !window.confirm(t("save.confirmLeave"));
     },
     enableBeforeUnload: () => unsavedNow.current,
   });
@@ -367,10 +402,11 @@ export function NovelPage() {
                     type="button"
                     aria-pressed={chapter.id === active}
                     onClick={() => {
-                      // The chapter already open is no leave: asking there
-                      // would discard a failure the user never left.
+                      // The chapter already open is no switch: a second
+                      // history entry for the same address would only eat
+                      // the back button.
                       if (chapter.id === active) return;
-                      void leave(() => setActive(chapter.id));
+                      select(chapter.id);
                     }}
                     className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   >
@@ -381,7 +417,7 @@ export function NovelPage() {
             </ul>
             <button
               type="button"
-              onClick={() => void leave(() => void createChapter())}
+              onClick={() => void createChapter()}
               className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
             >
               {t("chapters.new")}
@@ -460,9 +496,14 @@ export function NovelPage() {
                 // The refresh failed, but the chapters on screen are the
                 // last loaded ones: a quiet note beside the work, not the
                 // outage's louder clothes — the editor and the rail stay,
-                // and the retry asks again.
+                // and the retry asks again. `role="status"` is what keeps
+                // the note from being silent to a screen reader: background
+                // speech about work that stays, not an alert about work
+                // that is gone.
                 <div className="mt-6 flex items-baseline gap-3">
-                  <p className="text-sm text-muted">{t("chapters.refreshFailed")}</p>
+                  <p role="status" className="text-sm text-muted">
+                    {t("chapters.refreshFailed")}
+                  </p>
                   <button
                     type="button"
                     onClick={retry}

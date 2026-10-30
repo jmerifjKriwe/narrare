@@ -3,12 +3,12 @@
 A refused write is named beside the text and never worn as "saved"; the body
 it carried survives in memory, and the next keystroke retries it against the
 recovered service — proven on the real stack, outage included. Leaving with
-a body that never reached the server asks first: the chapter switch and the
-shelf link confirm after their flush fails, and a reload mid-failure meets
-the browser's own leave dialog.
+a body that never reached the server asks first: every navigation passes the
+flush gate, so the chapter switch, the shelf link and the dock tab confirm
+after their flush fails, and a reload mid-failure meets the browser's own
+leave dialog.
 """
 
-import re
 from collections.abc import Callable  # noqa: TC003
 from typing import TYPE_CHECKING
 
@@ -136,16 +136,18 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
         expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
 
-        # Opening a dock is a navigation inside the book, not a leave: the
-        # editor stays mounted, so nothing may be asked here. The dock's own
-        # route keeps its tab beside the text.
-        page.get_by_role("button", name="Chat", exact=True).click()
-        expect(page).to_have_url(re.compile(r"/novels/[^/]+/chat(\?|$)"))
-        expect(page.get_by_role("button", name="Chat", exact=True)).to_have_attribute(
-            "aria-pressed", "true"
-        )
+        # Opening a dock is a navigation like any other now: the gate asks
+        # for the failed body here too, and a dismissed ask keeps the
+        # workbench exactly where it was — the dock never opens, the editor
+        # keeps the text.
+        def dock() -> None:
+            page.get_by_role("button", name="Chat", exact=True).click()
 
-        assert seen == ["confirm", "confirm", "confirm", "confirm"]
+        seen.append(_answer_confirm(page, dock))
+        expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
+        expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
+
+        assert seen == ["confirm", "confirm", "confirm", "confirm", "confirm"]
     finally:
         stack.start_api()
 
@@ -204,11 +206,12 @@ def test_failed_chapter_creation_keeps_the_unsaved_body(page: Page, stack: Stack
         page.keyboard.type("Diesen Satz behalten.")
         expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
 
-        with page.expect_event("dialog") as asked:
-            page.once("dialog", lambda dialog: dialog.accept())
-            page.get_by_role("button", name="Neues Kapitel").click()
-        assert asked.value.type == "confirm"
-
+        # The create has nowhere to go and says so beside the button. It
+        # navigates nothing — the flush gate stands in front of the
+        # selection's navigation, and a create that never arrived never
+        # navigates — so no ask happens here. The failed body stays named
+        # and protected, exactly as before the click.
+        page.get_by_role("button", name="Neues Kapitel").click()
         expect(
             page.get_by_role("alert").filter(has_text="Kapitel konnte nicht angelegt")
         ).to_be_visible()
