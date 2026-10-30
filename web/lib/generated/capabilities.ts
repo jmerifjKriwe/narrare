@@ -7,7 +7,6 @@ import en from "../../../i18n/en.json";
 export const nav = [
   { id: "chat", path: "/chat", titleKey: "chat.heading" },
   { id: "knowledge", path: "/knowledge", titleKey: "knowledge.heading" },
-  { id: "prompts", path: "/prompts", titleKey: "prompts.heading" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;

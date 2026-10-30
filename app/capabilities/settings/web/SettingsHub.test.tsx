@@ -83,13 +83,19 @@ describe("the settings area", () => {
   it("lists its clusters in the layout's nav", async () => {
     renderArea("/settings");
 
-    // The nav carries the area's own clusters plus every registry row; with
-    // the registry still empty, the two own clusters are exactly the list.
+    // The nav carries the area's own clusters plus every registry row: the
+    // prompts capability contributes its page through the generated
+    // registry, so its destination is on the list with no edit to the
+    // layout.
     const nav = await screen.findByRole("navigation", { name: t("settings.heading") });
     const destinations = within(nav)
       .getAllByRole("link")
       .map((link) => link.getAttribute("href"));
-    expect(destinations).toEqual(["/settings/language", "/settings/provider"]);
+    expect(destinations).toEqual([
+      "/settings/language",
+      "/settings/provider",
+      "/settings/prompts",
+    ]);
   });
 
   it("renders a hub card per cluster with its description and its link", async () => {
@@ -97,6 +103,7 @@ describe("the settings area", () => {
     // the missing key, before a role query can blur the failure.
     expect(t("settings.clusterLanguage")).toBeDefined();
     expect(t("settings.clusterProvider")).toBeDefined();
+    expect(t("prompts.settingsTitle")).toBeDefined();
 
     renderArea("/settings");
     // The shell paints after its settings query answers; the first heading
@@ -116,6 +123,11 @@ describe("the settings area", () => {
     expect(within(provider).getByRole("link").getAttribute("href")).toBe(
       "/settings/provider",
     );
+
+    // A contributed row carries no description: the title is the whole
+    // card, and the link is the generated registry's path.
+    const prompts = screen.getByRole("region", { name: t("prompts.settingsTitle") });
+    expect(within(prompts).getByRole("link").getAttribute("href")).toBe("/settings/prompts");
   });
 
   it("opens the provider cluster from its hub card", async () => {

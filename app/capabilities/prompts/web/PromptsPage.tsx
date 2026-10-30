@@ -511,7 +511,8 @@ export function PromptsPage() {
   const [novels, setNovels] = useState<Novel[]>([]);
   const [novelId, setNovelId] = useState("");
   const [rows, setRows] = useState<PromptSummary[] | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const [listFailed, setListFailed] = useState(false);
+  const [novelsFailed, setNovelsFailed] = useState(false);
   // The open editor carries the novel it was opened for — captured here, at
   // open time, so the filter's later moves cannot re-target its save or wipe
   // its words. A filter change leaves it exactly as it stands.
@@ -520,8 +521,8 @@ export function PromptsPage() {
     scope: PromptScope;
     novelId: string;
   } | null>(null);
-  // Bumped when a save or reset lands: the list refetches through the effect
-  // instead of a handler patching rows by hand.
+  // Bumped when a save or reset lands, and by the page-level retry: the list
+  // refetches through the effect instead of a handler patching rows by hand.
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -537,18 +538,18 @@ export function PromptsPage() {
         }),
       ]);
       if (cancelled) return;
-      let failed = false;
       if (novelList.status === "fulfilled" && novelList.value.response.ok) {
         setNovels(novelList.value.data ?? []);
+        setNovelsFailed(false);
       } else {
-        failed = true;
+        setNovelsFailed(true);
       }
       if (promptList.status === "fulfilled" && promptList.value.response.ok) {
         setRows(promptList.value.data ?? []);
+        setListFailed(false);
       } else {
-        failed = true;
+        setListFailed(true);
       }
-      setLoadFailed(failed);
     })();
     return () => {
       cancelled = true;
@@ -576,14 +577,31 @@ export function PromptsPage() {
         </select>
       </div>
 
-      {loadFailed ? (
+      {listFailed ? (
+        <div className="mt-4">
+          <p role="alert" className="text-sm text-danger">
+            {t("prompts.errorLoad")}
+          </p>
+          {/* The way back is one press: the effect asks both reads again, no
+              reload demanded — the page-level answer to a dead loading state. */}
+          <button
+            type="button"
+            onClick={() => setRefresh((current) => current + 1)}
+            className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+          >
+            {t("prompts.retry")}
+          </button>
+        </div>
+      ) : null}
+
+      {novelsFailed ? (
         <p role="alert" className="mt-4 text-sm text-danger">
-          {t("prompts.errorLoad")}
+          {t("prompts.errorLoadNovels")}
         </p>
       ) : null}
 
       {rows === null ? (
-        loadFailed ? null : (
+        listFailed ? null : (
           <p className="mt-4 text-sm text-muted">{t("prompts.loading")}</p>
         )
       ) : (

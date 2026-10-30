@@ -9,7 +9,9 @@
 // title keys are checked against the English catalog by the compiler.
 import en from "../../../i18n/en.json";
 
-export const settingsPages = [] as const satisfies ReadonlyArray<{
+export const settingsPages = [
+  { id: "prompts", path: "/settings/prompts", titleKey: "prompts.settingsTitle" },
+] as const satisfies ReadonlyArray<{
   id: string;
   path: string;
   titleKey: keyof typeof en;

@@ -253,6 +253,45 @@ describe("the summary list", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(t("prompts.errorLoad"));
   });
+
+  it("offers a way back when the list cannot be loaded", async () => {
+    let listCalls = 0;
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels") return { data: NOVELS, response: ok() };
+      if (path === "/api/prompts") {
+        listCalls += 1;
+        if (listCalls === 1) throw new TypeError("Failed to fetch");
+        return { data: SUMMARIES, response: ok() };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+
+    render(<PromptsPage />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("prompts.errorLoad"));
+
+    // The retry is one press: the list refetches in place, no reload, and
+    // the cards arrive where the dead loading state stood.
+    await userEvent.click(screen.getByRole("button", { name: t("prompts.retry") }));
+    expect(await screen.findByText(t("settings.task.writing.continuation"))).toBeTruthy();
+    expect(listCalls).toBe(2);
+  });
+
+  it("says what failed when only the novels read fails", async () => {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/prompts") return { data: SUMMARIES, response: ok() };
+      if (path === "/api/writing/novels") throw new TypeError("Failed to fetch");
+      throw new Error(`unexpected GET ${path}`);
+    });
+
+    render(<PromptsPage />);
+    const alert = await screen.findByRole("alert");
+    // The novels read's own message, not the list's: one loss must not
+    // speak for the other.
+    expect(alert.textContent).toBe(t("prompts.errorLoadNovels"));
+    // The list still arrived — a novels loss hides no summaries.
+    expect(await screen.findByText(t("settings.task.writing.continuation"))).toBeTruthy();
+  });
 });
 
 describe("a save", () => {

@@ -187,7 +187,7 @@ def _prompts_for_novel(page: Page, title: str) -> Locator:
     the novel-scoped refetch; waiting for the tier's own button is the caller's
     proof the refetch landed, so a click never reaches a stale global view.
     """
-    page.goto(BASE + "/prompts")
+    page.goto(BASE + "/settings/prompts")
     page.get_by_label("Roman").select_option(label=title)
     return _continuation_card(page)
 
@@ -256,10 +256,11 @@ def _import_as_new_novel(page: Page, source: Path, title: str) -> None:
 
 
 def test_the_prompts_page_opens_over_the_real_stack(page: Page, stack: Stack) -> None:
-    """The nav's own door: every bundled key, and the novel tiers say wait."""
+    """The hub's card is the door: every bundled key, and the novel tiers say wait."""
     page.goto(BASE + "/")
-    page.get_by_role("link", name="Prompts").click()
-    expect(page).to_have_url(f"{BASE}/prompts")
+    page.get_by_role("link", name="Einstellungen").click()
+    page.get_by_role("region", name="Prompts").get_by_role("link", name="Prompts").click()
+    expect(page).to_have_url(f"{BASE}/settings/prompts")
     expect(page.get_by_role("heading", name="Prompts")).to_be_visible()
 
     for key in (CONTINUATION, CHAT, "knowledge.extract-entities", "knowledge.check-consistency"):
@@ -321,7 +322,7 @@ def test_a_chat_override_without_the_sources_is_refused_by_the_contract(
     page: Page, stack: Stack
 ) -> None:
     """A re-voice that drops the marked sources fails the contract, named."""
-    page.goto(BASE + "/prompts")
+    page.goto(BASE + "/settings/prompts")
     card = page.get_by_role("listitem").filter(has_text=CHAT)
     card.get_by_role("button", name="Überschreibung bearbeiten", exact=True).click()
     card.get_by_label("Vorlage").fill("Question only: {{ question }}")

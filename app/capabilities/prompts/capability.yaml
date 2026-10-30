@@ -3,6 +3,6 @@
 # docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
 id: prompts
 title: prompts.heading # i18n key; must exist in en, de and fr
-path: /prompts
+path: /settings/prompts # the settings hub's card is the door
 needs: []
-nav: true # the mounted route is in this commit's page; the top bar links it
+nav: false # a cluster of the settings area, not a top-bar destination

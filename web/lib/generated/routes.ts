@@ -13,15 +13,22 @@
 // passes the workspace route into every factory: capabilities never
 // import each other; this generated table is the one composition
 // point.
+//
+// Settings composition: a capability may export settingsRoutes —
+// factories that take the settings route and return child routes
+// for it — and exactly one capability exports settingsRoute,
+// mirroring the dock convention one level down in the URL space.
 import { routes as chat, dockRoutes as chatDocks } from "../../../app/capabilities/chat/web/routes";
 import { routes as knowledge, dockRoutes as knowledgeDocks } from "../../../app/capabilities/knowledge/web/routes";
-import { routes as prompts } from "../../../app/capabilities/prompts/web/routes";
-import { routes as settings } from "../../../app/capabilities/settings/web/routes";
+import { routes as prompts, settingsRoutes as promptsSettings } from "../../../app/capabilities/prompts/web/routes";
+import { routes as settings, settingsRoute } from "../../../app/capabilities/settings/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
 import { routes as writing, workspaceRoute } from "../../../app/capabilities/writing/web/routes";
 
 const chatDockRoutes = chatDocks.map((dock) => dock(workspaceRoute));
 const knowledgeDockRoutes = knowledgeDocks.map((dock) => dock(workspaceRoute));
+
+const promptsSettingsRoutes = promptsSettings.map((page) => page(settingsRoute));
 
 export const capabilityRoutes = [
   ...chat,
@@ -36,4 +43,9 @@ export const capabilityRoutes = [
   // in the table before the dock routes parented at it.
   ...chatDockRoutes,
   ...knowledgeDockRoutes,
+  //
+  // Settings children come after every capability's own routes: the
+  // router initializes a route from its parent, so the settings route
+  // must be in the table before the settings routes parented at it.
+  ...promptsSettingsRoutes,
 ] as const;
