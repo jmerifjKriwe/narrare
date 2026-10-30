@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import {
   client,
   type Accept,
+  type Chapter,
   type Entity,
   type Finding,
   type Hit,
@@ -93,6 +94,47 @@ export function useCreateNovel(): UseMutationResult<Novel, Error, NovelCreate> {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/**
+ * One novel's row, cached under `["novels", novelId]` beside the shelf's
+ * list: the workbench's heading reads the row, and the write paths
+ * invalidate the `["novels"]` prefix — one invalidation keeps the row and
+ * the list honest together. An answer that is not ok throws, so the cache
+ * holds either the row or the failure — a 404 is never an empty book.
+ */
+export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
+  return useQuery({
+    queryKey: ["novels", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`novel unavailable: ${response.status}`);
+      return data;
+    },
+  });
+}
+
+/**
+ * A novel's chapters in position order, cached under `["chapters", novelId]`.
+ * The workbench's rail and editor read the list here, and the write paths (a
+ * settled save, a created chapter) invalidate the key instead of patching the
+ * cached array by hand — every view of the key refetches from the rows that
+ * changed. An answer that is not ok throws, so the cache holds either the
+ * list or the failure — never a half-current list.
+ */
+export function useChaptersQuery(novelId: string): UseQueryResult<Chapter[]> {
+  return useQuery({
+    queryKey: ["chapters", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/novels/{novel_id}/chapters", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok) throw new Error(`chapters unavailable: ${response.status}`);
+      return data ?? [];
     },
   });
 }
@@ -222,8 +264,9 @@ export function useEntityRelationsQuery(entityId: string): UseQueryResult<Relati
 }
 
 /** The input of a relation add: the edge's end, its type, an optional note.
- *  A `null` note is the no-note state — the create sends it explicitly
- *  rather than relying on the transport to drop an empty string. */
+ *  A `null` note is the no-note state — an empty or whitespace note is
+ *  dropped before the create (the field is sent absent), never stored as a
+ *  note called "". */
 export type RelationInput = {
   entityId: string;
   toEntityId: string;

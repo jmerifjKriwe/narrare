@@ -109,12 +109,34 @@ export function NovelsPage() {
   }
 
   // The page asks before it shows: a named loading state, never a blank
-  // page, and never an empty library that has not heard yet.
+  // page, and never an empty library that has not heard yet. The wait paints
+  // the shelf's own shape — a hero card and rows at the heights the loaded
+  // page will claim — so the answer's arrival moves content, not layout.
+  // The shapes are decoration (hidden from the accessibility tree); the
+  // status line says what the wait is, and stays the screen reader's answer.
   if (!ready || novels.isPending) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">{t("novels.heading")}</h1>
-        <p className="mt-6 text-sm text-muted">{t("novels.loading")}</p>
+        <div aria-hidden="true" className="mt-6 flex flex-col gap-2">
+          <div className="rounded-lg border border-border bg-card px-5 py-4">
+            <div className="h-4 w-20 animate-pulse rounded bg-panel" />
+            <div className="mt-3 h-6 w-48 animate-pulse rounded bg-panel" />
+            <div className="mt-3 h-4 w-32 animate-pulse rounded bg-panel" />
+          </div>
+          {[0, 1, 2].map((row) => (
+            <div
+              key={row}
+              className="rounded-lg border border-border bg-card px-4 py-3"
+            >
+              <div className="h-5 w-40 animate-pulse rounded bg-panel" />
+              <div className="mt-2 h-3 w-24 animate-pulse rounded bg-panel" />
+            </div>
+          ))}
+        </div>
+        <p role="status" className="mt-6 text-sm text-muted">
+          {t("novels.loading")}
+        </p>
       </div>
     );
   }

@@ -1,12 +1,12 @@
 import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { client, type Chapter, type Novel } from "@shell/lib/api/client";
+import { client, type Chapter } from "@shell/lib/api/client";
 import { publishActiveChapter } from "@shell/lib/activeChapter";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
-import { queryClient } from "@shell/lib/query";
+import { queryClient, useChaptersQuery, useNovelQuery } from "@shell/lib/query";
 import { useAutosave, unsavedStatus } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
@@ -35,64 +35,60 @@ export function NovelPage() {
   // Absent means the workbench: the URL names a depth only once it deepens.
   const focus: FocusStep = focusParam ?? 0;
   const navigate = useNavigate();
-  const [novel, setNovel] = useState<Novel | null>(null);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  // The workspace's reads go through Query, the one server-state path: the
+  // novel's row under `["novels", id]`, its chapters under
+  // `["chapters", id]`. Both queryFns throw on a non-ok answer, so the cache
+  // holds either the answer or the failure — a 404 is never an empty book.
+  const novelQuery = useNovelQuery(novelId);
+  const chaptersQuery = useChaptersQuery(novelId);
+  const chapters = chaptersQuery.data ?? [];
   const [active, setActive] = useState<string | null>(null);
-  // The workbench's own load: pending until both GETs have answered, failed
-  // when either refuses or the wire dies. An outage must not wear the empty
-  // book's clothes — the empty rail's copy is a loaded book's truth.
-  const [pending, setPending] = useState(true);
-  const [failed, setFailed] = useState(false);
+  // The four states of the contract, derived per read, none stored: a read's
+  // error is judged against its own cache. An error with nothing from that
+  // read on screen is the named outage — the retry asks again, and the page
+  // has nothing to lose; an error that still holds its previous answer is a
+  // true refresh failure — the quiet note, and the work stays. The page never
+  // claims the book could not be loaded while its text is on screen. The
+  // chapters read is the workbench's spine (it decides whether there is
+  // something to show); the novel row rides along (the heading's title).
+  const novelLoaded = novelQuery.data !== undefined;
+  const chaptersLoaded = chaptersQuery.data !== undefined;
   // The rail's own create failure: a chapter the user asked for that never
   // arrived must say so beside the button, not vanish into a silent click.
   const [createFailed, setCreateFailed] = useState(false);
+  const pending = novelQuery.isPending || chaptersQuery.isPending;
+  const failed =
+    (novelQuery.isError && !novelLoaded) || (chaptersQuery.isError && !chaptersLoaded);
+  const refreshFailed =
+    !failed &&
+    ((novelQuery.isError && novelLoaded) || (chaptersQuery.isError && chaptersLoaded));
 
-  const load = useCallback(async () => {
-    setPending(true);
-    setFailed(false);
-    try {
-      const [novelResult, chaptersResult] = await Promise.all([
-        client.GET("/api/writing/novels/{novel_id}", {
-          params: { path: { novel_id: novelId } },
-        }),
-        client.GET("/api/writing/novels/{novel_id}/chapters", {
-          params: { path: { novel_id: novelId } },
-        }),
-      ]);
-      if (!novelResult.response.ok || !chaptersResult.response.ok) {
-        // A 404 or a 500 is a failure the page must name — parsing the
-        // error body into `data` would dress it up as an empty book.
-        setFailed(true);
-        return;
-      }
-      setNovel(novelResult.data ?? null);
-      const loadedChapters = chaptersResult.data ?? [];
-      setChapters(loadedChapters);
-      // The chapter to reopen on arrival is the last one written in, read from
-      // the server's updated_at — compared as parsed instants, because two
-      // ISO strings with different timezone offsets do not order as their
-      // moments do. Strict comparison: on equal instants the first row keeps
-      // the lead, and the list is in position order, so the choice stays
-      // deterministic even when two chapters tie.
-      const latest = loadedChapters.reduce<Chapter | null>(
-        (best, chapter) =>
-          best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
-            ? chapter
-            : best,
-        null,
-      );
-      setActive((previous) => previous ?? latest?.id ?? null);
-    } catch {
-      // The service is not answering at all and the proxy refuses.
-      setFailed(true);
-    } finally {
-      setPending(false);
-    }
-  }, [novelId]);
+  // One retry asks both reads again: the workspace shows a book only when
+  // both have answered, so the recovery is whole or it is not recovery.
+  const retry = useCallback(() => {
+    void novelQuery.refetch();
+    void chaptersQuery.refetch();
+  }, [novelQuery, chaptersQuery]);
 
+  // The chapter to reopen on arrival is the last one written in, read from
+  // the server's updated_at — compared as parsed instants, because two
+  // ISO strings with different timezone offsets do not order as their
+  // moments do. Strict comparison: on equal instants the first row keeps
+  // the lead, and the list is in position order, so the choice stays
+  // deterministic even when two chapters tie. The refill only fills an empty
+  // selection — the user's own choice, once made, is never overwritten by a
+  // refetch that brings the same list back.
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (chaptersQuery.data === undefined) return;
+    const latest = chaptersQuery.data.reduce<Chapter | null>(
+      (best, chapter) =>
+        best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
+          ? chapter
+          : best,
+      null,
+    );
+    setActive((previous) => previous ?? latest?.id ?? null);
+  }, [chaptersQuery.data]);
 
   // The proposal bus: the dock's panels (other capabilities) offer text
   // through the shell; the workbench subscribes and feeds the editor's
@@ -227,11 +223,17 @@ export function NovelPage() {
         setCreateFailed(true);
         return;
       }
+      // The rail's list is the cache now: the new row arrives through the
+      // refetch this invalidation triggers, not through a hand-patched
+      // array — every view of the key (the rail, later the palette) reads
+      // the same answer. Awaiting it keeps the selection and the row it
+      // names in step: the editor opens on a chapter the list already shows.
+      await queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
       // The bookshelf hero names the last-touched book, and its truth is the
       // novel row's updated_at — a chapter write is the most common way that
       // changes, so the shelf's ["novels"] cache must not outlive this POST.
-      void queryClient.invalidateQueries({ queryKey: ["novels"] });
-      setChapters((previous) => [...previous, chapter]);
+      // The prefix covers the row this page reads as well.
+      await queryClient.invalidateQueries({ queryKey: ["novels"] });
       setActive(chapter.id);
     } catch {
       // The service is not answering at all and the proxy refuses: the same
@@ -240,16 +242,17 @@ export function NovelPage() {
     }
   }
 
-  const remember = useCallback((chapterId: string, body: string) => {
-    setChapters((previous) =>
-      previous.map((chapter) =>
-        chapter.id === chapterId ? { ...chapter, body } : chapter,
-      ),
-    );
+  const remember = useCallback(() => {
+    // The cache holds the chapters now: the saved body reaches it through
+    // the refetch this invalidation triggers. This callback is `onSaved` —
+    // it fires only on success — so a failed save never asks for anything,
+    // and no refetch can lay the server's old text over the body the
+    // autosave holds for its retry.
+    void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
     // Same truth as the create path above: a settled save advanced the
-    // novel's updated_at, and the hero reads it through ["novels"].
+    // novel's updated_at, and the shelf's hero reads it through ["novels"].
     void queryClient.invalidateQueries({ queryKey: ["novels"] });
-  }, []);
+  }, [novelId]);
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
@@ -325,7 +328,13 @@ export function NovelPage() {
           <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
             {t("nav.back")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
+          {/* The heading names the book only when the book's row is here: an
+              empty h1 on the outage page would be a heading about nothing. */}
+          {novelQuery.data ? (
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+              {novelQuery.data.title}
+            </h1>
+          ) : null}
         </>
       ) : null}
 
@@ -430,31 +439,52 @@ export function NovelPage() {
             // or empty-looking book.
             <p className="mt-6 text-sm text-muted">{t("chapters.loading")}</p>
           ) : failed ? (
-            // The book could not be loaded — refused or unreachable. The
-            // failure is named where the retry is one press away.
+            // The book could not be loaded — refused or unreachable, with
+            // nothing on screen to keep. The failure is named where the
+            // retry is one press away.
             <div className="mt-6">
               <p role="alert" className="text-sm text-danger">
                 {t("chapters.errorLoad")}
               </p>
               <button
                 type="button"
-                onClick={() => void load()}
+                onClick={retry}
                 className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
               >
                 {t("chapters.retry")}
               </button>
             </div>
-          ) : current ? (
-            <ChapterEditor
-              key={current.id}
-              chapterId={current.id}
-              body={current.body}
-              status={status}
-              schedule={schedule}
-              proposal={offer ?? undefined}
-              onProposalResolve={resolveOffer}
-            />
-          ) : null}
+          ) : (
+            <>
+              {refreshFailed ? (
+                // The refresh failed, but the chapters on screen are the
+                // last loaded ones: a quiet note beside the work, not the
+                // outage's louder clothes — the editor and the rail stay,
+                // and the retry asks again.
+                <div className="mt-6 flex items-baseline gap-3">
+                  <p className="text-sm text-muted">{t("chapters.refreshFailed")}</p>
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="text-sm text-muted underline-offset-4 hover:underline"
+                  >
+                    {t("chapters.retry")}
+                  </button>
+                </div>
+              ) : null}
+              {current ? (
+                <ChapterEditor
+                  key={current.id}
+                  chapterId={current.id}
+                  body={current.body}
+                  status={status}
+                  schedule={schedule}
+                  proposal={offer ?? undefined}
+                  onProposalResolve={resolveOffer}
+                />
+              ) : null}
+            </>
+          )}
         </section>
 
         {/* The right dock: the open registry row's child route renders here —

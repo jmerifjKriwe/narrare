@@ -58,6 +58,7 @@
   "workspace.unfocus": "Ablenkungen einblenden",
   "chapters.continueError": "Die Fortsetzung ist fehlgeschlagen.",
   "chapters.errorLoad": "Das Buch konnte nicht geladen werden. Läuft der lokale Dienst?",
+  "chapters.refreshFailed": "Die Aktualisierung ist fehlgeschlagen — die gezeigten Kapitel sind die zuletzt geladenen.",
   "chapters.errorCreate": "Das Kapitel konnte nicht angelegt werden. Läuft der lokale Dienst?",
   "chapters.retry": "Erneut versuchen",
   "editor.ghostArrived": "Am Cursor wartet ein Vorschlag.",
