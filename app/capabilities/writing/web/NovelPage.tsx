@@ -392,13 +392,26 @@ export function NovelPage() {
           past the chapter list. Collapsed, the rail unmounts and the editor
           takes the full width. The frame stays while the book loads or
           fails — the toolbar and the docks are independent of the book's
-          row, and a dock's own outage story must stay reachable. */}
-      <div className="mt-6 flex items-start gap-6">
+          row, and a dock's own outage story must stay reachable. Below the
+          desktop breakpoint the row is the overlays' containing block: the
+          panels float above the editor instead of standing beside it. */}
+      <div className="mt-6 flex items-start gap-6 max-lg:relative">
         {/* The rail needs the chapter list. While it loads, or after the
             load failed, there is no list to be empty — the empty copy would
             mask exactly the state this page just named in the editor column. */}
         {showRail && !pending && !failed ? (
-          <aside className="w-56 shrink-0" aria-label={t("chapters.heading")}>
+          <aside
+            /* Beside the editor at ≥1024 (the columns the desktop E2Es
+               pin); below, a drawer over it: anchored to the row's left
+               edge but starting below the toolbar band, so the focus
+               toggle and the dock tabs stay clickable while the editor is
+               covered. The list scrolls inside the drawer instead of
+               spilling past its background onto the page. The width stays
+               in flow terms — the overlay answers the media query, the
+               collapse machinery answers the user. */
+            className="w-56 shrink-0 max-lg:absolute max-lg:top-12 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-lg max-lg:border max-lg:border-border max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+            aria-label={t("chapters.heading")}
+          >
             <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
             <button
               type="button"
@@ -549,7 +562,13 @@ export function NovelPage() {
             never scrolls the editor out of view. */}
         {openDock ? (
           <aside
-            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4"
+            /* Same contract as the rail, mirrored: a drawer from the
+               right below 1024, the desktop's dock column at ≥1024 — also
+               starting below the toolbar band, so switching docks stays a
+               tab click. The panel surface it already had (border,
+               bg-panel, padding) is what the drawer floats on; only the
+               anchor and the shadow are breakpoint-bound. */
+            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4 max-lg:absolute max-lg:top-12 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay"
             aria-label={t(openDock.titleKey)}
           >
             <div className="flex items-center justify-between gap-2">
