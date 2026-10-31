@@ -23,8 +23,10 @@ just dev          # API on :8000, web on :3100
 ```
 
 Open <http://localhost:3100> — a fresh database lands on `/setup`. There is no
-other setup variant: the schema comes from the models (`just db-init`), and
-`just db-reset` recreates the development database when the models change.
+other setup variant: the schema comes from the models, brought to the migration
+history's head by `just db-init`. A schema change ships as a revision
+(`just db-revision` — see [Changing the Schema](#changing-the-schema));
+`just db-reset` remains for throwing a development database away.
 
 ## Branch Model
 
@@ -68,7 +70,10 @@ user can observe — including internal production code — goes under
 
 ## Changing the Schema
 
-The models under `app/kernel/db/` are the single declaration of the schema, and
+The models — `app/kernel/contracts/models.py`, `app/kernel/jobs/models.py`,
+`app/kernel/llm/models.py`, `app/kernel/prompts/models.py`, and each
+capability's `models.py`, all registered on the `Base` in
+`app/kernel/db/base.py` — are the single declaration of the schema, and
 the migration history is how a model change reaches a database that already
 holds data (the decision:
 [ADR-103](docs/architecture/decisions/ADR-103-schema-migrations.md)). A schema
@@ -81,21 +86,24 @@ change ships as two files in **one commit** — the model change and its revisio
    - a rename arrives as a drop plus an add — make it `op.alter_column` with
      `new_column_name` (plus whatever data move it needs);
    - a partial index needs its `postgresql_where`;
-   - a `Vector()` column needs `import pgvector.sqlalchemy`;
+   - a `Vector()` column renders as `pgvector.sqlalchemy.Vector()` — the
+     revision template already imports it;
    - data moves (backfills, re-embeddings, rebuilds) are jobs, never revisions.
 4. **Run the gates:** `just check && just test`. The migration tests
    (`app/kernel/db/tests/test_migrations.py`) prove that upgrading an empty
    database to head equals the models, that the previous release's snapshot
    upgrades with its prose intact, and that drifted or ahead databases are
    refused at startup.
-5. **Refresh the release snapshot at release time:** replay the history to head
-   on a scratch database, `pg_dump --schema-only --no-owner --no-privileges` it
-   into `app/kernel/db/tests/fixtures/schema_<version>.sql`, and strip the
+5. **Refresh the release snapshot at release time:** create a scratch database
+   (`ensure_database` in `app/kernel/db/testsupport.py`), bring it to head with
+   `NARRE_DATABASE_URL=<scratch-url> just db-init`, then `pg_dump
+   --schema-only --no-owner --no-privileges` it into
+   `app/kernel/db/tests/fixtures/schema_<version>.sql` and strip the
    `alembic_version` table, the `CREATE EXTENSION` lines and pg_dump's
    `\restrict`/`\unrestrict` guards (the mechanics are documented where the
    snapshot is loaded). `pg_dump` comes from `postgresql-client-17` — see
    [Getting Started](#getting-started).
-6. **Commit both files together** — the revision's message states *why* the
+6. **Commit both files together** — the commit message states *why* the
    schema changed; one that does not is a review finding.
 
 ## Before You PR

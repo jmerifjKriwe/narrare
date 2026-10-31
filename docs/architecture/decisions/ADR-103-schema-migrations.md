@@ -11,7 +11,10 @@
 
 ## Context
 
-The schema had one source and no history: the models under `app/kernel/db/` are the
+The schema had one source and no history: the models registered on the `Base`
+in `app/kernel/db/base.py` — the kernel modules `app/kernel/contracts/models.py`,
+`app/kernel/jobs/models.py`, `app/kernel/llm/models.py` and
+`app/kernel/prompts/models.py`, plus each capability's `models.py` — are the
 single declaration, and `app/kernel/db/init.py` created the database with
 `metadata.create_all`. `create_all` creates missing tables and never alters an
 existing one, and the only way to apply a model change was `just db-reset` — drop the
@@ -121,7 +124,7 @@ crossing:
 
 1. **The concrete failure it prevents:** an upgrade that could only reach an
    existing database by discarding it. `create_all` cannot alter a table; the only
-   way a model change reached an installed database was `just db-reset`, which
+   way an *alteration* reached an installed database was `just db-reset`, which
    destroys the manuscript. With a user's data in place, the schema was permanently
    frozen — the product could ship code but never schema.
 2. **The effort it creates for every future change:** one reviewed revision file,
@@ -139,7 +142,7 @@ The shipped decisions, one line each — the design doc carries the reasoning:
 | | Decision | Where it lives |
 |---|---|---|
 | D1 | Alembic, async `env.py`, URL from `NARRE_DATABASE_URL` only; capability models reach the migration environment through the generated registry | `alembic.ini`, `app/kernel/db/migrations/env.py` |
-| D2 | The draft is a draft — a human reads it (renames, `postgresql_where`, `pgvector.sqlalchemy.Vector`) | CONTRIBUTING.md, "Changing the schema" |
+| D2 | The draft is a draft — a human reads it (renames, `postgresql_where`, `pgvector.sqlalchemy.Vector`) | CONTRIBUTING.md, "Changing the Schema" |
 | D3 | Four gates inside `just test`: one head · empty→head equals the models · release snapshot upgrades with prose · bootstrap/refusal paths | `app/kernel/db/tests/test_migrations.py` |
 | D4 | Bootstrap: equal → stamp, not equal → refuse and say what differs | `prepare_database` in `app/kernel/db/migrate.py` |
 | D5 | Unattended upgrade on start: lock → dump when pending → one transaction → head check; every dump failure is a named refusal (`BackupFailed`) | `app/kernel/db/migrate.py`, `app/kernel/db/backup.py` |
@@ -170,7 +173,7 @@ The shipped decisions, one line each — the design doc carries the reasoning:
   review of it. There is no model-only schema change anymore.
 - Startup grows: lock, dump, upgrade, verify run before the first worker or request.
 - Downgrade is restore-from-backup, never a downgrade script: a downgraded app
-  refuses a database ahead of its history and points at the backup. Honest limit: a
+  refuses a database ahead of its history. Honest limit: a
   `.dump` file is support-grade, not user self-service.
 
 **Constraints introduced:**
@@ -200,7 +203,8 @@ Everything below is shipped and checked by `just test`:
   retention keeps the newest 3 in `NARRE_BACKUP_DIR` (default `./backups`,
   git-ignored; the settings in `.env.example`).
 - `app/kernel/db/init.py` — `db-init`/`db-reset` end in `prepare_database`
-  (backup off: nothing pending, nothing to protect).
+  (backup off: development data is disposable — the dump exists to protect
+  user prose).
 - `app/api/main.py` — the lifespan calls `prepare_database` before configuration
   validation and the jobs worker.
 - `app/kernel/db/tests/test_migrations.py` — the gates; the release snapshot is
@@ -208,7 +212,7 @@ Everything below is shipped and checked by `just test`:
 - CI installs `postgresql-client-17` from PGDG in the existing tests job
   (`.github/workflows/ci.yml`) — the repository's own snapshot, restore and
   round-trip paths need a real `pg_dump`/`pg_restore`.
-- The authoring flow is CONTRIBUTING.md → "Changing the schema"; the recipe is
+- The authoring flow is CONTRIBUTING.md → "Changing the Schema"; the recipe is
   `just db-revision "message"` (`justfile`).
 
 **ADR status:** ✅ Accepted — the decision is in force; the boundary approval it

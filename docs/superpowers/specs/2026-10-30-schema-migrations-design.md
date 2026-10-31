@@ -1,6 +1,6 @@
 # Schema migrations for Narrare
 
-**Status:** proposed — waiting for the product owner's approval
+**Status:** accepted — approved by the product owner on 2026-10-30; recorded in [ADR-103](../../architecture/decisions/ADR-103-schema-migrations.md)
 **Date:** 2026-10-30
 **Decision taken:** Alembic with human-reviewed revisions (approach 1 of three)
 **Boundary:** this crosses spec §8 / §9 D11 ("no migration tool while the product is

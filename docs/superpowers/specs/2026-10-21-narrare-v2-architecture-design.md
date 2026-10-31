@@ -330,14 +330,14 @@ count; one worker claiming rows with `FOR UPDATE SKIP LOCKED`. No broker, no Red
 RabbitMQ. Jobs survive restarts, and the worker hides behind an interface so it can be
 swapped if throughput ever demands it.
 
-**Database (D11).** One schema, one source: the models. While the product is not live
-there are no migrations — `db-init` creates the schema directly from the models, and a
-schema change lands in the models and recreates the database. When the product goes
-live, this is where a migration story would begin, not before. **Update
-2026-10-31:** the migration story exists ahead of go-live — the product owner
-approved crossing this decision's "not before go-live" on 2026-10-30. Alembic with
-human-reviewed revisions, drafted from the models and applied on startup, behind a
-lock and a backup: recorded in
+**Database (D11, updated 2026-10-31).** One schema, one source: the models — now
+with a recorded, replayable history. The migration story is Alembic with
+human-reviewed revisions: `just db-revision` drafts a revision from the models, a
+startup pass (`prepare_database`, behind an advisory lock and a backup) applies
+pending revisions before the first worker or request, and a schema change ships as
+the model change plus its revision in one commit. Crossing this decision's original
+"no migration tool while the product is not live" was approved by the product owner
+on 2026-10-30, ahead of go-live: recorded in
 [ADR-103](../../architecture/decisions/ADR-103-schema-migrations.md), designed in
 [`2026-10-30-schema-migrations-design.md`](2026-10-30-schema-migrations-design.md).
 
