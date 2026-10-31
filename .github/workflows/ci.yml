@@ -105,14 +105,13 @@ jobs:
   # capabilities": the capabilities a change touches, or all of them when a
   # shared surface moved). This job only picks the resolver's mode per event:
   # a pull request is measured against where it branched, a push to main owes
-  # nothing, and a nightly takes everything.
+  # nothing (why at the push branch below), and a nightly takes everything.
   changes:
     needs: nightly-guard
     if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     outputs:
       capabilities: ${{ steps.suites.outputs.capabilities }}
-      suites: ${{ steps.suites.outputs.suites }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -131,10 +130,11 @@ jobs:
             git fetch origin main
             mode="--base origin/main"
           elif [ "$EVENT" = push ]; then
-            # A push to main owes nothing: the merge tree is the tree its PR
-            # already tested, and a change that lands without a PR is covered
-            # by the nightly. The workflow decides the mode, so no range is
-            # read.
+            # A push to main owes nothing, and that is safe: the `push:` trigger
+            # above fires for `branches: [main]` only, so what it pushes is a
+            # merge whose tree the PR's required checks already tested, and a
+            # commit that lands without a PR is covered by the nightly. The
+            # workflow decides the mode, so no range is read.
             mode="--none"
           else
             # A nightly has no range to read: every suite.
@@ -155,8 +155,8 @@ jobs:
           # The runner's python3, before any uv sync: the resolver is stdlib
           # only. A resolver that cannot name a range answers with every
           # suite (fail-open), and every resolution exits 0 — only a broken
-          # script reddens the job, which is why the exit status is read
-          # instead of trusted to `bash -e`.
+          # script reddens the job. The exit status is captured so the reason
+          # notice precedes the exit.
           reason_file=$(mktemp)
           status=0
           capabilities=$(python3 scripts/affected.py $mode $release_pr --json 2>"$reason_file") || status=$?
@@ -168,28 +168,6 @@ jobs:
           fi
           echo "capabilities=$capabilities"
           echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
-          # Legacy output for the e2e job below, which still reads `suites`;
-          # the matrix that replaces it consumes `capabilities` directly.
-          suites=none
-          if [ "$capabilities" != "[]" ]; then
-            names=${capabilities#\[}
-            names=${names%\]}
-            names=${names//\"/}
-            # Splitting on the JSON punctuation is safe: the names are
-            # directory identifiers the resolver read from
-            # app/capabilities/*/e2e, never anything with a quote or comma.
-            set -- ${names//,/ }
-            known=$(find app/capabilities -mindepth 2 -maxdepth 2 -type d -name e2e | wc -l)
-            if [ "$#" -eq "$known" ]; then
-              suites=all
-            else
-              suites=""
-              for name in "$@"; do suites="$suites app/capabilities/$name/e2e/"; done
-              suites=${suites# }
-            fi
-          fi
-          echo "suites=$suites"
-          echo "suites=$suites" >> "$GITHUB_OUTPUT"
 
   tests:
     needs: nightly-guard
@@ -275,10 +253,21 @@ jobs:
           version: v11.3.2
           report_type: test_results
 
-  e2e:
-    runs-on: ubuntu-latest
+  # The suites the changes job named, one runner per capability, side by
+  # side — writing is the slowest and becomes the wall clock. `fail-fast:
+  # false`: a red writing suite must not hide whether knowledge is red too.
+  # The matrix passes ONE capability name per entry, so the pytest path is
+  # that capability's own e2e directory — no name is ever expanded into a
+  # path by string surgery on the JSON list.
+  e2e-suites:
     needs: [lint-types, changes]
-    if: needs.changes.outputs.suites != 'none'
+    if: needs.changes.outputs.capabilities != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        capability: ${{ fromJSON(needs.changes.outputs.capabilities) }}
+    name: e2e (${{ matrix.capability }})
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -309,14 +298,47 @@ jobs:
       - run: uv sync --locked
       - run: uv run playwright install --with-deps chromium
       - run: pnpm install --frozen-lockfile
-      # What `just test-e2e` runs, minus its `--worktree` (a no-op on this
-      # clean checkout); the suites come from the changes job, so a change
-      # pays for what it touches.
+      # What `just test-e2e <capability>` runs, minus its `--worktree` (a
+      # no-op on this clean checkout): the recipe resolves to the same
+      # single directory this entry names.
       - name: E2E
+        run: uv run pytest app/capabilities/${{ matrix.capability }}/e2e/ -v -m e2e --timeout=60
+
+  # The required check is the context `e2e`, and the name must not move while
+  # the suites behind it multiply. `always()` because the hole this closes is
+  # a skipped job: a failed `changes` used to leave the whole e2e leg skipped,
+  # and a skipped required check passes. The semantics:
+  #   red   — `changes` did not succeed, or handed over no capabilities at all
+  #           (a successful run prints at least `[]`; an empty string is a
+  #           broken handoff, never "legitimately none"),
+  #   green — `changes` succeeded with `[]` and the matrix was skipped:
+  #           nothing owed, nothing run — the notice says so,
+  #   red   — the matrix ran and ended anything but success.
+  # On a nightly the guard may skip the whole run (main unchanged since the
+  # last successful one); then this job skips with the rest. `always()` alone
+  # would run it against a `changes` that never meant to run and turn every
+  # quiet night red. A PR or push never takes that branch: the guard proceeds
+  # on every non-schedule event, so `always()` governs there unchanged.
+  e2e:
+    name: e2e
+    needs: [nightly-guard, changes, e2e-suites]
+    if: always() && (github.event_name != 'schedule' || needs.nightly-guard.outputs.proceed == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every owed suite passed, or none was owed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          SUITES: ${{ needs.e2e-suites.result }}
+          CAPABILITIES: ${{ needs.changes.outputs.capabilities }}
         run: |
-          suites="${{ needs.changes.outputs.suites }}"
-          [ "$suites" = all ] && suites="app/capabilities/*/e2e/"
-          uv run pytest $suites -v -m e2e --timeout=60
+          if [ "$CHANGES" != success ]; then
+            echo "::error::the changes job did not succeed; a change owes suites it cannot name"; exit 1; fi
+          if [ -z "$CAPABILITIES" ]; then
+            echo "::error::the changes job succeeded but handed over no capabilities; broken, not none"; exit 1; fi
+          if [ "$CAPABILITIES" = '[]' ]; then
+            echo "::notice::no capability owed a browser suite"; exit 0; fi
+          if [ "$SUITES" != success ]; then
+            echo "::error::e2e suites ended $SUITES"; exit 1; fi
 
   build:
     needs: nightly-guard
