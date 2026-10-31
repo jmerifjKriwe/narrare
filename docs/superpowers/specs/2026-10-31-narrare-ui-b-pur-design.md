@@ -160,7 +160,7 @@ Weights: 400, 500, 600. Nothing else. Tracking: `-0.01em` on `text-title` and
 `text-hero`, `0.1em` on uppercase labels, none elsewhere.
 
 Prose (the editor only): EB Garamond 600 for the chapter heading, EB Garamond 400
-at 18 px / 1.72 for the body, measure 34 rem (544 px). The font ships as a
+at 18 px / 1.75 for the body (the file's existing value; an earlier draft said 1.72, which never existed), measure 34 rem (544 px). The font ships as a
 self-hosted subset (~50 KB, already a follow-up issue); until it lands, the
 existing Georgia stack is the fallback and nothing else changes.
 

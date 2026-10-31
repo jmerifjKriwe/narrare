@@ -62,7 +62,7 @@
 - [ ] **Step 1:** Fetch the OFL EB Garamond release (v1.x from the upstream repo), then subset:
   `pyftsubset EBGaramond-Regular.ttf --unicodes="U+0020-007E,U+00A0-00FF,U+2013-2014,U+2018-201D,U+2026,U+00AB,U+00BB" --flavor=woff2 --layout-features="kern,liga" --output-file=web/public/fonts/eb-garamond-latin.woff2`
   Expected: a file under 60 KB. Copy the upstream `OFL.txt` beside it.
-- [ ] **Step 2:** Add `@font-face` (`font-display: swap`, `font-weight: 400`) and change `.ProseMirror`'s `font-family` to the new stack. Keep `font-size: 1.125rem; line-height: 1.72; max-width: 34rem`.
+- [ ] **Step 2:** Add `@font-face` (`font-display: swap`, `font-weight: 400`) and change `.ProseMirror`'s `font-family` to the new stack. Keep `font-size: 1.125rem; line-height: 1.75; max-width: 34rem` (the file's existing values).
 - [ ] **Step 3:** Remove the dead `class: "prose"` from `web/ui/markdown-editor.tsx:66` (no typography plugin is installed, so it styles nothing — F27); the `.ProseMirror` rules are the editor's styling.
 - [ ] **Step 4:** Run `just build`, then `just test-e2e writing`. Expected: PASS; the editor renders serif, `rg -n 'eb-garamond' web/dist/assets/*.css` finds the URL, and `rg -n 'class: "prose"' web/ui` returns nothing.
 - [ ] **Step 5:** Commit: `feat(ui): the prose surface wears the brand serif` + `User-visible: chapter text is set in EB Garamond instead of Georgia.`
