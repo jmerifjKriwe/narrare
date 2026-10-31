@@ -87,7 +87,7 @@ describe("useNovelQuery", () => {
     });
     // The key is part of the contract: the shelf's writes invalidate this
     // row through the ["novels"] prefix, and the palette reads the same key.
-    expect(queryClient.getQueryState(["novels", NOVEL_ID])).not.toBeNull();
+    expect(queryClient.getQueryState(["novels", NOVEL_ID])?.status).toBe("success");
   });
 
   it("keeps a 404 as an error, never as an empty book", async () => {
@@ -110,7 +110,7 @@ describe("useChaptersQuery", () => {
     expect(api.GET).toHaveBeenCalledWith("/api/writing/novels/{novel_id}/chapters", {
       params: { path: { novel_id: NOVEL_ID } },
     });
-    expect(queryClient.getQueryState(["chapters", NOVEL_ID])).not.toBeNull();
+    expect(queryClient.getQueryState(["chapters", NOVEL_ID])?.status).toBe("success");
   });
 
   it("keeps a 404 as an error, never as an empty list", async () => {
