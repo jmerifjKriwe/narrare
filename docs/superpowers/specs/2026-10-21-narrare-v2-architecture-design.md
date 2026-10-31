@@ -273,9 +273,10 @@ persisted.
 Scheduling: locally the gate runs the suites a change touches — affected by
 default, `all` on demand. On each PR the affected capabilities run in parallel
 per capability behind one `e2e` check; a push to `main` owes nothing, because the
-merge tree is the tree the PR tested; all of them nightly. A real
-LLM provider is never used at any test level. Anything a test would pay for is faked
-at the boundary.
+merge tree is the tree the PR tested; all of them nightly.
+
+A real LLM provider is never used at any test level. Anything a test would pay for
+is faked at the boundary.
 
 Consequence: an E2E failure means the product is broken, not that a schema changed.
 The suite is the only place where "works" has a definition.
@@ -487,12 +488,12 @@ trigger that would build the missing piece.
 - **CI runs the E2E of the affected capabilities on each PR, in parallel per
   capability behind one `e2e` check; a push to `main` owes nothing; all of them
   nightly (§6):** a `changes` job narrows a PR to the capabilities
-  it touched — everything when kernel, api, the generated views, web, i18n or
-  the tooling moved — so a documentation-only change runs no browser, and the
-  merge tree a push lands is the tree the PR already tested. The nightly runs
-  only when `main`
-  carries a commit the last successful nightly did not test; an unchanged `main`
-  skips every job through one guard, and a direct push to `main` is covered by it.
+  it touched — everything when kernel, api, the generated views, web, i18n,
+  the justfile, the locks or the CI workflow moved — so a documentation-only
+  change runs no browser, and the merge tree a push lands is the tree the PR
+  already tested. The nightly runs only when `main` carries a commit the last
+  successful nightly did not test; an unchanged `main` skips every job through
+  one guard, and a direct push to `main` is covered by it.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
 - **The web shell is a Vite SPA, not Next.js.** Every page was a client

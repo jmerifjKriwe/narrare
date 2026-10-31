@@ -72,7 +72,8 @@ the test suite run on every push. Bypassing a hook (`--no-verify`) is forbidden.
 Before opening a PR, run the full gate locally:
 
 ```bash
-just verify          # check, both test suites, the affected capability E2E suites, the web build; `just verify all` before a risky change
+just verify          # check, both test suites, the affected capability E2E suites,
+                     # the web build; `just verify all` before a risky change
 ```
 
 It must pass cleanly.
@@ -100,7 +101,8 @@ muss bleiben, solange der Scan die History sieht.
 4. CI runs on every PR and on every push to `main`: lint and types, the
    integration tests and the web build. The E2E runs on the PR — in parallel per
    capability behind one `e2e` check, for the capabilities the change touches:
-   all of them when kernel, web or tooling change, none of them for a
+   all of them when kernel, web, the justfile, the locks or the CI workflow
+   change, none of them for a
    documentation-only change. A push to `main` owes no E2E: what it merges is the
    tree the PR tested, and a direct push is covered by the nightly, which tests
    everything but only when `main` moved since the last one. Coverage is
