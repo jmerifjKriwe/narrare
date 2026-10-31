@@ -117,22 +117,25 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
 
         await asyncio.to_thread(_dump)
-        if not (file.exists() and file.stat().st_size > 0):
-            # The dump arrived on stdout (the compose form's way through:
-            # pg_dump sits inside the database container and cannot write a
-            # host path) — or something that is not a dump did.
-            with partial.open("rb") as probe:
-                magic = probe.read(5)
-            if magic != b"PGDMP":
-                # A command that exits 0 with an empty or garbage {file} (a
-                # touch, a script echoing prose) leaves exactly the fake-good
-                # artifact the --file cleanup above removes; it goes too.
-                if not file_existed_before:
-                    file.unlink(missing_ok=True)
-                raise BackupFailed(
-                    f"{command_line[0]} produced neither a dump file nor output a "
-                    "pg_restore could read"
-                )
+        # Acceptance is the ``PGDMP`` magic on whichever artifact the run
+        # left — the --file form's own target, or the stdout partial when
+        # no file appeared. A command that exits 0 having written prose
+        # into ``{file}`` (``pg_dump`` without ``--format=custom``) is
+        # exactly the fake-good dump this probe exists to refuse: non-empty
+        # is not the bar, a dump pg_restore can read is.
+        artifact = file if file.exists() and file.stat().st_size > 0 else partial
+        with artifact.open("rb") as probe:
+            magic = probe.read(5)
+        if magic != b"PGDMP":
+            # The refused artifact goes the way every failed run's leftover
+            # goes: gone — unless it pre-existed (the name is unique per
+            # run; it never does).
+            if not file_existed_before:
+                file.unlink(missing_ok=True)
+            raise BackupFailed(
+                f"{command_line[0]} produced neither a dump file nor output a pg_restore could read"
+            )
+        if artifact is partial:
             replace(partial, file)
 
         # Retention, on both paths — the --file form's dump ages just the same.

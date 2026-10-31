@@ -105,6 +105,11 @@ ignore = [
 # SQLAlchemy needs datetime at runtime, not just type-checking
 "**/models.py" = ["TC003"]
 "**/*_models.py" = ["TC003"]
+# The migration history's revisions: the template imports what a real draft
+# may need (pgvector, sa, op, Sequence), so an empty draft is clean, not a
+# lint failure — a draft's unused import is the template's render set
+"app/kernel/db/migrations/versions/*" = ["F401", "TC003"]
+
 # CI's changes job runs this script under the runner's python3 before any uv
 # sync; its annotations are evaluated at definition time, so the runtime import
 # is what keeps it from NameError there

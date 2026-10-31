@@ -18,19 +18,9 @@ import asyncio
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# The schema is registered by import on the shared Base: contracts holds the
-# domain vocabulary, jobs, llm and prompts their own tables — kernel
-# machinery, not domain — and both the replayed history above and the
-# models-built create_all below see every table only because all four
-# modules are imported here.
-from app.kernel.contracts import models
-from app.kernel.db.migrate import ensure_extensions, prepare_database
+from app.kernel.db.base import Base
+from app.kernel.db.migrate import ensure_extensions, prepare_database, register_models
 from app.kernel.db.testsupport import drop_every_table
-from app.kernel.jobs import models as jobs_models
-from app.kernel.llm import models as llm_models
-from app.kernel.prompts import models as prompts_models
-
-del jobs_models, llm_models, prompts_models  # the imports are for their registration side effect
 
 
 async def init_schema(database_url: str) -> None:
@@ -57,11 +47,14 @@ async def reset_schema(database_url: str) -> None:
     # current models no longer know must go too, and dependent views with
     # them.
     await drop_every_table(database_url)
-    # The models, not the history: tests create their schema from the models.
     await ensure_extensions(database_url)
+    # The models, not the history: tests create their schema from the models
+    # — registered by the one seam, kernel and capability modules both, not
+    # by whichever imports this module's callers happened to make.
+    register_models()
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
-        await connection.run_sync(models.Base.metadata.create_all)
+        await connection.run_sync(Base.metadata.create_all)
     await engine.dispose()
 
 

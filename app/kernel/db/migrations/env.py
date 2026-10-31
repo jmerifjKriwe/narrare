@@ -1,16 +1,15 @@
 """The migration environment.
 
 The URL comes from ``NARRE_DATABASE_URL`` — the only URL source, which is
-why alembic.ini carries none — and the table set is the models': the kernel
-model modules are imported here, the capability model modules are reached
-through the generated registry, because the kernel may not name a
-capability. The imports exist for their registration side effect on the
-shared ``Base`` — the same side effect that later populates the metadata
-``diff_against_models`` compares against.
+why alembic.ini carries none — and the table set is the models': every
+registering module is imported through ``register_models`` (the four kernel
+model modules, then each capability's via the generated registry, because
+the kernel may not name a capability) for its registration side effect on
+the shared ``Base`` — the same side effect that later populates the
+metadata ``diff_against_models`` compares against.
 """
 
 import asyncio
-from importlib import import_module
 from os import environ
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -19,34 +18,17 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.generated.capabilities import CAPABILITIES
-from app.kernel.contracts import models as contracts_models
 from app.kernel.db.base import Base
-from app.kernel.jobs import models as jobs_models
-from app.kernel.llm import models as llm_models
-from app.kernel.prompts import models as prompts_models
+from app.kernel.db.migrate import register_models
 
 if TYPE_CHECKING:
     from alembic.autogenerate.api import AutogenContext
     from sqlalchemy.engine import Connection
 
-# Kernel machinery, not domain: contracts holds the shared vocabulary, jobs,
-# llm and prompts their own tables.
-del contracts_models, jobs_models, llm_models, prompts_models
-
-# A capability's tables join the migration's table set without a named
-# import — the kernel may not name a capability, so the generated registry
-# says whose models module exists. A capability without tables has no
-# models module; only that absence is swallowed. A ModuleNotFoundError
-# raised *inside* an existing models module is a real defect and must
-# surface, so the check is on the missing module's name, not the class.
-for _capability in CAPABILITIES:
-    _models_module = f"app.capabilities.{_capability.id}.models"
-    try:
-        import_module(_models_module)
-    except ModuleNotFoundError as exc:
-        if exc.name != _models_module:
-            raise
+# The table set is the models': every registering module — kernel machinery
+# plus each capability's tables — lands on the shared Base through the one
+# seam, not through this file's own import list.
+register_models()
 
 config = context.config
 

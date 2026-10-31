@@ -10,10 +10,10 @@ state it does not understand (design D4 to D7 of the schema-migrations
 design). ``ensure_extensions`` is the write side's pre-step (D7) and lives
 here because ``prepare_database`` is its caller. The gates in
 ``app/kernel/db/tests/test_migrations.py`` pin all of it.
-The metadata compared against is the models': ``env.py`` imports every model
-module for its registration side effect, and a caller that compares outside
-alembic must have imported those modules the same way — ``init.py`` and the
-gates' upgrade step do.
+The metadata compared against is the models': ``register_models`` imports
+every model module for its registration side effect — ``env.py``,
+``reset_schema`` and the comparison itself call it, so no caller's import
+graph is a hidden precondition of a correct comparison.
 """
 
 import asyncio
@@ -104,6 +104,38 @@ def head_revision() -> str:
     return heads[0]
 
 
+def register_models() -> None:
+    """Import every module that registers tables on the shared ``Base``.
+
+    The four kernel model modules first, then each capability's models
+    module via the generated registry (the kernel may not name a
+    capability). The imports exist for their registration side effect: the
+    metadata ``diff_against_models`` compares against is the full table set
+    only once every registering module has been imported, and which modules
+    a process imported for other reasons is not a fact a schema comparison
+    may lean on. A capability without tables has no models module, and only
+    that absence is swallowed — a ModuleNotFoundError raised *inside* an
+    existing models module is a real defect and surfaces.
+    """
+    from importlib import import_module
+
+    from app.generated.capabilities import CAPABILITIES
+    from app.kernel.contracts import models as contracts_models
+    from app.kernel.jobs import models as jobs_models
+    from app.kernel.llm import models as llm_models
+    from app.kernel.prompts import models as prompts_models
+
+    del contracts_models, jobs_models, llm_models, prompts_models
+
+    for capability in CAPABILITIES:
+        models_module = f"app.capabilities.{capability.id}.models"
+        try:
+            import_module(models_module)
+        except ModuleNotFoundError as exc:
+            if exc.name != models_module:
+                raise
+
+
 def diff_against_models(config: Config, connection: Connection) -> list[Any]:
     """What alembic would still have to do for the database to match the models.
 
@@ -111,8 +143,10 @@ def diff_against_models(config: Config, connection: Connection) -> list[Any]:
     that keeps the two schema paths (the replayed history, the models-built
     tests) saying the same thing. The comparison runs with the same switches
     an autogenerate draft runs with, so the gate proves what a draft would
-    see.
+    see. The models register here first: the comparison brings its own table
+    set instead of trusting the caller's import graph.
     """
+    register_models()
     context = MigrationContext.configure(
         connection, opts={"compare_type": True, "compare_server_default": True}
     )

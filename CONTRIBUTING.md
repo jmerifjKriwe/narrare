@@ -88,11 +88,13 @@ change ships as two files in **one commit** — the model change and its revisio
    - a partial index needs its `postgresql_where`;
    - a `Vector()` column renders as `pgvector.sqlalchemy.Vector()` — the
      revision template already imports it;
+   - a downgrade ships without a body: the pre-migration dump is the way
+     back (design D6, ADR-103) — raise, like the baseline's `downgrade()`;
    - data moves (backfills, re-embeddings, rebuilds) are jobs, never revisions.
 4. **Run the gates:** `just check && just test`. The migration tests
    (`app/kernel/db/tests/test_migrations.py`) prove that upgrading an empty
-   database to head equals the models, that the previous release's snapshot
-   upgrades with its prose intact, and that drifted or ahead databases are
+   database to head equals the models, that the 0.2.0 snapshot bootstraps
+   with its prose intact, and that drifted or ahead databases are
    refused at startup.
 5. **Refresh the release snapshot at release time:** create a scratch database
    (`ensure_database` in `app/kernel/db/testsupport.py`), bring it to head with

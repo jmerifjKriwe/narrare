@@ -3,9 +3,10 @@
 All four design gates live here: the history has exactly one head (D3.1), an
 empty database replayed to head is indistinguishable from what the models
 declare (D3.2 — the gate that keeps the two schema paths identical, D12), the
-previous release's checked-in snapshot upgrades with its prose intact (D3.3),
-and the bootstrap branch stamps an equal models-built schema while refusing a
-drifted or unknown-revision one by name (D3.4, D4, D6).
+checked-in 0.2.0 snapshot bootstraps with its prose intact (D3.3 — the
+bootstrap path; a behind-head replay starts with the first post-baseline
+revision), and the bootstrap branch stamps an equal models-built schema while
+refusing a drifted or unknown-revision one by name (D3.4, D4, D6).
 
 ``prepare_database`` is the function the gates drive: the same one
 ``just db-init`` and the API suite's session fixture run.
@@ -119,6 +120,25 @@ def test_migrations_have_one_head() -> None:
     assert head_revision().count(",") == 0 and head_revision()
 
 
+def test_head_revision_is_found_from_any_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``head_revision`` works from a directory that is not the repo root.
+
+    Startup runs wherever the operator launched the app from; a
+    ``script_location`` resolved against the process's working directory
+    made this very first read of the history die with ``CommandError``
+    everywhere but the repo root. The ini names its own location instead
+    (``%(here)s``), so the history is found from any directory.
+    """
+    monkeypatch.chdir(tmp_path)
+    head = head_revision()
+    # The head is this history's: its id names a file in the versions
+    # directory beside this test.
+    versions = Path(__file__).parent.parent / "migrations" / "versions"
+    assert any(file.name.startswith(f"{head}_") for file in versions.glob("*.py"))
+
+
 async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     # The gate's claim is about an *empty* database: whichever test ran before
     # this one left its tables behind, so the drop happens here, not only in
@@ -167,13 +187,14 @@ async def _load_snapshot(database_url: str, snapshot: Path) -> None:
 
 
 async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
-    """The previous release's snapshot upgrades with its prose intact (D3.3).
+    """This release's 0.2.0 snapshot bootstraps with its prose intact (D3.3).
 
-    The fixture carries no ``alembic_version`` — a release ships the schema,
-    not the history — so this gate exercises the bootstrap path: exactly the
-    upgrade the first go-live release performs on databases created by
-    ``create_all``. A versioned behind-head replay becomes possible only
-    once a second revision exists (known follow-up).
+    The fixture is this release's checked-in schema (0.2.0), and it carries
+    no ``alembic_version`` — a release ships the schema, not the history —
+    so this gate exercises the bootstrap path: exactly the upgrade the
+    go-live release performs on databases created by ``create_all``. The
+    behind-head replay it will grow into starts with the first
+    post-baseline revision (known follow-up).
     """
     # The gate's claim is about the snapshot's database alone: whichever test
     # ran before this one left its tables behind, so the drop happens here,
@@ -230,8 +251,7 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
             )
     finally:
         await engine.dispose()
-    assert chapter_body == body
-    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert chapter_body is not None and chapter_body.encode("utf-8") == b"Wort f\xc3\xbcr Wort"
     assert novel_title == title
     assert await _models_diff(url) == []  # the stamped schema is still the models'
     assert await _version_row(url) == head_revision()
@@ -610,6 +630,32 @@ async def test_fake_dump_file_is_refused_and_removed(
 
     assert isinstance(refused.value.__cause__, BackupFailed)
     assert list(tmp_path.iterdir()) == []
+
+
+async def test_garbage_dump_file_is_refused_and_removed(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A command that exits 0 writing non-dump bytes into ``{file}`` is refused.
+
+    ``pg_dump {url} --file {file}`` without ``--format=custom`` is the
+    operator's plausible mistake: the run succeeds, the file is non-empty —
+    and ``pg_restore`` cannot read a word of it. A non-empty ``{file}`` was
+    the one artifact shape acceptance let through; the ``PGDMP`` magic is
+    required on whichever file the run left, and nothing survives.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "sh -c 'printf not-a-dump > {file}'")
+    await drop_every_table(url)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert list(tmp_path.iterdir()) == []  # the fake-good dump did not survive
+    # Nothing migrated: the version table never came into existence.
+    with pytest.raises(ProgrammingError) as missing:
+        await _version_row(url)
+    assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
 
 
 async def test_sink_close_failure_is_a_named_refusal(
