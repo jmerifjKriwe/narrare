@@ -63,6 +63,8 @@ docker-compose.override.yml
 
 # Project data (user projects live outside the repo)
 /data/
+# Migration dumps (NARRE_BACKUP_DIR default)
+/backups/
 .narrare/
 *.narrare
 

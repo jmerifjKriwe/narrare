@@ -6,13 +6,17 @@ restorable dump or migrates nothing. The dump is a precondition of that
 one run, not of the installation — with nothing pending, no dump tool is
 ever invoked. ``pg_restore --dbname=<fresh database> <file>`` brings a
 dump back; the gates' round-trip test proves it.
+
+Everything that can go wrong here — the directory, the command template,
+the subprocess, the write — raises ``BackupFailed``, so the caller's one
+refusal covers every way a dump cannot be produced.
 """
 
 import asyncio
 import shlex
 import subprocess
 from datetime import UTC, datetime
-from os import environ
+from os import environ, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -32,6 +36,9 @@ def backup_command(url: str, file: Path) -> list[str]:
     default runs ``pg_dump`` from PATH and lets it write the file itself —
     ``dump_database`` accepts either: a written file wins, stdout is taken
     when no file appeared.
+
+    A template with a stray brace or an unbalanced quote raises here;
+    ``dump_database`` turns that into ``BackupFailed``.
     """
     template = environ.get("NARRE_BACKUP_COMMAND")
     if template:
@@ -43,40 +50,71 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
     """Dump one database into ``directory``; return the dump's path.
 
     The command comes from ``backup_command``; the URL loses ``+asyncpg``,
-    which pg_dump does not speak. A command that exits non-zero, cannot
-    start, or produces neither a file nor output raises ``BackupFailed`` —
-    the caller refuses the migration and nothing was touched. After a
-    successful dump only the newest ``keep`` dumps remain.
+    which pg_dump does not speak. Every failure raises ``BackupFailed``: a
+    directory that cannot be created or written, a template that cannot be
+    resolved, a command that exits non-zero or cannot start, output no
+    pg_restore could read, a write that does not land. The dump is written
+    to a ``.partial`` sink and renamed into place only once accepted, so a
+    failed run never leaves a valid-looking ``*.dump`` behind. After a
+    successful dump only the newest ``keep`` dumps remain — the dump just
+    written is never its own victim, whatever ``keep`` says.
 
     The subprocess runs in a worker thread, like the alembic commands: this
-    coroutine's loop must stay free.
+    coroutine's loop must stay free. Its stdout streams straight into the
+    sink; only stderr (small) is buffered, for the failure message.
     """
-    directory.mkdir(parents=True, exist_ok=True)
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise BackupFailed(f"could not create the dump directory {directory}: {exc}") from exc
     database = database_url.rsplit("/", 1)[-1]
     file = directory / f"{database}-{datetime.now(UTC):%Y%m%dT%H%M%S%f}.dump"
-    command_line = backup_command(database_url.replace("+asyncpg", ""), file)
-
-    def _dump() -> bytes:
+    partial = file.with_name(f"{file.name}.partial")
+    try:
         try:
-            result = subprocess.run(  # noqa: S603  the operator's own command template
-                command_line, capture_output=True, check=False
-            )
-        except OSError as exc:
-            raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
-        if result.returncode != 0:
-            stderr = result.stderr.decode(errors="replace").strip()
-            raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
-        return result.stdout or b""
+            command_line = backup_command(database_url.replace("+asyncpg", ""), file)
+        except (KeyError, IndexError, ValueError) as exc:
+            raise BackupFailed(
+                f"NARRE_BACKUP_COMMAND is not a usable template ({type(exc).__name__}: {exc}); "
+                "it must contain the {url} and {file} placeholders, and quote any path "
+                "that has spaces"
+            ) from exc
+        keep = max(keep, 1)
 
-    dump = await asyncio.to_thread(_dump)
-    if not file.exists() or file.stat().st_size == 0:
-        # The command wrote no file of its own — the dump arrived on stdout
-        # (the compose form's way through: pg_dump sits inside the database
-        # container and cannot write a host path).
-        if not dump.strip():
-            raise BackupFailed(f"{command_line[0]} produced neither a dump file nor output")
-        file.write_bytes(dump)
-    dumps = sorted(directory.glob("*.dump"), key=lambda path: path.stat().st_mtime, reverse=True)
-    for stale in dumps[keep:]:
-        stale.unlink()
-    return file
+        def _dump() -> None:
+            try:
+                with partial.open("wb") as sink:
+                    result = subprocess.run(  # noqa: S603  the operator's own template
+                        command_line, stdout=sink, stderr=subprocess.PIPE, check=False
+                    )
+            except OSError as exc:
+                raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
+            if result.returncode != 0:
+                stderr = result.stderr.decode(errors="replace").strip()
+                raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
+
+        await asyncio.to_thread(_dump)
+        if not (file.exists() and file.stat().st_size > 0):
+            # The dump arrived on stdout (the compose form's way through:
+            # pg_dump sits inside the database container and cannot write a
+            # host path) — or something that is not a dump did.
+            with partial.open("rb") as probe:
+                magic = probe.read(5)
+            if magic != b"PGDMP":
+                raise BackupFailed(
+                    f"{command_line[0]} produced neither a dump file nor output a "
+                    "pg_restore could read"
+                )
+            replace(partial, file)
+
+        # Retention, on both paths — the --file form's dump ages just the same.
+        dumps = sorted(
+            (path for path in directory.glob("*.dump") if path != file),
+            key=lambda path: (path.stat().st_mtime, path.name),
+            reverse=True,
+        )
+        for stale in dumps[keep - 1 :]:
+            stale.unlink()
+        return file
+    finally:
+        partial.unlink(missing_ok=True)

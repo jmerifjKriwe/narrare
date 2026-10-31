@@ -163,41 +163,8 @@ def _describe(diff: list[Any]) -> str:
     return "; ".join(" ".join(str(part) for part in op if part is not None) for op in diff)
 
 
-async def prepare_database(
-    database_url: str, *, backup: bool = True, backup_dir: Path | None = None
-) -> MigrationOutcome:
-    """Bring one database to the history's head, refusing to guess.
-
-    The state the database starts in decides the path: a fresh one is
-    replayed from nothing; a models-built one — tables but no
-    ``alembic_version`` — is stamped only when its schema equals the models',
-    else refused with the differences named; a versioned one is upgraded in
-    place, but a revision outside this app's history is refused with both
-    versions named, and so is an upgrade that ends anywhere but head.
-
-    The whole decision runs under a session-level ``pg_advisory_lock`` held
-    on its own connection: two concurrent starts serialise, the second finds
-    head already reached and does nothing. The lock is released in a
-    ``finally``, so a failed run cannot hold the next one hostage.
-
-    While revisions are pending, the upgrade is preceded by a ``pg_dump``
-    copy (design D5): a run with pending revisions either produces a
-    restorable dump or migrates nothing. ``backup=False`` — a caller that
-    owes no dump, like ``init_schema`` — and ``NARRE_MIGRATION_BACKUP=skip``
-    — an operator who took their own copy — leave it out; the copy goes to
-    ``backup_dir``, else ``NARRE_BACKUP_DIR`` (default ``./backups``).
-
-    env.py reads the URL from NARRE_DATABASE_URL — the only URL source — and
-    drives alembic through an ``asyncio.run`` of its own, which cannot start
-    while this coroutine's loop is running; the alembic commands therefore
-    get a worker thread, and the lock keeps two such runs from overlapping
-    (alembic's migration environment is not reentrant).
-    """
-    # Process-global by design: env.py takes the URL from the environment
-    # only, and this is the CLI/startup process, which owns the variable for
-    # its short life — nothing else in the process re-reads it after import.
-    environ["NARRE_DATABASE_URL"] = database_url
-
+async def _extensions_or_refuse(database_url: str) -> None:
+    """``ensure_extensions``, with the one privilege failure as a refusal (D7)."""
     try:
         await ensure_extensions(database_url)
     except Exception as exc:
@@ -212,6 +179,48 @@ async def prepare_database(
             "platform owns this step — have the extensions created, or grant "
             "this user the right to create extensions"
         ) from exc
+
+
+async def prepare_database(
+    database_url: str, *, backup: bool = True, backup_dir: Path | None = None
+) -> MigrationOutcome:
+    """Bring one database to the history's head, refusing to guess.
+
+    The state the database starts in decides the path: a fresh one is
+    replayed from nothing; a models-built one — tables but no
+    ``alembic_version`` — is stamped only when its schema equals the models',
+    else refused with the differences named; a versioned one is upgraded in
+    place, but a revision outside this app's history is refused with both
+    versions named, and so is an upgrade that ends anywhere but head.
+
+    The whole run — the extensions pre-step, the version reads, the
+    pre-migration dump, the upgrade — executes under a session-level
+    ``pg_advisory_lock`` held on its own connection: two concurrent starts
+    serialise, and cannot race each other's extension catalog or replay;
+    the second finds head already reached and does nothing. The lock is
+    released in a ``finally``, so a failed run cannot hold the next one
+    hostage.
+
+    While revisions are pending, the upgrade is preceded by a ``pg_dump``
+    copy (design D5): a run with pending revisions either produces a
+    restorable dump or migrates nothing. Even a fresh first boot — an empty
+    database with every revision pending — writes a dump of the empty
+    schema: a few kilobytes, and the invariant taken literally.
+    ``backup=False`` — a caller that owes no dump, like ``init_schema`` —
+    and ``NARRE_MIGRATION_BACKUP=skip`` — an operator who took their own
+    copy — leave it out; the copy goes to ``backup_dir``, else
+    ``NARRE_BACKUP_DIR`` (default ``./backups``).
+
+    env.py reads the URL from NARRE_DATABASE_URL — the only URL source — and
+    drives alembic through an ``asyncio.run`` of its own, which cannot start
+    while this coroutine's loop is running; the alembic commands therefore
+    get a worker thread, and the lock keeps two such runs from overlapping
+    (alembic's migration environment is not reentrant).
+    """
+    # Process-global by design: env.py takes the URL from the environment
+    # only, and this is the CLI/startup process, which owns the variable for
+    # its short life — nothing else in the process re-reads it after import.
+    environ["NARRE_DATABASE_URL"] = database_url
 
     head = head_revision()
     config = default_config()
@@ -231,6 +240,10 @@ async def prepare_database(
                 text("SELECT pg_advisory_lock(hashtext('narrare_migrations'))")
             )
             try:
+                # Inside the lock: two cold starts must not race the CREATE
+                # EXTENSION statements — the loser would die on the catalog.
+                await _extensions_or_refuse(database_url)
+
                 async with engine.connect() as connection:
                     current = await current_revision(connection)
                     if current is None and await _has_tables(connection):

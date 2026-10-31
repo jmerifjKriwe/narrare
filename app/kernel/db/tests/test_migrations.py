@@ -352,28 +352,30 @@ async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
         async with admin.connect() as connection:
             await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
             await connection.execute(text(f"CREATE DATABASE {scratch}"))
-
-        # The toolchain under test, fixed argv.
-        restore = await asyncio.to_thread(
-            subprocess.run,
-            ["pg_restore", "--no-owner", "--dbname", f"{server_sync}/{scratch}", str(dump)],
-            capture_output=True,
-            check=False,
-        )
-        assert restore.returncode == 0, restore.stderr.decode(errors="replace")
-
-        engine = create_async_engine(f"{server}/{scratch}")
         try:
-            async with engine.connect() as connection:
-                restored: str | None = await connection.scalar(
-                    text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
-                )
-                assert restored == title
-        finally:
-            await engine.dispose()
+            # The toolchain under test, fixed argv.
+            restore = await asyncio.to_thread(
+                subprocess.run,
+                ["pg_restore", "--no-owner", "--dbname", f"{server_sync}/{scratch}", str(dump)],
+                capture_output=True,
+                check=False,
+            )
+            assert restore.returncode == 0, restore.stderr.decode(errors="replace")
 
-        async with admin.connect() as connection:
-            await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
+            engine = create_async_engine(f"{server}/{scratch}")
+            try:
+                async with engine.connect() as connection:
+                    restored: str | None = await connection.scalar(
+                        text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
+                    )
+                    assert restored == title
+            finally:
+                await engine.dispose()
+        finally:
+            # Whatever went wrong above, the scratch database does not outlive
+            # the test.
+            async with admin.connect() as connection:
+                await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
     finally:
         await admin.dispose()
 
@@ -435,6 +437,73 @@ async def test_failing_backup_command_migrates_nothing(
     # The failed run released the lock in its finally: the next start works.
     recovered = await prepare_database(url, backup=False)
     assert recovered.to_revision == head_revision()
+
+
+async def test_unwritable_backup_directory_is_a_named_refusal(url: str, tmp_path: Path) -> None:
+    """A dump directory that cannot be created or written is BackupFailed, not a crash."""
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)  # read and enter, no write — enough to fail both ways
+
+    try:
+        # The directory cannot be created under the locked parent.
+        with pytest.raises(BackupFailed):
+            await dump_database(url, locked / "backups")
+        # The stdout sink cannot be opened inside the locked directory.
+        with pytest.raises(BackupFailed):
+            await dump_database(url, locked)
+    finally:
+        locked.chmod(0o700)  # let tmp_path's own cleanup remove it
+
+
+async def test_malformed_backup_command_template_is_a_named_refusal(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A template that cannot be resolved is BackupFailed, not KeyError/ValueError."""
+    for template in (
+        "pg_dump {url",  # ValueError: single '{' in the format string
+        "pg_dump {oops} {file}",  # KeyError: a placeholder the template does not get
+        'pg_dump "{url} {file}',  # ValueError: shlex finds no closing quotation
+    ):
+        monkeypatch.setenv("NARRE_BACKUP_COMMAND", template)
+        with pytest.raises(BackupFailed):
+            await dump_database(url, tmp_path)
+
+
+async def test_stdout_that_is_not_a_dump_is_refused(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Output that no pg_restore could read is refused — no valid-looking dump left."""
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "printf 'not a dump'")
+    await drop_every_table(url)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert list(tmp_path.iterdir()) == []  # nothing that looks like a dump was kept
+    # Nothing migrated: the version table never came into existence.
+    with pytest.raises(ProgrammingError) as missing:
+        await _version_row(url)
+    assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
+
+
+async def test_dump_retention_keeps_the_newest(url: str, tmp_path: Path) -> None:
+    """The newest ``keep`` dumps remain; the dump just written is never its own victim."""
+    dumps = [await dump_database(url, tmp_path) for _ in range(4)]
+    # keep=3: the oldest is gone, the newest three remain.
+    assert sorted(path.name for path in tmp_path.iterdir()) == sorted(
+        dump.name for dump in dumps[1:]
+    )
+
+    fresh = await dump_database(url, tmp_path, keep=1)
+    assert [path.name for path in tmp_path.iterdir()] == [fresh.name]
+
+    # keep=0 does not delete the dump it just wrote.
+    kept_anyway = await dump_database(url, tmp_path, keep=0)
+    assert kept_anyway.exists()
+    assert [path.name for path in tmp_path.iterdir()] == [kept_anyway.name]
 
 
 async def test_concurrent_starts_migrate_once(url: str) -> None:
