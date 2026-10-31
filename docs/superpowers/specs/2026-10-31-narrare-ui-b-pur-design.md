@@ -123,6 +123,7 @@ original complaint returns; §9's census is what proves it did.
 | `--card` | `oklch(1 0 0)` | `oklch(0.24 0.01 85)` | raised content: cards, panels with content |
 | `--panel` | `oklch(0.99 0.004 85)` | `oklch(0.215 0.01 85)` | chrome: top bar, icon rail, chapter rail, dock |
 | `--soft` **new** | `oklch(0.94 0.012 85)` | `oklch(0.28 0.012 85)` | selection and hover fill (never primary) |
+| `--muted` | `oklch(0.53 0.01 85)` (was 0.55) | `oklch(0.62 0.01 85)` (unchanged) | secondary text. Deepened in light mode because the deepened ground dropped the old value to 4.39:1 — below WCAG AA; the new pair measures ≈4.8:1. Found in T1 when axe failed 24 E2E tests; muted-on-ground is a legitimate app-wide combination, so the token moves, not two elements |
 | `--border` | `oklch(0.9 0.006 85)` | `oklch(0.32 0.01 85)` | surface and control edges |
 | `--rule` **new** | `oklch(0.94 0.008 85)` | `oklch(0.3 0.01 85)` | separators inside content: table rows, list rows, panel headers |
 | `--primary` | `oklch(0.42 0.09 45)` | `oklch(0.72 0.1 60)` | the one primary action |
