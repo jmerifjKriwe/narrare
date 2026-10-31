@@ -7,6 +7,7 @@ a models-built schema, design D4, or upgrades a versioned one; the session
 fixture runs the same ``init_schema`` first so every test starts from head).
 """
 
+import os
 from asyncio import run
 from contextlib import AbstractContextManager, contextmanager
 from typing import TYPE_CHECKING
@@ -15,6 +16,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
+
+# A test suite must not write backups; the backup path has its own tests
+# (app/kernel/db/tests/test_migrations.py).
+os.environ["NARRE_MIGRATION_BACKUP"] = "skip"
 
 from app.api.main import app
 from app.kernel.db.testsupport import url_for

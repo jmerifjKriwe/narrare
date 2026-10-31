@@ -5,7 +5,9 @@ equals the models'. The write side: ``prepare_database`` takes a database from
 wherever it is to the history's head — replaying a fresh one, bootstrap-
 stamping a models-built one, upgrading a versioned one — under the advisory
 lock that serialises two concurrent starts, with a restorable dump taken
-first while revisions are pending (design D5) — and refuses, by name, every
+first while revisions are pending and the database holds tables — a fresh
+first boot takes none, which keeps pg_dump out of its requirements
+(design D5) — and refuses, by name, every
 state it does not understand (design D4 to D7 of the schema-migrations
 design). ``ensure_extensions`` is the write side's pre-step (D7) and lives
 here because ``prepare_database`` is its caller. The gates in
