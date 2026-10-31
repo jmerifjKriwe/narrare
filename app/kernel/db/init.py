@@ -1,10 +1,11 @@
 """The schema's two paths, held equal by one gate.
 
-``init_schema`` is the product's path: the three extensions, then the
-migration history replayed to head — so an upgrade can reach a database
-that already exists, which ``create_all`` never could. ``reset_schema`` is
-the tests' path: drop everything and build from the models, so what a test
-sees is exactly what the models say. The gate in
+``init_schema`` is the product's path: the three extensions, then the history
+— replayed on a fresh database, bootstrap-stamped onto a models-built one
+(design D4), upgraded in place on a versioned one — so an upgrade can reach a
+database that already exists, which ``create_all`` never could.
+``reset_schema`` is the tests' path: drop everything and build from the
+models, so what a test sees is exactly what the models say. The gate in
 ``app/kernel/db/tests/test_migrations.py`` — an empty database replayed to
 head equals the models — is what keeps the two paths identical (design
 D12), not discipline.
@@ -14,9 +15,7 @@ D12), not discipline.
 """
 
 import asyncio
-from os import environ
 
-from alembic import command
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -26,7 +25,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # models-built create_all below see every table only because all four
 # modules are imported here.
 from app.kernel.contracts import models
-from app.kernel.db.migrate import default_config
+from app.kernel.db.migrate import prepare_database
 from app.kernel.jobs import models as jobs_models
 from app.kernel.llm import models as llm_models
 from app.kernel.prompts import models as prompts_models
@@ -53,21 +52,15 @@ async def ensure_extensions(database_url: str) -> None:
 
 
 async def init_schema(database_url: str) -> None:
-    """Bring a database to the history's head; a migrated database is a no-op.
+    """Bring a database to the history's head; idempotent on every Narrare state.
 
-    env.py reads the URL from NARRE_DATABASE_URL — the only URL source — so
-    the upgrade aims at the caller's database by exporting it, the way
-    app/conftest.py does for the whole suite. env.py drives alembic through
-    an ``asyncio.run`` of its own, which cannot start while this coroutine's
-    loop is running; the upgrade therefore gets a worker thread. The same
-    shape is what an unattended startup path needs.
+    A fresh database is replayed from nothing, a models-built one is
+    bootstrap-stamped once its schema equals the models', a versioned one is
+    upgraded in place — ``prepare_database`` decides, and refuses by name
+    anything else. The backup is the request-path's concern (design D5), not
+    the schema's: ``backup=False`` says this caller owes no dump.
     """
-    await ensure_extensions(database_url)
-    # Process-global by design: env.py takes the URL from the environment
-    # only, and this is the CLI/startup process, which owns the variable for
-    # its short life — nothing else in the process re-reads it after import.
-    environ["NARRE_DATABASE_URL"] = database_url
-    await asyncio.to_thread(command.upgrade, default_config(), "head")
+    await prepare_database(database_url, backup=False)
 
 
 async def reset_schema(database_url: str) -> None:
