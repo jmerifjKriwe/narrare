@@ -4,6 +4,11 @@ Open findings are GitHub issues, one per finding, label `follow-up`:
 
     gh issue list --label follow-up --state open --limit 300
 
+Each finding carries exactly one `area:` label (writing, knowledge, chat, settings,
+setup, brand, kernel, web, tooling, ci, docs — where it lives) and, where its nature
+is one, a `kind:` label (test-gap, docs-drift, flake, a11y, i18n, race, security);
+`AGENTS.md` states the rule. Index issues carry neither.
+
 Each wave's findings sit under an index issue that lists them. The index carries
 `follow-up-index`, not `follow-up`, so the query above returns findings only, and an
 index closes with its last child. Every open finding's body names the id it carried on

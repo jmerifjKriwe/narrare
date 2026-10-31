@@ -27,4 +27,8 @@ labels: bug
 
 ## Capability
 
-<!-- writing, knowledge, chat, settings, setup — or kernel, web, tooling. -->
+<!-- Exactly one, becomes the `area:` label: writing, knowledge, chat, settings, setup, brand — or kernel, web, tooling, ci, docs. -->
+
+## Kind
+
+<!-- Optional, becomes the `kind:` label: test-gap, docs-drift, flake, a11y, i18n, race, security — or leave empty for a general defect. -->

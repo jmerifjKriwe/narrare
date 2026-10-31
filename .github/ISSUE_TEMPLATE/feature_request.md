@@ -15,7 +15,7 @@ labels: enhancement
 
 ## Capability
 
-<!-- writing, knowledge, chat, settings, setup — or new. -->
+<!-- Exactly one, becomes the `area:` label: writing, knowledge, chat, settings, setup, brand — or kernel, web, tooling, ci, docs, or new. -->
 
 ## Alternatives
 
