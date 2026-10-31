@@ -303,23 +303,22 @@ def capture(out: Path) -> list[Path]:
         ),
         _api() as api,
         sync_playwright() as playwright,
+        playwright.chromium.launch() as browser,
+        browser.new_context(
+            viewport={"width": 1600, "height": 1000},
+            device_scale_factor=1,
+            locale="en-US",
+            color_scheme="light",
+        ) as context,
     ):
         novel_id, chapters = _seed(api)
         _plant_contradiction(api, chapters[-1])
         _route_model(api, vendor)
         _run_check(api, novel_id)
 
-        browser = playwright.chromium.launch()
-        context = browser.new_context(
-            viewport={"width": 1600, "height": 1000},
-            device_scale_factor=1,
-            locale="en-US",
-            color_scheme="light",
-        )
         page = context.new_page()
+        vendor.set_answer(CHAT_ANSWER)
         written = _capture(page, out, novel_id, chapters, vendor)
-        context.close()
-        browser.close()
     return written
 
 
