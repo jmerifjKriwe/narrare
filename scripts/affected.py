@@ -16,6 +16,7 @@ did not exist. Stdlib only: CI resolves affected suites before `uv sync`.
 import argparse
 import fnmatch
 import json
+import os
 import shutil
 import subprocess  # nosec B404 - fixed argv git queries, no shell
 import sys
@@ -239,6 +240,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Resolve and print; exit 0 on every resolution, 2 only on bad usage."""
     parser = _build_parser()
     args = parser.parse_args(argv)
+    # PROOF INJECTION (throwaway branch openchamber/e2e-cadence-red, deleted
+    # with it): pre-merge, origin/main...HEAD carries the whole wave, and
+    # .github/workflows/ci.yml is a shared surface, so no base behind the wave
+    # can resolve to []. On this branch only, measure from the wave tip
+    # instead: everything it adds is docs/ and this scripts/ edit — both inert
+    # — which is the same [] the first post-merge docs PR will resolve from
+    # origin/main. main's copy never carries this.
+    if (
+        args.base == "origin/main"
+        and os.environ.get("GITHUB_HEAD_REF") == "openchamber/e2e-cadence-red"
+    ):
+        args.base = "c20084492d592703637f442646a5b6b9d9dcfca4"
     known = known_capabilities()
     json_mode: bool = args.json
     scope: str = args.paths if args.paths is not None else "affected"

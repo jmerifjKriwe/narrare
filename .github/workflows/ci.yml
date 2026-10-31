@@ -127,12 +127,8 @@ jobs:
           BASE_REPO: ${{ github.repository }}
         run: |
           if [ "$EVENT" = pull_request ]; then
-            # PROOF INJECTION (throwaway branch, reverted next commit): measure
-            # the PR's own visible docs-only diff instead of origin/main —
-            # pre-merge, origin/main...HEAD carries the wave (ci.yml, a shared
-            # surface) and can never resolve to [].
-            git fetch origin openchamber/e2e-cadence
-            mode="--base origin/openchamber/e2e-cadence"
+            git fetch origin main
+            mode="--base origin/main"
           elif [ "$EVENT" = push ]; then
             # A push to main owes nothing, and that is safe: the `push:` trigger
             # above fires for `branches: [main]` only, so what it pushes is a
