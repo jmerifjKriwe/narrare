@@ -283,6 +283,37 @@ def test_worktree_adds_uncommitted_and_untracked_paths(repo: Path):
     ]
 
 
+def _advance_base(repo: Path) -> None:
+    """Commit a kernel file and make it the base: the move under test then
+    leaves a tracked shared-surface path behind."""
+    (repo / "app/kernel/moved.py").write_text("", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "kernel file")
+    _git(repo, "update-ref", "refs/remotes/narrare/main", "HEAD")
+
+
+def test_a_moved_file_counts_under_both_its_paths(repo: Path):
+    """Rename detection lists a pure move under the new path only, so a move
+    OUT of app/kernel/ would owe only the destination's suite — the shared
+    surface it left would never reach the resolver. A move is a delete plus
+    an add, and both paths count."""
+    _advance_base(repo)
+    _git(repo, "mv", "app/kernel/moved.py", "app/capabilities/chat/moved.py")
+    _git(repo, "commit", "-m", "move out of kernel")
+    paths = changed("narrare/main", worktree=False)
+    assert paths is not None and "app/kernel/moved.py" in paths
+    assert resolve(paths).capabilities is None
+    assert json.loads(run(["--base", "narrare/main", "--json"])) == sorted(FIXTURE_CAPABILITIES)
+
+
+def test_an_uncommitted_move_counts_under_both_its_paths(repo: Path):
+    _advance_base(repo)
+    _git(repo, "mv", "app/kernel/moved.py", "app/capabilities/chat/moved.py")
+    paths = changed("narrare/main", worktree=True)
+    assert paths is not None and "app/kernel/moved.py" in paths
+    assert resolve(paths).capabilities is None
+
+
 def test_default_base_is_the_remote_default_branch(repo: Path):
     assert default_base() == "narrare/main"
 

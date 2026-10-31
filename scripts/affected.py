@@ -191,11 +191,15 @@ def changed(base: str | None, *, worktree: bool) -> list[str] | None:
     root = _toplevel()
     if base is None or root is None:
         return None
-    files = _git("-C", root, "diff", "--name-only", f"{base}...HEAD")
+    # --no-renames on every diff: rename detection lists a pure move under
+    # the new path only, so a move out of a shared surface would owe only
+    # the destination's suite. A move is a delete plus an add, and both
+    # paths count — fail toward more suites, never fewer.
+    files = _git("-C", root, "diff", "--name-only", "--no-renames", f"{base}...HEAD")
     if files is None:
         return None
     if worktree:
-        tracked = _git("-C", root, "diff", "--name-only", "HEAD")
+        tracked = _git("-C", root, "diff", "--name-only", "--no-renames", "HEAD")
         untracked = _git("-C", root, "ls-files", "--others", "--exclude-standard")
         if tracked is None or untracked is None:
             return None
