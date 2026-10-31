@@ -133,6 +133,17 @@ async def test_a_vendor_answers_with_the_prose_the_caller_chose() -> None:
     assert "".join(deltas) == prose
 
 
+async def test_a_vendor_keeps_the_answers_trailing_whitespace() -> None:
+    """The stream's last bytes survive: a streamed newline is not trimmed."""
+    prose = "The fog lifted off the lake.\n"
+    with chat_vendor() as vendor:
+        vendor.set_answer(prose)
+        events = [
+            event async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
+        ]
+    assert "".join(event.text for event in events if isinstance(event, Delta)) == prose
+
+
 async def test_a_refusal_raises_exactly_once() -> None:
     """A 401 raises, and the vendor saw one request: ``max_retries=0`` in force."""
     with chat_vendor() as vendor:

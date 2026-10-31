@@ -125,7 +125,7 @@ def _split_answer(text: str) -> tuple[str, ...]:
     first word: an answer that begins with a space keeps it, because what the
     adapter and the editor see is the stream's exact bytes.
     """
-    tokens = re.findall(r"\s*\S+", text)
+    tokens = re.findall(r"\s*\S+|\s+$", text)
     return tuple("".join(tokens[index : index + 4]) for index in range(0, len(tokens), 4))
 
 
