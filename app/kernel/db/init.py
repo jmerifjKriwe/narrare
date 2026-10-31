@@ -63,6 +63,9 @@ async def init_schema(database_url: str) -> None:
     shape is what an unattended startup path needs.
     """
     await ensure_extensions(database_url)
+    # Process-global by design: env.py takes the URL from the environment
+    # only, and this is the CLI/startup process, which owns the variable for
+    # its short life — nothing else in the process re-reads it after import.
     environ["NARRE_DATABASE_URL"] = database_url
     await asyncio.to_thread(command.upgrade, default_config(), "head")
 

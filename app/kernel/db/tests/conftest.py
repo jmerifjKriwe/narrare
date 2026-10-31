@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db.init import ensure_extensions
 from app.kernel.db.testsupport import ensure_database, url_for
 
 if TYPE_CHECKING:
@@ -40,7 +41,15 @@ async def _drop_every_table() -> None:
 
 @pytest.fixture(scope="module")
 def url() -> Iterator[str]:
-    """The URL the migration gates aim alembic at."""
+    """The URL the migration gates aim alembic at.
+
+    Extensions are per-database and ``ensure_database`` only issues
+    ``CREATE DATABASE``: on a fresh database the baseline's ``vector`` column
+    has no type until the same pre-step production runs (``ensure_extensions``)
+    has created them — otherwise the first test dies with
+    ``type "vector" does not exist``.
+    """
     ensure_database(DATABASE)
     run(_drop_every_table())
+    run(ensure_extensions(url_for(DATABASE)))
     yield url_for(DATABASE)

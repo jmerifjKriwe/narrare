@@ -10,7 +10,6 @@ shared ``Base`` — the same side effect that later populates the metadata
 """
 
 import asyncio
-from contextlib import suppress
 from importlib import import_module
 from os import environ
 from typing import TYPE_CHECKING, Any, Literal
@@ -38,10 +37,16 @@ del contracts_models, jobs_models, llm_models, prompts_models
 # A capability's tables join the migration's table set without a named
 # import — the kernel may not name a capability, so the generated registry
 # says whose models module exists. A capability without tables has no
-# models module; the suppression is that contract, not a blind catch.
+# models module; only that absence is swallowed. A ModuleNotFoundError
+# raised *inside* an existing models module is a real defect and must
+# surface, so the check is on the missing module's name, not the class.
 for _capability in CAPABILITIES:
-    with suppress(ModuleNotFoundError):
-        import_module(f"app.capabilities.{_capability.id}.models")
+    _models_module = f"app.capabilities.{_capability.id}.models"
+    try:
+        import_module(_models_module)
+    except ModuleNotFoundError as exc:
+        if exc.name != _models_module:
+            raise
 
 config = context.config
 
