@@ -347,3 +347,14 @@ govern.
    "visually negligible" instead of "near-null".
 8. **`sizes` attributes:** the SVG icon carries `sizes="any"`, apple-touch
    `sizes="180x180"` (Task 3 step 3 does not show them yet).
+
+9. **Font source is pinned by hash, not by file type.** The subset actually used
+   is `sha256 89b31e893f533c49fe658772242d9639b7083593c8bfe67c28c25032cc727e31`
+   (6 glyphs, 17 tables, 1452 bytes, resolved from the pinned Google css2 URL).
+   A re-run verifies that hash before extracting; a `file` check alone is not
+   enough.
+10. **SVG validation covers every committed SVG,** including
+    `web/public/favicon.svg` (it is an unchanged copy of `icon.svg`). The
+    text/font-family sweep over all four files returns 0
+    (`rg -ic 'text|font-family' assets/logo/*.svg web/public/favicon.svg` →
+    no matches), and the reviewer confirmed it independently.
