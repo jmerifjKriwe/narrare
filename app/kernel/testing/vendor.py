@@ -118,16 +118,34 @@ DONE_LINE = "data: [DONE]\n\n"
 """The wire's own terminal line; local servers omit it, so tests can too."""
 
 
-def _chat_frames(*, done_line: bool) -> str:
-    """The SSE answer: two deltas, a finish frame, the usage, maybe [DONE]."""
-    first, second = CHAT_DELTAS
+def _split_answer(text: str) -> tuple[str, ...]:
+    """Cut prose into stream-sized pieces without changing one character.
+
+    Four words per piece, and each piece carries the whitespace that preceded its
+    first word: an answer that begins with a space keeps it, because what the
+    adapter and the editor see is the stream's exact bytes.
+    """
+    tokens = re.findall(r"\s*\S+", text)
+    return tuple("".join(tokens[index : index + 4]) for index in range(0, len(tokens), 4))
+
+
+def _chat_frames(*, done_line: bool, answer: tuple[str, ...]) -> str:
+    """The SSE answer: a delta per piece, a finish frame, the usage, maybe [DONE].
+
+    The first delta carries the role as a real server's does; every delta carries
+    its own piece, so a caller can watch the answer assemble in order.
+    """
     input_tokens, output_tokens = CHAT_USAGE
-    frames = (
-        'data: {"choices":[{"index":0,"delta":{"role":"assistant","content":'
-        + json.dumps(first)
+    deltas = "".join(
+        'data: {"choices":[{"index":0,"delta":{'
+        + ('"role":"assistant",' if index == 0 else "")
+        + '"content":'
+        + json.dumps(piece)
         + "}}]}\n\n"
-        'data: {"choices":[{"index":0,"delta":{"content":' + json.dumps(second) + "}}]}\n\n"
-        'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n'
+        for index, piece in enumerate(answer)
+    )
+    frames = (
+        deltas + 'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n'
         'data: {"choices":[],"usage":{"prompt_tokens":'
         + str(input_tokens)
         + ',"completion_tokens":'
@@ -172,6 +190,15 @@ class ChatVendor:
     def omit_done_marker(self) -> None:
         """End the SSE answer without the wire's ``[DONE]`` line, like a local server."""
         self._server.done_line = False
+
+    def set_answer(self, text: str) -> None:
+        """Answer every chat completion with ``text`` from now on, in pieces.
+
+        The default is :data:`CHAT_DELTAS`; a caller with its own prose — the
+        screenshot capture, for one — says it here instead of renaming a constant
+        every test asserts verbatim.
+        """
+        self._server.answer = _split_answer(text)
 
     def delay_completions(self, seconds: float) -> None:
         """Sleep ``seconds`` before every completions answer from now on.
@@ -233,7 +260,7 @@ class _ChatHandler(BaseHTTPRequestHandler):
         self._reply(
             200,
             "text/event-stream",
-            _chat_frames(done_line=server.done_line).encode(),
+            _chat_frames(done_line=server.done_line, answer=server.answer).encode(),
         )
         server.completions += 1
 
@@ -264,6 +291,7 @@ def chat_vendor() -> Generator[ChatVendor]:
     server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _ChatHandler)
     server.refuse = False
     server.done_line = True
+    server.answer = CHAT_DELTAS
     server.delay = 0.0
     server.received = []
     server.completions = 0
