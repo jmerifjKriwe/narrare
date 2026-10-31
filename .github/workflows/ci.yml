@@ -126,10 +126,6 @@ jobs:
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
         run: |
-          # PROOF INJECTION (throwaway branch, reverted next commit): the
-          # changes step dies before naming anything, everything else intact.
-          echo "forced exit for the red-side proof"
-          exit 1
           if [ "$EVENT" = pull_request ]; then
             git fetch origin main
             mode="--base origin/main"
