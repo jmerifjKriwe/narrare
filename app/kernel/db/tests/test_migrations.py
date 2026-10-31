@@ -1,11 +1,11 @@
 """The migration gates (design D3) and the startup path's refusal tests.
 
-Three of the four design gates live here: the history has exactly one head
-(D3.1), an empty database replayed to head is indistinguishable from what the
-models declare (D3.2 — the gate that keeps the two schema paths identical,
-D12), and the bootstrap branch stamps an equal models-built schema while
-refusing a drifted or unknown-revision one by name (D3.4, D4, D6). The fourth
-gate (D3.3, the previous release's snapshot) is still to come.
+All four design gates live here: the history has exactly one head (D3.1), an
+empty database replayed to head is indistinguishable from what the models
+declare (D3.2 — the gate that keeps the two schema paths identical, D12), the
+previous release's checked-in snapshot upgrades with its prose intact (D3.3),
+and the bootstrap branch stamps an equal models-built schema while refusing a
+drifted or unknown-revision one by name (D3.4, D4, D6).
 
 ``prepare_database`` is the function the gates drive: the same one
 ``just db-init`` and the API suite's session fixture run.
@@ -25,6 +25,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db import migrate as migrate_module
 from app.kernel.db.backup import BackupFailed, dump_database
 from app.kernel.db.init import reset_schema
@@ -127,6 +128,113 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     # start inside this test's loop; the upgrade gets its own thread.
     await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
     assert await _models_diff(url) == []
+
+
+# The snapshot the gate below loads: the release schema, checked in. Produced
+# once by replaying the history to head on a scratch database — gate D3.2
+# proves migrated == models, so the dump is the models' schema by
+# construction — with ``pg_dump --schema-only --no-owner --no-privileges``,
+# then stripped of the ``alembic_version`` table, the ``CREATE EXTENSION``
+# lines and pg_dump's \restrict/\unrestrict psql guards (which carry a random
+# token): the version table is the history's own bookkeeping, the extensions
+# are the pre-step ``prepare_database`` runs before anything else, and the
+# guards are psql meta-commands asyncpg cannot run.
+SNAPSHOT = Path(__file__).parent / "fixtures" / "schema_0.2.0.sql"
+
+
+async def _load_snapshot(database_url: str, snapshot: Path) -> None:
+    """The snapshot's DDL, statement by statement, in one transaction.
+
+    pg_dump writes plain, semicolon-terminated SQL with no function bodies,
+    so the statements separate on ``;`` at end of line — a boundary no
+    string literal in this fixture contains — and the ``--`` comment lines
+    it interleaves (statement headers, the dump banner) drop out per chunk.
+    One transaction: the database goes from empty to the release schema, or
+    not at all.
+    """
+    script = snapshot.read_text(encoding="utf-8")
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            for chunk in script.split(";\n"):
+                statement = "\n".join(
+                    line for line in chunk.splitlines() if not line.lstrip().startswith("--")
+                ).strip()
+                if statement:
+                    await connection.execute(text(statement))
+    finally:
+        await engine.dispose()
+
+
+async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
+    """The previous release's snapshot upgrades with its prose intact (D3.3).
+
+    The fixture carries no ``alembic_version`` — a release ships the schema,
+    not the history — so this gate exercises the bootstrap path: exactly the
+    upgrade the first go-live release performs on databases created by
+    ``create_all``. A versioned behind-head replay becomes possible only
+    once a second revision exists (known follow-up).
+    """
+    # The gate's claim is about the snapshot's database alone: whichever test
+    # ran before this one left its tables behind, so the drop happens here,
+    # not only in the module fixture (pytest-randomly shuffles this module).
+    await drop_every_table(url)
+    await _load_snapshot(url, SNAPSHOT)
+
+    novel_id, chapter_id = uuid4(), uuid4()
+    title, body = "Die Prüfung", "Wort für Wort"
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                {"id": LOCAL_USER_ID},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                    "VALUES (:id, :user_id, :title, now(), now())"
+                ),
+                {"id": novel_id, "user_id": LOCAL_USER_ID, "title": title},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO chapters (id, user_id, novel_id, title, position, body, "
+                    "created_at, updated_at) "
+                    "VALUES (:id, :user_id, :novel_id, :title, 0, :body, now(), now())"
+                ),
+                {
+                    "id": chapter_id,
+                    "user_id": LOCAL_USER_ID,
+                    "novel_id": novel_id,
+                    "title": title,
+                    "body": body,
+                },
+            )
+    finally:
+        await engine.dispose()
+
+    outcome = await prepare_database(url, backup=False)
+    assert outcome.from_revision is None
+    assert outcome.bootstrapped is True  # no history in the dump: the stamp, not a replay
+    assert outcome.to_revision == head_revision()
+
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            chapter_body: str | None = await connection.scalar(
+                text("SELECT body FROM chapters WHERE id = :id"), {"id": chapter_id}
+            )
+            novel_title: str | None = await connection.scalar(
+                text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
+            )
+    finally:
+        await engine.dispose()
+    assert chapter_body == body
+    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert novel_title == title
+    assert await _models_diff(url) == []  # the stamped schema is still the models'
+    assert await _version_row(url) == head_revision()
 
 
 # ---------------------------------------------------------------------------
