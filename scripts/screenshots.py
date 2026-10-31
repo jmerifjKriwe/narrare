@@ -1,8 +1,9 @@
 """Capture the README's images from the real app.
 
 Run: ``uv run python -m scripts.screenshots`` (needs Docker's Postgres — ``just
-dev-services``). Re-run when a surface below changes: a stale image claims a UI
-that no longer exists.
+dev-services`` — and the browser once: ``uv run playwright install chromium``).
+Re-run when a surface below changes: a stale image claims a UI that no longer
+exists.
 
 Nothing here is mocked except the model at its boundary, the seam every E2E suite
 uses: the chat stand-in answers with the prose this file chooses, because the
@@ -267,6 +268,9 @@ def _capture(
     knowledge = page.get_by_role("complementary", name="Knowledge")
     expect(knowledge.get_by_role("button", name="Check the whole book")).to_be_visible()
     expect(knowledge.get_by_text("Research Facility")).to_be_visible()
+    # The entity list and the findings arrive on separate requests, and the
+    # entity one is not this frame's subject: wait for the finding itself.
+    expect(knowledge.get_by_text("Facility: 9 vs. 7")).to_be_visible()
     # The dock scrolls alone, and its own scrollbar is the only way to the
     # entity controls below the finding.
     knowledge.hover()
