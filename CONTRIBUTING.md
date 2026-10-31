@@ -66,6 +66,38 @@ user can observe — including internal production code — goes under
 `chore(<scope>): …`. The `User-visible:` rule and the scope convention live in
 [`AGENTS.md`](AGENTS.md) and are checked in review.
 
+## Changing the Schema
+
+The models under `app/kernel/db/` are the single declaration of the schema, and
+the migration history is how a model change reaches a database that already
+holds data (the decision:
+[ADR-103](docs/architecture/decisions/ADR-103-schema-migrations.md)). A schema
+change ships as two files in **one commit** — the model change and its revision:
+
+1. **Change the models.**
+2. **Draft the revision:** `just db-revision "add chapters.word_count"`.
+3. **Read the draft — it is a draft, not the change.** Autogenerate cannot know
+   your intent, so fix what it gets wrong:
+   - a rename arrives as a drop plus an add — make it `op.alter_column` with
+     `new_column_name` (plus whatever data move it needs);
+   - a partial index needs its `postgresql_where`;
+   - a `Vector()` column needs `import pgvector.sqlalchemy`;
+   - data moves (backfills, re-embeddings, rebuilds) are jobs, never revisions.
+4. **Run the gates:** `just check && just test`. The migration tests
+   (`app/kernel/db/tests/test_migrations.py`) prove that upgrading an empty
+   database to head equals the models, that the previous release's snapshot
+   upgrades with its prose intact, and that drifted or ahead databases are
+   refused at startup.
+5. **Refresh the release snapshot at release time:** replay the history to head
+   on a scratch database, `pg_dump --schema-only --no-owner --no-privileges` it
+   into `app/kernel/db/tests/fixtures/schema_<version>.sql`, and strip the
+   `alembic_version` table, the `CREATE EXTENSION` lines and pg_dump's
+   `\restrict`/`\unrestrict` guards (the mechanics are documented where the
+   snapshot is loaded). `pg_dump` comes from `postgresql-client-17` — see
+   [Getting Started](#getting-started).
+6. **Commit both files together** — the revision's message states *why* the
+   schema changed; one that does not is a review finding.
+
 ## Before You PR
 
 Git hooks are installed by `just dev-setup`: format, lint, the typecheck of the

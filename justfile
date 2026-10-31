@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 22 public recipes; private helpers start with `_`.
+# 23 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -116,6 +116,10 @@ db-reset:
     docker compose -f docker-compose.dev.yml exec -T postgres \
         psql -U narrare -d postgres -c "CREATE DATABASE narrare_v2_dev"
     just db-init
+
+# Draft a revision from the models: just db-revision "add chapters.word_count"
+db-revision message:
+    uv run alembic revision --autogenerate -m "{{message}}"
 
 # A psql shell on the development database.
 db-shell:
