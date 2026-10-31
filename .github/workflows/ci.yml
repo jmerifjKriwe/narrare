@@ -100,89 +100,76 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Which E2E suites a change owes: the capabilities it touches, or all of
-  # them when a shared surface moved (spec §6 "affected capabilities"; the
-  # shared surfaces are kernel, api, the generated views, web, i18n and the
-  # tooling). A pull request is measured against where it branched, a push
-  # against the commits it landed, so a docs-only change owes no browser suite
-  # either way. A nightly takes everything.
+  # Which E2E suites a change owes, resolved by scripts/affected.py — one
+  # resolver, not a second copy of the mapping here (spec §6 "affected
+  # capabilities": the capabilities a change touches, or all of them when a
+  # shared surface moved). This job only picks the resolver's mode per event:
+  # a pull request is measured against where it branched, a push to main owes
+  # nothing (why at the push branch below), and a nightly takes everything.
   changes:
     needs: nightly-guard
     if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     outputs:
-      suites: ${{ steps.suites.outputs.suites }}
+      capabilities: ${{ steps.suites.outputs.capabilities }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
       - id: suites
         env:
-          # What kind of event this is: the range below differs per event, and
-          # `schedule` has none at all.
+          # What kind of event this is: the resolver's mode differs per event.
           EVENT: ${{ github.event_name }}
           # A fork may name its branch anything, so the branch name alone says
-          # nothing about who pushed it: the exception below also requires the
-          # head to live in this repository.
+          # nothing about who pushed it: the release-PR exception below also
+          # requires the head to live in this repository.
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
-          # The commit a push landed on. Exactly 40 zeros on the first push of a
-          # branch, and no object at all after a force push.
-          PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          # "none" is only ever a decision, never a fallback: a path that cannot
-          # name a range takes all suites instead.
           if [ "$EVENT" = pull_request ]; then
             git fetch origin main
-            changed=$(git diff --name-only origin/main...HEAD)
+            mode="--base origin/main"
           elif [ "$EVENT" = push ]; then
-            # The commits this push landed, which is the diff the same change
-            # would show as a PR. A first push and a force push both name a base
-            # that cannot be read, and `git diff` failing must not read as
-            # "nothing changed" — both take everything.
-            if ! echo "$PUSH_BEFORE" | grep -qxE '[0-9a-f]{40}' \
-              || echo "$PUSH_BEFORE" | grep -qxE '0{40}' \
-              || ! changed=$(git diff --name-only "$PUSH_BEFORE..HEAD"); then
-              echo "suites=all (the push range cannot be read)"
-              echo "suites=all" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
+            # A push to main owes nothing, and that is safe: the `push:` trigger
+            # above fires for `branches: [main]` only, so what it pushes is a
+            # merge whose tree the PR's required checks already tested, and a
+            # commit that lands without a PR is covered by the nightly. The
+            # workflow decides the mode, so no range is read.
+            mode="--none"
           else
-            echo "suites=all (a nightly tests every capability)"
-            echo "suites=all" >> "$GITHUB_OUTPUT"
-            exit 0
+            # A nightly has no range to read: every suite.
+            mode="--all"
           fi
-          echo "${changed:-<no file changed>}"
-          # A release PR moves version strings and the changelog; no browser
-          # runs any of them. release-please force-pushes this branch on every
-          # push to main, so the suites here cost minutes per release and get
-          # cancelled mid-flight by the next update. Three conditions, because
-          # each alone is spoofable: a fork may take the branch name, and
-          # pyproject.toml and uv.lock are ordinary dependency files. A skipped
-          # job still satisfies the required check.
+          # No single condition below is trustable alone: a fork may take the
+          # branch name, and the release files are ordinary ones. Passing
+          # --release-pr only re-checks the range against the release set in
+          # the script; the script itself still requires every changed path
+          # to be one.
+          release_pr=""
           if [ "$EVENT" = pull_request ] \
             && [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
             && [ "$GITHUB_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
-            && ! echo "$changed" | grep -qvE '^(\.release-please-manifest\.json|CHANGELOG\.md|app/kernel/version\.py|package\.json|web/package\.json|pyproject\.toml|web/lib/api/openapi\.json|uv\.lock)$'; then
-            echo "suites=none" >> "$GITHUB_OUTPUT"
-            exit 0
+            && [ -n "$(git diff --name-only origin/main...HEAD)" ]; then
+            release_pr="--release-pr"
           fi
-          if echo "$changed" | grep -qE '^(app/(kernel|api|generated)/|web/|i18n/|justfile|pyproject\.toml|uv\.lock|pnpm-lock\.yaml|\.github/workflows/ci\.yml)'; then
-            echo "suites=all" >> "$GITHUB_OUTPUT"
-            exit 0
+          # The runner's python3, before any uv sync: the resolver is stdlib
+          # only. A resolver that cannot name a range answers with every
+          # suite (fail-open). Every resolution exits 0, except when the
+          # script cannot do its job — bad usage, or an every-suite answer
+          # with no nameable suite (3) — and that reddens this job by
+          # design. The exit status is captured so the reason notice
+          # precedes the exit.
+          reason_file=$(mktemp)
+          status=0
+          capabilities=$(python3 scripts/affected.py $mode $release_pr --json 2>"$reason_file") || status=$?
+          echo "::notice::$(cat "$reason_file")"
+          rm -f "$reason_file"
+          if [ "$status" -ne 0 ]; then
+            echo "affected.py failed with status $status"
+            exit "$status"
           fi
-          # The trailing `|| true` is insurance, not a fix: the pipeline's status
-          # is `sort`'s, so an empty match already returns 0 under the runner's
-          # `bash -e {0}`. Declaring `shell: bash` on this step would add
-          # `pipefail` and turn "no capability" into a failed job.
-          capabilities=$(echo "$changed" | grep -oP '^app/capabilities/\K[^/]+' | sort -u || true)
-          if [ -z "$capabilities" ]; then
-            echo "suites=none" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          suites=""
-          for name in $capabilities; do suites="$suites app/capabilities/$name/e2e/"; done
-          echo "suites=$suites" >> "$GITHUB_OUTPUT"
+          echo "capabilities=$capabilities"
+          echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
 
   tests:
     needs: nightly-guard
@@ -268,10 +255,21 @@ jobs:
           version: v11.3.2
           report_type: test_results
 
-  e2e:
-    runs-on: ubuntu-latest
+  # The suites the changes job named, one runner per capability, side by
+  # side — writing is the slowest and becomes the wall clock. `fail-fast:
+  # false`: a red writing suite must not hide whether knowledge is red too.
+  # The matrix passes ONE capability name per entry, so the resolver maps it
+  # to that capability's own e2e directory — no name is ever expanded into a
+  # path by string surgery on the JSON list.
+  e2e-suites:
     needs: [lint-types, changes]
-    if: needs.changes.outputs.suites != 'none'
+    if: needs.changes.outputs.capabilities != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        capability: ${{ fromJSON(needs.changes.outputs.capabilities) }}
+    name: e2e (${{ matrix.capability }})
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -302,13 +300,49 @@ jobs:
       - run: uv sync --locked
       - run: uv run playwright install --with-deps chromium
       - run: pnpm install --frozen-lockfile
-      # The same invocation `just test-e2e` makes; the suites come from the
-      # changes job, so a change pays for what it touches.
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      # The matrix runs the same recipe the local gate runs.
       - name: E2E
+        run: just test-e2e ${{ matrix.capability }}
+
+  # The required check is the context `e2e`, and the name must not move while
+  # the suites behind it multiply. `always()` because the hole this closes is
+  # a skipped job: a failed `changes` used to leave the whole e2e leg skipped,
+  # and a skipped required check passes. The semantics:
+  #   red   — `changes` did not succeed, or handed over no capabilities at all
+  #           (a successful run prints at least `[]`; an empty string is a
+  #           broken handoff, never "legitimately none"),
+  #   green — `changes` succeeded with `[]` and the matrix was skipped:
+  #           nothing owed, nothing run — the notice says so,
+  #   red   — the matrix ran and ended anything but success.
+  # On a nightly the guard may skip the whole run (main unchanged since the
+  # last successful one); then this job skips with the rest. `always()` alone
+  # would run it against a `changes` that never meant to run and turn every
+  # quiet night red. A PR or push never takes that branch: the guard proceeds
+  # on every non-schedule event, so `always()` governs there unchanged.
+  e2e:
+    name: e2e
+    needs: [nightly-guard, changes, e2e-suites]
+    if: always() && (github.event_name != 'schedule' || needs.nightly-guard.outputs.proceed == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every owed suite passed, or none was owed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          SUITES: ${{ needs.e2e-suites.result }}
+          CAPABILITIES: ${{ needs.changes.outputs.capabilities }}
         run: |
-          suites="${{ needs.changes.outputs.suites }}"
-          [ "$suites" = all ] && suites="app/capabilities/*/e2e/"
-          uv run pytest $suites -v -m e2e --timeout=60
+          if [ "$CHANGES" != success ]; then
+            echo "::error::the changes job did not succeed; a change owes suites it cannot name"; exit 1; fi
+          if [ -z "$CAPABILITIES" ]; then
+            echo "::error::the changes job succeeded but handed over no capabilities; broken, not none"; exit 1; fi
+          if [ "$CAPABILITIES" = '[]' ]; then
+            echo "::notice::no capability owed a browser suite"; exit 0; fi
+          if [ "$SUITES" != success ]; then
+            echo "::error::e2e suites ended $SUITES"; exit 1; fi
 
   build:
     needs: nightly-guard

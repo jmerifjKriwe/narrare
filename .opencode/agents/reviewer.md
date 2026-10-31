@@ -73,7 +73,10 @@ code:
 
 Read code outside the diff only for a named risk — a changed contract, a lock
 order, shared mutable state, a call site. Name the risk and what you checked.
-Do not crawl the codebase without one.
+Do not crawl the codebase without one. `just callers <path> <symbol>` is how a
+call site gets named: it answers for the receiver's type, which `rg` cannot, and
+two claims depend on it — that a symbol is unused, and that a signature change
+is safe.
 
 ## Declined to judge
 

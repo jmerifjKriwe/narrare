@@ -42,13 +42,15 @@ check:
     just lint
     just typecheck
 
-# Full gate: the fast one plus every suite and the production build.
-verify:
+# check, the integration tests, the web unit suite, the production build and
+# the E2E — the E2E leg narrows like test-e2e's, one scope for both.
+# Full gate: check, every suite and the web build; affected by default, `all` for everything.
+verify scope="affected":
     just check
     just test
     just test-frontend
     just build
-    just test-e2e
+    just test-e2e {{scope}}
 
 # Ruff: check and format check.
 lint:
@@ -78,9 +80,18 @@ test:
 test-file file:
     uv run pytest {{file}} -v
 
-# Every capability E2E: real browser, real API, real Postgres.
-test-e2e:
-    uv run pytest app/capabilities/*/e2e/ -v -m e2e --timeout=60
+# Every capability E2E: real browser, real API, real Postgres. `all` or a
+# capability name overrides the default;
+# by default only the suites the change touches run.
+test-e2e scope="affected":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    paths=$(uv run python -m scripts.affected --paths "{{scope}}" --worktree)
+    if [ -z "$paths" ]; then
+      echo "no capability touched — no browser suite owed"
+      exit 0
+    fi
+    uv run pytest $paths -v -m e2e --timeout=60
 
 # Web unit tests.
 test-frontend:

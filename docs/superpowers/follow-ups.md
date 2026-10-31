@@ -17,6 +17,7 @@ still resolve; a closed id is in the table the Archive section points to.
 | WP3 markdown, demo, export | #307 |
 | Reviews and audits outside a wave | #308 |
 | WP4 prompt overrides | #375 |
+| v2 foundation deferrals (§11) | #407 |
 | WP5 UI coherence | #423 |
 
 A new wave opens its index and adds a row here. A fix closes its issue from the
