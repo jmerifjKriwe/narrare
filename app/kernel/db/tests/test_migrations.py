@@ -12,29 +12,39 @@ gate (D3.3, the previous release's snapshot) is still to come.
 """
 
 import asyncio
+import shutil
+import subprocess
 from os import environ
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 import pytest
 from alembic import command
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import migrate as migrate_module
+from app.kernel.db.backup import BackupFailed, dump_database
 from app.kernel.db.init import reset_schema
 from app.kernel.db.migrate import (
+    UNDEFINED_TABLE,
     MigrationRefused,
+    current_revision,
     default_config,
     diff_against_models,
     head_revision,
     prepare_database,
 )
+from app.kernel.db.testsupport import drop_every_table
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
     from alembic.config import Config
     from sqlalchemy.engine import Connection
+    from sqlalchemy.ext.asyncio import AsyncConnection
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +56,19 @@ def _restore_database_url() -> Iterator[None]:
         environ.pop("NARRE_DATABASE_URL", None)
     else:
         environ["NARRE_DATABASE_URL"] = previous
+
+
+@pytest.fixture(autouse=True)
+def _skip_migration_backups(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the gates from dumping on every run — the dump tests opt back in.
+
+    Every ``prepare_database`` call here faces pending revisions, and the
+    production answer — dump first — would fill ``./backups`` on every
+    ``just test`` with copies of an empty database. ``skip`` says an operator
+    has taken their own copy; the tests that exercise the dump itself set
+    ``NARRE_MIGRATION_BACKUP`` back to ``pg_dump``.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "skip")
 
 
 def alembic_config(url: str) -> Config:
@@ -77,23 +100,6 @@ async def _models_diff(url: str) -> list[Any]:
         await engine.dispose()
 
 
-async def _drop_every_table(url: str) -> None:
-    """Empty the gates' database again — the module fixture only did it once.
-
-    pytest-randomly shuffles this module, so every test builds its own state:
-    a leftover ``alembic_version`` from the previous test would turn a fresh
-    database into a versioned one and quietly exercise the wrong branch.
-    """
-    engine = create_async_engine(url)
-    async with engine.begin() as connection:
-        result = await connection.execute(
-            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
-        )
-        for (table_name,) in result.fetchall():
-            await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
-    await engine.dispose()
-
-
 async def _version_row(url: str) -> str | None:
     """The database's ``alembic_version`` value, read directly."""
     engine = create_async_engine(url)
@@ -115,7 +121,7 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     # The gate's claim is about an *empty* database: whichever test ran before
     # this one left its tables behind, so the drop happens here, not only in
     # the module fixture (pytest-randomly shuffles this module).
-    await _drop_every_table(url)
+    await drop_every_table(url)
     # env.py drives alembic through an asyncio.run of its own, which cannot
     # start inside this test's loop; the upgrade gets its own thread.
     await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
@@ -129,7 +135,7 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
 
 async def test_fresh_database_is_upgraded(url: str) -> None:
     """An empty database is replayed from nothing — no bootstrap, no stamp."""
-    await _drop_every_table(url)
+    await drop_every_table(url)
 
     outcome = await prepare_database(url)
 
@@ -192,7 +198,7 @@ async def test_drifted_database_is_refused(url: str) -> None:
 
 async def test_database_ahead_of_the_app_is_refused(url: str) -> None:
     """A revision outside this app's history names both versions (D6)."""
-    await _drop_every_table(url)
+    await drop_every_table(url)
     await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
     engine = create_async_engine(url)
     try:
@@ -208,3 +214,246 @@ async def test_database_ahead_of_the_app_is_refused(url: str) -> None:
     message = str(refused.value)
     assert "zzzz" in message  # what the database says
     assert head in message  # what this app knows
+
+
+# ---------------------------------------------------------------------------
+# The failure paths (D5, review focus 3 and 5): the lock, the pre-migration
+# dump, and a run that must migrate nothing
+# ---------------------------------------------------------------------------
+
+
+class _WithSQLState(Exception):  # noqa: N818  a stand-in for the dialect's wrapped error
+    """A stand-in for the dialect's wrapped error, carrying its SQLSTATE."""
+
+    def __init__(self, sqlstate: str) -> None:
+        super().__init__(sqlstate)
+        self.sqlstate = sqlstate
+
+
+class _ExplodingConnection:
+    """The one method ``current_revision`` uses — and it fails, as asked."""
+
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+
+    def begin_nested(self) -> _ExplodingConnection:
+        return self
+
+    async def __aenter__(self) -> _ExplodingConnection:
+        return self
+
+    async def __aexit__(self, *_args: object) -> bool:
+        return False
+
+    async def execute(self, _statement: object) -> None:
+        raise self._error
+
+
+async def test_extension_privilege_failure_is_refused(
+    url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A role without CREATE EXTENSION is refused with the platform's way out (D7)."""
+
+    async def _no_rights(_database_url: str) -> None:
+        raise RuntimeError("permission denied to create extension") from _WithSQLState("42501")
+
+    monkeypatch.setattr(migrate_module, "ensure_extensions", _no_rights)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup=False)
+
+    assert "create extensions" in str(refused.value)  # the sentence, complete
+
+
+async def test_unreachable_database_surfaces_unchanged(
+    url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure that is not a privilege problem surfaces as itself, not a refusal."""
+
+    async def _down(_database_url: str) -> None:
+        raise ConnectionError("could not connect")
+
+    monkeypatch.setattr(migrate_module, "ensure_extensions", _down)
+
+    with pytest.raises(ConnectionError):
+        await prepare_database(url, backup=False)
+
+
+async def test_current_revision_reraises_other_programming_errors() -> None:
+    """A ProgrammingError that is not undefined-table raises — it is not None."""
+    cause = _WithSQLState("42601")  # syntax error: a failure, not an empty history
+    error = ProgrammingError("SELECT version_num FROM alembic_version", {}, cause)
+    error.__cause__ = cause
+
+    with pytest.raises(ProgrammingError):
+        await current_revision(cast("AsyncConnection", _ExplodingConnection(error)))
+
+
+async def test_two_version_rows_are_refused(url: str) -> None:
+    """Two heads in the version table are refused — either alone would hide the other."""
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text("INSERT INTO alembic_version VALUES ('ffff')"))
+    finally:
+        await engine.dispose()
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup=False)
+
+    message = str(refused.value)
+    assert "exactly one" in message  # the count, not the unknown-revision wording
+    assert head_revision() in message and "ffff" in message  # both rows, named
+
+
+async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
+    """The toolchain itself: a seeded novel survives dump and restore (D5).
+
+    The repository's own snapshot and support restores need pg_dump and
+    pg_restore; a missing binary is an install with a named package, never
+    a skip.
+    """
+    if shutil.which("pg_dump") is None or shutil.which("pg_restore") is None:
+        pytest.fail("pg_dump/pg_restore are not on PATH — install postgresql-client-17")
+
+    await reset_schema(url)
+    user_id, novel_id = uuid4(), uuid4()
+    title = "Die Prüfung"
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, created_at) VALUES (:id, now())"), {"id": user_id}
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                    "VALUES (:id, :user_id, :title, now(), now())"
+                ),
+                {"id": novel_id, "user_id": user_id, "title": title},
+            )
+    finally:
+        await engine.dispose()
+
+    dump = await dump_database(url, tmp_path)
+    assert dump.read_bytes()[:5] == b"PGDMP"
+
+    # The round trip: a fresh scratch database on the same server, restored
+    # from the dump, holds the seeded novel — title byte-identical, umlauts
+    # and all. pg_restore speaks plain postgresql://; the engines keep the
+    # +asyncpg URL they were given.
+    server_sync = url.replace("+asyncpg", "").rsplit("/", 1)[0]
+    server = url.rsplit("/", 1)[0]
+    scratch = "narrare_v2_migrations_roundtrip"
+    admin = create_async_engine(f"{server}/postgres", isolation_level="AUTOCOMMIT")
+    try:
+        async with admin.connect() as connection:
+            await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
+            await connection.execute(text(f"CREATE DATABASE {scratch}"))
+
+        # The toolchain under test, fixed argv.
+        restore = await asyncio.to_thread(
+            subprocess.run,
+            ["pg_restore", "--no-owner", "--dbname", f"{server_sync}/{scratch}", str(dump)],
+            capture_output=True,
+            check=False,
+        )
+        assert restore.returncode == 0, restore.stderr.decode(errors="replace")
+
+        engine = create_async_engine(f"{server}/{scratch}")
+        try:
+            async with engine.connect() as connection:
+                restored: str | None = await connection.scalar(
+                    text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
+                )
+                assert restored == title
+        finally:
+            await engine.dispose()
+
+        async with admin.connect() as connection:
+            await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
+    finally:
+        await admin.dispose()
+
+
+async def test_pending_revision_writes_a_dump(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run with pending revisions takes the restorable copy first (D5)."""
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    await drop_every_table(url)
+
+    outcome = await prepare_database(url, backup_dir=tmp_path)
+
+    assert outcome.from_revision is None  # the full replay was pending
+    assert outcome.backup is not None
+    assert outcome.backup.parent == tmp_path
+    assert outcome.backup.read_bytes()[:5] == b"PGDMP"
+
+
+async def test_up_to_date_database_writes_no_dump(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The second run has nothing pending: no dump, no DDL, head to head (D5)."""
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    await drop_every_table(url)
+    first = await prepare_database(url, backup_dir=tmp_path)
+    assert first.backup is not None  # sanity: the pending run did take its dump
+    files_before = sorted(path.name for path in tmp_path.iterdir())
+
+    # The versioned-at-head path: two consecutive runs, the second does nothing.
+    second = await prepare_database(url, backup_dir=tmp_path)
+
+    assert (second.from_revision, second.to_revision) == (head_revision(), head_revision())
+    assert second.bootstrapped is False
+    assert second.backup is None
+    assert sorted(path.name for path in tmp_path.iterdir()) == files_before
+    assert await _models_diff(url) == []  # and no DDL happened either
+
+
+async def test_failing_backup_command_migrates_nothing(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No dump, no migration: the refusal names both ways out (review focus 5)."""
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "false {url} {file}")
+    await drop_every_table(url)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+
+    message = str(refused.value)
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert "postgresql-client" in message  # way out one: install the client
+    assert "NARRE_MIGRATION_BACKUP=skip" in message  # way out two: own copy taken
+    # Nothing migrated: the version table never came into existence.
+    with pytest.raises(ProgrammingError) as missing:
+        await _version_row(url)
+    assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
+    # The failed run released the lock in its finally: the next start works.
+    recovered = await prepare_database(url, backup=False)
+    assert recovered.to_revision == head_revision()
+
+
+async def test_concurrent_starts_migrate_once(url: str) -> None:
+    """Two starts at once: the lock serialises them, both serve (review focus 3).
+
+    The second caller waits on ``pg_advisory_lock`` and then finds head
+    already reached — both return, and the version table holds exactly one
+    row.
+    """
+    await drop_every_table(url)
+
+    outcomes = await asyncio.gather(prepare_database(url), prepare_database(url))
+
+    assert [outcome.to_revision for outcome in outcomes] == [head_revision(), head_revision()]
+    assert {outcome.from_revision for outcome in outcomes} == {None, head_revision()}
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            rows: int | None = await connection.scalar(text("SELECT count(*) FROM alembic_version"))
+            assert rows == 1
+    finally:
+        await engine.dispose()

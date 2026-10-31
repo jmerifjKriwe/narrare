@@ -16,7 +16,6 @@ D12), not discipline.
 
 import asyncio
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # The schema is registered by import on the shared Base: contracts holds the
@@ -25,30 +24,13 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # models-built create_all below see every table only because all four
 # modules are imported here.
 from app.kernel.contracts import models
-from app.kernel.db.migrate import prepare_database
+from app.kernel.db.migrate import ensure_extensions, prepare_database
+from app.kernel.db.testsupport import drop_every_table
 from app.kernel.jobs import models as jobs_models
 from app.kernel.llm import models as llm_models
 from app.kernel.prompts import models as prompts_models
 
 del jobs_models, llm_models, prompts_models  # the imports are for their registration side effect
-
-
-async def ensure_extensions(database_url: str) -> None:
-    """Create the three extensions every table's DDL assumes; idempotent.
-
-    A separate pre-step, not DDL inside a revision: on a hosted database the
-    app user may not be allowed to create extensions, and there the platform
-    owns that step (design D7).
-    """
-    engine = create_async_engine(database_url)
-    async with engine.begin() as connection:
-        # vector: the embedding columns; pg_trgm: the trigram search over
-        # search_text; unaccent: the diacritics-folding the query side
-        # applies (the index itself is a plain gin_trgm_ops on the column).
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
-    await engine.dispose()
 
 
 async def init_schema(database_url: str) -> None:
@@ -71,26 +53,10 @@ async def reset_schema(database_url: str) -> None:
     from. Tests keep the models path (D12): replaying the history per
     conftest would be slower, and the gate proves the paths equal anyway.
     """
-    engine = create_async_engine(database_url)
-    async with engine.begin() as connection:
-        # Drop every table (and dependent views/foreign keys) in the public
-        # schema, including ones the current models do not know about (leftover
-        # tables from an older schema version). metadata.drop_all alone leaves
-        # those behind and then fails on the next run. Dropping tables (not the
-        # whole schema) keeps the vector extension's types registered, so pooled
-        # connections do not hit stale type OIDs.
-        result = await connection.execute(
-            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
-        )
-        for (table_name,) in result.fetchall():
-            await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
-        # Views can also depend on tables; drop them too.
-        result = await connection.execute(
-            text("SELECT viewname FROM pg_views WHERE schemaname = 'public'")
-        )
-        for (view_name,) in result.fetchall():
-            await connection.execute(text(f'DROP VIEW IF EXISTS "{view_name}" CASCADE'))
-    await engine.dispose()
+    # The one drop-everything (app/kernel/db/testsupport.py): tables the
+    # current models no longer know must go too, and dependent views with
+    # them.
+    await drop_every_table(database_url)
     # The models, not the history: tests create their schema from the models.
     await ensure_extensions(database_url)
     engine = create_async_engine(database_url)

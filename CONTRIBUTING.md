@@ -10,7 +10,10 @@ more.
 You need [Python 3.14+](https://www.python.org/downloads/) with
 [uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
 [pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with
-Compose, and [just](https://just.systems/). One command sets everything else
+Compose, [just](https://just.systems/), and the PostgreSQL 17 command-line
+client (`postgresql-client-17`: `pg_dump`/`pg_restore` — the migration tests
+and the release snapshots use them; nothing shipped depends on the tools
+being on `PATH`). One command sets everything else
 up — the Python environment, web dependencies, git hooks, the Postgres
 services and the schema:
 
