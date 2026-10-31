@@ -358,3 +358,17 @@ govern.
     text/font-family sweep over all four files returns 0
     (`rg -ic 'text|font-family' assets/logo/*.svg web/public/favicon.svg` →
     no matches), and the reviewer confirmed it independently.
+
+11. **README alt text is empty by owner decision.** The lockup is decorative;
+    the H1 directly above it is the accessible name, so `alt=""` is correct and
+    the plan's `alt="Narrare"` in Task 4 is superseded. CodeRabbit's contrary
+    finding was declined with this reason on PR #454.
+12. **The forbidden-element sweep is `rg -ic 'text|font'`**, not
+    `'text|font-family'`: the latter would let a literal `<font>` element
+    through. Verified over all four SVGs (three in `assets/logo/`, plus
+    `web/public/favicon.svg`): no matches, exit code 1.
+13. **Preview assets are copied next to the page.** Task 5 serves
+    `/tmp/opencode/brand`, while the assets live in `assets/logo/` and
+    `web/public/`; before serving, all eight were copied into
+    `/tmp/opencode/brand/a/` and `preview.html` references `a/<file>`. Without
+    that copy step the relative URLs would 404.
