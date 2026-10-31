@@ -243,9 +243,9 @@ async def prepare_database(
     hostage.
 
     While revisions are pending, the run is preceded by a ``pg_dump`` copy
-    (design D5): a run that is about to write — a replay, a first upgrade's
-    stamp, an upgrade behind head — either produces a restorable dump or
-    migrates nothing. The copy runs only when the database holds tables: the
+    (design D5): a run that is about to write — a first upgrade's stamp, an
+    upgrade behind head — either produces a restorable dump or migrates
+    nothing. The copy runs only when the database holds tables: the
     dump protects prose, and an empty schema has none, so a fresh first boot
     takes none — which also keeps pg_dump out of the first boot's
     requirements (product owner, 2026-10-31). ``backup=False`` — a caller

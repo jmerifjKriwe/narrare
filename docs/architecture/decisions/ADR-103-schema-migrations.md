@@ -108,7 +108,8 @@ the advisory lock, backup and checksums become ours to build.
 two starts cannot interleave → `ensure_extensions` (the three extensions stay a
 separate idempotent pre-step) → a database with tables but no `alembic_version` is
 compared against the models and stamped or **refused by name** (`MigrationRefused`)
-→ when revisions are pending, a restorable dump first (`dump_database`,
+→ when revisions are pending and the database holds tables, a restorable dump first
+(an empty first boot takes none — product owner, 2026-10-31; design D5) (`dump_database`,
 `app/kernel/db/backup.py`, into `NARRE_BACKUP_DIR`, last 3 kept, command template
 `NARRE_BACKUP_COMMAND`) → `upgrade head` in one transaction → a head check. A
 database ahead of the app's history is also refused. The development recipes end in
@@ -145,7 +146,7 @@ The shipped decisions, one line each — the design doc carries the reasoning:
 | D2 | The draft is a draft — a human reads it (renames, `postgresql_where`, `pgvector.sqlalchemy.Vector`) | CONTRIBUTING.md, "Changing the Schema" |
 | D3 | Four gates inside `just test`: one head · empty→head equals the models · release snapshot upgrades with prose · bootstrap/refusal paths | `app/kernel/db/tests/test_migrations.py` |
 | D4 | Bootstrap: equal → stamp, not equal → refuse and say what differs | `prepare_database` in `app/kernel/db/migrate.py` |
-| D5 | Unattended upgrade on start: lock → dump when pending → one transaction → head check; every dump failure is a named refusal (`BackupFailed`) | `app/kernel/db/migrate.py`, `app/kernel/db/backup.py` |
+| D5 | Unattended upgrade on start: lock → dump when pending and tables exist — an empty first boot takes none (product owner, 2026-10-31) → one transaction → head check; every dump failure is a named refusal (`BackupFailed`) | `app/kernel/db/migrate.py`, `app/kernel/db/backup.py` |
 | D6 | Never migrate backwards: ahead of head or unknown revision → refuse, name both versions | `prepare_database` in `app/kernel/db/migrate.py` |
 | D7 | Extensions before revisions: `ensure_extensions` stays outside the revision history | `app/kernel/db/migrate.py` |
 | D8 | Data moves are jobs, never revisions (a rule, not code) | stated here and in CONTRIBUTING.md |

@@ -1,10 +1,11 @@
 """The pre-migration dump — design D5's copy of the database as it was.
 
-Before an upgrade applies pending revisions, the database is dumped in
-pg_dump's custom format: a run with pending revisions either produces a
-restorable dump or migrates nothing. The dump is a precondition of that
-one run, not of the installation — with nothing pending, no dump tool is
-ever invoked. ``pg_restore --dbname=<fresh database> <file>`` brings a
+Before an upgrade applies pending revisions to a database that holds tables,
+the database is dumped in pg_dump's custom format: a run with pending
+revisions either produces a restorable dump or migrates nothing. The dump is
+a precondition of that one run, not of the installation — with nothing
+pending or nothing to protect (an empty first boot takes no dump), no dump
+tool is ever invoked. ``pg_restore --dbname=<fresh database> <file>`` brings a
 dump back; the gates' round-trip test proves it.
 
 Everything that can go wrong here — the directory, the command template,

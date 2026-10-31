@@ -8,6 +8,7 @@ configuration check and the jobs lane meet, so their order is pinned next to
 the wiring it governs.
 """
 
+import os
 from asyncio import run
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -101,6 +102,11 @@ def test_startup_refuses_a_drifted_database(
         run(init_schema(url))
     message = str(refused.value)
     assert "chapters" in message and "title" in message
+
+
+def test_the_suite_sets_the_backup_skip() -> None:
+    # Deleting the conftest's skip makes every suite run dump; retention can evict a developer's.
+    assert os.environ.get("NARRE_MIGRATION_BACKUP") == "skip"
 
 
 async def test_the_lifespan_starts_and_stops_the_jobs_lane() -> None:
