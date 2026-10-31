@@ -200,6 +200,9 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
           just-version: "1.58.0"
+      # The round-trip gate needs a pg_dump matching the service's major
+      # version; the runner image ships client 16.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
       # One suite, run once. `main` is where coverage is measured, and a second
       # job used to measure it by running the same suite a second time; the
       # covered invocation replaces the plain one on a main push instead. A PR

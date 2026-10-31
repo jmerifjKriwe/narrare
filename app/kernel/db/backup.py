@@ -42,7 +42,10 @@ def backup_command(url: str, file: Path) -> list[str]:
     """
     template = environ.get("NARRE_BACKUP_COMMAND")
     if template:
-        return shlex.split(template.format(url=url, file=file))
+        command = shlex.split(template.format(url=url, file=file))
+        if not command:
+            raise BackupFailed("NARRE_BACKUP_COMMAND resolved to an empty command")
+        return command
     return ["pg_dump", "--format=custom", "--no-owner", "--file", str(file), url]
 
 
@@ -80,17 +83,27 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 "that has spaces"
             ) from exc
         keep = max(keep, 1)
+        file_existed_before = file.exists()  # the name is unique per run; it never does
 
         def _dump() -> None:
             try:
-                with partial.open("wb") as sink:
+                sink = partial.open("wb")
+            except OSError as exc:
+                raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
+            with sink:
+                try:
                     result = subprocess.run(  # noqa: S603  the operator's own template
                         command_line, stdout=sink, stderr=subprocess.PIPE, check=False
                     )
-            except OSError as exc:
-                raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
+                except OSError as exc:
+                    raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
             if result.returncode != 0:
                 stderr = result.stderr.decode(errors="replace").strip()
+                # A failed pg_dump --file run leaves its (zero-byte) target
+                # behind; it must not survive as a dump, and must not evict a
+                # restorable one from retention. Only this run's leftover goes.
+                if not file_existed_before:
+                    file.unlink(missing_ok=True)
                 raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
 
         await asyncio.to_thread(_dump)

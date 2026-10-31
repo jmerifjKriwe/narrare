@@ -439,6 +439,50 @@ async def test_failing_backup_command_migrates_nothing(
     assert recovered.to_revision == head_revision()
 
 
+async def test_empty_backup_command_is_a_named_refusal(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A NARRE_BACKUP_COMMAND that resolves to nothing is BackupFailed, not IndexError."""
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "   ")
+    await drop_every_table(url)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert "empty command" in str(refused.value.__cause__)
+    assert list(tmp_path.iterdir()) == []  # nothing that looks like a dump was kept
+    # Nothing migrated: the version table never came into existence.
+    with pytest.raises(ProgrammingError) as missing:
+        await _version_row(url)
+    assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
+
+
+async def test_failed_file_form_leaves_no_dump(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed pg_dump --file run leaves its zero-byte target behind — we do not.
+
+    pg_dump opens the output file before it connects, so a failing run (here:
+    an unresolvable host) exits leaving a zero-byte ``*.dump``. That file must
+    not survive as a dump, and must not evict a restorable one from retention.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv(
+        "NARRE_BACKUP_COMMAND",
+        "pg_dump --format=custom --no-owner --file {file} "
+        "--host nosuchhost.invalid --dbname narrare",
+    )
+    await drop_every_table(url)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert list(tmp_path.iterdir()) == []
+
+
 async def test_unwritable_backup_directory_is_a_named_refusal(url: str, tmp_path: Path) -> None:
     """A dump directory that cannot be created or written is BackupFailed, not a crash."""
     locked = tmp_path / "locked"
