@@ -64,7 +64,9 @@ a mandatory rule or gate for tooling of this kind (the governance budget, spec Â
 
 `--no-verify` and force push are forbidden. Conventional commits; `feat`/`fix` need a
 real `User-visible:` line that the task provides. Nothing is committed before the
-review is green.
+review is green. A commit made through an agent ends with the trailer
+`Assisted-by: OpenCode (<model>)`, added with `git commit --trailer`; author and
+committer stay the human.
 
 A branch lands as a merge commit: its commits reach `main` unchanged and are the
 changelog entries release-please reads. A PR title is none of them; it is the sentence
