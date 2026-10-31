@@ -6,6 +6,7 @@ repository built in tmp_path, so the fixture, not Narrare, is what changes.
 """
 
 import json
+import os
 import shutil
 import subprocess  # nosec B404 - fixed argv invocations of git and this script, no shell
 import sys
@@ -31,6 +32,21 @@ def _capability_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     for name in FIXTURE_CAPABILITIES:
         (tmp_path / "app" / "capabilities" / name / "e2e").mkdir(parents=True)
     monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hide git's location variables from the test process itself.
+
+    Git exports GIT_DIR (and, in some versions, GIT_INDEX_FILE) while it
+    runs hooks, and the pre-push hook runs this suite: with a leaked
+    GIT_DIR, git resolves every call — the fixtures', and the resolver's
+    in-process ones — to the repository whose hook is running instead of
+    the miniature one in tmp_path.
+    """
+    for key in list(os.environ):
+        if key.startswith("GIT_"):
+            monkeypatch.delenv(key)
 
 
 def _git(repo: Path, *args: str) -> None:
