@@ -131,10 +131,24 @@ def resolve(
 
 
 def known_capabilities() -> set[str]:
-    """Capability directory names that carry an E2E suite."""
-    if not CAPABILITIES.is_dir():
+    """Capability directory names that carry an E2E suite.
+
+    Anchored at the repository root — the same toplevel `changed` reads — so
+    a caller standing in a subdirectory still sees every suite. Outside a
+    repository the cwd-relative table is used, which is also what lets tests
+    point the script at a tree of their own.
+    """
+    root = _toplevel()
+    capabilities = Path(root) / CAPABILITIES if root else CAPABILITIES
+    if not capabilities.is_dir():
         return set()
-    return {entry.name for entry in CAPABILITIES.iterdir() if (entry / "e2e").is_dir()}
+    return {entry.name for entry in capabilities.iterdir() if (entry / "e2e").is_dir()}
+
+
+def _toplevel() -> str | None:
+    """The repository root, from wherever the caller stands; None outside a repository."""
+    top = _git("rev-parse", "--show-toplevel")
+    return top[0] if top else None
 
 
 def _git(*args: str) -> list[str] | None:
@@ -173,10 +187,9 @@ def changed(base: str | None, *, worktree: bool) -> list[str] | None:
     None when the range cannot be read — no base, a repository git cannot
     see — so the caller falls open to every suite instead of to none.
     """
-    top = _git("rev-parse", "--show-toplevel")
-    if base is None or not top:
+    root = _toplevel()
+    if base is None or root is None:
         return None
-    root = top[0]
     files = _git("-C", root, "diff", "--name-only", f"{base}...HEAD")
     if files is None:
         return None
@@ -242,6 +255,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             if paths is None
             else resolve(paths, known=known, release=bool(args.release_pr))
         )
+    elif scope == "all":
+        resolution = Resolution(sorted(known), "scope all: every suite")
     elif scope in known:
         resolution = Resolution([scope], f"scope {scope}: {_suite_dir(scope)}")
     else:
@@ -252,6 +267,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         print(" ".join(_suite_dir(name) for name in names))
     print(resolution.reason, file=sys.stderr)
+    if resolution.capabilities is None and not names:
+        print(
+            "warning: every suite is owed, but no known capabilities were found",
+            file=sys.stderr,
+        )
     return 0
 
 

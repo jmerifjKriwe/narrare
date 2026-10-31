@@ -42,9 +42,6 @@ def _git(repo: Path, *args: str) -> None:
 def _make_repo(tmp_path: Path, *, remote: bool, ahead: bool) -> Path:
     """A miniature Narrare: two capability suites, one commit past the base."""
     repo = tmp_path / "narrare"
-    (repo / "scripts").mkdir(parents=True)
-    script = Path(affected.__file__)
-    shutil.copy(script, repo / "scripts" / "affected.py")
     for directory in (
         "app/capabilities/chat/e2e",
         "app/capabilities/writing/e2e",
@@ -97,13 +94,14 @@ def repo_without_remote(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     return made
 
 
-def run(args: list[str], *, stderr: bool = False) -> str:
-    """Run the script as CI does, from the fixture repository's root."""
+def run(args: list[str], *, stderr: bool = False, cwd: Path | None = None) -> str:
+    """Run the checkout's script as CI does, from a chosen working directory."""
     completed = subprocess.run(  # noqa: S603
-        [sys.executable, "scripts/affected.py", *args],
+        [sys.executable, str(Path(affected.__file__)), *args],
         check=True,
         capture_output=True,
         text=True,
+        cwd=cwd if cwd is not None else Path.cwd(),
     )
     output = completed.stderr if stderr else completed.stdout
     assert output is not None
@@ -219,6 +217,24 @@ def test_json_none_prints_an_empty_array(repo: Path):
 
 def test_paths_mode_prints_suite_dirs(repo: Path):
     assert run(["--paths", "writing"]).split() == ["app/capabilities/writing/e2e/"]
+
+
+def test_paths_all_prints_every_suite_and_says_so(repo: Path):
+    expected = [f"app/capabilities/{name}/e2e/" for name in sorted(FIXTURE_CAPABILITIES)]
+    assert run(["--paths", "all"]).split() == expected
+    assert "scope all: every suite" in run(["--paths", "all"], stderr=True)
+
+
+def test_a_subdirectory_still_sees_every_suite(repo: Path):
+    """The every-suite fallback expands from the repo root, not from the cwd."""
+    (repo / "app/kernel/stack.py").write_text("", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "shared change")
+    here = repo / "app/kernel"
+    assert json.loads(run(["--base", "narrare/main", "--json"], cwd=here)) == sorted(
+        FIXTURE_CAPABILITIES
+    )
+    assert "all suites" in run(["--base", "narrare/main", "--json"], stderr=True, cwd=here)
 
 
 def test_paths_affected_with_nothing_touched_prints_nothing(repo_clean: Path):
