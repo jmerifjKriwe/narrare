@@ -21,6 +21,7 @@ wrote, not a spy on the provider.
 import asyncio
 import json
 import shutil
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -110,6 +111,34 @@ def _novel_ids(title: str) -> list[str]:
             {"title": title},
         )
     ]
+
+
+def _continuation_count(title: str) -> int:
+    """How many continuation audit rows the novel carries."""
+    [row] = _rows(
+        "SELECT count(*) FROM llm_calls c"
+        " JOIN novels n ON c.novel_id = n.id"
+        " WHERE n.title = :title AND c.task_key = 'writing.continuation'",
+        {"title": title},
+    )
+    count = row[0]
+    assert isinstance(count, int)
+    return count
+
+
+def _await_continuation(title: str, *, after: int) -> None:
+    """Wait until the novel carries more than ``after`` continuation rows.
+
+    The row is written by the stream's finalizer, which commits a moment after
+    the ghost is taken; reading straight after Tab can hand back the previous
+    call's prompt and blame the reset for a template the request never carried.
+    """
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        if _continuation_count(title) > after:
+            return
+        time.sleep(0.1)
+    raise AssertionError(f"no continuation audit row for {title!r} within 10 s")
 
 
 def _latest_continuation(title: str) -> tuple[str, str]:
@@ -219,8 +248,9 @@ def _create_novel_with_chapter(page: Page, title: str, line: str) -> None:
 def _run_continuation(page: Page) -> None:
     """Run the continuation, wait for the whole ghost, take it with Tab.
 
-    The ghost's last words prove the stream finished; the audit row lands in
-    the stream finalizer's own commit by the time the ghost is taken.
+    The ghost's last words prove the stream finished. The audit row is the
+    stream finalizer's own commit and can land a moment later, so a caller
+    that reads it waits first: see :func:`_await_continuation`.
     """
     page.get_by_role("button", name="Weiterschreiben").click()
     ghost = page.locator(".ProseMirror .ghost")
@@ -352,9 +382,11 @@ def test_resetting_the_novel_scope_returns_the_bundled_prompt(page: Page, stack:
     _save_override(page, card, OVERRIDE_TEMPLATE)
 
     # The override bites before the reset means anything: the marker rode.
+    before = _continuation_count(title)
     page.goto(BASE + "/")
     page.get_by_role("link", name=title).click()
     _run_continuation(page)
+    _await_continuation(title, after=before)
     _, prompt_text = _latest_continuation(title)
     assert MARKER in prompt_text
 
@@ -370,9 +402,11 @@ def test_resetting_the_novel_scope_returns_the_bundled_prompt(page: Page, stack:
     # The row is gone — the reset deleted the novel's own tier, nothing else.
     assert _override_count(_novel_id(title)) == 0
 
+    before = _continuation_count(title)
     page.goto(BASE + "/")
     page.get_by_role("link", name=title).click()
     _run_continuation(page)
+    _await_continuation(title, after=before)
     status, prompt_text = _latest_continuation(title)
     assert status == "ok"
     # The bundled template's own header lines, and no marker anywhere.
