@@ -18,8 +18,9 @@ violates one of its rules is a review finding, not a style question.
 
 ## Verify
 
-`just check` (fast) · `just test-file <path>` (inner loop) · `just verify` (full gate) ·
-the capability's E2E. A gate counts only when its output was read.
+`just check` (fast) · `just test-file <path>` (inner loop) · `just verify` (the
+suites the change touches) · `just verify all` (everything) · the capability's E2E.
+A gate counts only when its output was read.
 
 `just --list` is the whole command surface: 22 recipes, no hidden gates.
 

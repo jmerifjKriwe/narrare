@@ -72,7 +72,7 @@ the test suite run on every push. Bypassing a hook (`--no-verify`) is forbidden.
 Before opening a PR, run the full gate locally:
 
 ```bash
-just verify          # check, both test suites, the capability E2E, the web build
+just verify          # check, both test suites, the affected capability E2E suites, the web build; `just verify all` before a risky change
 ```
 
 It must pass cleanly.
