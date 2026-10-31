@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import {
   client,
   type Accept,
+  type Chapter,
   type Entity,
   type Finding,
   type Hit,
@@ -95,6 +96,70 @@ export function useCreateNovel(): UseMutationResult<Novel, Error, NovelCreate> {
       void queryClient.invalidateQueries({ queryKey: ["novels"] });
     },
   });
+}
+
+/**
+ * One novel's row, cached under `["novels", novelId]` beside the shelf's
+ * list: the workbench's heading reads the row, and the write paths
+ * invalidate the `["novels"]` prefix — one invalidation keeps the row and
+ * the list honest together. An answer that is not ok throws, so the cache
+ * holds either the row or the failure — a 404 is never an empty book.
+ */
+export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
+  return useQuery({
+    queryKey: ["novels", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok || !data) throw new Error(`novel unavailable: ${response.status}`);
+      return data;
+    },
+  });
+}
+
+/**
+ * A novel's chapters in position order, cached under `["chapters", novelId]`.
+ * The workbench's rail and editor read the list here, and the write paths
+ * refresh the key: a created chapter invalidates it outright; a settled save
+ * patches the saved body into the cached array first, then asks the key to
+ * refetch — the patch holds the page's ground while the ask is outstanding,
+ * and every view of the key still refetches from the rows that changed. An
+ * answer that is not ok throws, so the cache holds either the list or the
+ * failure — never a half-current list.
+ */
+export function useChaptersQuery(novelId: string): UseQueryResult<Chapter[]> {
+  return useQuery({
+    queryKey: ["chapters", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/writing/novels/{novel_id}/chapters", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok) throw new Error(`chapters unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * The chapter last written in, by the server's `updated_at` — the
+ * workbench's param-less choice and the dock panels' fallback, read from
+ * one cached list so both surfaces answer the same question. Compared as
+ * parsed instants, because two ISO strings with different timezone offsets
+ * do not order as their moments do. Strict comparison: on equal instants
+ * the first row keeps the lead, and the list is in position order, so the
+ * choice stays deterministic even when two chapters tie.
+ */
+export function activeChapterFallback(chapters: Chapter[]): string | null {
+  return (
+    chapters.reduce<Chapter | null>(
+      (best, chapter) =>
+        best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
+          ? chapter
+          : best,
+      null,
+    )?.id ?? null
+  );
 }
 
 /**
@@ -222,8 +287,9 @@ export function useEntityRelationsQuery(entityId: string): UseQueryResult<Relati
 }
 
 /** The input of a relation add: the edge's end, its type, an optional note.
- *  A `null` note is the no-note state — the create sends it explicitly
- *  rather than relying on the transport to drop an empty string. */
+ *  A `null` note is the no-note state — an empty or whitespace note is
+ *  dropped before the create (the field is sent absent), never stored as a
+ *  note called "". */
 export type RelationInput = {
   entityId: string;
   toEntityId: string;

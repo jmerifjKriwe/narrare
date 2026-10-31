@@ -504,6 +504,9 @@ function PromptCard(props: {
  * novel filter that scopes the views, and per scope an editor that speaks the
  * save gate's language. The novels list is fetched over HTTP like any other
  * page's data — the writing capability's code stays behind its router.
+ * The settings area's frame owns the page's shape — the container and the
+ * area's single <h1> — so this page is a section under an <h2>, like every
+ * contributed settings page.
  */
 export function PromptsPage() {
   const t = useTranslation();
@@ -511,7 +514,8 @@ export function PromptsPage() {
   const [novels, setNovels] = useState<Novel[]>([]);
   const [novelId, setNovelId] = useState("");
   const [rows, setRows] = useState<PromptSummary[] | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const [listFailed, setListFailed] = useState(false);
+  const [novelsFailed, setNovelsFailed] = useState(false);
   // The open editor carries the novel it was opened for — captured here, at
   // open time, so the filter's later moves cannot re-target its save or wipe
   // its words. A filter change leaves it exactly as it stands.
@@ -520,8 +524,8 @@ export function PromptsPage() {
     scope: PromptScope;
     novelId: string;
   } | null>(null);
-  // Bumped when a save or reset lands: the list refetches through the effect
-  // instead of a handler patching rows by hand.
+  // Bumped when a save or reset lands, and by the page-level retry: the list
+  // refetches through the effect instead of a handler patching rows by hand.
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -537,18 +541,18 @@ export function PromptsPage() {
         }),
       ]);
       if (cancelled) return;
-      let failed = false;
       if (novelList.status === "fulfilled" && novelList.value.response.ok) {
         setNovels(novelList.value.data ?? []);
+        setNovelsFailed(false);
       } else {
-        failed = true;
+        setNovelsFailed(true);
       }
       if (promptList.status === "fulfilled" && promptList.value.response.ok) {
         setRows(promptList.value.data ?? []);
+        setListFailed(false);
       } else {
-        failed = true;
+        setListFailed(true);
       }
-      setLoadFailed(failed);
     })();
     return () => {
       cancelled = true;
@@ -556,8 +560,10 @@ export function PromptsPage() {
   }, [novelId, refresh]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("prompts.heading")}</h1>
+    <section className="mt-8" aria-labelledby="settings-prompts-heading">
+      <h2 id="settings-prompts-heading" className="text-lg font-semibold">
+        {t("prompts.heading")}
+      </h2>
 
       <div className="mt-6 flex max-w-64 flex-col gap-1 text-sm font-medium">
         <label htmlFor={filterId}>{t("prompts.filter")}</label>
@@ -576,14 +582,31 @@ export function PromptsPage() {
         </select>
       </div>
 
-      {loadFailed ? (
+      {listFailed ? (
+        <div className="mt-4">
+          <p role="alert" className="text-sm text-danger">
+            {t("prompts.errorLoad")}
+          </p>
+          {/* The way back is one press: the effect asks both reads again, no
+              reload demanded — the page-level answer to a dead loading state. */}
+          <button
+            type="button"
+            onClick={() => setRefresh((current) => current + 1)}
+            className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
+          >
+            {t("prompts.retry")}
+          </button>
+        </div>
+      ) : null}
+
+      {novelsFailed ? (
         <p role="alert" className="mt-4 text-sm text-danger">
-          {t("prompts.errorLoad")}
+          {t("prompts.errorLoadNovels")}
         </p>
       ) : null}
 
       {rows === null ? (
-        loadFailed ? null : (
+        listFailed ? null : (
           <p className="mt-4 text-sm text-muted">{t("prompts.loading")}</p>
         )
       ) : (
@@ -613,6 +636,6 @@ export function PromptsPage() {
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

@@ -1,5 +1,5 @@
-import { useParams } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
 import type { Entity, Relation } from "@shell/lib/api/client";
@@ -57,6 +57,14 @@ const PREVIEW_LENGTH = 140;
 export function EntitiesPanel() {
   const t = useTranslation();
   const { id: novelId } = useParams({ from: "/novels/$id" });
+  // The selection's address is the URL, the workspace chapter param's
+  // sibling on this route: a deep link opens the dock on the entity it
+  // names, and selecting writes the param — a replace, because selection
+  // is state, not navigation history (unlike chapters, a click here must
+  // not own a back-button step). The row is judged against the novel's
+  // own list, so a dead id is no selection, never an error.
+  const { entity: entityParam } = useSearch({ from: "/novels/$id/wissen" });
+  const navigate = useNavigate();
   // Two views of one list: the unfiltered ask feeds the filters' options,
   // the detail and the pickers; the narrowed ask is what the rows show.
   // While no filter is set both are the same question — and share the
@@ -65,7 +73,6 @@ export function EntitiesPanel() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const headingId = useId();
   const typeFilterId = useId();
   const tagFilterId = useId();
@@ -98,8 +105,36 @@ export function EntitiesPanel() {
   );
 
   // The detail follows the selection, not the filter: picking an entity and
-  // then narrowing the search must not close what was opened.
-  const selected = rows.find((entity) => entity.id === selectedId) ?? null;
+  // then narrowing the search must not close what was opened. The param is
+  // the selection: it is judged against the unfiltered list, and a param
+  // the list does not hold is no selection at all.
+  const selected = rows.find((entity) => entity.id === entityParam) ?? null;
+
+  // Selecting is one router write: the param lands with a replace, so the
+  // back button leaves the dock instead of walking the clicks. Clearing —
+  // a delete, or the dead-param cleanup below — is the same write with
+  // nothing left to name.
+  const select = useCallback(
+    (entityId: string | null) => {
+      void navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, entity: entityId ?? undefined }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
+  // A param naming an entity the novel does not have is a dead link: the
+  // selection above stayed empty, and the dead value leaves the address —
+  // a replace, so the cleanup is not a history step. Waiting for the rows
+  // before judging keeps a just-selected address alive: the param is never
+  // judged against an answer that has not landed.
+  useEffect(() => {
+    if (entityParam === undefined || all.data === undefined) return;
+    if (all.data.some((entity) => entity.id === entityParam)) return;
+    select(null);
+  }, [entityParam, all.data, select]);
 
   // The box's second tier: the same words, asked of the semantic search
   // (debounced, in the hook) while they are in the box at all.
@@ -116,7 +151,7 @@ export function EntitiesPanel() {
           label={t("knowledge.entitySearchLabel")}
           value={query}
           onChange={setQuery}
-          onPick={setSelectedId}
+          onPick={select}
           items={shown.map((entity) => ({ id: entity.id, text: entity.name }))}
         />
       </div>
@@ -182,8 +217,8 @@ export function EntitiesPanel() {
             label={t("knowledge.entitiesHeading")}
             items={shown}
             getId={(entity) => entity.id}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+            selectedId={entityParam ?? null}
+            onSelect={select}
             render={(entity) => entity.name}
           />
         </div>
@@ -233,7 +268,7 @@ export function EntitiesPanel() {
           entity={selected}
           rows={rows}
           novelId={novelId}
-          onSelect={setSelectedId}
+          onSelect={select}
         />
       ) : null}
     </section>

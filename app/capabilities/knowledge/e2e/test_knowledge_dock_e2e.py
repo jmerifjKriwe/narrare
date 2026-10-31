@@ -42,8 +42,15 @@ and shows what the dialog filed: chips, the source preview, both
 directions of every edge, and the mark that flags a self-relation. A
 proposal card reads its suggested type and relations, and an accept
 that cannot place a relation says so once, aloud.
+
+The selection is URL state beside the editor: a link naming an entity
+opens the dock straight onto that entity's card, selecting writes the
+param with a replace — the back button leaves the dock, not the clicks
+— and an id the novel does not have selects nothing and cleans the
+address, a dead link that degrades instead of erroring.
 """
 
+import re
 from time import sleep
 from typing import TYPE_CHECKING
 
@@ -189,10 +196,11 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     expect(dock).to_be_visible()
     expect(editor).to_be_visible()
 
-    # Extraction runs on the chapter the editor is showing — the active
-    # chapter reaches the dock through the shell seam, not the URL. The
-    # trigger closes while its job is outstanding: a second click could not
-    # stack a duplicate job — and a duplicate review queue — behind the first.
+    # Extraction runs on the chapter the editor is showing — the selection's
+    # address is the URL, and the panel reads the workspace's chapter param
+    # from it. The trigger closes while its job is outstanding: a second
+    # click could not stack a duplicate job — and a duplicate review queue —
+    # behind the first.
     extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
     extract.click()
     expect(extract).to_be_disabled()
@@ -1148,5 +1156,118 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(dock.get_by_role("region", name="Leuchtturm")).not_to_contain_text("Verfeindet mit")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Selbstbezug")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("→ Mira")
+
+    assert_accessible(page)
+
+
+def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) -> None:
+    """The selected entity is URL state: a link opens the dock on its card.
+
+    `?entity=<id>` names the selection the way the workspace's ?chapter=
+    names the chapter: the panel opens that entity's detail — its
+    relations, not the dock's default of none. Selecting writes the param
+    with a replace, so the next entry back is the workspace, not the
+    previous click. An id the novel does not have is a dead link: nothing
+    is selected, and the dead value leaves the address instead of erroring.
+    """
+    novel_id = _seed_entities("Die adressierte Bucht")
+    leuchtturm = _entity_id(novel_id, "Leuchtturm")
+    mira = _entity_id(novel_id, "Mira")
+    base = f"http://127.0.0.1:3100/novels/{novel_id}"
+
+    # The dock opens straight onto the named entity's card.
+    page.goto(f"{base}/wissen?entity={leuchtturm}")
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+    detail = dock.get_by_role("region", name="Leuchtturm")
+    expect(detail).to_be_visible()
+    # The relations, not the default of none: the edge the seeded review
+    # chain left (Leuchtturm's proposal pointed at Mira, already filed).
+    expect(detail).to_contain_text("→ Mira")
+
+    # Selecting writes the address with a replace: the next entry back is
+    # the workspace without the dock, never the previous selection. (The
+    # workspace's own validated rail param rides every router write, so
+    # the param is asserted, not the whole URL.)
+    page.goto(base)
+    expect(page.get_by_role("heading", name="Die adressierte Bucht")).to_be_visible()
+    page.goto(f"{base}/wissen?entity={leuchtturm}")
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_be_visible()
+    _row_named(entities, "Mira").click()
+    expect(dock.get_by_role("region", name="Mira")).to_be_visible()
+    expect(page).to_have_url(re.compile(f"entity={mira}"))
+    page.go_back()
+    # The replace kept the history clean: the entry back is the workspace
+    # the way its load wrote it — no dock, and not the previous selection.
+    expect(page).to_have_url(re.compile(r"^(?!.*entity=).*$"))
+    expect(page.get_by_role("complementary", name="Wissen")).to_have_count(0)
+    # The entry the dead link below is followed from, so its pin can name
+    # the place a replace returns to.
+    workspace_url = page.url
+
+    # A dead id degrades: nothing selected, and the param leaves the URL.
+    page.goto(f"{base}/wissen?entity=00000000-0000-0000-0000-000000000000")
+    expect(_row_named(dock.get_by_role("region", name="Entitäten"), "Mira")).to_be_visible()
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_have_count(0)
+    expect(dock.get_by_role("region", name="Mira")).to_have_count(0)
+    expect(page).to_have_url(re.compile(r"^(?!.*entity=).*$"))
+    # The cleanup was a replace — the dead-chapter test's idiom on the
+    # workspace side: the history gains no entry for the cleanup, so back
+    # lands on the entry the dead link was followed from. A push would
+    # re-serve the dead param here.
+    page.go_back()
+    expect(page).to_have_url(workspace_url)
+
+    assert_accessible(page)
+
+
+def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack) -> None:
+    """`?entity=` and `?chapter=` share the address; each writer keeps the other.
+
+    With the dock open, the dock's selection and the workspace's chapter are
+    two params on one URL: selecting an entity keeps the chapter's address,
+    and switching chapters from the rail keeps the entity's. Every writer
+    spreads the search it was handed and sets only its own key — this pair
+    is the pin that neither side drops the other's param.
+    """
+    novel_id = _seed_entities("Die geteilte Adresse")
+    leuchtturm = _entity_id(novel_id, "Leuchtturm")
+    haus = _entity_id(novel_id, "Haus")
+    # A second chapter, so the rail has a switch to make: the seeded novel
+    # holds one ("Ankunft"), and the API is the faster driver.
+    with httpx.Client(base_url=API, timeout=30) as api:
+        listed = api.get(f"/api/writing/novels/{novel_id}/chapters")
+        listed.raise_for_status()
+        first_chapter = listed.json()[0]["id"]
+        second = api.post(
+            f"/api/writing/novels/{novel_id}/chapters",
+            json={"title": "Zweiter Anlauf"},
+        )
+        second.raise_for_status()
+        second_chapter = second.json()["id"]
+
+    base = f"http://127.0.0.1:3100/novels/{novel_id}"
+    page.goto(f"{base}/wissen?entity={leuchtturm}&chapter={first_chapter}")
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Haus")).to_be_visible()
+    # Both params honored on arrival: the named entity's card is open.
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_be_visible()
+
+    # Selecting an entity keeps the chapter's address.
+    _row_named(entities, "Haus").click()
+    expect(dock.get_by_role("region", name="Haus")).to_be_visible()
+    expect(page).to_have_url(re.compile(f"entity={haus}"))
+    expect(page).to_have_url(re.compile(f"chapter={first_chapter}"))
+
+    # Switching chapters from the rail keeps the entity's address — and the
+    # dock stays open: the workspace's own writers never leave the child.
+    page.get_by_role("button", name="Zweiter Anlauf").click()
+    expect(page).to_have_url(re.compile(f"chapter={second_chapter}"))
+    expect(page).to_have_url(re.compile(f"entity={haus}"))
+    expect(dock.get_by_role("region", name="Haus")).to_be_visible()
 
     assert_accessible(page)

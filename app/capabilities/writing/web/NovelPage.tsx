@@ -1,12 +1,16 @@
 import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { client, type Chapter, type Novel } from "@shell/lib/api/client";
-import { publishActiveChapter } from "@shell/lib/activeChapter";
+import { client, type Chapter } from "@shell/lib/api/client";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { subscribeProposal } from "@shell/lib/proposal";
-import { queryClient } from "@shell/lib/query";
+import {
+  activeChapterFallback,
+  queryClient,
+  useChaptersQuery,
+  useNovelQuery,
+} from "@shell/lib/query";
 import { useAutosave, unsavedStatus } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
@@ -28,71 +32,112 @@ export function NovelPage() {
   // By route id, not the route object: the page stands apart from
   // routes.tsx, and the registered router still types `id` from the string.
   const { id: novelId } = useParams({ from: "/novels/$id" });
-  const { rail, focus: focusParam } = useSearch({ from: "/novels/$id" });
+  const { rail, focus: focusParam, chapter: chapterParam } = useSearch({ from: "/novels/$id" });
   // Absent means expanded: only an explicit collapsed encoding (validated to
   // false in routes.tsx) hides the rail.
   const collapsed = rail === false;
   // Absent means the workbench: the URL names a depth only once it deepens.
   const focus: FocusStep = focusParam ?? 0;
   const navigate = useNavigate();
-  const [novel, setNovel] = useState<Novel | null>(null);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [active, setActive] = useState<string | null>(null);
-  // The workbench's own load: pending until both GETs have answered, failed
-  // when either refuses or the wire dies. An outage must not wear the empty
-  // book's clothes — the empty rail's copy is a loaded book's truth.
-  const [pending, setPending] = useState(true);
-  const [failed, setFailed] = useState(false);
+  // The workspace's reads go through Query, the one server-state path: the
+  // novel's row under `["novels", id]`, its chapters under
+  // `["chapters", id]`. Both queryFns throw on a non-ok answer, so the cache
+  // holds either the answer or the failure — a 404 is never an empty book.
+  const novelQuery = useNovelQuery(novelId);
+  const chaptersQuery = useChaptersQuery(novelId);
+  const chapters = chaptersQuery.data ?? [];
+  // The four states of the contract, derived per read, none stored: a read's
+  // error is judged against its own cache. An error with nothing from that
+  // read on screen is the named outage — the retry asks again, and the page
+  // has nothing to lose; an error that still holds its previous answer is a
+  // true refresh failure — the quiet note, and the work stays. The page never
+  // claims the book could not be loaded while its text is on screen. The
+  // chapters read is the workbench's spine (it decides whether there is
+  // something to show); the novel row rides along (the heading's title).
+  const novelLoaded = novelQuery.data !== undefined;
+  const chaptersLoaded = chaptersQuery.data !== undefined;
   // The rail's own create failure: a chapter the user asked for that never
   // arrived must say so beside the button, not vanish into a silent click.
   const [createFailed, setCreateFailed] = useState(false);
+  const pending = novelQuery.isPending || chaptersQuery.isPending;
+  const failed =
+    (novelQuery.isError && !novelLoaded) || (chaptersQuery.isError && !chaptersLoaded);
+  const refreshFailed =
+    !failed &&
+    ((novelQuery.isError && novelLoaded) || (chaptersQuery.isError && chaptersLoaded));
 
-  const load = useCallback(async () => {
-    setPending(true);
-    setFailed(false);
-    try {
-      const [novelResult, chaptersResult] = await Promise.all([
-        client.GET("/api/writing/novels/{novel_id}", {
-          params: { path: { novel_id: novelId } },
-        }),
-        client.GET("/api/writing/novels/{novel_id}/chapters", {
-          params: { path: { novel_id: novelId } },
-        }),
-      ]);
-      if (!novelResult.response.ok || !chaptersResult.response.ok) {
-        // A 404 or a 500 is a failure the page must name — parsing the
-        // error body into `data` would dress it up as an empty book.
-        setFailed(true);
-        return;
-      }
-      setNovel(novelResult.data ?? null);
-      const loadedChapters = chaptersResult.data ?? [];
-      setChapters(loadedChapters);
-      // The chapter to reopen on arrival is the last one written in, read from
-      // the server's updated_at — compared as parsed instants, because two
-      // ISO strings with different timezone offsets do not order as their
-      // moments do. Strict comparison: on equal instants the first row keeps
-      // the lead, and the list is in position order, so the choice stays
-      // deterministic even when two chapters tie.
-      const latest = loadedChapters.reduce<Chapter | null>(
-        (best, chapter) =>
-          best === null || Date.parse(chapter.updated_at) > Date.parse(best.updated_at)
-            ? chapter
-            : best,
-        null,
-      );
-      setActive((previous) => previous ?? latest?.id ?? null);
-    } catch {
-      // The service is not answering at all and the proxy refuses.
-      setFailed(true);
-    } finally {
-      setPending(false);
-    }
-  }, [novelId]);
+  // One retry asks both reads again: the workspace shows a book only when
+  // both have answered, so the recovery is whole or it is not recovery.
+  const retry = useCallback(() => {
+    void novelQuery.refetch();
+    void chaptersQuery.refetch();
+  }, [novelQuery, chaptersQuery]);
 
+  // The selection's address is the URL: a `chapter` param that names one of
+  // the book's own rows is the open chapter, full stop. Without it — or with
+  // one the book does not have — the page falls back to the chapter last
+  // written in, and that fallback is latched, not re-derived: the first list
+  // that yields a chapter fills it, and a refetch may never move the
+  // selection, because only a gated navigation may. (A create's refetch
+  // brings a newer updated_at; a re-derived fallback would flip the editor
+  // to the new row outside the gate and drop the unsaved body with it. An
+  // empty list is no answer of this kind: the latch waits, and the first
+  // chapter's refetch fills it.) The latch is the
+  // book's, not the page's: a palette jump to another novel keeps this route
+  // mounted and changes only the param, and the old book's row must not
+  // survive as the new book's answer — the latch resets, and the new book's
+  // own last-touched chapter fills it once its list lands. Nothing about the
+  // fallback is written back: an arrival without a param leaves the address
+  // bare, so a reload still proves the server's choice.
+  const [fallback, setFallback] = useState<{
+    novel: string;
+    chapter: string | null;
+  } | null>(null);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (chaptersQuery.data === undefined) return;
+    setFallback((previous) =>
+      previous?.novel === novelId && previous.chapter !== null
+        ? previous
+        : { novel: novelId, chapter: activeChapterFallback(chaptersQuery.data) },
+    );
+  }, [chaptersQuery.data, novelId]);
+  const active =
+    chapterParam !== undefined && chapters.some((chapter) => chapter.id === chapterParam)
+      ? chapterParam
+      : fallback?.novel === novelId
+        ? fallback.chapter
+        : null;
+
+  // The selection writes itself into the address — a push, so the back
+  // button walks the chapters. The navigation is the whole switch: the
+  // flush gate below stands in front of it, and the param's landing is
+  // what moves the editor.
+  const select = useCallback(
+    (chapterId: string) => {
+      void navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, chapter: chapterId }),
+      });
+    },
+    [navigate],
+  );
+
+  // A param naming a chapter the book does not have is a dead link: the
+  // selection fell back above, and the dead value leaves the address — a
+  // replace, so the cleanup is not a history step the back button owns.
+  // Waiting for the rows before judging keeps a just-created chapter's
+  // address alive: the create selects only once the list that holds the
+  // row has landed, so this cleanup can never eat it.
+  useEffect(() => {
+    const rows = chaptersQuery.data;
+    if (chapterParam === undefined || rows === undefined) return;
+    if (rows.some((chapter) => chapter.id === chapterParam)) return;
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, chapter: undefined }),
+      replace: true,
+    });
+  }, [chapterParam, chaptersQuery.data, navigate]);
 
   // The proposal bus: the dock's panels (other capabilities) offer text
   // through the shell; the workbench subscribes and feeds the editor's
@@ -103,18 +148,6 @@ export function NovelPage() {
   const [offer, setOffer] = useState<string | null>(null);
   useEffect(() => subscribeProposal(setOffer), []);
   const resolveOffer = useCallback(() => setOffer(null), []);
-
-  // The active chapter is workspace state the docks beside the editor need
-  // — extraction reads the chapter the editor is showing. The shell seam
-  // (not a capability import) carries it: published on every selection
-  // change, null as the workspace goes, so a selection never outlives its
-  // owner.
-  useEffect(() => {
-    publishActiveChapter(active);
-    return () => {
-      publishActiveChapter(null);
-    };
-  }, [active]);
 
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
@@ -227,12 +260,22 @@ export function NovelPage() {
         setCreateFailed(true);
         return;
       }
+      // The rail's list is the cache now: the new row arrives through the
+      // refetch this invalidation triggers, not through a hand-patched
+      // array — every view of the key (the rail, later the palette) reads
+      // the same answer. Awaiting it also orders the selection: the param
+      // is written only once the list that holds the row has landed, so
+      // the dead-param cleanup above can never mistake the new address
+      // for a dead one.
+      await queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
       // The bookshelf hero names the last-touched book, and its truth is the
       // novel row's updated_at — a chapter write is the most common way that
       // changes, so the shelf's ["novels"] cache must not outlive this POST.
+      // The prefix covers the row this page reads as well. The ask rides
+      // alongside, not awaited: the selection waits only for the list it
+      // names, never for the rest of the book.
       void queryClient.invalidateQueries({ queryKey: ["novels"] });
-      setChapters((previous) => [...previous, chapter]);
-      setActive(chapter.id);
+      select(chapter.id);
     } catch {
       // The service is not answering at all and the proxy refuses: the same
       // refusal the rail must name as any other.
@@ -240,16 +283,30 @@ export function NovelPage() {
     }
   }
 
-  const remember = useCallback((chapterId: string, body: string) => {
-    setChapters((previous) =>
-      previous.map((chapter) =>
-        chapter.id === chapterId ? { ...chapter, body } : chapter,
-      ),
-    );
-    // Same truth as the create path above: a settled save advanced the
-    // novel's updated_at, and the hero reads it through ["novels"].
-    void queryClient.invalidateQueries({ queryKey: ["novels"] });
-  }, []);
+  const remember = useCallback(
+    (chapterId: string, body: string) => {
+      // The saved body reaches the cache before the ask: the patch makes
+      // the settled text the key's own answer — the words and the freshness
+      // their updated_at stands for — so a refetch that never answers (or
+      // answers refused) cannot remount the pre-save row over them on a
+      // later switch. The refetch stays the truth; the patch only holds
+      // the page's ground until it lands.
+      queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
+        rows?.map((row) =>
+          row.id === chapterId
+            ? { ...row, body, updated_at: new Date().toISOString() }
+            : row,
+        ),
+      );
+      // This callback is `onSaved` — it fires only on success — so a failed
+      // save never asks for anything.
+      void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+      // Same truth as the create path above: a settled save advanced the
+      // novel's updated_at, and the shelf's hero reads it through ["novels"].
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+    [novelId],
+  );
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
 
@@ -271,30 +328,26 @@ export function NovelPage() {
   const unsavedNow = useRef(unsaved);
   unsavedNow.current = unsaved;
 
-  /** Leave a chapter: save first, ask only when the save did not land. */
-  async function leave(then: () => void) {
-    const outcome = await flush();
-    if (outcome === "failed" && !window.confirm(t("save.confirmLeave"))) return;
-    then();
-  }
-
-  // Every way out of the book — the shell's top bar, the shelf link, the
-  // browser's back and forward — is a router navigation, and this is the one
-  // place they all pass. A destination inside the book's own subtree (the
-  // dock's routes, a focus step, the rail) is no leave: the editor stays
-  // mounted and the body stays here.
-  // `enableBeforeUnload` is the same question for the tab close, which has no
-  // navigation to intercept.
+  // Every way out of the chapter — the rail, the docks and their panel
+  // state, history's back and forward, the shell's links, and whatever
+  // jump lands here later — is a router navigation, and this is the one
+  // place they all pass. While text is unsaved the gate flushes first;
+  // only a flush that did not land asks, and a dismissed ask keeps the
+  // work. The destination does not matter, because the body does: anything
+  // the router would move away from the editor is worth the same question.
+  // An accepted ask does not drop the body here, either: a panel toggle
+  // would wipe a refused write while the editor stayed mounted — the
+  // notice retracting, the next leave asking nothing — so the body is
+  // cleared only where the chapter really changes (the effect below) or
+  // the page really goes (the autosave's own teardown).
+  // `enableBeforeUnload` is the same question for the tab close, which has
+  // no navigation to intercept.
   useBlocker({
-    shouldBlockFn: async ({ next: to }) => {
-      const book = `/novels/${novelId}`;
-      if (to.pathname === book || to.pathname.startsWith(`${book}/`)) return false;
+    shouldBlockFn: async () => {
       if (!unsavedNow.current) return false;
       const outcome = await flush();
       if (outcome !== "failed") return false;
-      if (!window.confirm(t("save.confirmLeave"))) return true;
-      discard();
-      return false;
+      return !window.confirm(t("save.confirmLeave"));
     },
     enableBeforeUnload: () => unsavedNow.current,
   });
@@ -325,7 +378,13 @@ export function NovelPage() {
           <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
             {t("nav.back")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{novel?.title}</h1>
+          {/* The heading names the book only when the book's row is here: an
+              empty h1 on the outage page would be a heading about nothing. */}
+          {novelQuery.data ? (
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+              {novelQuery.data.title}
+            </h1>
+          ) : null}
         </>
       ) : null}
 
@@ -333,13 +392,26 @@ export function NovelPage() {
           past the chapter list. Collapsed, the rail unmounts and the editor
           takes the full width. The frame stays while the book loads or
           fails — the toolbar and the docks are independent of the book's
-          row, and a dock's own outage story must stay reachable. */}
-      <div className="mt-6 flex items-start gap-6">
+          row, and a dock's own outage story must stay reachable. Below the
+          desktop breakpoint the row is the overlays' containing block: the
+          panels float above the editor instead of standing beside it. */}
+      <div className="mt-6 flex items-start gap-6 max-lg:relative">
         {/* The rail needs the chapter list. While it loads, or after the
             load failed, there is no list to be empty — the empty copy would
             mask exactly the state this page just named in the editor column. */}
         {showRail && !pending && !failed ? (
-          <aside className="w-56 shrink-0" aria-label={t("chapters.heading")}>
+          <aside
+            /* Beside the editor at ≥1024 (the columns the desktop E2Es
+               pin); below, a drawer over it: anchored to the row's left
+               edge but starting below the toolbar band, so the focus
+               toggle and the dock tabs stay clickable while the editor is
+               covered. The list scrolls inside the drawer instead of
+               spilling past its background onto the page. The width stays
+               in flow terms — the overlay answers the media query, the
+               collapse machinery answers the user. */
+            className="w-56 shrink-0 max-lg:absolute max-lg:top-12 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-lg max-lg:border max-lg:border-border max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+            aria-label={t("chapters.heading")}
+          >
             <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
             <button
               type="button"
@@ -358,10 +430,11 @@ export function NovelPage() {
                     type="button"
                     aria-pressed={chapter.id === active}
                     onClick={() => {
-                      // The chapter already open is no leave: asking there
-                      // would discard a failure the user never left.
+                      // The chapter already open is no switch: a second
+                      // history entry for the same address would only eat
+                      // the back button.
                       if (chapter.id === active) return;
-                      void leave(() => setActive(chapter.id));
+                      select(chapter.id);
                     }}
                     className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   >
@@ -372,7 +445,7 @@ export function NovelPage() {
             </ul>
             <button
               type="button"
-              onClick={() => void leave(() => void createChapter())}
+              onClick={() => void createChapter()}
               className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
             >
               {t("chapters.new")}
@@ -430,31 +503,57 @@ export function NovelPage() {
             // or empty-looking book.
             <p className="mt-6 text-sm text-muted">{t("chapters.loading")}</p>
           ) : failed ? (
-            // The book could not be loaded — refused or unreachable. The
-            // failure is named where the retry is one press away.
+            // The book could not be loaded — refused or unreachable, with
+            // nothing on screen to keep. The failure is named where the
+            // retry is one press away.
             <div className="mt-6">
               <p role="alert" className="text-sm text-danger">
                 {t("chapters.errorLoad")}
               </p>
               <button
                 type="button"
-                onClick={() => void load()}
+                onClick={retry}
                 className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
               >
                 {t("chapters.retry")}
               </button>
             </div>
-          ) : current ? (
-            <ChapterEditor
-              key={current.id}
-              chapterId={current.id}
-              body={current.body}
-              status={status}
-              schedule={schedule}
-              proposal={offer ?? undefined}
-              onProposalResolve={resolveOffer}
-            />
-          ) : null}
+          ) : (
+            <>
+              {refreshFailed ? (
+                // The refresh failed, but the chapters on screen are the
+                // last loaded ones: a quiet note beside the work, not the
+                // outage's louder clothes — the editor and the rail stay,
+                // and the retry asks again. `role="status"` is what keeps
+                // the note from being silent to a screen reader: background
+                // speech about work that stays, not an alert about work
+                // that is gone.
+                <div className="mt-6 flex items-baseline gap-3">
+                  <p role="status" className="text-sm text-muted">
+                    {t("chapters.refreshFailed")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="text-sm text-muted underline-offset-4 hover:underline"
+                  >
+                    {t("chapters.retry")}
+                  </button>
+                </div>
+              ) : null}
+              {current ? (
+                <ChapterEditor
+                  key={current.id}
+                  chapterId={current.id}
+                  body={current.body}
+                  status={status}
+                  schedule={schedule}
+                  proposal={offer ?? undefined}
+                  onProposalResolve={resolveOffer}
+                />
+              ) : null}
+            </>
+          )}
         </section>
 
         {/* The right dock: the open registry row's child route renders here —
@@ -463,7 +562,13 @@ export function NovelPage() {
             never scrolls the editor out of view. */}
         {openDock ? (
           <aside
-            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4"
+            /* Same contract as the rail, mirrored: a drawer from the
+               right below 1024, the desktop's dock column at ≥1024 — also
+               starting below the toolbar band, so switching docks stays a
+               tab click. The panel surface it already had (border,
+               bg-panel, padding) is what the drawer floats on; only the
+               anchor and the shadow are breakpoint-bound. */
+            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4 max-lg:absolute max-lg:top-12 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay"
             aria-label={t(openDock.titleKey)}
           >
             <div className="flex items-center justify-between gap-2">

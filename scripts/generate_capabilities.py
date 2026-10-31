@@ -3,7 +3,7 @@
 
 Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4) —
 and ``i18n/*.json``, whose *filenames* are the set of languages. Nothing declares
-a language twice. Seven views, none hand-edited, all committed:
+a language twice. Nine views, none hand-edited, all committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
@@ -14,12 +14,20 @@ a language twice. Seven views, none hand-edited, all committed:
 * ``web/lib/generated/catalogs.ts`` — the imports, the ``Locale`` union and the
   catalog map, so a new ``i18n/<code>.json`` needs no TypeScript edit;
 * ``web/lib/generated/routes.ts`` — the capability route table the router
-  mounts, one import per capability that owns ``web/routes.tsx``, and the one
-  composition point of the dock convention: dockRoutes factories are called
-  with the exported workspaceRoute, so capabilities never import each other;
+  mounts, one import per capability that owns ``web/routes.tsx``, and the
+  composition points of two conventions: dockRoutes factories are called with
+  the exported workspaceRoute and settingsRoutes factories with the exported
+  settingsRoute, so capabilities never import each other;
 * ``web/lib/generated/docks.ts`` — the dock registry the workspace renders its
   dock tabs from, one row per capability exporting ``dockRoutes``: a new dock
   appears by existing, with zero generator changes;
+* ``web/lib/generated/settingsPages.ts`` — the settings registry the settings
+  hub renders its cluster list from, one row per capability exporting
+  ``settingsRoutes``: a new cluster appears by existing, with zero generator
+  changes;
+* ``web/lib/generated/commands.ts`` — the command registry the palette
+  renders and filters, one import per capability owning
+  ``web/commands.ts(x)``, aggregated in the palette's row order;
 * ``docs/user/INDEX.md`` — one row per capability per locale, with the table's
   own words read from the catalogs.
 
@@ -66,6 +74,16 @@ class Facts:
 class Dock:
     """One row of the dock registry: a capability's dock as the workspace
     sees it — identity, route and catalog key, nothing else."""
+
+    id: str
+    path: str
+    title_key: str
+
+
+@dataclass(frozen=True)
+class SettingsPage:
+    """One row of the settings registry: a capability's settings page as the
+    hub sees it — identity, route and catalog key, nothing else."""
 
     id: str
     path: str
@@ -276,6 +294,40 @@ def _dock_path(source: str, capability: str) -> str:
     return literals[0]
 
 
+def _settings_route_path(source: str, capability: str) -> str:
+    """The settings route's path literal, traced through the export's alias.
+
+    Raise SystemExit if the alias, createRoute declaration, or path cannot be read.
+    """
+    alias = re.search(r"export const settingsRoute = (\w+)", source)
+    declaration = re.search(rf"const {alias.group(1)} = createRoute\(", source) if alias else None
+    literal = re.search(r'path: "([^"]+)"', source[declaration.end() :]) if declaration else None
+    if literal is None:
+        raise SystemExit(
+            f"app/capabilities/{capability}/web/routes.tsx: settingsRoute must alias"
+            " a `const <name> = createRoute(…)` whose path literal the scan can"
+            " read — the settings registry derives its rows' paths from it"
+        )
+    return literal.group(1)
+
+
+def _settings_path(source: str, capability: str) -> str:
+    """The one path literal inside the settingsRoutes export.
+
+    Raise SystemExit unless exactly one path is found before ``] as const;``.
+    """
+    block = re.search(r"export const settingsRoutes\b.*?\] as const;", source, re.DOTALL)
+    literals = re.findall(r'path: "([^"]+)"', block.group(0)) if block else []
+    if len(literals) != 1:
+        raise SystemExit(
+            f"app/capabilities/{capability}/web/routes.tsx: the settings"
+            f" registry reads exactly one path literal from the settingsRoutes"
+            f" export, found {len(literals)} — one settings page per"
+            " capability; extend the registry contract before exporting several"
+        )
+    return literals[0]
+
+
 @dataclass(frozen=True)
 class DockScan:
     """The dock convention as one scan of the route sources reads it: the
@@ -341,6 +393,77 @@ def scan_docks(sources: dict[str, str]) -> DockScan:
     return DockScan(docks=rows, host=hosts[0])
 
 
+@dataclass(frozen=True)
+class SettingsScan:
+    """The settings convention as one scan of the route sources reads it: the
+    registry rows and the one capability whose settings route hosts them."""
+
+    rows: tuple[SettingsPage, ...]
+    host: str | None
+
+
+def scan_settings(sources: dict[str, str]) -> SettingsScan:
+    """The settings convention, discovered from the route sources.
+
+    Discovery is a substring scan, not a parse — the caveat that keeps this
+    honest: a capability counts as a settings page when its routes.tsx
+    contains ``export const settingsRoutes`` and as the host when it
+    contains ``export const settingsRoute`` as a whole word — ``settingsRoutes``
+    contains that substring, so the bare check would read every contributor
+    as a host. The host export must alias a createRoute declaration with a
+    readable path; each settings export must contain exactly one path
+    literal before ``] as const;``. No host and no rows returns an empty
+    scan. Raise SystemExit for multiple hosts, rows without a host,
+    unreadable paths, or duplicate full page paths. Other source drift may
+    still require inspection of the generated output.
+    """
+    pages = [
+        capability for capability, text in sources.items() if "export const settingsRoutes" in text
+    ]
+    hosts = [
+        capability
+        for capability, text in sources.items()
+        if re.search(r"export const settingsRoute\b", text)
+    ]
+    if len(hosts) > 1:
+        raise SystemExit(
+            f"{len(hosts)} capabilities export settingsRoute ({hosts}); the"
+            " settings convention parents every page under exactly one"
+            " settings route"
+        )
+    if pages and not hosts:
+        raise SystemExit(
+            f"settingsRoutes exported by {pages}, but no capability exports"
+            " settingsRoute to parent them under"
+        )
+    if not hosts:
+        return SettingsScan(rows=(), host=None)
+    settings_route = _settings_route_path(sources[hosts[0]], hosts[0])
+    rows = tuple(
+        SettingsPage(
+            id=capability,
+            path=f"{settings_route}/{_settings_path(sources[capability], capability)}",
+            title_key=f"{capability}.settingsTitle",
+        )
+        for capability in pages
+    )
+    # Two capabilities' pages resolving to the same full path would put two
+    # registry rows behind one route: the hub would list two clusters that
+    # navigate identically. The guard names every capability at the path,
+    # so the message alone points at the fix.
+    owners: dict[str, list[str]] = {}
+    for page in rows:
+        owners.setdefault(page.path, []).append(page.id)
+    for path, names in owners.items():
+        if len(names) > 1:
+            raise SystemExit(
+                f"capabilities {names} resolve their settings pages to the"
+                f" same path ({path}); the settings registry is one row per"
+                " path"
+            )
+    return SettingsScan(rows=rows, host=hosts[0])
+
+
 def typescript_routes(root: Path) -> str:
     """The web-side view: the capability route table the router mounts."""
     sources = route_sources(root)
@@ -353,6 +476,15 @@ def typescript_routes(root: Path) -> str:
     scan = scan_docks(sources)
     docks = tuple(dock.id for dock in scan.docks)
     hosts = [scan.host] if scan.host is not None else []
+    # The settings convention, discovered by the same scan the registry view
+    # reads: a capability exports ``settingsRoutes`` (factories that parent
+    # pages at the one settings route) and exactly one exports
+    # ``settingsRoute`` — the dock convention one level down in the URL
+    # space. Nothing contributes until a capability exports, so the table
+    # comes out unchanged until then.
+    settings_found = scan_settings(sources)
+    settings = tuple(page.id for page in settings_found.rows)
+    settings_hosts = [settings_found.host] if settings_found.host is not None else []
 
     def import_names(capability: str) -> str:
         """Name the route exports this capability contributes to the composed table."""
@@ -361,6 +493,10 @@ def typescript_routes(root: Path) -> str:
             names += f", dockRoutes as {capability}Docks"
         if docks and capability in hosts:
             names += ", workspaceRoute"
+        if capability in settings:
+            names += f", settingsRoutes as {capability}Settings"
+        if settings and capability in settings_hosts:
+            names += ", settingsRoute"
         return names
 
     imports = "".join(
@@ -372,9 +508,19 @@ def typescript_routes(root: Path) -> str:
         f"const {capability}DockRoutes = {capability}Docks.map((dock) => dock(workspaceRoute));\n"
         for capability in docks
     )
+    settings_consts = "".join(
+        f"const {capability}SettingsRoutes ="
+        f" {capability}Settings.map((page) => page(settingsRoute));\n"
+        for capability in settings
+    )
     spread = "".join(f"  ...{capability},\n" for capability in found)
     dock_spread = (
         "".join(f"  ...{capability}DockRoutes,\n" for capability in docks) if docks else ""
+    )
+    settings_spread = (
+        "".join(f"  ...{capability}SettingsRoutes,\n" for capability in settings)
+        if settings
+        else ""
     )
     dock_note = (
         "  //\n"
@@ -384,7 +530,25 @@ def typescript_routes(root: Path) -> str:
         if docks
         else ""
     )
+    settings_note = (
+        "  //\n"
+        "  // Settings children come after every capability's own routes: the\n"
+        "  // router initializes a route from its parent, so the settings route\n"
+        "  // must be in the table before the settings routes parented at it.\n"
+        if settings
+        else ""
+    )
     dock_block = f"{dock_consts}\n" if dock_consts else ""
+    settings_block = f"{settings_consts}\n" if settings_consts else ""
+    settings_header = (
+        "//\n"
+        "// Settings composition: a capability may export settingsRoutes —\n"
+        "// factories that take the settings route and return child routes\n"
+        "// for it — and exactly one capability exports settingsRoute,\n"
+        "// mirroring the dock convention one level down in the URL space.\n"
+        if settings
+        else ""
+    )
     return (
         "// Generated by scripts/generate_capabilities.py from"
         " app/capabilities/*/web/routes.tsx — DO NOT EDIT.\n"
@@ -402,11 +566,12 @@ def typescript_routes(root: Path) -> str:
         "// passes the workspace route into every factory: capabilities never\n"
         "// import each other; this generated table is the one composition\n"
         "// point.\n"
+        f"{settings_header}"
         f"{imports}"
         "\n"
-        f"{dock_block}"
+        f"{dock_block}{settings_block}"
         "export const capabilityRoutes = [\n"
-        f"{spread}{dock_note}{dock_spread}] as const;\n"
+        f"{spread}{dock_note}{dock_spread}{settings_note}{settings_spread}] as const;\n"
     )
 
 
@@ -438,6 +603,119 @@ def typescript_docks(root: Path) -> str:
         "  path: string;\n"
         "  titleKey: keyof typeof en;\n"
         "}>;\n"
+    )
+
+
+def typescript_settings_pages(root: Path) -> str:
+    """The web-side view: the settings registry the settings hub renders its
+    cluster list from."""
+    scan = scan_settings(route_sources(root))
+    rows = "".join(
+        f'  {{ id: "{page.id}", path: "{page.path}", titleKey: "{page.title_key}" }},\n'
+        for page in scan.rows
+    )
+    table = (
+        f"export const settingsPages = [\n{rows}] as const"
+        if rows
+        else "export const settingsPages = [] as const"
+    )
+    return (
+        "// Generated by scripts/generate_capabilities.py from"
+        " app/capabilities/*/web/routes.tsx — DO NOT EDIT.\n"
+        "// The settings registry: one row per capability that exports\n"
+        "// settingsRoutes, sorted — the settings hub renders one cluster per\n"
+        "// row and navigates to the row's path. A new cluster appears here by\n"
+        "// adding its settingsRoutes, with zero generator changes.\n"
+        "//\n"
+        "// as const, no annotation: the literal path carries each row's route\n"
+        "// into the cluster's `to=` (a drifted row is a build error), and the\n"
+        "// title keys are checked against the English catalog by the compiler.\n"
+        'import en from "../../../i18n/en.json";\n'
+        "\n"
+        f"{table} satisfies ReadonlyArray<{{\n"
+        "  id: string;\n"
+        "  path: string;\n"
+        "  titleKey: keyof typeof en;\n"
+        "}>;\n"
+    )
+
+
+# The palette's row order: a deliberate arrangement, not the folder sort.
+# Writing leads (the editor's own commands first), then the app-wide
+# surfaces. A command module outside this order stops generation instead of
+# silently sliding to the end of the aggregation.
+COMMAND_ORDER = ("writing", "settings", "prompts", "knowledge")
+
+
+def scan_commands(root: Path) -> tuple[str, ...]:
+    """The commands convention, discovered from the capability folders.
+
+    The file's presence is the contract — ``app/capabilities/<id>/web/
+    commands.ts(x)``, the same convention as ``web/routes.tsx`` — and, like
+    the dock scan, discovery reads no contents: a commands file that never
+    exports ``commands`` is not caught here, it surfaces as a build error at
+    the generated import instead of a silently wrong registry row. Raise
+    SystemExit for a capability holding both ``commands.ts`` and
+    ``commands.tsx`` (the generated import is extension-less, so which one
+    defines the commands would be ambiguous) and for a module outside
+    ``COMMAND_ORDER`` — the palette's row order is an arrangement someone
+    decided, and the generator does not extend it on its own.
+    """
+    found: set[str] = set()
+    for folder in sorted((root / "app" / "capabilities").iterdir()):
+        ts = folder / "web" / "commands.ts"
+        tsx = folder / "web" / "commands.tsx"
+        if ts.is_file() and tsx.is_file():
+            raise SystemExit(
+                f"app/capabilities/{folder.name}/web has commands.ts and"
+                " commands.tsx; the generated import is extension-less, so"
+                " which one defines the capability's commands is ambiguous"
+                " — keep one"
+            )
+        if ts.is_file() or tsx.is_file():
+            found.add(folder.name)
+    strangers = sorted(found - set(COMMAND_ORDER))
+    if strangers:
+        raise SystemExit(
+            f"{strangers} own command modules but sit outside the palette's"
+            f" row order {list(COMMAND_ORDER)} — the order is a deliberate"
+            " arrangement, so generation stops instead of appending:"
+            " extend COMMAND_ORDER in scripts/generate_capabilities.py"
+        )
+    return tuple(capability for capability in COMMAND_ORDER if capability in found)
+
+
+def typescript_commands(root: Path) -> str:
+    """The web-side view: the command registry the palette renders and filters."""
+    found = scan_commands(root)
+    imports = "".join(
+        f"import {{ commands as {capability}Commands }} from"
+        f' "../../../app/capabilities/{capability}/web/commands";\n'
+        for capability in found
+    )
+    spread = "".join(f"  ...{capability}Commands,\n" for capability in found)
+    table = (
+        f"export const commands = [\n{spread}] as const"
+        if found
+        else "export const commands = [] as const"
+    )
+    return (
+        "// Generated by scripts/generate_capabilities.py from"
+        " app/capabilities/*/web/commands.ts(x) — DO NOT EDIT.\n"
+        "// The command registry: one import per capability that owns a\n"
+        "// commands module, aggregated in the palette's pinned row order\n"
+        "// (writing, settings, prompts, knowledge — COMMAND_ORDER in\n"
+        "// scripts/generate_capabilities.py). A new command appears by\n"
+        "// existing; a capability outside the pinned order stops generation\n"
+        "// instead of appending to it.\n"
+        "//\n"
+        "// as const, no annotation: the rows keep their literal shape, and\n"
+        "// the satisfies checks every row against Command — a titleKey\n"
+        "// missing from the English catalog is a build error here.\n"
+        'import type { Command } from "../commands";\n'
+        "\n"
+        f"{imports}\n"
+        f"{table} satisfies ReadonlyArray<Command>;\n"
     )
 
 
@@ -475,7 +753,7 @@ def docs_index(
 
 
 def main() -> None:
-    """Validate capability inputs and overwrite the seven views from the current directory.
+    """Validate capability inputs and overwrite the nine views from the current directory.
 
     Validation may raise SystemExit; file and parse errors propagate. Parent
     directories are created as needed when writing the views.
@@ -491,6 +769,8 @@ def main() -> None:
         "web/lib/generated/catalogs.ts": typescript_catalogs(known),
         "web/lib/generated/routes.ts": typescript_routes(root),
         "web/lib/generated/docks.ts": typescript_docks(root),
+        "web/lib/generated/settingsPages.ts": typescript_settings_pages(root),
+        "web/lib/generated/commands.ts": typescript_commands(root),
         "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded),
     }
     for target, content in outputs.items():

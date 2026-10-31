@@ -50,15 +50,25 @@ const novelRoute = createRoute({
   // `?dock=chat` link still parses without error, but the output never
   // carries it — a key that round-tripped through rail/focus writes would
   // put the dock back in the URL, contradicting the clean-URL contract.
+  // Chapter rides the same rules: the selection's address, accepted as any
+  // non-empty string (an id is never a number, so the parser's typing can
+  // not mangle it) and judged against the book's own rows in the page — a
+  // dead id degrades there to the last-touched chapter instead of erroring
+  // here. Absent is the ordinary workbench: the server's last-touched
+  // choice, and nothing writes it back.
   validateSearch: (search: {
     rail?: unknown;
     focus?: unknown;
     dock?: unknown;
-  }): { rail?: boolean; focus?: FocusStep } => {
+    chapter?: unknown;
+  }): { rail?: boolean; focus?: FocusStep; chapter?: string } => {
     const focus = focusStep(search.focus);
     return {
       rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
       ...(focus > 0 ? { focus } : {}),
+      ...(typeof search.chapter === "string" && search.chapter !== ""
+        ? { chapter: search.chapter }
+        : {}),
     };
   },
 });

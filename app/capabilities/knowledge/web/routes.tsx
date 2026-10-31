@@ -33,6 +33,29 @@ export const dockRoutes = [
       getParentRoute: () => parent,
       path: "wissen",
       component: KnowledgeDock,
+      // The selected entity is URL state, the workspace's chapter param's
+      // sibling: a link opens the dock on the entity it names (the palette's
+      // deep links ride this contract). Tolerant in, like the parent's own
+      // params: accepted as any non-empty string — an id is never a number,
+      // so the parser's typing cannot mangle it — and judged against the
+      // novel's own rows in the panel, where a dead id degrades to no
+      // selection instead of erroring here. Absent is the ordinary dock:
+      // nothing selected, and nothing writes that absence back.
+      // The param lives on the dock route, not the workspace — only an open
+      // dock reads it. Closing the dock does not strip it: a navigation's
+      // search is carried whole, and each matched route's validateSearch
+      // writes onto it, so a param no writer removed rides along — inert
+      // while the dock is unmounted, and the selection restores when the
+      // dock opens again. While the dock is open both outputs merge in the
+      // URL: the entity and the chapter name different things and never
+      // collide.
+      validateSearch: (search: { entity?: unknown }): { entity?: string } => {
+        return {
+          ...(typeof search.entity === "string" && search.entity !== ""
+            ? { entity: search.entity }
+            : {}),
+        };
+      },
     }),
 ] as const;
 

@@ -1,12 +1,13 @@
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { useEffect, useId, useState } from "react";
 
-import { activeChapter, subscribeActiveChapter } from "@shell/lib/activeChapter";
 import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
 import {
+  activeChapterFallback,
   queryClient,
   useAcceptSuggestion,
+  useChaptersQuery,
   useDiscardSuggestion,
   useEnqueueExtraction,
   useJobQuery,
@@ -24,11 +25,16 @@ import { relationTypeLabel } from "./relations";
 export function ExtractionPanel() {
   const t = useTranslation();
   const { id: novelId } = useParams({ from: "/novels/$id" });
-  // The chapter is the editor's, not the dock's: the workspace publishes
-  // its selection through the shell seam, and the panel reads it on mount
-  // (the dock opens after the selection happened) and on every change.
-  const [chapterId, setChapterId] = useState<string | null>(activeChapter());
-  useEffect(() => subscribeActiveChapter(setChapterId), []);
+  // The chapter is the editor's, and the selection's address is the URL:
+  // the panel reads the workspace's own chapter param, and when the
+  // address names none — the param-less workbench, where the editor shows
+  // the last chapter written in — it falls back to that same chapter, from
+  // the same cached list (the answer is deduped with the workbench's own
+  // read). One truth, so extraction asks for exactly what the editor
+  // shows, and nothing is written to the URL for it.
+  const { chapter: chapterParam } = useSearch({ from: "/novels/$id" });
+  const chapters = useChaptersQuery(novelId);
+  const chapterId = chapterParam ?? activeChapterFallback(chapters.data ?? []);
   const [jobId, setJobId] = useState<string | null>(null);
   const [enqueueFailed, setEnqueueFailed] = useState(false);
   const job = useJobQuery(jobId);
