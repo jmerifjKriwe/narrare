@@ -101,13 +101,13 @@ test-frontend:
 build:
     pnpm --dir web build
 
-# Create the schema directly from the models. No migrations: the product is
-# not live, so a schema change lands in the models and the database is
-# recreated — `just db-reset` does that for the development database.
+# Bring the development database to the migration history's head. A missing
+# schema is created; an existing one keeps its tables and is upgraded.
 db-init:
     uv run python -m app.kernel.db.init
 
-# Recreate the development database and its schema.
+# Recreate the development database: drop it, then end in the same upgrade
+# db-init ends in.
 db-reset:
     @echo "This drops narrare_v2_dev. Ctrl+C to cancel."
     @sleep 3
