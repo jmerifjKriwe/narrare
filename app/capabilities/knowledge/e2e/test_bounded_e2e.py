@@ -32,8 +32,18 @@ def _create_book(page: Page, title: str) -> None:
 
 
 def _chapter(page: Page, body: str) -> None:
-    """Create one chapter and type `body` into it, waiting for the save."""
+    """Create one chapter and type `body` into it, waiting for the save.
+
+    The switch remounts the editor on the new chapter, so an editor that is
+    merely visible can still be the *previous* chapter's: typing then lands in
+    a chapter the caller did not name, and the new one stays empty. The rail's
+    pressed row is the proof that the switch has landed.
+    """
+    rail = page.get_by_role("complementary", name="Kapitel")
+    count = rail.get_by_role("listitem").count()
     page.get_by_role("button", name="Neues Kapitel").click()
+    expect(rail.get_by_role("listitem")).to_have_count(count + 1)
+    expect(rail.locator('button[aria-pressed="true"]')).to_have_text(f"Kapitel {count + 1}")
     editor = page.locator(".ProseMirror")
     expect(editor).to_be_visible()
     editor.click()
