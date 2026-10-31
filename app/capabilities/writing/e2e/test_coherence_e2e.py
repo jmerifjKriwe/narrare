@@ -315,9 +315,17 @@ def _save_novel_override(page: Page) -> None:
 
 
 def _sweep_face(page: Page, url: str, witness: Callable[[], None], *, prose: bool) -> None:
-    """One face at the current width: the witness proves arrival, the floor measures."""
+    """One face at the current width: the witness proves arrival, the floor measures.
+
+    A face that measures prose waits for the editor itself. Its own witness can
+    arrive while the book is still loading on the dock route — the workspace
+    renders the dock and the toolbar independently of the novel's row — and a
+    measurement taken then reads a page that has no editor to measure.
+    """
     page.goto(url)
     witness()
+    if prose:
+        expect(page.locator(PROSE)).to_be_visible()
     assert_page_fits(page, prose_selector=PROSE if prose else None)
 
 

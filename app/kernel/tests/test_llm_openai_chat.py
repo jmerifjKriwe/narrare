@@ -116,6 +116,34 @@ async def test_done_is_last_without_the_wires_done_line_too() -> None:
     assert events == EXPECTED_EVENTS
 
 
+async def test_a_vendor_answers_with_the_prose_the_caller_chose() -> None:
+    """The stand-in says what it was told to say, in pieces, in order.
+
+    The leading space matters: a continuation that follows a full stop arrives
+    with one, and the editor shows the stream exactly as it was sent.
+    """
+    prose = " The fog lifted off the lake and laid itself over the road."
+    with chat_vendor() as vendor:
+        vendor.set_answer(prose)
+        events = [
+            event async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
+        ]
+    deltas = [event.text for event in events if isinstance(event, Delta)]
+    assert len(deltas) > 1
+    assert "".join(deltas) == prose
+
+
+async def test_a_vendor_keeps_the_answers_trailing_whitespace() -> None:
+    """The stream's last bytes survive: a streamed newline is not trimmed."""
+    prose = "The fog lifted off the lake.\n"
+    with chat_vendor() as vendor:
+        vendor.set_answer(prose)
+        events = [
+            event async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
+        ]
+    assert "".join(event.text for event in events if isinstance(event, Delta)) == prose
+
+
 async def test_a_refusal_raises_exactly_once() -> None:
     """A 401 raises, and the vendor saw one request: ``max_retries=0`` in force."""
     with chat_vendor() as vendor:
