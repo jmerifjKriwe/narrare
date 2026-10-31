@@ -6,6 +6,8 @@
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![codecov](https://codecov.io/gh/jmerifjKriwe/narrare/branch/main/graph/badge.svg)](https://codecov.io/gh/jmerifjKriwe/narrare)
 
+<img src="assets/logo/lockup.svg" alt="" width="180" />
+
 > Local-first, AI-assisted creative writing. Bring your own model — cloud or local.
 
 Narrare is a writing environment for novels that runs on your machine. A shelf of
