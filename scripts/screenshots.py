@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 import httpx
 from playwright.sync_api import FloatRect, expect, sync_playwright
 
-from app.kernel.testing.stack import run_stack
+from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack
 from app.kernel.testing.vendor import chat_vendor
 
 if TYPE_CHECKING:
@@ -33,8 +33,10 @@ if TYPE_CHECKING:
 
     from app.kernel.testing.vendor import ChatVendor
 
-API = "http://127.0.0.1:8000"
-WEB = "http://127.0.0.1:3100"
+API = f"http://127.0.0.1:{API_PORT}"
+WEB = f"http://127.0.0.1:{WEB_PORT}"
+"""The ports ``run_stack`` binds — it reads ``NARRE_E2E_API_PORT`` and
+``NARRE_E2E_WEB_PORT``, so a second stack on this machine needs no code edit."""
 DATABASE = "narrare_v2_screenshots"
 DEMO = "dead-signal"
 """The bundled English demo: three chapters, eight knowledge entries, relations."""
