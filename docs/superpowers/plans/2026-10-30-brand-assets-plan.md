@@ -4,7 +4,7 @@
 
 **Goal:** Marke-Asset-Familie für Narrare bauen: Kachel-N-Icon, EB-Garamond-Wortmark (gehärtete Pfade), horizontale Lockup, Favicons (SVG+PNG), GitHub-Social-Preview und Repo-Avatar; Favicon-Links in `web/index.html`, Lockup-Embed in `README.md`.
 
-**Architecture:** Alle SVGs teilen eine Glyphenquelle: EB Garamond 600, Subset „Narrare", via `fontTools` nach Pfade extrahiert. Raster-Ableitungen offline via `cairosvg`. Eine kanonische Festpalette, berechnet aus den Token in `web/globals.css`; keine Token-Änderung, keine Webfont-Einführung.
+**Architecture:** Alle SVGs teilen eine Glyphenquelle: EB Garamond 600, Subset „Narrare“, via `fontTools` nach Pfade extrahiert. Raster-Ableitungen offline via `cairosvg`. Eine kanonische Festpalette, berechnet aus den Token in `web/globals.css`; keine Token-Änderung, keine Webfont-Einführung.
 
 **Tech Stack:** Python 3.14 (`.venv`), fontTools + brotli, cairosvg, Pillow; git + gh CLI; `just check` / `just verify` als Gates.
 
@@ -30,7 +30,7 @@ einem committeten SVG; nur Pfade aus Task 1. Kanonische Festpalette, keine
 Theme-Varianten. Prose-Surface/Token bleiben unverändert.
 
 **Erwartetes Datei-Set (porcelain-Grenze für Task 7; Koordinator-Ruling
-„Asset-Familie, einmalig"):**
+„Asset-Familie, einmalig“):**
 Create: `assets/logo/icon.svg`, `assets/logo/wordmark.svg`,
 `assets/logo/lockup.svg`, `web/public/favicon.svg`,
 `web/public/favicon-32.png`, `web/public/favicon-16.png`,
@@ -58,7 +58,7 @@ Test, der sie pinnt (jeweils im eigenen Task):
 2. **README auf GitHub ohne installierte Font** — ein unbeabsichtigtes
    `<text>`/`font-family` hätte Georgia-Fallback zur Folge. Pinnt Task 2:
    `rg -ic 'text|font-family'` über alle drei SVGs muss 0 liefern.
-3. **Kerning-Sprünge bei „aa"/„ar"** (nur Advances, kein GPOS) — Pinnt Task 5:
+3. **Kerning-Sprünge bei „aa“/„ar“** (nur Advances, kein GPOS) — Pinnt Task 5:
    Screenshot in Arbeitsbreite; korrigierbar nur über den mitgeloggten
    Letter-Offset (±6 Einheiten, in deviations dokumentiert).
 4. **GitHub-Social-Image-Beschaffenheit** (2:1, Ränder frei von Tinte):
@@ -91,7 +91,7 @@ Erwartet: Versionszeile. Schlägt sie fehl: Task-Abbruch, Report.
 Falls fehlend, exakt nachstellen:
 `curl -s -A "<Browser-UA, Chrome-format>" "https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600&text=Narrare&display=swap"`,
 dann die eine `https://fonts.gstatic.com/…`-URL aus dem CSS laden.
-Erwartet: Datei existiert, `file` sagt „Web Open Font Format (Version 2)".
+Erwartet: Datei existiert, `file` sagt „Web Open Font Format (Version 2)“.
 
 - [ ] **Step 3: Glyphen extrahieren (Script-Body, verbindlich)**
 
@@ -119,7 +119,7 @@ print("upem", upem, "| advances:", {k: v["advance"] for k, v in glyphs.items()})
 
 - [ ] **Step 4: Output lesen und verifizieren**
 
-N, a, r, e je mit nicht-leerem `d`; `upem == 1000`; Advances loggen (N > a ≥ r mit e-advance > r-advance, plausibel-geprüft). Die vier echten Glyphennamen aus `name` ins Report (z. B. `N: uniN`); Ergebnis unter Überschrift „Task 1" ins Report.
+N, a, r, e je mit nicht-leerem `d`; `upem == 1000`; Advances loggen (N > a ≥ r mit e-advance > r-advance, plausibel-geprüft). Die vier echten Glyphennamen aus `name` ins Report (z. B. `N: uniN`); Ergebnis unter Überschrift „Task 1“ ins Report.
 
 ### Task 2: SVG-Familie (icon, wordmark, lockup)
 
@@ -128,7 +128,7 @@ N, a, r, e je mit nicht-leerem `d`; `upem == 1000`; Advances loggen (N > a ≥ r
 
 **Interfaces:**
 - Consumes: `glyphs.json` (Task 1).
-- Produces: SVG-Familie mit Geometrie-Vertrag: Kachel in 96er viewBox (rect x=4 y=4 w=88 h=88 rx=20, fill `#743B1F`); N mit bbox-höhe 62 Einheiten, Baseline y=71, horizontal zentriert auf 48. Wordmark: N-Kappenhöhe 34, Baseline y=24, Glyphen ab x=0 mit Advance-Offsets, viewBox aus Tinte-bbox mit 2 Einheiten Padding. Lockup: icon bei x=0, wordmark-Gruppe bei x=112, Baseline-Formel „Kachel-Mitte + Kappenhöhe/2" = y=65 (±6 Einheiten Korrektur erlaubt, in deviations dokumentiert).
+- Produces: SVG-Familie mit Geometrie-Vertrag: Kachel in 96er viewBox (rect x=4 y=4 w=88 h=88 rx=20, fill `#743B1F`); N mit bbox-höhe 62 Einheiten, Baseline y=71, horizontal zentriert auf 48. Wordmark: N-Kappenhöhe 34, Baseline y=24, Glyphen ab x=0 mit Advance-Offsets, viewBox aus Tinte-bbox mit 2 Einheiten Padding. Lockup: icon bei x=0, wordmark-Gruppe bei x=112, Baseline-Formel „Kachel-Mitte + Kappenhöhe/2“ = y=65 (±6 Einheiten Korrektur erlaubt, in deviations dokumentiert).
 
 - [ ] **Step 1: Builder-Script schreiben und ausführen**
 
@@ -232,7 +232,7 @@ daneben ein dunkler Streifen mit der Kachel, darunter og/avatar als PNG.
 
 `python3 -m http.server` in `/tmp/opencode/brand`, Browser-Shell (openchamber
 browser.open → capture): Lockup 1:1, Favicon-Zeile 1:1, og/avatar je 1:1.
-Report: Screenshot-Pfade + Kerning-Einschätzung („ra"-Paar) — bei Bedarf
+Report: Screenshot-Pfade + Kerning-Einschätzung („ra“-Paar) — bei Bedarf
 Baselining-Offset im Code korrigieren, nur ±6, dann Task 2-SVGs erneut
 verifizieren.
 
@@ -288,7 +288,7 @@ Verify: just verify grün; PNG-Dims 32/16/180/1280x640/1024 bestätigt.
 ```
 
 (Namens-Hinweis: Alle Namens-Strings im finalen Commit heißen exakt
-„Narrare".)
+„Narrare“.)
 
 - [ ] **Step 4: Post-Commit-Verification + Push + PR**
 
@@ -301,7 +301,7 @@ passt zur Struktur oben. Push nach `narrare` (Remote heißt `narrare`, nicht `or
 - Spec-Coverage: Design-Entscheidungen → Tasks 1–4 (Assets+Integration), Task 5
   (visuelle Prüfung), Task 6 (Follow-up Issue), Task 7 (Commit/PR). Kein
   Gap.
-- Step-Scan: kein „TBD"; jeder Step entscheidet genau eine Sache; die
+- Step-Scan: kein „TBD“; jeder Step entscheidet genau eine Sache; die
   Builder-Scripts sind(!) als Anhang ins Report (nicht ins Plan-Transkript).
 - Typ-Konsistenz: `glyphs.json`-Schema einmal definiert; `#743B1F`/`#FCFAF6`
   /`#24211C` verbatim konsistent; 96er viewBox über alle Tasks konstant.
@@ -309,3 +309,29 @@ passt zur Struktur oben. Push nach `narrare` (Remote heißt `narrare`, nicht `or
   (Kerning), 4→Task 4 (Dims+Rand), 5→Task 7 (porcelain).
 - Proportion: Plan ~180 Zeilen mit 5 Script-blöcken statt Code-Transkript —
   angemessen für die Design-Entscheidungsdichte.
+
+## Korrekturen nach Ausführung (2026-10-30, Commit ee6761d1)
+
+Der Plan bleibt als historisches Dokument unverändert; was beim Ausführen anders
+war, steht hier und im Task-Report. Für ein Re-Run gelten die Werte dieser
+Sektion.
+
+1. **Wortmark hat sieben Glyphen**, nicht sechs: `N-a-r-r-a-r-e` (doppeltes r).
+   Task 2 Schritt 2 liegt mit „genau 6 `<path>`“ falsch.
+2. **`rel="icon"`-Zeilen: drei**, nicht zwei (SVG + 32 + 16); die
+   Verify-Zeile in Task 3 nennt fälschlich 2.
+3. **Pixelprobe:** Das Favicon-Zentrum ist Tinte, nicht Kachelfarbe. Geprobt
+   werden Kachelpixel unterhalb des Glyphs (32 px: (16,28); 16 px: (8,14));
+   Ecken sind transparent.
+4. **Icon-Baseline:** Der Pin `y=71` widersprach der eigenen Zentrierung;
+   gerechnet ist `y = 77.35` (Tintenmitte exakt 48).
+5. **Datei-Set Task 7: 13 Dateien** — die 11 des Plans plus die beiden per
+   AGENTS.md verschobenen Dokumente (Design-Doc, Plan).
+6. **og-Ruling:** Die drei og-Pins waren gemeinsam unerfüllbar (Kachel 260 mit
+   cap 92 aus zwei Bezugssystemen). Es gilt: sichtbare Kachel 260, alles über
+   `K = 260/88` → cap 100.45, Baseline 370.23, Kachel-N 183.2, Lücke 59.1.
+7. **Kerning:** Das Subset trägt GPOS (N→a −11, N→r −8, N→e −16, r→e −8
+   Einheiten); bei den ausgelieferten Größen ≤1.5 px, daher nicht angewendet —
+   Formulierung „visuell vernachlässigbar“ statt „nahe null“.
+8. **`sizes`-Attribute:** SVG-Icon trägt `sizes="any"`, apple-touch
+   `sizes="180x180"` (Task 3 Schritt 3 zeigt sie noch nicht).
