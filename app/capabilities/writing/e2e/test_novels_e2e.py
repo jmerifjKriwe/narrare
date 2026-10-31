@@ -32,7 +32,6 @@ def _create_book(page: Page, title: str, genre: str = "") -> None:
 
 
 def test_novel_created_in_browser_survives_reload(page: Page, stack: Stack) -> None:
-    raise AssertionError("red-side proof")
     _create_book(page, "Das Wattenmeer", genre="Fantasy")
 
     # The shelf card carries what the dialog collected: title, genre, and
