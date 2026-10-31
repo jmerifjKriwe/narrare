@@ -59,11 +59,14 @@ Pure rendering and wiring do not require unit tests.
 - `just check` — lint and types (ruff, pyright, tsc).
 - `just test` — backend integration suite.
 - `just test-frontend` — vitest unit suite.
-- `just test-e2e` — capability E2E suite.
-- `just verify` — all of the above plus the production build.
+- `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
+- `just verify` — all of the above plus the production build, with the E2E narrowed the same way.
 
-CI runs all four on every PR and every push, plus the production build; the E2E
-narrows to the capabilities a change touches. All of them must pass. No new gate or
+CI runs all four on every PR, plus the production build; the E2E narrows to the
+capabilities a change touches and runs in parallel per capability behind one `e2e`
+check. A push to `main` owes no E2E — the merge tree is the tree the PR tested —
+and the nightly runs every suite, covering direct pushes too, when `main` moved.
+All of them must pass. No new gate or
 tool is introduced by this document — it states expectations, not mechanisms.
 
 ## Data and fixtures

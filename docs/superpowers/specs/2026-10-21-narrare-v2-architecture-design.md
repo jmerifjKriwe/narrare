@@ -71,6 +71,11 @@ Corrections and notes:
   same pytest suite as `tests` a second time on every `main` push, so its covered
   invocation moved into `tests` and runs only there. The target is therefore ≤ 7,
   with the two scheduling guards called out as non-gate jobs.
+- **CI jobs: 7 again, not 6.** Since 2026-10-31 the E2E gate is a matrix of
+  per-capability suites (job `e2e-suites`, each entry named `e2e (<capability>)`)
+  plus an aggregator named `e2e` (the required check); the matrix is one job
+  definition, so the workflow holds seven. The local gate runs the suites a change
+  touches; `just verify all` runs every one.
 - **Recipes: the target is 21, not 22.** The §6 list has 21 entries; the 22 that
   stood here and in §12 was a miscount, corrected 2026-10-22.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
@@ -208,11 +213,16 @@ scoped to changed paths.
 
 **Local — pre-push, target under 60 s, two hooks:** full typecheck, unit tests.
 
-**CI — at most six jobs:** four functional gates (lint + types; tests, which also
-uploads the coverage on a `main` push; e2e for affected capabilities; build) plus
-`changes` (range narrowing: a PR against where it branched, a push against the
-commits it landed) and `nightly-guard` (skip on unchanged `main`). Runs on PR and on
-push to `main`, plus the nightly schedule on the e2e job and on release.
+**CI — seven job definitions:** five functional gates (`lint-types`; `tests`, which
+also uploads the coverage on a `main` push; `e2e-suites`, the per-capability
+matrix, each entry named `e2e (<capability>)`; `e2e`, the aggregator behind which
+the required check keeps its name; `build`) plus `changes` (range narrowing: a PR
+against where it branched, a push to `main` answers none) and `nightly-guard`
+(skip on unchanged `main`). The matrix runs the affected capabilities on a PR; a
+push to `main` owes no E2E, because the merge tree is the tree the PR tested and a
+direct push is covered by the nightly; the nightly runs every capability.
+`release-please` runs separately. The wall clock is the longest capability suite —
+the suites run side by side, the aggregator waits on them in seconds.
 
 **`justfile` keeps 21 public recipes:**
 
@@ -260,9 +270,13 @@ Preconditions — a user, a novel, a chapter — may be prepared directly. The t
 flow itself runs through the UI: click, type, stream, observe the result that was
 persisted.
 
-Scheduling: affected capabilities on a PR and on a push, all of them nightly. A real
-LLM provider is never used at any test level. Anything a test would pay for is faked
-at the boundary.
+Scheduling: locally the gate runs the suites a change touches — affected by
+default, `all` on demand. On each PR the affected capabilities run in parallel
+per capability behind one `e2e` check; a push to `main` owes nothing, because the
+merge tree is the tree the PR tested; all of them nightly.
+
+A real LLM provider is never used at any test level. Anything a test would pay for
+is faked at the boundary.
 
 Consequence: an E2E failure means the product is broken, not that a schema changed.
 The suite is the only place where "works" has a definition.
@@ -471,13 +485,15 @@ trigger that would build the missing piece.
   (§6). TanStack Query entered with the frontend foundation: multi-surface
   invalidation and job polling were the hand cache the generated client alone
   could not replace.
-- **CI runs the E2E of the affected capabilities on each PR and each push**
-  and all of them nightly (§6): a `changes` job narrows a PR to the capabilities
-  it touched — everything when kernel, api, the generated views, web, i18n or
-  the tooling moved — and narrows a push by the commits it landed, so a
-  documentation-only push runs no browser. The nightly runs only when `main`
-  carries a commit the last successful nightly did not test; an unchanged `main`
-  skips every job through one guard.
+- **CI runs the E2E of the affected capabilities on each PR, in parallel per
+  capability behind one `e2e` check; a push to `main` owes nothing; all of them
+  nightly (§6):** a `changes` job narrows a PR to the capabilities
+  it touched — everything when kernel, api, the generated views, web, i18n,
+  the justfile, `pyproject.toml`, the locks or the CI workflow moved — so a
+  documentation-only change runs no browser, and the merge tree a push lands
+  is the tree the PR already tested. The nightly runs only when `main` carries a commit the last
+  successful nightly did not test; an unchanged `main` skips every job through
+  one guard, and a direct push to `main` is covered by it.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
   miscount (see §2's corrections).
 - **The web shell is a Vite SPA, not Next.js.** Every page was a client
