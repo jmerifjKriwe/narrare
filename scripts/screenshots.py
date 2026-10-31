@@ -18,6 +18,7 @@ one.
 """
 
 import argparse
+import re
 import sys
 import time
 from pathlib import Path
@@ -269,8 +270,9 @@ def _capture(
     expect(knowledge.get_by_role("button", name="Check the whole book")).to_be_visible()
     expect(knowledge.get_by_text("Research Facility")).to_be_visible()
     # The entity list and the findings arrive on separate requests, and the
-    # entity one is not this frame's subject: wait for the finding itself.
-    expect(knowledge.get_by_text("Facility: 9 vs. 7")).to_be_visible()
+    # entity one is not this frame's subject: wait for the finding itself. The
+    # frame claims a pair of readings, not their order, so both are accepted.
+    expect(knowledge.get_by_text(re.compile(r"Facility: (?:7 vs\. 9|9 vs\. 7)"))).to_be_visible()
     # The dock scrolls alone, and its own scrollbar is the only way to the
     # entity controls below the finding.
     knowledge.hover()
