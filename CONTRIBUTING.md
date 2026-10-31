@@ -78,6 +78,11 @@ just verify          # check, both test suites, the affected capability E2E suit
 
 It must pass cleanly.
 
+**The README's images.** `uv run python -m scripts.screenshots` boots the same stack
+the E2E suites use, loads the bundled demo novel and writes the five frames under
+`assets/screenshots/`. Run it when a surface they show has changed: the images are
+the one part of the README no test reads.
+
 **Was bei jedem Commit läuft:** Der Secret-Scan (Gitleaks,
 `scripts/check_secrets.py`) scannt das gesamte Repo inklusive History und
 blockt den Commit. Einige dokumentierte Example-Keys alter v1-Docs (nur noch in

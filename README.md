@@ -10,10 +10,36 @@
 
 > Local-first, AI-assisted creative writing. Bring your own model — cloud or local.
 
+<img src="assets/screenshots/01-workspace-continuation.png" alt="The Narrare workspace: a chapter rail on the left, the chapter in the editor, and a grey continuation waiting at the caret for Tab" width="800">
+
 Narrare is a writing environment for novels that runs on your machine. A shelf of
 books, a chapter in a quiet editor, your own notes as a knowledge base, and a model
 you choose that continues a scene, answers questions about your story and points at
 the contradictions you left behind.
+
+## What it looks like
+
+<table>
+<tr>
+<td><img src="assets/screenshots/02-chat-sources.png" alt="The chat dock beside the chapter: a question, a streamed answer, and the two note passages it was drawn from" width="400"></td>
+<td><img src="assets/screenshots/03-knowledge-dock.png" alt="The knowledge dock: the whole-book check button, a consistency finding quoting both readings, and the novel's entities" width="400"></td>
+</tr>
+<tr>
+<td>Ask your own notes. The answer streams, and the passages behind it sit underneath.</td>
+<td>The whole-book check reports contradictions to acknowledge or dismiss, with the cast beside them.</td>
+</tr>
+<tr>
+<td><img src="assets/screenshots/04-knowledge-search.png" alt="The knowledge page: two uploaded notes and a search whose results show the matching passages" width="400"></td>
+<td><img src="assets/screenshots/05-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every row" width="400"></td>
+</tr>
+<tr>
+<td>Upload the story bible. It is chunked, embedded and searched in your own Postgres.</td>
+<td>A shelf of books, not a folder of files — with export and import on the door.</td>
+</tr>
+</table>
+
+The images come from the app itself, captured by `scripts/screenshots.py`; the prose
+in them is supplied by a stand-in model, so nothing here was written by one.
 
 ## What you do with it
 
@@ -21,19 +47,15 @@ the contradictions you left behind.
   editor, autosave after every pause, and a focus mode (`F9`) that puts everything
   but the page away.
 - **Ask for a continuation, not a rewrite.** "Continue writing" streams a suggestion
-  where the cursor stands. It stays ghost text until you press Tab — a stream that
-  dies never drops half a sentence into your manuscript. Esc discards it.
+  where the cursor stands. It stays grey until you press Tab — a stream that dies
+  never drops half a sentence into your manuscript. Esc discards it.
 - **Make your notes searchable.** Upload plain-text reference material — a story
   bible, a timeline, the research you keep re-reading. It is chunked, embedded and
   searched in your own Postgres, and a model switch re-embeds it from the page where
   you uploaded it.
-- **Ask your own material, and see where the answer came from.** Chat streams an
-  answer and lists the sources it used underneath. In the workspace the same panel
-  opens beside the chapter you are writing in.
-- **Let it find the cast and the contradictions.** Extraction proposes entities from
-  a chapter as a review queue — accept or discard each — and the entries it creates
-  can be edited and merged. The whole-book check reports contradictions to
-  acknowledge or dismiss.
+- **Let it read the whole book.** Extraction proposes the cast as a review queue —
+  accept or discard each name — and the entries it creates can be edited, merged and
+  related. The whole-book check reports contradictions to acknowledge or dismiss.
 - **English, Deutsch, français** — the interface speaks all three, and a missing
   translation is a build error rather than a quiet fallback.
 
@@ -48,8 +70,8 @@ model.
 
 ## Getting started
 
-Narrare runs from source today. There is no installer and no image yet; until there
-is, a first run needs the toolchain below and two commands.
+This is a developer setup: Narrare runs from source today, and there is no installer
+and no image yet. A first run needs the toolchain below and two commands.
 
 You need [Python 3.14+](https://www.python.org/downloads/) with
 [uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
@@ -61,22 +83,25 @@ just dev-setup     # python env, web deps, git hooks, Postgres, schema
 just dev           # API on :8000, web on :3100
 ```
 
-Open <http://localhost:3100>. A fresh database lands on the setup page: enter a title
-and the book opens in the workspace — the first chapter is one click away. There is
-nothing to configure first: the default provider is a deterministic stand-in, so a
-first run needs no key and no `.env`. To write with a real model, copy `.env.example`
-to `.env` and point it at an endpoint; provider settings inside the app are planned.
+Open <http://localhost:3100>. A fresh database lands on the setup page, where a demo
+novel is one click away and a blank one is a title field. Nothing needs configuring
+first: the default provider is a deterministic stand-in, so a first run needs no key
+and no `.env`.
+
+To write with a real model, open Settings → Providers and add an OpenAI-compatible
+endpoint; each task — the continuation, the chat, the extraction, the check — can be
+pointed at its own profile. `.env` still works for the whole process, which is what a
+headless run wants.
 
 The daily workflow — branches, commits, pull requests, the full gate — lives in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
-Pre-1.0 and moving. The foundation is in place, and three gaps are named here rather
-than discovered later: the model is configured in `.env` because there is no settings
-page yet, a manuscript cannot be exported or imported yet, and series do not exist.
-Next on the list are relations between entities, provider settings in the app, and
-export with import.
+Pre-1.0 and moving. The foundation is in place: provider profiles and their per-task
+assignment live in the app's settings, and a manuscript exports to and imports from a
+portable archive, with conflicts reported rather than silently overwritten. Series do
+not exist yet, and neither does a packaged release.
 
 What *is* built is proven the expensive way: every capability carries an end-to-end
 test that drives a real browser against the real API and a real Postgres, and the only
@@ -91,3 +116,5 @@ fake in the system is the model at its boundary.
   — the authority for structure and boundaries
 - [docs/user/INDEX.md](docs/user/INDEX.md) — the app's surfaces, generated from the
   capability facts
+- `uv run python -m scripts.screenshots` — recaptures the images in this README from
+  the real app, so the page cannot outlive the UI it shows
