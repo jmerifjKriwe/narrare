@@ -185,7 +185,12 @@ async def current_revision(connection: AsyncConnection) -> str | None:
 
 
 async def _has_tables(connection: AsyncConnection) -> bool:
-    """Whether the public schema holds any table — the bootstrap branch's trigger."""
+    """Whether the public schema holds any table.
+
+    The bootstrap branch's trigger — tables without a history row are a
+    candidate for the stamp — and the dump branch's gate (D5): the dump
+    protects prose, and a database without tables has none.
+    """
     present: bool | None = await connection.scalar(
         text("SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public')")
     )
@@ -235,15 +240,17 @@ async def prepare_database(
     released in a ``finally``, so a failed run cannot hold the next one
     hostage.
 
-    While revisions are pending, the upgrade is preceded by a ``pg_dump``
-    copy (design D5): a run with pending revisions either produces a
-    restorable dump or migrates nothing. Even a fresh first boot — an empty
-    database with every revision pending — writes a dump of the empty
-    schema: a few kilobytes, and the invariant taken literally.
-    ``backup=False`` — a caller that owes no dump, like ``init_schema`` —
-    and ``NARRE_MIGRATION_BACKUP=skip`` — an operator who took their own
-    copy — leave it out; the copy goes to ``backup_dir``, else
-    ``NARRE_BACKUP_DIR`` (default ``./backups``).
+    While revisions are pending, the run is preceded by a ``pg_dump`` copy
+    (design D5): a run that is about to write — a replay, a first upgrade's
+    stamp, an upgrade behind head — either produces a restorable dump or
+    migrates nothing. The copy runs only when the database holds tables: the
+    dump protects prose, and an empty schema has none, so a fresh first boot
+    takes none — which also keeps pg_dump out of the first boot's
+    requirements (product owner, 2026-10-31). ``backup=False`` — a caller
+    that owes no dump, like ``init_schema`` — and
+    ``NARRE_MIGRATION_BACKUP=skip`` — an operator who took their own copy —
+    leave it out; the copy goes to ``backup_dir``, else ``NARRE_BACKUP_DIR``
+    (default ``./backups``).
 
     env.py reads the URL from NARRE_DATABASE_URL — the only URL source — and
     drives alembic through an ``asyncio.run`` of its own, which cannot start
@@ -280,7 +287,8 @@ async def prepare_database(
 
                 async with engine.connect() as connection:
                     current = await current_revision(connection)
-                    if current is None and await _has_tables(connection):
+                    has_tables = await _has_tables(connection)
+                    if current is None and has_tables:
                         diff = await connection.run_sync(
                             lambda sync_connection: diff_against_models(config, sync_connection)
                         )
@@ -309,14 +317,21 @@ async def prepare_database(
                     # under it.
                     await connection.rollback()
 
-                if bootstrapped:
-                    await asyncio.to_thread(command.stamp, config, head)
-                # Revisions are pending if the upgrade will really run — a
-                # fresh replay or a versioned one behind head — and only then
-                # does the restorable copy happen (D5), unless this caller
-                # owes none, or the operator already took their own backup.
-                elif (
+                # Revisions are pending when the run will really write — a
+                # fresh replay, a first upgrade's stamp, a versioned one
+                # behind head — and the restorable copy happens then (D5),
+                # but only when the database holds tables: the dump protects
+                # prose, and an empty schema has none — a fresh first boot
+                # skips it, which also keeps pg_dump out of the first boot's
+                # requirements (product owner, 2026-10-31). This caller owes
+                # none when ``backup=False``, like ``init_schema``, and
+                # ``NARRE_MIGRATION_BACKUP=skip`` says the operator already
+                # took their own copy. The copy precedes the stamp below: a
+                # run with pending revisions either produces it or migrates
+                # nothing.
+                if (
                     (current is None or current != head)
+                    and has_tables
                     and backup
                     and environ.get("NARRE_MIGRATION_BACKUP", "pg_dump") != "skip"
                 ):
@@ -330,6 +345,9 @@ async def prepare_database(
                             "or set NARRE_MIGRATION_BACKUP=skip after taking your "
                             "own copy of the database"
                         ) from exc
+
+                if bootstrapped:
+                    await asyncio.to_thread(command.stamp, config, head)
 
                 await asyncio.to_thread(command.upgrade, config, "head")
 

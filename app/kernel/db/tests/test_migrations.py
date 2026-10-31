@@ -67,7 +67,7 @@ def _skip_migration_backups(monkeypatch: pytest.MonkeyPatch) -> None:
 
     Every ``prepare_database`` call here faces pending revisions, and the
     production answer — dump first — would fill ``./backups`` on every
-    ``just test`` with copies of an empty database. ``skip`` says an operator
+    ``just test`` with copies of the test database. ``skip`` says an operator
     has taken their own copy; the tests that exercise the dump itself set
     ``NARRE_MIGRATION_BACKUP`` back to ``pg_dump``.
     """
@@ -509,16 +509,44 @@ async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
         await admin.dispose()
 
 
+async def test_first_boot_takes_no_dump_of_the_empty_schema(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A fresh first boot — extensions, no tables — migrates with no dump.
+
+    The dump protects prose (D5) and an empty schema has none: the product
+    owner's 2026-10-31 decision takes no copy of nothing, which also keeps
+    pg_dump out of the first boot's requirements.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_DIR", str(tmp_path))
+    await drop_every_table(url)
+
+    outcome = await prepare_database(url, backup=True)
+
+    assert outcome.from_revision is None  # every revision was pending
+    assert outcome.to_revision == head_revision()
+    assert outcome.backup is None
+    assert list(tmp_path.iterdir()) == []
+    assert await _version_row(url) == head_revision()  # the replay ran regardless
+
+
 async def test_pending_revision_writes_a_dump(
     url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A run with pending revisions takes the restorable copy first (D5)."""
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    # Premise shift (product owner, 2026-10-31): a dump requires pending
+    # revisions AND tables — a replay onto an empty database takes none
+    # (the test below). The pending-with-tables shape is the first upgrade:
+    # the 0.2.0 snapshot loaded onto an empty database, models-built and
+    # unversioned.
     await drop_every_table(url)
+    await _load_snapshot(url, SNAPSHOT)
 
     outcome = await prepare_database(url, backup_dir=tmp_path)
 
-    assert outcome.from_revision is None  # the full replay was pending
+    assert outcome.from_revision is None  # no history yet: the stamp was pending
     assert outcome.backup is not None
     assert outcome.backup.parent == tmp_path
     assert outcome.backup.read_bytes()[:5] == b"PGDMP"
@@ -529,7 +557,11 @@ async def test_up_to_date_database_writes_no_dump(
 ) -> None:
     """The second run has nothing pending: no dump, no DDL, head to head (D5)."""
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    # The first run needs a dump to have something to not repeat: a
+    # table-bearing pending database (the first-upgrade shape) — an empty
+    # one takes no dump at all since the 2026-10-31 first-boot skip.
     await drop_every_table(url)
+    await _load_snapshot(url, SNAPSHOT)
     first = await prepare_database(url, backup_dir=tmp_path)
     assert first.backup is not None  # sanity: the pending run did take its dump
     files_before = sorted(path.name for path in tmp_path.iterdir())
@@ -550,7 +582,7 @@ async def test_failing_backup_command_migrates_nothing(
     """No dump, no migration: the refusal names both ways out (review focus 5)."""
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
     monkeypatch.setenv("NARRE_BACKUP_COMMAND", "false {url} {file}")
-    await drop_every_table(url)
+    await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)
@@ -574,7 +606,7 @@ async def test_empty_backup_command_is_a_named_refusal(
     """A NARRE_BACKUP_COMMAND that resolves to nothing is BackupFailed, not IndexError."""
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
     monkeypatch.setenv("NARRE_BACKUP_COMMAND", "   ")
-    await drop_every_table(url)
+    await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)
@@ -603,7 +635,7 @@ async def test_failed_file_form_leaves_no_dump(
         "pg_dump --format=custom --no-owner --file {file} "
         "--host nosuchhost.invalid --dbname narrare",
     )
-    await drop_every_table(url)
+    await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)
@@ -623,7 +655,7 @@ async def test_fake_dump_file_is_refused_and_removed(
     """
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
     monkeypatch.setenv("NARRE_BACKUP_COMMAND", "touch {file}")
-    await drop_every_table(url)
+    await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)
@@ -645,7 +677,7 @@ async def test_garbage_dump_file_is_refused_and_removed(
     """
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
     monkeypatch.setenv("NARRE_BACKUP_COMMAND", "sh -c 'printf not-a-dump > {file}'")
-    await drop_every_table(url)
+    await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)
@@ -740,7 +772,7 @@ async def test_stdout_that_is_not_a_dump_is_refused(
     """Output that no pg_restore could read is refused — no valid-looking dump left."""
     monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
     monkeypatch.setenv("NARRE_BACKUP_COMMAND", "printf 'not a dump'")
-    await drop_every_table(url)
+    await reset_schema(url)  # tables: since 2026-10-31 an empty database attempts no dump
 
     with pytest.raises(MigrationRefused) as refused:
         await prepare_database(url, backup_dir=tmp_path)

@@ -144,6 +144,11 @@ author cannot restore it. Its value is support ("send us this file") and the gua
 that a copy of the state before the upgrade exists. The protection that actually keeps
 prose alive is D10.
 
+**Update 2026-10-31** (product owner): the dump runs only when revisions are pending
+*and* the database holds tables — a fresh first boot takes no dump, because the dump
+protects prose and an empty schema has none, and skipping it also keeps `pg_dump` out
+of the first boot's requirements.
+
 **D6 — Never migrate backwards.** If the database's revision is not in this app's
 history, or is ahead of head, the app refuses to start and names both versions. A
 downgraded app meets its own backup, not a rollback script.
