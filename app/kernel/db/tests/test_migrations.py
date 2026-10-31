@@ -15,6 +15,7 @@ import asyncio
 import shutil
 import subprocess
 from os import environ
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
@@ -40,7 +41,7 @@ from app.kernel.db.testsupport import drop_every_table
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
+    from typing import IO
 
     from alembic.config import Config
     from sqlalchemy.engine import Connection
@@ -481,6 +482,71 @@ async def test_failed_file_form_leaves_no_dump(
 
     assert isinstance(refused.value.__cause__, BackupFailed)
     assert list(tmp_path.iterdir()) == []
+
+
+async def test_fake_dump_file_is_refused_and_removed(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A command that exits 0 with an empty ``{file}`` is refused — and leaves nothing.
+
+    ``touch {file}`` succeeds, creates a zero-byte dump, and writes nothing to
+    stdout: the acceptance probe must refuse it, and the artifact must not
+    survive as a dump (the same class of leftover a failed --file run leaves).
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "touch {file}")
+    await drop_every_table(url)
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert list(tmp_path.iterdir()) == []
+
+
+async def test_sink_close_failure_is_a_named_refusal(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A sink that fails at close time (ENOSPC, EIO) is BackupFailed, not raw OSError.
+
+    The close flushes what ``subprocess.run`` streamed; a failure there has
+    nothing to do with running the command, and must be named as the write
+    that did not land.
+    """
+    real_open = Path.open
+
+    class _CloseFails:
+        """Delegates everything to the real handle; close() fails, as a full disk would."""
+
+        def __init__(self, handle: IO[bytes]) -> None:
+            self._handle = handle
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._handle, name)
+
+        def close(self) -> None:
+            self._handle.close()
+            raise OSError(28, "No space left on device")
+
+        def __enter__(self) -> _CloseFails:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            self.close()
+
+    def _open_with_broken_close(self: Path, *args: Any, **kwargs: Any) -> Any:
+        handle = cast("IO[bytes]", real_open(self, *args, **kwargs))
+        if self.name.endswith(".dump.partial"):
+            return _CloseFails(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", _open_with_broken_close)
+
+    with pytest.raises(BackupFailed) as failed:
+        await dump_database(url, tmp_path)
+
+    assert "could not write" in str(failed.value)  # the write, not the command, is named
+    assert list(tmp_path.iterdir()) == []  # the half-written sink did not survive
 
 
 async def test_unwritable_backup_directory_is_a_named_refusal(url: str, tmp_path: Path) -> None:

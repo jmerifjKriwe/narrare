@@ -90,13 +90,23 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 sink = partial.open("wb")
             except OSError as exc:
                 raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
-            with sink:
-                try:
-                    result = subprocess.run(  # noqa: S603  the operator's own template
-                        command_line, stdout=sink, stderr=subprocess.PIPE, check=False
-                    )
-                except OSError as exc:
-                    raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
+            try:
+                with sink:
+                    try:
+                        result = subprocess.run(  # noqa: S603  the operator's own template
+                            command_line, stdout=sink, stderr=subprocess.PIPE, check=False
+                        )
+                    except OSError as exc:
+                        raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
+            except OSError as exc:
+                # The close flushes what run() streamed — ENOSPC and EIO surface
+                # there, not inside run(); they are the write's failure, not the
+                # command's. A --file target the command managed to fill under
+                # those conditions is not trusted either: the run failed, and a
+                # failed run leaves nothing that looks like a dump.
+                if not file_existed_before:
+                    file.unlink(missing_ok=True)
+                raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
             if result.returncode != 0:
                 stderr = result.stderr.decode(errors="replace").strip()
                 # A failed pg_dump --file run leaves its (zero-byte) target
@@ -114,6 +124,11 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
             with partial.open("rb") as probe:
                 magic = probe.read(5)
             if magic != b"PGDMP":
+                # A command that exits 0 with an empty or garbage {file} (a
+                # touch, a script echoing prose) leaves exactly the fake-good
+                # artifact the --file cleanup above removes; it goes too.
+                if not file_existed_before:
+                    file.unlink(missing_ok=True)
                 raise BackupFailed(
                     f"{command_line[0]} produced neither a dump file nor output a "
                     "pg_restore could read"
