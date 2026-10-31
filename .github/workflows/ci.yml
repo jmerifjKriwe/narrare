@@ -154,9 +154,11 @@ jobs:
           fi
           # The runner's python3, before any uv sync: the resolver is stdlib
           # only. A resolver that cannot name a range answers with every
-          # suite (fail-open), and every resolution exits 0 — only a broken
-          # script reddens the job. The exit status is captured so the reason
-          # notice precedes the exit.
+          # suite (fail-open). Every resolution exits 0, except when the
+          # script cannot do its job — bad usage, or an every-suite answer
+          # with no nameable suite (3) — and that reddens this job by
+          # design. The exit status is captured so the reason notice
+          # precedes the exit.
           reason_file=$(mktemp)
           status=0
           capabilities=$(python3 scripts/affected.py $mode $release_pr --json 2>"$reason_file") || status=$?

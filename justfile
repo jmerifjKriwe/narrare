@@ -42,9 +42,9 @@ check:
     just lint
     just typecheck
 
-# Full gate: the fast one plus every suite and the production build. The E2E
-# leg narrows the same way test-e2e's does;
-# by default only what the change touches, `all` for everything.
+# check, the integration tests, the web unit suite, the production build and
+# the E2E — the E2E leg narrows like test-e2e's, one scope for both.
+# Full gate: check, every suite and the web build; affected by default, `all` for everything.
 verify scope="affected":
     just check
     just test

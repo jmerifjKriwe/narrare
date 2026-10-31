@@ -4,12 +4,12 @@ One resolver, one answer: a shared surface (kernel, api, generated client,
 web shell, i18n, the locks, the CI workflow) owes every suite; a path under
 a known capability owes that capability's suite; docs, tooling and release
 bookkeeping owe nothing; and anything the tables do not recognize owes every
-suite — an unrecognized change is a reason to run more, never less. The exit
-status stays 0 on every resolution, including fallbacks, and every fallback
-prints its reason to stderr; non-zero means the script cannot do its job —
-bad usage, an import error, or an every-suite answer with no nameable suite
-(exit 3), because a green gate while every suite is owed and none can be
-named is the design's anti-goal. This closes two holes the previous
+suite — an unrecognized change is a reason to run more, never less. Every
+resolution, including every fallback, prints its reason to stderr and exits
+0, except when the script cannot do its job: bad usage exits 2, an import
+error fails on its own, and an every-suite answer with no nameable suite
+exits 3 — a green gate while every suite is owed and none can be named is
+the design's anti-goal. This closes two holes the previous
 per-capability rules had:
 `app/conftest.py` owed nothing, so fixture changes silently slipped under
 every suite, and `app/capabilities/conftest.py` produced a suite path that

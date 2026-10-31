@@ -489,9 +489,9 @@ trigger that would build the missing piece.
   capability behind one `e2e` check; a push to `main` owes nothing; all of them
   nightly (§6):** a `changes` job narrows a PR to the capabilities
   it touched — everything when kernel, api, the generated views, web, i18n,
-  the justfile, the locks or the CI workflow moved — so a documentation-only
-  change runs no browser, and the merge tree a push lands is the tree the PR
-  already tested. The nightly runs only when `main` carries a commit the last
+  the justfile, `pyproject.toml`, the locks or the CI workflow moved — so a
+  documentation-only change runs no browser, and the merge tree a push lands
+  is the tree the PR already tested. The nightly runs only when `main` carries a commit the last
   successful nightly did not test; an unchanged `main` skips every job through
   one guard, and a direct push to `main` is covered by it.
 - **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a

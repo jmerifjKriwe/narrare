@@ -99,12 +99,12 @@ muss bleiben, solange der Scan die History sieht.
    - [ ] Conventional commit, and a `User-visible:` line for `feat` and `fix`
    - [ ] No bypass of the hooks was used for any commit
 4. CI runs on every PR and on every push to `main`: lint and types, the
-   integration tests and the web build. The E2E runs on the PR — in parallel per
-   capability behind one `e2e` check, for the capabilities the change touches:
-   all of them when kernel, web, the justfile, the locks or the CI workflow
-   change, none of them for a
-   documentation-only change. A push to `main` owes no E2E: what it merges is the
-   tree the PR tested, and a direct push is covered by the nightly, which tests
+   integration tests and the web build. The E2E runs on the PR — in parallel
+   per capability behind one `e2e` check, for the capabilities the change
+   touches: all of them when kernel, web, the justfile, `pyproject.toml`, the
+   locks or the CI workflow change, none of them for a documentation-only
+   change. A push to `main` owes no E2E: what it merges is the tree the PR
+   tested, and a direct push is covered by the nightly, which tests
    everything but only when `main` moved since the last one. Coverage is
    measured on `main`. There is no bypass.
 5. Address review feedback with new commits.

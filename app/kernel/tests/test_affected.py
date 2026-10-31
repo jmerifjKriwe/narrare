@@ -193,7 +193,11 @@ def test_the_real_checkout_discovers_its_six_suites(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """The one test where the checkout's own directories are the subject: a
-    fixture cannot see the discovery rule itself break."""
+    fixture cannot see the discovery rule itself break.
+
+    A new capability carrying an e2e/ suite means updating this expected
+    set — the bare set-equality failure will not say so.
+    """
     monkeypatch.chdir(REPO_ROOT)
     assert known_capabilities() == {
         "chat",
@@ -205,19 +209,31 @@ def test_the_real_checkout_discovers_its_six_suites(
     }
 
 
+@pytest.mark.parametrize(
+    ("args", "json_mode"),
+    [
+        (["--all", "--json"], True),
+        (["--paths", "all"], False),
+        # Fail-open route: an unrecognized capability answers every suite.
+        (["--paths", "app/capabilities/nope/x.py"], False),
+    ],
+    ids=["all", "paths-all", "unknown-scope-fail-open"],
+)
 def test_every_suite_with_no_nameable_suite_reddens_the_gate(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, args: list[str], json_mode: bool
 ):
-    """Empty discovery (no e2e/ anywhere) must not print [] and exit 0: a
-    nightly owes every suite by definition, so a green gate with no browser
-    is the design's anti-goal. The script cannot do its job — exit 3."""
+    """Empty discovery (no e2e/ anywhere) must not print [] and exit 0 on
+    ANY route that answers every suite: a nightly owes every suite by
+    definition, so a green gate with no browser is the design's anti-goal —
+    the script cannot do its job, and every such route exits 3."""
     broken = tmp_path / "broken"
     (broken / "app/capabilities/notes/tests").mkdir(parents=True)
     monkeypatch.chdir(broken)
-    completed = run_status(["--all", "--json"])
+    completed = run_status(args)
     assert completed.returncode == 3
     assert "every suite is owed" in completed.stderr
-    assert json.loads(completed.stdout) == []
+    if json_mode:
+        assert json.loads(completed.stdout) == []
 
 
 def test_docs_and_tooling_owe_nothing():
