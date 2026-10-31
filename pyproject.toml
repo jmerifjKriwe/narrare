@@ -104,6 +104,10 @@ ignore = [
 # SQLAlchemy needs datetime at runtime, not just type-checking
 "**/models.py" = ["TC003"]
 "**/*_models.py" = ["TC003"]
+# CI's changes job runs this script under the runner's python3 before any uv
+# sync; its annotations are evaluated at definition time, so the runtime import
+# is what keeps it from NameError there
+"scripts/affected.py" = ["TC003"]
 
 # ---------------------------------------------------------------------------
 # Pytest

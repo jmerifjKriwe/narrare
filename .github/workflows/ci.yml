@@ -256,8 +256,8 @@ jobs:
   # The suites the changes job named, one runner per capability, side by
   # side — writing is the slowest and becomes the wall clock. `fail-fast:
   # false`: a red writing suite must not hide whether knowledge is red too.
-  # The matrix passes ONE capability name per entry, so the pytest path is
-  # that capability's own e2e directory — no name is ever expanded into a
+  # The matrix passes ONE capability name per entry, so the resolver maps it
+  # to that capability's own e2e directory — no name is ever expanded into a
   # path by string surgery on the JSON list.
   e2e-suites:
     needs: [lint-types, changes]
@@ -298,11 +298,13 @@ jobs:
       - run: uv sync --locked
       - run: uv run playwright install --with-deps chromium
       - run: pnpm install --frozen-lockfile
-      # What `just test-e2e <capability>` runs, minus its `--worktree` (a
-      # no-op on this clean checkout): the recipe resolves to the same
-      # single directory this entry names.
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      # The matrix runs the same recipe the local gate runs.
       - name: E2E
-        run: uv run pytest app/capabilities/${{ matrix.capability }}/e2e/ -v -m e2e --timeout=60
+        run: just test-e2e ${{ matrix.capability }}
 
   # The required check is the context `e2e`, and the name must not move while
   # the suites behind it multiply. `always()` because the hole this closes is

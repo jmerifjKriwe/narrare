@@ -43,8 +43,8 @@ check:
     just typecheck
 
 # Full gate: the fast one plus every suite and the production build. The E2E
-# narrows the same way test-e2e's does: affected by default, `all` or a
-# capability name for more.
+# leg narrows the same way test-e2e's does;
+# by default only what the change touches, `all` for everything.
 verify scope="affected":
     just check
     just test
@@ -80,8 +80,9 @@ test:
 test-file file:
     uv run pytest {{file}} -v
 
-# Every capability E2E: real browser, real API, real Postgres. Default: only the
-# suites the change touches; `all` or a capability name is the explicit call.
+# Every capability E2E: real browser, real API, real Postgres. `all` or a
+# capability name overrides the default;
+# by default only the suites the change touches run.
 test-e2e scope="affected":
     #!/usr/bin/env bash
     set -euo pipefail

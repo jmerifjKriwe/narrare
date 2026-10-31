@@ -1,8 +1,10 @@
 """The resolver's contract: one answer per set of changed paths, and every
 fallback says why. Mapping tests pin the path tables against a fixed
-capability set — the real checkout's directories are never the subject —
-while the git-backed tests and every CLI mode run against a miniature
-repository built in tmp_path, so the fixture, not Narrare, is what changes.
+capability set — the real checkout's directories are never the subject,
+with one exception: a single test asserts the real checkout's six suites,
+guarding the discovery rule itself — while the git-backed tests and every
+CLI mode run against a miniature repository built in tmp_path, so the
+fixture, not Narrare, is what changes.
 """
 
 import json
@@ -17,6 +19,10 @@ import pytest
 from scripts import affected
 from scripts.affected import changed, default_base, known_capabilities, resolve
 
+# The checkout's own root — scripts/ sits directly under it — for the one
+# test where the real directories, not the fixture's, are the subject.
+REPO_ROOT = Path(affected.__file__).resolve().parent.parent
+
 FIXTURE_CAPABILITIES = ("chat", "writing")
 
 
@@ -25,12 +31,15 @@ def _capability_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Pin the capability set to the fixture's two suites.
 
     The tests stand in tmp_path, where a miniature app/capabilities tree
-    holds exactly chat and writing, so the mapping tests pass whether or not
-    Narrare itself is present — the real checkout's directories are never
-    the subject. The git-backed fixtures chdir further, into their repo.
+    holds exactly chat and writing as suites, plus notes — a capability
+    directory with tests but no e2e/, so discovery must skip it — so the
+    mapping tests pass whether or not Narrare itself is present; the real
+    checkout's directories are never the subject. The git-backed fixtures
+    chdir further, into their repo.
     """
     for name in FIXTURE_CAPABILITIES:
         (tmp_path / "app" / "capabilities" / name / "e2e").mkdir(parents=True)
+    (tmp_path / "app" / "capabilities" / "notes" / "tests").mkdir(parents=True)
     monkeypatch.chdir(tmp_path)
 
 
@@ -124,6 +133,16 @@ def run(args: list[str], *, stderr: bool = False, cwd: Path | None = None) -> st
     return output
 
 
+def run_status(args: list[str]) -> subprocess.CompletedProcess[str]:
+    """Run the script without check=True: the exit status is the subject."""
+    return subprocess.run(  # noqa: S603
+        [sys.executable, str(Path(affected.__file__)), *args],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
 def test_a_capability_path_owes_that_suite():
     assert resolve(["app/capabilities/writing/web/editor.tsx"]).capabilities == ["writing"]
 
@@ -161,6 +180,44 @@ def test_the_capabilities_conftest_owes_every_suite():
 
 def test_an_unknown_capability_dir_owes_every_suite():
     assert resolve(["app/capabilities/nope/e2e/test_x.py"]).capabilities is None
+
+
+def test_a_capability_dir_without_e2e_is_not_a_suite():
+    """`notes` has tests but no e2e/: discovery skips it, and a path under it
+    is an unknown capability — the fail-open side."""
+    assert "notes" not in known_capabilities()
+    assert resolve(["app/capabilities/notes/x.py"]).capabilities is None
+
+
+def test_the_real_checkout_discovers_its_six_suites(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """The one test where the checkout's own directories are the subject: a
+    fixture cannot see the discovery rule itself break."""
+    monkeypatch.chdir(REPO_ROOT)
+    assert known_capabilities() == {
+        "chat",
+        "knowledge",
+        "prompts",
+        "settings",
+        "setup",
+        "writing",
+    }
+
+
+def test_every_suite_with_no_nameable_suite_reddens_the_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Empty discovery (no e2e/ anywhere) must not print [] and exit 0: a
+    nightly owes every suite by definition, so a green gate with no browser
+    is the design's anti-goal. The script cannot do its job — exit 3."""
+    broken = tmp_path / "broken"
+    (broken / "app/capabilities/notes/tests").mkdir(parents=True)
+    monkeypatch.chdir(broken)
+    completed = run_status(["--all", "--json"])
+    assert completed.returncode == 3
+    assert "every suite is owed" in completed.stderr
+    assert json.loads(completed.stdout) == []
 
 
 def test_docs_and_tooling_owe_nothing():

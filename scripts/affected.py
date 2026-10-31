@@ -6,8 +6,11 @@ a known capability owes that capability's suite; docs, tooling and release
 bookkeeping owe nothing; and anything the tables do not recognize owes every
 suite — an unrecognized change is a reason to run more, never less. The exit
 status stays 0 on every resolution, including fallbacks, and every fallback
-prints its reason to stderr; only a broken script (bad usage, import error)
-exits non-zero. This closes two holes the previous per-capability rules had:
+prints its reason to stderr; non-zero means the script cannot do its job —
+bad usage, an import error, or an every-suite answer with no nameable suite
+(exit 3), because a green gate while every suite is owed and none can be
+named is the design's anti-goal. This closes two holes the previous
+per-capability rules had:
 `app/conftest.py` owed nothing, so fixture changes silently slipped under
 every suite, and `app/capabilities/conftest.py` produced a suite path that
 did not exist. Stdlib only: CI resolves affected suites before `uv sync`.
@@ -19,11 +22,9 @@ import json
 import shutil
 import subprocess  # nosec B404 - fixed argv git queries, no shell
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+from typing import NamedTuple
 
 CAPABILITIES: Path = Path("app/capabilities")
 
@@ -236,7 +237,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Resolve and print; exit 0 on every resolution, 2 only on bad usage."""
+    """Resolve and print; exit 0 on every resolution, 3 only when every suite
+    is owed but none can be named, 2 only on bad usage."""
     parser = _build_parser()
     args = parser.parse_args(argv)
     known = known_capabilities()
@@ -245,7 +247,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.none:
         resolution = Resolution([], "--none: no suites owed")
     elif args.all:
-        resolution = Resolution(sorted(known), "--all: every suite")
+        # Through the same every-suite path as a fallback: an empty discovery
+        # must reach the warning below, not silently expand to nothing.
+        resolution = Resolution(sorted(known) or None, "--all: every suite")
     elif json_mode or scope == "affected":
         base: str | None = args.base or default_base()
         paths = changed(base, worktree=bool(args.worktree))
@@ -256,7 +260,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             else resolve(paths, known=known, release=bool(args.release_pr))
         )
     elif scope == "all":
-        resolution = Resolution(sorted(known), "scope all: every suite")
+        resolution = Resolution(sorted(known) or None, "scope all: every suite")
     elif scope in known:
         resolution = Resolution([scope], f"scope {scope}: {_suite_dir(scope)}")
     else:
@@ -269,9 +273,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(resolution.reason, file=sys.stderr)
     if resolution.capabilities is None and not names:
         print(
-            "warning: every suite is owed, but no known capabilities were found",
+            "warning: every suite is owed (--all or an unrecognized change), "
+            "but no capability carries an e2e/ suite",
             file=sys.stderr,
         )
+        return 3
     return 0
 
 
