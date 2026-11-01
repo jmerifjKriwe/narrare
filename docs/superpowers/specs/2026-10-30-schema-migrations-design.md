@@ -143,7 +143,9 @@ the database; genuine drift still refuses, by name.
 **D5 — The unattended upgrade, on start, before the first request.** `pg_advisory_lock`
 so two starts cannot interleave; when revisions are pending, a restorable dump first
 into `NARRE_BACKUP_DIR` (default `./backups`, last 3 kept), then `upgrade head` in one
-transaction, then a head check.
+transaction, then a head check. A dump counts only once accepted — the `PGDMP` magic,
+then `pg_restore --list` exit 0 — so a truncated or corrupt archive refuses the run
+like no dump at all (2026-11-01).
 
 The dump is a precondition **of that run**, not a property of the installation: with
 nothing pending, no dump tool is ever invoked. Its source is one setting,

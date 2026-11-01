@@ -22,8 +22,10 @@ import subprocess
 from datetime import UTC, datetime
 from os import environ, replace
 from typing import TYPE_CHECKING
+from urllib.parse import quote, urlencode
 
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -95,13 +97,23 @@ def _libpq_url(database_url: str) -> str:
     only difference: an ``ssl`` becomes ``sslmode``; an ``sslmode`` already
     present stays untouched and a duplicate ``ssl`` is dropped rather than
     sent twice; every other parameter passes through.
+
+    The query is rendered with ``quote``'s ``%XX`` semantics, not
+    ``render_as_string``'s ``quote_plus``: libpq does not decode ``+`` in a
+    query value, so ``options=-c%20search_path%3Dpublic`` — a DSN asyncpg
+    accepts — must not come back as ``options=-c+search_path…`` and die on
+    an ``unrecognized configuration parameter "+search_path"`` (round 3,
+    fix 2, 2026-11-01).
     """
     url = make_url(database_url.replace("+asyncpg", ""))
     query = dict(url.query)
     if "ssl" in query:
         value = query.pop("ssl")
         query.setdefault("sslmode", value)
-    return url.set(query=query).render_as_string(hide_password=False)
+    stem = url.set(query={}).render_as_string(hide_password=False)
+    if not query:
+        return stem
+    return f"{stem}?{urlencode(query, quote_via=quote)}"
 
 
 async def dump_database(database_url: str, directory: Path, *, keep: int = 3) -> Path:
@@ -138,6 +150,12 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
     try:
         try:
             command_line = backup_command(database_url, file)
+        except ArgumentError as exc:
+            # SQLAlchemy's, not Python's: an unparseable URL must meet the
+            # module's contract — every failure is BackupFailed — even
+            # though prepare_database never hands one here (latent, direct
+            # callers only).
+            raise BackupFailed(f"the database URL does not parse: {exc}") from exc
         except (KeyError, IndexError, ValueError) as exc:
             raise BackupFailed(
                 f"NARRE_BACKUP_COMMAND is not a usable template ({type(exc).__name__}: {exc}); "
@@ -229,11 +247,17 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired as exc:
+            # A probe failure cleans like a probe refusal: an unproven
+            # dump is not left looking like one.
+            if not file_existed_before:
+                file.unlink(missing_ok=True)
             raise BackupFailed(
                 f"pg_restore did not finish within {timeout:g}s "
-                f"(NARRE_BACKUP_TIMEOUT); an unreadable dump is not accepted"
+                "(NARRE_BACKUP_TIMEOUT); an unreadable dump is not accepted"
             ) from exc
         except OSError as exc:
+            if not file_existed_before:
+                file.unlink(missing_ok=True)
             raise BackupFailed(
                 f"pg_restore could not be run: {exc}; install postgresql-client "
                 "so the dump can be checked"

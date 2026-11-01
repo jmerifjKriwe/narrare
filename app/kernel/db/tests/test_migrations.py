@@ -30,6 +30,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.db import backup as backup_module
 from app.kernel.db import migrate as migrate_module
 from app.kernel.db.backup import BackupFailed, backup_command, dump_database
 from app.kernel.db.init import reset_schema
@@ -723,6 +724,43 @@ def test_asyncpg_ssl_option_is_translated_for_libpq(
     already_libpq = backup_command("postgresql+asyncpg://u:p%40x@h:5432/db?sslmode=require", dump)
     assert already_libpq[-1] == "postgresql://u:p%40x@h:5432/db?sslmode=require"
 
+    libpq_url = backup_module._libpq_url  # pyright: ignore[reportPrivateUsage]
+    both = libpq_url("postgresql+asyncpg://u:p@h/db?ssl=require&sslmode=verify-full")
+    assert both == "postgresql://u:p@h/db?sslmode=verify-full"  # sslmode wins, ssl gone
+
+
+def test_percent_encoded_query_values_survive_the_libpq_translation() -> None:
+    """A percent-encoded query value reaches pg_dump with ``%XX`` intact (round 3, fix 2).
+
+    ``render_as_string`` re-encodes query values with ``quote_plus``: a
+    space comes back as ``+``, and libpq does not decode ``+`` in a query
+    value — ``options=-c%20search_path%3Dpublic``, a DSN asyncpg accepts,
+    reached pg_dump as ``options=-c+search_path…`` and died on an
+    ``unrecognized configuration parameter "+search_path"``. The query is
+    rendered with ``quote``'s ``%XX`` semantics instead.
+    """
+    libpq_url = backup_module._libpq_url  # pyright: ignore[reportPrivateUsage]
+    options = libpq_url("postgresql+asyncpg://u:p@h/db?options=-c%20search_path%3Dpublic")
+    assert options == "postgresql://u:p@h/db?options=-c%20search_path%3Dpublic"
+    app_name = libpq_url("postgresql+asyncpg://u:p@h/db?application_name=Narrare%20App")
+    assert app_name == "postgresql://u:p@h/db?application_name=Narrare%20App"
+
+
+def test_backup_command_template_gets_the_same_url_translation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A ``NARRE_BACKUP_COMMAND`` template's ``{url}`` is translated like the default's.
+
+    The template form promises the same libpq-speakable URL the default
+    argv gets — the compose deployment is the template's real user, and it
+    speaks libpq.
+    """
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "pg_dump --format=custom --file {file} {url}")
+    command_line = backup_command(
+        "postgresql+asyncpg://u:p@h/db?ssl=require", tmp_path / "dump.dump"
+    )
+    assert command_line[-1] == "postgresql://u:p@h/db?sslmode=require"
+
 
 def test_percent_encoded_url_survives_the_config_parser_round_trip() -> None:
     """A percent in the URL (an encoded password) survives the ConfigParser.
@@ -1132,6 +1170,32 @@ async def test_truncated_dump_is_refused_and_removed(
     assert len(list(kept.iterdir())) == 1  # and the refusal evicted nothing
 
 
+async def test_failed_acceptance_probe_leaves_no_dump(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A probe that cannot run cleans like one that refuses (round 3, fix 2).
+
+    pg_dump succeeding is not the dump counting: the acceptance probes are
+    part of the run, and a probe whose subprocess cannot start (OSError) or
+    dies on the timeout must leave as little behind as a non-zero exit —
+    no ``*.dump`` that was never proven restorable.
+    """
+    real_run = cast("Any", subprocess.run)
+
+    def _probe_never_runs(command: list[str], *args: Any, **kwargs: Any) -> Any:
+        if command[:2] == ["pg_restore", "--list"]:
+            raise OSError("pg_restore could not be started")
+        return real_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", _probe_never_runs)
+
+    with pytest.raises(BackupFailed) as failed:
+        await dump_database(url, tmp_path)
+
+    assert "pg_restore could not be run" in str(failed.value)
+    assert list(tmp_path.iterdir()) == []  # the unproven dump did not survive
+
+
 async def test_stalled_dump_command_times_out(
     url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1346,6 +1410,9 @@ async def test_concurrent_starts_migrate_once(url: str) -> None:
     await drop_every_table(url)
 
     outcomes = await asyncio.gather(prepare_database(url), prepare_database(url))
+    # Not observable here: both callers pass the same URL, so an env write
+    # ordered against the lock would still leave the right value standing —
+    # that race is named by review, not seen by this test.
 
     assert [outcome.to_revision for outcome in outcomes] == [head_revision(), head_revision()]
     assert {outcome.from_revision for outcome in outcomes} == {None, head_revision()}

@@ -222,9 +222,10 @@ Everything below is shipped and checked by `just test`:
   `NARRE_BACKUP_COMMAND` template taking `{url}` and `{file}`), `BackupFailed`;
   retention keeps the newest 3 in `NARRE_BACKUP_DIR` (default `./backups`,
   git-ignored; the settings in `.env.example`).
-- `app/kernel/db/init.py` — `db-init`/`db-reset` end in `prepare_database`
-  (backup off: development data is disposable — the dump exists to protect
-  user prose).
+- `app/kernel/db/init.py` — `db-init`/`db-reset` end in `prepare_database`.
+  Amended 2026-11-01: `db-init` takes the same pre-upgrade dump as startup,
+  under the same `NARRE_MIGRATION_BACKUP` default — the original "backup
+  off" read a development database as disposable, and it is prose.
 - `app/api/main.py` — the lifespan calls `prepare_database` before configuration
   validation and the jobs worker.
 - `app/kernel/db/tests/test_migrations.py` — the gates; the release snapshot is
