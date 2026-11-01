@@ -106,9 +106,13 @@ change ships as two files in **one commit** — the model change and its revisio
    `NARRE_DATABASE_URL=<scratch-url> just db-init`, then `pg_dump
    --schema-only --no-owner --no-privileges` it into
    `app/kernel/db/tests/fixtures/schema_<version>.sql` and strip the
-   `alembic_version` table, the `CREATE EXTENSION` lines and pg_dump's
+   `CREATE EXTENSION` lines and pg_dump's
    `\restrict`/`\unrestrict` guards (the mechanics are documented where the
-   snapshot is loaded). `pg_dump` comes from `postgresql-client-17` — see
+   snapshot is loaded). From the release after 0.2.0 the snapshot keeps its
+   `alembic_version` row — `pg_dump` it without stripping that table — so the
+   next release's gate exercises the versioned replay (the recorded revision,
+   upgraded) directly instead of the 0.2.0 fixture's baseline stamp.
+   `pg_dump` comes from `postgresql-client-17` — see
    [Getting Started](#getting-started).
 6. **Commit both files together** — the commit message states *why* the
    schema changed; one that does not is a review finding.

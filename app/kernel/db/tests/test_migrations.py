@@ -3,9 +3,10 @@
 All four design gates live here: the history has exactly one head (D3.1), an
 empty database replayed to head is indistinguishable from what the models
 declare (D3.2 — the gate that keeps the two schema paths identical, D12), the
-checked-in 0.2.0 snapshot bootstraps with its prose intact (D3.3 — the
-bootstrap path; a behind-head replay starts with the first post-baseline
-revision), and the bootstrap branch stamps an equal models-built schema while
+checked-in 0.2.0 snapshot bootstraps with its prose intact and is then carried
+through the history's real post-baseline revision (D3.3 — the bootstrap path
+plus the behind-head replay, constraint DDL against a table holding prose),
+and the bootstrap branch stamps an equal models-built schema while
 refusing a drifted or unknown-revision one by name (D3.4, D4, D6).
 
 ``prepare_database`` is the function the gates drive: the same one
@@ -34,7 +35,6 @@ from app.kernel.db.init import reset_schema
 from app.kernel.db.migrate import (
     UNDEFINED_TABLE,
     MigrationRefused,
-    baseline_revision,
     current_revision,
     default_config,
     diff_against_models,
@@ -237,8 +237,11 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     no ``alembic_version`` — a release ships the schema, not the history —
     so this gate exercises the bootstrap path: exactly the upgrade the
     go-live release performs on databases created by ``create_all``. The
-    behind-head replay it will grow into starts with the first
-    post-baseline revision (known follow-up).
+    bootstrap stamps the baseline, and the history's post-baseline revision
+    — the unique chapter positions — then replays for real: constraint DDL
+    runs against a table that already holds a chapter, and the prose is
+    read back byte-identical on the far side. This is the behind-head
+    replay the gate exists for, through real history.
     """
     # The gate's claim is about the snapshot's database alone: whichever test
     # ran before this one left its tables behind, so the drop happens here,
@@ -471,21 +474,21 @@ async def test_drifted_pre_convention_database_is_still_refused(url: str) -> Non
 
 
 def _probe_history(tmp_path: Path, revision_id: str, upgrade: str) -> Config:
-    """A copied history with one probe revision on top of the baseline.
+    """A copied history with one probe revision on top of its head.
 
-    The probe stands in for the second revision a real history grows: the
+    The probe stands in for the next revision a real history grows: the
     repo's own ``versions/`` directory stays untouched, and the returned
     ``Config`` aims at the copy so a test can put head beyond the database
     it drives.
     """
     probe_migrations = tmp_path / "migrations"
     shutil.copytree(Path(__file__).parent.parent / "migrations", probe_migrations)
-    baseline = baseline_revision()
+    head = head_revision()
     (probe_migrations / "versions" / f"{revision_id}_probe.py").write_text(
         f'"""probe\n'
         f"\n"
         f"Revision ID: {revision_id}\n"
-        f"Revises: {baseline}\n"
+        f"Revises: {head}\n"
         f"Create Date: 2026-11-01\n"
         f"\n"
         f'"""\n'
@@ -494,7 +497,7 @@ def _probe_history(tmp_path: Path, revision_id: str, upgrade: str) -> Config:
         f"from alembic import op\n"
         f"\n"
         f'revision: str = "{revision_id}"\n'
-        f'down_revision: str | None = "{baseline}"\n'
+        f'down_revision: str | None = "{head}"\n'
         f"branch_labels: str | None = None\n"
         f"depends_on: str | None = None\n"
         f"\n"
@@ -520,10 +523,11 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
     The bootstrap's first comparison target is the baseline revision's
     replayed schema — a database that never had a history matches the
     release schema it shipped with, not head's models. One probe revision
-    on top of the baseline makes the difference observable: the database is
-    stamped at the baseline and upgraded through the probe (its column
-    exists afterwards); stamping at head would have skipped the probe
-    entirely. This is also the dump-on-versioned-behind coverage (D5): a
+    on top of the history makes the difference observable: the database is
+    stamped at the baseline and upgraded through everything above it (the
+    real post-baseline revision, then the probe — its column exists
+    afterwards); stamping at head would have skipped the replay entirely.
+    This is also the dump-on-versioned-behind coverage (D5): a
     pending upgrade on a table-bearing database takes the restorable copy
     first.
     """
