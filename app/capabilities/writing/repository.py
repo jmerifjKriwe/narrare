@@ -5,9 +5,10 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.kernel.contracts.models import Chapter, Entity, Novel
+from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
 
 
@@ -66,32 +67,20 @@ class ChapterRepository(ScopedRepository[Chapter]):
     async def get(self, chapter_id: UUID) -> Chapter | None:
         return await self.session.scalar(self.query().where(Chapter.id == chapter_id))
 
-    async def next_position(self, novel_id: UUID) -> int:
-        current = await self.session.scalar(
-            select(func.max(Chapter.position)).where(Chapter.novel_id == novel_id, self.owned())
-        )
-        return 0 if current is None else current + 1
-
     async def create(self, novel_id: UUID, title: str) -> Chapter:
         """Append a chapter at the next position and update its novel's timestamp.
 
         Flush both changes without committing; an empty novel starts at position 0.
+        The number comes from the one allocator every append path uses, which
+        also takes the lock that keeps two writers off one number (#521).
         """
-        # The parent row is the lock the number is allocated under. Two clicks
-        # that arrive together otherwise both read the same max, both write it,
-        # and the rail shows "Kapitel 1" twice with no order between them
-        # (#521). The service refuses a missing novel before this runs, so the
-        # select locks a row rather than guarding for its absence.
-        await self.session.execute(
-            select(Novel.id)
-            .where(Novel.id == novel_id, Novel.user_id == self.user_id)
-            .with_for_update()
-        )
         chapter = Chapter(
             user_id=self.user_id,
             novel_id=novel_id,
             title=title,
-            position=await self.next_position(novel_id),
+            position=await next_chapter_position(
+                self.session, user_id=self.user_id, novel_id=novel_id
+            ),
         )
         self.session.add(chapter)
         await self._touch_novel(novel_id)
