@@ -33,6 +33,7 @@ from app.kernel.db.init import reset_schema
 from app.kernel.db.migrate import (
     UNDEFINED_TABLE,
     MigrationRefused,
+    baseline_revision,
     current_revision,
     default_config,
     diff_against_models,
@@ -186,25 +187,15 @@ async def _load_snapshot(database_url: str, snapshot: Path) -> None:
         await engine.dispose()
 
 
-async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
-    """This release's 0.2.0 snapshot bootstraps with its prose intact (D3.3).
+async def _seed_prose(database_url: str) -> tuple[Any, Any, str, str]:
+    """The prose seed the bootstrap gates load: a user, a novel and its chapter.
 
-    The fixture is this release's checked-in schema (0.2.0), and it carries
-    no ``alembic_version`` — a release ships the schema, not the history —
-    so this gate exercises the bootstrap path: exactly the upgrade the
-    go-live release performs on databases created by ``create_all``. The
-    behind-head replay it will grow into starts with the first
-    post-baseline revision (known follow-up).
+    Returns ``(novel_id, chapter_id, title, body)`` — the ids the prose is
+    read back by, and the title and body the byte-identity assertions name.
     """
-    # The gate's claim is about the snapshot's database alone: whichever test
-    # ran before this one left its tables behind, so the drop happens here,
-    # not only in the module fixture (pytest-randomly shuffles this module).
-    await drop_every_table(url)
-    await _load_snapshot(url, SNAPSHOT)
-
     novel_id, chapter_id = uuid4(), uuid4()
     title, body = "Die Prüfung", "Wort für Wort"
-    engine = create_async_engine(url)
+    engine = create_async_engine(database_url)
     try:
         async with engine.begin() as connection:
             await connection.execute(
@@ -234,6 +225,26 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
             )
     finally:
         await engine.dispose()
+    return novel_id, chapter_id, title, body
+
+
+async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
+    """This release's 0.2.0 snapshot bootstraps with its prose intact (D3.3).
+
+    The fixture is this release's checked-in schema (0.2.0), and it carries
+    no ``alembic_version`` — a release ships the schema, not the history —
+    so this gate exercises the bootstrap path: exactly the upgrade the
+    go-live release performs on databases created by ``create_all``. The
+    behind-head replay it will grow into starts with the first
+    post-baseline revision (known follow-up).
+    """
+    # The gate's claim is about the snapshot's database alone: whichever test
+    # ran before this one left its tables behind, so the drop happens here,
+    # not only in the module fixture (pytest-randomly shuffles this module).
+    await drop_every_table(url)
+    await _load_snapshot(url, SNAPSHOT)
+
+    novel_id, chapter_id, title, body = await _seed_prose(url)
 
     outcome = await prepare_database(url, backup=False)
     assert outcome.from_revision is None
@@ -251,7 +262,7 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
             )
     finally:
         await engine.dispose()
-    assert chapter_body is not None and chapter_body.encode("utf-8") == b"Wort f\xc3\xbcr Wort"
+    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
     assert novel_title == title
     assert await _models_diff(url) == []  # the stamped schema is still the models'
     assert await _version_row(url) == head_revision()
@@ -323,6 +334,236 @@ async def test_drifted_database_is_refused(url: str) -> None:
     assert "add_column" in message  # the op that would reconcile the drift
     assert "chapters" in message  # the table the diff is about
     assert "title" in message  # the missing piece itself
+
+
+# ---------------------------------------------------------------------------
+# Pre-convention databases and the baseline revision (CodeRabbit round 1,
+# 2026-11-01): the bootstrap normalizes constraint names and stamps the
+# baseline, not head
+# ---------------------------------------------------------------------------
+
+
+async def _constraint_names(database_url: str, table: str) -> set[str]:
+    """The constraint names one table carries, straight from the catalog."""
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            rows = await connection.execute(
+                text(
+                    "SELECT c.conname FROM pg_constraint AS c "
+                    "JOIN pg_class AS cl ON cl.oid = c.conrelid "
+                    "JOIN pg_namespace AS n ON n.oid = cl.relnamespace "
+                    "WHERE cl.relname = :table AND n.nspname = 'public'"
+                ),
+                {"table": table},
+            )
+            return {str(row[0]) for row in rows}
+    finally:
+        await engine.dispose()
+
+
+async def _revert_to_pre_convention_names(database_url: str) -> None:
+    """Rename constraints back to Postgres's pre-convention defaults.
+
+    A database created from the models before the naming convention landed
+    (D9) carries Postgres's own default names — ``users_email_key``,
+    ``users_pkey``, ``<table>_<column>_fkey`` — exactly what a real
+    0.2.0-era database holds.
+    """
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("ALTER TABLE users RENAME CONSTRAINT uq_users_email TO users_email_key")
+            )
+            await connection.execute(
+                text("ALTER TABLE users RENAME CONSTRAINT pk_users TO users_pkey")
+            )
+            await connection.execute(
+                text(
+                    "ALTER TABLE chapters RENAME CONSTRAINT fk_chapters_user_id_users "
+                    "TO chapters_user_id_fkey"
+                )
+            )
+            await connection.execute(
+                text(
+                    "ALTER TABLE novels RENAME CONSTRAINT fk_novels_user_id_users "
+                    "TO novels_user_id_fkey"
+                )
+            )
+    finally:
+        await engine.dispose()
+
+
+async def test_pre_convention_database_is_carried_to_the_convention_names(url: str) -> None:
+    """A pre-convention database bootstraps — its constraint names end canonical.
+
+    The bootstrap's exact audience: a database built from the pre-convention
+    models is refused today, because ``compare_metadata`` renders the
+    legacy-named unique constraint as remove+add. The bootstrap normalizes
+    instead (CodeRabbit round 1, 2026-11-01): uniques through the diff pair,
+    PK and FK through the catalog — and the names ARE the convention's
+    afterwards, asserted here by catalog query.
+    """
+    await reset_schema(url)
+    user_id = uuid4()
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("INSERT INTO users (id, created_at) VALUES (:id, now())"), {"id": user_id}
+            )
+    finally:
+        await engine.dispose()
+    await _revert_to_pre_convention_names(url)
+
+    outcome = await prepare_database(url, backup=False)
+
+    assert outcome.from_revision is None
+    assert outcome.bootstrapped is True
+    assert outcome.to_revision == head_revision()
+    # The renames carried no data: the seeded user survives.
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            users: int | None = await connection.scalar(text("SELECT count(*) FROM users"))
+            assert users == 1
+    finally:
+        await engine.dispose()
+    users_names = await _constraint_names(url, "users")
+    assert {"uq_users_email", "pk_users"} <= users_names
+    assert not {"users_email_key", "users_pkey"} & users_names
+    chapters_names = await _constraint_names(url, "chapters")
+    assert "fk_chapters_user_id_users" in chapters_names
+    assert "chapters_user_id_fkey" not in chapters_names
+    novels_names = await _constraint_names(url, "novels")
+    assert "fk_novels_user_id_users" in novels_names
+    assert "novels_user_id_fkey" not in novels_names
+    assert await _models_diff(url) == []  # nothing but the names was touched
+    assert await _version_row(url) == head_revision()
+
+
+async def test_drifted_pre_convention_database_is_still_refused(url: str) -> None:
+    """The normalization is not an amnesty: real drift still refuses, by name.
+
+    Legacy constraint names on top of a dropped column must not end in a
+    stamp — the bootstrap normalizes the names, then refuses the drift it
+    still sees.
+    """
+    await reset_schema(url)
+    await _revert_to_pre_convention_names(url)
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text("ALTER TABLE chapters DROP COLUMN title"))
+    finally:
+        await engine.dispose()
+
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup=False)
+
+    message = str(refused.value)
+    assert "add_column" in message
+    assert "chapters" in message
+    assert "title" in message
+
+
+async def test_unversioned_database_is_stamped_at_the_baseline_revision(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An old unversioned database is stamped at the BASELINE revision, not head (D4).
+
+    The bootstrap's comparison target is the baseline revision's replayed
+    schema — a database that never had a history matches the release schema
+    it shipped with, not head's models. One probe revision on top of the
+    baseline makes the difference observable: the database is stamped at the
+    baseline and upgraded through the probe (its column exists afterwards);
+    stamping at head would have skipped the probe entirely. This is also the
+    dump-on-versioned-behind coverage (D5): a pending upgrade on a
+    table-bearing database takes the restorable copy first.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    # The probe history: the real migration directory, copied, with one
+    # additive revision on top of the baseline. Nothing under the repo's own
+    # versions/ directory changes.
+    probe_id = "5ea50f00d000"
+    probe_migrations = tmp_path / "migrations"
+    shutil.copytree(Path(__file__).parent.parent / "migrations", probe_migrations)
+    baseline = baseline_revision()
+    (probe_migrations / "versions" / f"{probe_id}_probe.py").write_text(
+        f'"""probe\n'
+        f"\n"
+        f"Revision ID: {probe_id}\n"
+        f"Revises: {baseline}\n"
+        f"Create Date: 2026-11-01\n"
+        f"\n"
+        f'"""\n'
+        f"\n"
+        f"import sqlalchemy as sa\n"
+        f"from alembic import op\n"
+        f"\n"
+        f'revision: str = "{probe_id}"\n'
+        f'down_revision: str | None = "{baseline}"\n'
+        f"branch_labels: str | None = None\n"
+        f"depends_on: str | None = None\n"
+        f"\n"
+        f"\n"
+        f"def upgrade() -> None:\n"
+        f'    op.add_column("chapters", sa.Column("probe", sa.Text(), nullable=True))\n'
+        f"\n"
+        f"\n"
+        f"def downgrade() -> None:\n"
+        f'    op.drop_column("chapters", "probe")\n',
+        encoding="utf-8",
+    )
+    probe_config = default_config()
+    probe_config.set_main_option("script_location", str(probe_migrations))
+
+    await drop_every_table(url)
+    await _load_snapshot(url, SNAPSHOT)
+    novel_id, chapter_id, title, body = await _seed_prose(url)
+
+    outcome = await prepare_database(url, backup=True, backup_dir=tmp_path, config=probe_config)
+
+    assert outcome.from_revision is None
+    assert outcome.bootstrapped is True
+    assert outcome.to_revision == probe_id  # this history's head, not the repo's
+    assert await _version_row(url) == probe_id
+    # Stamped at the baseline: the probe revision was really applied on top
+    # of it — a stamp at head would have skipped it and left no column.
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            probe_values: int | None = await connection.scalar(
+                text("SELECT count(*) FROM chapters WHERE probe IS NOT NULL")
+            )
+            chapter_body: str | None = await connection.scalar(
+                text("SELECT body FROM chapters WHERE id = :id"), {"id": chapter_id}
+            )
+            novel_title: str | None = await connection.scalar(
+                text("SELECT title FROM novels WHERE id = :id"), {"id": novel_id}
+            )
+    finally:
+        await engine.dispose()
+    assert probe_values == 0  # the column exists, every value null — the add ran
+    assert chapter_body is not None and chapter_body.encode("utf-8") == body.encode("utf-8")
+    assert novel_title == title
+    # The restorable copy (D5): pending revisions and tables — the dump ran.
+    assert outcome.backup is not None
+    assert outcome.backup.parent == tmp_path
+    assert outcome.backup.read_bytes()[:5] == b"PGDMP"
+    # The scratch database the comparison replayed the baseline on is gone.
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            scratch: int | None = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM pg_database WHERE datname = 'narrare_migrations_baseline'"
+                )
+            )
+            assert scratch == 0
+    finally:
+        await engine.dispose()
 
 
 async def test_database_ahead_of_the_app_is_refused(url: str) -> None:

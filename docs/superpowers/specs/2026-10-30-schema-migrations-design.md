@@ -121,6 +121,15 @@ same checks are ~80 lines against `alembic.command`.
 with the metadata. Equal → stamp the baseline. Not equal → refuse to start and say
 what differs. Guessing here is how data is lost.
 
+**Update 2026-11-01 (CodeRabbit round 1):** the bootstrap compares against the
+*baseline revision's replayed schema* — reflected from a scratch database on the same
+server — and stamps that baseline, so the normal flow upgrades the database to head
+through every revision it never had. At the same bootstrap, constraint names a
+pre-convention database carries (Postgres's `users_email_key`, `<table>_pkey`,
+`<table>_<column>_fkey` defaults) are normalized to the naming convention (D9) — a
+diff-pair rename for uniques, a catalog rename for PK and FK — instead of refusing
+the database; genuine drift still refuses, by name.
+
 **D5 — The unattended upgrade, on start, before the first request.** `pg_advisory_lock`
 so two starts cannot interleave; when revisions are pending, a restorable dump first
 into `NARRE_BACKUP_DIR` (default `./backups`, last 3 kept), then `upgrade head` in one

@@ -103,6 +103,13 @@ the advisory lock, backup and checksums become ours to build.
 **We choose Option A: Alembic, async, in the kernel — a baseline revision
 (`b47f335cacca`) plus append-only history, applied on startup.**
 
+> **2026-11-01 (CodeRabbit round 1):** the bootstrap compares an unversioned database
+> against the *baseline revision's replayed schema* and stamps the baseline — the
+> upgrade to head follows through the normal flow.
+> **2026-11-01 (CodeRabbit round 1):** constraint names are normalized to the naming
+> convention (D9) at bootstrap — a pre-convention database's Postgres defaults are
+> renamed, not held against the database.
+
 `prepare_database()` (`app/kernel/db/migrate.py`) runs first in the lifespan
 (`app/api/main.py`) and takes any database the app meets to head: advisory lock, so
 two starts cannot interleave → `ensure_extensions` (the three extensions stay a

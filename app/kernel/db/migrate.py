@@ -12,13 +12,17 @@ state it does not understand (design D4 to D7 of the schema-migrations
 design). ``ensure_extensions`` is the write side's pre-step (D7) and lives
 here because ``prepare_database`` is its caller. The gates in
 ``app/kernel/db/tests/test_migrations.py`` pin all of it.
-The metadata compared against is the models': ``register_models`` imports
-every model module for its registration side effect — ``env.py``,
-``reset_schema`` and the comparison itself call it, so no caller's import
-graph is a hidden precondition of a correct comparison.
+The comparison's table set: ``register_models`` imports every model module
+for its registration side effect — ``env.py``, ``reset_schema`` and the
+comparisons call it, so no caller's import graph is a hidden precondition.
+The bootstrap compares an unversioned database against the *baseline*
+revision's replayed schema, reflected from a scratch database on the same
+server, and stamps the baseline (CodeRabbit round 1, 2026-11-01); the
+equality gate compares against the models' metadata.
 """
 
 import asyncio
+import logging
 from contextlib import suppress
 from dataclasses import dataclass
 from os import environ
@@ -30,7 +34,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import text
+from sqlalchemy import ForeignKeyConstraint, MetaData, UniqueConstraint, text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -41,6 +45,8 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import Connection
     from sqlalchemy.ext.asyncio import AsyncConnection
 
+logger = logging.getLogger(__name__)
+
 ALEMBIC_INI = Path(__file__).resolve().parents[3] / "alembic.ini"
 
 # Postgres SQLSTATE for undefined_table — the version table of a database
@@ -50,6 +56,13 @@ UNDEFINED_TABLE = "42P01"
 # Postgres SQLSTATE for insufficient_privilege — the extension pre-step's
 # one tolerable failure, because there the platform owns the step (D7).
 INSUFFICIENT_PRIVILEGE = "42501"
+
+# The scratch database the bootstrap replays the baseline revision on, to
+# hold the schema an unversioned database is compared against. The advisory
+# lock below serialises ``prepare_database`` runs cluster-wide, so the fixed
+# name cannot collide with a concurrent run; a leftover from a crashed run
+# is dropped with ``FORCE`` before the replay creates it.
+BOOTSTRAP_SCRATCH_DATABASE = "narrare_migrations_baseline"
 
 
 class MigrationRefused(RuntimeError):  # noqa: N818  the name is the task interface
@@ -91,19 +104,36 @@ async def ensure_extensions(database_url: str) -> None:
     await engine.dispose()
 
 
-def head_revision() -> str:
+def head_revision(config: Config | None = None) -> str:
     """The one head of the migration history.
 
     Two heads mean someone committed a branch instead of extending the
     history; zero mean no revisions exist. Both refuse: an upgrade that
     guesses which line to follow is how a database ends up half-migrated.
     """
-    heads = ScriptDirectory.from_config(default_config()).get_heads()
+    heads = ScriptDirectory.from_config(config or default_config()).get_heads()
     if len(heads) != 1:
         raise MigrationRefused(
             f"expected exactly one head revision, found {len(heads)}: {', '.join(heads)}"
         )
     return heads[0]
+
+
+def baseline_revision(config: Config | None = None) -> str:
+    """The history's root: the one revision with no down_revision.
+
+    The bootstrap's comparison target (design D4): a database that never had
+    a history matches the schema the *baseline* replayed — not head's
+    models, which later revisions may already have moved past.
+    """
+    roots = [
+        revision.revision
+        for revision in ScriptDirectory.from_config(config or default_config()).walk_revisions()
+        if revision.down_revision is None
+    ]
+    if len(roots) != 1:
+        raise MigrationRefused(f"expected exactly one baseline revision, found {len(roots)}")
+    return roots[0]
 
 
 def register_models() -> None:
@@ -138,21 +168,25 @@ def register_models() -> None:
                 raise
 
 
-def diff_against_models(config: Config, connection: Connection) -> list[Any]:
-    """What alembic would still have to do for the database to match the models.
+def diff_against_models(
+    config: Config, connection: Connection, metadata: MetaData | None = None
+) -> list[Any]:
+    """What alembic would still have to do for the database to match the schema.
 
-    An empty list means the migrated schema equals the models' — the gate
-    that keeps the two schema paths (the replayed history, the models-built
-    tests) saying the same thing. The comparison runs with the same switches
-    an autogenerate draft runs with, so the gate proves what a draft would
-    see. The models register here first: the comparison brings its own table
-    set instead of trusting the caller's import graph.
+    An empty list means the database equals ``metadata`` — the models' by
+    default, which is the gate that keeps the two schema paths (the replayed
+    history, the models-built tests) saying the same thing; the bootstrap
+    passes the baseline revision's reflected replay instead (design D4,
+    CodeRabbit round 1, 2026-11-01). The comparison runs with the same
+    switches an autogenerate draft runs with, so the gate proves what a
+    draft would see. The models register here first: the default target
+    brings its own table set instead of trusting the caller's import graph.
     """
     register_models()
     context = MigrationContext.configure(
         connection, opts={"compare_type": True, "compare_server_default": True}
     )
-    return list(compare_metadata(context, Base.metadata))
+    return list(compare_metadata(context, metadata if metadata is not None else Base.metadata))
 
 
 async def current_revision(connection: AsyncConnection) -> str | None:
@@ -222,17 +256,258 @@ async def _extensions_or_refuse(database_url: str) -> None:
         ) from exc
 
 
+# The catalog behind the PK/FK normalization: every primary key ('p') and
+# foreign key ('f') in the public schema, with its table, its column list
+# and — for a foreign key — the referenced table.
+_CONSTRAINT_CATALOG = text(
+    """
+    SELECT cl.relname AS table_name,
+           c.conname AS constraint_name,
+           c.contype::text AS kind,
+           (SELECT array_agg(a.attname ORDER BY k.ord)
+              FROM unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+              JOIN pg_attribute AS a
+                ON a.attrelid = c.conrelid AND a.attnum = k.attnum) AS columns,
+           ref.relname AS referred_table
+      FROM pg_constraint AS c
+      JOIN pg_class AS cl ON cl.oid = c.conrelid
+      JOIN pg_namespace AS n ON n.oid = cl.relnamespace
+      LEFT JOIN pg_class AS ref ON ref.oid = c.confrelid
+     WHERE n.nspname = 'public' AND c.contype IN ('p', 'f')
+    """
+)
+
+
+async def _normalize_legacy_pk_fk_names(database_url: str) -> list[tuple[str, str, str]]:
+    """Rename pre-convention PK and FK constraints to the convention's names.
+
+    Postgres names what the pre-convention models left unnamed itself:
+    ``<table>_pkey`` and ``<table>_<column>_fkey``. Alembic does not compare
+    those two kinds, so they never refuse a bootstrap — but they stay
+    non-canonical and bite the first revision that names them. Before the
+    bootstrap's comparison, each such constraint whose convention name the
+    models' metadata knows is renamed in place — both the old and the new
+    name are derived, never hardcoded: the catalog yields the constraint's
+    identity (table, columns, referenced table) and the legacy default it
+    carries, the metadata yields the convention name for that same identity
+    (CodeRabbit round 1, 2026-11-01).
+
+    Idempotent by construction: a name already at its convention form, or
+    anything that is not Postgres's legacy default, is left alone. The
+    renames run in one transaction on their own connection — the caller has
+    already taken the pre-migration dump (D5), so this write is covered.
+
+    Returns the applied renames as ``(table, old, new)``; each is logged at
+    INFO, one line naming the bootstrap normalization.
+    """
+    register_models()
+    expected_pk: dict[str, str] = {}
+    expected_fk: dict[tuple[str, tuple[str, ...], str], str] = {}
+    for table in Base.metadata.tables.values():
+        primary_key = table.primary_key
+        # `name` is `str | _NoneName` — SQLAlchemy's unnamed sentinel mimics
+        # None; only a rendered convention name counts here.
+        if primary_key.columns and isinstance(primary_key.name, str):
+            expected_pk[table.name] = primary_key.name
+        for constraint in table.constraints:
+            if isinstance(constraint, ForeignKeyConstraint) and isinstance(constraint.name, str):
+                identity = (
+                    table.name,
+                    tuple(column.name for column in constraint.columns),
+                    constraint.referred_table.name,
+                )
+                expected_fk[identity] = constraint.name
+    renames: list[tuple[str, str, str]] = []
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            for table_name, constraint_name, kind, columns, referred_table in (
+                await connection.execute(_CONSTRAINT_CATALOG)
+            ).fetchall():
+                if table_name not in Base.metadata.tables:
+                    continue
+                if kind == "p":
+                    expected = expected_pk.get(table_name)
+                    legacy = f"{table_name}_pkey"
+                else:
+                    identity = (table_name, tuple(columns or ()), referred_table)
+                    expected = expected_fk.get(identity)
+                    legacy = f"{table_name}_{'_'.join(columns or ())}_fkey"
+                if expected is None or constraint_name != legacy:
+                    continue
+                await connection.execute(
+                    # Identifiers from the catalog; DDL takes no bind params.
+                    text(
+                        f'ALTER TABLE "{table_name}" RENAME CONSTRAINT '
+                        f'"{constraint_name}" TO "{expected}"'
+                    )
+                )
+                renames.append((table_name, constraint_name, expected))
+    finally:
+        await engine.dispose()
+    for table_name, old, new in renames:
+        logger.info(
+            "bootstrap normalization: renamed constraint %s on %s to %s", old, table_name, new
+        )
+    return renames
+
+
+def _rename_unique_constraint_pairs(
+    connection: Connection, diff: list[Any]
+) -> list[tuple[str, str, str]]:
+    """Apply a diff's remove+add unique pairs as ``RENAME CONSTRAINT`` statements.
+
+    Alembic does not know renames: a unique constraint whose only difference
+    is its name comes back as a remove of the old and an add of the new. For
+    a pre-convention database that pair is exactly the convention rename
+    (``users_email_key`` → ``uq_users_email``): same table, same columns.
+    Such a pair is applied as the rename it is instead of refusing the
+    database (CodeRabbit round 1, 2026-11-01); anything else in the diff
+    stays a refusal. Idempotent: after the rename, the re-comparison has no
+    pair to find. Every applied rename is logged at INFO.
+    """
+    removes = [
+        op[1]
+        for op in diff
+        if len(op) == 2 and op[0] == "remove_constraint" and isinstance(op[1], UniqueConstraint)
+    ]
+    adds = [
+        op[1]
+        for op in diff
+        if len(op) == 2 and op[0] == "add_constraint" and isinstance(op[1], UniqueConstraint)
+    ]
+    renames: list[tuple[str, str, str]] = []
+    for removed in removes:
+        old = removed.name
+        if not old:
+            continue
+        columns = [column.name for column in removed.columns]
+        match = next(
+            (
+                added
+                for added in adds
+                if added.name
+                and added.table.name == removed.table.name
+                and [column.name for column in added.columns] == columns
+            ),
+            None,
+        )
+        if match is None or match.name is None:
+            continue
+        renames.append((removed.table.name, old, match.name))
+    for table_name, old, new in renames:
+        connection.execute(
+            # Identifiers from the catalog/metadata; DDL takes no bind params.
+            text(f'ALTER TABLE "{table_name}" RENAME CONSTRAINT "{old}" TO "{new}"')
+        )
+        logger.info(
+            "bootstrap normalization: renamed unique constraint %s on %s to %s",
+            old,
+            table_name,
+            new,
+        )
+    return renames
+
+
+async def _drop_scratch_database(server: str) -> None:
+    """Drop the bootstrap's scratch database, if it exists; leftovers included."""
+    engine = create_async_engine(f"{server}/postgres", isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(
+                # A fixed module constant, no interpolation.
+                text(f"DROP DATABASE IF EXISTS {BOOTSTRAP_SCRATCH_DATABASE} WITH (FORCE)")
+            )
+    finally:
+        await engine.dispose()
+
+
+async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tuple[str, MetaData]:
+    """Replay the baseline revision on a scratch database; reflect its schema.
+
+    The schema an unversioned database is compared against is the *baseline*
+    revision's replay, not head's models (design D4, CodeRabbit round 1,
+    2026-11-01): a database that never had a history matches the release
+    schema it shipped with, and the bootstrap stamps that baseline so the
+    normal flow upgrades it to head afterwards. The scratch lives on the
+    same server — the admin URL is the database URL's own, with ``postgres``
+    as the database; testsupport's SERVER is the test server and wrong at
+    runtime. It is dropped once the metadata is reflected, and any leftover
+    from a crashed run is dropped with ``FORCE`` before the replay.
+
+    A server this user may not sidecar a database on (no ``CREATE DATABASE``
+    right) is a refusal naming the operator's way out — stamp the baseline
+    by hand with alembic; every other failure surfaces unchanged.
+    """
+    baseline = baseline_revision(config)
+    server = database_url.rsplit("/", 1)[0]
+    scratch_url = f"{server}/{BOOTSTRAP_SCRATCH_DATABASE}"
+    admin_engine = create_async_engine(f"{server}/postgres", isolation_level="AUTOCOMMIT")
+    try:
+        async with admin_engine.connect() as connection:
+            try:
+                await connection.execute(
+                    # A fixed module constant, no interpolation.
+                    text(f"DROP DATABASE IF EXISTS {BOOTSTRAP_SCRATCH_DATABASE} WITH (FORCE)")
+                )
+                await connection.execute(text(f"CREATE DATABASE {BOOTSTRAP_SCRATCH_DATABASE}"))
+            except Exception as exc:
+                if getattr(exc.__cause__, "sqlstate", None) != INSUFFICIENT_PRIVILEGE:
+                    raise
+                raise MigrationRefused(
+                    "the bootstrap compares an unversioned database against the baseline "
+                    f"revision's replay on a scratch database ({BOOTSTRAP_SCRATCH_DATABASE}), "
+                    f"and it could not be created: {exc}; grant this user the right to "
+                    "CREATE DATABASE, or stamp the baseline by hand: "
+                    "alembic stamp <baseline revision>"
+                ) from exc
+    finally:
+        await admin_engine.dispose()
+
+    metadata = MetaData()
+    previous = environ["NARRE_DATABASE_URL"]
+    try:
+        # env.py reads the URL from the environment only: the replay aims at
+        # the scratch database, not at the caller's.
+        environ["NARRE_DATABASE_URL"] = scratch_url
+        await ensure_extensions(scratch_url)
+        await asyncio.to_thread(command.upgrade, config, baseline)
+        engine = create_async_engine(scratch_url)
+        try:
+            async with engine.connect() as connection:
+                await connection.run_sync(metadata.reflect)
+        finally:
+            await engine.dispose()
+    finally:
+        environ["NARRE_DATABASE_URL"] = previous
+        await _drop_scratch_database(server)
+    version_table = metadata.tables.get("alembic_version")
+    if version_table is not None:
+        metadata.remove(version_table)
+    return baseline, metadata
+
+
 async def prepare_database(
-    database_url: str, *, backup: bool = True, backup_dir: Path | None = None
+    database_url: str,
+    *,
+    backup: bool = True,
+    backup_dir: Path | None = None,
+    config: Config | None = None,
 ) -> MigrationOutcome:
     """Bring one database to the history's head, refusing to guess.
 
     The state the database starts in decides the path: a fresh one is
-    replayed from nothing; a models-built one — tables but no
-    ``alembic_version`` — is stamped only when its schema equals the models',
-    else refused with the differences named; a versioned one is upgraded in
+    replayed from nothing; one with tables but no ``alembic_version`` is
+    bootstrapped — its constraint names are normalized to the naming
+    convention's, and when the schema then equals the *baseline* revision's
+    replayed schema it is stamped at that baseline (the upgrade below
+    carries it to head), else refused with the differences named (design
+    D4, CodeRabbit round 1, 2026-11-01); a versioned one is upgraded in
     place, but a revision outside this app's history is refused with both
-    versions named, and so is an upgrade that ends anywhere but head.
+    versions named, and so is an upgrade that ends anywhere but head. The
+    config defaults to the repo's own history; a caller may pass another
+    ``Config`` — a test pointing ``script_location`` at a copied history —
+    and head, baseline, stamp and upgrade all follow it.
 
     The whole run — the extensions pre-step, the version reads, the
     pre-migration dump, the upgrade — executes under a session-level
@@ -265,8 +540,8 @@ async def prepare_database(
     # its short life — nothing else in the process re-reads it after import.
     environ["NARRE_DATABASE_URL"] = database_url
 
-    head = head_revision()
-    config = default_config()
+    head = head_revision(config)
+    config = config if config is not None else default_config()
 
     current: str | None = None
     bootstrapped = False
@@ -291,20 +566,11 @@ async def prepare_database(
                     current = await current_revision(connection)
                     has_tables = await _has_tables(connection)
                     if current is None and has_tables:
-                        diff = await connection.run_sync(
-                            lambda sync_connection: diff_against_models(config, sync_connection)
-                        )
-                        if diff:
-                            raise MigrationRefused(
-                                "the database has tables but no migration history, and its "
-                                f"schema does not match the models ({_describe(diff)}); "
-                                "refusing to guess — align the schema with the models by "
-                                "hand or reset the database"
-                            )
-                        # An equal schema earns the history's version row and no DDL:
-                        # this is the stamp (D4), not a replay of the history. The
-                        # stamp itself runs once this transaction has ended — no
-                        # connection of ours sits idle-in-transaction across it.
+                        # A bootstrap candidate: tables but no history. The
+                        # decision — normalize the constraint names, compare
+                        # against the baseline revision, stamp or refuse —
+                        # runs after the dump below, so no write of this run
+                        # precedes the restorable copy (D5).
                         bootstrapped = True
 
                     if current is not None and current not in {
@@ -348,8 +614,62 @@ async def prepare_database(
                             "own copy of the database"
                         ) from exc
 
+                stamp_target = head
                 if bootstrapped:
-                    await asyncio.to_thread(command.stamp, config, head)
+                    # The bootstrap (design D4, CodeRabbit round 1,
+                    # 2026-11-01). First the constraint names: a database
+                    # created before the naming convention (D9) carries
+                    # Postgres's own PK and FK defaults, and alembic renders
+                    # its legacy-named uniques as remove+add pairs — both are
+                    # renamed to the convention's, not held against the
+                    # database.
+                    await _normalize_legacy_pk_fk_names(database_url)
+
+                    # The schema to match is the *baseline* revision's
+                    # replayed schema: an unversioned database matches the
+                    # release it shipped with, not head's models. Matching
+                    # earns the stamp at the baseline — the upgrade below
+                    # then carries it to head through every revision it
+                    # missed; anything else after the normalization is
+                    # refused, with the differences named.
+                    baseline, baseline_metadata = await _baseline_metadata_or_refuse(
+                        config, database_url
+                    )
+                    stamp_target = baseline
+                    async with engine.connect() as connection:
+                        diff = await connection.run_sync(
+                            lambda sync_connection: diff_against_models(
+                                config, sync_connection, baseline_metadata
+                            )
+                        )
+                    if diff:
+                        # A remove+add pair of the same unique constraint is
+                        # the convention rename; applied as such, then the
+                        # comparison runs again — whatever still differs is
+                        # the refusal's subject.
+                        async with engine.begin() as connection:
+                            renamed = await connection.run_sync(
+                                lambda sync_connection: _rename_unique_constraint_pairs(
+                                    sync_connection, diff
+                                )
+                            )
+                        if renamed:
+                            async with engine.connect() as connection:
+                                diff = await connection.run_sync(
+                                    lambda sync_connection: diff_against_models(
+                                        config, sync_connection, baseline_metadata
+                                    )
+                                )
+                    if diff:
+                        raise MigrationRefused(
+                            "the database has tables but no migration history, and its "
+                            "schema does not match the baseline revision "
+                            f"{baseline} ({_describe(diff)}); refusing to guess — align "
+                            "the schema with the models by hand or reset the database"
+                        )
+
+                if bootstrapped:
+                    await asyncio.to_thread(command.stamp, config, stamp_target)
 
                 await asyncio.to_thread(command.upgrade, config, "head")
 
