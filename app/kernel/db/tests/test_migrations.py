@@ -612,18 +612,18 @@ async def test_models_built_database_is_stamped_at_head(
     # probe-head models' ``create_all`` produces exactly the real models
     # plus this table. The model registers on the shared Base for this test
     # only — removed again below, so no other test's comparison sees it.
-    from sqlalchemy.orm import Mapped, mapped_column
-
     from app.kernel.db.base import Base
 
-    class Probe(Base):
-        """The probe revision's table, as the probe-head models declare it."""
-
-        __tablename__ = "probe_table"
-
-        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
-
     try:
+        from sqlalchemy.orm import Mapped, mapped_column
+
+        class Probe(Base):
+            """The probe revision's table, as the probe-head models declare it."""
+
+            __tablename__ = "probe_table"
+
+            id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+
         engine = create_async_engine(url)
         try:
             async with engine.begin() as connection:
@@ -640,7 +640,6 @@ async def test_models_built_database_is_stamped_at_head(
         # Stamped at head: the version row is the probe revision and the
         # upgrade afterwards had nothing to apply — a stamp at the baseline
         # would have replayed the probe onto an existing table and failed.
-        assert outcome.to_revision == probe_id
         assert await _version_row(url) == probe_id
         assert await _models_diff(url) == []  # no DDL happened: still the models'
     finally:
@@ -1070,8 +1069,19 @@ async def test_bad_backup_timeout_is_a_named_refusal(
     """A NARRE_BACKUP_TIMEOUT that is not a positive number is BackupFailed.
 
     The value is resolved before any work starts — no sink is opened, no
-    artifact survives, nothing is migrated.
+    artifact survives, nothing is migrated. The no-open pin is what bites
+    on the order: with the timeout resolved after ``partial.open``, the
+    sink descriptor leaked until garbage collection surfaced it as an
+    unraisable warning — timing-dependent. Here it is an assertion.
     """
+    opened: list[str] = []
+    real_open = Path.open
+
+    def _recording_open(self: Path, *args: Any, **kwargs: Any) -> Any:
+        opened.append(self.name)
+        return cast("IO[bytes]", real_open(self, *args, **kwargs))
+
+    monkeypatch.setattr(Path, "open", _recording_open)
     for value in ("not-a-number", "0", "-5"):
         monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
         monkeypatch.setenv("NARRE_BACKUP_TIMEOUT", value)
@@ -1082,6 +1092,7 @@ async def test_bad_backup_timeout_is_a_named_refusal(
 
         assert isinstance(refused.value.__cause__, BackupFailed)
         assert "NARRE_BACKUP_TIMEOUT" in str(refused.value.__cause__)
+        assert opened == []  # the refusal happened before any sink was opened
         assert list(tmp_path.iterdir()) == []
         # Nothing migrated: the version table never came into existence.
         with pytest.raises(ProgrammingError) as missing:

@@ -485,9 +485,17 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
                         "user the right to CREATE DATABASE, or stamp the baseline by "
                         f"hand: alembic stamp {baseline}"
                     ) from exc
-                if sqlstate == DUPLICATE_CATALOG and leftover:
+                if sqlstate == DUPLICATE_CATALOG:
+                    # The CREATE can hit an existing scratch for two
+                    # reasons: a leftover this user could not pre-drop, or
+                    # a second target whose URL hash prefix collided with
+                    # this one. Both are named, never a raw traceback.
+                    prefix = leftover or (
+                        f"the scratch name derived from this target ({scratch}) "
+                        "collides with another target's"
+                    )
                     raise MigrationRefused(
-                        f"{leftover}; the replay cannot run until it is gone — drop "
+                        f"{prefix}; the replay cannot run until it is gone — drop "
                         f"{scratch} by hand, or stamp the baseline by hand: "
                         f"alembic stamp {baseline}"
                     ) from exc
