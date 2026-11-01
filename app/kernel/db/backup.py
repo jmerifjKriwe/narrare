@@ -10,7 +10,10 @@ dump back; the gates' round-trip test proves it.
 
 Everything that can go wrong here — the directory, the command template,
 the subprocess, the write — raises ``BackupFailed``, so the caller's one
-refusal covers every way a dump cannot be produced.
+refusal covers every way a dump cannot be produced. The subprocess is
+bounded by ``NARRE_BACKUP_TIMEOUT`` (seconds, default 300): a ``pg_dump``
+that stalls — or sits at a password prompt — is killed and becomes that
+refusal, not a startup that never returns.
 """
 
 import asyncio
@@ -26,6 +29,31 @@ if TYPE_CHECKING:
 
 class BackupFailed(RuntimeError):  # noqa: N818  the name is the task interface
     """The pre-migration dump could not be produced."""
+
+
+# Seconds a dump may run before it is killed and the run fails (D5): a
+# stalled pg_dump must not block startup forever.
+DEFAULT_BACKUP_TIMEOUT = 300.0
+
+
+def _backup_timeout() -> float:
+    """The dump subprocess's budget, from ``NARRE_BACKUP_TIMEOUT`` (seconds)."""
+    raw = environ.get("NARRE_BACKUP_TIMEOUT")
+    if not raw:
+        return DEFAULT_BACKUP_TIMEOUT
+    try:
+        seconds = float(raw)
+    except ValueError:
+        raise BackupFailed(
+            f"NARRE_BACKUP_TIMEOUT is not a number of seconds: {raw!r}; set it to a "
+            "positive number, or unset it for the default "
+            f"{DEFAULT_BACKUP_TIMEOUT:g}"
+        ) from None
+    if seconds <= 0:
+        raise BackupFailed(
+            f"NARRE_BACKUP_TIMEOUT must be a positive number of seconds, not {raw!r}"
+        )
+    return seconds
 
 
 def backup_command(url: str, file: Path) -> list[str]:
@@ -56,12 +84,16 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
     The command comes from ``backup_command``; the URL loses ``+asyncpg``,
     which pg_dump does not speak. Every failure raises ``BackupFailed``: a
     directory that cannot be created or written, a template that cannot be
-    resolved, a command that exits non-zero or cannot start, output no
+    resolved, a command that exits non-zero or cannot start, a command that
+    outlives ``NARRE_BACKUP_TIMEOUT`` (seconds, default 300), output no
     pg_restore could read, a write that does not land. The dump is written
     to a ``.partial`` sink and renamed into place only once accepted, so a
     failed run never leaves a valid-looking ``*.dump`` behind. After a
-    successful dump only the newest ``keep`` dumps remain — the dump just
-    written is never its own victim, whatever ``keep`` says.
+    successful dump only the newest ``keep`` dumps *of this database* remain
+    — the filename prefix carries the database, so dumps another stack keeps
+    in the same directory are never eviction victims (CodeRabbit round 1,
+    2026-11-01) — and the dump just written is never its own victim,
+    whatever ``keep`` says.
 
     The subprocess runs in a worker thread, like the alembic commands: this
     coroutine's loop must stay free. Its stdout streams straight into the
@@ -91,12 +123,28 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 sink = partial.open("wb")
             except OSError as exc:
                 raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
+            timeout = _backup_timeout()
             try:
                 with sink:
                     try:
                         result = subprocess.run(  # noqa: S603  the operator's own template
-                            command_line, stdout=sink, stderr=subprocess.PIPE, check=False
+                            command_line,
+                            stdout=sink,
+                            stderr=subprocess.PIPE,
+                            check=False,
+                            timeout=timeout,
                         )
+                    except subprocess.TimeoutExpired as exc:
+                        # The stalled run's leftovers go the way every failed
+                        # run's leftovers go: gone (the name is unique per
+                        # run; this file was never pre-existing).
+                        if not file_existed_before:
+                            file.unlink(missing_ok=True)
+                        raise BackupFailed(
+                            f"{command_line[0]} did not finish within {timeout:g}s "
+                            f"(NARRE_BACKUP_TIMEOUT); a dump that stalls — or sits at a "
+                            "password prompt — is killed here instead of blocking startup"
+                        ) from exc
                     except OSError as exc:
                         raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
             except OSError as exc:
@@ -140,8 +188,15 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
             replace(partial, file)
 
         # Retention, on both paths — the --file form's dump ages just the same.
+        # Only this database's dumps count: the filename prefix carries the
+        # database, and another stack's dumps sharing the directory are not
+        # eviction victims (CodeRabbit round 1, 2026-11-01).
         dumps = sorted(
-            (path for path in directory.glob("*.dump") if path != file),
+            (
+                path
+                for path in directory.glob("*.dump")
+                if path != file and path.name.startswith(f"{database}-")
+            ),
             key=lambda path: (path.stat().st_mtime, path.name),
             reverse=True,
         )

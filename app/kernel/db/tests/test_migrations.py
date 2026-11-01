@@ -15,8 +15,9 @@ refusing a drifted or unknown-revision one by name (D3.4, D4, D6).
 import asyncio
 import shutil
 import subprocess
-from os import environ
+from os import environ, utime
 from pathlib import Path
+from time import monotonic
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
@@ -931,6 +932,36 @@ async def test_garbage_dump_file_is_refused_and_removed(
     assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
 
 
+async def test_stalled_dump_command_times_out(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dump that never finishes cannot block startup forever (NARRE_BACKUP_TIMEOUT).
+
+    A pg_dump that stalls — or sits at a password prompt — must not hold the
+    startup hostage: the subprocess is bounded by ``NARRE_BACKUP_TIMEOUT``
+    (seconds, default 300), the expired run is ``BackupFailed``, and the
+    refusal migrates nothing and leaves no artifact behind.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", "sh -c 'sleep 30; exit 0'")
+    monkeypatch.setenv("NARRE_BACKUP_TIMEOUT", "1")
+    await reset_schema(url)  # tables: an empty database attempts no dump
+
+    started = monotonic()
+    with pytest.raises(MigrationRefused) as refused:
+        await prepare_database(url, backup_dir=tmp_path)
+    elapsed = monotonic() - started
+
+    assert elapsed < 15  # the timeout, ~1s — not the command's 30
+    assert isinstance(refused.value.__cause__, BackupFailed)
+    assert "NARRE_BACKUP_TIMEOUT" in str(refused.value.__cause__)
+    assert list(tmp_path.iterdir()) == []  # nothing that looks like a dump was kept
+    # Nothing migrated: the version table never came into existence.
+    with pytest.raises(ProgrammingError) as missing:
+        await _version_row(url)
+    assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
+
+
 async def test_sink_close_failure_is_a_named_refusal(
     url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1041,6 +1072,31 @@ async def test_dump_retention_keeps_the_newest(url: str, tmp_path: Path) -> None
     kept_anyway = await dump_database(url, tmp_path, keep=0)
     assert kept_anyway.exists()
     assert [path.name for path in tmp_path.iterdir()] == [kept_anyway.name]
+
+
+async def test_retention_counts_only_this_database(url: str, tmp_path: Path) -> None:
+    """Retention evicts only the current database's dumps, never another stack's.
+
+    ``keep`` used to count every ``*.dump`` in the directory by mtime: two
+    stacks sharing a backup directory evicted each other's copies. The dump
+    filename's prefix carries the database — retention filters to it before
+    applying ``keep`` (CodeRabbit round 1, 2026-11-01).
+    """
+    database = url.rsplit("/", 1)[-1]
+    ours = [tmp_path / f"{database}-20260101T0000000{i}.dump" for i in range(3)]
+    theirs = [tmp_path / f"other_stack-20260101T0000000{i}.dump" for i in range(2)]
+    for path in [*ours, *theirs]:
+        path.write_bytes(b"an older dump")
+    for position, path in enumerate([*ours, *theirs]):
+        utime(path, (1_000_000_000 + position, 1_000_000_000 + position))
+
+    fresh = await dump_database(url, tmp_path, keep=3)
+
+    kept = {path.name for path in tmp_path.iterdir()}
+    assert kept == {fresh.name, ours[1].name, ours[2].name, theirs[0].name, theirs[1].name}
+    assert ours[0].name not in kept  # our oldest was the one eviction
+    for path in [*theirs, ours[1], ours[2]]:
+        assert path.stat().st_mtime < fresh.stat().st_mtime  # untouched by this run
 
 
 async def test_concurrent_starts_migrate_once(url: str) -> None:
