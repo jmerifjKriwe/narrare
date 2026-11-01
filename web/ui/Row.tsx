@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import type { HTMLAttributes, MouseEventHandler, ReactNode } from "react";
 
 /**
  * The list row and its state string. One definition here: the plain `Row`
@@ -12,18 +12,25 @@ import type { MouseEventHandler, ReactNode } from "react";
  * start. Text stays foreground — muted on the wash is below AA (4.43:1
  * light), and `bg-primary` fills are for the one primary action, never a
  * chosen row.
+ *
+ * Rows fill their container and read left (`w-full text-left`): a list of
+ * them is a column, not a run of shrink-wrapped centred buttons.
  */
 
 /**
- * The row's constant classes: the control height, the layout, the body
- * type, the `--rule` separator (a row is separated, never edged —
- * `--border` is for surfaces) and the one focus ring every interactive
- * primitive carries.
+ * The row's constant classes: the control height, the full-width layout,
+ * the body type, the `--rule` separator (a row is separated, never edged —
+ * `--border` is for surfaces), the pointer's wash and the one focus ring
+ * every interactive primitive carries.
  */
 const ROW_CLASSES =
-  "h-7 flex items-center gap-2 px-3 text-body border-b border-rule focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  "h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
-/** The selected row's additions: the wash, the weight, the edge marker. */
+/**
+ * The selected row's additions: the weight and the edge marker — plus the
+ * wash named again, because a selected row must wear it un-hovered too
+ * (the hover only shares it).
+ */
 const ROW_SELECTED_CLASSES =
   "bg-soft font-semibold shadow-[inset_2px_0_0_var(--primary)]";
 
@@ -37,31 +44,30 @@ export function rowClass(selected: boolean): string {
   return selected ? `${ROW_CLASSES} ${ROW_SELECTED_CLASSES}` : ROW_CLASSES;
 }
 
-export type RowProps = {
-  /** The element to render. `href` wins over it: a destination is an anchor's job, so a `href` renders `<a>` whatever `as` says. */
-  as?: "button" | "a" | "div";
+/**
+ * The row's props. Everything an element takes rides through to the root
+ * (the `Button` precedent) — P12's roving `tabIndex`/`onKeyDown` lands
+ * there. The element is a discriminated union: an acting row is a button,
+ * or an anchor when it carries an `href`; a `div` row is purely
+ * presentational and takes neither `onClick` nor `href` — a clickable div
+ * has no keyboard contract, so interaction lives in the controls inside it.
+ */
+type RowBase = Omit<HTMLAttributes<HTMLElement>, "onClick"> & {
   selected?: boolean;
-  /**
-   * `aria-current="true"` — the navigation's "you are here". It comes only
-   * from this prop, never from `selected`: where you are and what you have
-   * chosen are different facts, and screen readers announce them
-   * differently (the L2 ruling).
-   */
   current?: boolean;
   /** A glyph or badge before the row's content. */
   leading?: ReactNode;
   /** Something after the content — a status, a count, a control. */
   trailing?: ReactNode;
-  href?: string;
-  onClick?: MouseEventHandler<HTMLElement>;
-  /**
-   * Appended after the matrix: `rowClass` is the contract, this the
-   * extension (the P3 precedence). A utility that fights the matrix here
-   * is a smell — extend `rowClass` instead.
-   */
-  className?: string;
-  children: ReactNode;
 };
+
+export type RowProps =
+  | (RowBase & {
+      as?: "button" | "a";
+      href?: string;
+      onClick?: MouseEventHandler<HTMLElement>;
+    })
+  | (RowBase & { as: "div"; href?: never; onClick?: never });
 
 export function Row({
   as = "button",
@@ -73,10 +79,22 @@ export function Row({
   onClick,
   className,
   children,
+  ...rest
 }: RowProps) {
+  // Appended after the matrix: `rowClass` is the contract, this the
+  // extension (the P3 precedence). A utility that fights the matrix here
+  // is a smell — extend `rowClass` instead.
   const classes = className
     ? `${rowClass(selected)} ${className}`
     : rowClass(selected);
+  const state = {
+    "data-selected": selected || undefined,
+    // `aria-current` is the navigation's "you are here"; it comes only
+    // from `current`, never from `selected`: where you are and what you
+    // have chosen are different facts (the L2 ruling).
+    "aria-current": current ? ("true" as const) : undefined,
+    className: classes,
+  };
   const inner = (
     <>
       {leading}
@@ -84,29 +102,28 @@ export function Row({
       {trailing}
     </>
   );
-  const state = {
-    "data-selected": selected || undefined,
-    "aria-current": current ? ("true" as const) : undefined,
-    className: classes,
-    onClick,
-  };
-  if (href) {
+  if (as === "div") {
+    // Purely presentational: no keyboard contract of its own. Rows with
+    // buttons take this form — a button inside a button is invalid HTML.
     return (
-      <a href={href} {...state}>
+      <div {...state} {...rest}>
+        {inner}
+      </div>
+    );
+  }
+  // `href` wins over `as`: a destination is an anchor's job, so an href
+  // renders `<a>` even when `as` says button.
+  if (href || as === "a") {
+    return (
+      <a href={href} onClick={onClick} {...state} {...rest}>
         {inner}
       </a>
     );
   }
-  if (as === "div") {
-    // A div row carries no keyboard contract of its own — interaction
-    // lives in the controls inside it (rows with buttons take this form;
-    // a button inside a button is invalid HTML).
-    return <div {...state}>{inner}</div>;
-  }
   // `type: "button"`: a row that submits a form it never joined is a bug
   // waiting for a form (the Button rule, kept here).
   return (
-    <button type="button" {...state}>
+    <button type="button" onClick={onClick} {...state} {...rest}>
       {inner}
     </button>
   );
