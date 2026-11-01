@@ -728,6 +728,15 @@ def test_asyncpg_ssl_option_is_translated_for_libpq(
     both = libpq_url("postgresql+asyncpg://u:p@h/db?ssl=require&sslmode=verify-full")
     assert both == "postgresql://u:p@h/db?sslmode=verify-full"  # sslmode wins, ssl gone
 
+    # asyncpg also takes the booleans libpq's sslmode rejects: true is
+    # "encrypt, don't verify" — require; false is off — disable.
+    assert libpq_url("postgresql+asyncpg://u:p@h/db?ssl=true") == (
+        "postgresql://u:p@h/db?sslmode=require"
+    )
+    assert libpq_url("postgresql+asyncpg://u:p@h/db?ssl=false") == (
+        "postgresql://u:p@h/db?sslmode=disable"
+    )
+
 
 def test_percent_encoded_query_values_survive_the_libpq_translation() -> None:
     """A percent-encoded query value reaches pg_dump with ``%XX`` intact (round 3, fix 2).
@@ -1170,10 +1179,25 @@ async def test_truncated_dump_is_refused_and_removed(
     assert len(list(kept.iterdir())) == 1  # and the refusal evicted nothing
 
 
+@pytest.mark.parametrize(
+    ("failure", "named"),
+    [
+        pytest.param(
+            OSError("pg_restore could not be started"),
+            "could not be run",
+            id="oserror",
+        ),
+        pytest.param(
+            subprocess.TimeoutExpired(["pg_restore"], 5),
+            "did not finish within",
+            id="timeout",
+        ),
+    ],
+)
 async def test_failed_acceptance_probe_leaves_no_dump(
-    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: Exception, named: str
 ) -> None:
-    """A probe that cannot run cleans like one that refuses (round 3, fix 2).
+    """A probe that cannot run or cannot finish cleans like one that refuses (round 3, fix 2).
 
     pg_dump succeeding is not the dump counting: the acceptance probes are
     part of the run, and a probe whose subprocess cannot start (OSError) or
@@ -1184,7 +1208,7 @@ async def test_failed_acceptance_probe_leaves_no_dump(
 
     def _probe_never_runs(command: list[str], *args: Any, **kwargs: Any) -> Any:
         if command[:2] == ["pg_restore", "--list"]:
-            raise OSError("pg_restore could not be started")
+            raise failure
         return real_run(command, *args, **kwargs)
 
     monkeypatch.setattr(subprocess, "run", _probe_never_runs)
@@ -1192,7 +1216,7 @@ async def test_failed_acceptance_probe_leaves_no_dump(
     with pytest.raises(BackupFailed) as failed:
         await dump_database(url, tmp_path)
 
-    assert "pg_restore could not be run" in str(failed.value)
+    assert named in str(failed.value)  # the refusal names its branch
     assert list(tmp_path.iterdir()) == []  # the unproven dump did not survive
 
 

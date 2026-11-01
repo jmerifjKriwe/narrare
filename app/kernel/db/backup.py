@@ -21,7 +21,7 @@ import shlex
 import subprocess
 from datetime import UTC, datetime
 from os import environ, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import quote, urlencode
 
 from sqlalchemy.engine import make_url
@@ -92,11 +92,14 @@ def _libpq_url(database_url: str) -> str:
     The asyncpg dialect spells the TLS option ``ssl``; libpq knows
     ``sslmode``. A URL that reached pg_dump as ``?ssl=require`` died on the
     unknown parameter, and a database reachable only over TLS never got its
-    dump (CodeRabbit round 3, 2026-11-01). The value vocabulary is shared
-    (require, prefer, disable, verify-ca, verify-full), so the key is the
-    only difference: an ``ssl`` becomes ``sslmode``; an ``sslmode`` already
-    present stays untouched and a duplicate ``ssl`` is dropped rather than
-    sent twice; every other parameter passes through.
+    dump (CodeRabbit round 3, 2026-11-01). The value vocabulary is mostly
+    shared (require, prefer, disable, verify-ca, verify-full), so the key is
+    the only difference: an ``ssl`` becomes ``sslmode``; an ``sslmode``
+    already present stays untouched and a duplicate ``ssl`` is dropped
+    rather than sent twice; every other parameter passes through. The two
+    booleans asyncpg also takes have no sslmode spelling of their own and
+    are mapped: ``true`` — encrypt, don't verify — becomes ``require``,
+    ``false`` becomes ``disable`` (round 3, closing items, 2026-11-01).
 
     The query is rendered with ``quote``'s ``%XX`` semantics, not
     ``render_as_string``'s ``quote_plus``: libpq does not decode ``+`` in a
@@ -106,10 +109,16 @@ def _libpq_url(database_url: str) -> str:
     fix 2, 2026-11-01).
     """
     url = make_url(database_url.replace("+asyncpg", ""))
-    query = dict(url.query)
+    # Parsing a DSN string yields string values only; SQLAlchemy types
+    # URL.query wider (programmatic duplicates become tuples) — narrowed to
+    # what a parsed query actually holds.
+    query = cast("dict[str, str]", dict(url.query))
     if "ssl" in query:
         value = query.pop("ssl")
-        query.setdefault("sslmode", value)
+        # Only the booleans need a translation: every other ssl value is
+        # already an sslmode value. setdefault keeps an sslmode that is
+        # present and drops the duplicate ssl either way.
+        query.setdefault("sslmode", {"true": "require", "false": "disable"}.get(value, value))
     stem = url.set(query={}).render_as_string(hide_password=False)
     if not query:
         return stem
