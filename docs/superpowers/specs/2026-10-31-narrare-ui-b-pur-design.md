@@ -128,7 +128,8 @@ original complaint returns; §9's census is what proves it did.
 | `--rule` **new** | `oklch(0.94 0.008 85)` | `oklch(0.3 0.01 85)` | separators inside content: table rows, list rows, panel headers |
 | `--primary` | `oklch(0.42 0.09 45)` | `oklch(0.72 0.1 60)` | the one primary action |
 | `--focus` | unchanged | unchanged | the focus ring, everywhere |
-| `--success` / `--warning` / `--danger` | unchanged | unchanged | states, through `Notice` only |
+| `--success` / `--danger` | unchanged | unchanged | states, through `Notice` only |
+| `--warning` | `oklch(0.54 0.13 75)` (was 0.6) | unchanged | states, through `Notice` only. Deepened in light mode: the old value measured 3.63:1 on the page ground and 4.02:1 on a card — below AA on every light surface, so `tone="warning"` was unusable. The new value measures 4.64 / 5.14 / 5.01 on ground / card / panel. Found in T3's review; no consumer existed yet, so nothing else moved |
 | `--radius` **new** | `4px` | — | controls: buttons, fields, rows |
 | `--radius-lg` **new** | `8px` | — | surfaces: cards, panels, dialogs |
 | `--scrim`, `--overlay-shadow` | unchanged | — | overlays only |
