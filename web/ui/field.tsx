@@ -13,9 +13,10 @@ import {
  * `Input`, `Select` and `Textarea` are the native controls that live inside
  * it. The wiring is the accessibility contract — the label points at the
  * control's id, the control's `aria-describedby` names the hint and the
- * error, and the error rides `role="alert"` so it is announced when it
- * appears. One focus treatment everywhere: the ring, never
- * `focus:outline-none` with a border change.
+ * error, the error rides `role="alert"` so it is announced when it
+ * appears, and an errored control also wears `aria-invalid`. One focus
+ * treatment everywhere: the ring, never `focus:outline-none` with a border
+ * change.
  */
 
 const CONTROL_CLASSES =
@@ -25,9 +26,21 @@ type FieldContextValue = {
   id: string;
   hintId: string | undefined;
   errorId: string | undefined;
+  ariaInvalid: true | undefined;
 };
 
 const FieldContext = createContext<FieldContextValue | null>(null);
+
+/**
+ * The invalid-state attribute a field's control carries: `aria-invalid`
+ * when an error is shown, nothing otherwise — the pair screen readers
+ * expect alongside the announced error.
+ */
+export function fieldAria(
+  error: string | undefined,
+): { "aria-invalid"?: true } {
+  return error !== undefined ? { "aria-invalid": true } : {};
+}
 
 export function Field({
   label,
@@ -47,8 +60,11 @@ export function Field({
   const fieldId = id ?? generated;
   const hintId = hint !== undefined ? `${fieldId}-hint` : undefined;
   const errorId = error !== undefined ? `${fieldId}-error` : undefined;
+  const { "aria-invalid": ariaInvalid } = fieldAria(error);
   return (
-    <FieldContext.Provider value={{ id: fieldId, hintId, errorId }}>
+    <FieldContext.Provider
+      value={{ id: fieldId, hintId, errorId, ariaInvalid }}
+    >
       <label htmlFor={fieldId} className="block text-label font-medium">
         {label}
       </label>
@@ -80,43 +96,62 @@ function useFieldControl() {
     describedBy: (own: string | undefined) =>
       [own, field?.hintId, field?.errorId].filter(Boolean).join(" ") ||
       undefined,
+    ariaInvalid: field?.ariaInvalid,
   };
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  const { id, describedBy } = useFieldControl();
-  const { className, "aria-describedby": describedby, ...rest } = props;
+  const { id, describedBy, ariaInvalid } = useFieldControl();
+  const {
+    className,
+    "aria-describedby": describedby,
+    "aria-invalid": invalid,
+    ...rest
+  } = props;
   return (
     <input
       {...rest}
       id={id(props.id)}
       aria-describedby={describedBy(describedby)}
+      aria-invalid={invalid ?? ariaInvalid}
       className={className ? `${CONTROL_CLASSES} ${className}` : CONTROL_CLASSES}
     />
   );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  const { id, describedBy } = useFieldControl();
-  const { className, "aria-describedby": describedby, ...rest } = props;
+  const { id, describedBy, ariaInvalid } = useFieldControl();
+  const {
+    className,
+    "aria-describedby": describedby,
+    "aria-invalid": invalid,
+    ...rest
+  } = props;
   return (
     <select
       {...rest}
       id={id(props.id)}
       aria-describedby={describedBy(describedby)}
+      aria-invalid={invalid ?? ariaInvalid}
       className={className ? `${CONTROL_CLASSES} ${className}` : CONTROL_CLASSES}
     />
   );
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const { id, describedBy } = useFieldControl();
-  const { className, "aria-describedby": describedby, ...rest } = props;
+  const { id, describedBy, ariaInvalid } = useFieldControl();
+  const {
+    className,
+    "aria-describedby": describedby,
+    "aria-invalid": invalid,
+    ...rest
+  } = props;
   return (
     <textarea
       {...rest}
       id={id(props.id)}
       aria-describedby={describedBy(describedby)}
+      aria-invalid={invalid ?? ariaInvalid}
       className={className ? `${CONTROL_CLASSES} ${className}` : CONTROL_CLASSES}
     />
   );
