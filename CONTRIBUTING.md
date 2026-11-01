@@ -108,10 +108,13 @@ change ships as two files in **one commit** — the model change and its revisio
    `app/kernel/db/tests/fixtures/schema_<version>.sql` and strip the
    `CREATE EXTENSION` lines and pg_dump's
    `\restrict`/`\unrestrict` guards (the mechanics are documented where the
-   snapshot is loaded). From the release after 0.2.0 the snapshot keeps its
-   `alembic_version` row — `pg_dump` it without stripping that table — so the
-   next release's gate exercises the versioned replay (the recorded revision,
-   upgraded) directly instead of the 0.2.0 fixture's baseline stamp.
+   snapshot is loaded). From the release after 0.2.0 the snapshot carries the
+   `alembic_version` row: schema-only `pg_dump` never emits data, so after
+   dumping (leaving the table in place) append the row by hand —
+   `INSERT INTO public.alembic_version (version_num) VALUES ('<release head
+   revision>');` — so the next release's gate exercises the versioned replay
+   (the recorded revision, upgraded) directly instead of the 0.2.0 fixture's
+   baseline stamp.
    `pg_dump` comes from `postgresql-client-17` — see
    [Getting Started](#getting-started).
 6. **Commit both files together** — the commit message states *why* the

@@ -162,7 +162,10 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
 # lines and pg_dump's \restrict/\unrestrict psql guards (which carry a random
 # token): the version table is the history's own bookkeeping, the extensions
 # are the pre-step ``prepare_database`` runs before anything else, and the
-# guards are psql meta-commands asyncpg cannot run.
+# guards are psql meta-commands asyncpg cannot run. No row is the 0.2.0
+# exception — that release predates the history, so its snapshot bootstraps.
+# Releases after 0.2.0 ship the row (the design's snapshot rule: hand-appended,
+# since a schema-only dump never emits data) and exercise the versioned path.
 SNAPSHOT = Path(__file__).parent / "fixtures" / "schema_0.2.0.sql"
 
 
@@ -235,8 +238,10 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     """This release's 0.2.0 snapshot bootstraps with its prose intact (D3.3).
 
     The fixture is this release's checked-in schema (0.2.0), and it carries
-    no ``alembic_version`` — a release ships the schema, not the history —
-    so this gate exercises the bootstrap path: exactly the upgrade the
+    no ``alembic_version`` — 0.2.0 predates the history, the one bootstrap-
+    exception release (releases after it ship the row per the design's
+    snapshot rule and exercise the versioned path) — so this gate exercises
+    the bootstrap path: exactly the upgrade the
     go-live release performs on databases created by ``create_all``. The
     bootstrap stamps the baseline, and the history's post-baseline revision
     — the unique chapter positions — then replays for real: constraint DDL
@@ -701,9 +706,9 @@ def test_percent_encoded_url_survives_the_config_parser_round_trip() -> None:
 
     ``set_main_option`` is ConfigParser's: its interpolation reads ``%`` as
     the escape character, so the URL must be escaped on write — alembic
-    unescapes on read. Unescaped, ``n%40rrare`` dies with an
-    ``InterpolationSyntaxError`` the first time the environment reads the
-    option back. The offline upgrade runs ``env.py`` without a database.
+    unescapes on read. Unescaped, ``n%40rrare`` dies with a plain
+    ``ValueError: invalid interpolation syntax`` the moment the option is
+    set. The offline upgrade runs ``env.py`` without a database.
     """
     encoded = "postgresql+asyncpg://narrare:n%40rrare@localhost:5433/narrare_v2_migrations"
     config = alembic_config(encoded)
