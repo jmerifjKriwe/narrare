@@ -295,7 +295,12 @@ def _create_fake_profile(page: Page) -> None:
     its own — and the continuation later must name exactly this row.
     """
     page.get_by_label("Name", exact=True).fill(PROFILE_NAME)
-    page.get_by_label("Art").select_option(label="Fake (deterministisch, ohne Netzwerk)")
+    # Scoped to main: the label wraps its select, so its text runs "Art
+    # Fake (deterministisch, …)" — a substring match, which the rail's
+    # Startseite link (outside main) would also answer.
+    page.get_by_role("main").get_by_label("Art").select_option(
+        label="Fake (deterministisch, ohne Netzwerk)"
+    )
     page.get_by_label("Modell").fill(PROFILE_MODEL)
     page.get_by_role("button", name="Profil hinzufügen").click()
     row = page.get_by_role("listitem").filter(has_text=PROFILE_NAME)
@@ -418,8 +423,10 @@ def test_the_writer_s_day_holds_together_end_to_end(
     assert_accessible(page)
 
     # --- The settings chain, through its own doors: the hub, then the
-    # provider page, then the prompts page.
-    page.get_by_role("link", name="Einstellungen").click()
+    # provider page, then the prompts page. The first door is the bar's
+    # gear, scoped to the banner — the rail's Settings anchor is the
+    # settings area's own twin, not this door.
+    page.get_by_role("banner").get_by_role("link", name="Einstellungen").click()
     expect(page).to_have_url(f"{BASE}/settings")
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
     assert_accessible(page)

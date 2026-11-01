@@ -121,8 +121,10 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
 
         # The shell's top bar is outside this page and a router navigation
         # like any other: the blocker is the one place all of them pass.
+        # Scoped to the banner: the rail names its Chat link the same word
+        # (one navigation is P9's to finish; two say it today).
         def topbar() -> None:
-            page.get_by_role("link", name="Chat").click()
+            page.get_by_role("banner").get_by_role("link", name="Chat").click()
 
         seen.append(_answer_confirm(page, topbar))
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()

@@ -172,9 +172,12 @@ function renderAt(path: string) {
 /** The keyboard opens the palette wherever the focus sits — the shell's
  *  listener reads the window, no page participates. The press waits for the
  *  shell's own mount: the pre-paint gate holds the shell back while the
- *  locale read answers, and the listener attaches with it. */
+ *  locale read answers, and the listener attaches with it. The wait is the
+ *  banner's link, scoped there: the rail names its Chat link the same word,
+ *  and the unscoped query would find two. */
 async function openPalette(): Promise<void> {
-  await screen.findByRole("link", { name: t("chat.heading") });
+  const banner = await screen.findByRole("banner");
+  await within(banner).findByRole("link", { name: t("chat.heading") });
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
   await screen.findByRole("dialog");
 }
@@ -211,7 +214,9 @@ describe("the palette's keyboard contract", () => {
     mockBare();
     renderAt("/");
     // The opener is an ordinary page element — the top bar's first link.
-    const opener = await screen.findByRole("link", { name: t("chat.heading") });
+    const opener = await within(await screen.findByRole("banner")).findByRole("link", {
+      name: t("chat.heading"),
+    });
     opener.focus();
 
     await openPalette();

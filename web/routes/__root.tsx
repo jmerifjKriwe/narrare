@@ -4,10 +4,36 @@ import { Suspense, useEffect, useState } from "react";
 
 import { Palette } from "../components/Palette";
 import { TopBar } from "../components/TopBar";
+import { IconRail } from "../components/IconRail";
 import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale } from "../lib/locale";
+import { PageTitleProvider, applyBaseTitle } from "../lib/pageTitle";
 import { useSettingsQuery } from "../lib/query";
 import "../globals.css";
+
+/**
+ * True while a page asked the shell for a chrome-free surface: the page
+ * publishes `data-focus="2"` on <body>, the shell subscribes and drops both
+ * of its chrome columns — the bar and the rail. An observer, not an event:
+ * attribute writes fire no events, and the shell must react whether it
+ * mounted before or after the page. TopBar carries its own copy of this
+ * subscription (its file is not this task's); P9 consolidates the two.
+ */
+function useChromeless(): boolean {
+  const [chromeless, setChromeless] = useState(
+    () => document.body.dataset.focus === "2",
+  );
+  useEffect(() => {
+    const sync = () => setChromeless(document.body.dataset.focus === "2");
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-focus"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return chromeless;
+}
 
 /** The one shell: every route renders inside it. */
 function Shell() {
@@ -20,6 +46,9 @@ function Shell() {
   // outage too, and the gate opens into the browser's language.
   const [ready, setReady] = useState(false);
   const settings = useSettingsQuery();
+  // The deepest focus step owns the whole viewport: neither column of shell
+  // chrome survives it.
+  const chromeless = useChromeless();
 
   useEffect(() => {
     if (!settings.isSuccess) return;
@@ -28,7 +57,10 @@ function Shell() {
   }, [settings.data, settings.isSuccess]);
 
   useEffect(() => {
-    document.title = t("app.title");
+    // The tab's floor: the app's own name until a page names itself, and a
+    // recomposition — not a clobber — once one has, so a language change
+    // cannot strip the page's name out of the tab.
+    applyBaseTitle();
   }, [t]);
 
   // The palette's key. A window listener, not a route's: ⌘K must answer on
@@ -68,25 +100,34 @@ function Shell() {
   if (!ready) return null;
 
   return (
-    <>
-      <TopBar />
-      {/* The shell owns the page's one main landmark; routes render content
-          inside it, and the skip link lands here. tabIndex makes the landing
-          hold focus — fragment navigation focuses a target only if it can —
-          and -1 keeps it out of the tab order. */}
-      <main id="main" tabIndex={-1}>
-        {/* Capability pages load lazily, each as its own bundle chunk; the
-            one boundary lives in the shell so no capability needs one. The
-            fallback is null on purpose — the shell's own pre-paint gate is
-            quiet, and the gap while a chunk arrives is the same quiet. */}
-        <Suspense fallback={null}>
-          <Outlet />
-        </Suspense>
-      </main>
-      {/* The keyboard surface, mounted with the shell: one instance, every
-          route, and its ⌘K listener above. */}
-      <Palette open={paletteOpen} onOpenChange={setPaletteOpen} />
-    </>
+    <PageTitleProvider>
+      {/* The shell frame: the rail beside the page, both columns of chrome
+          gone at the deepest focus step. The wrapper is plain flow below
+          1280 (the rail is not rendered there), so pages see exactly the
+          width they saw before the rail existed. */}
+      <div className="flex min-h-screen">
+        {chromeless ? null : <IconRail />}
+        <div className="min-w-0 flex-1">
+          {chromeless ? null : <TopBar />}
+          {/* The shell owns the page's one main landmark; routes render content
+              inside it, and the skip link lands here. tabIndex makes the landing
+              hold focus — fragment navigation focuses a target only if it can —
+              and -1 keeps it out of the tab order. */}
+          <main id="main" tabIndex={-1}>
+            {/* Capability pages load lazily, each as its own bundle chunk; the
+                one boundary lives in the shell so no capability needs one. The
+                fallback is null on purpose — the shell's own pre-paint gate is
+                quiet, and the gap while a chunk arrives is the same quiet. */}
+            <Suspense fallback={null}>
+              <Outlet />
+            </Suspense>
+          </main>
+          {/* The keyboard surface, mounted with the shell: one instance, every
+              route, and its ⌘K listener above. */}
+          <Palette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        </div>
+      </div>
+    </PageTitleProvider>
   );
 }
 
