@@ -8,7 +8,11 @@ version: 2
 # title becomes the squash commit.
 
 updates:
-  - package-ecosystem: "pip"
+  # `uv`, not `pip`: the pip updater writes `pyproject.toml` and cannot touch
+  # `uv.lock`, so every Python PR arrived with a stale lock and died in
+  # `uv sync --locked` before a single test ran. The uv updater resolves with
+  # `uv lock`, so the pin and the lock move in one PR.
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "monthly"
