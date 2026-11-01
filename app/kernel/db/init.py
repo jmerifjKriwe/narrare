@@ -29,10 +29,14 @@ async def init_schema(database_url: str) -> None:
     A fresh database is replayed from nothing, a models-built one is
     bootstrap-stamped once its schema equals the models', a versioned one is
     upgraded in place — ``prepare_database`` decides, and refuses by name
-    anything else. The backup is the request-path's concern (design D5), not
-    the schema's: ``backup=False`` says this caller owes no dump.
+    anything else. The dump is the startup/upgrade path's concern (design
+    D5), and ``just db-init`` is that path for a development database: one
+    behind head takes the same pre-upgrade dump the app's own startup
+    would, under the same default — ``NARRE_MIGRATION_BACKUP``, a dump when
+    revisions are pending and tables exist. A suite that must not dump sets
+    ``NARRE_MIGRATION_BACKUP=skip`` (the API conftest does).
     """
-    await prepare_database(database_url, backup=False)
+    await prepare_database(database_url)
 
 
 async def reset_schema(database_url: str) -> None:

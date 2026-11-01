@@ -575,7 +575,9 @@ async def prepare_database(
     serialise, and cannot race each other's extension catalog or replay;
     the second finds head already reached and does nothing. The lock is
     released in a ``finally``, so a failed run cannot hold the next one
-    hostage.
+    hostage. The URL write (below) sits inside that lock too: a second
+    concurrent call waiting pre-lock must not overwrite the variable the
+    first caller's alembic is about to read.
 
     While revisions are pending, the run is preceded by a ``pg_dump`` copy
     (design D5): a run that is about to write — a first upgrade's stamp, an
@@ -584,7 +586,7 @@ async def prepare_database(
     dump protects prose, and an empty schema has none, so a fresh first boot
     takes none — which also keeps pg_dump out of the first boot's
     requirements (product owner, 2026-10-31). ``backup=False`` — a caller
-    that owes no dump, like ``init_schema`` — and
+    that owes no dump, the tests' gate — and
     ``NARRE_MIGRATION_BACKUP=skip`` — an operator who took their own copy —
     leave it out; the copy goes to ``backup_dir``, else ``NARRE_BACKUP_DIR``
     (default ``./backups``).
@@ -595,11 +597,6 @@ async def prepare_database(
     get a worker thread, and the lock keeps two such runs from overlapping
     (alembic's migration environment is not reentrant).
     """
-    # Process-global by design: env.py takes the URL from the environment
-    # only, and this is the CLI/startup process, which owns the variable for
-    # its short life — nothing else in the process re-reads it after import.
-    environ["NARRE_DATABASE_URL"] = database_url
-
     head = head_revision(config)
     config = config if config is not None else default_config()
 
@@ -618,6 +615,14 @@ async def prepare_database(
                 text("SELECT pg_advisory_lock(hashtext('narrare_migrations'))")
             )
             try:
+                # Process-global by design: env.py takes the URL from the
+                # environment only, and this is the CLI/startup process,
+                # which owns the variable for its short life — nothing else
+                # in the process re-reads it after import. Written inside
+                # the lock: a second concurrent call waiting pre-lock must
+                # not overwrite the URL the first caller's alembic is about
+                # to read (CodeRabbit round 3, 2026-11-01).
+                environ["NARRE_DATABASE_URL"] = database_url
                 # Inside the lock: two cold starts must not race the CREATE
                 # EXTENSION statements — the loser would die on the catalog.
                 await _extensions_or_refuse(database_url)
@@ -652,7 +657,7 @@ async def prepare_database(
                 # prose, and an empty schema has none — a fresh first boot
                 # skips it, which also keeps pg_dump out of the first boot's
                 # requirements (product owner, 2026-10-31). This caller owes
-                # none when ``backup=False``, like ``init_schema``, and
+                # none when ``backup=False``, and
                 # ``NARRE_MIGRATION_BACKUP=skip`` says the operator already
                 # took their own copy. The copy precedes the stamp below: a
                 # run with pending revisions either produces it or migrates

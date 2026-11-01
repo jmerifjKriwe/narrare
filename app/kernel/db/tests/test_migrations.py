@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db import migrate as migrate_module
-from app.kernel.db.backup import BackupFailed, dump_database
+from app.kernel.db.backup import BackupFailed, backup_command, dump_database
 from app.kernel.db.init import reset_schema
 from app.kernel.db.migrate import (
     UNDEFINED_TABLE,
@@ -701,6 +701,29 @@ def test_sidecar_urls_keep_query_options_and_encoded_credentials() -> None:
     )
 
 
+def test_asyncpg_ssl_option_is_translated_for_libpq(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """asyncpg's ``ssl`` reaches pg_dump as libpq's ``sslmode`` (CodeRabbit round 3).
+
+    A URL with ``?ssl=require`` reached pg_dump unchanged; libpq rejects the
+    unknown parameter, the dump failed, and a populated database behind head
+    was never upgraded. The value vocabulary is shared (require, prefer,
+    disable, verify-ca, verify-full) — the key is the only difference: an
+    ``ssl`` becomes ``sslmode``, an ``sslmode`` already present stays
+    untouched (and the ``ssl`` key goes, so no parameter is sent twice).
+    """
+    monkeypatch.delenv("NARRE_BACKUP_COMMAND", raising=False)
+    dump = tmp_path / "dump.dump"
+
+    translated = backup_command("postgresql+asyncpg://u:p%40x@h:5432/db?ssl=require", dump)
+    assert "sslmode=require" in translated[-1]  # the URL pg_dump is handed
+    assert "ssl=" not in translated[-1]  # asyncpg's spelling is gone
+
+    already_libpq = backup_command("postgresql+asyncpg://u:p%40x@h:5432/db?sslmode=require", dump)
+    assert already_libpq[-1] == "postgresql://u:p%40x@h:5432/db?sslmode=require"
+
+
 def test_percent_encoded_url_survives_the_config_parser_round_trip() -> None:
     """A percent in the URL (an encoded password) survives the ConfigParser.
 
@@ -1079,6 +1102,34 @@ async def test_garbage_dump_file_is_refused_and_removed(
     with pytest.raises(ProgrammingError) as missing:
         await _version_row(url)
     assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
+
+
+async def test_truncated_dump_is_refused_and_removed(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dump cut mid-TOC carries the ``PGDMP`` magic and is no restore point.
+
+    The magic probe alone accepted a truncated archive: a dump killed by a
+    full disk — or cut by anything between pg_dump and the file — passed
+    acceptance, and the upgrade proceeded without a usable copy. The
+    toolchain the restore itself needs is the judge: ``pg_restore --list``
+    reads the archive's table of contents, and only exit 0 accepts the dump
+    (CodeRabbit round 3). The bytes are a real dump's, truncated to ~60 %
+    with the header intact.
+    """
+    kept = tmp_path / "kept"
+    dumps = tmp_path / "dumps"
+    real = await dump_database(url, kept)
+    payload = tmp_path / "truncated.dump"
+    payload.write_bytes(real.read_bytes()[: int(real.stat().st_size * 0.6)])
+    monkeypatch.setenv("NARRE_BACKUP_COMMAND", f"sh -c 'cat {payload} > {{file}}'")
+
+    with pytest.raises(BackupFailed) as failed:
+        await dump_database(url, dumps)
+
+    assert "pg_restore" in str(failed.value)  # the judge, named
+    assert list(dumps.iterdir()) == []  # the truncated artifact did not survive
+    assert len(list(kept.iterdir())) == 1  # and the refusal evicted nothing
 
 
 async def test_stalled_dump_command_times_out(

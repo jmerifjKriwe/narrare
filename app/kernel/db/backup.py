@@ -23,6 +23,8 @@ from datetime import UTC, datetime
 from os import environ, replace
 from typing import TYPE_CHECKING
 
+from sqlalchemy.engine import make_url
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -56,7 +58,7 @@ def _backup_timeout() -> float:
     return seconds
 
 
-def backup_command(url: str, file: Path) -> list[str]:
+def backup_command(database_url: str, file: Path) -> list[str]:
     """The dump command for one database and one target file.
 
     ``NARRE_BACKUP_COMMAND`` is a template with ``{url}`` and ``{file}``;
@@ -64,11 +66,15 @@ def backup_command(url: str, file: Path) -> list[str]:
     where the client lives, and lets the dump arrive on standard output. The
     default runs ``pg_dump`` from PATH and lets it write the file itself —
     ``dump_database`` accepts either: a written file wins, stdout is taken
-    when no file appeared.
+    when no file appeared. The URL goes in as the app speaks it and comes
+    out as libpq does: ``+asyncpg`` gone, and asyncpg's ``ssl`` option as
+    libpq's ``sslmode`` (CodeRabbit round 3, 2026-11-01) — a template's
+    ``{url}`` gets the same translation.
 
     A template with a stray brace or an unbalanced quote raises here;
     ``dump_database`` turns that into ``BackupFailed``.
     """
+    url = _libpq_url(database_url)
     template = environ.get("NARRE_BACKUP_COMMAND")
     if template:
         command = shlex.split(template.format(url=url, file=file))
@@ -78,15 +84,38 @@ def backup_command(url: str, file: Path) -> list[str]:
     return ["pg_dump", "--format=custom", "--no-owner", "--file", str(file), url]
 
 
+def _libpq_url(database_url: str) -> str:
+    """The URL as libpq's pg_dump speaks it: ``+asyncpg`` gone, ``ssl`` renamed.
+
+    The asyncpg dialect spells the TLS option ``ssl``; libpq knows
+    ``sslmode``. A URL that reached pg_dump as ``?ssl=require`` died on the
+    unknown parameter, and a database reachable only over TLS never got its
+    dump (CodeRabbit round 3, 2026-11-01). The value vocabulary is shared
+    (require, prefer, disable, verify-ca, verify-full), so the key is the
+    only difference: an ``ssl`` becomes ``sslmode``; an ``sslmode`` already
+    present stays untouched and a duplicate ``ssl`` is dropped rather than
+    sent twice; every other parameter passes through.
+    """
+    url = make_url(database_url.replace("+asyncpg", ""))
+    query = dict(url.query)
+    if "ssl" in query:
+        value = query.pop("ssl")
+        query.setdefault("sslmode", value)
+    return url.set(query=query).render_as_string(hide_password=False)
+
+
 async def dump_database(database_url: str, directory: Path, *, keep: int = 3) -> Path:
     """Dump one database into ``directory``; return the dump's path.
 
-    The command comes from ``backup_command``; the URL loses ``+asyncpg``,
-    which pg_dump does not speak. Every failure raises ``BackupFailed``: a
+    The command comes from ``backup_command``, which hands pg_dump a URL it
+    speaks: ``+asyncpg`` gone, and asyncpg's ``ssl`` option as libpq's
+    ``sslmode``. Every failure raises ``BackupFailed``: a
     directory that cannot be created or written, a template that cannot be
     resolved, a command that exits non-zero or cannot start, a command that
     outlives ``NARRE_BACKUP_TIMEOUT`` (seconds, default 300), output no
-    pg_restore could read, a write that does not land. The dump is written
+    pg_restore could read — acceptance is the ``PGDMP`` magic and then
+    ``pg_restore --list``, so a truncated archive is refused as roundly as
+    a non-dump — a write that does not land. The dump is written
     to a ``.partial`` sink and renamed into place only once accepted, so a
     failed run never leaves a valid-looking ``*.dump`` behind. After a
     successful dump only the newest ``keep`` dumps *of this database* remain
@@ -108,7 +137,7 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
     partial = file.with_name(f"{file.name}.partial")
     try:
         try:
-            command_line = backup_command(database_url.replace("+asyncpg", ""), file)
+            command_line = backup_command(database_url, file)
         except (KeyError, IndexError, ValueError) as exc:
             raise BackupFailed(
                 f"NARRE_BACKUP_COMMAND is not a usable template ({type(exc).__name__}: {exc}); "
@@ -117,11 +146,12 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
             ) from exc
         keep = max(keep, 1)
         file_existed_before = file.exists()  # the name is unique per run; it never does
+        # The timeout is resolved before the sink is opened: a bad
+        # NARRE_BACKUP_TIMEOUT must not leave a file descriptor behind.
+        # The acceptance probe's pg_restore runs under the same budget.
+        timeout = _backup_timeout()
 
         def _dump() -> None:
-            # The timeout is resolved before the sink is opened: a bad
-            # NARRE_BACKUP_TIMEOUT must not leave a file descriptor behind.
-            timeout = _backup_timeout()
             try:
                 sink = partial.open("wb")
             except OSError as exc:
@@ -168,12 +198,16 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
 
         await asyncio.to_thread(_dump)
-        # Acceptance is the ``PGDMP`` magic on whichever artifact the run
-        # left — the --file form's own target, or the stdout partial when
-        # no file appeared. A command that exits 0 having written prose
-        # into ``{file}`` (``pg_dump`` without ``--format=custom``) is
-        # exactly the fake-good dump this probe exists to refuse: non-empty
-        # is not the bar, a dump pg_restore can read is.
+        # Acceptance is two probes on whichever artifact the run left — the
+        # --file form's own target, or the stdout partial when no file
+        # appeared. The first is cheap: the ``PGDMP`` magic, which refuses
+        # the prose a command wrote into ``{file}`` (``pg_dump`` without
+        # ``--format=custom``) without paying for a subprocess. The second
+        # is the proof: ``pg_restore --list`` reads the archive's table of
+        # contents with the toolchain the restore itself needs, so a
+        # truncated or corrupt archive — the magic on five intact bytes, a
+        # cut TOC behind them — is refused where the magic alone passed it
+        # (CodeRabbit round 3, 2026-11-01).
         artifact = file if file.exists() and file.stat().st_size > 0 else partial
         with artifact.open("rb") as probe:
             magic = probe.read(5)
@@ -185,6 +219,36 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
                 file.unlink(missing_ok=True)
             raise BackupFailed(
                 f"{command_line[0]} produced neither a dump file nor output a pg_restore could read"
+            )
+        try:
+            listing = await asyncio.to_thread(
+                subprocess.run,
+                ["pg_restore", "--list", str(artifact)],
+                capture_output=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise BackupFailed(
+                f"pg_restore did not finish within {timeout:g}s "
+                f"(NARRE_BACKUP_TIMEOUT); an unreadable dump is not accepted"
+            ) from exc
+        except OSError as exc:
+            raise BackupFailed(
+                f"pg_restore could not be run: {exc}; install postgresql-client "
+                "so the dump can be checked"
+            ) from exc
+        if listing.returncode != 0:
+            # The refusal's cleanup is the magic probe's: the finally takes
+            # the partial, and a --file target the command filled is
+            # unlinked here — nothing survives that looks like a dump.
+            if not file_existed_before:
+                file.unlink(missing_ok=True)
+            stderr = listing.stderr.decode(errors="replace").strip()
+            raise BackupFailed(
+                "the dump is unreadable — truncated or corrupt (pg_restore --list "
+                f"exited {listing.returncode}: {stderr or 'no message'}); nothing "
+                "migrates without a restorable copy"
             )
         if artifact is partial:
             replace(partial, file)
