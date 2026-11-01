@@ -150,9 +150,9 @@ Token laws:
 | Token | Size / line | Use |
 |---|---|---|
 | `text-meta` | 11 px / 1.45 | counts, keyboard hints, timestamps, table headers |
-| `text-label` | 12 px / 1.45 | field labels, group eyebrows (uppercase + 0.1em tracking) |
+| `text-label` | 12 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
 | `text-body` | 13 px / 1.55 | all UI text, table cells, list rows |
-| `text-emph` | 15 px / 1.5, 600 | card titles, section titles, panel headers |
+| `text-emph` | 15 px / 1.5, 600 | card titles, section titles |
 | `text-title` | 20 px / 1.3, 600 | the page title, one per page |
 | `text-hero` | 28 px / 1.1, 600 | the continue-hero's book title and numerals only |
 
