@@ -77,6 +77,16 @@ class ChapterRepository(ScopedRepository[Chapter]):
 
         Flush both changes without committing; an empty novel starts at position 0.
         """
+        # The parent row is the lock the number is allocated under. Two clicks
+        # that arrive together otherwise both read the same max, both write it,
+        # and the rail shows "Kapitel 1" twice with no order between them
+        # (#521). The service refuses a missing novel before this runs, so the
+        # select locks a row rather than guarding for its absence.
+        await self.session.execute(
+            select(Novel.id)
+            .where(Novel.id == novel_id, Novel.user_id == self.user_id)
+            .with_for_update()
+        )
         chapter = Chapter(
             user_id=self.user_id,
             novel_id=novel_id,

@@ -70,6 +70,10 @@ class Novel(UserOwned):
 
 class Chapter(UserOwned):
     __tablename__ = "chapters"
+    # One number per chapter in a book: positions are allocated under the
+    # parent's lock, and this is what makes the invariant the table's rather
+    # than the caller's (#521).
+    __table_args__ = (UniqueConstraint("novel_id", "position"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     novel_id: Mapped[UUID] = mapped_column(ForeignKey("novels.id", ondelete="CASCADE"))
