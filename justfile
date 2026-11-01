@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 22 public recipes; private helpers start with `_`.
+# 23 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -101,13 +101,13 @@ test-frontend:
 build:
     pnpm --dir web build
 
-# Create the schema directly from the models. No migrations: the product is
-# not live, so a schema change lands in the models and the database is
-# recreated — `just db-reset` does that for the development database.
+# Bring the development database to the migration history's head. A missing
+# schema is created; an existing one keeps its tables and is upgraded.
 db-init:
     uv run python -m app.kernel.db.init
 
-# Recreate the development database and its schema.
+# Recreate the development database: drop it, then end in the same upgrade
+# db-init ends in.
 db-reset:
     @echo "This drops narrare_v2_dev. Ctrl+C to cancel."
     @sleep 3
@@ -116,6 +116,12 @@ db-reset:
     docker compose -f docker-compose.dev.yml exec -T postgres \
         psql -U narrare -d postgres -c "CREATE DATABASE narrare_v2_dev"
     just db-init
+
+# Draft a revision from the models: just db-revision "add chapters.word_count"
+[positional-arguments]
+db-revision message:
+    NARRE_DATABASE_URL="${NARRE_DATABASE_URL:-postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_v2_dev}" \
+        uv run alembic revision --autogenerate -m "$1"
 
 # A psql shell on the development database.
 db-shell:

@@ -1,80 +1,80 @@
-"""The schema's single source: it is created directly from the models.
+"""The schema's two paths, held equal by one gate.
 
-There are no migrations and no reason for any — the product is not live, so the
-schema never drifts: a change lands in the models and here, and the database is
-recreated. ``just db-init`` creates a missing schema idempotently;
-``just db-reset`` throws a development database away and re-runs it. When the
-product goes live, this module is where a migration story would begin — not
-before.
+``init_schema`` is the product's path: the three extensions, then the history
+— replayed on a fresh database, bootstrap-stamped onto a models-built one
+(design D4), upgraded in place on a versioned one — so an upgrade can reach a
+database that already exists, which ``create_all`` never could.
+``reset_schema`` is the tests' path: drop everything and build from the
+models, so what a test sees is exactly what the models say. The gate in
+``app/kernel/db/tests/test_migrations.py`` — an empty database replayed to
+head equals the models — is what keeps the two paths identical (design
+D12), not discipline.
+
+``just db-init`` brings the development database up idempotently;
+``just db-reset`` throws it away and re-runs it.
 """
 
-from asyncio import run
+import asyncio
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# The schema is registered by import on the shared Base: contracts holds the
-# domain vocabulary, jobs, llm and prompts their own tables — kernel
-# machinery, not domain — and both drop_all/create_all passes below see
-# every table only because all four modules are imported here.
-from app.kernel.contracts import models
-from app.kernel.jobs import models as jobs_models
-from app.kernel.llm import models as llm_models
-from app.kernel.prompts import models as prompts_models
-
-del jobs_models, llm_models, prompts_models  # the imports are for their registration side effect
+from app.kernel.db.base import Base
+from app.kernel.db.migrate import ensure_extensions, prepare_database, register_models
+from app.kernel.db.testsupport import drop_every_table
 
 
 async def init_schema(database_url: str) -> None:
-    """Create the extension and every table; existing tables stay untouched."""
-    engine = create_async_engine(database_url)
-    async with engine.begin() as connection:
-        # The extensions the schema needs before the tables exist: vector for
-        # the embedding columns, pg_trgm for the trigram search over
-        # search_text, unaccent for the diacritics-folding the query side
-        # applies (the index itself is a plain gin_trgm_ops on the column).
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
-        await connection.run_sync(models.Base.metadata.create_all)
-    await engine.dispose()
+    """Bring a database to the history's head; idempotent on every Narrare state.
+
+    A fresh database is replayed from nothing, a models-built one is
+    bootstrap-stamped once its schema equals the models', a versioned one is
+    upgraded in place — ``prepare_database`` decides, and refuses by name
+    anything else. The dump is the startup/upgrade path's concern (design
+    D5), and ``just db-init`` is that path for a development database: one
+    behind head takes the same pre-upgrade dump the app's own startup
+    would, under the same default — ``NARRE_MIGRATION_BACKUP``, a dump when
+    revisions are pending and tables exist. A suite that must not dump sets
+    ``NARRE_MIGRATION_BACKUP=skip`` (the API conftest does).
+    """
+    await prepare_database(database_url)
 
 
 async def reset_schema(database_url: str) -> None:
     """Drop and recreate every table the models define.
 
-    The test suites run this against their own databases, so what the tests see
-    is exactly what the models say — there is no older schema to drift from.
+    The test suites run this against their own databases, so what the tests
+    see is exactly what the models say — there is no older schema to drift
+    from. Tests keep the models path (D12): replaying the history per
+    conftest would be slower, and the gate proves the paths equal anyway.
     """
+    # The one drop-everything (app/kernel/db/testsupport.py): tables the
+    # current models no longer know must go too, and dependent views with
+    # them.
+    await drop_every_table(database_url)
+    await ensure_extensions(database_url)
+    # The models, not the history: tests create their schema from the models
+    # — registered by the one seam, kernel and capability modules both, not
+    # by whichever imports this module's callers happened to make.
+    register_models()
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
-        # Drop every table (and dependent views/foreign keys) in the public
-        # schema, including ones the current models do not know about (leftover
-        # tables from an older schema version). metadata.drop_all alone leaves
-        # those behind and then fails on the next run. Dropping tables (not the
-        # whole schema) keeps the vector extension's types registered, so pooled
-        # connections do not hit stale type OIDs.
-        result = await connection.execute(
-            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
-        )
-        for (table_name,) in result.fetchall():
-            await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
-        # Views can also depend on tables; drop them too.
-        result = await connection.execute(
-            text("SELECT viewname FROM pg_views WHERE schemaname = 'public'")
-        )
-        for (view_name,) in result.fetchall():
-            await connection.execute(text(f'DROP VIEW IF EXISTS "{view_name}" CASCADE'))
+        await connection.run_sync(Base.metadata.create_all)
     await engine.dispose()
-    await init_schema(database_url)
 
 
 def init_database(database_url: str) -> None:
     """The sync entry point for recipes, conftests and scripts."""
-    run(init_schema(database_url))
+    asyncio.run(init_schema(database_url))
 
 
 if __name__ == "__main__":
+    # The bootstrap path logs its constraint renames at INFO; a bare
+    # ``python -m`` configures no logging, and the default root level would
+    # drop them from the recipe's output.
+    from logging import INFO, basicConfig
+
+    basicConfig(level=INFO)
+
     from app.kernel.db.session import DATABASE_URL
 
     init_database(DATABASE_URL)

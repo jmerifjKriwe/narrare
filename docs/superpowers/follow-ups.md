@@ -24,6 +24,7 @@ still resolve; a closed id is in the table the Archive section points to.
 | WP4 prompt overrides | #375 |
 | v2 foundation deferrals (§11) | #407 |
 | WP5 UI coherence | #423 |
+| Schema migrations | #487 |
 
 A new wave opens its index and adds a row here. A fix closes its issue from the
 commit that lands it: `Closes #<n>`. Nothing is dropped for being minor:
