@@ -254,8 +254,8 @@
         "properties": {
           "limit": {
             "default": 5,
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
@@ -1024,7 +1024,7 @@
           "context_window": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1040,7 +1040,7 @@
           "max_output_tokens": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1070,7 +1070,7 @@
           "request_timeout": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "number"
               },
               {
@@ -1082,8 +1082,8 @@
           "temperature": {
             "anyOf": [
               {
-                "maximum": 2.0,
-                "minimum": 0.0,
+                "maximum": 2,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -1423,7 +1423,7 @@
           "context_window": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1446,7 +1446,7 @@
           "max_output_tokens": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1483,7 +1483,7 @@
           "request_timeout": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "number"
               },
               {
@@ -1495,8 +1495,8 @@
           "temperature": {
             "anyOf": [
               {
-                "maximum": 2.0,
-                "minimum": 0.0,
+                "maximum": 2,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -1898,8 +1898,8 @@
         "properties": {
           "limit": {
             "default": 5,
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
@@ -2258,7 +2258,7 @@
   },
   "info": {
     "title": "Narrare",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
