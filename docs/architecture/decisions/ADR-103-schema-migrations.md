@@ -181,8 +181,12 @@ The shipped decisions, one line each — the design doc carries the reasoning:
   upgrade, and the release-snapshot gate proves it on every `just test`.
 - The history is replayable: two databases from the same release have provably the
   models' schema.
-- A failed or interrupted upgrade leaves the database as it was (transactional DDL),
-  and a copy of the pre-upgrade state exists as a dump.
+- A failed or interrupted upgrade leaves the database as it was — the failing
+  revision's transaction rolls back — and a copy of the pre-upgrade state exists
+  as a dump. Amended 2026-11-01 (CodeRabbit round 2): on an unversioned database
+  the bootstrap's constraint renames and the baseline stamp commit before the
+  upgrade and remain; the pre-upgrade dump is the restore point, and nothing
+  automatically reverts the database as a whole.
 
 **Negative / Tradeoffs:**
 - Every schema change costs a second, small artefact — the revision file — and a

@@ -37,6 +37,7 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import ForeignKeyConstraint, MetaData, UniqueConstraint, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -424,9 +425,23 @@ def _scratch_database_name(database_url: str) -> str:
     return f"narrare_baseline_{digest[:8]}"
 
 
-async def _drop_scratch_database(server: str, database: str) -> None:
+def _sidecar_url(database_url: str, database: str) -> str:
+    """The URL's own server, aimed at another database on it — options kept.
+
+    ``make_url`` rebuilds the URL with the credentials (encoded form
+    included) and the query string intact, changing only the database name.
+    Rendered with the password visible — ``str(URL)`` masks it since
+    SQLAlchemy 2.1. The earlier string surgery — ``rsplit("/", 1)[0]`` plus
+    concatenation — worked only for the plain shape: it dropped query
+    options such as ``sslmode`` and mangled anything a percent-escaped
+    password carried.
+    """
+    return make_url(database_url).set(database=database).render_as_string(hide_password=False)
+
+
+async def _drop_scratch_database(admin_url: str, database: str) -> None:
     """Drop the bootstrap's scratch database, if it exists; leftovers included."""
-    engine = create_async_engine(f"{server}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             await connection.execute(text(f"DROP DATABASE IF EXISTS {database} WITH (FORCE)"))
@@ -455,10 +470,10 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
     its own sentence. Every other failure surfaces unchanged.
     """
     baseline = baseline_revision(config)
-    server = database_url.rsplit("/", 1)[0]
+    admin = _sidecar_url(database_url, "postgres")
     scratch = _scratch_database_name(database_url)
-    scratch_url = f"{server}/{scratch}"
-    admin_engine = create_async_engine(f"{server}/postgres", isolation_level="AUTOCOMMIT")
+    scratch_url = _sidecar_url(database_url, scratch)
+    admin_engine = create_async_engine(admin, isolation_level="AUTOCOMMIT")
     try:
         async with admin_engine.connect() as connection:
             # Best-effort pre-drop of this target's leftover (the name is
@@ -523,7 +538,7 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
         # own error, and the next replay's pre-drop removes what this one
         # could not.
         with suppress(Exception):
-            await _drop_scratch_database(server, scratch)
+            await _drop_scratch_database(admin, scratch)
     version_table = metadata.tables.get("alembic_version")
     if version_table is not None:
         metadata.remove(version_table)

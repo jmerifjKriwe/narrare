@@ -74,7 +74,7 @@ every applied change reproducible from the repository.
 
 | | How | Trade-off | Verdict |
 |---|---|---|---|
-| **A Alembic** | models stay the single source; revisions are drafts from `autogenerate`, read and corrected by a human | every revision is read by a person; Alembic is blind to extensions, triggers and some index changes — the equality gate covers what it cannot see | **chosen** |
+| **A Alembic** | models stay the single source; revisions are drafts from `autogenerate`, read and corrected by a human | every revision is read by a person; Alembic is blind to extensions, triggers and some index changes — the equality gate covers what it cannot see. One limit, stated plainly: the gate runs `compare_metadata`, which shares autogenerate's blind spots (primary keys among them), so a missing migration for an object Alembic cannot compare passes the gate | **chosen** |
 | **B Declarative (Atlas)** | desired state as SQL/HCL, the tool plans, lints and detects drift | the schema is declared twice — the declaration spread v2 exists to remove — plus a foreign binary in the distribution; data steps are awkward | rejected |
 | **C SQL-first runner** (dbmate, or ~150 lines of our own) | ordered `.sql` files plus a version table | no draft from the models, and lock, backup and checksums become ours to build; every change written twice | rejected |
 
@@ -110,7 +110,9 @@ and therefore by CI's existing `tests` job; no new job, no new recipe for the ga
    last release (`tests/fixtures/schema_<version>.sql`, `pg_dump --schema-only` at
    release time), seed a user, a novel and a chapter with text, upgrade, assert the
    text is unchanged and the point-2 diff is empty. This is the test that catches a
-   migration that eats prose.
+   migration that eats prose. The snapshot rule, explicit: releases after 0.2.0 ship
+   their snapshot WITH the single `alembic_version` row; 0.2.0 keeps its
+   bootstrap-exception shape (no row), because that release predates the history.
 4. **Bootstrap.** A models-created database with no `alembic_version` is stamped, a
    drifted one is refused (D4).
 

@@ -118,9 +118,10 @@ db-reset:
     just db-init
 
 # Draft a revision from the models: just db-revision "add chapters.word_count"
+[positional-arguments]
 db-revision message:
     NARRE_DATABASE_URL="${NARRE_DATABASE_URL:-postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_v2_dev}" \
-        uv run alembic revision --autogenerate -m "{{message}}"
+        uv run alembic revision --autogenerate -m "$1"
 
 # A psql shell on the development database.
 db-shell:

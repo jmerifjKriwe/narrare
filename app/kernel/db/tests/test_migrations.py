@@ -25,6 +25,7 @@ from uuid import UUID, uuid4
 import pytest
 from alembic import command
 from sqlalchemy import Uuid, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -670,6 +671,44 @@ def test_scratch_database_name_is_derived_per_target() -> None:
         name = name_for(target)
         assert len(name.encode()) <= 63
         assert name.startswith("narrare_baseline_")
+
+
+def test_sidecar_urls_keep_query_options_and_encoded_credentials() -> None:
+    """The bootstrap's admin and scratch URLs survive rebuilds with ``make_url``.
+
+    The old ``rsplit("/", 1)[0]`` string surgery worked only for the plain
+    ``scheme://user:pass@host/db`` shape: a query option such as
+    ``sslmode=require`` was dropped, and a server reachable only with it
+    became unreachable for the scratch replay and its cleanup. The rebuild
+    keeps the credentials (encoded form included) and the query, changing
+    only the database name.
+    """
+    target = "postgresql+asyncpg://u:p%40x@h:5432/db?sslmode=require"
+    sidecar = migrate_module._sidecar_url  # pyright: ignore[reportPrivateUsage]
+    scratch_name = migrate_module._scratch_database_name(target)  # pyright: ignore[reportPrivateUsage]
+    admin = make_url(sidecar(target, "postgres"))
+    scratch = make_url(sidecar(target, scratch_name))
+    assert admin.render_as_string(hide_password=False) == (
+        "postgresql+asyncpg://u:p%40x@h:5432/postgres?sslmode=require"
+    )
+    assert scratch.render_as_string(hide_password=False) == (
+        f"postgresql+asyncpg://u:p%40x@h:5432/{scratch_name}?sslmode=require"
+    )
+
+
+def test_percent_encoded_url_survives_the_config_parser_round_trip() -> None:
+    """A percent in the URL (an encoded password) survives the ConfigParser.
+
+    ``set_main_option`` is ConfigParser's: its interpolation reads ``%`` as
+    the escape character, so the URL must be escaped on write — alembic
+    unescapes on read. Unescaped, ``n%40rrare`` dies with an
+    ``InterpolationSyntaxError`` the first time the environment reads the
+    option back. The offline upgrade runs ``env.py`` without a database.
+    """
+    encoded = "postgresql+asyncpg://narrare:n%40rrare@localhost:5433/narrare_v2_migrations"
+    config = alembic_config(encoded)
+    command.upgrade(config, "head", sql=True)
+    assert config.get_main_option("sqlalchemy.url") == encoded
 
 
 async def test_database_ahead_of_the_app_is_refused(url: str) -> None:

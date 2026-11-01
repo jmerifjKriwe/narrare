@@ -32,8 +32,11 @@ register_models()
 
 config = context.config
 
-# The one URL source: nothing in the ini names a database.
-config.set_main_option("sqlalchemy.url", environ["NARRE_DATABASE_URL"])
+# The one URL source: nothing in the ini names a database. ``set_main_option``
+# is ConfigParser's, and its interpolation reads ``%`` as the escape
+# character — a percent-escaped password (``p%40x``) would die on the first
+# read-back — so the URL is escaped on write; alembic unescapes on read.
+config.set_main_option("sqlalchemy.url", environ["NARRE_DATABASE_URL"].replace("%", "%%"))
 
 target_metadata = Base.metadata
 
