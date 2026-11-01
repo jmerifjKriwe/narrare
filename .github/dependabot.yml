@@ -28,8 +28,13 @@ updates:
       major-updates:
         update-types: ["major"]
 
+  # `/`, the workspace root, not `/web`: `pnpm-workspace.yaml` lists `web` and
+  # `pnpm-lock.yaml` lives here, so a run from `/web` rewrites the manifest and
+  # cannot reach the lock — every web PR then died in
+  # `pnpm install --frozen-lockfile` with ERR_PNPM_OUTDATED_LOCKFILE. From the
+  # root the updater finds `web` through the workspace and moves both.
   - package-ecosystem: "npm"
-    directory: "/web"
+    directory: "/"
     schedule:
       interval: "monthly"
     rebase-strategy: disabled
