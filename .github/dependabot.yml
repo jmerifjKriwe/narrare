@@ -4,11 +4,15 @@ version: 2
 # immediately and independently of this schedule. Rebases are manual.
 #
 # Every entry uses the `chore` prefix with a scope: Dependabot's default
-# `build(deps)` is not a conventional-commit type this repo allows, and the PR
-# title becomes the squash commit.
+# `build(deps)` is not a conventional-commit type this repo allows, and the
+# commits it writes land on main unchanged.
 
 updates:
-  - package-ecosystem: "pip"
+  # `uv`, not `pip`: the pip updater writes `pyproject.toml` and cannot touch
+  # `uv.lock`, so every Python PR arrived with a stale lock and died in
+  # `uv sync --locked` before a single test ran. The uv updater resolves with
+  # `uv lock`, so the pin and the lock move in one PR.
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "monthly"
@@ -24,8 +28,13 @@ updates:
       major-updates:
         update-types: ["major"]
 
+  # `/`, the workspace root, not `/web`: `pnpm-workspace.yaml` lists `web` and
+  # `pnpm-lock.yaml` lives here, so a run from `/web` rewrites the manifest and
+  # cannot reach the lock — every web PR then died in
+  # `pnpm install --frozen-lockfile` with ERR_PNPM_OUTDATED_LOCKFILE. From the
+  # root the updater finds `web` through the workspace and moves both.
   - package-ecosystem: "npm"
-    directory: "/web"
+    directory: "/"
     schedule:
       interval: "monthly"
     rebase-strategy: disabled
