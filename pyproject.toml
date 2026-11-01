@@ -29,7 +29,13 @@ dev = [
   "pytest>=9.1.1",
   "pytest-asyncio>=1.4.0",
   "pytest-cov>=7.1.0",
-  "pytest-playwright>=0.8.0",
+  # The [base-url] extra is not decoration. 0.10 moved pytest-base-url behind
+  # it and, when it is absent, substitutes a fallback that defines `base_url` as
+  # a session-scoped instance method — which pytest 9.2 deprecates, and which
+  # this file's `filterwarnings = ["error"]` then turns into a failure at every
+  # e2e setup, because `browser_context_args` depends on `base_url` and every
+  # `page` depends on that.
+  "pytest-playwright[base-url]>=0.8.0",
   "pytest-randomly>=5.0.0",
   "pytest-timeout>=2.4.0",
   "ruff==0.17.3",
