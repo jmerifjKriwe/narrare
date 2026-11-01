@@ -4,8 +4,8 @@ version: 2
 # immediately and independently of this schedule. Rebases are manual.
 #
 # Every entry uses the `chore` prefix with a scope: Dependabot's default
-# `build(deps)` is not a conventional-commit type this repo allows, and the PR
-# title becomes the squash commit.
+# `build(deps)` is not a conventional-commit type this repo allows, and the
+# commits it writes land on main unchanged.
 
 updates:
   # `uv`, not `pip`: the pip updater writes `pyproject.toml` and cannot touch
