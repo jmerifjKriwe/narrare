@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Notice's class contract, pinned whole per tone: this helper is the app's
  * only error/empty/loading vocabulary — the census (P18) demands
@@ -6,12 +7,18 @@
  * tone's `text-muted` is legal on every surface a Notice rides (card,
  * panel, ground); what no tone may wear is a `--soft` fill (muted on soft
  * is below AA — the parked P1 rule), which is why the no-fill law is
- * pinned beside the strings. Behaviour (the live region, the axe pass) is
- * the E2E suites' job.
+ * pinned beside the strings.
+ *
+ * The live → role wiring is rendered, not string-pinned: only the DOM can
+ * pin that a caller's own `role` prop cannot override the `live` they
+ * named — a pure helper would merely restate the mapping it replaced. The
+ * axe pass stays with the E2E suites.
  */
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { NOTICE_TONES, noticeClass } from "./Notice";
+import { NOTICE_TONES, noticeClass, Notice } from "./Notice";
 
 const MATRIX: Record<(typeof NOTICE_TONES)[number], string> = {
   info: "flex items-center gap-2 px-3 py-2 text-body text-foreground",
@@ -43,5 +50,41 @@ describe("noticeClass", () => {
       // own — no `--soft` (muted on soft is below AA), no card, no panel.
       expect(classes).not.toContain("bg-");
     }
+  });
+});
+
+describe("Notice's live region", () => {
+  afterEach(cleanup);
+
+  /** The notice's root element, rendered from the given props. */
+  function root(props: Record<string, unknown>): Element {
+    const { container } = render(
+      createElement(
+        Notice,
+        { tone: "danger", ...props },
+        "Der Server ist unerreichbar.",
+      ),
+    );
+    return container.firstElementChild as Element;
+  }
+
+  it("maps live to its role: alert interrupts, status informs", () => {
+    expect(root({ live: "alert" }).getAttribute("role")).toBe("alert");
+    expect(root({ live: "status" }).getAttribute("role")).toBe("status");
+  });
+
+  it("renders no role at all when live is none — the default", () => {
+    const element = root({});
+    expect(element.hasAttribute("role")).toBe(false);
+    const explicit = root({ live: "none" });
+    expect(explicit.hasAttribute("role")).toBe(false);
+  });
+
+  it("does not let a caller's role override the live mapping", () => {
+    // The role is set after the prop spread on purpose: `live` is the
+    // contract for the attribute, so a stray caller `role` cannot turn
+    // an interrupting outage into a polite status.
+    const element = root({ live: "alert", role: "status" });
+    expect(element.getAttribute("role")).toBe("alert");
   });
 });

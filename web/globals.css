@@ -44,7 +44,11 @@
    * reads against text, surfaces and both themes. */
   --focus: oklch(0.48 0.11 45);
   --success: oklch(0.5 0.12 150);
-  --warning: oklch(0.6 0.13 75);
+  /* Darkened from 0.6 for AA (P5 fix round, R19): warning text is
+   * Notice's voice, and it must clear 4.5:1 on the surfaces a notice
+   * rides — 0.54 measures 4.64:1 on the ground, 5.14:1 on the card.
+   * Dark mode already cleared. */
+  --warning: oklch(0.54 0.13 75);
   --danger: oklch(0.5 0.16 25);
   /* The overlay pair: what a surface floating above the page dims it with,
    * and the shadow such a raised surface casts. Theme-constant on purpose —

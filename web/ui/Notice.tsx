@@ -20,6 +20,11 @@ import type { HTMLAttributes, ReactNode } from "react";
  * `"status"` announces politely (`role="status"` — loading, refresh
  * failure beside standing content), `"none"` — the default — is silent:
  * the empty state is already on screen when the reader reaches it.
+ *
+ * The tone strings are pinned in `noticeClasses.test.ts`; the live →
+ * role wiring is rendered beside it (jsdom — only the DOM can pin that a
+ * caller's own `role` prop cannot override `live`), the axe pass is the
+ * E2E suites'.
  */
 
 /** The four voices a Notice speaks in. */
