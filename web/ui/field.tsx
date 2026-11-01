@@ -19,8 +19,20 @@ import {
  * change.
  */
 
-const CONTROL_CLASSES =
-  "h-7 rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+const CONTROL_BASE =
+  "rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
+
+/**
+ * The control's class matrix — the input/select/textarea contract, pinned
+ * beside `buttonClass`. `grows` swaps the fixed 28px height for a minimum:
+ * a textarea grows with its rows, inputs and selects stay one line.
+ */
+export function controlClass(grows = false): string {
+  return `${grows ? "min-h-7" : "h-7"} ${CONTROL_BASE}`;
+}
+
+/** A field stacks label, control and messages at the scale's label gap. */
+const FIELD_CLASSES = "flex flex-col gap-1";
 
 type FieldContextValue = {
   id: string;
@@ -34,12 +46,13 @@ const FieldContext = createContext<FieldContextValue | null>(null);
 /**
  * The invalid-state attribute a field's control carries: `aria-invalid`
  * when an error is shown, nothing otherwise — the pair screen readers
- * expect alongside the announced error.
+ * expect alongside the announced error. An empty string is no error: it
+ * would render an empty alert and a falsely invalid field.
  */
 export function fieldAria(
   error: string | undefined,
 ): { "aria-invalid"?: true } {
-  return error !== undefined ? { "aria-invalid": true } : {};
+  return error ? { "aria-invalid": true } : {};
 }
 
 export function Field({
@@ -47,6 +60,7 @@ export function Field({
   hint,
   error,
   id,
+  className,
   children,
 }: {
   label: string;
@@ -54,31 +68,38 @@ export function Field({
   error?: string;
   /** The control's id; a generated one when omitted. */
   id?: string;
+  className?: string;
   children: ReactNode;
 }) {
   const generated = useId();
   const fieldId = id ?? generated;
-  const hintId = hint !== undefined ? `${fieldId}-hint` : undefined;
-  const errorId = error !== undefined ? `${fieldId}-error` : undefined;
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
   const { "aria-invalid": ariaInvalid } = fieldAria(error);
   return (
     <FieldContext.Provider
       value={{ id: fieldId, hintId, errorId, ariaInvalid }}
     >
-      <label htmlFor={fieldId} className="block text-label font-medium">
-        {label}
-      </label>
-      {children}
-      {hint !== undefined ? (
-        <p id={hintId} className="text-label text-muted">
-          {hint}
-        </p>
-      ) : null}
-      {error !== undefined ? (
-        <p id={errorId} role="alert" className="text-label text-danger">
-          {error}
-        </p>
-      ) : null}
+      <div
+        className={
+          className ? `${FIELD_CLASSES} ${className}` : FIELD_CLASSES
+        }
+      >
+        <label htmlFor={fieldId} className="block text-label font-medium">
+          {label}
+        </label>
+        {children}
+        {hint ? (
+          <p id={hintId} className="text-label text-muted">
+            {hint}
+          </p>
+        ) : null}
+        {error ? (
+          <p id={errorId} role="alert" className="text-label text-danger">
+            {error}
+          </p>
+        ) : null}
+      </div>
     </FieldContext.Provider>
   );
 }
@@ -87,12 +108,16 @@ export function Field({
  * Inside a `Field`, a control inherits its id (so the label's `htmlFor`
  * lands) and describes itself with whichever hint and error exist — a
  * control that drops either stops describing itself. A caller's own
- * `aria-describedby` survives, joined in front.
+ * `aria-describedby` survives, joined in front. The caller's explicit
+ * `aria-invalid` joins the field's with `||`, never `??`: an explicit
+ * false must not mask a shown error.
  */
 function useFieldControl() {
   const field = useContext(FieldContext);
   return {
-    id: (propsId: string | undefined) => propsId ?? field?.id,
+    // The field's id wins: a caller-supplied control id would leave the
+    // label's `htmlFor` pointing at nothing.
+    id: (propsId: string | undefined) => field?.id ?? propsId,
     describedBy: (own: string | undefined) =>
       [own, field?.hintId, field?.errorId].filter(Boolean).join(" ") ||
       undefined,
@@ -113,8 +138,8 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
       {...rest}
       id={id(props.id)}
       aria-describedby={describedBy(describedby)}
-      aria-invalid={invalid ?? ariaInvalid}
-      className={className ? `${CONTROL_CLASSES} ${className}` : CONTROL_CLASSES}
+      aria-invalid={invalid || ariaInvalid}
+      className={className ? `${controlClass()} ${className}` : controlClass()}
     />
   );
 }
@@ -132,8 +157,8 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
       {...rest}
       id={id(props.id)}
       aria-describedby={describedBy(describedby)}
-      aria-invalid={invalid ?? ariaInvalid}
-      className={className ? `${CONTROL_CLASSES} ${className}` : CONTROL_CLASSES}
+      aria-invalid={invalid || ariaInvalid}
+      className={className ? `${controlClass()} ${className}` : controlClass()}
     />
   );
 }
@@ -151,8 +176,10 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
       {...rest}
       id={id(props.id)}
       aria-describedby={describedBy(describedby)}
-      aria-invalid={invalid ?? ariaInvalid}
-      className={className ? `${CONTROL_CLASSES} ${className}` : CONTROL_CLASSES}
+      aria-invalid={invalid || ariaInvalid}
+      className={
+        className ? `${controlClass(true)} ${className}` : controlClass(true)
+      }
     />
   );
 }

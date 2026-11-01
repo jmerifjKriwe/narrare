@@ -1,11 +1,11 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 /**
  * The button primitive and its state matrix. One definition here: every
- * hover, focus, disabled and disabled look the product shows rides
- * `buttonClass`, so a variant cannot drift from its siblings. Behaviour
- * (the real focus ring, the axe pass) is pinned by the E2E suites; the
- * class contract itself is `buttonClasses.test.ts`.
+ * hover, focus and disabled look the product shows rides `buttonClass`, so
+ * a variant cannot drift from its siblings. Behaviour (the real focus
+ * ring, the axe pass) is pinned by the E2E suites; the class contract
+ * itself is `buttonClasses.test.ts`.
  */
 
 /** The four paints a button wears. */
@@ -48,22 +48,20 @@ export function buttonClass(variant: ButtonVariant, size: ButtonSize): string {
   return `${VARIANT_CLASSES[variant]} ${SHARED_CLASSES} ${SIZE_CLASSES[size]}`;
 }
 
-type ButtonBase = {
-  size?: ButtonSize;
-  /** Default "button": a control that submits a form it never joined is a bug waiting for a form. */
-  type?: "button" | "submit" | "reset";
-  disabled?: boolean;
-  onClick?: MouseEventHandler<HTMLButtonElement>;
-  children?: ReactNode;
-};
-
 /**
- * `variant: "icon"` demands `label` — an icon-only button with no accessible
- * name is unnamed to a screen reader; `title` alone is not enough.
+ * `variant: "icon"` demands `label` — an icon-only button with no
+ * accessible name is unnamed to a screen reader; `title` alone is not
+ * enough, and the glyph itself is optional (any content names it). The
+ * `label` becomes the `aria-label` only when the button has no children —
+ * applying it beside visible children would give the button an accessible
+ * name that differs from its words. `type` defaults to `"button"`: a
+ * control that submits a form it never joined is a bug waiting for a form.
+ * Everything else a `<button>` takes rides through unchanged.
  */
-export type ButtonProps = ButtonBase &
-  (
-    | { variant: "icon"; icon: ReactNode; label: string }
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  size?: ButtonSize;
+} & (
+    | { variant: "icon"; icon?: ReactNode; label: string }
     | {
         variant?: Exclude<ButtonVariant, "icon">;
         icon?: ReactNode;
@@ -79,15 +77,22 @@ export function Button({
   type = "button",
   disabled = false,
   onClick,
+  className,
   children,
+  ...rest
 }: ButtonProps) {
+  const classes = className
+    ? `${buttonClass(variant, size)} ${className}`
+    : buttonClass(variant, size);
   return (
     <button
+      // Set ahead of the spread so a caller's own aria-label still wins.
+      aria-label={children ? undefined : label}
+      {...rest}
       type={type}
       disabled={disabled}
       onClick={onClick}
-      aria-label={label}
-      className={buttonClass(variant, size)}
+      className={classes}
     >
       {icon}
       {children}
