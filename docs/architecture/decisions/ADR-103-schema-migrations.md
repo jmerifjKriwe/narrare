@@ -105,23 +105,31 @@ the advisory lock, backup and checksums become ours to build.
 
 > **2026-11-01 (CodeRabbit round 1):** the bootstrap compares an unversioned database
 > against the *baseline revision's replayed schema* and stamps the baseline — the
-> upgrade to head follows through the normal flow.
+> upgrade to head follows through the normal flow; a database equal to the models at
+> head instead stamps head (fix round 2, same day).
 > **2026-11-01 (CodeRabbit round 1):** constraint names are normalized to the naming
 > convention (D9) at bootstrap — a pre-convention database's Postgres defaults are
 > renamed, not held against the database.
 
 `prepare_database()` (`app/kernel/db/migrate.py`) runs first in the lifespan
 (`app/api/main.py`) and takes any database the app meets to head: advisory lock, so
-two starts cannot interleave → `ensure_extensions` (the three extensions stay a
-separate idempotent pre-step) → a database with tables but no `alembic_version` is
-compared against the models and stamped or **refused by name** (`MigrationRefused`)
-→ when revisions are pending and the database holds tables, a restorable dump first
-(an empty first boot takes none — product owner, 2026-10-31; design D5) (`dump_database`,
-`app/kernel/db/backup.py`, into `NARRE_BACKUP_DIR`, last 3 kept, command template
-`NARRE_BACKUP_COMMAND`) → `upgrade head` in one transaction → a head check. A
-database ahead of the app's history is also refused. The development recipes end in
-the same path (`app/kernel/db/init.py`), so there are two schema paths and one gate
-that keeps them identical.
+two starts on that database cannot interleave (the lock is per-database, as a
+server hosting several Narrare databases requires) → `ensure_extensions` (the three
+extensions stay a separate idempotent pre-step) → a database with tables but no
+`alembic_version` is **bootstrapped** — its constraint names are normalized to the
+convention, then it is compared against the baseline revision's replayed schema
+(equal → stamped at the baseline, the upgrade carrying it to head), else against
+the models at head (equal → stamped at head), else **refused by name**
+(`MigrationRefused`) *(update 2026-11-01, CodeRabbit round 1: the original
+"compared against the models and stamped" described the one-revision history,
+where baseline and head coincide; baseline first, models at head second)* → when
+revisions are pending and the database holds tables, a restorable dump first
+(an empty first boot takes none — product owner, 2026-10-31; design D5)
+(`dump_database`, `app/kernel/db/backup.py`, into `NARRE_BACKUP_DIR`, last 3 kept,
+command template `NARRE_BACKUP_COMMAND`) → `upgrade head` in one transaction → a
+head check. A database ahead of the app's history is also refused. The development
+recipes end in the same path (`app/kernel/db/init.py`), so there are two schema
+paths and one gate that keeps them identical.
 
 ---
 

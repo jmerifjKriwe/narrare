@@ -124,7 +124,9 @@ what differs. Guessing here is how data is lost.
 **Update 2026-11-01 (CodeRabbit round 1):** the bootstrap compares against the
 *baseline revision's replayed schema* — reflected from a scratch database on the same
 server — and stamps that baseline, so the normal flow upgrades the database to head
-through every revision it never had. At the same bootstrap, constraint names a
+through every revision it never had; a database equal to the models at head instead
+stamps head (fix round 2, same day — `reset_schema`, the API suite's client fixture
+and any `create_all` are that population). At the same bootstrap, constraint names a
 pre-convention database carries (Postgres's `users_email_key`, `<table>_pkey`,
 `<table>_<column>_fkey` defaults) are normalized to the naming convention (D9) — a
 diff-pair rename for uniques, a catalog rename for PK and FK — instead of refusing

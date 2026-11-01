@@ -19,11 +19,11 @@ from os import environ, utime
 from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, Any, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
-from sqlalchemy import text
+from sqlalchemy import Uuid, text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from typing import IO
 
     from alembic.config import Config
+    from sqlalchemy import Table
     from sqlalchemy.engine import Connection
     from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -469,32 +470,21 @@ async def test_drifted_pre_convention_database_is_still_refused(url: str) -> Non
     assert "title" in message
 
 
-async def test_unversioned_database_is_stamped_at_the_baseline_revision(
-    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An old unversioned database is stamped at the BASELINE revision, not head (D4).
+def _probe_history(tmp_path: Path, revision_id: str, upgrade: str) -> Config:
+    """A copied history with one probe revision on top of the baseline.
 
-    The bootstrap's comparison target is the baseline revision's replayed
-    schema — a database that never had a history matches the release schema
-    it shipped with, not head's models. One probe revision on top of the
-    baseline makes the difference observable: the database is stamped at the
-    baseline and upgraded through the probe (its column exists afterwards);
-    stamping at head would have skipped the probe entirely. This is also the
-    dump-on-versioned-behind coverage (D5): a pending upgrade on a
-    table-bearing database takes the restorable copy first.
+    The probe stands in for the second revision a real history grows: the
+    repo's own ``versions/`` directory stays untouched, and the returned
+    ``Config`` aims at the copy so a test can put head beyond the database
+    it drives.
     """
-    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
-    # The probe history: the real migration directory, copied, with one
-    # additive revision on top of the baseline. Nothing under the repo's own
-    # versions/ directory changes.
-    probe_id = "5ea50f00d000"
     probe_migrations = tmp_path / "migrations"
     shutil.copytree(Path(__file__).parent.parent / "migrations", probe_migrations)
     baseline = baseline_revision()
-    (probe_migrations / "versions" / f"{probe_id}_probe.py").write_text(
+    (probe_migrations / "versions" / f"{revision_id}_probe.py").write_text(
         f'"""probe\n'
         f"\n"
-        f"Revision ID: {probe_id}\n"
+        f"Revision ID: {revision_id}\n"
         f"Revises: {baseline}\n"
         f"Create Date: 2026-11-01\n"
         f"\n"
@@ -503,22 +493,47 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
         f"import sqlalchemy as sa\n"
         f"from alembic import op\n"
         f"\n"
-        f'revision: str = "{probe_id}"\n'
+        f'revision: str = "{revision_id}"\n'
         f'down_revision: str | None = "{baseline}"\n'
         f"branch_labels: str | None = None\n"
         f"depends_on: str | None = None\n"
         f"\n"
         f"\n"
         f"def upgrade() -> None:\n"
-        f'    op.add_column("chapters", sa.Column("probe", sa.Text(), nullable=True))\n'
+        f"{upgrade}\n"
         f"\n"
         f"\n"
         f"def downgrade() -> None:\n"
-        f'    op.drop_column("chapters", "probe")\n',
+        f"    pass\n",
         encoding="utf-8",
     )
     probe_config = default_config()
     probe_config.set_main_option("script_location", str(probe_migrations))
+    return probe_config
+
+
+async def test_unversioned_database_is_stamped_at_the_baseline_revision(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An old unversioned database is stamped at the BASELINE revision, not head (D4).
+
+    The bootstrap's first comparison target is the baseline revision's
+    replayed schema — a database that never had a history matches the
+    release schema it shipped with, not head's models. One probe revision
+    on top of the baseline makes the difference observable: the database is
+    stamped at the baseline and upgraded through the probe (its column
+    exists afterwards); stamping at head would have skipped the probe
+    entirely. This is also the dump-on-versioned-behind coverage (D5): a
+    pending upgrade on a table-bearing database takes the restorable copy
+    first.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+    probe_id = "5ea50f00d000"
+    probe_config = _probe_history(
+        tmp_path,
+        probe_id,
+        '    op.add_column("chapters", sa.Column("probe", sa.Text(), nullable=True))',
+    )
 
     await drop_every_table(url)
     await _load_snapshot(url, SNAPSHOT)
@@ -553,18 +568,105 @@ async def test_unversioned_database_is_stamped_at_the_baseline_revision(
     assert outcome.backup is not None
     assert outcome.backup.parent == tmp_path
     assert outcome.backup.read_bytes()[:5] == b"PGDMP"
-    # The scratch database the comparison replayed the baseline on is gone.
+    # The scratch database the comparison replayed the baseline on is gone —
+    # the name is derived from the target database, so this is its own.
+    scratch = migrate_module._scratch_database_name(url)  # pyright: ignore[reportPrivateUsage]
     engine = create_async_engine(url)
     try:
         async with engine.connect() as connection:
-            scratch: int | None = await connection.scalar(
-                text(
-                    "SELECT count(*) FROM pg_database WHERE datname = 'narrare_migrations_baseline'"
-                )
+            leftovers: int | None = await connection.scalar(
+                text("SELECT count(*) FROM pg_database WHERE datname = :name"), {"name": scratch}
             )
-            assert scratch == 0
+            assert leftovers == 0
     finally:
         await engine.dispose()
+
+
+async def test_models_built_database_is_stamped_at_head(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A models-built database stamps at HEAD when the history has moved on (D4).
+
+    The second real population of an unversioned database: built from the
+    models at head (``reset_schema``, the API suite's client fixture, any
+    ``create_all``). Against a history whose head is beyond the baseline it
+    equals head's models, not the baseline replay — the stamp goes to head,
+    and the upgrade afterwards has nothing to apply. Branch 1 — the
+    0.2.0-era database, stamped at the baseline and upgraded — is the test
+    above; the order of the two comparisons is what separates the eras.
+    """
+    monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "skip")
+    probe_id = "5ea50f00d001"
+    probe_config = _probe_history(
+        tmp_path,
+        probe_id,
+        "    op.create_table(\n"
+        '        "probe_table",\n'
+        '        sa.Column("id", sa.Uuid(), nullable=False),\n'
+        '        sa.PrimaryKeyConstraint("id", name=op.f("pk_probe_table")),\n'
+        "    )",
+    )
+    await reset_schema(url)
+
+    # The probe revision ships together with its model change: the
+    # probe-head models' ``create_all`` produces exactly the real models
+    # plus this table. The model registers on the shared Base for this test
+    # only — removed again below, so no other test's comparison sees it.
+    from sqlalchemy.orm import Mapped, mapped_column
+
+    from app.kernel.db.base import Base
+
+    class Probe(Base):
+        """The probe revision's table, as the probe-head models declare it."""
+
+        __tablename__ = "probe_table"
+
+        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+
+    try:
+        engine = create_async_engine(url)
+        try:
+            async with engine.begin() as connection:
+                await connection.run_sync(
+                    lambda sync_connection: cast("Table", Probe.__table__).create(sync_connection)
+                )
+        finally:
+            await engine.dispose()
+
+        outcome = await prepare_database(url, backup=False, config=probe_config)
+
+        assert outcome.from_revision is None
+        assert outcome.bootstrapped is True
+        # Stamped at head: the version row is the probe revision and the
+        # upgrade afterwards had nothing to apply — a stamp at the baseline
+        # would have replayed the probe onto an existing table and failed.
+        assert outcome.to_revision == probe_id
+        assert await _version_row(url) == probe_id
+        assert await _models_diff(url) == []  # no DDL happened: still the models'
+    finally:
+        Base.metadata.remove(Base.metadata.tables["probe_table"])
+        await drop_every_table(url)
+
+
+def test_scratch_database_name_is_derived_per_target() -> None:
+    """The bootstrap's scratch name derives from the target database.
+
+    Advisory locks are per-database, not cluster-wide: two bootstraps
+    against different databases of one server do not serialise against
+    each other, so a shared fixed scratch name would race its own
+    drop/create. Same target → same name (a crashed run's leftover is
+    found and pre-dropped again); different targets → different names;
+    bounded under Postgres's 63-byte identifier limit.
+    """
+    one = "postgresql+asyncpg://narrare:narrare@localhost:5433/one"
+    two = "postgresql+asyncpg://narrare:narrare@localhost:5433/two"
+    name_for = migrate_module._scratch_database_name  # pyright: ignore[reportPrivateUsage]
+    assert name_for(one) == name_for(one)
+    assert name_for(one) != name_for(two)
+    for target in (one, two):
+        name = name_for(target)
+        assert len(name.encode()) <= 63
+        assert name.startswith("narrare_baseline_")
 
 
 async def test_database_ahead_of_the_app_is_refused(url: str) -> None:
@@ -960,6 +1062,31 @@ async def test_stalled_dump_command_times_out(
     with pytest.raises(ProgrammingError) as missing:
         await _version_row(url)
     assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
+
+
+async def test_bad_backup_timeout_is_a_named_refusal(
+    url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A NARRE_BACKUP_TIMEOUT that is not a positive number is BackupFailed.
+
+    The value is resolved before any work starts — no sink is opened, no
+    artifact survives, nothing is migrated.
+    """
+    for value in ("not-a-number", "0", "-5"):
+        monkeypatch.setenv("NARRE_MIGRATION_BACKUP", "pg_dump")
+        monkeypatch.setenv("NARRE_BACKUP_TIMEOUT", value)
+        await reset_schema(url)  # tables: an empty database attempts no dump
+
+        with pytest.raises(MigrationRefused) as refused:
+            await prepare_database(url, backup_dir=tmp_path)
+
+        assert isinstance(refused.value.__cause__, BackupFailed)
+        assert "NARRE_BACKUP_TIMEOUT" in str(refused.value.__cause__)
+        assert list(tmp_path.iterdir()) == []
+        # Nothing migrated: the version table never came into existence.
+        with pytest.raises(ProgrammingError) as missing:
+            await _version_row(url)
+        assert getattr(missing.value.__cause__, "sqlstate", None) == UNDEFINED_TABLE
 
 
 async def test_sink_close_failure_is_a_named_refusal(

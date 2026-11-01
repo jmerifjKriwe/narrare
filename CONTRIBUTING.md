@@ -95,7 +95,12 @@ change ships as two files in **one commit** — the model change and its revisio
    (`app/kernel/db/tests/test_migrations.py`) prove that upgrading an empty
    database to head equals the models, that the 0.2.0 snapshot bootstraps
    with its prose intact, and that drifted or ahead databases are
-   refused at startup.
+   refused at startup. Operator note: the first bootstrap of an
+   unversioned database — one with tables but no history — needs
+   `CREATE DATABASE` (and extension rights) on the *server*, not just on
+   its own database: the comparison replays the baseline revision on a
+   scratch database beside it, and without that right the bootstrap
+   refuses with the way out (grant the right, or `alembic stamp`).
 5. **Refresh the release snapshot at release time:** create a scratch database
    (`ensure_database` in `app/kernel/db/testsupport.py`), bring it to head with
    `NARRE_DATABASE_URL=<scratch-url> just db-init`, then `pg_dump

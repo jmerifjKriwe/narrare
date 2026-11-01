@@ -119,11 +119,13 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
         file_existed_before = file.exists()  # the name is unique per run; it never does
 
         def _dump() -> None:
+            # The timeout is resolved before the sink is opened: a bad
+            # NARRE_BACKUP_TIMEOUT must not leave a file descriptor behind.
+            timeout = _backup_timeout()
             try:
                 sink = partial.open("wb")
             except OSError as exc:
                 raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
-            timeout = _backup_timeout()
             try:
                 with sink:
                     try:

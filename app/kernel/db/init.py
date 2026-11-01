@@ -64,6 +64,13 @@ def init_database(database_url: str) -> None:
 
 
 if __name__ == "__main__":
+    # The bootstrap path logs its constraint renames at INFO; a bare
+    # ``python -m`` configures no logging, and the default root level would
+    # drop them from the recipe's output.
+    from logging import INFO, basicConfig
+
+    basicConfig(level=INFO)
+
     from app.kernel.db.session import DATABASE_URL
 
     init_database(DATABASE_URL)
