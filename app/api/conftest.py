@@ -10,7 +10,7 @@ fixture runs the same ``init_schema`` first so every test starts from head).
 import os
 from asyncio import run
 from contextlib import AbstractContextManager, contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -98,7 +98,11 @@ async def client() -> AsyncIterator[TestClient]:
         try:
             yield started
         finally:
-            _drain_on_the_portal(started.portal)
+            # The cast keeps the argument's type honest; the ignore covers the
+            # member access itself — starlette 1.3.1 ships no types for the
+            # attribute, so pyright reads it as Unknown. A completed __enter__
+            # left a portal; the runtime contract is unchanged.
+            _drain_on_the_portal(cast("BlockingPortal | None", started.portal))  # pyright: ignore[reportUnknownMemberType]
 
 
 @pytest.fixture
@@ -116,6 +120,8 @@ async def client_factory() -> AsyncIterator[Callable[[], AbstractContextManager[
             try:
                 yield started
             finally:
-                _drain_on_the_portal(started.portal)
+                # starlette 1.3.1 ships no types for the attribute — the ignore
+                # covers the member access; the cast keeps the argument honest.
+                _drain_on_the_portal(cast("BlockingPortal | None", started.portal))  # pyright: ignore[reportUnknownMemberType]
 
     yield factory

@@ -133,7 +133,14 @@ pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # starlette 1.3.1 imports anyio's deprecated BlockingPortal alias; anyio
+    # 4.15 warns at import and collection dies under "error" above. No 1.3.x
+    # patch exists — remove this line when starlette imports
+    # anyio.from_thread.BlockingPortal (check on the next starlette bump).
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
 timeout = 30
 timeout_method = "thread"
 timeout_func_only = true
