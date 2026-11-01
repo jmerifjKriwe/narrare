@@ -122,11 +122,26 @@ body {
   --text-hero--line-height: 1.1;
 }
 
-/* The editor's prose: the one place long-form text is read, so it gets a
- * serif voice and a comfortable measure. TipTap manages the DOM; only the
+/*
+ * The brand serif, subset for the prose surface: the one face long-form text
+ * is read in. Weight 400 is the reading voice — the wordmark's 600 (brand
+ * assets spec) never reaches the editor. Latin plus the punctuation prose
+ * leans on — dashes, quotes, ellipsis, guillemets — nothing a novel misses;
+ * swap, so first paint never waits on the font.
+ */
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin.woff2") format("woff2");
+}
+
+/* The editor's prose: the one place long-form text is read, so it gets the
+ * brand serif and a comfortable measure. TipTap manages the DOM; only the
  * surface it writes on is styled here. */
 .ProseMirror {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "EB Garamond", Georgia, "Times New Roman", serif;
   font-size: 1.125rem;
   line-height: 1.75;
   max-width: 34rem;

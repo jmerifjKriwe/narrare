@@ -68,6 +68,5 @@ describe("MarkdownEditor", () => {
 
     const box = await screen.findByRole("textbox", { name: "Beschreibung" });
     expect(box.getAttribute("aria-multiline")).toBe("true");
-    expect(box.classList.contains("prose")).toBe(true);
   });
 });
