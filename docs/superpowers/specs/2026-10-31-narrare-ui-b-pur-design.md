@@ -136,7 +136,9 @@ original complaint returns; §9's census is what proves it did.
 
 Token laws:
 
-- **L1** A filled `--primary` appears at most once per screen (the primary action).
+- **L1** A filled `--primary` appears at most once per screen (the primary
+  action — interactive controls only; a cover's ground is an object surface, not
+  an action, and is governed by §8.6).
 - **L2** Selection is `--soft` + weight 600, optionally a 2 px `--primary` edge.
   A selected row is never a filled primary block. This alone removes the rail's
   shouting.
@@ -213,8 +215,10 @@ platforms). Every icon-only control gets a catalog key in en/de/fr.
 ### 8.6 Covers
 
 Generated, deterministic, no files: a cover is a rounded 3:4 tile whose ground is
-one of three token-derived tones (sepia, ink, pale), chosen by a stable hash of the
-title; the title is set in the serif face on the tile, 2 lines, ellipsis. Genre and
+one of three token-derived tones — sepia (`--primary`), ink (dark,
+foreground-derived), pale (`--rule`-derived) — chosen by a stable hash of the
+title; the title is set in the serif face on the tile, 3 lines, ellipsis (the
+clamp the shelf pins; an earlier draft said 2). Genre and
 language do not affect the tone. No fourth tone, no gradients beyond a single
 inner shade, no uploaded artwork. Three tones are enough for a shelf of ten books;
 a rainbow is not.
