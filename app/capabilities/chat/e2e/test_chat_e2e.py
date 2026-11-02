@@ -261,7 +261,9 @@ def test_dock_toggle_preserves_rail_and_focus(page: Page, stack: Stack) -> None:
 
     # A workspace state the dock must not disturb: rail collapsed, focus at
     # depth 1 — both URL state, both carried by the dock's own navigation.
-    page.get_by_role("button", name="Kapitelleiste ausblenden").click()
+    # The rail's toggle is the toolbar's icon button since F20; at depth 1
+    # it yields with the rail it answers.
+    page.get_by_role("button", name="Kapitelleiste").click()
     expect(page.get_by_role("complementary")).to_have_count(0)
     page.keyboard.press("F9")
     assert "rail=false" in page.url and "focus=1" in page.url

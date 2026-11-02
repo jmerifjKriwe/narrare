@@ -14,7 +14,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Dialog, Page, Route, expect
+from playwright.sync_api import Page, Route, expect
 
 from app.kernel.testing.a11y import assert_accessible
 
@@ -97,7 +97,7 @@ def test_rail_zero_url_renders_collapsed(page: Page, stack: Stack) -> None:
     expect(page.locator(".ProseMirror")).to_be_visible()
     expect(page.get_by_role("complementary")).to_have_count(0)
     # The way back is on the page, not only in the browser's history.
-    expect(page.get_by_role("button", name="Kapitelleiste einblenden")).to_be_visible()
+    expect(page.get_by_role("button", name="Kapitelleiste")).to_be_visible()
 
     assert_accessible(page)
 
@@ -107,7 +107,7 @@ def test_back_button_restores_the_expanded_rail(page: Page, stack: Stack) -> Non
     page.get_by_role("button", name="Neues Kapitel").click()
     expect(page.get_by_role("complementary")).to_be_visible()
 
-    page.get_by_role("button", name="Kapitelleiste ausblenden").click()
+    page.get_by_role("button", name="Kapitelleiste").click()
     expect(page.get_by_role("complementary")).to_have_count(0)
     # The collapse is a navigation: the state lives in the URL.
     assert "rail=false" in page.url
@@ -147,7 +147,7 @@ def test_typed_text_survives_a_chapter_switch(page: Page, stack: Stack) -> None:
     # the reload proves the row, not the in-memory body the switch carried.
     expect(page.locator(".ProseMirror")).to_have_text("")
     page.reload()
-    page.get_by_role("button", name="Kapitel 1", exact=True).click()
+    page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
     expect(page.locator(".ProseMirror")).to_contain_text("Erster Satz am Kai.")
 
     assert_accessible(page)
@@ -199,7 +199,7 @@ def test_back_button_walks_chapters_and_the_switch_flushes(page: Page, stack: St
             "/api/writing/chapters/" in response.url and response.request.method == "PUT"
         )
     ) as flushed:
-        page.get_by_role("button", name="Kapitel 1", exact=True).click()
+        page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
     assert flushed.value.ok
     expect(editor).to_have_text("")
 
@@ -322,7 +322,7 @@ def test_a_param_less_create_never_flips_the_editor_past_the_gate(page: Page, st
 
     # The typed text reached Kapitel 1's row — the reload proves the row,
     # not memory, and the new chapter's editor starts empty.
-    page.get_by_role("button", name="Kapitel 1", exact=True).click()
+    page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
     expect(page.locator(".ProseMirror")).to_contain_text("Der zu rettende Satz.")
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Der zu rettende Satz.")
@@ -335,7 +335,7 @@ def test_a_refused_switch_to_a_created_chapter_asks_and_dismissal_keeps(
 ) -> None:
     """A create whose gate flush is refused asks, and a dismissed ask keeps
     the workbench exactly as it was: the typed text in its editor, the old
-    chapter pressed, the new chapter waiting in the rail unselected."""
+    chapter current, the new chapter waiting in the rail unselected."""
     _create_book(page, "Die Sanduhr")
     page.get_by_role("button", name="Neues Kapitel").click()
     # The selection's address lands after the create's refetch.
@@ -355,13 +355,8 @@ def test_a_refused_switch_to_a_created_chapter_asks_and_dismissal_keeps(
 
     # The create succeeds, but the switch's flush is cut off at the wire —
     # the real condition the PUT meets when the write cannot land. The gate
-    # asks, the ask is dismissed, and nothing moved.
-    seen: list[str] = []
-
-    def answer(dialog: Dialog) -> None:
-        seen.append(dialog.type)
-        dialog.dismiss()
-
+    # asks through the page's own dialog, the ask is dismissed ("Bleiben"),
+    # and nothing moved.
     def cut_writes(route: Route) -> None:
         if route.request.method == "PUT":
             route.abort()
@@ -370,17 +365,18 @@ def test_a_refused_switch_to_a_created_chapter_asks_and_dismissal_keeps(
 
     page.route("**/api/writing/chapters/**", cut_writes)
     try:
-        with page.expect_event("dialog", timeout=10_000) as asked:
-            page.once("dialog", answer)
-            page.get_by_role("button", name="Neues Kapitel").click()
-        assert asked.value.type == "confirm"
+        page.get_by_role("button", name="Neues Kapitel").click()
+        leave_dialog = page.get_by_role("dialog")
+        expect(leave_dialog).to_be_visible(timeout=10_000)
+        leave_dialog.get_by_role("button", name="Bleiben").click()
+        expect(leave_dialog).to_have_count(0)
         expect(editor).to_contain_text("Bleibt stehen.")
         expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible()
-        expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_have_attribute(
-            "aria-pressed", "true"
+        expect(page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_attribute(
+            "aria-current", "true"
         )
-        expect(page.get_by_role("button", name="Kapitel 2", exact=True)).to_have_attribute(
-            "aria-pressed", "false"
+        expect(page.get_by_role("button", name=re.compile(r"^Kapitel 2\b"))).not_to_have_attribute(
+            "aria-current", "true"
         )
     finally:
         page.unroute("**/api/writing/chapters/**", cut_writes)
@@ -444,6 +440,107 @@ def test_chapter_creation_failure_is_named_in_the_rail(page: Page, stack: Stack)
 
     # The retry is the same button, once the service answers again.
     page.get_by_role("button", name="Neues Kapitel").click()
-    expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Stack) -> None:
+    """The open chapter is named by aria-current — never aria-pressed — the
+    rail has exactly one tab stop (the current row), and Up/Down walk the
+    rows (Review Focus 2). The walk moves focus, never the selection: the
+    chapter changes when a row is activated, not when it is walked past."""
+    _create_book(page, "Das Verzeichnis")
+    for _ in range(3):
+        page.get_by_role("button", name="Neues Kapitel").click()
+        expect(page).to_have_url(re.compile(r"chapter="))
+
+    rail = page.get_by_role("complementary")
+    first = rail.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))
+    third = rail.get_by_role("button", name=re.compile(r"^Kapitel 3\b"))
+
+    # The open chapter is aria-current, and nothing wears the toggle state a
+    # chapter selection is not (spec §8.9).
+    expect(third).to_have_attribute("aria-current", "true")
+    expect(third).not_to_have_attribute("aria-pressed", "true")
+
+    # One tab stop: the current row holds tabindex 0, every other row -1.
+    expect(third).to_have_attribute("tabindex", "0")
+    expect(first).to_have_attribute("tabindex", "-1")
+    # The list is its own scroll container (Review Focus 2): a long book
+    # scrolls inside the list, never the drawer and never the page.
+    expect(rail.get_by_role("list")).to_have_css("overflow-y", "auto")
+
+    # Up/Down walk the rows from wherever the focus sits.
+    first.focus()
+    page.keyboard.press("ArrowDown")
+    walked: object = page.evaluate("document.activeElement && document.activeElement.textContent")
+    assert isinstance(walked, str) and walked.startswith("Kapitel 2")
+    # The walk left the selection alone.
+    expect(third).to_have_attribute("aria-current", "true")
+    page.keyboard.press("ArrowUp")
+    walked = page.evaluate("document.activeElement && document.activeElement.textContent")
+    assert isinstance(walked, str) and walked.startswith("Kapitel 1")
+
+    assert_accessible(page)
+
+
+def test_an_empty_book_shows_its_empty_state(page: Page, stack: Stack) -> None:
+    """A book with no chapters shows the empty state, never an empty editor
+    card (Review Focus 3)."""
+    _create_book(page, "Das leere Buch")
+
+    expect(page.get_by_text("Noch kein Kapitel")).to_be_visible()
+    expect(page.locator(".ProseMirror")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack: Stack) -> None:
+    """The runhead names book and chapter beside the save state; the footer
+    counts the chapter's words and names its position in the book. The count
+    is the shared rule's (R31): the number the server would report, live —
+    one word typed, one word in the footer."""
+    _create_book(page, "Das Zählwerk")
+    for _ in range(4):
+        page.get_by_role("button", name="Neues Kapitel").click()
+        expect(page).to_have_url(re.compile(r"chapter="))
+    page.get_by_role("button", name=re.compile(r"^Kapitel 2\b")).click()
+    address = re.search(r"chapter=([0-9a-f-]+)", page.url)
+    assert address is not None, f"the selection never got an address: {page.url}"
+    chapter_id = address.group(1)
+
+    # 2107 words arrive the only way words arrive — the real API — so the
+    # footer must group thousands the way German reads them.
+    verdict: object = page.evaluate(
+        """async ([id, body]) => {
+          const answer = await fetch(`/api/writing/chapters/${id}`, {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ body }),
+          });
+          return answer.ok;
+        }""",
+        [chapter_id, " ".join(["Wort"] * 2107)],
+    )
+    assert verdict is True
+
+    page.reload()
+    expect(page.locator(".ProseMirror")).to_contain_text("Wort")
+
+    # The runhead: book · chapter on the left, the save state on the right —
+    # the save state is the runhead's, so typing proves it lives there.
+    expect(page.get_by_text("Das Zählwerk · Kapitel 2")).to_be_visible()
+    # The footer: the chapter's word count and its position in the book.
+    expect(page.get_by_text("2.107 Wörter")).to_be_visible()
+    expect(page.get_by_text("Kapitel 2 von 4")).to_be_visible()
+
+    editor = page.locator(".ProseMirror")
+    editor.click()
+    page.keyboard.press("Control+End")
+    page.keyboard.type(" Mehr.")
+    expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=10_000)
+    # The count is the live document's, not the stored row's.
+    expect(page.get_by_text("2.108 Wörter")).to_be_visible()
 
     assert_accessible(page)

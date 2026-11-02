@@ -10,7 +10,7 @@
  * The selection is URL state: the rail writes `?chapter=`, an arrival without
  * one falls back to the last chapter written in and writes nothing. Every
  * navigation while text is unsaved passes the flush gate — the cases the
- * browser-level suite cannot reach (the native confirm's two answers, a
+ * browser-level suite cannot reach (the leave dialog's two answers, a
  * search-only switch meeting a refused write) are pinned here.
  *
  * The invalidation rides the autosave's one success callback, and the saved
@@ -200,6 +200,14 @@ async function editorElement(): Promise<HTMLElement> {
   });
 }
 
+/** Click a rail row by its chapter number: the accessible name is the
+ *  title plus the count the shared rule reports for its body. */
+function chapterRow(n: number): HTMLElement {
+  return screen.getByRole("button", {
+    name: new RegExp(`^${t("chapters.defaultTitle", { n })}\\b`),
+  });
+}
+
 afterEach(() => {
   cleanup();
   queryClient.clear();
@@ -371,82 +379,84 @@ describe("the save's invalidation", () => {
 
 describe("the gate every navigation passes", () => {
   /** The workbench on the chapter last written in — the fallback's choice,
-   *  the second row — with a refused write outstanding and the confirm's
-   *  answer mocked. */
-  async function renderWithFailedSave(confirmAnswer: boolean) {
+   *  the second row — with a refused write outstanding. The gate's ask is
+   *  the shell's dialog now: these tests answer it through its buttons, the
+   *  way the user does. */
+  async function renderWithFailedSave() {
     mockTwoChapters();
     api.PUT.mockResolvedValue({ response: refused() });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(confirmAnswer);
     renderAt(`/novels/${NOVEL_ID}`);
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     (await editorElement()).focus();
     await user.keyboard("Bleibt hier.");
     await screen.findByText(t("save.failed"), undefined, { timeout: 4000 });
-    return { confirm, user };
+    return { user };
   }
 
   it("asks before a switch drops a refused body, and a dismissed ask keeps it", { timeout: 10_000 }, async () => {
-    const { confirm, user } = await renderWithFailedSave(false);
+    const { user } = await renderWithFailedSave();
 
     // The switch to the first chapter is a navigation like any other, so
     // the gate runs its flush — refused here — and asks. The ask is
-    // dismissed: the selection stays, and the refused body with it.
-    await user.click(screen.getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) }));
-    await waitFor(() => expect(confirm).toHaveBeenCalledWith(t("save.confirmLeave")));
-    expect(
-      screen
-        .getByRole("button", { name: t("chapters.defaultTitle", { n: 2 }) })
-        .getAttribute("aria-pressed"),
-    ).toBe("true");
+    // dismissed ("Bleiben"): the selection stays, and the refused body
+    // with it.
+    await user.click(chapterRow(1));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: t("save.leaveStay") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(chapterRow(2).getAttribute("aria-current")).toBe("true");
     expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt hier.");
   });
 
   it("an accepted ask discards the refused body and completes the switch", { timeout: 10_000 }, async () => {
-    const { confirm, user } = await renderWithFailedSave(true);
+    const { user } = await renderWithFailedSave();
 
-    // The same question answered yes: the user chose to leave the refused
-    // body behind, so the switch completes — the first chapter's text is
-    // what the editor holds, and the refused words are nowhere.
-    await user.click(screen.getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) }));
-    await waitFor(() =>
-      expect(
-        screen
-          .getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) })
-          .getAttribute("aria-pressed"),
-      ).toBe("true"),
-    );
+    // The same question answered with "Trotzdem wechseln": the user chose
+    // to leave the refused body behind, so the switch completes — the
+    // first chapter's text is what the editor holds, and the refused words
+    // are nowhere.
+    await user.click(chapterRow(1));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: t("save.leaveGo") }));
+    await waitFor(() => expect(chapterRow(1).getAttribute("aria-current")).toBe("true"));
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anfang.");
-    expect(confirm).toHaveBeenCalledWith(t("save.confirmLeave"));
   });
 
   it("an accepted ask on a panel toggle keeps the notice and the guard armed", { timeout: 10_000 }, async () => {
-    const { confirm, user } = await renderWithFailedSave(true);
+    const { user } = await renderWithFailedSave();
 
     // The toggle's navigation completes — the rail collapses — but the
     // refused body is not dropped on the way: the panel moving is no
-    // chapter switch, so the failure notice stays beside the text.
-    await user.click(screen.getByRole("button", { name: t("workspace.collapseRail") }));
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-    expect(screen.queryByRole("complementary")).toBeNull();
-    expect(screen.getByRole("button", { name: t("workspace.expandRail") })).toBeTruthy();
+    // chapter switch, so the failure notice stays beside the text. The
+    // toggle is the toolbar's one rail control now: the same button
+    // brings the rail back.
+    await user.click(screen.getByRole("button", { name: t("workspace.railToggle") }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: t("save.leaveGo") }));
+    await waitFor(() => expect(screen.queryByRole("complementary")).toBeNull());
+    expect(screen.getByRole("button", { name: t("workspace.railToggle") })).toBeTruthy();
     expect(screen.getByText(t("save.failed"))).toBeTruthy();
 
     // And the gate is still armed: the next navigation asks again, because
     // the body it would leave behind is still only in the browser.
-    await user.click(screen.getByRole("button", { name: t("workspace.expandRail") }));
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
+    await user.click(screen.getByRole("button", { name: t("workspace.railToggle") }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: t("save.leaveGo") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("a search-only navigation meets the gate too, and a dismissed ask keeps the panel", { timeout: 10_000 }, async () => {
-    const { confirm, user } = await renderWithFailedSave(false);
+    const { user } = await renderWithFailedSave();
 
     // Collapsing the rail is a navigation inside the book — a search-only
     // one — and the widened gate asks for the refused body all the same.
     // Dismissed, the panel state stays exactly where it was.
-    await user.click(screen.getByRole("button", { name: t("workspace.collapseRail") }));
-    await waitFor(() => expect(confirm).toHaveBeenCalledWith(t("save.confirmLeave")));
+    await user.click(screen.getByRole("button", { name: t("workspace.railToggle") }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: t("save.leaveStay") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByRole("complementary")).toBeTruthy();
-    expect(screen.getByRole("button", { name: t("workspace.collapseRail") })).toBeTruthy();
+    expect(screen.getByRole("button", { name: t("workspace.railToggle") })).toBeTruthy();
     expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt hier.");
   });
 });
@@ -482,11 +492,7 @@ describe("the created chapter's selection", () => {
     // still outstanding: the flip never queues behind the rest of the
     // book.
     await waitFor(() =>
-      expect(
-        screen
-          .getByRole("button", { name: t("chapters.defaultTitle", { n: 2 }) })
-          .getAttribute("aria-pressed"),
-      ).toBe("true"),
+      expect(chapterRow(2).getAttribute("aria-current")).toBe("true"),
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("");
     expect(novelReads).toBe(2);
@@ -523,11 +529,7 @@ describe("the palette's novel jump", () => {
     // book's choice, not the first book's row carried across, and not
     // nothing.
     await waitFor(() =>
-      expect(
-        screen
-          .getByRole("button", { name: t("chapters.defaultTitle", { n: 1 }) })
-          .getAttribute("aria-pressed"),
-      ).toBe("true"),
+      expect(chapterRow(1).getAttribute("aria-current")).toBe("true"),
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anderer Anfang.");
     expect(screen.getByRole("heading", { name: OTHER_NOVEL.title })).toBeTruthy();

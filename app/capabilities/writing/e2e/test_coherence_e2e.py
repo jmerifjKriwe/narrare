@@ -507,10 +507,12 @@ def test_the_writer_s_day_holds_together_end_to_end(
     )
     assert chapter_one_id in wire[1]
     # The rail gained the chapter, the address moved to it, the editor shows
-    # the empty chapter the command made — and the row holds the line.
+    # the empty chapter the command made — and the row holds the line. The
+    # row's name carries its word count beside the title (F20), so the
+    # match is anchored at the front, not made exact.
     new_position = _latest_chapter_position(novel_id)
     expect(
-        page.get_by_role("button", name=f"Kapitel {new_position + 1}", exact=True)
+        page.get_by_role("button", name=re.compile(rf"^Kapitel {new_position + 1}\b"))
     ).to_be_visible()
     [new_chapter_id] = [
         str(row[0])

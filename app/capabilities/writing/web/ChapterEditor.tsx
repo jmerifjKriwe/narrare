@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { SaveIndicator, type SaveStatus } from "@shell/lib/save";
 import { readFrames } from "@shell/lib/stream";
+import { countWords } from "@shell/lib/words";
 import { MarkdownEditor } from "@shell/ui/markdown-editor";
 import type { Editor } from "@tiptap/core";
 
@@ -12,10 +13,17 @@ import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
 
 /**
  * Edit a chapter, with proposals kept as ghost text until accepted. Saving is
- * the page's, not the editor's: it receives the autosave's `status` (shown
- * beside the text) and `schedule` (fed on every update with the document as
+ * the page's, not the editor's: it receives the autosave's `status` (shown in
+ * the runhead) and `schedule` (fed on every update with the document as
  * Markdown — the storage format). `body` initializes the editor; remount
  * with a new key when switching chapters.
+ *
+ * The frame (F4) is the runhead above the text — book · chapter on the left,
+ * the save state on the right — and the footer below it: the chapter's word
+ * count, counted live with the shared rule, and its position in the book.
+ * Both name the writing, so both yield at focus depth 2, where only the
+ * writing surface remains. The names arrive as props; without them the frame
+ * still carries the save state, and the footer counts what it has.
  */
 export function ChapterEditor({
   chapterId,
@@ -24,6 +32,11 @@ export function ChapterEditor({
   schedule,
   proposal,
   onProposalResolve,
+  bookTitle,
+  chapterTitle,
+  chapterNumber,
+  chapterTotal,
+  focusDepth = 0,
 }: {
   chapterId: string;
   body: string;
@@ -35,12 +48,33 @@ export function ChapterEditor({
   proposal?: string | null;
   /** Called once per resolved ghost — the bus clears its offer either way. */
   onProposalResolve?: (accepted: boolean) => void;
+  /** The frame's left name: the book's title, muted before the chapter's. */
+  bookTitle?: string;
+  /** The frame's own name — the heading that wears the 600 face. */
+  chapterTitle?: string;
+  /** The chapter's one-based position, for the footer's "n von m". */
+  chapterNumber?: number;
+  /** The book's chapter count; absent or zero leaves the position unsaid. */
+  chapterTotal?: number;
+  /** The workbench's focus depth: at 2 the frame yields to the text. */
+  focusDepth?: 0 | 1 | 2;
 }) {
   const t = useTranslation();
   const [continuing, setContinuing] = useState(false);
   const [failed, setFailed] = useState(false);
   // What this component's own stream has proposed so far.
   const [streamed, setStreamed] = useState<string | null>(null);
+  // The frame's live count: the shared rule applied to the document as it
+  // stands — the same Markdown string the autosave will carry — so the
+  // footer moves with the writing, not with the last save.
+  const [words, setWords] = useState(() => countWords(body));
+  const scheduleAndCount = useCallback(
+    (markdown: string) => {
+      setWords(countWords(markdown));
+      schedule(markdown);
+    },
+    [schedule],
+  );
   // The editor instance, handed back by the shared MarkdownEditor once
   // mounted — the ghost machinery drives the view, so it needs the editor,
   // not only the component.
@@ -198,8 +232,28 @@ export function ChapterEditor({
   }
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center gap-3">
+    <div>
+      {focusDepth < 2 ? (
+        <header className="flex items-baseline justify-between gap-4">
+          {chapterTitle !== undefined || bookTitle !== undefined ? (
+            /* A paragraph, not a heading: its accessible name carries the
+               book's title too, and a second heading that contains it turns
+               every "heading <book>" query into a coin toss — the runhead is
+               the page's label, not a node of its outline. The chapter's own
+               name still wears the 600 face. */
+            <p className="min-w-0 truncate text-body font-semibold">
+              {bookTitle !== undefined ? (
+                <span className="font-normal text-muted">{bookTitle} · </span>
+              ) : null}
+              {chapterTitle}
+            </p>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          <SaveIndicator status={status} />
+        </header>
+      ) : null}
+      <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
           onClick={continueWriting}
@@ -208,7 +262,6 @@ export function ChapterEditor({
         >
           {t("chapters.continue")}
         </button>
-        <SaveIndicator status={status} />
       </div>
       {failed ? (
         <p role="alert" className="mt-2 text-sm text-danger">
@@ -219,10 +272,20 @@ export function ChapterEditor({
         className="mt-6"
         label={t("chapters.editorLabel")}
         value={body}
-        onChange={schedule}
+        onChange={scheduleAndCount}
         extensions={extensions}
         onReady={setEditor}
       />
+      {focusDepth < 2 ? (
+        <footer className="mt-4 flex items-baseline justify-between gap-4 text-meta text-muted">
+          <span className="tabular-nums">{t("chapters.wordCount", { count: words })}</span>
+          {chapterTotal ? (
+            <span className="tabular-nums">
+              {t("chapters.position", { n: chapterNumber ?? 0, m: chapterTotal })}
+            </span>
+          ) : null}
+        </footer>
+      ) : null}
     </div>
   );
 }
