@@ -262,15 +262,19 @@ def test_shelf_cards_show_length_in_words_not_percentages(page: Page, stack: Sta
 def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack) -> None:
     """A long title clamps inside its span instead of blowing up the shelf.
 
-    Measured, not eyeballed: the long-titled card keeps the short-titled
-    card's height, and the title span clips inside its own box.
+    Measured where it can fail: the clamp is read from the computed style
+    (three lines, not a class string), the unbreakable token must wrap
+    inside its own box, and the two title spans — not the cards, the grid
+    stretch would equalize the cards either way — must be the same height.
     """
-    # The title carries no phrase another test in this module queries by
-    # (card names match as substrings, and the module's database is shared):
-    # an overlap would resolve one test's locator to two cards, by order
-    # of the shuffle.
-    long_title = "Ein Buch über lange Wege des Lichts über das weite Meer und die Küsten im Herbst"
+    # The 40-character compound cannot wrap on its own; the span has to
+    # break it. No phrase in the title may be one another test in this
+    # module queries by (card names match as substrings, and the module's
+    # database is shared): an overlap would resolve one test's locator to
+    # two cards, by order of the shuffle.
+    long_title = "Die Geschichte Nordseeinsellichterturmwegesommerblickea und die Küsten im Herbst"
     assert len(long_title) == 80
+    assert "Nordseeinsellichterturmwegesommerblickea" in long_title
     _seed_novel(page, "Der kurze Wurf")
     _seed_novel(page, long_title)
 
@@ -282,12 +286,22 @@ def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack
     expect(long_card).to_be_visible()
 
     long_span = long_card.locator("[data-shelf-title]")
+    short_span = short_card.locator("[data-shelf-title]")
     expect(long_span).to_be_visible()
+    expect(short_span).to_be_visible()
+
+    # The clamp is really three lines, computed — not a class string.
+    clamp = long_span.evaluate("element => getComputedStyle(element).webkitLineClamp")
+    assert clamp == "3"
+
+    # The unbreakable token wraps inside the span: nothing paints past it.
     overflow = long_span.evaluate("element => element.scrollWidth - element.clientWidth")
     assert overflow <= 1
 
-    long_height = long_card.bounding_box()
-    short_height = short_card.bounding_box()
+    # The title slot is fixed at three lines whether the title fills it or
+    # not — measured on the spans, the thing the design fixes.
+    long_height = long_span.bounding_box()
+    short_height = short_span.bounding_box()
     assert long_height is not None and short_height is not None
     assert abs(long_height["height"] - short_height["height"]) <= 1
 

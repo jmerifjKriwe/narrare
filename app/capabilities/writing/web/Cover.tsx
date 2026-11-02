@@ -17,13 +17,16 @@
  * attribute at its own call site, with the reasoning above.
  */
 
-/** The tile's three looks, all token-derived: the quiet wash, the brand
- *  hue at a breath, and the brand fill. Ink pairs with the fill — text
- *  muted never sits on a fill here (the parked AA rule). */
+/** The tile's three looks, exactly the spec's trio (R32): pale (`--rule`-
+ *  derived), sepia (the brand fill) and ink (dark, foreground-derived — it
+ *  inverts with the theme the way every token surface does). No half-steps
+ *  of a token: a cover's ground is an object surface, not an action. The
+ *  ink pairs with each ground are the AA-checked ones — primary-foreground
+ *  on sepia and ink, foreground on pale. */
 export const COVER_TONES = [
-  "bg-soft text-foreground",
-  "bg-primary/20 text-foreground",
+  "bg-rule text-foreground",
   "bg-primary text-primary-foreground",
+  "bg-foreground text-primary-foreground",
 ] as const;
 
 /** A tone: an index into `COVER_TONES`. */

@@ -2,11 +2,13 @@
 /**
  * The cover's contract, pinned beside the other class helpers: the tone is
  * a pure hash of the title — deterministic, in range, spread across all
- * three tones — and the tile renders the 3:4 aspect, the pinned tone
- * classes, the serif lettering clamped to three lines with hidden
- * overflow, and the aria-hidden that keeps the title out of the tree the
- * card's link already names. The frozen pins are the point: a hash change
- * shifts every book's cover at once, so that must stay a reviewed decision.
+ * three tones — and the tile renders the 3:4 aspect, the exact tone classes
+ * of the spec's trio (pale, sepia, ink — R32), the serif lettering clamped
+ * to three lines with hidden overflow, and the aria-hidden that keeps the
+ * title out of the tree the card's link already names. The frozen hash pins
+ * survived the round-1 re-table (R32 moved the tones, not the hash, so
+ * every book's tone index is what it was); a hash change would shift every
+ * cover at once and must stay a reviewed decision.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -32,11 +34,24 @@ describe("coverTone", () => {
   });
 
   it("pins the tone of named titles", () => {
-    // Frozen from the first green run with FNV-1a. One value per tone, so
+    // Frozen from the first green run with FNV-1a; unchanged by the round-1
+    // re-table, which moved the tones, not the hash. One value per tone, so
     // the pin itself cannot hide a collapsed hash.
     expect(coverTone("Das Wattenmeer")).toBe(2);
     expect(coverTone("Das Zählwerk")).toBe(0);
     expect(coverTone("")).toBe(1);
+  });
+
+  it("wears exactly the spec's trio — pale, sepia, ink — with the AA ink pairs", () => {
+    expect(COVER_TONES).toEqual([
+      "bg-rule text-foreground",
+      "bg-primary text-primary-foreground",
+      "bg-foreground text-primary-foreground",
+    ]);
+    // No half-step of a token: no tone is an opacity wash.
+    for (const tone of COVER_TONES) {
+      expect(tone).not.toMatch(/\//);
+    }
   });
 
   it("spreads the alphabet across all three tones", () => {

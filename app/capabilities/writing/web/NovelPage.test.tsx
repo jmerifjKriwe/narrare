@@ -552,9 +552,13 @@ describe("the shelf's first paint", () => {
     // and keeps its place above the rows it previews.
     expect(await screen.findByRole("heading", { name: t("novels.heading") })).toBeTruthy();
     expect(screen.getByText(t("novels.loading"))).toBeTruthy();
-    expect(document.querySelectorAll('[class*="animate-pulse"]').length).toBeGreaterThanOrEqual(
-      4,
-    );
+    const pulsing = document.querySelectorAll('[class*="animate-pulse"]');
+    expect(pulsing.length).toBeGreaterThanOrEqual(4);
+    // The pulse rides the motion-safe variant: prefers-reduced-motion: reduce
+    // stops it (F24) — the class string is the pinned contract.
+    for (const skeleton of pulsing) {
+      expect(skeleton.className).toContain("motion-safe:animate-pulse");
+    }
     // The wait is not an outage: nothing claims the shelf failed.
     expect(screen.queryByRole("alert")).toBeNull();
   });

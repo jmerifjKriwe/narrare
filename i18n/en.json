@@ -194,7 +194,6 @@
   "novels.exportAria": "Book export",
   "shelf.export": "Export",
   "shelf.exportTitle": "Export “{title}”",
-  "shelf.card.chapters": "{count, plural, one {# chapter} other {# chapters}}",
   "shelf.card.words": "{count, plural, one {# word} other {# words}}",
   "shelf.export.modeLabel": "Destination",
   "shelf.export.modePath": "Folder on disk",
