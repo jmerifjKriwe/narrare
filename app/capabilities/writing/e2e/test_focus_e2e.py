@@ -68,6 +68,8 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     # F9 again: chrome-free. Only the writing surface and its save controls.
     page.keyboard.press("F9")
     expect(page.get_by_role("banner")).to_have_count(0)
+    # The icon rail is chrome too (P8): the deepest step leaves none of it.
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_have_count(0)
     assert "focus=2" in page.url
     assert_accessible(page)
 
@@ -80,10 +82,12 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     # A third F9 is a no-op at the deepest step: still no chrome.
     page.keyboard.press("F9")
     expect(page.get_by_role("banner")).to_have_count(0)
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_have_count(0)
 
     # Esc walks it back one step at a time: the chrome first …
     page.keyboard.press("Escape")
     expect(page.get_by_role("banner")).to_be_visible()
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
     assert_accessible(page)
 
     # … then the rail, back to the state the URL held all along.
@@ -108,6 +112,9 @@ def test_focus_two_url_renders_chrome_free(page: Page, stack: Stack) -> None:
     expect(page.locator(".ProseMirror")).to_be_visible()
     expect(page.get_by_role("banner")).to_have_count(0)
     expect(page.get_by_role("complementary")).to_have_count(0)
+    # The icon rail is chrome too (P8): a direct depth-2 link renders none
+    # of it — and the way back (Esc below) must return both columns.
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_have_count(0)
     # The affordance is gone at the deepest step: the keyboard is the way
     # back, and nothing on the page pretends otherwise.
     expect(page.get_by_role("button", name="Ablenkungen ausblenden")).to_have_count(0)
@@ -117,6 +124,7 @@ def test_focus_two_url_renders_chrome_free(page: Page, stack: Stack) -> None:
     # And the way back works from a direct render too.
     page.keyboard.press("Escape")
     expect(page.get_by_role("banner")).to_be_visible()
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
     assert_accessible(page)
 
 

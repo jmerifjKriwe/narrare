@@ -76,7 +76,10 @@ def _create_profile(
 ) -> None:
     """Create one profile through the form, the only way a user can."""
     page.get_by_label("Name", exact=True).fill(name)
-    page.get_by_label("Art").select_option(label=kind)
+    # Scoped to main: the label wraps its select, so its text runs "Art
+    # <selected option>" — a substring match, which the rail's Startseite
+    # link (outside main) would also answer.
+    page.get_by_role("main").get_by_label("Art").select_option(label=kind)
     if base_url is not None:
         page.get_by_label("Serveradresse").fill(base_url)
     page.get_by_label("Modell").fill(model)
@@ -93,9 +96,11 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
     with chat_vendor() as vendor:
         # The gear in the top bar is the door to the settings; the hub names
         # the clusters, and the Anbieter card is the door to the provider
-        # page, where the whole flow below happens.
+        # page, where the whole flow below happens. The gear is scoped to
+        # the banner: the rail's Settings anchor (P8) is the settings
+        # area's own twin, and an unscoped name query finds both.
         page.goto(BASE + "/")
-        page.get_by_role("link", name="Einstellungen").click()
+        page.get_by_role("banner").get_by_role("link", name="Einstellungen").click()
         expect(page).to_have_url(re.compile(r"/settings$"))
         expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
         assert_accessible(page)
@@ -240,7 +245,14 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
     expect(page.get_by_role("heading", name="Sprache")).to_be_visible()
     expect(page.get_by_role("heading", name="Anbieter")).to_be_visible()
-    expect(page.get_by_role("link", name="Einstellungen")).to_be_visible()
+    # The gear's name follows the language — the same element asserted in
+    # each of the three below. Found by href and scoped to the banner: the
+    # rail's Settings anchor (P8) carries the same word in every language,
+    # and a name-filtered locator would stop matching the moment the switch
+    # below renames it.
+    gear = page.get_by_role("banner").locator('a[href="/settings"]')
+    expect(gear).to_be_visible()
+    expect(gear).to_have_accessible_name("Einstellungen")
     expect(page.get_by_role("link", name="Zurück")).to_be_visible()
 
     page.goto(BASE + "/settings/provider")
@@ -252,14 +264,13 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("heading", name="Settings")).to_be_visible()
     expect(page.get_by_role("heading", name="Providers")).to_be_visible()
     expect(page.get_by_role("heading", name="Tasks")).to_be_visible()
-    expect(page.get_by_role("link", name="Settings")).to_be_visible()
+    expect(gear).to_have_accessible_name("Settings")
     expect(page.get_by_role("link", name="Back")).to_be_visible()
 
     switcher.select_option("fr")
-    expect(page.get_by_role("heading", name="Paramètres")).to_be_visible()
     expect(page.get_by_role("heading", name="Fournisseurs")).to_be_visible()
     expect(page.get_by_role("heading", name="Tâches")).to_be_visible()
-    expect(page.get_by_role("link", name="Paramètres")).to_be_visible()
+    expect(gear).to_have_accessible_name("Paramètres")
     expect(page.get_by_role("link", name="Retour")).to_be_visible()
 
     switcher.select_option("de")

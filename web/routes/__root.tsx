@@ -1,12 +1,12 @@
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 
 import { Palette } from "../components/Palette";
 import { TopBar } from "../components/TopBar";
 import { IconRail } from "../components/IconRail";
 import { useTranslation } from "../lib/i18n";
-import { adoptServerLocale } from "../lib/locale";
+import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
 import { PageTitleProvider, applyBaseTitle } from "../lib/pageTitle";
 import { useSettingsQuery } from "../lib/query";
 import "../globals.css";
@@ -56,12 +56,17 @@ function Shell() {
     setReady(true);
   }, [settings.data, settings.isSuccess]);
 
+  // The language the catalog renders in, as reactive state: `t` is a stable
+  // module function, so an effect keyed on it would never re-run — the
+  // locale is what changes, and the title effect below keys on it.
+  const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
+
   useEffect(() => {
     // The tab's floor: the app's own name until a page names itself, and a
     // recomposition — not a clobber — once one has, so a language change
     // cannot strip the page's name out of the tab.
     applyBaseTitle();
-  }, [t]);
+  }, [locale]);
 
   // The palette's key. A window listener, not a route's: ⌘K must answer on
   // every page, and no page should have to know the palette exists. A held
@@ -101,19 +106,21 @@ function Shell() {
 
   return (
     <PageTitleProvider>
-      {/* The shell frame: the rail beside the page, both columns of chrome
-          gone at the deepest focus step. The wrapper is plain flow below
-          1280 (the rail is not rendered there), so pages see exactly the
-          width they saw before the rail existed. */}
-      <div className="flex min-h-screen">
-        {chromeless ? null : <IconRail />}
-        <div className="min-w-0 flex-1">
-          {chromeless ? null : <TopBar />}
+      {/* The shell frame, led by the bar: its skip link is the first
+          focusable element in the document, so the bar precedes the rail in
+          the DOM and flex puts the rail on its visual axis — a row beneath
+          the bar — without moving the keyboard's first stop. Both columns of
+          chrome are gone at the deepest focus step. Below 1280 the rail is
+          not rendered, so pages see exactly the width they saw before it. */}
+      <div className="flex min-h-screen flex-col">
+        {chromeless ? null : <TopBar />}
+        <div className="flex min-w-0 flex-1">
+          {chromeless ? null : <IconRail />}
           {/* The shell owns the page's one main landmark; routes render content
               inside it, and the skip link lands here. tabIndex makes the landing
               hold focus — fragment navigation focuses a target only if it can —
               and -1 keeps it out of the tab order. */}
-          <main id="main" tabIndex={-1}>
+          <main id="main" tabIndex={-1} className="min-w-0 flex-1">
             {/* Capability pages load lazily, each as its own bundle chunk; the
                 one boundary lives in the shell so no capability needs one. The
                 fallback is null on purpose — the shell's own pre-paint gate is
@@ -122,10 +129,10 @@ function Shell() {
               <Outlet />
             </Suspense>
           </main>
-          {/* The keyboard surface, mounted with the shell: one instance, every
-              route, and its ⌘K listener above. */}
-          <Palette open={paletteOpen} onOpenChange={setPaletteOpen} />
         </div>
+        {/* The keyboard surface, mounted with the shell: one instance, every
+            route, and its ⌘K listener above. */}
+        <Palette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
     </PageTitleProvider>
   );

@@ -64,7 +64,10 @@ export function IconRail() {
      * workspace reflow revisits the breakpoint. */
     <nav
       aria-label={t("shell.navAria")}
-      className="sticky top-0 hidden h-screen w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-2 xl:flex"
+      /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
+         icon variant's px-2.5), and 48 − 2×6 = 36 exactly — the pill sits
+         inside the rail's rhythm instead of overhanging the padding. */
+      className="sticky top-0 hidden h-screen w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-1.5 xl:flex"
     >
       <div className="flex flex-col items-center gap-1">
         {/* Home is a shell constant, not a generated row: the shelf is
