@@ -71,6 +71,8 @@ const NOVEL: Novel = {
   title: "Dead Signal",
   author: null,
   blurb: null,
+  chapter_count: 0,
+  word_count: 0,
   created_at: "2026-10-28T10:00:00Z",
   genre: null,
   language: null,
