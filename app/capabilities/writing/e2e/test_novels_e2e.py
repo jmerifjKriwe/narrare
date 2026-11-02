@@ -211,6 +211,114 @@ def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) 
     assert_accessible(page)
 
 
+def _seed_novel(page: Page, title: str) -> dict[str, object]:
+    """Create a novel through the API, the way a second device would."""
+    response = page.request.post("http://127.0.0.1:8000/api/writing/novels", data={"title": title})
+    assert response.ok, response.text()
+    return response.json()
+
+
+def _seed_chapter(page: Page, novel_id: str, title: str, body: str = "") -> None:
+    """Create a chapter through the API and, when given, write its body.
+
+    The counts the shelf reports are derived from chapter bodies, so the
+    seeding must write real prose — whitespace-separated words — not open
+    the dialog.
+    """
+    response = page.request.post(
+        f"http://127.0.0.1:8000/api/writing/novels/{novel_id}/chapters",
+        data={"title": title},
+    )
+    assert response.ok, response.text()
+    chapter_id = response.json()["id"]
+    if body:
+        written = page.request.put(
+            f"http://127.0.0.1:8000/api/writing/chapters/{chapter_id}", data={"body": body}
+        )
+        assert written.ok, written.text()
+
+
+def test_shelf_cards_show_length_in_words_not_percentages(page: Page, stack: Stack) -> None:
+    """A card answers "how long is this book?" in chapters and words.
+
+    Four chapters carrying 6 843 words, seeded through the API, must read
+    exactly so — and no percentage anywhere: a progress number is a claim
+    the shelf never earned.
+    """
+    novel = _seed_novel(page, "Das Zählwerk")
+    for index, words in enumerate([2000, 2000, 2843, 0]):
+        _seed_chapter(page, str(novel["id"]), f"Kapitel {index + 1}", "Wort " * words)
+
+    page.goto("http://127.0.0.1:3100/")
+    card = page.get_by_role("list").get_by_role("link", name="Das Zählwerk")
+    expect(card).to_be_visible()
+    expect(card).to_contain_text("4 Kapitel")
+    expect(card).to_contain_text("6.843 Wörter")
+    expect(page.get_by_text("%")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack) -> None:
+    """A long title clamps inside its span instead of blowing up the shelf.
+
+    Measured, not eyeballed: the long-titled card keeps the short-titled
+    card's height, and the title span clips inside its own box.
+    """
+    # The title carries no phrase another test in this module queries by
+    # (card names match as substrings, and the module's database is shared):
+    # an overlap would resolve one test's locator to two cards, by order
+    # of the shuffle.
+    long_title = "Ein Buch über lange Wege des Lichts über das weite Meer und die Küsten im Herbst"
+    assert len(long_title) == 80
+    _seed_novel(page, "Der kurze Wurf")
+    _seed_novel(page, long_title)
+
+    page.goto("http://127.0.0.1:3100/")
+    shelf = page.get_by_role("list")
+    short_card = shelf.get_by_role("link", name="Der kurze Wurf")
+    long_card = shelf.get_by_role("link", name=long_title)
+    expect(short_card).to_be_visible()
+    expect(long_card).to_be_visible()
+
+    long_span = long_card.locator("[data-shelf-title]")
+    expect(long_span).to_be_visible()
+    overflow = long_span.evaluate("element => element.scrollWidth - element.clientWidth")
+    assert overflow <= 1
+
+    long_height = long_card.bounding_box()
+    short_height = short_card.bounding_box()
+    assert long_height is not None and short_height is not None
+    assert abs(long_height["height"] - short_height["height"]) <= 1
+
+    assert_accessible(page)
+
+
+def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> None:
+    """A book with nothing but a title still renders a whole card.
+
+    No undefined, no null, and no separator dangling where a genre would
+    be: the optional fields render when they exist and never leave a mark.
+    """
+    _seed_novel(page, "Der stille Strand")
+
+    page.goto("http://127.0.0.1:3100/")
+    card = page.get_by_role("list").get_by_role("link", name="Der stille Strand")
+    expect(card).to_be_visible()
+    expect(card).to_contain_text("0 Kapitel")
+    expect(card).to_contain_text("0 Wörter")
+
+    text = card.inner_text()
+    assert "undefined" not in text
+    assert "null" not in text
+    # Exactly one separator, and it sits between the two counts.
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    assert "0 Kapitel · 0 Wörter" in lines
+    assert sum(line.count("·") for line in lines) == 1
+
+    assert_accessible(page)
+
+
 def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     """The shell offers one map: the rail — the bar carries the place, not links.
 

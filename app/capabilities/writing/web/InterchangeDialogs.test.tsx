@@ -341,16 +341,17 @@ describe("the export dialog", () => {
   });
 
   it("names each novel on its trigger — N rows, N distinct buttons", () => {
-    // N novels render N "Export" buttons; the visible label stays short,
-    // the accessible name carries the novel so a screen reader's button
-    // list never shows a column of identical words.
+    // N novels render N export buttons; the glyph stays quiet (an icon
+    // never shouts over the shelf) and the accessible name carries the
+    // novel, so a screen reader's button list never shows a column of
+    // identical words.
     render(
       <>
         <ExportNovelDialog novel={NOVEL} />
         <ExportNovelDialog novel={TARGET} />
       </>,
     );
-    expect(screen.getAllByText(t("shelf.export"))).toHaveLength(2);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(screen.getByRole("button", { name: t("shelf.exportTitle", { title: NOVEL.title }) })).toBeTruthy();
     expect(screen.getByRole("button", { name: t("shelf.exportTitle", { title: TARGET.title }) })).toBeTruthy();
   });
