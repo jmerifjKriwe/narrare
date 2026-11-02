@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  * drawings, bare geometry with no attributes of their own.
  *
  * The set replaces the app's only glyph, the `⚙` in the TopBar, with the
- * wave's whole vocabulary; P9 wires the names into the controls. A glyph
+ * wave's whole vocabulary; P9 wired the names into the controls. A glyph
  * is never its own accessible name — `Icon` is always `aria-hidden`, and
  * the control's label (P7's catalog keys) does the naming.
  */

@@ -16,8 +16,7 @@ import "../globals.css";
  * publishes `data-focus="2"` on <body>, the shell subscribes and drops both
  * of its chrome columns — the bar and the rail. An observer, not an event:
  * attribute writes fire no events, and the shell must react whether it
- * mounted before or after the page. TopBar carries its own copy of this
- * subscription (its file is not this task's); P9 consolidates the two.
+ * mounted before or after the page.
  */
 function useChromeless(): boolean {
   const [chromeless, setChromeless] = useState(

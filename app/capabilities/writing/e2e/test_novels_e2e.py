@@ -222,5 +222,9 @@ def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     page.goto("http://127.0.0.1:3100/")
     expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
     expect(page.get_by_role("link", name="Wissen")).to_have_count(1)
+    # And the banner carries none of it: the rail is the map, the bar is
+    # the place — a navigation landmark back inside the banner is a
+    # capability link growing back into the bar.
+    expect(page.get_by_role("banner").get_by_role("navigation")).to_have_count(0)
 
     assert_accessible(page)

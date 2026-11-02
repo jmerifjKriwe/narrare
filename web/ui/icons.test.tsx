@@ -76,10 +76,12 @@ const BOX_MAX = 13.65;
  * The ink one rotation-0 arc can reach, as values the box pass can check.
  * Circular (`rx === ry`): the arc lies on its circle, so the true centre —
  * picked from the two bisector candidates by the flags, the way SVG
- * resolves them — bounds it at centre ± radius. An axis-aligned chord: the
- * bulge reaches the chord shifted by the cross-axis radius at most,
- * whichever side the flags choose. Anything else cannot be bounded
- * honestly by a token scan and fails loudly instead.
+ * resolves them — bounds it at centre ± radius. An axis-aligned chord that
+ * is a diameter: the arc is a half-ellipse, and its ink reaches exactly the
+ * chord shifted by the cross-axis radius. A shorter chord is refused: a
+ * major arc over it can reach farther than the chord-extent bound shows,
+ * and full ellipse resolution is not work this set asks for. Anything the
+ * pass cannot bound honestly fails loudly instead.
  */
 function arcInk(from: readonly [number, number], p: number[]): number[] {
   const [rx, ry, rotation, large, sweep, x2, y2] = p;
@@ -109,17 +111,28 @@ function arcInk(from: readonly [number, number], p: number[]): number[] {
     }
     throw new Error("arc centre unresolved");
   }
-  if (y1 === y2) return [Math.min(x1, x2), Math.max(x1, x2), y1 - ry, y1 + ry];
-  if (x1 === x2) return [x1 - rx, x1 + rx, Math.min(y1, y2), Math.max(y1, y2)];
+  if (y1 === y2) {
+    if (Math.abs(Math.abs(x2 - x1) - 2 * rx) > 1e-9) {
+      throw new Error("elliptical arc chord is not a diameter — its reach is not bounded by the chord");
+    }
+    return [Math.min(x1, x2), Math.max(x1, x2), y1 - ry, y1 + ry];
+  }
+  if (x1 === x2) {
+    if (Math.abs(Math.abs(y2 - y1) - 2 * ry) > 1e-9) {
+      throw new Error("elliptical arc chord is not a diameter — its reach is not bounded by the chord");
+    }
+    return [x1 - rx, x1 + rx, Math.min(y1, y2), Math.max(y1, y2)];
+  }
   throw new Error("arc neither circular nor axis-aligned — cannot bound it");
 }
 
 /**
  * The geometry values one path's `d` carries, walked command by command:
- * positions from M/L/H/V/C/S/Q/T, and arcs through `arcInk` (an arc's
- * rotation and flags are parameters, its radii are sizes — none of them is
- * a coordinate, so none enters the scan as one). Relative commands are
- * refused loudly rather than mis-scanned as absolutes.
+ * positions from M/L/H/V/C/Q, and arcs through `arcInk` (an arc's rotation
+ * and flags are parameters, its radii are sizes — none of them is a
+ * coordinate, so none enters the scan as one). Relative commands are
+ * refused loudly rather than mis-scanned as absolutes, and so are S/T:
+ * their first control point is a reflection the tokens never carry.
  */
 function pathInk(d: string): number[] {
   if (/[mlhvcsqta]/.test(d)) {
@@ -143,7 +156,13 @@ function pathInk(d: string): number[] {
       continue;
     }
     const arity = ARITY[command];
-    if (arity === undefined) throw new Error(`path starts with numbers: ${d}`);
+    if (arity === undefined) {
+      throw new Error(`path uses a command the box pass does not read: ${command}`);
+    }
+    if (arity === 0) {
+      // Z takes no numbers; tokens here would loop the walk forever.
+      throw new Error(`stray token where Z takes none: ${d}`);
+    }
     const p = tokens.slice(i, i + arity).map(Number);
     if (p.length < arity) throw new Error(`path ends mid-command: ${d}`);
     switch (command) {
@@ -153,7 +172,6 @@ function pathInk(d: string): number[] {
         values.push(p[0], p[1]);
         break;
       case "L":
-      case "T":
         pen = [p[0], p[1]];
         values.push(p[0], p[1]);
         break;
@@ -166,11 +184,16 @@ function pathInk(d: string): number[] {
         values.push(p[0]);
         break;
       case "C":
-      case "S":
       case "Q":
         pen = [p[p.length - 2], p[p.length - 1]];
         values.push(...p);
         break;
+      case "S":
+      case "T":
+        // Their first control point is a reflection of the previous
+        // command's — geometry the tokens never carry, so the scan would
+        // under-count the hull it promises to bound.
+        throw new Error("path draws with S/T — their reflected control point never enters the scan");
       case "A":
         values.push(...arcInk(pen, p));
         pen = [p[5], p[6]];

@@ -48,7 +48,7 @@ export function TopBar() {
               the palette footer names the shortcuts it unlocks. */}
           <span
             aria-hidden="true"
-            className="rounded-[var(--radius)] border border-border bg-card px-1.5 py-0.5 font-mono text-label leading-none text-muted"
+            className="rounded-[var(--radius)] border border-border bg-card px-1.5 py-0.5 font-mono text-meta leading-none text-muted"
           >
             ⌘K
           </span>
