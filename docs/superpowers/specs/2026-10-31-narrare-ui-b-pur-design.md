@@ -370,7 +370,8 @@ Targets after T11, in capability folders only:
 
 - `text-sm` = 0 (the scale is `text-body` and friends; `text-sm` survives only
   inside `web/ui/`)
-- `bg-primary` = 0 outside `Button`
+- `bg-primary` = 0 outside `Button` and `Cover` (a cover's ground is an
+  object surface, §8.6)
 - `border-border` = 0 outside primitives
 - `rounded-md` / `rounded-lg` = 0 outside primitives (radii come from tokens)
 - `ml-*` / `mr-*` between siblings = 0
