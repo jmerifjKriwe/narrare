@@ -192,12 +192,20 @@ export function NovelsPage() {
     void checkGate();
   }, [checkGate]);
 
-  // The failure's way back: the gate asks again and the list refetches —
+  // The outage's way back: the gate asks again and the list refetches —
   // one press, not a reload.
   const retryLoad = useCallback(() => {
     void checkGate();
     void novels.refetch();
   }, [checkGate, novels]);
+
+  // The refresh-failure's way back: only the list asks again. The gate has
+  // no quarrel with a shelf that stands — asking it from here while the
+  // service is down would tear the standing books down into the outage the
+  // quiet line exists to avoid.
+  const retryRefresh = useCallback(() => {
+    void novels.refetch();
+  }, [novels]);
 
   // The hero's book is the last-touched one — compared as parsed instants,
   // because two ISO strings with different timezone offsets do not order as
@@ -268,13 +276,14 @@ export function NovelsPage() {
     );
   }
 
-  // The two failures wear different voices (§8.8). With nothing to show —
-  // the gate dead, or the first load failed — the outage is the page and
-  // speaks in the danger voice. With books standing, a failed refresh only
-  // marks the shown truth as stale: a quiet, polite line above the shelf
-  // the books are still on, with the one-press retry beside it.
-  const outage = failed || (novels.isError && empty);
-  const refreshFailed = novels.isError && !empty;
+  // The two failures wear different voices (§8.8), and the cache decides
+  // which one speaks — a dead gate never outranks the books it sits above.
+  // With nothing to show — the gate dead, or the first load failed — the
+  // outage is the page and speaks in the danger voice. With books standing,
+  // the same failures only mark the shown truth as stale: a quiet, polite
+  // line above the shelf the books are still on.
+  const outage = (failed || novels.isError) && empty;
+  const refreshFailed = (failed || novels.isError) && !empty;
 
   // The failure's way back: the gate asks again and the list refetches —
   // one press, not a reload.
@@ -316,10 +325,20 @@ export function NovelsPage() {
         <>
           {refreshFailed ? (
             // The books stand; the refresh that failed says so politely
-            // above them, and the retry is one press — the shelf they are
-            // on is the last good answer, never torn down for it.
-            <Notice tone="quiet" live="status" className="mt-6" action={retryButton}>
-              {t("novels.errorLoad")}
+            // above them — the shelf is the last good answer, never torn
+            // down for it, and the retry asks only the list, never the
+            // gate whose failure here would be no fault of the books.
+            <Notice
+              tone="quiet"
+              live="status"
+              className="mt-6"
+              action={
+                <Button variant="secondary" onClick={retryRefresh}>
+                  {t("novels.retry")}
+                </Button>
+              }
+            >
+              {t("novels.refreshFailed")}
             </Notice>
           ) : null}
           {hero && (

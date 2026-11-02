@@ -333,6 +333,51 @@ def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> 
     assert_accessible(page)
 
 
+def test_a_failed_refresh_keeps_the_shelf_and_its_retry(page: Page, stack: Stack) -> None:
+    """A refused refresh speaks quietly above the standing shelf — and the
+    retry asks only the list, so it can survive its own failure.
+
+    The refusal is the app's own flow: the second create passes (the POST
+    is not the refused call) and its invalidation makes the active list ask
+    again — the GET is the one refused — so the failure lands on a shelf
+    that stands, with the fresh book missing from the cached truth until
+    the retry's answer arrives.
+    """
+    _create_book(page, "Der sichere Hafen")
+    # The refusal arms only against a settled shelf: the create's own
+    # invalidation refetch must have landed first, or the route would
+    # refuse it while the cache still holds the empty list — and the page
+    # would show the honest outage for an empty library, not the state
+    # under test.
+    card = page.get_by_role("list").get_by_role("link", name="Der sichere Hafen")
+    expect(card).to_be_visible()
+    page.route(
+        "**/api/writing/novels",
+        lambda route: route.abort() if route.request.method == "GET" else route.fallback(),
+    )
+
+    page.get_by_role("button", name="Neues Buch").click()
+    page.get_by_label("Titel").fill("Der zweite Hafen")
+    page.get_by_role("button", name="Anlegen").click()
+
+    # The quiet voice, above the shelf — never the alert, never a torn-down
+    # page: the books shown are the last loaded ones.
+    note = page.get_by_role("status")
+    expect(note).to_contain_text("Die Aktualisierung ist fehlgeschlagen")
+    expect(page.get_by_role("link", name="Der sichere Hafen")).to_be_visible()
+    expect(page.get_by_role("alert")).to_have_count(0)
+
+    # The way back is the note's own retry — one press, no reload: the note
+    # clears, and the shelf answers with what the refresh found.
+    page.unroute("**/api/writing/novels")
+    note.get_by_role("button", name="Erneut versuchen").click()
+    expect(page.get_by_role("status")).to_have_count(0)
+    expect(page.get_by_role("link", name="Der zweite Hafen")).to_be_visible()
+    expect(page.get_by_role("link", name="Der sichere Hafen")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     """The shell offers one map: the rail — the bar carries the place, not links.
 

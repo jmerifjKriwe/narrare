@@ -13,6 +13,7 @@
   "novels.lastTouched": "Zuletzt bearbeitet {time}",
   "novels.createBook": "Neues Buch",
   "novels.errorLoad": "Deine Romane konnten nicht geladen werden. Läuft der lokale Dienst?",
+  "novels.refreshFailed": "Die Aktualisierung ist fehlgeschlagen — die gezeigten Romane sind die zuletzt geladenen.",
   "novels.loading": "Wird geladen…",
   "chapters.heading": "Kapitel",
   "chapters.new": "Neues Kapitel",
