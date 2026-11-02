@@ -268,6 +268,7 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("link", name="Back")).to_be_visible()
 
     switcher.select_option("fr")
+    expect(page.get_by_role("heading", name="Paramètres")).to_be_visible()
     expect(page.get_by_role("heading", name="Fournisseurs")).to_be_visible()
     expect(page.get_by_role("heading", name="Tâches")).to_be_visible()
     expect(gear).to_have_accessible_name("Paramètres")

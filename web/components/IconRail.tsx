@@ -67,7 +67,11 @@ export function IconRail() {
       /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
          icon variant's px-2.5), and 48 − 2×6 = 36 exactly — the pill sits
          inside the rail's rhythm instead of overhanging the padding. */
-      className="sticky top-0 hidden h-screen w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-1.5 xl:flex"
+      /* h-full, not h-screen: the rail fills the row beneath the bar — a
+         viewport-tall rail there would start 53 px down and end 53 px under
+         the fold, hiding the anchored Settings and scrolling the page that
+         does not otherwise scroll (main owns that). */
+      className="hidden h-full w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-1.5 xl:flex"
     >
       <div className="flex flex-col items-center gap-1">
         {/* Home is a shell constant, not a generated row: the shelf is

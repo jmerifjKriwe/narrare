@@ -109,18 +109,22 @@ function Shell() {
       {/* The shell frame, led by the bar: its skip link is the first
           focusable element in the document, so the bar precedes the rail in
           the DOM and flex puts the rail on its visual axis — a row beneath
-          the bar — without moving the keyboard's first stop. Both columns of
-          chrome are gone at the deepest focus step. Below 1280 the rail is
-          not rendered, so pages see exactly the width they saw before it. */}
-      <div className="flex min-h-screen flex-col">
+          the bar — without moving the keyboard's first stop. The shell is
+          exactly one viewport tall and `main` owns the page scroll, so the
+          rail fills the row it lives in (a viewport-tall rail under the bar
+          would push its own bottom anchor under the fold and tax every page
+          with the overflow). Both columns of chrome are gone at the deepest
+          focus step; below 1280 the rail is not rendered, so pages see
+          exactly the width they saw before it. */}
+      <div className="flex h-dvh flex-col">
         {chromeless ? null : <TopBar />}
-        <div className="flex min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1">
           {chromeless ? null : <IconRail />}
           {/* The shell owns the page's one main landmark; routes render content
               inside it, and the skip link lands here. tabIndex makes the landing
               hold focus — fragment navigation focuses a target only if it can —
               and -1 keeps it out of the tab order. */}
-          <main id="main" tabIndex={-1} className="min-w-0 flex-1">
+          <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto">
             {/* Capability pages load lazily, each as its own bundle chunk; the
                 one boundary lives in the shell so no capability needs one. The
                 fallback is null on purpose — the shell's own pre-paint gate is
