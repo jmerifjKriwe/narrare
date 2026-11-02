@@ -10,15 +10,18 @@ from sqlalchemy import func, select
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.base import ScopedRepository
 
-# The wave's whitespace, one class on both sides of the count (R31):
-# PostgreSQL's [[:space:]] — the ``\s`` of the split, and the six
-# characters the trim names — plus the three near spaces a browser
-# counts too. ``chr()`` keeps the invisible members visible in review,
-# and pins the class against a collation that would classify them
-# differently. The web client's countWords (P12) repeats exactly this
-# class; the two must move together.
-_TRIM_CHARS = " \t\n\r\v\f" + chr(0x00A0) + chr(0x2007) + chr(0x202F)
-_SPLIT_PATTERN = "[" + r"\s" + chr(0x00A0) + chr(0x2007) + chr(0x202F) + "]+"
+# One whitespace class, both sides of the count (R31, fix round 2):
+# the trim and the split derive from this one bracket expression, so
+# they cannot drift. ``\s`` is the database's ``[[:space:]]`` — wider
+# than ASCII, and as wide as the collation makes it; the three near
+# spaces a browser counts are pinned by ``chr()`` because the database
+# ctype classifies them differently than clients do. The trim strips
+# the ends, the split breaks the middle, and the emptiness gate judges
+# the trimmed value — never three sets, one. The web client's
+# countWords (P12) repeats exactly this class; the two move together.
+_WS = "[" + r"\s" + chr(0x00A0) + chr(0x2007) + chr(0x202F) + "]"
+_TRIM_PATTERN = f"^{_WS}+|{_WS}+$"
+_SPLIT_PATTERN = _WS + "+"
 
 
 class EntityRepository(ScopedRepository[Entity]):
@@ -43,13 +46,14 @@ class NovelRepository(ScopedRepository[Novel]):
 
         With ``novel_id``, aggregate that novel's chapters only — the
         single-row ask needs none of the shelf's other bodies. The words
-        are whitespace-separated tokens of the trimmed body, summed
-        where the trimmed body is non-empty — the filter is what keeps
-        an empty (or whitespace-only) chapter worth zero, which a bare
-        split would count as its one empty token. Novels with no
-        chapters have no row here; the caller reports the zeros.
+        are tokens separated by the one whitespace class (``_WS``),
+        summed where the body trimmed by that same class is non-empty —
+        the filter is what keeps an empty (or whitespace-only) chapter
+        worth zero, which a bare split would count as its one empty
+        token. Novels with no chapters have no row here; the caller
+        reports the zeros.
         """
-        trimmed = func.btrim(Chapter.body, _TRIM_CHARS)
+        trimmed = func.regexp_replace(Chapter.body, _TRIM_PATTERN, "", "g")
         words = func.coalesce(
             func.sum(
                 func.array_length(func.regexp_split_to_array(trimmed, _SPLIT_PATTERN), 1)

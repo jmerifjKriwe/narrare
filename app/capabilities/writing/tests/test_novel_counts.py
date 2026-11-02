@@ -90,12 +90,30 @@ async def test_near_spaces_are_whitespace() -> None:
         novel_id = await _create_novel(client, "Abstand")
         # NBSP between words: two words, not one glued token (R31).
         await _add_chapter(client, novel_id, "a" + chr(160) + "b")
-        # A body of only near spaces says nothing at all.
+        # A body of only one near space says nothing at all — one body
+        # per member, so a forgotten member fails on its own.
         await _add_chapter(client, novel_id, chr(160))
-        await _add_chapter(client, novel_id, chr(0x2007) + chr(0x202F))
+        await _add_chapter(client, novel_id, chr(0x2007))
+        await _add_chapter(client, novel_id, chr(0x202F))
+        await _add_chapter(client, novel_id, chr(0x3000))
 
         row = await _novel_row(client, novel_id)
-        assert row["chapter_count"] == 3
+        assert row["chapter_count"] == 5
+        assert row["word_count"] == 2
+
+
+async def test_the_wide_space_trims_like_it_splits() -> None:
+    """U+3000 is inside the database's ``\\s`` class yet outside an
+    ASCII trim set: round 2 shipped that drift as phantom words — an
+    ideographic-space body counted 2, and its leading space glued
+    itself onto the first word's count."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Breit")
+        await _add_chapter(client, novel_id, chr(0x3000))
+        await _add_chapter(client, novel_id, chr(0x3000) + "eins zwei")
+
+        row = await _novel_row(client, novel_id)
+        assert row["chapter_count"] == 2
         assert row["word_count"] == 2
 
 
