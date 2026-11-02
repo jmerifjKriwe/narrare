@@ -334,14 +334,16 @@ def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> 
 
 
 def test_a_failed_refresh_keeps_the_shelf_and_its_retry(page: Page, stack: Stack) -> None:
-    """A refused refresh speaks quietly above the standing shelf — and the
-    retry asks only the list, so it can survive its own failure.
+    """A refused refresh speaks quietly above the standing shelf — and its
+    retry retires the note once the answer lands.
 
     The refusal is the app's own flow: the second create passes (the POST
     is not the refused call) and its invalidation makes the active list ask
     again — the GET is the one refused — so the failure lands on a shelf
     that stands, with the fresh book missing from the cached truth until
-    the retry's answer arrives.
+    the retry's answer arrives. The gate stays healthy here, so the gate's
+    own path into the quiet note is pinned by
+    `test_the_quiet_note_cannot_outlive_its_cause`.
     """
     _create_book(page, "Der sichere Hafen")
     # The refusal arms only against a settled shelf: the create's own
@@ -374,6 +376,42 @@ def test_a_failed_refresh_keeps_the_shelf_and_its_retry(page: Page, stack: Stack
     expect(page.get_by_role("status")).to_have_count(0)
     expect(page.get_by_role("link", name="Der zweite Hafen")).to_be_visible()
     expect(page.get_by_role("link", name="Der sichere Hafen")).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_the_quiet_note_cannot_outlive_its_cause(page: Page, stack: Stack) -> None:
+    """The gate's failure can hold the quiet note over healthy books — and
+    the note's retry must retire it, not just refresh the list.
+
+    Only the gate refuses here: the list stays healthy, so a retry that
+    asked nothing but the list would succeed and still leave the note
+    standing over freshly refreshed books. Pressing it once the service
+    answers again has to clear the note — it answers the gate too, or it
+    never goes away.
+    """
+    _create_book(page, "Der leise Anfang")
+    shelf_card = page.get_by_role("list").get_by_role("link", name="Der leise Anfang")
+    expect(shelf_card).to_be_visible()
+    page.route("**/api/setup/status", lambda route: route.abort())
+
+    # Away and back through the app's own links: the remount re-asks the
+    # gate, the refusal fails it, and the books — still cached, still
+    # standing — hold the quiet note above them.
+    shelf_card.click()
+    page.get_by_role("link", name="Alle Romane").click()
+    note = page.get_by_role("status")
+    expect(note).to_contain_text("Die Aktualisierung ist fehlgeschlagen")
+    expect(shelf_card).to_be_visible()
+    expect(page.get_by_role("alert")).to_have_count(0)
+
+    # The gate answers again; one press retires the note. A retry that
+    # refreshed the list alone would succeed here and change nothing —
+    # that is the defect this test pins.
+    page.unroute("**/api/setup/status")
+    note.get_by_role("button", name="Erneut versuchen").click()
+    expect(page.get_by_role("status")).to_have_count(0)
+    expect(shelf_card).to_be_visible()
 
     assert_accessible(page)
 

@@ -192,20 +192,15 @@ export function NovelsPage() {
     void checkGate();
   }, [checkGate]);
 
-  // The outage's way back: the gate asks again and the list refetches —
-  // one press, not a reload.
-  const retryLoad = useCallback(() => {
+  // The way back for both voices: the gate is the outage's question, and
+  // the quiet note answers it beside the list — a dead gate holds the note
+  // over standing books exactly as a refused refresh does, so the one
+  // retry must retire both causes or the note outlives the failure the
+  // service already recovered from. One press, not a reload.
+  const retry = useCallback(() => {
     void checkGate();
     void novels.refetch();
   }, [checkGate, novels]);
-
-  // The refresh-failure's way back: only the list asks again. The gate has
-  // no quarrel with a shelf that stands — asking it from here while the
-  // service is down would tear the standing books down into the outage the
-  // quiet line exists to avoid.
-  const retryRefresh = useCallback(() => {
-    void novels.refetch();
-  }, [novels]);
 
   // The hero's book is the last-touched one — compared as parsed instants,
   // because two ISO strings with different timezone offsets do not order as
@@ -288,7 +283,7 @@ export function NovelsPage() {
   // The failure's way back: the gate asks again and the list refetches —
   // one press, not a reload.
   const retryButton = (
-    <Button variant="secondary" onClick={retryLoad}>
+    <Button variant="secondary" onClick={retry}>
       {t("novels.retry")}
     </Button>
   );
@@ -326,14 +321,15 @@ export function NovelsPage() {
           {refreshFailed ? (
             // The books stand; the refresh that failed says so politely
             // above them — the shelf is the last good answer, never torn
-            // down for it, and the retry asks only the list, never the
-            // gate whose failure here would be no fault of the books.
+            // down for it. The retry re-asks the gate beside the list:
+            // the gate's failure holds this note as much as the list's,
+            // so one press must be able to retire both.
             <Notice
               tone="quiet"
               live="status"
               className="mt-6"
               action={
-                <Button variant="secondary" onClick={retryRefresh}>
+                <Button variant="secondary" onClick={retry}>
                   {t("novels.retry")}
                 </Button>
               }
