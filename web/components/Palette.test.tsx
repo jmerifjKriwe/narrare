@@ -173,11 +173,11 @@ function renderAt(path: string) {
  *  listener reads the window, no page participates. The press waits for the
  *  shell's own mount: the pre-paint gate holds the shell back while the
  *  locale read answers, and the listener attaches with it. The wait is the
- *  banner's link, scoped there: the rail names its Chat link the same word,
- *  and the unscoped query would find two. */
+ *  skip link — the shell's first element, so its presence says the shell
+ *  — and its listener — is there. */
 async function openPalette(): Promise<void> {
   const banner = await screen.findByRole("banner");
-  await within(banner).findByRole("link", { name: t("chat.heading") });
+  await within(banner).findByRole("link", { name: t("shell.skipToContent") });
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
   await screen.findByRole("dialog");
 }
@@ -213,9 +213,9 @@ describe("the palette's keyboard contract", () => {
   it("opens with ⌘K and with Ctrl+K, closes with Esc, and the focus returns to the opener", async () => {
     mockBare();
     renderAt("/");
-    // The opener is an ordinary page element — the top bar's first link.
+    // The opener is an ordinary page element — the bar's settings link.
     const opener = await within(await screen.findByRole("banner")).findByRole("link", {
-      name: t("chat.heading"),
+      name: t("shell.settings"),
     });
     opener.focus();
 

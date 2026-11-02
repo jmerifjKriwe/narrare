@@ -209,3 +209,18 @@ def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) 
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
+    """The shell offers one map: the rail — the bar carries the place, not links.
+
+    Pinned on the shelf: the Hauptnavigation is visible and the word Wissen
+    names exactly one link, the rail's entry. A count of two means a
+    capability link has grown back into the top bar, and the app navigates
+    from two places again.
+    """
+    page.goto("http://127.0.0.1:3100/")
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
+    expect(page.get_by_role("link", name="Wissen")).to_have_count(1)
+
+    assert_accessible(page)

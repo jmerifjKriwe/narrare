@@ -15,9 +15,11 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The sixteen drawings. Each stays inside the 2.5–13.5 box so the 1.5
- * stroke never clips the viewBox, and each is a single-stroke metaphor:
- * detail that disappears at 16 px is detail left out.
+ * The sixteen drawings. Each stays inside the 2.35–13.65 envelope —
+ * knowledge's stack sets both extremes; on the x axis the ink never leaves
+ * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
+ * clips the viewBox. Each is a single-stroke metaphor: detail that
+ * disappears at 16 px is detail left out.
  */
 export const icons = {
   /** The library: an open book, its pages dipping to the spine. */
@@ -50,8 +52,10 @@ export const icons = {
   railHide: <path d="M2.5 2.5H13.5V13.5H2.5ZM5.5 2.5V13.5M11.5 8H7.5M9.5 6L7.5 8L9.5 10" />,
   /** Bring the rail back: the arrow returns. */
   railShow: <path d="M2.5 2.5H13.5V13.5H2.5ZM5.5 2.5V13.5M7.5 8H11.5M9.5 6L11.5 8L9.5 10" />,
-  /** Panel gone: its header rule, the body folded down under it. */
-  close: <path d="M3 4H13M5.5 7.2L8 9.7L10.5 7.2" />,
+  /** Panel gone: its header rule, the body folded down under it. Centred
+   * on (8, 8): the ink spans 5.15–10.85, so the glyph sits in its box
+   * instead of floating 1.15 units above it (P6's finding). */
+  close: <path d="M3 5.15H13M5.5 8.35L8 10.85L10.5 8.35" />,
   /** Export: out of the tray, upward. */
   export: (
     <path d="M8 10V2.5M5.5 5L8 2.5L10.5 5M3 10.5V12A1.5 1.5 0 0 0 4.5 13.5H11.5A1.5 1.5 0 0 0 13 12V10.5" />

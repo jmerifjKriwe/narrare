@@ -119,14 +119,15 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         seen.append(_answer_confirm(page, shelf))
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
-        # The shell's top bar is outside this page and a router navigation
+        # The shell's chrome is outside this page and a router navigation
         # like any other: the blocker is the one place all of them pass.
-        # Scoped to the banner: the rail names its Chat link the same word
-        # (one navigation is P9's to finish; two say it today).
-        def topbar() -> None:
-            page.get_by_role("banner").get_by_role("link", name="Chat").click()
+        # The rail owns the map since P9 — the bar carries the place, not
+        # links — so the door is the rail's Chat entry, the one link the
+        # document names Chat.
+        def rail() -> None:
+            page.get_by_role("link", name="Chat").click()
 
-        seen.append(_answer_confirm(page, topbar))
+        seen.append(_answer_confirm(page, rail))
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
         # Back is history, not a click. Driven directly so the assertion is

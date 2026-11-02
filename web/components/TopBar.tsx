@@ -1,39 +1,26 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
-import { nav } from "../lib/generated/capabilities";
 import { useTranslation } from "../lib/i18n";
-import { focusRing, LanguageSwitcher } from "./LanguageSwitcher";
+import { usePageTitleValue } from "../lib/pageTitle";
+import { buttonClass } from "../ui/Button";
+import { Icon } from "../ui/icons";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 /**
- * True while a page asked the shell for a chrome-free surface: the page
- * publishes `data-focus="2"` on <body>, the bar subscribes. An observer, not
- * an event: attribute writes fire no events, and the bar must react whether
- * it mounted before or after the page.
+ * The shell's bar: the place, then the actions. The rail owns the map, so
+ * the bar carries no destinations — where the reader is on the left, and
+ * on the right the palette's key, settings and the language, the three
+ * things every page answers for. The skip link stays the document's first
+ * focusable element; `data-focus="2"` gates the whole bar in `__root.tsx`
+ * (one subscription, one decision — the bar carries no copy of it).
  */
-function useChromeless(): boolean {
-  const [chromeless, setChromeless] = useState(
-    () => document.body.dataset.focus === "2",
-  );
-  useEffect(() => {
-    const sync = () => setChromeless(document.body.dataset.focus === "2");
-    const observer = new MutationObserver(sync);
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["data-focus"],
-    });
-    return () => observer.disconnect();
-  }, []);
-  return chromeless;
-}
-
-/** The shell's chrome: the skip link, the capability navigation, the settings, the language. */
 export function TopBar() {
   const t = useTranslation();
-  // The novel workbench's deepest focus step hides the bar: only the text
-  // remains. Scoped by the body attribute, so no other page can lose chrome.
-  const chromeless = useChromeless();
-  if (chromeless) return null;
+  // The page's published name (the page-title stack's top, P8): the tab
+  // wears `<page> — Narrare`, the bar wears the page's half. A page that
+  // has not named itself leaves the place empty — an unnamed page is not
+  // the shell's to name.
+  const place = usePageTitleValue();
 
   return (
     <header className="border-b border-border bg-panel text-sm">
@@ -48,28 +35,35 @@ export function TopBar() {
         {t("shell.skipToContent")}
       </a>
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
-        <nav className="flex items-center gap-4">
-          {nav.map((entry) => (
-            <Link
-              key={entry.id}
-              to={entry.path}
-              className={`rounded-md underline-offset-4 hover:underline ${focusRing}`}
-            >
-              {t(entry.titleKey)}
-            </Link>
-          ))}
-        </nav>
+        {/* The place. `min-w-0` lets a long title shrink instead of pushing
+            the actions out of the bar; until a page names itself this side
+            is empty, and the actions hold the right edge regardless. */}
+        <div className="min-w-0 font-medium">
+          <span className="block truncate">{place}</span>
+        </div>
         <div className="flex items-center gap-4">
-          {/* The gear: settings is a control, not a browsing destination, so
-              it rides beside the language instead of the generated nav. The
-              glyph carries the meaning in every language; the screen-reader
-              name is the localized word. */}
+          {/* The palette's key, named where the keyboard's map is looked
+              for. Decorative: the shell owns the ⌘K listener, the chip owns
+              nothing, and a keycap is the same glyph in every language —
+              the palette footer names the shortcuts it unlocks. */}
+          <span
+            aria-hidden="true"
+            className="rounded-[var(--radius)] border border-border bg-card px-1.5 py-0.5 font-mono text-label leading-none text-muted"
+          >
+            ⌘K
+          </span>
+          {/* The gear: settings is a control, not a browsing destination.
+              A link wearing the icon button's paint through `buttonClass`
+              (Button.tsx sanctions exactly this for non-button controls —
+              Button itself renders a `<button>`, so it cannot be a Link),
+              and the label is the one accessible name: the glyph is
+              aria-hidden, the rail's Settings anchor keeps its own. */}
           <Link
             to="/settings"
-            className={`rounded-md text-base leading-none underline-offset-4 hover:underline ${focusRing}`}
+            aria-label={t("shell.settings")}
+            className={buttonClass("icon", "md")}
           >
-            <span aria-hidden="true">⚙</span>
-            <span className="sr-only">{t("shell.settings")}</span>
+            <Icon name="settings" />
           </Link>
           <LanguageSwitcher />
         </div>
