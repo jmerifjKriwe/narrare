@@ -412,6 +412,36 @@ def test_the_workbench_names_a_book_it_cannot_load(page: Page, stack: Stack) -> 
     assert_accessible(page)
 
 
+def test_the_outage_stays_reachable_at_a_narrow_window(page: Page, stack: Stack) -> None:
+    """Below 1024 the rail is an overlay — but the overlay exists only when
+    the rail does: the loading and outage states get no scrim and nothing
+    inert, or the retry the outage names would be unreachable behind a
+    drawer that is not there (F22's own edge)."""
+    _create_book(page, "Die Enge")
+    page.set_viewport_size({"width": 360, "height": 720})
+    url = page.url
+
+    stack.stop_api()
+    try:
+        page.goto(url)
+        retry = page.get_by_role("button", name="Erneut versuchen")
+        expect(retry).to_be_visible()
+        # No drawer stands, so nothing may stand before it: no scrim exists
+        # (the scrims are the page's only aria-hidden divs) and the click
+        # lands — Playwright refuses a click another element intercepts.
+        expect(page.locator("div[aria-hidden='true']")).to_have_count(0)
+        retry.click()
+        expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+    finally:
+        stack.start_api()
+
+    # The recovery is one press, exactly where it was named.
+    page.get_by_role("button", name="Erneut versuchen").click()
+    expect(page.get_by_role("heading", name="Die Enge")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack) -> None:
     """A 404 is the same honesty: the error copy, not an empty chapter rail."""
     page.goto("http://127.0.0.1:3100/novels/00000000-0000-4000-8000-000000000000")
@@ -457,6 +487,7 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
 
     rail = page.get_by_role("complementary")
     first = rail.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))
+    second = rail.get_by_role("button", name=re.compile(r"^Kapitel 2\b"))
     third = rail.get_by_role("button", name=re.compile(r"^Kapitel 3\b"))
 
     # The open chapter is aria-current, and nothing wears the toggle state a
@@ -481,6 +512,19 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
     page.keyboard.press("ArrowUp")
     walked = page.evaluate("document.activeElement && document.activeElement.textContent")
     assert isinstance(walked, str) and walked.startswith("Kapitel 1")
+
+    # The tab stop follows the walk (APG): tab away from the walked row and
+    # one shift-tab returns to it — not to the row the selection names.
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Tab")
+    left: object = page.evaluate("document.activeElement && document.activeElement.textContent")
+    assert isinstance(left, str) and left.startswith("Neues Kapitel")
+    page.keyboard.press("Shift+Tab")
+    returned: object = page.evaluate("document.activeElement && document.activeElement.textContent")
+    assert isinstance(returned, str) and returned.startswith("Kapitel 2")
+    # Activating a row ends the walk: the tab stop is the selection's again.
+    page.keyboard.press("Enter")
+    expect(second).to_have_attribute("aria-current", "true")
 
     assert_accessible(page)
 

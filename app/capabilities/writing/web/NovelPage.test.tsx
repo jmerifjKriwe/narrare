@@ -381,16 +381,18 @@ describe("the gate every navigation passes", () => {
   /** The workbench on the chapter last written in — the fallback's choice,
    *  the second row — with a refused write outstanding. The gate's ask is
    *  the shell's dialog now: these tests answer it through its buttons, the
-   *  way the user does. */
+   *  way the user does. The router comes back for the programmatic second
+   *  asks no user event can produce (a pointer press dismisses the ask
+   *  first — that is the dismissal, and the click that follows asks anew). */
   async function renderWithFailedSave() {
     mockTwoChapters();
     api.PUT.mockResolvedValue({ response: refused() });
-    renderAt(`/novels/${NOVEL_ID}`);
+    const router = renderAt(`/novels/${NOVEL_ID}`);
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     (await editorElement()).focus();
     await user.keyboard("Bleibt hier.");
     await screen.findByText(t("save.failed"), undefined, { timeout: 4000 });
-    return { user };
+    return { user, router };
   }
 
   it("asks before a switch drops a refused body, and a dismissed ask keeps it", { timeout: 10_000 }, async () => {
@@ -418,6 +420,34 @@ describe("the gate every navigation passes", () => {
     await user.click(chapterRow(1));
     await screen.findByRole("dialog");
     await user.click(screen.getByRole("button", { name: t("save.leaveGo") }));
+    await waitFor(() => expect(chapterRow(1).getAttribute("aria-current")).toBe("true"));
+    expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anfang.");
+  });
+
+  it("the ask disarms the workbench: a second ask cannot strand the first", { timeout: 10_000 }, async () => {
+    const { user, router } = await renderWithFailedSave();
+
+    await user.click(chapterRow(1));
+    const dialog = await screen.findByRole("dialog");
+
+    // F9 belongs to the dialog while it stands: the rail it would hide is
+    // still in the document (aria-hidden behind the modal, so role queries
+    // cannot see it), and the ask is the same one.
+    await user.keyboard("{F9}");
+    expect(document.querySelector("aside")).not.toBeNull();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+
+    // A second navigation while the ask stands is refused outright — the
+    // ask that stands keeps its resolver, so answering it completes the
+    // navigation that asked, not whatever tried to cut in line. (A user
+    // event cannot reach this path: a pointer press outside the dialog is
+    // the dismissal, and the click that follows asks anew.)
+    await act(async () => {
+      await router.navigate({ to: "/novels/$id", params: { id: NOVEL_ID } });
+    });
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    await user.click(screen.getByRole("button", { name: t("save.leaveGo") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(chapterRow(1).getAttribute("aria-current")).toBe("true"));
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anfang.");
   });

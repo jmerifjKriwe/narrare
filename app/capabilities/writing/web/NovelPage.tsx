@@ -2,6 +2,7 @@ import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useS
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -10,6 +11,8 @@ import {
 import { client, type Chapter } from "@shell/lib/api/client";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
+import { usePageTitle } from "@shell/lib/pageTitle";
 import { subscribeProposal } from "@shell/lib/proposal";
 import {
   activeChapterFallback,
@@ -18,7 +21,7 @@ import {
   useNovelQuery,
 } from "@shell/lib/query";
 import { useAutosave, unsavedStatus } from "@shell/lib/save";
-import { countWords } from "@shell/lib/words";
+import { countWords, formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 import { Icon } from "@shell/ui/icons";
@@ -82,6 +85,15 @@ export function NovelPage() {
   const novelQuery = useNovelQuery(novelId);
   const chaptersQuery = useChaptersQuery(novelId);
   const chapters = chaptersQuery.data ?? [];
+  // One split per body per list, not per render: the rail's counts are
+  // derived where the list arrives, and a keystroke re-renders for free.
+  const chapterCounts = useMemo(
+    () => new Map(chapters.map((chapter) => [chapter.id, countWords(chapter.body)])),
+    [chapters],
+  );
+  // The page's name (§8.7): the book's title once its row is here — a
+  // catalog fallback while it waits, never an empty string.
+  usePageTitle(novelQuery.data?.title ?? t("chapters.loading"));
   // The four states of the contract, derived per read, none stored: a read's
   // error is judged against its own cache. An error with nothing from that
   // read on screen is the named outage — the retry asks again, and the page
@@ -246,6 +258,21 @@ export function NovelPage() {
     [navigate, novelId, activeDock],
   );
 
+  // The leave guard's state, ahead of the keyboard contract: while an ask
+  // stands, F9/Esc are the dialog's keys, not the workbench's — a second
+  // ask would overwrite the first answer's resolver and strand the
+  // navigation that is still waiting on it.
+  const [guardOpen, setGuardOpen] = useState(false);
+  const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
+  const guardBusy = useRef(false);
+  const answerGuard = useCallback((leave: boolean) => {
+    setGuardOpen(false);
+    guardBusy.current = false;
+    const answer = guardAnswer.current;
+    guardAnswer.current = null;
+    answer?.(leave);
+  }, []);
+
   // The keyboard contract. Phase 5's ghost text layers ABOVE this: its Esc
   // discards a suggestion first and marks the event handled, and only an Esc
   // that arrives unhandled here steps the focus back. F9 has no such tenant.
@@ -256,6 +283,10 @@ export function NovelPage() {
       // composition's Esc would tear the mode mid-word.
       if (event.repeat || event.isComposing) return;
       if (event.defaultPrevented) return;
+      // The leave dialog owns the keyboard while it stands: stepping the
+      // focus from under an unanswered ask would start a second navigation
+      // behind the one that is waiting for this answer.
+      if (guardOpen) return;
       if (event.key === "F9") {
         event.preventDefault();
         step(DEEPEN[focus]);
@@ -266,7 +297,7 @@ export function NovelPage() {
     };
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
-  }, [focus, step]);
+  }, [focus, step, guardOpen]);
 
   // The shell cannot be imported here (capabilities never reach across), so
   // the deepest step is published as a body attribute the shell subscribes
@@ -383,20 +414,17 @@ export function NovelPage() {
   // page's own clothes, focus contained while it stands, and the two
   // answers as the two buttons the question names. The blocker awaits the
   // answer as a promise; Escape and an outside click are RAC dismissals,
-  // which land in `onOpenChange` as a "stay".
-  const [guardOpen, setGuardOpen] = useState(false);
-  const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
-  const answerGuard = useCallback((leave: boolean) => {
-    setGuardOpen(false);
-    const answer = guardAnswer.current;
-    guardAnswer.current = null;
-    answer?.(leave);
-  }, []);
+  // which land in `onOpenChange` as a "stay". While one ask stands, any
+  // further navigation is refused outright (`guardBusy`) — a second
+  // shouldBlockFn run would overwrite the first answer's resolver and
+  // strand the navigation still waiting on it.
   useBlocker({
     shouldBlockFn: async () => {
       if (!unsavedNow.current) return false;
+      if (guardBusy.current) return true;
       const outcome = await flush();
       if (outcome !== "failed") return false;
+      guardBusy.current = true;
       const leave = await new Promise<boolean>((resolve) => {
         guardAnswer.current = resolve;
         setGuardOpen(true);
@@ -441,14 +469,20 @@ export function NovelPage() {
 
   // The rail's roving walk (F20): the current row is the one tab stop, and
   // Up/Down move the focus along the rows. The walk moves focus only — the
-  // chapter changes when a row is activated, never when it is walked past.
+  // chapter changes when a row is activated, never when it is walked past —
+  // but the tab stop follows the focus while the walk lasts (APG): walk
+  // away and one Tab returns to the row the user was on, not the row they
+  // had selected. Activating a row hands the tab stop back to the selection.
   const railListRef = useRef<HTMLUListElement | null>(null);
+  const [walkedIndex, setWalkedIndex] = useState<number | null>(null);
   const walkRail = useCallback((event: ReactKeyboardEvent, index: number) => {
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     event.preventDefault();
     const rows = railListRef.current?.querySelectorAll<HTMLButtonElement>("button");
     if (!rows) return;
     const next = event.key === "ArrowDown" ? index + 1 : index - 1;
+    if (next < 0 || next >= rows.length) return;
+    setWalkedIndex(next);
     rows[next]?.focus();
   }, []);
 
@@ -459,9 +493,11 @@ export function NovelPage() {
   // focus containment. React Aria's modal machinery would remount the
   // dock's Outlet to trap focus; `inert` contains it without the remount,
   // and the toolbar band above the row stays live — it is the workbench's
-  // own controls, and the way either drawer closes.
+  // own controls, and the way either drawer closes. The rail half is gated
+  // on the rail's own render condition: an overlay with no drawer would
+  // scrim the loading and outage states and inert their retry.
   const narrow = useBelowWorkbenchBreakpoint();
-  const railOverlay = narrow && showRail;
+  const railOverlay = narrow && showRail && !pending && !failed;
   const dockOverlay = narrow && openDock !== null;
 
   return (
@@ -573,7 +609,14 @@ export function NovelPage() {
               {chapters.map((chapter, index) => {
                 const isCurrent = chapter.id === active;
                 const title = chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
-                const words = countWords(chapter.body);
+                // The count is spoken as the sentence the footer prints
+                // ("… 2.107 Wörter") and shown as its number alone — the
+                // localized grouping, so the row and the footer read alike.
+                const words = chapterCounts.get(chapter.id) ?? 0;
+                const isTabStop =
+                  walkedIndex !== null
+                    ? walkedIndex === index
+                    : isCurrent || (active === null && index === 0);
                 return (
                   <li key={chapter.id}>
                     <Row
@@ -586,13 +629,15 @@ export function NovelPage() {
                          reach the reader as one number ("Kapitel 11"). The
                          label spells exactly the words on screen, with the
                          separator made explicit. */
-                      aria-label={`${title} ${words}`}
-                      tabIndex={isCurrent || (active === null && index === 0) ? 0 : -1}
+                      aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
+                      tabIndex={isTabStop ? 0 : -1}
                       onKeyDown={(event) => walkRail(event, index)}
                       onClick={() => {
                         // The chapter already open is no switch: a second
                         // history entry for the same address would only eat
-                        // the back button.
+                        // the back button. Either way the walk is over —
+                        // the tab stop returns to the selection.
+                        setWalkedIndex(null);
                         if (chapter.id === active) return;
                         select(chapter.id);
                       }}
@@ -607,7 +652,9 @@ export function NovelPage() {
                       <span className="min-w-0 flex-1 truncate">
                         {title}{" "}
                       </span>
-                      <span className="shrink-0 text-meta tabular-nums">{words}</span>
+                      <span className="shrink-0 text-meta tabular-nums">
+                        {formatWordCount(words, activeLocale())}
+                      </span>
                     </Row>
                   </li>
                 );

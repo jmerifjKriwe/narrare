@@ -32,6 +32,13 @@ describe("countWords", () => {
     expect(countWords("eins\uFEFFzwei")).toBe(1);
   });
 
+  it("trims both ends, the way the server's one replace does", () => {
+    // Without the global flag the one regex stops after its first match:
+    // the leading run goes, the trailing one stays, and a padded body
+    // counts a word that is not there.
+    expect(countWords("  eins zwei  ")).toBe(2);
+  });
+
   it("counts an empty body as nothing", () => {
     expect(countWords("")).toBe(0);
   });
