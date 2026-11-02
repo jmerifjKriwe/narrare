@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useMatches } from "@tanstack/react-router";
 
 import { useTranslation } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
@@ -55,13 +55,22 @@ function RailLink({
 /** The global icon rail: shell chrome, one navigation on every route. */
 export function IconRail() {
   const t = useTranslation();
+  // R29: the breakpoint answers the surface, not one number for all. The
+  // workspace is where prose is written — the novel route and every dock
+  // child under it (the parent is in the match chain on all of them) — and
+  // there the prose floor owns 1024–1279: the viewport floor pins the prose
+  // column at a 320 px content box with the dock open, and this 48 px column
+  // would take it under (280 / 288). So the rail waits for 1280 on the
+  // workspace. On every other route every page container is max-w-capped, so
+  // the rail takes only margin and shows from 1024 like the rest of the
+  // chrome. The router's matches, not a pathname sniff: one rail, one
+  // breakpoint that reads which route is showing.
+  const onWorkspace = useMatches().some((match) => match.routeId === "/novels/$id");
   return (
-    /* From 1280 up only: below it the workbench has no width to give. The
-     * viewport floor pins the prose column at a 320 px content box with the
-     * dock open — 328 px of slack at 360, 336 at 1024 — and this 48 px
-     * column would take both under (280 / 288). At ≥1280 every page
-     * container is max-w-capped, so the rail takes only margin; P12's
-     * workspace reflow revisits the breakpoint. */
+    /* The show-leg is the route's answer (the ternary above): from 1280 on
+     * the workspace, where the prose floor owns 1024–1279; from 1024 on
+     * every other route. `hidden` is shared, so there is one rail and one
+     * element — the cascade never sees two. */
     <nav
       aria-label={t("shell.navAria")}
       /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
@@ -71,7 +80,7 @@ export function IconRail() {
          viewport-tall rail there would start 53 px down and end 53 px under
          the fold, hiding the anchored Settings and scrolling the page that
          does not otherwise scroll (main owns that). */
-      className="hidden h-full w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-1.5 xl:flex"
+      className={`hidden h-full w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-1.5 ${onWorkspace ? "xl:flex" : "lg:flex"}`}
     >
       <div className="flex flex-col items-center gap-1">
         {/* Home is a shell constant, not a generated row: the shelf is

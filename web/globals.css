@@ -85,7 +85,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  min-height: 100vh;
+  /* dvh, not vh: the shell is h-dvh, and a 100vh body under a dynamic
+   * toolbar paints a phantom strip below the fold on mobile. */
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -127,11 +129,14 @@ body {
 }
 
 /*
- * The brand serif, subset for the prose surface: the one face long-form text
- * is read in. Weight 400 is the reading voice — the wordmark's 600 (brand
- * assets spec) never reaches the editor. Latin plus the punctuation prose
- * leans on — dashes, quotes, ellipsis, guillemets — nothing a novel misses;
- * swap, so first paint never waits on the font.
+ * The brand serif, subset for the prose surface: the face long-form text is
+ * read in, in both voices it speaks — 400 is the reading word, 600 (the
+ * wordmark's weight, brand assets spec) is the chapter heading's own face
+ * (R33): a synthesised bold would thicken the 400's strokes without the
+ * design's weights. Each voice is its own static instance (varLib.instancer
+ * at wght=400 / 600) subset with the same unicode set — Latin plus the
+ * punctuation prose leans on: dashes, quotes, ellipsis, guillemets, nothing
+ * a novel misses. Swap, so first paint never waits on the font.
  */
 @font-face {
   font-family: "EB Garamond";
@@ -139,6 +144,14 @@ body {
   font-weight: 400;
   font-display: swap;
   src: url("/fonts/eb-garamond-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-600.woff2") format("woff2");
 }
 
 /* The editor's prose: the one place long-form text is read, so it gets the
