@@ -113,8 +113,9 @@ function Shell() {
           rail fills the row it lives in (a viewport-tall rail under the bar
           would push its own bottom anchor under the fold and tax every page
           with the overflow). Both columns of chrome are gone at the deepest
-          focus step; below 1280 the rail is not rendered, so pages see
-          exactly the width they saw before it. */}
+          focus step; the rail's breakpoint answers the route (IconRail,
+          R29) — on the workspace it waits for 1280, on every other route
+          it shows from 1024. */}
       <div className="flex h-dvh flex-col">
         {chromeless ? null : <TopBar />}
         <div className="flex min-h-0 min-w-0 flex-1">

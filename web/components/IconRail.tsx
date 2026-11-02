@@ -61,9 +61,12 @@ export function IconRail() {
   // there the prose floor owns 1024–1279: the viewport floor pins the prose
   // column at a 320 px content box with the dock open, and this 48 px column
   // would take it under (280 / 288). So the rail waits for 1280 on the
-  // workspace. On every other route every page container is max-w-capped, so
-  // the rail takes only margin and shows from 1024 like the rest of the
-  // chrome. The router's matches, not a pathname sniff: one rail, one
+  // workspace. On every other route the rail shows from 1024 like the rest
+  // of the chrome — at a real content cost there: the pages' caps (the
+  // shelf's 1200 px, the reading pages' 672) centre their content and yield
+  // the rail margin only past them, so at 1024 the shelf gives up 48 px of
+  // content while the narrower reading pages never notice (their cap binds
+  // first). The router's matches, not a pathname sniff: one rail, one
   // breakpoint that reads which route is showing.
   const onWorkspace = useMatches().some((match) => match.routeId === "/novels/$id");
   return (
