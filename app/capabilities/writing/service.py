@@ -115,7 +115,7 @@ class WritingService:
         novel = await self.novels.get(novel_id)
         if novel is None:
             raise NotFoundError
-        return self._with_counts(novel, (await self.novels.counts()).get(novel_id, (0, 0)))
+        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
 
     def _with_counts(self, novel: Novel, counts: tuple[int, int]) -> NovelRead:
         """One novel row as the response shape, its two counts filled in."""

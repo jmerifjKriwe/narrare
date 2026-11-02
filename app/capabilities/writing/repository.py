@@ -10,6 +10,16 @@ from sqlalchemy import func, select
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.base import ScopedRepository
 
+# The wave's whitespace, one class on both sides of the count (R31):
+# PostgreSQL's [[:space:]] — the ``\s`` of the split, and the six
+# characters the trim names — plus the three near spaces a browser
+# counts too. ``chr()`` keeps the invisible members visible in review,
+# and pins the class against a collation that would classify them
+# differently. The web client's countWords (P12) repeats exactly this
+# class; the two must move together.
+_TRIM_CHARS = " \t\n\r\v\f" + chr(0x00A0) + chr(0x2007) + chr(0x202F)
+_SPLIT_PATTERN = "[" + r"\s" + chr(0x00A0) + chr(0x2007) + chr(0x202F) + "]+"
+
 
 class EntityRepository(ScopedRepository[Entity]):
     model = Entity
@@ -28,33 +38,33 @@ class NovelRepository(ScopedRepository[Novel]):
         result = await self.session.scalars(self.query().order_by(Novel.created_at.desc()))
         return result.all()
 
-    async def counts(self) -> dict[UUID, tuple[int, int]]:
+    async def counts(self, novel_id: UUID | None = None) -> dict[UUID, tuple[int, int]]:
         """Chapter and word counts per novel, one grouped query.
 
-        The words are whitespace-separated tokens of the trimmed body,
-        summed where the trimmed body is non-empty — the filter is what
-        keeps an empty (or whitespace-only) chapter worth zero, which a
-        bare split would count as its one empty token. Novels with no
+        With ``novel_id``, aggregate that novel's chapters only — the
+        single-row ask needs none of the shelf's other bodies. The words
+        are whitespace-separated tokens of the trimmed body, summed
+        where the trimmed body is non-empty — the filter is what keeps
+        an empty (or whitespace-only) chapter worth zero, which a bare
+        split would count as its one empty token. Novels with no
         chapters have no row here; the caller reports the zeros.
         """
-        # btrim's second argument defaults to spaces alone, while the
-        # split's class is all whitespace — so the trim must name the
-        # class too, or a tab- or newline-only body survives the filter
-        # and counts its empty tokens as words.
-        whitespace = " \t\n\r\v\f"
-        trimmed = func.btrim(Chapter.body, whitespace)
+        trimmed = func.btrim(Chapter.body, _TRIM_CHARS)
         words = func.coalesce(
-            func.sum(func.array_length(func.regexp_split_to_array(trimmed, r"\s+"), 1)).filter(
-                trimmed != ""
-            ),
+            func.sum(
+                func.array_length(func.regexp_split_to_array(trimmed, _SPLIT_PATTERN), 1)
+            ).filter(trimmed != ""),
             0,
         )
-        rows = await self.session.execute(
+        statement = (
             select(Chapter.novel_id, func.count(Chapter.id), words)
             .where(Chapter.user_id == self.user_id)
             .group_by(Chapter.novel_id)
         )
-        return {novel_id: (chapters, word_count) for novel_id, chapters, word_count in rows}
+        if novel_id is not None:
+            statement = statement.where(Chapter.novel_id == novel_id)
+        rows = await self.session.execute(statement)
+        return {row_novel: (chapters, word_count) for row_novel, chapters, word_count in rows}
 
     async def get(self, novel_id: UUID) -> Novel | None:
         return await self.session.scalar(self.query().where(Novel.id == novel_id))
