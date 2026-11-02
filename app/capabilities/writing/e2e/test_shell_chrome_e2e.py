@@ -70,7 +70,9 @@ def test_the_editor_ships_both_garamond_faces(page: Page, stack: Stack) -> None:
           // A declared 600 whose src quietly points at the 400 file would
           // pass everything above — the descriptor, not the bytes, is what
           // the FontFaceSet reads. The two files must be two faces: an
-          // own length and at least one byte of their own.
+          // own length, or failing that at least one byte of their own
+          // (same-length distinct files differ somewhere; the same file
+          // differs nowhere).
           const [regular, semibold] = await Promise.all(
             ['/fonts/eb-garamond-latin.woff2', '/fonts/eb-garamond-latin-600.woff2'].map(
               (url) => fetch(url).then((r) => r.arrayBuffer()),
@@ -79,7 +81,7 @@ def test_the_editor_ships_both_garamond_faces(page: Page, stack: Stack) -> None:
           const a = new Uint8Array(regular);
           const b = new Uint8Array(semibold);
           const twoFiles =
-            regular.byteLength !== semibold.byteLength &&
+            regular.byteLength !== semibold.byteLength ||
             a.some((byte, i) => byte !== b[i]);
           return (
             twoFiles &&
