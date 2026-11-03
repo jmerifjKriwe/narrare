@@ -21,19 +21,6 @@ import { ProposalCard } from "@shell/ui/ProposalCard";
 import { entityTypeLabel } from "./EntitiesPanel";
 import { relationTypeLabel } from "./relations";
 
-/** The running row's movement, drawn: a 1 px rule the fill walks along,
- *  the handler's progress as its width. The rule is decoration — the row's
- *  own words (`JobStatus`) carry the number for assistive tech — so it
- *  stays out of the accessibility tree. Exported: the check's row draws
- *  the same rule. */
-export function ProgressRule({ progress }: { progress: number }) {
-  return (
-    <div aria-hidden="true" className="h-px w-full bg-rule">
-      <div className="h-px bg-primary" style={{ width: `${progress}%` }} />
-    </div>
-  );
-}
-
 /** Extraction and its review: the chapter the editor is showing, through
  *  the job lane, and the queue its result files — one proposal card per
  *  suggested entity. */
@@ -128,11 +115,8 @@ export function ExtractionPanel() {
         // dead poll cannot keep that promise — hidden, because the alert
         // is the truth and a row still promising progress the panel
         // cannot show would outshout it.
-        <div className="mt-2 flex flex-col gap-1">
+        <div className="mt-2">
           <JobStatus job={job.data} />
-          {job.data.status === "running" && job.data.progress !== null ? (
-            <ProgressRule progress={job.data.progress} />
-          ) : null}
         </div>
       ) : null}
       {pollFailed ? (

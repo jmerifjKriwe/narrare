@@ -1,8 +1,13 @@
-"""An uploaded passage must come back from search.
+"""The knowledge page: one upload dialog, search, and the honest outage.
 
 The browser, the API and Postgres with pgvector are the real ones; only the
 embedding provider is behind its boundary, served by a local stand-in whose
-width the test flips — exactly what a user changing models does.
+width the test flips — exactly what a user changing models does. The flows
+this module carries: the documents area is one panel behind one "+ Dokument"
+control; an uploaded passage comes back from search; a model change refuses
+search until the documents are re-embedded; a refused re-embed names itself
+and its retry heals; a dead local service — on load, or under an upload —
+reads as an outage, never as an empty library or a silent dialog.
 """
 
 from pathlib import Path  # noqa: TC003
@@ -137,6 +142,33 @@ def test_a_refused_reembed_names_itself_and_the_retry_heals(
     expect(page.get_by_text("Der Leuchtturm am Horizont war seit Jahren dunkel.")).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_an_upload_against_a_dead_service_names_itself(
+    page: Page, stack: Stack, tmp_path: Path
+) -> None:
+    """An upload against a dead local service says so inside the dialog.
+
+    The dialog stays open — the typed work is the user's — and the danger
+    notice names the refusal where the retry (the same button) sits. A
+    silent dialog would leave the writer reading an upload that quietly
+    never happened.
+    """
+    source = tmp_path / "notizen.txt"
+    source.write_text(TEXT, encoding="utf-8")
+
+    page.goto("http://127.0.0.1:3100/knowledge")
+    stack.stop_api()
+    try:
+        page.get_by_role("button", name="+ Dokument").click()
+        dialog = page.get_by_role("dialog")
+        dialog.get_by_label("Dokument").set_input_files(str(source))
+        dialog.get_by_role("button", name="Hochladen").click()
+        expect(dialog.get_by_role("alert")).to_be_visible()
+        # The dialog stays open with its fields, so nothing typed is lost.
+        expect(dialog.get_by_label("Dokument")).to_be_visible()
+    finally:
+        stack.start_api()
 
 
 def test_a_dead_service_on_load_names_the_outage(page: Page, stack: Stack) -> None:

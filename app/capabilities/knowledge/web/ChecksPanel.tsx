@@ -16,8 +16,6 @@ import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
-import { ProgressRule } from "./ExtractionPanel";
-
 /** The whole-novel consistency check and its review: the check runs as a
  *  durable job on the same lane the chapter-scoped extraction rides — the
  *  panel polls the row, never a connection — and the findings it files
@@ -77,7 +75,9 @@ export function ChecksPanel() {
         {t("knowledge.checksHeading")}
       </h3>
       <div className="mt-2">
-        <Button variant="primary" onClick={() => void check()} disabled={busy}>
+        {/* Secondary: the extraction's trigger is the dock's one filled
+            primary — two together would have no reading order (L1). */}
+        <Button variant="secondary" onClick={() => void check()} disabled={busy}>
           {t("knowledge.checkNovel")}
         </Button>
       </div>
@@ -91,11 +91,8 @@ export function ChecksPanel() {
         // a done or failed row is a fact and stays beside the outage's
         // alert; a queued or running row is a promise of movement, and a
         // dead poll cannot keep that promise.
-        <div className="mt-2 flex flex-col gap-1">
+        <div className="mt-2">
           <JobStatus job={job.data} />
-          {job.data.status === "running" && job.data.progress !== null ? (
-            <ProgressRule progress={job.data.progress} />
-          ) : null}
         </div>
       ) : null}
       {pollFailed ? (

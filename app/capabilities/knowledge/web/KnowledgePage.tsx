@@ -79,30 +79,41 @@ function UploadForm({
     // openapi-typescript renders the binary part as `string`, which a real
     // FormData is not — one cast. The runtime contract (multipart/form-data,
     // browser sets the boundary) is exactly what the endpoint speaks.
-    const { error, response } = await client.POST("/api/knowledge/documents", {
-      body: body as unknown as { file: string; title?: string },
-    });
-    if (!response.ok) {
-      if (isModelChange(error)) {
-        // The corpus refused the width: the repair is the page's business
-        // (its warning carries the re-embed), not the dialog's.
-        onModelChanged();
-        close();
+    try {
+      const { error, response } = await client.POST("/api/knowledge/documents", {
+        body: body as unknown as { file: string; title?: string },
+      });
+      if (!response.ok) {
+        if (isModelChange(error)) {
+          // The corpus refused the width: the repair is the page's business
+          // (its warning carries the re-embed), not the dialog's.
+          onModelChanged();
+          close();
+          return;
+        }
+        setFailed(true);
         return;
       }
+      await onUploaded();
+      close();
+    } catch {
+      // A service that does not answer is a refused upload, not silence:
+      // the dialog keeps the typed work and names the refusal where the
+      // retry — the same button — sits.
       setFailed(true);
-      return;
     }
-    await onUploaded();
-    close();
   }
 
   return (
     <form onSubmit={(event) => void upload(event)} className="mt-4 flex flex-col gap-3">
       <Field label={t("knowledge.fileLabel")}>
+        {/* The native file button gets the import dialog's treatment: it
+            stops cramming against the box and stops wearing the control's
+            own border. */}
         <Input
           type="file"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          className="py-1 file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
         />
       </Field>
       <Field label={t("knowledge.titleLabel")}>
@@ -193,7 +204,7 @@ export function KnowledgePage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-title font-semibold tracking-tight">{t("knowledge.heading")}</h1>
-      <p className="mt-2 text-sm text-muted">
+      <p className="mt-2 text-body text-muted">
         <Link to="/" className="underline-offset-4 hover:underline">
           {t("nav.back")}
         </Link>
@@ -290,10 +301,22 @@ export function KnowledgePage() {
       >
         {load.kind === "loading" ? (
           // The answer has not arrived yet: the page asks rather than
-          // claims — not the library, and not its empty state either.
-          <Notice tone="quiet" live="status">
-            {t("knowledge.loading")}
-          </Notice>
+          // claims — not the library, and not its empty state either. The
+          // wait paints the list's own shape (rows at their loaded size,
+          // the pulse under `motion-safe:`) beside the status line, so the
+          // answer's arrival moves nothing.
+          <>
+            <div aria-hidden="true" className="flex flex-col">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex h-7 items-center px-3">
+                  <div className="h-3 w-1/3 motion-safe:animate-pulse rounded bg-rule" />
+                </div>
+              ))}
+            </div>
+            <Notice tone="quiet" live="status" className="mt-2">
+              {t("knowledge.loading")}
+            </Notice>
+          </>
         ) : load.kind === "failed" ? (
           // F14: the outage is the state — named, with the way back in the
           // same notice. The empty claim stays silent here.
