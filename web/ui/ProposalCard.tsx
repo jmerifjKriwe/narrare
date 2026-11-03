@@ -35,11 +35,12 @@ export function ProposalCard({
   return (
     // The labelled section is the card's name for assistive tech and for
     // tests: a named <section> is a region, addressable by its heading.
+    // The title is a card title (§8.2): text-emph, 600.
     <section
       aria-labelledby={headingId}
       className="mt-4 rounded-[var(--radius-lg)] border border-border bg-card p-3"
     >
-      <h3 id={headingId} className="text-label font-semibold">
+      <h3 id={headingId} className="text-emph font-semibold">
         {t(titleKey)}
       </h3>
       <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-muted">{body}</p>

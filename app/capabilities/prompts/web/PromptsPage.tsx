@@ -3,6 +3,7 @@ import { Fragment, useEffect, useId, useState } from "react";
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { usePageTitle } from "@shell/lib/pageTitle";
 import { Button } from "@shell/ui/Button";
 import { Field, Select, Textarea } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
@@ -508,6 +509,9 @@ function PromptCard(props: {
  */
 export function PromptsPage() {
   const t = useTranslation();
+  // The tab's name: this page is "Prompts" for as long as it shows, and the
+  // top bar's place indicator reads the same stack's top.
+  usePageTitle(t("prompts.settingsTitle"));
   const [novels, setNovels] = useState<Novel[]>([]);
   const [novelId, setNovelId] = useState("");
   const [rows, setRows] = useState<PromptSummary[] | null>(null);

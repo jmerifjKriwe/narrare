@@ -81,12 +81,29 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     answer = page.get_by_role("region", name="Antwort").locator("p").first
     assert answer.evaluate("el => getComputedStyle(el).whiteSpace") == "pre-wrap"
 
-    # F16: the finished answer is spoken once, on completion — the announcer
-    # carries the completion fact (chat.answerReady), never the stream's
-    # deltas: the answer's own words stay in the region, not in the murmur.
+    # §8.7's chat row, at the narrowest page width (the dock's 384 px is
+    # pinned in the dock test): the field shrinks first (min-w-0), the ask
+    # keeps its label's width, and nothing overflows the column.
+    page.set_viewport_size({"width": 360, "height": 800})
+    ask_box = page.get_by_role("button", name="Fragen").bounding_box()
+    assert ask_box is not None
+    assert ask_box["x"] >= 0 and ask_box["x"] + ask_box["width"] <= 360
+    page.set_viewport_size({"width": 1280, "height": 720})
+
+    # F16: the finished answer is spoken once, on completion. React-aria's
+    # polite log appends one leaf div per announcement, so the count pin
+    # fails where a containment pin cannot: a regression that announces per
+    # delta appends a leaf per token and the count climbs past one. The
+    # answer's own words stay out of the announcer entirely.
     announcer = page.locator("[data-live-announcer]")
-    expect(announcer).to_contain_text("Antwort bereit.")
+    expect(
+        announcer.locator("div[aria-live='polite'] > div").filter(has_text="Antwort bereit.")
+    ).to_have_count(1)
     expect(announcer).not_to_contain_text("Leuchtturm")
+
+    # The sources are a real list — assistive tech hears how many.
+    sources = page.get_by_role("region", name="Quellen")
+    expect(sources.get_by_role("listitem").first).to_be_visible()
 
     assert_accessible(page)
 
@@ -172,6 +189,12 @@ def test_dock_answers_beside_the_editor(page: Page, stack: Stack, tmp_path: Path
     editor = page.locator(".ProseMirror")
     expect(dock).to_be_visible()
     expect(editor).to_be_visible()
+    # §8.7's chat row inside the dock's 384 px: the ask sits beside the
+    # question on one row — never wrapped beneath it.
+    field_box = dock.get_by_label("Frage").bounding_box()
+    ask_box = dock.get_by_role("button", name="Fragen").bounding_box()
+    assert field_box is not None and ask_box is not None
+    assert field_box["x"] + field_box["width"] <= ask_box["x"]
     # The open dock is URL state: the child route is the whole of it. No
     # dock param rides along — omit-at-default, like focus.
     assert page.url.split("?")[0].endswith("/chat")
