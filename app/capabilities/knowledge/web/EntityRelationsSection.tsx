@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Entity, Relation } from "@shell/lib/api/client";
 import { announce } from "@shell/lib/announce";
@@ -10,18 +10,42 @@ import {
   useUpdateRelation,
   type RelationChanges,
 } from "@shell/lib/query";
+import { Button } from "@shell/ui/Button";
 import { ComboBox } from "@shell/ui/ComboBox";
-import { TextField } from "@shell/ui/TextField";
+import { Field, Input } from "@shell/ui/field";
+import { Icon } from "@shell/ui/icons";
+import { Notice } from "@shell/ui/Notice";
+import { Panel } from "@shell/ui/Panel";
+import { Table, type TableColumn } from "@shell/ui/Table";
 
-import { PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
 import { relationTypeLabel, RELATION_TYPES, resolveRelationType } from "./relations";
 
 /**
- * The edit dialog's relations: both directions of every edge as rows with
- * an inline edit and delete, and one add row — the target from the
- * novel's other entries, the type from the suggested vocabulary with free
- * text welcome, the note optional. The ends of an edge never move
- * (D7): retyping is what the edit offers; moving is delete plus add.
+ * One relation table row: the two data columns are plain strings — the
+ * type's wording (the self mark and the note ride inside it, both data
+ * the row owns), and the other end's name resolved from the novel's
+ * list — and the third carries the row's own controls. A node cell is
+ * what the table contract allows a display-ready field to be; no render
+ * prop was added for these tables.
+ */
+type RelationRow = {
+  id: string;
+  typ: string;
+  ziel: string;
+  controls: ReactNode;
+};
+
+/**
+ * The edit dialog's relations: both directions as their own table —
+ * "Verweist auf" (outgoing) and "Wird verwiesen von" (incoming), columns
+ * Typ / Ziel plus the rows' controls — with one add row. There is no
+ * chapter column and no mention list: the edge data names no chapter
+ * (F30). The target comes from the novel's other entries, the type from
+ * the suggested vocabulary with free text welcome, the note optional.
+ * A self-relation — an edge that only a re-pointing can create — is
+ * both outgoing and incoming, so it stands in both tables under its
+ * mark. The ends of an edge never move (D7): retyping is what the edit
+ * offers; moving is delete plus add.
  */
 export function EntityRelationsSection(
   { entity, rows, onRowEditorChange }: {
@@ -40,6 +64,7 @@ export function EntityRelationsSection(
   const update = useUpdateRelation();
   const remove = useDeleteRelation();
 
+  const edges = relations.data ?? [];
   const others = rows.filter((row) => row.id !== entity.id);
   const nameOf = (id: string) => rows.find((row) => row.id === id)?.name ?? id;
 
@@ -56,7 +81,9 @@ export function EntityRelationsSection(
   const [note, setNote] = useState("");
   const [triedAdd, setTriedAdd] = useState(false);
 
-  // The inline edit: one row at a time, prefilled with what the edge holds.
+  // The row edit: one at a time, prefilled with what the edge holds. The
+  // form stands under the table whose rows it edits, named for its own
+  // scope (the dialog holds the add form's words beside it).
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTypeText, setEditTypeText] = useState("");
   const [editNote, setEditNote] = useState("");
@@ -156,98 +183,137 @@ export function EntityRelationsSection(
     announce(t("knowledge.relationDeleted"));
   }
 
+  /** The row a table shows for one edge: the words for Typ and Ziel, the
+   *  pair of row controls for the third column. */
+  function rowFor(relation: Relation, direction: "outgoing" | "incoming"): RelationRow {
+    const self = relation.from_entity_id === relation.to_entity_id;
+    const otherId = self
+      ? relation.from_entity_id
+      : direction === "outgoing"
+        ? relation.to_entity_id
+        : relation.from_entity_id;
+    const parts = [relationTypeLabel(t, relation.relation_type)];
+    if (self) parts.push(t("knowledge.relationSelf"));
+    if (relation.note) parts.push(relation.note);
+    return {
+      id: relation.id,
+      typ: parts.join(" · "),
+      ziel: nameOf(otherId),
+      controls: (
+        <span className="flex gap-1">
+          <Button
+            variant="icon"
+            size="sm"
+            icon={<Icon name="write" />}
+            label={t("knowledge.relationEdit")}
+            onClick={() => startEdit(relation)}
+          />
+          <Button
+            variant="icon"
+            size="sm"
+            icon={<Icon name="cross" />}
+            label={t("knowledge.relationDelete")}
+            onClick={() => void deleteEdge(relation)}
+          />
+        </span>
+      ),
+    };
+  }
+
+  const columns: TableColumn<RelationRow>[] = [
+    { key: "typ", label: t("knowledge.entityTypeLabel") },
+    { key: "ziel", label: t("knowledge.relationsTarget") },
+    { key: "controls", label: t("knowledge.relationActions"), width: "92px" },
+  ];
+
+  const outgoing = edges.filter((relation) => relation.from_entity_id === entity.id);
+  const incoming = edges.filter((relation) => relation.to_entity_id === entity.id);
+  // A loop is both directions at once; its editor stands under the
+  // outgoing table, the first one that holds it.
+  const editingOutgoing =
+    editingId !== null && outgoing.some((relation) => relation.id === editingId);
+
+  const editForm = (
+    <form
+      aria-label={t("knowledge.relationEditHeading")}
+      onSubmit={(event) => {
+        const relation = edges.find((row) => row.id === editingId);
+        if (relation) void saveEdit(relation, event);
+      }}
+      className="mt-2 flex flex-col gap-2 border-t border-rule pt-2"
+    >
+      <p className="text-label font-medium">{t("knowledge.relationEditHeading")}</p>
+      <ComboBox
+        label={t("knowledge.relationTypeLabel")}
+        value={editTypeText}
+        onChange={setEditTypeText}
+        onPick={(id) => {
+          const picked = typeItems.find((item) => item.id === id);
+          if (picked) setEditTypeText(picked.text);
+        }}
+        items={typeItems.filter((item) =>
+          item.text.toLowerCase().includes(editTypeText.trim().toLowerCase()),
+        )}
+      />
+      {editTypeInvalid ? (
+        <Notice tone="danger">{t("knowledge.relationTypeRequired")}</Notice>
+      ) : null}
+      <Field label={t("knowledge.relationNoteLabel")}>
+        <Input value={editNote} onChange={(event) => setEditNote(event.target.value)} />
+      </Field>
+      <div className="flex gap-2">
+        <Button variant="primary" type="submit">
+          {t("knowledge.entitySave")}
+        </Button>
+        <Button onClick={() => changeEditingId(null)}>{t("knowledge.entityCancel")}</Button>
+      </div>
+    </form>
+  );
+
   return (
     <section className="mt-1 flex flex-col gap-2">
-      <p className="text-sm font-medium">{t("knowledge.relationsHeading")}</p>
+      <p className="text-label font-medium">{t("knowledge.relationsHeading")}</p>
       {relations.isPending ? (
-        <p className="text-sm text-muted">{t("knowledge.loading")}</p>
+        // The ask is in flight: the section asks rather than claims — no
+        // tables, and not the empty state either, since no answer is not
+        // the fact "no relations".
+        <Notice tone="quiet" live="status">
+          {t("knowledge.loading")}
+        </Notice>
       ) : relations.isError ? (
-        <p role="alert" className="text-sm text-danger">
+        <Notice tone="danger" live="alert">
           {t("knowledge.errorRelations")}
-        </p>
-      ) : (relations.data ?? []).length === 0 ? (
-        <p className="text-sm text-muted">{t("knowledge.noRelations")}</p>
+        </Notice>
+      ) : edges.length === 0 ? (
+        <Notice tone="quiet">{t("knowledge.noRelations")}</Notice>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {(relations.data ?? []).map((relation) => {
-            const self = relation.from_entity_id === relation.to_entity_id;
-            const outgoing = relation.from_entity_id === entity.id;
-            const label = relationTypeLabel(t, relation.relation_type);
-            const editing = editingId === relation.id;
-            return (
-              <li key={relation.id} className="rounded-md border border-border px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm">
-                    {self ? "↻" : outgoing ? "→" : "←"}{" "}
-                    {self
-                      ? `${label} · ${t("knowledge.relationSelf")}`
-                      : `${nameOf(outgoing ? relation.to_entity_id : relation.from_entity_id)} · ${label}`}
-                    {relation.note ? ` · ${relation.note}` : ""}
-                  </span>
-                  {!editing ? (
-                    <span className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(relation)}
-                        className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        {t("knowledge.relationEdit")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void deleteEdge(relation)}
-                        className="rounded-md border border-danger px-2 py-1 text-xs font-medium text-danger hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        {t("knowledge.relationDelete")}
-                      </button>
-                    </span>
-                  ) : null}
-                </div>
-                {editing ? (
-                  <form
-                    onSubmit={(event) => void saveEdit(relation, event)}
-                    className="mt-2 flex flex-col gap-2"
-                  >
-                    <ComboBox
-                      label={t("knowledge.relationTypeLabel")}
-                      value={editTypeText}
-                      onChange={setEditTypeText}
-                      onPick={(id) => {
-                        const picked = typeItems.find((item) => item.id === id);
-                        if (picked) setEditTypeText(picked.text);
-                      }}
-                      items={typeItems.filter((item) =>
-                        item.text.toLowerCase().includes(editTypeText.trim().toLowerCase()),
-                      )}
-                    />
-                    {editTypeInvalid ? (
-                      <p className="text-sm text-danger">{t("knowledge.relationTypeRequired")}</p>
-                    ) : null}
-                    <TextField
-                      label={t("knowledge.relationNoteLabel")}
-                      value={editNote}
-                      onChange={setEditNote}
-                    />
-                    <div className="flex gap-2">
-                      <button type="submit" className={PRIMARY_BUTTON}>
-                        {t("knowledge.entitySave")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => changeEditingId(null)}
-                        className={QUIET_BUTTON}
-                      >
-                        {t("knowledge.entityCancel")}
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <Panel title={t("knowledge.relationsOutgoing")} titleAs="h4" dense>
+            <Table
+              aria-label={t("knowledge.relationsOutgoing")}
+              columns={columns}
+              rows={outgoing.map((relation) => rowFor(relation, "outgoing"))}
+              rowKey={(row) => row.id}
+              dense
+            />
+            {editingOutgoing ? editForm : null}
+          </Panel>
+          <Panel title={t("knowledge.relationsIncoming")} titleAs="h4" dense>
+            <Table
+              aria-label={t("knowledge.relationsIncoming")}
+              columns={columns}
+              rows={incoming.map((relation) => rowFor(relation, "incoming"))}
+              rowKey={(row) => row.id}
+              dense
+            />
+            {editingId !== null && !editingOutgoing ? editForm : null}
+          </Panel>
+        </>
       )}
-      <form onSubmit={(event) => void addEdge(event)} className="flex flex-col gap-2 border-t border-border pt-3">
+      <form
+        onSubmit={(event) => void addEdge(event)}
+        className="flex flex-col gap-2 border-t border-rule pt-3"
+      >
         <ComboBox
           label={t("knowledge.relationTargetLabel")}
           value={targetText}
@@ -262,7 +328,7 @@ export function EntityRelationsSection(
             .map((row) => ({ id: row.id, text: row.name }))}
         />
         {targetInvalid ? (
-          <p className="text-sm text-danger">{t("knowledge.relationTargetRequired")}</p>
+          <Notice tone="danger">{t("knowledge.relationTargetRequired")}</Notice>
         ) : null}
         <ComboBox
           label={t("knowledge.relationTypeLabel")}
@@ -277,17 +343,19 @@ export function EntityRelationsSection(
           )}
         />
         {addTypeInvalid ? (
-          <p className="text-sm text-danger">{t("knowledge.relationTypeRequired")}</p>
+          <Notice tone="danger">{t("knowledge.relationTypeRequired")}</Notice>
         ) : null}
-        <TextField label={t("knowledge.relationNoteLabel")} value={note} onChange={setNote} />
-        <button type="submit" className={PRIMARY_BUTTON}>
+        <Field label={t("knowledge.relationNoteLabel")}>
+          <Input value={note} onChange={(event) => setNote(event.target.value)} />
+        </Field>
+        <Button variant="primary" type="submit">
           {t("knowledge.relationAdd")}
-        </button>
+        </Button>
       </form>
       {failed ? (
-        <p role="alert" className="text-sm text-danger">
+        <Notice tone="danger" live="alert">
           {t("knowledge.entityFailed")}
-        </p>
+        </Notice>
       ) : null}
     </section>
   );

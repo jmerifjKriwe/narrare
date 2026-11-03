@@ -1082,10 +1082,14 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     dock = page.get_by_role("complementary", name="Wissen")
     entities = dock.get_by_role("region", name="Entitäten")
     expect(_row_named(entities, "Leuchtturm")).to_be_visible()
+    # The list keeps its grid contract: the five seeded rows are gridcells.
+    # (Read with the dialog closed — the modal aria-hides the page behind it.)
+    expect(page.get_by_role("gridcell")).to_have_count(5)
     _row_named(entities, "Leuchtturm").click()
     detail = dock.get_by_role("region", name="Leuchtturm")
-    # The compact card: the seeded edge, and the loop with its mark.
-    expect(detail).to_contain_text("→ Mira")
+    # The compact card: the seeded edge, and the loop with its mark —
+    # both directions by name, no arrows.
+    expect(detail).to_contain_text("Mira · Verbunden mit")
     expect(detail).to_contain_text("Verbunden mit")
     expect(detail).to_contain_text("Selbstbezug")
 
@@ -1102,6 +1106,11 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     detail.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
 
+    # The relations are two tables — outgoing and incoming — not a sentence
+    # with arrows. The seeded loop leaves both directions empty; the table
+    # pair stands regardless.
+    expect(dialog.get_by_role("table")).to_have_count(2)
+
     # Add: the target from the novel's other entries, the type from the
     # vocabulary, the note optional.
     target = dialog.get_by_label("Verbinden mit")
@@ -1116,18 +1125,23 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(kind).to_have_value("Verbündet mit")
     dialog.get_by_label("Notiz (optional)").fill("Seit dem Sturm")
     dialog.get_by_role("button", name="Beziehung hinzufügen").click()
-    row = dialog.get_by_role("listitem").filter(has_text="Haus")
+    # The new edge is outgoing: its row stands in the outgoing table, the
+    # note riding the Typ cell it belongs to.
+    table = dialog.get_by_role("table", name="Verweist auf")
+    row = table.get_by_role("row").filter(has_text="Haus")
     expect(row).to_contain_text("Verbündet mit")
     expect(row).to_contain_text("Seit dem Sturm")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde hinzugefügt")
 
-    # Inline edit: the type retypes, the ends never move.
+    # Inline edit: the type retypes, the ends never move. The row's edit
+    # form is the named form under its table.
     row.get_by_role("button", name="Beziehung bearbeiten").click()
-    row_kind = row.get_by_label("Beziehungsart")
+    form = dialog.get_by_role("form", name="Beziehung ändern")
+    row_kind = form.get_by_label("Beziehungsart")
     row_kind.fill("Verfeindet")
     row_kind.press("ArrowDown")
     row_kind.press("Enter")
-    row.get_by_role("button", name="Speichern").click()
+    form.get_by_role("button", name="Speichern").click()
     expect(row).to_contain_text("Verfeindet mit")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gespeichert")
 
@@ -1137,17 +1151,21 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     # The card keeps what the dialog filed, and Haus reads the same edge
     # from the other side — a revisit, so the cached answer from before
     # the edit must not be what the card serves.
-    expect(detail).to_contain_text("→ Haus · Verfeindet mit")
+    expect(detail).to_contain_text("Haus · Verfeindet mit")
     _row_named(entities, "Haus").click()
     haus = dock.get_by_role("region", name="Haus")
-    expect(haus).to_contain_text("← Leuchtturm · Verfeindet mit")
+    expect(haus).to_contain_text("Leuchtturm · Verfeindet mit")
 
     # Deleting takes exactly the one edge: the loop and the seeded edge
     # survive on the same card.
     _row_named(entities, "Leuchtturm").click()
     dock.get_by_role("region", name="Leuchtturm").get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
-    row = dialog.get_by_role("listitem").filter(has_text="Verfeindet")
+    row = (
+        dialog.get_by_role("table", name="Verweist auf")
+        .get_by_role("row")
+        .filter(has_text="Verfeindet")
+    )
     row.get_by_role("button", name="Beziehung löschen").click()
     expect(row).to_have_count(0)
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gelöscht")
@@ -1155,7 +1173,7 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(dialog).not_to_be_visible()
     expect(dock.get_by_role("region", name="Leuchtturm")).not_to_contain_text("Verfeindet mit")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Selbstbezug")
-    expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("→ Mira")
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Mira · Verbunden mit")
 
     assert_accessible(page)
 
@@ -1185,7 +1203,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     expect(detail).to_be_visible()
     # The relations, not the default of none: the edge the seeded review
     # chain left (Leuchtturm's proposal pointed at Mira, already filed).
-    expect(detail).to_contain_text("→ Mira")
+    expect(detail).to_contain_text("Mira · Verbunden mit")
 
     # Selecting writes the address with a replace: the next entry back is
     # the workspace without the dock, never the previous selection. (The

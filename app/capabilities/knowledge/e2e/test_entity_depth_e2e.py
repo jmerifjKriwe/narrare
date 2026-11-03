@@ -181,7 +181,11 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(kind).to_have_value("Besitzt")
     dialog.get_by_label("Notiz (optional)").fill("Seit dem Fest")
     dialog.get_by_role("button", name="Beziehung hinzufügen").click()
-    edge_row = dialog.get_by_role("listitem").filter(has_text="Amulett")
+    edge_row = (
+        dialog.get_by_role("table", name="Verweist auf")
+        .get_by_role("row")
+        .filter(has_text="Amulett")
+    )
     expect(edge_row).to_contain_text("Besitzt")
     expect(edge_row).to_contain_text("Seit dem Fest")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde hinzugefügt")

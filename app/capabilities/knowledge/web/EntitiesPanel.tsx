@@ -14,13 +14,16 @@ import {
   useUpdateEntity,
   type EntityChanges,
 } from "@shell/lib/query";
+import { Button } from "@shell/ui/Button";
 import { ComboBox } from "@shell/ui/ComboBox";
 import { Dialog } from "@shell/ui/Dialog";
+import { Field, Input, Select } from "@shell/ui/field";
 import { GridList } from "@shell/ui/GridList";
+import { Icon } from "@shell/ui/icons";
 import { MarkdownEditor } from "@shell/ui/markdown-editor";
-import { TextField } from "@shell/ui/TextField";
+import { Notice } from "@shell/ui/Notice";
+import { Panel } from "@shell/ui/Panel";
 
-import { DANGER_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON } from "./buttons";
 import { EntityRelationsSection } from "./EntityRelationsSection";
 import { previewText } from "./preview";
 import { relationTypeLabel } from "./relations";
@@ -74,8 +77,6 @@ export function EntitiesPanel() {
   const [typeFilter, setTypeFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
   const headingId = useId();
-  const typeFilterId = useId();
-  const tagFilterId = useId();
   const passagesId = useId();
 
   // The box's words reach the server once the typing pauses; the filters
@@ -143,7 +144,7 @@ export function EntitiesPanel() {
 
   return (
     <section aria-labelledby={headingId} className="mt-6">
-      <h3 id={headingId} className="text-sm font-semibold">
+      <h3 id={headingId} className="text-body font-semibold">
         {t("knowledge.entitiesHeading")}
       </h3>
       <div className="mt-2">
@@ -156,15 +157,10 @@ export function EntitiesPanel() {
         />
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
-        <div className="flex flex-col gap-1">
-          <label htmlFor={typeFilterId} className="text-sm font-medium">
-            {t("knowledge.typeFilterLabel")}
-          </label>
-          <select
-            id={typeFilterId}
+        <Field label={t("knowledge.typeFilterLabel")}>
+          <Select
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value)}
-            className="rounded-md border border-border bg-card px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <option value="">{t("knowledge.filterAllTypes")}</option>
             {typeOptions.map((type) => (
@@ -172,17 +168,12 @@ export function EntitiesPanel() {
                 {entityTypeLabel(t, type)}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor={tagFilterId} className="text-sm font-medium">
-            {t("knowledge.tagFilterLabel")}
-          </label>
-          <select
-            id={tagFilterId}
+          </Select>
+        </Field>
+        <Field label={t("knowledge.tagFilterLabel")}>
+          <Select
             value={tagFilter}
             onChange={(event) => setTagFilter(event.target.value)}
-            className="rounded-md border border-border bg-card px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <option value="">{t("knowledge.filterAllTags")}</option>
             {tagOptions.map((tag) => (
@@ -190,8 +181,8 @@ export function EntitiesPanel() {
                 {tag}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
       </div>
       {all.isPending || (narrowed.isPending && narrowed.data === undefined) ? (
         // The answer has not arrived yet: the panel asks rather than
@@ -199,18 +190,24 @@ export function EntitiesPanel() {
         // answer is not the fact "no entities". A narrowed ask in flight
         // keeps its previous answer on screen (the hook's own patience),
         // so this state is the first load's alone.
-        <p className="mt-2 text-sm text-muted">{t("knowledge.loading")}</p>
+        <Notice tone="quiet" live="status" className="mt-2">
+          {t("knowledge.loading")}
+        </Notice>
       ) : all.isError || narrowed.isError ? (
         // An unreachable service names itself here, never as an empty
         // list (the outage test stops the real API and reloads — the
         // empty state would be the mask of a missing answer).
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.errorLoad")}
-        </p>
+        </Notice>
       ) : rows.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">{t("knowledge.noEntities")}</p>
+        <Notice tone="quiet" className="mt-2">
+          {t("knowledge.noEntities")}
+        </Notice>
       ) : shown.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">{t("knowledge.noResults")}</p>
+        <Notice tone="quiet" className="mt-2">
+          {t("knowledge.noResults")}
+        </Notice>
       ) : (
         <div className="mt-2">
           <GridList
@@ -231,26 +228,32 @@ export function EntitiesPanel() {
             beside the entity list's and the queue's outages — three
             failures at once must stay nameable apart. */
         <section aria-labelledby={passagesId} className="mt-4">
-          <h4 id={passagesId} className="text-sm font-semibold">
+          <h4 id={passagesId} className="text-body font-semibold">
             {t("knowledge.passagesHeading")}
           </h4>
           {passages.isPending ? (
             // The ask is debounced, so the block asks while the words
             // settle and the answer flies — the same patience the entity
             // list's own loading state has.
-            <p className="mt-2 text-sm text-muted">{t("knowledge.loading")}</p>
+            <Notice tone="quiet" live="status" className="mt-2">
+              {t("knowledge.loading")}
+            </Notice>
           ) : passages.isError ? (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <Notice tone="danger" live="alert" className="mt-2">
               {t("knowledge.errorPassages")}
-            </p>
+            </Notice>
           ) : (passages.data ?? []).length === 0 ? (
-            <p className="mt-2 text-sm text-muted">{t("knowledge.noPassages")}</p>
+            <Notice tone="quiet" className="mt-2">
+              {t("knowledge.noPassages")}
+            </Notice>
           ) : (
-            <ul className="mt-2 flex flex-col gap-2">
+            // A hit is a row on the rule, not a card: the snippet with its
+            // document's title, the tier reading as one column.
+            <ul className="mt-2 flex flex-col">
               {(passages.data ?? []).map((hit) => (
-                <li key={hit.chunk_id} className="rounded-lg border border-border bg-card p-3">
-                  <strong className="text-sm font-semibold">{hit.document_title}</strong>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">{hit.text}</p>
+                <li key={hit.chunk_id} className="border-b border-rule py-2">
+                  <p className="text-label font-semibold">{hit.document_title}</p>
+                  <p className="mt-1 text-body leading-relaxed text-muted">{hit.text}</p>
                 </li>
               ))}
             </ul>
@@ -275,9 +278,43 @@ export function EntitiesPanel() {
   );
 }
 
+/** One direction group of the card's read-only edges: the group's name and
+ *  the lines it holds — the other end's name and the type's wording, the
+ *  same sentence the old arrow lines carried, cut of its arrows. */
+function EdgeGroup({
+  label,
+  edges,
+  entityId,
+  nameOf,
+}: {
+  label: string;
+  edges: Relation[];
+  entityId: string;
+  nameOf: (id: string) => string;
+}) {
+  const t = useTranslation();
+  return (
+    <div className="mt-1">
+      <p className="text-label text-muted">{label}</p>
+      <ul className="mt-0.5 flex flex-col">
+        {edges.map((relation) => (
+          <li key={relation.id} className="text-body text-muted">
+            {`${nameOf(
+              relation.from_entity_id === entityId
+                ? relation.to_entity_id
+                : relation.from_entity_id,
+            )} · ${relationTypeLabel(t, relation.relation_type)}`}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** The selected entity's detail, kept compact (D9): what review filed —
- *  name, type, chips, the body's source preview, both directions of every
- *  edge — and the doors to the corrections, which all live in dialogs. */
+ *  name, type, chips, the body's source preview, every edge by direction
+ *  and the self-relations under their mark — and the doors to the
+ *  corrections, which all live in dialogs. */
 function EntityDetail({
   entity,
   rows,
@@ -290,85 +327,90 @@ function EntityDetail({
   onSelect: (id: string | null) => void;
 }) {
   const t = useTranslation();
-  const detailId = useId();
   const relations = useEntityRelationsQuery(entity.id);
   const edges = relations.data ?? [];
   const nameOf = (id: string) => rows.find((row) => row.id === id)?.name ?? id;
+  const loops = edges.filter((relation) => relation.from_entity_id === relation.to_entity_id);
+  const outgoing = edges.filter(
+    (relation) =>
+      relation.from_entity_id === entity.id && relation.to_entity_id !== entity.id,
+  );
+  const incoming = edges.filter(
+    (relation) =>
+      relation.to_entity_id === entity.id && relation.from_entity_id !== entity.id,
+  );
 
   return (
-    <section
-      aria-labelledby={detailId}
-      className="mt-3 rounded-lg border border-border bg-card p-4"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <h4 id={detailId} className="text-sm font-semibold">
-          {entity.name}
-        </h4>
-        <span className="rounded-full border border-border bg-panel px-2 py-0.5 text-xs">
-          {entityTypeLabel(t, entity.type)}
-        </span>
-      </div>
-      {entity.aliases.length > 0 ? (
-        <ChipRow label={t("knowledge.entityAliasesLabel")} values={entity.aliases} />
-      ) : null}
-      {entity.tags.length > 0 ? (
-        <ChipRow label={t("knowledge.entityTagsLabel")} values={entity.tags} />
-      ) : null}
-      {entity.content ? (
-        // The body as the glance reads it: the stored Markdown's display
-        // copy — entities decoded, serializer escapes stripped (preview.ts)
-        // — cut for a glance. The store keeps the canonical bytes; the
-        // editor, not the preview, is where the document renders.
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-          {truncate(previewText(entity.content))}
-        </p>
-      ) : null}
-      {relations.isError ? (
-        <p role="alert" className="mt-2 text-sm text-danger">
-          {t("knowledge.errorRelations")}
-        </p>
-      ) : edges.length > 0 ? (
-        <div className="mt-2">
-          <p className="text-sm font-medium">{t("knowledge.relationsHeading")}</p>
-          <ul className="mt-1 flex flex-col gap-0.5">
-            {edges.map((relation) => (
-              <li key={relation.id} className="text-sm text-muted">
-                {edgeText(relation, entity.id, nameOf, t)}
-              </li>
+    // The section is the region the tests and the focus contract name (the
+    // row it opened); the panel inside is its one painted surface.
+    <section aria-label={entity.name} className="mt-3">
+      <Panel
+        title={entity.name}
+        titleAs="h4"
+        actions={
+          <span className="rounded-full bg-panel px-2 py-0.5 text-label">
+            {entityTypeLabel(t, entity.type)}
+          </span>
+        }
+      >
+        {entity.aliases.length > 0 ? (
+          <ChipRow label={t("knowledge.entityAliasesLabel")} values={entity.aliases} />
+        ) : null}
+        {entity.tags.length > 0 ? (
+          <ChipRow label={t("knowledge.entityTagsLabel")} values={entity.tags} />
+        ) : null}
+        {entity.content ? (
+          // The body as the glance reads it: the stored Markdown's display
+          // copy — entities decoded, serializer escapes stripped (preview.ts)
+          // — cut for a glance. The store keeps the canonical bytes; the
+          // editor, not the preview, is where the document renders.
+          <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed">
+            {truncate(previewText(entity.content))}
+          </p>
+        ) : null}
+        {relations.isError ? (
+          <Notice tone="danger" live="alert" className="mt-2">
+            {t("knowledge.errorRelations")}
+          </Notice>
+        ) : edges.length > 0 ? (
+          <div className="mt-2">
+            <p className="text-label font-medium">{t("knowledge.relationsHeading")}</p>
+            {loops.map((relation) => (
+              <p key={relation.id} className="mt-1 text-body text-muted">
+                {`${relationTypeLabel(t, relation.relation_type)} · ${t("knowledge.relationSelf")}`}
+              </p>
             ))}
-          </ul>
+            {outgoing.length > 0 ? (
+              <EdgeGroup
+                label={t("knowledge.relationsOutgoing")}
+                edges={outgoing}
+                entityId={entity.id}
+                nameOf={nameOf}
+              />
+            ) : null}
+            {incoming.length > 0 ? (
+              <EdgeGroup
+                label={t("knowledge.relationsIncoming")}
+                edges={incoming}
+                entityId={entity.id}
+                nameOf={nameOf}
+              />
+            ) : null}
+          </div>
+        ) : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <EditEntityDialog entity={entity} rows={rows} novelId={novelId} />
+          <MergeEntityDialog
+            entity={entity}
+            others={rows.filter((row) => row.id !== entity.id)}
+            novelId={novelId}
+            onSelect={onSelect}
+          />
+          <DeleteEntityDialog entity={entity} novelId={novelId} onSelect={onSelect} />
         </div>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <EditEntityDialog entity={entity} rows={rows} novelId={novelId} />
-        <MergeEntityDialog
-          entity={entity}
-          others={rows.filter((row) => row.id !== entity.id)}
-          novelId={novelId}
-          onSelect={onSelect}
-        />
-        <DeleteEntityDialog entity={entity} novelId={novelId} onSelect={onSelect} />
-      </div>
+      </Panel>
     </section>
   );
-}
-
-/** One compact edge row's text: the arrow tells the direction, the other
- *  end's name is resolved from the novel's list, and a self-relation —
- *  an edge that only a re-pointing can create — wears its mark. */
-function edgeText(
-  relation: Relation,
-  entityId: string,
-  nameOf: (id: string) => string,
-  t: (key: MessageKey) => string,
-): string {
-  const label = relationTypeLabel(t, relation.relation_type);
-  if (relation.from_entity_id === relation.to_entity_id) {
-    return `↻ ${label} · ${t("knowledge.relationSelf")}`;
-  }
-  const outgoing = relation.from_entity_id === entityId;
-  const other = nameOf(outgoing ? relation.to_entity_id : relation.from_entity_id);
-  return `${outgoing ? "→" : "←"} ${other} · ${label}`;
 }
 
 /** A labeled row of read-only chips: what the card shows of the aliases
@@ -376,12 +418,9 @@ function edgeText(
 function ChipRow({ label, values }: { label: string; values: string[] }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1">
-      <span className="text-sm text-muted">{label}:</span>
+      <span className="text-label text-muted">{label}:</span>
       {values.map((value) => (
-        <span
-          key={value}
-          className="rounded-full border border-border bg-panel px-2 py-0.5 text-xs"
-        >
+        <span key={value} className="rounded-full bg-panel px-2 py-0.5 text-label">
           {value}
         </span>
       ))}
@@ -441,22 +480,23 @@ function ChipsField({
           {values.map((value) => (
             <li
               key={value}
-              className="flex items-center gap-1 rounded-full border border-border bg-panel px-2 py-0.5 text-xs"
+              className="flex items-center gap-1 rounded-full bg-panel px-2 py-0.5 text-label"
             >
               <span>{value}</span>
-              <button
-                type="button"
-                aria-label={t("knowledge.chipRemove", { value })}
+              <Button
+                variant="icon"
+                size="sm"
+                icon={<Icon name="cross" />}
+                label={t("knowledge.chipRemove", { value })}
                 onClick={() => onChange(values.filter((existing) => existing !== value))}
-                className="text-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                ✕
-              </button>
+              />
             </li>
           ))}
         </ul>
       ) : null}
-      <TextField label={label} value={text} onChange={setText} />
+      <Field label={label}>
+        <Input value={text} onChange={(event) => setText(event.target.value)} />
+      </Field>
     </div>
   );
 }
@@ -536,13 +576,12 @@ function EditEntityDialog({
     <Dialog title={t("knowledge.entityEditTitle")} triggerLabel={t("knowledge.entityEdit")}>
       {(close) => (
         <div className="mt-4 flex flex-col gap-3">
-          <TextField
+          <Field
             label={t("knowledge.entityNameLabel")}
-            value={name}
-            onChange={setName}
-            isInvalid={nameInvalid}
-            validationMessage={nameInvalid ? t("knowledge.entityNameRequired") : undefined}
-          />
+            error={nameInvalid ? t("knowledge.entityNameRequired") : undefined}
+          >
+            <Input value={name} onChange={(event) => setName(event.target.value)} />
+          </Field>
           <ComboBox
             label={t("knowledge.entityTypeLabel")}
             value={typeText}
@@ -556,7 +595,7 @@ function EditEntityDialog({
             )}
           />
           {typeInvalid ? (
-            <p className="text-sm text-danger">{t("knowledge.entityTypeRequired")}</p>
+            <Notice tone="danger">{t("knowledge.entityTypeRequired")}</Notice>
           ) : null}
           <ChipsField
             label={t("knowledge.entityAliasesLabel")}
@@ -578,22 +617,19 @@ function EditEntityDialog({
             onRowEditorChange={setRowEditorOpen}
           />
           {failed ? (
-            <p role="alert" className="text-sm text-danger">
+            <Notice tone="danger" live="alert">
               {t("knowledge.entityFailed")}
-            </p>
+            </Notice>
           ) : null}
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => void save(close)}
               disabled={rowEditorOpen}
-              className={`${PRIMARY_BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}
             >
               {t("knowledge.entitySave")}
-            </button>
-            <button type="button" onClick={close} className={QUIET_BUTTON}>
-              {t("knowledge.entityCancel")}
-            </button>
+            </Button>
+            <Button onClick={close}>{t("knowledge.entityCancel")}</Button>
           </div>
         </div>
       )}
@@ -636,19 +672,21 @@ function DeleteEntityDialog({
     <Dialog title={t("knowledge.entityDeleteTitle")} triggerLabel={t("knowledge.entityDelete")}>
       {(close) => (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="text-sm">{t("knowledge.entityDeleteText", { name: entity.name })}</p>
+          <p className="text-body">{t("knowledge.entityDeleteText", { name: entity.name })}</p>
           {failed ? (
-            <p role="alert" className="text-sm text-danger">
+            <Notice tone="danger" live="alert">
               {t("knowledge.entityFailed")}
-            </p>
+            </Notice>
           ) : null}
           <div className="flex gap-2">
-            <button type="button" onClick={() => void destroy(close)} className={DANGER_BUTTON}>
+            {/* The destructive confirm stays a quiet button on purpose:
+                the dialog's text carries the warning; the filled
+                `--primary` is for the one advancing action, never for the
+                button that destroys (the P12 guard's precedent). */}
+            <Button onClick={() => void destroy(close)}>
               {t("knowledge.entityDeleteConfirm")}
-            </button>
-            <button type="button" onClick={close} className={QUIET_BUTTON}>
-              {t("knowledge.entityCancel")}
-            </button>
+            </Button>
+            <Button onClick={close}>{t("knowledge.entityCancel")}</Button>
           </div>
         </div>
       )}
@@ -704,7 +742,7 @@ function MergeEntityDialog({
     <Dialog title={t("knowledge.entityMergeTitle")} triggerLabel={t("knowledge.entityMerge")}>
       {(close) => (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="text-sm">{t("knowledge.entityMergeText", { name: entity.name })}</p>
+          <p className="text-body">{t("knowledge.entityMergeText", { name: entity.name })}</p>
           <ComboBox
             label={t("knowledge.entityMergeTargetLabel")}
             value={targetText}
@@ -719,20 +757,18 @@ function MergeEntityDialog({
               .map((row) => ({ id: row.id, text: row.name }))}
           />
           {targetInvalid ? (
-            <p className="text-sm text-danger">{t("knowledge.entityMergeTargetRequired")}</p>
+            <Notice tone="danger">{t("knowledge.entityMergeTargetRequired")}</Notice>
           ) : null}
           {failed ? (
-            <p role="alert" className="text-sm text-danger">
+            <Notice tone="danger" live="alert">
               {t("knowledge.entityFailed")}
-            </p>
+            </Notice>
           ) : null}
           <div className="flex gap-2">
-            <button type="button" onClick={() => void mergeThem(close)} className={PRIMARY_BUTTON}>
+            <Button variant="primary" onClick={() => void mergeThem(close)}>
               {t("knowledge.entityMergeConfirm")}
-            </button>
-            <button type="button" onClick={close} className={QUIET_BUTTON}>
-              {t("knowledge.entityCancel")}
-            </button>
+            </Button>
+            <Button onClick={close}>{t("knowledge.entityCancel")}</Button>
           </div>
         </div>
       )}
