@@ -152,6 +152,7 @@
   "knowledge.relationEdit": "Modifier la relation",
   "knowledge.relationEditHeading": "Changer la relation",
   "knowledge.relationDelete": "Supprimer la relation",
+  "knowledge.relationDeleteText": "Veux-tu vraiment supprimer la relation vers {name} ? Elle ne peut pas être annulée.",
   "knowledge.relationTargetRequired": "Veuillez choisir une entrée.",
   "knowledge.relationTypeRequired": "Veuillez saisir un type de relation.",
   "knowledge.relationAdded": "La relation a été ajoutée.",

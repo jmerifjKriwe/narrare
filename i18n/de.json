@@ -152,6 +152,7 @@
   "knowledge.relationEdit": "Beziehung bearbeiten",
   "knowledge.relationEditHeading": "Beziehung ändern",
   "knowledge.relationDelete": "Beziehung löschen",
+  "knowledge.relationDeleteText": "Willst du die Beziehung zu {name} wirklich löschen? Das lässt sich nicht rückgängig machen.",
   "knowledge.relationTargetRequired": "Bitte wähle einen Eintrag aus.",
   "knowledge.relationTypeRequired": "Bitte gib eine Beziehungsart ein.",
   "knowledge.relationAdded": "Die Beziehung wurde hinzugefügt.",

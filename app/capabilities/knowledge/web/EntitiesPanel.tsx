@@ -214,6 +214,7 @@ export function EntitiesPanel() {
             label={t("knowledge.entitiesHeading")}
             items={shown}
             getId={(entity) => entity.id}
+            textOf={(entity) => entity.name}
             selectedId={entityParam ?? null}
             onSelect={select}
             render={(entity) => entity.name}
@@ -344,15 +345,15 @@ function EntityDetail({
     // The section is the region the tests and the focus contract name (the
     // row it opened); the panel inside is its one painted surface.
     <section aria-label={entity.name} className="mt-3">
-      <Panel
-        title={entity.name}
-        titleAs="h4"
-        actions={
+      <Panel>
+        {/* The name is a card title (§8.2: text-emph, 600), not an
+            eyebrow — it heads the body, with the type beside it. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="text-emph font-semibold">{entity.name}</h4>
           <span className="rounded-full bg-panel px-2 py-0.5 text-label">
             {entityTypeLabel(t, entity.type)}
           </span>
-        }
-      >
+        </div>
         {entity.aliases.length > 0 ? (
           <ChipRow label={t("knowledge.entityAliasesLabel")} values={entity.aliases} />
         ) : null}

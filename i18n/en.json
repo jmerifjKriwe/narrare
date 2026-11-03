@@ -152,6 +152,7 @@
   "knowledge.relationEdit": "Edit relation",
   "knowledge.relationEditHeading": "Edit the relation",
   "knowledge.relationDelete": "Delete relation",
+  "knowledge.relationDeleteText": "Do you really want to delete the relation to {name}? It cannot be undone.",
   "knowledge.relationTargetRequired": "Please pick an entry.",
   "knowledge.relationTypeRequired": "Please enter a relation type.",
   "knowledge.relationAdded": "The relation was added.",

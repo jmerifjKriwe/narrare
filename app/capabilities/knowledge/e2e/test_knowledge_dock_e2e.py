@@ -1107,8 +1107,8 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     dialog = page.get_by_role("dialog")
 
     # The relations are two tables — outgoing and incoming — not a sentence
-    # with arrows. The seeded loop leaves both directions empty; the table
-    # pair stands regardless.
+    # with arrows. The seeded loop stands in both tables; a novel with no
+    # edges renders the empty Notice instead of the pair.
     expect(dialog.get_by_role("table")).to_have_count(2)
 
     # Add: the target from the novel's other entries, the type from the
@@ -1156,6 +1156,20 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     haus = dock.get_by_role("region", name="Haus")
     expect(haus).to_contain_text("Leuchtturm · Verfeindet mit")
 
+    # The other direction inside its dialog: Haus's incoming table holds
+    # the same edge with its source and type — the half of the split a
+    # one-table reading could silently lose.
+    haus.get_by_role("button", name="Bearbeiten").click()
+    incoming_row = (
+        page.get_by_role("dialog")
+        .get_by_role("table", name="Wird verwiesen von")
+        .get_by_role("row")
+        .filter(has_text="Leuchtturm")
+    )
+    expect(incoming_row).to_contain_text("Verfeindet mit")
+    dialog.get_by_role("button", name="Abbrechen").click()
+    expect(dialog).not_to_be_visible()
+
     # Deleting takes exactly the one edge: the loop and the seeded edge
     # survive on the same card.
     _row_named(entities, "Leuchtturm").click()
@@ -1167,6 +1181,9 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
         .filter(has_text="Verfeindet")
     )
     row.get_by_role("button", name="Beziehung löschen").click()
+    # The delete asks first: the confirm names the edge before it takes it.
+    confirm = page.get_by_role("dialog", name="Beziehung löschen")
+    confirm.get_by_role("button", name="Endgültig löschen").click()
     expect(row).to_have_count(0)
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gelöscht")
     dialog.get_by_role("button", name="Abbrechen").click()

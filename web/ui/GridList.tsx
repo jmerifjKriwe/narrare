@@ -21,15 +21,16 @@ import { rowClass } from "./Row";
  * paint is the identical box-shadow, so the row shows one ring, keyboard
  * only, never two. The rows stack flush: each carries the `--rule`
  * separator, so a gap here would float a rule inside empty space. A
- * row's text truncates, never wraps (§8.9); React-Aria's gridcell
- * wrapper is `display: contents`, so the span below is the flex child
- * that shrinks and ellipsizes.
+ * row's text truncates, never wraps (§6, the 360 px rule); React-Aria's
+ * gridcell wrapper is `display: contents`, so the span below is the flex
+ * child that shrinks and ellipsizes.
  */
 export function GridList<T>({
   label,
   items,
   getId,
   render,
+  textOf,
   selectedId,
   onSelect,
 }: {
@@ -37,6 +38,9 @@ export function GridList<T>({
   items: T[];
   getId: (item: T) => string;
   render: (item: T) => ReactNode;
+  /** The row's plain text for type-to-select: the truncate span below is
+   *  an element child, so React-Aria cannot infer it from the children. */
+  textOf?: (item: T) => string;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }) {
@@ -58,6 +62,7 @@ export function GridList<T>({
         <GridListItem
           key={getId(item)}
           id={getId(item)}
+          textValue={textOf?.(item)}
           className={`${rowClass(getId(item) === selectedId)} data-focus-visible:ring-2 data-focus-visible:ring-focus`}
         >
           <span className="min-w-0 flex-1 truncate">{render(item)}</span>

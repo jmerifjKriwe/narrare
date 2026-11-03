@@ -12,6 +12,7 @@ import {
 } from "@shell/lib/query";
 import { Button } from "@shell/ui/Button";
 import { ComboBox } from "@shell/ui/ComboBox";
+import { Dialog } from "@shell/ui/Dialog";
 import { Field, Input } from "@shell/ui/field";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
@@ -170,17 +171,29 @@ export function EntityRelationsSection(
     changeEditingId(null);
   }
 
-  /** Delete exactly this edge; keep the section's other rows standing. */
-  async function deleteEdge(relation: Relation) {
-    setFailed(false);
+  /** The delete asks first (R36): the row's control only names the edge,
+   *  the confirm dialog does the taking — both deletes are one keystroke
+   *  from data loss, so both wear the dialog's shape. */
+  const [pendingDelete, setPendingDelete] = useState<Relation | null>(null);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+
+  /** The confirmed delete: exactly this edge; keep the section's other rows standing. */
+  async function destroyPending(close: () => void) {
+    const relation = pendingDelete;
+    if (relation === null) return;
+    setDeleteFailed(false);
     try {
       await remove.mutateAsync({ relationId: relation.id });
     } catch {
-      setFailed(true);
+      // The dialog stays open: the failure is this delete's own — named
+      // inside it, where the retry is one press away.
+      setDeleteFailed(true);
       return;
     }
     if (editingId === relation.id) changeEditingId(null);
     announce(t("knowledge.relationDeleted"));
+    close();
+    setPendingDelete(null);
   }
 
   /** The row a table shows for one edge: the words for Typ and Ziel, the
@@ -213,7 +226,7 @@ export function EntityRelationsSection(
             size="sm"
             icon={<Icon name="cross" />}
             label={t("knowledge.relationDelete")}
-            onClick={() => void deleteEdge(relation)}
+            onClick={() => setPendingDelete(relation)}
           />
         </span>
       ),
@@ -269,6 +282,19 @@ export function EntityRelationsSection(
       </div>
     </form>
   );
+
+  // The name the confirm speaks: the edge's other end — the entity
+  // itself for a loop.
+  const pendingName =
+    pendingDelete === null
+      ? ""
+      : nameOf(
+          pendingDelete.from_entity_id === pendingDelete.to_entity_id
+            ? pendingDelete.from_entity_id
+            : pendingDelete.from_entity_id === entity.id
+              ? pendingDelete.to_entity_id
+              : pendingDelete.from_entity_id,
+        );
 
   return (
     <section className="mt-1 flex flex-col gap-2">
@@ -357,6 +383,42 @@ export function EntityRelationsSection(
           {t("knowledge.entityFailed")}
         </Notice>
       ) : null}
+      {/* The confirm the row's delete owes its blast radius: the dialog
+          names the edge it will take before it takes it — the entity
+          delete's pattern (R36). Stacked over the edit dialog, which
+          stays open behind it. */}
+      <Dialog
+        title={t("knowledge.relationDelete")}
+        isOpen={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteFailed(false);
+            setPendingDelete(null);
+          }
+        }}
+      >
+        {(close) => (
+          <div className="mt-4 flex flex-col gap-3">
+            <p className="text-body">
+              {t(
+                "knowledge.relationDeleteText",
+                { name: pendingName },
+              )}
+            </p>
+            {deleteFailed ? (
+              <Notice tone="danger" live="alert">
+                {t("knowledge.entityFailed")}
+              </Notice>
+            ) : null}
+            <div className="flex gap-2">
+              <Button onClick={() => void destroyPending(close)}>
+                {t("knowledge.entityDeleteConfirm")}
+              </Button>
+              <Button onClick={close}>{t("knowledge.entityCancel")}</Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </section>
   );
 }
