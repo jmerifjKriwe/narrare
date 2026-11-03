@@ -79,6 +79,8 @@ function UploadForm({
     // openapi-typescript renders the binary part as `string`, which a real
     // FormData is not — one cast. The runtime contract (multipart/form-data,
     // browser sets the boundary) is exactly what the endpoint speaks.
+    // The try wraps the POST alone: a throw after a successful upload must
+    // not lie about failure — the success path sits after it.
     try {
       const { error, response } = await client.POST("/api/knowledge/documents", {
         body: body as unknown as { file: string; title?: string },
@@ -94,14 +96,15 @@ function UploadForm({
         setFailed(true);
         return;
       }
-      await onUploaded();
-      close();
     } catch {
       // A service that does not answer is a refused upload, not silence:
       // the dialog keeps the typed work and names the refusal where the
       // retry — the same button — sits.
       setFailed(true);
+      return;
     }
+    await onUploaded();
+    close();
   }
 
   return (

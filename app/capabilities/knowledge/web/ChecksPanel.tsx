@@ -75,8 +75,10 @@ export function ChecksPanel() {
         {t("knowledge.checksHeading")}
       </h3>
       <div className="mt-2">
-        {/* Secondary: the extraction's trigger is the dock's one filled
-            primary — two together would have no reading order (L1). */}
+        {/* Secondary: a second filled Button beside the extraction's
+            trigger would leave the dock two primaries with no reading
+            order (L1). The dialogs' trigger paint is P17's (R37) and stays
+            out of this panel's count. */}
         <Button variant="secondary" onClick={() => void check()} disabled={busy}>
           {t("knowledge.checkNovel")}
         </Button>

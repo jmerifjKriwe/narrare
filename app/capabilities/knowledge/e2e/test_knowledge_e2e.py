@@ -149,10 +149,13 @@ def test_an_upload_against_a_dead_service_names_itself(
 ) -> None:
     """An upload against a dead local service says so inside the dialog.
 
-    The dialog stays open — the typed work is the user's — and the danger
-    notice names the refusal where the retry (the same button) sits. A
-    silent dialog would leave the writer reading an upload that quietly
-    never happened.
+    The request is aborted at the network boundary — what the browser
+    really sees when the local service is gone, whatever a dev proxy
+    answers on its behalf — so the fetch rejects and only the page's own
+    catch can answer. The dialog stays open — the typed work is the
+    user's — and the danger notice names the upload's refusal where the
+    retry (the same button) sits. A silent dialog would leave the writer
+    reading an upload that quietly never happened.
     """
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")
@@ -163,12 +166,19 @@ def test_an_upload_against_a_dead_service_names_itself(
         page.get_by_role("button", name="+ Dokument").click()
         dialog = page.get_by_role("dialog")
         dialog.get_by_label("Dokument").set_input_files(str(source))
+        # The abort makes the refusal bite: without it the dev proxy
+        # resolves a 502, which the response branch alone could answer.
+        page.route("**/api/knowledge/documents", lambda route: route.abort())
         dialog.get_by_role("button", name="Hochladen").click()
-        expect(dialog.get_by_role("alert")).to_be_visible()
+        expect(
+            dialog.get_by_role("alert").filter(has_text="Hochladen fehlgeschlagen")
+        ).to_be_visible()
         # The dialog stays open with its fields, so nothing typed is lost.
         expect(dialog.get_by_label("Dokument")).to_be_visible()
     finally:
         stack.start_api()
+
+    assert_accessible(page)
 
 
 def test_a_dead_service_on_load_names_the_outage(page: Page, stack: Stack) -> None:
