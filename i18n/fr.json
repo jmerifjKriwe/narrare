@@ -317,6 +317,8 @@
   "settings.profiles.errorDelete": "Le profil n'a pas pu être supprimé.",
   "settings.profiles.errorAction": "L'action n'a pas pu être effectuée. Le service local est-il démarré?",
   "settings.profiles.errorLoad": "Les paramètres n'ont pas pu être chargés. Le service local est-il démarré?",
+  "settings.profiles.loading": "Chargement…",
+  "settings.retry": "Réessayer",
   "settings.profiles.taskAuditOnly": "Le test des paramètres vérifie le profil que vous choisissez",
   "settings.profiles.keyOnce": "Le profil « {name} » a été enregistré. La clé API n'est affichée qu'une seule fois: {key}",
   "settings.profiles.keyOnceDone": "Compris",

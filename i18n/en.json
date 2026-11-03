@@ -317,6 +317,8 @@
   "settings.profiles.errorDelete": "The profile could not be deleted.",
   "settings.profiles.errorAction": "The action could not be completed. Is the local service running?",
   "settings.profiles.errorLoad": "The settings could not be loaded. Is the local service running?",
+  "settings.profiles.loading": "Loading…",
+  "settings.retry": "Try again",
   "settings.profiles.taskAuditOnly": "The settings probe tests the profile you pick",
   "settings.profiles.keyOnce": "The profile “{name}” was stored. This is the only time the API key is shown: {key}",
   "settings.profiles.keyOnceDone": "Got it",

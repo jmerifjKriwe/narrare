@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -234,6 +234,42 @@ def test_profiles_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
     )
     assert (test_model, test_status) == ("vendor-mini", "ok")
     assert test_cost == 0.0
+
+
+def test_provider_form_rows_on_the_label_grid(page: Page, stack: Stack) -> None:
+    """The provider surface sits on the 128 px label grid: label and control
+    share one row, the control is the field's 28 px, and the label column is
+    the row grid's own 128 px track — stacked fields and hand-sized labels
+    are what this pin exists to catch.
+
+    Pinned on the form's name field and on an assignment row, the two grids
+    the provider page owns."""
+    page.goto(BASE + "/settings/provider")
+    expect(page.get_by_role("heading", name="Anbieter")).to_be_visible()
+
+    def assert_label_row(label_text: str, control: Locator) -> None:
+        expect(control).to_be_visible()
+        label_box = page.get_by_text(label_text, exact=True).bounding_box()
+        control_box = control.bounding_box()
+        assert label_box is not None and control_box is not None
+        # One row: label and control share the row's vertical centre.
+        label_centre = label_box["y"] + label_box["height"] / 2
+        control_centre = control_box["y"] + control_box["height"] / 2
+        assert abs(label_centre - control_centre) <= 1.5
+        # The control height is the density law's field: 28 px.
+        assert control_box["height"] == 28
+        # The label column is the grid's track, not a sized label.
+        columns = control.evaluate("el => getComputedStyle(el.parentElement).gridTemplateColumns")
+        assert columns.split(" ")[0] == "128px"
+
+    assert_label_row("Name", page.get_by_label("Name", exact=True))
+
+    # The assignments render from the mount's task read.
+    continuation = page.get_by_label("Weiterschreiben")
+    expect(continuation).to_be_visible()
+    assert_label_row("Weiterschreiben", continuation)
+
+    assert_accessible(page)
 
 
 def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None:

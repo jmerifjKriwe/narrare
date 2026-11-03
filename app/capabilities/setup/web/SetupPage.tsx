@@ -1,8 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { usePageTitle } from "@shell/lib/pageTitle";
+import { Button } from "@shell/ui/Button";
+import { Field, Input } from "@shell/ui/field";
+import { Notice } from "@shell/ui/Notice";
+import { Panel } from "@shell/ui/Panel";
 
 /**
  * The demo corpus as the picker shows it, mirroring the kernel manifest
@@ -25,15 +30,27 @@ const DEMOS = [
   },
 ] as const;
 
-/** The setup page: start blank or from a demo, then straight into the editor. */
+/**
+ * The setup page: start blank or from a demo, then straight into the editor.
+ * The shell keeps its bar — the language control is the one thing a first-run
+ * user needs and cannot reach any other way — so the page is one card at the
+ * content measure: 28 rem wide, no viewport-tall wrapper. The page names
+ * itself the way every page does, through the tab's title stack.
+ *
+ * A chosen demo is the L2 selection contract: the `--soft` wash and weight,
+ * the native radio's own dot beside them — never a filled block. The wash
+ * pulls the entry's quiet second line up to foreground, so no muted text
+ * sits on `--soft` (the AA rule the parked P1 finding binds).
+ */
 export function SetupPage() {
   const t = useTranslation();
   const navigate = useNavigate();
+  // The tab's name: first run names itself, like every page of the app.
+  usePageTitle(t("setup.welcome"));
   const [title, setTitle] = useState("");
   const [demo, setDemo] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const selected = demo === null ? undefined : DEMOS.find((entry) => entry.slug === demo);
-  const titleHintId = useId();
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -56,31 +73,30 @@ export function SetupPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">
-      <div className="rounded-lg border border-border bg-card p-8">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("setup.welcome")}</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted">{t("setup.intro")}</p>
-        <form onSubmit={submit} className="mt-6 flex flex-col gap-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("setup.titleLabel")}
-            <input
+    <div className="mx-auto w-full max-w-112 px-4 py-10">
+      <Panel>
+        <h1 className="text-title font-semibold tracking-tight">{t("setup.welcome")}</h1>
+        <p className="mt-2 text-body text-muted">{t("setup.intro")}</p>
+        <form onSubmit={submit} className="mt-5 flex flex-col gap-2">
+          <Field
+            label={t("setup.titleLabel")}
+            hint={
+              selected
+                ? t("setup.demo.titleReplaces", { title: selected.title })
+                : undefined
+            }
+          >
+            <Input
               value={title}
               // A demo names the novel itself, so a typed title is parked —
               // visibly disabled, never silently dropped — until blank wins.
               disabled={selected !== undefined}
-              aria-describedby={selected !== undefined ? titleHintId : undefined}
               onChange={(event) => setTitle(event.target.value)}
-              className="rounded-md border border-border bg-background px-3 py-2 text-base font-normal focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             />
-          </label>
-          {selected ? (
-            <p id={titleHintId} className="text-sm text-muted">
-              {t("setup.demo.titleReplaces", { title: selected.title })}
-            </p>
-          ) : null}
-          <fieldset className="mt-2 flex flex-col gap-2">
-            <legend className="text-sm font-medium">{t("setup.demo.heading")}</legend>
-            <label className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary">
+          </Field>
+          <fieldset className="mt-2 flex flex-col gap-1">
+            <legend className="text-label font-medium">{t("setup.demo.heading")}</legend>
+            <label className="group flex items-start gap-3 rounded-[var(--radius)] px-2 py-1.5 has-checked:bg-soft">
               <input
                 type="radio"
                 name="demo"
@@ -90,14 +106,18 @@ export function SetupPage() {
                 className="mt-1 accent-primary"
               />
               <span className="flex flex-col">
-                <span className="font-medium">{t("setup.demo.blank")}</span>
-                <span className="text-muted">{t("setup.demo.blankHint")}</span>
+                <span className="text-body font-medium group-has-checked:font-semibold">
+                  {t("setup.demo.blank")}
+                </span>
+                <span className="text-label text-muted group-has-checked:text-foreground">
+                  {t("setup.demo.blankHint")}
+                </span>
               </span>
             </label>
             {DEMOS.map((entry) => (
               <label
                 key={entry.slug}
-                className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary"
+                className="group flex items-start gap-3 rounded-[var(--radius)] px-2 py-1.5 has-checked:bg-soft"
               >
                 <input
                   type="radio"
@@ -108,8 +128,10 @@ export function SetupPage() {
                   className="mt-1 accent-primary"
                 />
                 <span className="flex flex-col">
-                  <span className="font-medium">{entry.title}</span>
-                  <span className="text-muted">
+                  <span className="text-body font-medium group-has-checked:font-semibold">
+                    {entry.title}
+                  </span>
+                  <span className="text-label text-muted group-has-checked:text-foreground">
                     {t("setup.demo.language", { language: entry.language })} ·{" "}
                     {t("setup.demo.chapters", { count: entry.chapters })} ·{" "}
                     {t("setup.demo.entities", { count: entry.entities })}
@@ -119,18 +141,15 @@ export function SetupPage() {
             ))}
           </fieldset>
           {failed ? (
-            <p role="alert" className="text-sm text-danger">
+            <Notice tone="danger" live="alert" className="mt-2">
               {t("setup.failed")}
-            </p>
+            </Notice>
           ) : null}
-          <button
-            type="submit"
-            className="mt-2 self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-          >
+          <Button type="submit" variant="primary" className="mt-2 self-start">
             {t("setup.submit")}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Panel>
     </div>
   );
 }

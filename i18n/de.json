@@ -317,6 +317,8 @@
   "settings.profiles.errorDelete": "Das Profil konnte nicht gelöscht werden.",
   "settings.profiles.errorAction": "Die Aktion konnte nicht ausgeführt werden. Läuft der lokale Dienst?",
   "settings.profiles.errorLoad": "Die Einstellungen konnten nicht geladen werden. Läuft der lokale Dienst?",
+  "settings.profiles.loading": "Wird geladen…",
+  "settings.retry": "Erneut versuchen",
   "settings.profiles.taskAuditOnly": "Der Einstellungstest prüft das Profil, das du auswählst",
   "settings.profiles.keyOnce": "Das Profil „{name}“ wurde gespeichert. Der API-Schlüssel wird nur dieses eine Mal angezeigt: {key}",
   "settings.profiles.keyOnceDone": "Verstanden",
