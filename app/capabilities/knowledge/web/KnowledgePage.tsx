@@ -1,43 +1,78 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { Button } from "@shell/ui/Button";
+import { Dialog } from "@shell/ui/Dialog";
+import { Field, Input } from "@shell/ui/field";
 import { client, isModelChange, type Hit, type KnowledgeDocument } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { usePageTitle } from "@shell/lib/pageTitle";
+import { Notice } from "@shell/ui/Notice";
+import { Panel } from "@shell/ui/Panel";
+import { Row } from "@shell/ui/Row";
 
-/** The knowledge page: upload documents, then search them by meaning. */
-export function KnowledgePage() {
+/**
+ * The seam the documents read goes through: the page renders only what
+ * this returns, and the return names the one honest split — an answer
+ * that is not "ok" is `failed`, never an empty list, because "no
+ * documents" is a fact only a reachable service can claim (F14). An ok
+ * answer with no data is honestly empty; with data, the rows pass
+ * through untouched. Exported for the unit test.
+ */
+export function readDocuments(result: {
+  data?: KnowledgeDocument[];
+  response: { ok: boolean };
+}): { kind: "ok"; documents: KnowledgeDocument[] } | { kind: "failed" } {
+  if (!result.response.ok) return { kind: "failed" };
+  return { kind: "ok", documents: result.data ?? [] };
+}
+
+/** The documents area's four states: the wait, the outage, the honest
+ *  empty, the list. Everything the page claims about the library is one
+ *  of these, and all four speak through `Notice`. */
+type Load =
+  | { kind: "loading" }
+  | { kind: "ok"; documents: KnowledgeDocument[] }
+  | { kind: "failed" };
+
+/** Ask once for the documents, through the seam. A service that will not
+ *  answer at all — fetch rejecting before any response exists — is the
+ *  same outage a refusal is, and lands in the same state. */
+async function askDocuments(): Promise<Load> {
+  try {
+    return readDocuments(await client.GET("/api/knowledge/documents"));
+  } catch {
+    return { kind: "failed" };
+  }
+}
+
+/**
+ * The upload form: the fields, the file and the failure live and die with
+ * one mounting — the dialog mounts its content fresh on every open, so
+ * nothing here outlives the dialog it belongs to. A refused upload keeps
+ * the dialog open (the typed values are the user's work, and the retry is
+ * the same button); the model-change refusal is the page's answer to give
+ * — the dialog closes and the page's warning names the repair.
+ */
+function UploadForm({
+  close,
+  onUploaded,
+  onModelChanged,
+}: {
+  close: () => void;
+  onUploaded: () => Promise<void>;
+  onModelChanged: () => void;
+}) {
   const t = useTranslation();
-  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<Hit[] | null>(null);
-  const [ready, setReady] = useState(false);
-  const [uploadError, setUploadError] = useState(false);
-  const [searchError, setSearchError] = useState(false);
-  const [modelChanged, setModelChanged] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const { data } = await client.GET("/api/knowledge/documents");
-      if (cancelled) return;
-      setDocuments(data ?? []);
-      setReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function reload() {
-    const { data } = await client.GET("/api/knowledge/documents");
-    setDocuments(data ?? []);
-  }
-
+  /** Upload the file; close on success and on the model-change refusal, keep the dialog on the rest. */
   async function upload(event: React.FormEvent) {
     event.preventDefault();
     if (file === null) return;
+    setFailed(false);
     const body = new FormData();
     body.append("file", file);
     if (title.trim() !== "") body.append("title", title);
@@ -48,140 +83,243 @@ export function KnowledgePage() {
       body: body as unknown as { file: string; title?: string },
     });
     if (!response.ok) {
-      const changed = isModelChange(error);
-      setUploadError(!changed);
-      setModelChanged(changed);
+      if (isModelChange(error)) {
+        // The corpus refused the width: the repair is the page's business
+        // (its warning carries the re-embed), not the dialog's.
+        onModelChanged();
+        close();
+        return;
+      }
+      setFailed(true);
       return;
     }
-    setUploadError(false);
-    setModelChanged(false);
-    setTitle("");
-    await reload();
+    await onUploaded();
+    close();
+  }
+
+  return (
+    <form onSubmit={(event) => void upload(event)} className="mt-4 flex flex-col gap-3">
+      <Field label={t("knowledge.fileLabel")}>
+        <Input
+          type="file"
+          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+        />
+      </Field>
+      <Field label={t("knowledge.titleLabel")}>
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+      </Field>
+      {failed ? (
+        <Notice tone="danger" live="alert">
+          {t("knowledge.errorUpload")}
+        </Notice>
+      ) : null}
+      <Button type="submit" variant="primary" className="self-start">
+        {t("knowledge.upload")}
+      </Button>
+    </form>
+  );
+}
+
+/** The knowledge page: search the corpus by meaning, and mind the library
+ *  the passages come from — its upload lives behind one dialog, its read
+ *  speaks through one seam, and nothing here mistakes a dead service for
+ *  an empty shelf. */
+export function KnowledgePage() {
+  const t = useTranslation();
+  // The tab's name: this page is "Wissen" until it goes.
+  usePageTitle(t("knowledge.heading"));
+  const [load, setLoad] = useState<Load>({ kind: "loading" });
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<Hit[] | null>(null);
+  const [searchError, setSearchError] = useState(false);
+  const [modelChanged, setModelChanged] = useState(false);
+  const [reembedFailed, setReembedFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const answer = await askDocuments();
+      if (!cancelled) setLoad(answer);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function reload() {
+    setLoad(await askDocuments());
   }
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
     if (query.trim() === "") return;
-    const limit = 5; // the server's own default, pinned here by the request type
-    const { data, error, response } = await client.POST("/api/knowledge/search", {
-      body: { query, limit },
-    });
-    if (!response.ok) {
-      const changed = isModelChange(error);
-      setSearchError(!changed);
-      setModelChanged(changed);
-      return;
-    }
     setSearchError(false);
-    setModelChanged(false);
-    setHits(data ?? []);
+    const limit = 5; // the server's own default, pinned here by the request type
+    try {
+      const { data, error, response } = await client.POST("/api/knowledge/search", {
+        body: { query, limit },
+      });
+      if (!response.ok) {
+        const changed = isModelChange(error);
+        setSearchError(!changed);
+        setModelChanged(changed);
+        return;
+      }
+      setSearchError(false);
+      setModelChanged(false);
+      setHits(data ?? []);
+    } catch {
+      // A service that does not answer is a refused search, not silence.
+      setSearchError(true);
+    }
   }
 
   async function reembed() {
-    const { response } = await client.POST("/api/knowledge/reembed");
-    if (!response.ok) return;
-    setModelChanged(false);
-    await reload();
+    setReembedFailed(false);
+    try {
+      const { response } = await client.POST("/api/knowledge/reembed");
+      if (!response.ok) {
+        // F15: the repair did not happen — said, where the retry sits.
+        setReembedFailed(true);
+        return;
+      }
+      setModelChanged(false);
+      await reload();
+    } catch {
+      setReembedFailed(true);
+    }
   }
-
-  if (!ready) return null;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("knowledge.heading")}</h1>
+      <h1 className="text-title font-semibold tracking-tight">{t("knowledge.heading")}</h1>
       <p className="mt-2 text-sm text-muted">
         <Link to="/" className="underline-offset-4 hover:underline">
           {t("nav.back")}
         </Link>
       </p>
-      <form onSubmit={upload} className="mt-6 flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("knowledge.fileLabel")}
-          <input
-            type="file"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-normal file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("knowledge.titleLabel")}
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-        >
-          {t("knowledge.upload")}
-        </button>
-      </form>
-      {modelChanged ? (
-        <p role="alert" className="mt-4 flex flex-wrap items-center gap-2 text-sm text-danger">
-          {t("knowledge.modelChanged")}{" "}
-          <button
-            type="button"
-            onClick={() => void reembed()}
-            className="rounded-md border border-danger px-2 py-1 font-medium"
-          >
-            {t("knowledge.reembed")}
-          </button>
-        </p>
-      ) : null}
-      {uploadError ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
-          {t("knowledge.errorUpload")}
-        </p>
-      ) : null}
-      {documents.length === 0 ? (
-        <p className="mt-6 text-sm text-muted">{t("knowledge.empty")}</p>
-      ) : (
-        <ul className="mt-6 flex flex-col gap-2">
-          {documents.map((document) => (
-            <li
-              key={document.id}
-              className="rounded-lg border border-border bg-card px-4 py-3 text-sm"
-            >
-              {document.title}
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={search} className="mt-8 flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("knowledge.queryLabel")}
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          className="self-start rounded-md border border-border px-3 py-2 text-sm font-medium"
-        >
+
+      {/* The ask: one field, one submit — the page's only search. */}
+      <form onSubmit={search} className="mt-6 flex flex-col gap-2">
+        <Field label={t("knowledge.queryLabel")}>
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} />
+        </Field>
+        <Button type="submit" variant="secondary" className="self-start">
           {t("knowledge.search")}
-        </button>
+        </Button>
       </form>
       {searchError ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.errorSearch")}
-        </p>
+        </Notice>
       ) : null}
-      {hits === null ? null : hits.length === 0 ? (
-        <p className="mt-6 text-sm text-muted">{t("knowledge.noResults")}</p>
-      ) : (
-        <ul className="mt-6 flex flex-col gap-3">
-          {hits.map((hit) => (
-            <li key={hit.chunk_id} className="rounded-lg border border-border bg-card p-4">
-              <strong className="text-sm font-semibold">{hit.document_title}</strong>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{hit.text}</p>
-            </li>
-          ))}
-        </ul>
+      {modelChanged ? (
+        // The corpus refuses to answer at the new width: the repair is the
+        // one primary-named control beside it.
+        <Notice
+          tone="danger"
+          live="alert"
+          className="mt-2"
+          action={
+            <Button variant="secondary" onClick={() => void reembed()}>
+              {t("knowledge.reembed")}
+            </Button>
+          }
+        >
+          {t("knowledge.modelChanged")}
+        </Notice>
+      ) : null}
+      {reembedFailed ? (
+        // The repair's own failure, named apart from the condition it
+        // treats: a silent return would leave the warning standing as if
+        // the re-embed had merely not been pressed yet.
+        <Notice
+          tone="danger"
+          live="alert"
+          className="mt-2"
+          action={
+            <Button variant="secondary" onClick={() => void reembed()}>
+              {t("knowledge.retry")}
+            </Button>
+          }
+        >
+          {t("knowledge.errorReembed")}
+        </Notice>
+      ) : null}
+
+      {hits === null ? null : (
+        <Panel title={t("knowledge.hitsHeading")} dense className="mt-6">
+          {hits.length === 0 ? (
+            <Notice tone="quiet">{t("knowledge.noResults")}</Notice>
+          ) : (
+            <div>
+              {hits.map((hit) => (
+                // The hit is a row on the rule: the document's title, the
+                // snippet under it. The row grows past the 28 px control
+                // height because the snippet is the content — the rule
+                // between rows is what keeps the column readable.
+                <Row
+                  as="div"
+                  key={hit.chunk_id}
+                  className="h-auto flex-col items-stretch gap-1 py-2"
+                >
+                  <span className="text-label font-semibold">{hit.document_title}</span>
+                  <span className="text-body leading-relaxed text-muted">{hit.text}</span>
+                </Row>
+              ))}
+            </div>
+          )}
+        </Panel>
       )}
+
+      <Panel
+        title={t("knowledge.documentsHeading")}
+        dense
+        className="mt-6"
+        actions={
+          <Dialog title={t("knowledge.newDocument")} triggerLabel={t("knowledge.addDocument")}>
+            {(close) => (
+              <UploadForm
+                close={close}
+                onUploaded={reload}
+                onModelChanged={() => setModelChanged(true)}
+              />
+            )}
+          </Dialog>
+        }
+      >
+        {load.kind === "loading" ? (
+          // The answer has not arrived yet: the page asks rather than
+          // claims — not the library, and not its empty state either.
+          <Notice tone="quiet" live="status">
+            {t("knowledge.loading")}
+          </Notice>
+        ) : load.kind === "failed" ? (
+          // F14: the outage is the state — named, with the way back in the
+          // same notice. The empty claim stays silent here.
+          <Notice
+            tone="danger"
+            live="alert"
+            action={
+              <Button variant="secondary" onClick={() => void reload()}>
+                {t("knowledge.retry")}
+              </Button>
+            }
+          >
+            {t("knowledge.errorDocuments")}
+          </Notice>
+        ) : load.documents.length === 0 ? (
+          <Notice tone="quiet">{t("knowledge.empty")}</Notice>
+        ) : (
+          <div>
+            {load.documents.map((document) => (
+              <Row as="div" key={document.id}>
+                {document.title}
+              </Row>
+            ))}
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

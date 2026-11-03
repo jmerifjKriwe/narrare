@@ -11,8 +11,12 @@ import {
   useFindingsQuery,
   useJobQuery,
 } from "@shell/lib/query";
+import { Button } from "@shell/ui/Button";
 import { JobStatus } from "@shell/ui/JobStatus";
+import { Notice } from "@shell/ui/Notice";
 import { ProposalCard } from "@shell/ui/ProposalCard";
+
+import { ProgressRule } from "./ExtractionPanel";
 
 /** The whole-novel consistency check and its review: the check runs as a
  *  durable job on the same lane the chapter-scoped extraction rides — the
@@ -69,50 +73,52 @@ export function ChecksPanel() {
 
   return (
     <section aria-labelledby={headingId} className="mt-6">
-      <h3 id={headingId} className="text-sm font-semibold">
+      <h3 id={headingId} className="text-body font-semibold">
         {t("knowledge.checksHeading")}
       </h3>
-      <button
-        type="button"
-        onClick={() => void check()}
-        disabled={busy}
-        className="mt-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {t("knowledge.checkNovel")}
-      </button>
+      <div className="mt-2">
+        <Button variant="primary" onClick={() => void check()} disabled={busy}>
+          {t("knowledge.checkNovel")}
+        </Button>
+      </div>
       {enqueueFailed ? (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.checkError")}
-        </p>
+        </Notice>
       ) : null}
       {job.data && !(pollFailed && (job.data.status === "queued" || job.data.status === "running")) ? (
         // The last-known row renders only what it can still stand behind:
         // a done or failed row is a fact and stays beside the outage's
         // alert; a queued or running row is a promise of movement, and a
         // dead poll cannot keep that promise.
-        <div className="mt-2">
+        <div className="mt-2 flex flex-col gap-1">
           <JobStatus job={job.data} />
+          {job.data.status === "running" && job.data.progress !== null ? (
+            <ProgressRule progress={job.data.progress} />
+          ) : null}
         </div>
       ) : null}
       {pollFailed ? (
         // The failed poll names itself where the trigger it unlocked sits:
         // the outage reads as an outage, and the retry is one click away.
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.errorCheckJob")}
-        </p>
+        </Notice>
       ) : null}
       {/* The findings queue outlives the job that filled it: a dock
           reopened later still owes the writer the decisions, so the cards
-          render from the query, not from the job's lifecycle. */}
+          render from the query, not from the job's lifecycle. The card is
+          the review's own surface (P17's to restyle): consumed as it
+          stands, with the finding's decisions as its buttons. */}
       {findings.isError ? (
         // The queue's own outage, named apart from the dock's other
         // failures: the findings, the suggestions and the entity list can
         // all go dark together, and a writer reading several alerts must
         // know which answer is missing. Silence would read as a spent
         // queue — the same mask the suggestions queue never wears.
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.errorFindings")}
-        </p>
+        </Notice>
       ) : (
         (findings.data ?? []).map((finding) => (
           <ProposalCard
@@ -132,7 +138,7 @@ export function ChecksPanel() {
                 .catch(() => undefined);
             }}
           >
-            <p className="mt-2 text-sm font-medium">{finding.summary}</p>
+            <p className="mt-2 text-body font-medium">{finding.summary}</p>
           </ProposalCard>
         ))
       )}
