@@ -76,10 +76,9 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     assert_accessible(page)
 
 
-def test_the_frame_lists_rows_and_the_page_names_itself(page: Page, stack: Stack) -> None:
-    """The settings frame's contract: the cluster nav is a row list in its own
-    200 px column, and every settings page names itself in the tab (WCAG 2.4.2)
-    while the active cluster says so with ``aria-current``."""
+def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) -> None:
+    """The settings frame's geometry: the cluster nav is a row list in its own
+    200 px column, and the pages render beside it — never spilled into it."""
     page.goto("http://127.0.0.1:3100/settings")
 
     # The area's one cluster navigation — distinct from the rail's
@@ -107,14 +106,37 @@ def test_the_frame_lists_rows_and_the_page_names_itself(page: Page, stack: Stack
     # A row is square: the surface radius belongs to panels, never rows.
     assert links.first.evaluate("el => getComputedStyle(el).borderRadius") == "0px"
 
-    # The page names itself in the tab.
+    # The frame keeps its columns to itself: every hub door renders beside
+    # the nav, at the content column's width — an unwrapped multi-root page
+    # auto-places its fragment children into the grid, and from the second
+    # section on they land in the nav's own cell (measured x=180 w=200),
+    # which is the regression this pin exists to catch.
+    for name in ("Sprache", "Anbieter", "Prompts"):
+        region_box = page.get_by_role("region", name=name).bounding_box()
+        assert region_box is not None
+        assert region_box["x"] >= nav_box["x"] + nav_box["width"]
+        assert abs(region_box["width"] - 736) <= 1  # 1000 - 2*16 - 200 - 32
+
+    assert_accessible(page)
+
+
+def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stack: Stack) -> None:
+    """The tab names the page showing (WCAG 2.4.2) on every settings page,
+    and the active cluster row says so with ``aria-current``."""
+    page.goto("http://127.0.0.1:3100/settings")
     expect(page).to_have_title("Einstellungen — Narrare")
 
-    # A sub-page owns its own name, and the active cluster wears aria-current.
+    # A sub-page owns its own name — the landing's, not the area's.
     page.goto("http://127.0.0.1:3100/settings/language")
     expect(page).to_have_title("Sprache — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Sprache")
+    ).to_have_attribute("aria-current", "page")
+
+    page.goto("http://127.0.0.1:3100/settings/provider")
+    expect(page).to_have_title("Anbieter — Narrare")
+    expect(
+        page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Anbieter")
     ).to_have_attribute("aria-current", "page")
 
     assert_accessible(page)

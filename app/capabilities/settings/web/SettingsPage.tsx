@@ -31,7 +31,7 @@ export function SettingsPage() {
         <section
           key={cluster.id}
           aria-labelledby={`settings-cluster-${cluster.id}`}
-          className="border-b border-rule py-4 first:pt-0 last:border-b-0 last:pb-0"
+          className="border-b border-rule py-5 first:pt-0 last:border-b-0 last:pb-0"
         >
           <h2 id={`settings-cluster-${cluster.id}`} className="text-emph font-semibold">
             <Link

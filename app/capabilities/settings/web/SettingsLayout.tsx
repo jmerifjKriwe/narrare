@@ -56,19 +56,27 @@ export function SettingsLayout() {
             <Link
               key={cluster.id}
               to={cluster.path}
-              className={`${rowClass(false)} aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:shadow-[inset_2px_0_0_var(--primary)]`}
+              className={`${rowClass(false)} last:border-b-0 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:shadow-[inset_2px_0_0_var(--primary)]`}
             >
               {t(cluster.titleKey)}
             </Link>
           ))}
         </nav>
 
-        {/* The frame owns the page's shape: this container and the area's
-            single <h1> above are its. A contributed settings page — whatever
-            this Outlet renders — brings sections under an <h2> and no
-            container or <h1> of its own; a second of either double-insets the
-            area or hands a screen reader two page titles. */}
-        <Outlet />
+        {/* The wrapper keeps multi-root pages in this column: an Outlet's
+            fragment children are grid items of their own, and from the
+            second one on they auto-place into the nav's cell. `min-w-0`
+            lets long content shrink inside the minmax track; `mt-6` holds
+            the mobile stack's seam that the nav's removed last-row rule
+            used to hold (md resets it — the column gap takes over).
+            The frame also owns the page's shape: this container and the
+            area's single <h1> above are its, so a contributed settings
+            page brings sections under an <h2> and no container or <h1>
+            of its own — a second of either double-insets the area or
+            hands a screen reader two page titles. */}
+        <div className="min-w-0 mt-6 md:mt-0">
+          <Outlet />
+        </div>
       </div>
     </div>
   );
