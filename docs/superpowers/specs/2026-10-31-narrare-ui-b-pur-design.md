@@ -375,8 +375,8 @@ type/colour/spacing drift is not:
   inside `web/ui/`)
 - `bg-primary` = 0 outside `Button` and `Cover` (a cover's ground is an
   object surface, §8.6)
-- `border-border` = 0 outside primitives
-- `rounded-md` / `rounded-lg` = 0 outside primitives (radii come from tokens)
+- `border-border` = 0 in capability folders (legal on `web/components` chrome, R42)
+- `rounded-md` / `rounded-lg` = 0 in capability folders (rounded-lg legal on `web/components` chrome, R42) (radii come from tokens)
 - `ml-*` / `mr-*` between siblings = 0
 - `text-danger` = 0 outside `Notice`
 
