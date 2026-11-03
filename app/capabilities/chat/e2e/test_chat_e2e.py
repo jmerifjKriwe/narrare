@@ -46,14 +46,7 @@ PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
 
 
 def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: Path) -> None:
-    source = tmp_path / "notizen.txt"
-    source.write_text(PASSAGE, encoding="utf-8")
-
-    page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill("Notizen")
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text("Notizen")).to_be_visible()
+    _upload(page, tmp_path, "Notizen")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -69,14 +62,7 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     # Each test in this module uploads its own document (the stack's database
     # is module-scoped), and the titles share no substring so a page listing
     # every upload still resolves each one to a single element.
-    source = tmp_path / "notizen.txt"
-    source.write_text(PASSAGE, encoding="utf-8")
-
-    page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill("Stylistik")
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text("Stylistik")).to_be_visible()
+    _upload(page, tmp_path, "Stylistik")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -95,18 +81,18 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     answer = page.get_by_role("region", name="Antwort").locator("p").first
     assert answer.evaluate("el => getComputedStyle(el).whiteSpace") == "pre-wrap"
 
+    # F16: the finished answer is spoken once, on completion — the announcer
+    # carries the completion fact (chat.answerReady), never the stream's
+    # deltas: the answer's own words stay in the region, not in the murmur.
+    announcer = page.locator("[data-live-announcer]")
+    expect(announcer).to_contain_text("Antwort bereit.")
+    expect(announcer).not_to_contain_text("Leuchtturm")
+
     assert_accessible(page)
 
 
 def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_path: Path) -> None:
-    source = tmp_path / "notizen.txt"
-    source.write_text(PASSAGE, encoding="utf-8")
-
-    page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill("Sprachwechsel")
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text("Sprachwechsel")).to_be_visible()
+    _upload(page, tmp_path, "Sprachwechsel")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -134,15 +120,24 @@ def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_pat
 
 
 def _upload(page: Page, tmp_path: Path, title: str) -> None:
-    """Seed the knowledge base through the only door a user has."""
+    """Seed the knowledge base through the only door a user has: the upload
+    form behind its dialog — the page holds one "+ Dokument" control since
+    the knowledge re-set, the dialog owns the fields, and a landed upload
+    closes it.
+    """
     source = tmp_path / "notizen.txt"
     source.write_text(PASSAGE, encoding="utf-8")
 
     page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill(title)
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text(title)).to_be_visible()
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill(title)
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    # exact=True: the module's database is shared, so a substring ("Notizen"
+    # inside an earlier "Docknotizen") would tie the check to the run's order.
+    expect(page.get_by_text(title, exact=True)).to_be_visible()
 
 
 def _open_workspace(page: Page, title: str) -> None:
@@ -309,10 +304,13 @@ def _ask_in_dock(page: Page, tmp_path: Path, title: str, passage: str, question:
     source = tmp_path / "notizen.txt"
     source.write_text(passage, encoding="utf-8")
     page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill(title)
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text(title)).to_be_visible()
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill(title)
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text(title, exact=True)).to_be_visible()
 
     _open_workspace(page, f"Die {title}")
 

@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
+import { announce } from "@shell/lib/announce";
 import { client, isModelChange } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { offerProposal } from "@shell/lib/proposal";
 import { readFrames, type Source } from "@shell/lib/stream";
+import { Button } from "@shell/ui/Button";
+import { Field, Input } from "@shell/ui/field";
+import { Notice } from "@shell/ui/Notice";
+import { Row } from "@shell/ui/Row";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
 /** One question, one streamed answer, the sources it cites — the flow both
@@ -64,6 +69,11 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           return;
         }
       }
+      // F16: the stream ended clean — the answer is complete, and that fact
+      // is spoken once, here. The deltas streamed silently; the reader
+      // hears one sentence, not a murmur per token. The failure paths above
+      // and below return without announcing: their alerts speak instead.
+      announce(t("chat.answerReady"));
     } catch {
       // The abort of a departed panel is the user's doing, not a failure —
       // the fetch rejects with it, and there is no panel left to tell.
@@ -83,29 +93,23 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
 
   return (
     <>
+      {/* The ask: one field, one submit — this screen's one filled primary
+          (L1); the offer card's decisions beside the answer are a pair of
+          equals, neither of them a fill. */}
       <form onSubmit={ask} className="flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("chat.questionLabel")}
-          <input
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={asking}
-          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-        >
+        <Field label={t("chat.questionLabel")}>
+          <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
+        </Field>
+        <Button type="submit" variant="primary" disabled={asking} className="self-start">
           {t("chat.ask")}
-        </button>
+        </Button>
       </form>
-      <section aria-label={t("chat.answerLabel")} className="mt-8">
-        <p className="whitespace-pre-wrap leading-relaxed">{answer}</p>
+      <section aria-label={t("chat.answerLabel")} className="mt-6">
+        <p className="whitespace-pre-wrap text-body leading-relaxed">{answer}</p>
         {failed ? (
-          <p role="alert" className="mt-2 text-sm text-danger">
+          <Notice tone="danger" live="alert" className="mt-2">
             {modelChanged ? t("chat.modelChanged") : t("chat.error")}
-          </p>
+          </Notice>
         ) : null}
         {/* The dock's own follow-through: a complete answer can be handed
             to the editor beside it — as a ghost there, never as text
@@ -124,18 +128,24 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
         ) : null}
       </section>
       {sources === null ? null : (
-        <section aria-label={t("chat.sources")} className="mt-8">
+        <section aria-label={t("chat.sources")} className="mt-6">
           {sources.length === 0 ? (
-            <p className="text-sm text-muted">{t("chat.noSources")}</p>
+            <Notice tone="quiet">{t("chat.noSources")}</Notice>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <div className="flex flex-col">
               {sources.map((source) => (
-                <li key={source.chunk_id} className="rounded-lg border border-border bg-card p-4">
-                  <strong className="text-sm font-semibold">{source.document_title}</strong>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">{source.text}</p>
-                </li>
+                // The source is a row on the rule: the document's title,
+                // the quoted passage under it — the hit row's shape.
+                <Row
+                  as="div"
+                  key={source.chunk_id}
+                  className="h-auto flex-col items-stretch gap-1 py-2"
+                >
+                  <span className="text-label font-semibold">{source.document_title}</span>
+                  <span className="text-body leading-relaxed text-muted">{source.text}</span>
+                </Row>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       )}
