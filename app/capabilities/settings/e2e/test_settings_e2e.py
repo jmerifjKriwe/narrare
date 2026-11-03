@@ -74,3 +74,47 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     expect(page.locator("#main")).to_be_focused()
 
     assert_accessible(page)
+
+
+def test_the_frame_lists_rows_and_the_page_names_itself(page: Page, stack: Stack) -> None:
+    """The settings frame's contract: the cluster nav is a row list in its own
+    200 px column, and every settings page names itself in the tab (WCAG 2.4.2)
+    while the active cluster says so with ``aria-current``."""
+    page.goto("http://127.0.0.1:3100/settings")
+
+    # The area's one cluster navigation — distinct from the rail's
+    # Hauptnavigation by its name.
+    nav = page.get_by_role("navigation", name="Einstellungen")
+    links = nav.get_by_role("link")
+    # The area's two clusters plus every registry row (prompts contributes
+    # its page; a new cluster appears here with no edit to the layout).
+    expect(links).to_have_count(3)
+
+    # The nav is a column: 200 px wide, the rows stacked one under the next,
+    # each the row's 28 px control height — not a run of shrink-wrapped
+    # chips on one line.
+    nav_box = nav.bounding_box()
+    assert nav_box is not None
+    assert nav_box["width"] == 200
+    first = links.nth(0).bounding_box()
+    second = links.nth(1).bounding_box()
+    third = links.nth(2).bounding_box()
+    assert first is not None and second is not None and third is not None
+    assert first["y"] < second["y"] < third["y"]
+    for box in (first, second, third):
+        assert box["width"] == 200  # a row fills its column
+        assert box["height"] == 28  # the row's control height
+    # A row is square: the surface radius belongs to panels, never rows.
+    assert links.first.evaluate("el => getComputedStyle(el).borderRadius") == "0px"
+
+    # The page names itself in the tab.
+    expect(page).to_have_title("Einstellungen — Narrare")
+
+    # A sub-page owns its own name, and the active cluster wears aria-current.
+    page.goto("http://127.0.0.1:3100/settings/language")
+    expect(page).to_have_title("Sprache — Narrare")
+    expect(
+        page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Sprache")
+    ).to_have_attribute("aria-current", "page")
+
+    assert_accessible(page)
