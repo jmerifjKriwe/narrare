@@ -366,7 +366,10 @@ rg -o --no-filename 'className="[^"]*"' app/capabilities/*/web/*.tsx web/compone
   | sed 's/className="//;s/"$//' | tr ' ' '\n' | sort | uniq -c | sort -rn
 ```
 
-Targets after T11, in capability folders only:
+Targets after T11. Capability folders carry the full set; `web/components/`
+(shell chrome, not primitives) carries the drift set — the shell owns its
+hairlines, so `border-border`/`rounded-lg` are legal there on chrome, while
+type/colour/spacing drift is not:
 
 - `text-sm` = 0 (the scale is `text-body` and friends; `text-sm` survives only
   inside `web/ui/`)

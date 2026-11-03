@@ -341,7 +341,7 @@ rg -o --no-filename 'className="[^"]*"' app/capabilities/*/web/*.tsx web/compone
   | sed 's/className="//;s/"$//' | tr ' ' '\n' | sort | uniq -c | sort -rn
 ```
 
-  Targets in `app/capabilities/*/web/` and `web/components/`: `text-sm` 0, `bg-primary` 0 (outside `Button` and `Cover` — a cover's sepia ground is an object surface, spec §8.6), `border-border` 0, `rounded-md` 0, `rounded-lg` 0, `text-danger` 0, `ml-`/`mr-` between siblings 0. `text-sm` may survive only in `web/ui/`.
+  Targets in `app/capabilities/*/web/`: `text-sm` 0, `bg-primary` 0 (outside `Button` and `Cover` — spec §8.6), `border-border` 0, `rounded-md` 0, `rounded-lg` 0, `text-danger` 0, `ml-`/`mr-` between siblings 0. In `web/components/` (shell chrome): `text-sm` 0, `bg-primary` 0, `text-danger` 0, `rounded-md` 0, `ml-`/`mr-` 0 — `border-border`/`rounded-lg` are legal on chrome (the shell owns its hairlines, ruling R42). `text-sm` may survive only in `web/ui/`.
 - [ ] **Step 2:** Run `just verify all`. Expected: PASS. Any red is fixed here, not deferred.
 - [ ] **Step 3:** Re-run the five Review Focus inputs by hand against the running app (long title, 60 chapters, empty book, de/fr copy, outage) and record the observation for each in the task report.
 - [ ] **Step 4:** File one GitHub issue per finding that survived, label `follow-up`, under the wave's index issue; close each finding this wave fixed with `Closes #n` in its own commit.
