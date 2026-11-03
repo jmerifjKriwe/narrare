@@ -151,17 +151,22 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           ) : (
             // The sources are a real list (assistive tech announces the
             // count); each entry is a row on the rule — the document's
-            // title, the quoted passage under it. The last row drops its
-            // rule: the list ends, it does not dangle a separator. (The
-            // `last:` variant wins over `rowClass`'s `border-b` by
-            // specificity; a same-weight extension like a bare `gap-1`
-            // would lose the compiled order — see the report.)
+            // title, the quoted passage under it. The last row yields its
+            // rule through an index-pinned inline style: a class-level
+            // `:last-child` is useless here — every Row is its li's only
+            // child, so it matches all of them — and an inline declaration
+            // beats the utilities the row already wears, reliably.
             <ul className="flex flex-col">
-              {sources.map((source) => (
+              {sources.map((source, index) => (
                 <li key={source.chunk_id}>
                   <Row
                     as="div"
-                    className="h-auto flex-col items-stretch py-2 last:border-b-0"
+                    className="h-auto flex-col items-stretch py-2"
+                    style={
+                      index === sources.length - 1
+                        ? { borderBottomWidth: 0 }
+                        : undefined
+                    }
                   >
                     <span className="text-label font-semibold">{source.document_title}</span>
                     <span className="text-body leading-relaxed text-muted">{source.text}</span>

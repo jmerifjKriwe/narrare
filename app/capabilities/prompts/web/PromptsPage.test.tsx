@@ -192,6 +192,10 @@ describe("the summary list", () => {
   it("names the four keys and gives each a Global chip", async () => {
     await renderPage();
 
+    // The tab wears the page's name (usePageTitle on mount): the page's
+    // catalog title composed with the app's.
+    expect(document.title).toBe("Prompts — Narrare");
+
     for (const label of [
       t("settings.task.writing.continuation"),
       t("settings.task.chat.ask"),

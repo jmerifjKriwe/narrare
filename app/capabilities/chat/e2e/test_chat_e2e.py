@@ -61,8 +61,12 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
 def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path) -> None:
     # Each test in this module uploads its own document (the stack's database
     # is module-scoped), and the titles share no substring so a page listing
-    # every upload still resolves each one to a single element.
+    # every upload still resolves each one to a single element. The second
+    # document keeps the corpus at two chunks even when this test runs first
+    # (pytest-randomly) — the source-row rule pin below needs a first and a
+    # last row to tell apart.
     _upload(page, tmp_path, "Stylistik")
+    _upload(page, tmp_path, "Randnotiz")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -101,9 +105,19 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     ).to_have_count(1)
     expect(announcer).not_to_contain_text("Leuchtturm")
 
-    # The sources are a real list — assistive tech hears how many.
-    sources = page.get_by_role("region", name="Quellen")
-    expect(sources.get_by_role("listitem").first).to_be_visible()
+    # The sources are a real list — assistive tech hears how many — and the
+    # rules between rows survive: every non-final row computes a 1 px bottom
+    # rule, only the last one yields (0 px).
+    rows = page.get_by_role("region", name="Quellen").get_by_role("listitem")
+    expect(rows.first).to_be_visible()
+    count = rows.count()
+    assert count >= 2
+    widths = [
+        rows.nth(index).evaluate("el => getComputedStyle(el.firstElementChild).borderBottomWidth")
+        for index in range(count)
+    ]
+    assert all(width == "1px" for width in widths[:-1])
+    assert widths[-1] == "0px"
 
     assert_accessible(page)
 
