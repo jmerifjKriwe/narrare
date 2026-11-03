@@ -388,7 +388,6 @@
   "commands.openWissenDock": "Open Wissen dock",
   "commands.newChapter": "New chapter",
   "commands.exportNovel": "Export novel",
-  "palette.title": "Jump to",
   "palette.aria": "Command palette",
   "palette.searchLabel": "Search chapters, entities, pages and commands",
   "palette.chapters": "Chapters",

@@ -53,6 +53,31 @@ describe("JobStatus", () => {
     expect(status.textContent).toContain("40");
   });
 
+  it("renders the running row's reported progress as a progressbar on the rule", () => {
+    // The sentence is the row's voice; the bar is the movement the poll
+    // sees — a 1 px rule carrying the 2 px fill at the reported share,
+    // named by its value so a screen reader hears the progress, not just
+    // the sentence about it.
+    render(<JobStatus job={job({ status: "running", progress: 40 })} />);
+    const bar = screen.getByRole("progressbar");
+    expect(bar.getAttribute("aria-valuenow")).toBe("40");
+    expect(bar.getAttribute("aria-valuemin")).toBe("0");
+    expect(bar.getAttribute("aria-valuemax")).toBe("100");
+    expect(bar.className).toContain("h-px");
+    expect(bar.className).toContain("bg-rule");
+    const fill = bar.firstElementChild as HTMLElement;
+    expect(fill.className).toContain("h-0.5");
+    expect(fill.className).toContain("bg-primary");
+    expect(fill.style.width).toBe("40%");
+  });
+
+  it("renders a running row without reported progress without a bar", () => {
+    // Progress is the handler's to report; until it does there is nothing
+    // to draw — an empty rule would promise a share nobody reported.
+    render(<JobStatus job={job({ status: "running" })} />);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
   it("names a truncated read beside the done count", () => {
     // The job read what it could; a done row that stayed silent about the cut
     // tail would let a writer believe the whole chapter was read.

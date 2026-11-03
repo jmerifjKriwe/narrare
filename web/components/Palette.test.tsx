@@ -243,6 +243,33 @@ describe("the palette's keyboard contract", () => {
   });
 });
 
+describe("the palette wears the system's rows", () => {
+  it("rows are the primitive's 28 px rows on the rule — the old hand-rolled paint is gone", async () => {
+    mockWorkspace();
+    renderAt(`/novels/${NOVEL_ID}`);
+    await openPalette();
+
+    const row = await paletteRow("Der Anfang");
+    // rowClass's control height and rule separator carry the rows now, not
+    // the old py-2/text-sm paint.
+    expect(row.className).toContain("h-7");
+    expect(row.className).toContain("border-rule");
+    expect(row.className).not.toContain("text-sm");
+    expect(row.className).not.toContain("rounded-md");
+    // The primitive's selection marker belongs to a selected row; the
+    // palette's keyboard walk moves focus, so no row is one.
+    expect(row.getAttribute("data-selected")).toBeNull();
+
+    // The group label speaks at the label size.
+    const group = await paletteGroup(t("palette.chapters"));
+    const label = group.querySelector("p") as HTMLElement;
+    expect(label.className).toContain("text-label");
+
+    // The palette names itself for what it is, not for what it offers.
+    expect(screen.getByRole("dialog", { name: t("palette.aria") })).toBeTruthy();
+  });
+});
+
 describe("the groups fill from context", () => {
   it("with a novel: Chapters, Entities, Docks & pages, Commands — the blank query shows every row", async () => {
     mockWorkspace();
@@ -454,7 +481,7 @@ describe("the commands run", () => {
     });
     // The palette stepped aside: the export dialog owns the stage, and it
     // is the only dialog on it.
-    expect(screen.queryByRole("dialog", { name: t("palette.title") })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: t("palette.aria") })).toBeNull();
 
     // ⌘K during the dialog is refused: opening would stack a second focus
     // trap over the first, typing would drive a page the dialog shadows,
@@ -465,7 +492,7 @@ describe("the commands run", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(screen.queryByRole("dialog", { name: t("palette.title") })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: t("palette.aria") })).toBeNull();
     // The dialog that owned the stage still owns it.
     expect(
       screen.getByRole("heading", { name: t("shelf.exportTitle", { title: NOVEL.title }) }),

@@ -261,7 +261,7 @@ def _row_named(entities: Locator, name: str) -> Locator:
     return entities.get_by_role("gridcell", name=name, exact=True)
 
 
-def _open_palette(page: Page, title: str = "Springen zu") -> Locator:
+def _open_palette(page: Page, title: str = "Befehlspalette") -> Locator:
     """⌘K opens the palette over whatever the page holds; the dialog answers."""
     page.keyboard.press("Control+k")
     palette = page.get_by_role("dialog", name=title)
@@ -542,7 +542,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
         expect(page.get_by_role("region", name=region)).to_be_visible()
     assert_accessible(page)
     # The palette is a surface of its own: its words re-render with the page.
-    palette = _open_palette(page, title="Jump to")
+    palette = _open_palette(page, title="Command palette")
     expect(palette.get_by_role("textbox")).to_have_attribute(
         "placeholder", "Search chapters, entities, pages and commands"
     )

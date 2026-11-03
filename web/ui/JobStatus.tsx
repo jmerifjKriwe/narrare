@@ -28,21 +28,41 @@ export function JobStatus({ job }: { job: Job }) {
   switch (job.status) {
     case "queued":
       return (
-        <p role="status" data-job-status="queued" className="text-sm text-muted">
+        <p role="status" data-job-status="queued" className="text-body text-muted">
           {t("jobs.queued")}
         </p>
       );
     case "running":
       return (
-        <p role="status" data-job-status="running" className="text-sm text-muted">
-          {job.progress === null
-            ? t("jobs.running")
-            : t("jobs.runningProgress", { progress: job.progress / 100 })}
-        </p>
+        <>
+          <p role="status" data-job-status="running" className="text-body text-muted">
+            {job.progress === null
+              ? t("jobs.running")
+              : t("jobs.runningProgress", { progress: job.progress / 100 })}
+          </p>
+          {/* The movement the poll sees: the reported share on the 1 px
+              rule, the fill riding it 2 px thick and named by its value —
+              a screen reader hears the progress, the eye watches the fill.
+              Until the handler reports, there is nothing to draw. */}
+          {job.progress !== null ? (
+            <div
+              role="progressbar"
+              aria-valuenow={job.progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="mt-1 h-px bg-rule"
+            >
+              <div
+                className="h-0.5 bg-primary"
+                style={{ width: `${job.progress}%` }}
+              />
+            </div>
+          ) : null}
+        </>
       );
     case "failed":
       return (
-        <p role="alert" data-job-status="failed" className="text-sm text-danger">
+        <p role="alert" data-job-status="failed" className="text-body text-danger">
           {t("jobs.failed", { error: job.error ?? "" })}
         </p>
       );
@@ -57,7 +77,7 @@ export function JobStatus({ job }: { job: Job }) {
       const skipped = skippedChapters(job);
       return (
         <>
-          <p role="status" data-job-status="done" className="text-sm text-muted">
+          <p role="status" data-job-status="done" className="text-body text-muted">
             {outcome === undefined
               ? // A kind without an entry is contract drift, and hiding it
                 // would look like silence. Shown raw, it is at least seen —
@@ -69,7 +89,7 @@ export function JobStatus({ job }: { job: Job }) {
             <p
               role="status"
               data-job-truncated="true"
-              className="mt-1 text-sm text-muted"
+              className="mt-1 text-body text-muted"
             >
               {t("jobs.truncated")}
             </p>
@@ -78,7 +98,7 @@ export function JobStatus({ job }: { job: Job }) {
             <p
               role="status"
               data-job-skipped={skipped.length}
-              className="mt-1 text-sm text-muted"
+              className="mt-1 text-body text-muted"
             >
               {t("jobs.skippedChapters", {
                 titles: skipped
@@ -97,7 +117,7 @@ export function JobStatus({ job }: { job: Job }) {
       // A status outside the lane's state machine is contract drift, and
       // hiding it would look like silence. Shown raw, it is at least seen.
       return (
-        <p role="status" data-job-status={job.status} className="text-sm text-muted">
+        <p role="status" data-job-status={job.status} className="text-body text-muted">
           {job.status}
         </p>
       );
