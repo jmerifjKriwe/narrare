@@ -29,6 +29,7 @@
   "nav.back": "All novels",
   "chapters.defaultTitle": "Chapter {n}",
   "setup.welcome": "Welcome to Narrare",
+  "setup.tabTitle": "Welcome",
   "setup.intro": "Create your first novel.",
   "setup.titleLabel": "Novel title",
   "setup.submit": "Get started",

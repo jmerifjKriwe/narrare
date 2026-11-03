@@ -155,6 +155,33 @@ def test_setup_fits_the_first_screen(page: Page, stack: Stack) -> None:
     assert_accessible(page)
 
 
+def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
+    """Each demo entry shows the book a face: one generated cover tile per
+    demo — a 3:4 object beside the words, hidden from the accessibility tree
+    (the radio's name already carries the title, and a second copy of it
+    would read twice). The tab names the page short, too: ``<page> —
+    Narrare``, not the welcome sentence twice."""
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(BASE + "/setup")
+    expect(page.get_by_role("heading", name="Willkommen bei Narrare")).to_be_visible()
+
+    expect(page).to_have_title("Willkommen — Narrare")
+
+    for title in ("Im Stillen Wald", "Dead Signal", "Echoes of the Thornwall"):
+        tile = (
+            page.get_by_role("radio", name=title)
+            .locator("xpath=ancestor::label[1]")
+            .locator("[aria-hidden='true']")
+        )
+        expect(tile).to_have_count(1)
+        box = tile.bounding_box()
+        assert box is not None
+        # The cover's 3:4 tile: an object on the row, not a text block.
+        assert abs(box["width"] / box["height"] - 0.75) <= 0.02
+
+    assert_accessible(page)
+
+
 def test_blank_path_unchanged(page: Page, stack: Stack) -> None:
     """First run without a demo: one empty novel, and the workbench opens."""
     page.goto(BASE + "/")

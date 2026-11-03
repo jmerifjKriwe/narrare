@@ -29,6 +29,7 @@
   "nav.back": "Tous les romans",
   "chapters.defaultTitle": "Chapitre {n}",
   "setup.welcome": "Bienvenue dans Narrare",
+  "setup.tabTitle": "Bienvenue",
   "setup.intro": "Créez votre premier roman.",
   "setup.titleLabel": "Titre du roman",
   "setup.submit": "Commencer",

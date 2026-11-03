@@ -5,6 +5,7 @@ import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { Button } from "@shell/ui/Button";
+import { Cover } from "@shell/ui/Cover";
 import { Field, Input } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
@@ -40,13 +41,17 @@ const DEMOS = [
  * A chosen demo is the L2 selection contract: the `--soft` wash and weight,
  * the native radio's own dot beside them — never a filled block. The wash
  * pulls the entry's quiet second line up to foreground, so no muted text
- * sits on `--soft` (the AA rule the parked P1 finding binds).
+ * sits on `--soft` (the AA rule the parked P1 finding binds). Each demo
+ * wears the shell's `Cover` (R41: the tile lives in `web/ui/` now — the
+ * second capability needing the engine was the rule's own trigger), so
+ * first run meets the same book object the shelf shows.
  */
 export function SetupPage() {
   const t = useTranslation();
   const navigate = useNavigate();
-  // The tab's name: first run names itself, like every page of the app.
-  usePageTitle(t("setup.welcome"));
+  // The tab's name: the page's short word, not the welcome sentence twice —
+  // `<page> — Narrare` composes the rest, the way every page does.
+  usePageTitle(t("setup.tabTitle"));
   const [title, setTitle] = useState("");
   const [demo, setDemo] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -117,7 +122,7 @@ export function SetupPage() {
             {DEMOS.map((entry) => (
               <label
                 key={entry.slug}
-                className="group flex items-start gap-3 rounded-[var(--radius)] px-2 py-1.5 has-checked:bg-soft"
+                className="group flex items-center gap-3 rounded-[var(--radius)] px-2 py-1.5 has-checked:bg-soft"
               >
                 <input
                   type="radio"
@@ -125,9 +130,14 @@ export function SetupPage() {
                   value={entry.slug}
                   checked={demo === entry.slug}
                   onChange={() => setDemo(entry.slug)}
-                  className="mt-1 accent-primary"
+                  className="accent-primary"
                 />
-                <span className="flex flex-col">
+                {/* The demo's cover: the book a face, the shelf's tile —
+                    the object grounds the choice the radio names. The tile
+                    is aria-hidden; the radio's name already carries the
+                    title, and a second copy of it would read twice. */}
+                <Cover title={entry.title} />
+                <span className="flex min-w-0 flex-col">
                   <span className="text-body font-medium group-has-checked:font-semibold">
                     {entry.title}
                   </span>

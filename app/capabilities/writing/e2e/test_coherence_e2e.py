@@ -381,7 +381,11 @@ def test_the_writer_s_day_holds_together_end_to_end(
     _row_named(entities, RELATION_CARRIER).click()
     detail = dock.get_by_role("region", name=RELATION_CARRIER)
     expect(detail).to_be_visible()
-    expect(detail).to_contain_text("→ Johann Bauer")
+    # No arrow glyph: relations stopped being a sentence with arrows
+    # (0909a16c) — the edge reads as its two facts, target and type. This
+    # expectation stayed behind in that round; the repair lands here because
+    # this suite is where it bites.
+    expect(detail).to_contain_text("Johann Bauer · Verbunden mit")
     assert_accessible(page)
 
     # --- The merge: two entries for the same thing fold into one. The floor

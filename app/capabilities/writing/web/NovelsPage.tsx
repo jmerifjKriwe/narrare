@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button, buttonClass } from "@shell/ui/Button";
+import { Cover } from "@shell/ui/Cover";
 import { client, type Novel, type NovelCreate } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -13,7 +14,6 @@ import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 
-import { Cover } from "./Cover";
 import { ExportNovelDialog, ImportArchiveDialog } from "./InterchangeDialogs";
 
 /**
