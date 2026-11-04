@@ -476,25 +476,30 @@ function ChipsField({
         }
       }}
     >
-      {values.length > 0 ? (
-        <ul className="flex flex-wrap gap-1">
-          {values.map((value) => (
-            <li
-              key={value}
-              className="flex items-center gap-1 rounded-full bg-panel px-2 py-0.5 text-label"
-            >
-              <span>{value}</span>
-              <Button
-                variant="icon"
-                size="sm"
-                icon={<Icon name="cross" />}
-                label={t("knowledge.chipRemove", { value })}
-                onClick={() => onChange(values.filter((existing) => existing !== value))}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {/* The row is reserved even when empty: a chips field that grows on
+          its first commit moves everything below it — the save button
+          included — in the same task as the commit's blur, and the click
+          that caused the blur lands where the button was. The reserved
+          row keeps the commit from moving what the pointer is aiming at
+          (the upload-preservation class: a typed value must survive the
+          interaction that files it). */}
+      <ul className="flex min-h-6 flex-wrap gap-1">
+        {values.map((value) => (
+          <li
+            key={value}
+            className="flex items-center gap-1 rounded-full bg-panel px-2 py-0.5 text-label"
+          >
+            <span>{value}</span>
+            <Button
+              variant="icon"
+              size="sm"
+              icon={<Icon name="cross" />}
+              label={t("knowledge.chipRemove", { value })}
+              onClick={() => onChange(values.filter((existing) => existing !== value))}
+            />
+          </li>
+        ))}
+      </ul>
       <Field label={label}>
         <Input value={text} onChange={(event) => setText(event.target.value)} />
       </Field>

@@ -25,6 +25,7 @@ import { countWords, formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 import { Icon } from "@shell/ui/icons";
+import { Notice } from "@shell/ui/Notice";
 import { Row } from "@shell/ui/Row";
 
 import { ChapterEditor } from "./ChapterEditor";
@@ -504,7 +505,7 @@ export function NovelPage() {
     <div className="mx-auto max-w-[1152px] px-4 py-10 xl:px-0">
       {focus < 2 ? (
         <>
-          <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
+          <Link to="/" className="text-body text-muted underline-offset-4 hover:underline">
             {t("nav.back")}
           </Link>
           {/* The heading names the book only when the book's row is here: an
@@ -591,12 +592,12 @@ export function NovelPage() {
                the container with no gap to account for. The list bounds
                its height and scrolls inside itself (Review Focus 2); below
                the breakpoint the whole drawer scrolls instead. */
-            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-lg max-lg:border max-lg:border-border max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
             aria-label={t("chapters.heading")}
           >
-            <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
+            <h2 className="text-title font-semibold tracking-tight">{t("chapters.heading")}</h2>
             {chapters.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">{t("chapters.empty")}</p>
+              <p className="mt-2 text-body text-muted">{t("chapters.empty")}</p>
             ) : null}
             {/* The list scrolls itself in the desktop columns only (its
                 bounded height is a column fact); below 1024 the drawer
@@ -660,17 +661,13 @@ export function NovelPage() {
                 );
               })}
             </ul>
-            <button
-              type="button"
-              onClick={() => void createChapter()}
-              className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
-            >
+            <Button onClick={() => void createChapter()} className="mt-3 w-full">
               {t("chapters.new")}
-            </button>
+            </Button>
             {createFailed ? (
-              <p role="alert" className="mt-2 text-sm text-danger">
+              <Notice tone="danger" live="alert" className="mt-2">
                 {t("chapters.errorCreate")}
-              </p>
+              </Notice>
             ) : null}
           </aside>
         ) : null}
@@ -682,46 +679,48 @@ export function NovelPage() {
           <div className="w-full max-w-[544px]">
             {pending ? (
               // The page has asked and is waiting — a named state, not a blank
-              // or empty-looking book.
-              <p className="mt-6 text-sm text-muted">{t("chapters.loading")}</p>
+              // or empty-looking book. Quiet and polite: nothing is wrong.
+              <Notice tone="quiet" live="status" className="mt-6">
+                {t("chapters.loading")}
+              </Notice>
             ) : failed ? (
               // The book could not be loaded — refused or unreachable, with
               // nothing on screen to keep. The failure is named where the
-              // retry is one press away.
-              <div className="mt-6">
-                <p role="alert" className="text-sm text-danger">
-                  {t("chapters.errorLoad")}
-                </p>
-                <button
-                  type="button"
-                  onClick={retry}
-                  className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-                >
-                  {t("chapters.retry")}
-                </button>
-              </div>
+              // retry is one press away (the shelf's outage shape).
+              <Notice
+                tone="danger"
+                live="alert"
+                className="mt-6"
+                action={
+                  <Button variant="secondary" onClick={retry}>
+                    {t("chapters.retry")}
+                  </Button>
+                }
+              >
+                {t("chapters.errorLoad")}
+              </Notice>
             ) : (
               <>
                 {refreshFailed ? (
                   // The refresh failed, but the chapters on screen are the
                   // last loaded ones: a quiet note beside the work, not the
                   // outage's louder clothes — the editor and the rail stay,
-                  // and the retry asks again. `role="status"` is what keeps
-                  // the note from being silent to a screen reader: background
-                  // speech about work that stays, not an alert about work
-                  // that is gone.
-                  <div className="mt-6 flex items-baseline gap-3">
-                    <p role="status" className="text-sm text-muted">
-                      {t("chapters.refreshFailed")}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={retry}
-                      className="text-sm text-muted underline-offset-4 hover:underline"
-                    >
-                      {t("chapters.retry")}
-                    </button>
-                  </div>
+                  // and the retry asks again. The shelf's derived-boolean
+                  // pattern: one Notice, `live="status"` keeps it from being
+                  // silent to a screen reader — background speech about work
+                  // that stays, not an alert about work that is gone.
+                  <Notice
+                    tone="quiet"
+                    live="status"
+                    className="mt-6"
+                    action={
+                      <Button variant="secondary" onClick={retry}>
+                        {t("chapters.retry")}
+                      </Button>
+                    }
+                  >
+                    {t("chapters.refreshFailed")}
+                  </Notice>
                 ) : null}
                 {current ? (
                   <ChapterEditor
@@ -768,10 +767,10 @@ export function NovelPage() {
                right below 1024, the desktop's dock column at ≥1024. The
                384 the dock takes are the arithmetic's own; its gutter to
                the prose lives inside the column. */
-            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:pl-6"
+            className="w-96 shrink-0 rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:pl-6"
             aria-label={t(openDock.titleKey)}
           >
-            <h2 className="text-lg font-semibold">{t(openDock.titleKey)}</h2>
+            <h2 className="text-title font-semibold tracking-tight">{t(openDock.titleKey)}</h2>
             <div className="mt-3 max-h-[50vh] overflow-y-auto">
               <Outlet />
             </div>

@@ -113,7 +113,7 @@ function ShelfCard({ novel }: { novel: Novel }) {
       <Link
         to="/novels/$id"
         params={{ id: novel.id }}
-        className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-border bg-card p-3 no-underline underline-offset-4 hover:bg-soft hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline underline-offset-4 hover:bg-soft hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <div className="flex items-start gap-3 pr-7">
           <Cover title={novel.title} />
@@ -242,24 +242,24 @@ export function NovelsPage() {
       <div className="mx-auto max-w-[1200px] px-4 py-10">
         <h1 className="text-title font-semibold tracking-tight">{t("novels.heading")}</h1>
         <div aria-hidden="true" className="mt-6 flex flex-col gap-3">
-          <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-border bg-card p-4">
+          <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-rule bg-card p-4">
             <div className="aspect-[3/4] w-28 shrink-0 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
             <div className="flex flex-1 flex-col gap-2">
-              <div className="h-5 w-48 motion-safe:animate-pulse rounded bg-rule" />
-              <div className="h-3 w-32 motion-safe:animate-pulse rounded bg-rule" />
-              <div className="h-3 w-24 motion-safe:animate-pulse rounded bg-rule" />
+              <div className="h-5 w-48 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
+              <div className="h-3 w-32 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
+              <div className="h-3 w-24 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
             </div>
           </div>
           {[0, 1, 2].map((row) => (
             <div
               key={row}
-              className="flex gap-3 rounded-[var(--radius-lg)] border border-border bg-card p-3"
+              className="flex gap-3 rounded-[var(--radius-lg)] border border-rule bg-card p-3"
             >
               <div className="aspect-[3/4] w-20 shrink-0 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
               <div className="flex flex-1 flex-col gap-2 py-1">
-                <div className="h-4 w-2/3 motion-safe:animate-pulse rounded bg-rule" />
-                <div className="h-3 w-1/3 motion-safe:animate-pulse rounded bg-rule" />
-                <div className="h-3 w-1/4 motion-safe:animate-pulse rounded bg-rule" />
+                <div className="h-4 w-2/3 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
+                <div className="h-3 w-1/3 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
+                <div className="h-3 w-1/4 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
               </div>
             </div>
           ))}

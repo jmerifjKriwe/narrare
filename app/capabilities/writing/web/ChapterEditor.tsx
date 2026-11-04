@@ -6,7 +6,9 @@ import { useTranslation } from "@shell/lib/i18n";
 import { SaveIndicator, type SaveStatus } from "@shell/lib/save";
 import { readFrames } from "@shell/lib/stream";
 import { countWords } from "@shell/lib/words";
+import { Button } from "@shell/ui/Button";
 import { MarkdownEditor } from "@shell/ui/markdown-editor";
+import { Notice } from "@shell/ui/Notice";
 import type { Editor } from "@tiptap/core";
 
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
@@ -254,19 +256,16 @@ export function ChapterEditor({
         </header>
       ) : null}
       <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={continueWriting}
-          disabled={continuing}
-          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-        >
+        {/* The workspace's one filled primary (R46): through the primitive,
+            so the fill, the ring and the disabled state ride buttonClass. */}
+        <Button variant="primary" onClick={continueWriting} disabled={continuing}>
           {t("chapters.continue")}
-        </button>
+        </Button>
       </div>
       {failed ? (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("chapters.continueError")}
-        </p>
+        </Notice>
       ) : null}
       <MarkdownEditor
         className="mt-6"

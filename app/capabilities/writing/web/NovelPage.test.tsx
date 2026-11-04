@@ -267,7 +267,9 @@ describe("the workbench's four cache states", () => {
     // this is the named outage, not a refresh that never happened — and no
     // empty heading claims a book the page cannot name.
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe(t("chapters.errorLoad"));
+    // The Notice's retry action shares the alert's text — the announcement
+    // carries the fix, so the message is asserted as a part, not the whole.
+    expect(alert.textContent).toContain(t("chapters.errorLoad"));
     expect(screen.queryByText(t("chapters.refreshFailed"))).toBeNull();
     expect(screen.queryByRole("heading")).toBeNull();
     // The empty-rail copy is a loaded book's truth, not a missing one's.
@@ -286,7 +288,7 @@ describe("the workbench's four cache states", () => {
     // The list has never arrived — the rail would be an empty book's clothes:
     // the outage is named where the retry is one press away.
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe(t("chapters.errorLoad"));
+    expect(alert.textContent).toContain(t("chapters.errorLoad"));
     expect(screen.queryByText(t("chapters.refreshFailed"))).toBeNull();
     expect(screen.queryByRole("button", { name: t("chapters.new") })).toBeNull();
   });

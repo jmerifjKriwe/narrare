@@ -4,6 +4,7 @@ import {
   useId,
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
@@ -29,6 +30,44 @@ const CONTROL_BASE =
  */
 export function controlClass(grows = false): string {
   return `${grows ? "min-h-7" : "h-7"} ${CONTROL_BASE}`;
+}
+
+const FILE_CONTROL_CLASSES = `${controlClass()} file:mr-3 file:rounded-[var(--radius)] file:border-0 file:bg-transparent file:text-label file:font-medium`;
+
+/**
+ * The file input: the control contract plus the native `::file-selector-
+ * button` painted into the system — the label size, the token radius, no
+ * border of its own. The one shared voice for every upload control (the
+ * interchange dialog's, the knowledge page's), so the legacy `text-sm`/
+ * bare-radius paint cannot come back (#529/#530). Field wiring rides
+ * through like `Input`'s.
+ */
+export function FileInput(
+  props: InputHTMLAttributes<HTMLInputElement> & {
+    ref?: Ref<HTMLInputElement>;
+  },
+) {
+  const { id, describedBy, ariaInvalid } = useFieldControl();
+  const {
+    className,
+    "aria-describedby": describedby,
+    "aria-invalid": invalid,
+    ...rest
+  } = props;
+  return (
+    <input
+      {...rest}
+      type="file"
+      id={id(props.id)}
+      aria-describedby={describedBy(describedby)}
+      aria-invalid={invalid || ariaInvalid}
+      className={
+        className
+          ? `${FILE_CONTROL_CLASSES} ${className}`
+          : FILE_CONTROL_CLASSES
+      }
+    />
+  );
 }
 
 /** A field stacks label, control and messages at the scale's label gap. */

@@ -7,6 +7,7 @@ import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
+import { FileInput } from "@shell/ui/field";
 import { Field, Input, Select } from "@shell/ui/field";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
@@ -36,7 +37,7 @@ function RadioRow({
   onPick: () => void;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex items-center gap-2 text-label">
       <input type="radio" name={name} checked={checked} onChange={onPick} />
       {label}
     </label>
@@ -177,7 +178,7 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
     <div className="mt-4 flex flex-col gap-3">
       {receipt ? (
         <>
-          <div aria-labelledby={receiptId} className="flex flex-col gap-1 text-sm">
+          <div aria-labelledby={receiptId} className="flex flex-col gap-1 text-body">
             <h3 id={receiptId} className="font-medium">
               {t("shelf.export.doneHeading")}
             </h3>
@@ -192,7 +193,7 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
       ) : (
         <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
           <fieldset className="flex flex-col gap-1">
-            <legend className="text-sm font-medium">{t("shelf.export.modeLabel")}</legend>
+            <legend className="text-label font-medium">{t("shelf.export.modeLabel")}</legend>
             <RadioRow
               label={t("shelf.export.modePath")}
               name="export-mode"
@@ -442,17 +443,15 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
               decides, and a fill on both is refused by name — a picked file
               is never silently dropped in favor of a typed path. */}
           <Field label={t("shelf.import.fileLabel")} id={fileInputId}>
-            <input
+            <FileInput
               ref={fileInput}
               id={fileInputId}
-              type="file"
               accept=".zip,application/zip"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              className="h-7 rounded-[var(--radius)] border border-border bg-card px-2 py-1 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
             />
           </Field>
           {file ? (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-body">
               <span className="text-muted">{file.name}</span>
               <Button
                 type="button"
@@ -472,7 +471,7 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
             />
           </Field>
           <fieldset className="flex flex-col gap-1">
-            <legend className="text-sm font-medium">{t("shelf.import.targetLabel")}</legend>
+            <legend className="text-label font-medium">{t("shelf.import.targetLabel")}</legend>
             <RadioRow
               label={t("shelf.import.targetNew")}
               name="import-target"
@@ -525,7 +524,7 @@ function ImportReportView({ report, close }: { report: ImportReport; close: () =
   const headingId = useId();
   const refused = refusedRows(report);
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-3 text-body">
       <h3 id={headingId} className="font-medium">
         {t("shelf.report.heading")}
       </h3>

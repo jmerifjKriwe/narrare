@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
-import { Field, Input } from "@shell/ui/field";
+import { Field, FileInput, Input } from "@shell/ui/field";
 import { client, isModelChange, type Hit, type KnowledgeDocument } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
@@ -110,13 +110,11 @@ function UploadForm({
   return (
     <form onSubmit={(event) => void upload(event)} className="mt-4 flex flex-col gap-3">
       <Field label={t("knowledge.fileLabel")}>
-        {/* The native file button gets the import dialog's treatment: it
-            stops cramming against the box and stops wearing the control's
-            own border. */}
-        <Input
-          type="file"
+        {/* The shared file input (`FileInput`): the control contract plus
+            the native button's paint — the import dialog's treatment, one
+            definition (R49's census round). */}
+        <FileInput
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          className="py-1 file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
         />
       </Field>
       <Field label={t("knowledge.titleLabel")}>
@@ -314,7 +312,7 @@ export function KnowledgePage() {
             <div aria-hidden="true" className="flex flex-col">
               {[0, 1, 2].map((row) => (
                 <div key={row} className="flex h-7 items-center px-3">
-                  <div className="h-3 w-1/3 motion-safe:animate-pulse rounded bg-rule" />
+                  <div className="h-3 w-1/3 motion-safe:animate-pulse rounded-[var(--radius)] bg-rule" />
                 </div>
               ))}
             </div>
