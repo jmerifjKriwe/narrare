@@ -16,6 +16,11 @@
  */
 
 :root {
+  /* The tokens follow the system, and this makes the browser's own surfaces
+   * follow them too: scrollbars, native select popups and form controls are
+   * painted light on a light page and dark on a dark one. Without it a dark
+   * page kept a white scrollbar and a white option list. */
+  color-scheme: light;
   --background: oklch(0.965 0.008 85);
   --foreground: oklch(0.25 0.01 85);
   /* Secondary text sits on the page ground everywhere, so it keeps AA on
@@ -62,6 +67,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --background: oklch(0.19 0.01 85);
     --foreground: oklch(0.9 0.005 85);
     --muted: oklch(0.62 0.01 85);
