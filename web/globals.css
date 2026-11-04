@@ -155,8 +155,8 @@ body {
 }
 
 /* The editor's prose: the one place long-form text is read, so it gets the
- * brand serif and a comfortable measure. TipTap manages the DOM; only the
- * surface it writes on is styled here. */
+ * brand serif and a comfortable measure. TipTap manages the DOM; the surface
+ * and the document structure it writes are styled here. */
 .ProseMirror {
   font-family: "EB Garamond", Georgia, "Times New Roman", serif;
   font-size: 1.125rem;
@@ -166,4 +166,149 @@ body {
 
 .ProseMirror:focus {
   outline: none;
+}
+
+/*
+ * The document inside the editor. Tailwind's preflight resets headings to
+ * `font-size: inherit; font-weight: inherit`, lists to `list-style: none` and
+ * every block margin to 0 — correct for a UI, wrong for a manuscript: a
+ * chapter's Markdown arrived as one undifferentiated wall, every line on the
+ * same 1.75 leading (measured 31–32 px pitch between paragraph breaks too),
+ * and `## heading` read exactly like a paragraph. These rules restore the
+ * document's own hierarchy without touching the surface's tokens, and they
+ * stay scoped to `.ProseMirror` so the shell is untouched.
+ *
+ * Rhythms are in `em`, so a step scales with the text it belongs to rather
+ * than pinning a pixel value that would drift with the measure. Headings
+ * never take weight 700: the bundled subset carries a real 600 face and no
+ * 700 — asking for the heavier weight would synthesize one.
+ */
+
+/* One block rhythm for the document's top level. Adjacent block margins
+ * collapse, so a heading's larger top margin and a rule's own air win over
+ * this 0.75em without arithmetic. */
+.ProseMirror > * + * {
+  margin-top: 0.75em;
+}
+
+.ProseMirror > :first-child {
+  margin-top: 0;
+}
+
+.ProseMirror p + p {
+  margin-top: 0.75em;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1.4em 0 0.4em;
+}
+
+.ProseMirror h1 {
+  font-size: 1.5em;
+}
+
+.ProseMirror h2 {
+  font-size: 1.3em;
+}
+
+.ProseMirror h3 {
+  font-size: 1.15em;
+}
+
+.ProseMirror h4 {
+  font-size: 1.05em;
+}
+
+.ProseMirror h5 {
+  font-size: 1em;
+}
+
+.ProseMirror h6 {
+  font-size: 0.95em;
+}
+
+/* Lists keep their markers: preflight removes them, and a manuscript's
+ * bullet and numbered lists are content, not decoration. */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em;
+}
+
+.ProseMirror ul {
+  list-style: disc;
+}
+
+.ProseMirror ol {
+  list-style: decimal;
+}
+
+.ProseMirror ul ul {
+  list-style: circle;
+}
+
+.ProseMirror li + li {
+  margin-top: 0.25em;
+}
+
+/* A nested list belongs to the item that holds it, not to the document's
+ * top-level rhythm, which never reaches inside an item; the small top margin
+ * keeps it off the item's own paragraph. */
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin: 0.25em 0 0;
+}
+
+.ProseMirror blockquote {
+  border-left: 2px solid var(--border);
+  font-style: italic;
+  margin: 1em 0;
+  padding-left: 1em;
+}
+
+.ProseMirror code {
+  background: var(--rule);
+  border-radius: var(--radius);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+}
+
+.ProseMirror pre {
+  background: var(--rule);
+  border-radius: var(--radius);
+  margin: 1em 0;
+  overflow-x: auto;
+  padding: 0.75em 1em;
+}
+
+.ProseMirror pre code {
+  background: none;
+  font-size: inherit;
+  padding: 0;
+}
+
+.ProseMirror hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 1.5em 0;
+}
+
+/* The 600 face is the strongest real weight the subset carries; 700 would be
+ * synthesized. Links keep the text's ink and read by underline alone — the
+ * prose has no second colour. */
+.ProseMirror strong {
+  font-weight: 600;
+}
+
+.ProseMirror a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
