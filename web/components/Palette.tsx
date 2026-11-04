@@ -29,6 +29,12 @@ const GROUP_LABEL =
  * the arrows walk it, ArrowUp on the first row returns to the field) and
  * Enter or a click activates. The walk moves real focus, so no row is ever
  * `selected`: the primitive's selection marker stays off.
+ *
+ * The label rides a shrinking, truncating span (GridList's pattern): a
+ * long title clips at the row's edge instead of wrapping past the fixed
+ * 28 px and over the row below. A trailing hint would sit outside the
+ * span; the accessible name rides the button's text, so the wrapper
+ * changes no name.
  */
 function PaletteRow({
   onActivate,
@@ -41,7 +47,7 @@ function PaletteRow({
 }) {
   return (
     <Row data-palette-row onClick={onActivate} onKeyDown={onRowKeyDown}>
-      {children}
+      <span className="min-w-0 flex-1 truncate">{children}</span>
     </Row>
   );
 }
@@ -458,7 +464,7 @@ export function Palette({
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={onSearchKeyDown}
                 placeholder={t("palette.searchLabel")}
-                className="w-full bg-transparent px-4 py-3 text-body outline-none placeholder:text-muted"
+                className="w-full bg-transparent px-4 py-3 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus placeholder:text-muted"
               />
             </div>
             <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">

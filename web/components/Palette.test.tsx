@@ -274,6 +274,38 @@ describe("the palette wears the system's rows", () => {
     // The palette names itself for what it is, not for what it offers.
     expect(screen.getByRole("dialog", { name: t("palette.aria") })).toBeTruthy();
   });
+
+  it("long labels clip inside the row — the span shrinks and truncates, the name rides the text", async () => {
+    mockWorkspace();
+    renderAt(`/novels/${NOVEL_ID}`);
+    await openPalette();
+
+    const row = await paletteRow("Der Anfang");
+    // The label rides a shrinking, truncating span inside the fixed 28 px
+    // row — an 80-character title clips at the row's edge instead of
+    // wrapping past it and over the row below. jsdom does no layout, so
+    // `scrollWidth`/`clientWidth` cannot tell the truth here; the pin is
+    // the classes, the same level the rows test above pins at. A trailing
+    // hint would sit outside the span.
+    const label = row.querySelector("span") as HTMLElement | null;
+    expect(label).toBeTruthy();
+    expect(label!.className).toContain("min-w-0");
+    expect(label!.className).toContain("flex-1");
+    expect(label!.className).toContain("truncate");
+    // The wrapper is invisible to the name: it rides the button's text.
+    expect(row.textContent).toBe("Der Anfang");
+  });
+
+  it("the search field carries the one focus treatment, not a bare outline-none", async () => {
+    mockBare();
+    renderAt("/");
+    await openPalette();
+
+    const input = await searchBox();
+    expect(input.className).toContain("focus-visible:outline-none");
+    expect(input.className).toContain("focus-visible:ring-2");
+    expect(input.className).toContain("focus-visible:ring-focus");
+  });
 });
 
 describe("the groups fill from context", () => {

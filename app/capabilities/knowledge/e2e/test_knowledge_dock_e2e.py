@@ -667,8 +667,10 @@ def test_the_running_bar_passes_the_axe_floor(page: Page, stack: Stack) -> None:
     else:
         pytest.fail("every first poll saw its run already settled")
 
-    _hold_running(held, 40)
-    stack.start_api()
+    try:
+        _hold_running(held, 40)
+    finally:
+        stack.start_api()
 
     # The poll recovers with the row standing: running, the reported share
     # on the rule — and the floor runs against exactly that state. An

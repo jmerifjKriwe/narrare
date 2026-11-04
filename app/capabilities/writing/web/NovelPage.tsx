@@ -415,10 +415,10 @@ export function NovelPage() {
   // page's own clothes, focus contained while it stands, and the two
   // answers as the two buttons the question names. The blocker awaits the
   // answer as a promise; Escape and an outside click are RAC dismissals,
-  // which land in `onOpenChange` as a "stay". While one ask stands, any
-  // further navigation is refused outright (`guardBusy`) — a second
-  // shouldBlockFn run would overwrite the first answer's resolver and
-  // strand the navigation still waiting on it.
+  // which land in `onOpenChange` as a "stay". `guardBusy` stands only
+  // once the ask stands — it is set after a flush has failed, not while
+  // it runs — so two navigations inside the flush window are last-wins
+  // by design: the second ask replaces the first.
   useBlocker({
     shouldBlockFn: async () => {
       if (!unsavedNow.current) return false;
