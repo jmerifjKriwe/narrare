@@ -110,17 +110,22 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       {/* The ask on one row (§8.7's chat row, the one surface row that
           says so): the field grows, the button holds its label's width and
           sits on the input's line — down to the dock's 384 px and a 360 px
-          viewport, where `min-w-0` lets the field shrink first. The ask is
-          a secondary (R46): the workspace's one filled primary is the
-          editor's Weiterschreiben, and the standalone page's is its own
-          send row — the dock defers wherever it stands beside one. The
-          offer card's decisions beside the answer are a pair of equals,
-          neither of them a fill. */}
+          viewport, where `min-w-0` lets the field shrink first. The fill
+          follows the surface (L1, R46): on the standalone page the ask is
+          its screen's one filled primary; in the workspace dock it defers
+          to the editor's Weiterschreiben (`canOffer` is the dock's mark).
+          The offer card's decisions beside the answer are a pair of
+          equals, neither of them a fill. */}
       <form onSubmit={ask} className="flex items-end gap-2">
         <Field label={t("chat.questionLabel")} className="min-w-0 flex-1">
           <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
         </Field>
-        <Button type="submit" variant="secondary" disabled={asking} className="shrink-0">
+        <Button
+          type="submit"
+          variant={canOffer ? "secondary" : "primary"}
+          disabled={asking}
+          className="shrink-0"
+        >
           {t("chat.ask")}
         </Button>
       </form>

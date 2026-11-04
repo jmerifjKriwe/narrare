@@ -61,6 +61,12 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
     expect(page.get_by_role("region", name="Antwort")).to_contain_text(PASSAGE)
     expect(page.get_by_role("region", name="Quellen")).to_contain_text("Notizen")
 
+    # L1 on the standalone page (R46): with answer and sources on screen,
+    # /chat answers exactly one filled primary — the ask itself.
+    primaries = page.locator("button.bg-primary")
+    expect(primaries).to_have_count(1)
+    expect(primaries.first).to_have_text(re.compile("Fragen"))
+
     assert_accessible(page)
 
 
@@ -130,10 +136,13 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     bg = ask.evaluate("el => getComputedStyle(el).backgroundColor")
     assert bg not in ("", "rgba(0, 0, 0, 0)")  # Tailwind painted the button
 
-    # The button's bg-primary also exists on other pages, so it alone would
-    # not prove Tailwind scanned the capability's folder. whitespace-pre-wrap
-    # is the chat page's alone: if the moved file was not a source, the rule
-    # is absent and the computed style is the browser's default ("normal").
+    # The assertion walks /chat, where the ask is the surface's one filled
+    # primary again (R46: the dock's ask defers to the editor and carries
+    # no fill there). The fill alone would not prove Tailwind scanned the
+    # capability's folder — bg-primary exists on other pages — so
+    # whitespace-pre-wrap is the chat page's own second half: if the moved
+    # file was not a source, the rule is absent and the computed style is
+    # the browser's default ("normal").
     answer = page.get_by_role("region", name="Antwort").locator("p").first
     assert answer.evaluate("el => getComputedStyle(el).whiteSpace") == "pre-wrap"
 

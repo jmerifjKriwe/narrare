@@ -86,7 +86,8 @@ export function EntityRelationsSection(
   const [note, setNote] = useState("");
   const [triedAdd, setTriedAdd] = useState(false);
 
-  const addDirty = targetText.trim() !== "" || note.trim() !== "";
+  const addDirty =
+    targetText.trim() !== "" || typeText.trim() !== "" || note.trim() !== "";
   useEffect(() => onAddDirtyChange?.(addDirty), [addDirty, onAddDirtyChange]);
 
   // The row edit: one at a time, prefilled with what the edge holds. The

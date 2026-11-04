@@ -145,9 +145,11 @@ function Shell() {
 
 /** The shell's answer to an unknown URL: the copy comes from the catalog —
  * TanStack's English default would break the i18n rule inside the localized
- * shell — and the way home is the shelf. R49: the page names itself (the
- * tab and the bar read it), the failure rides a Notice, and the type
- * walks the scale. */
+ * shell — and the way home is the shelf. R49: the page names itself and the
+ * failure rides a Notice, and the type walks the scale. TanStack renders
+ * this component in place of the whole Shell — no bar, no rail — so the
+ * title the tab reads is the page's alone; there is no bar here to read
+ * it. */
 function NotFound() {
   const t = useTranslation();
   usePageTitle(t("shell.notFound"));
@@ -170,7 +172,8 @@ function NotFound() {
 /** A route that throws lands here, not on TanStack's English default: the
  * failure is named in the catalog's language and the thrown message rides
  * along — a local-first app shows its own errors. Same system as the
- * unknown URL above: a named page, a danger Notice, the scale. */
+ * unknown URL above, mounted the same way: in place of the Shell, no bar,
+ * the tab reads the title. */
 function RouteError({ error }: ErrorComponentProps) {
   const t = useTranslation();
   const message = error instanceof Error ? error.message : String(error);

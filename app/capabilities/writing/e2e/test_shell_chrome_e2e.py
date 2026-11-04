@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
@@ -139,6 +141,9 @@ def test_the_unknown_url_names_itself_and_reads_the_scale(page: Page, stack: Sta
         page.evaluate("getComputedStyle(document.querySelector('h1.text-title')).fontSize")
         == "20px"
     )
+    # The surface stands alone (in place of the Shell) and still answers
+    # the accessibility floor.
+    assert_accessible(page)
 
 
 def test_the_workspace_shows_one_filled_primary_with_the_chat_dock_open(

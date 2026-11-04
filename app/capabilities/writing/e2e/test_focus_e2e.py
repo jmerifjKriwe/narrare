@@ -57,14 +57,12 @@ def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) ->
     shadow = """getComputedStyle(
       document.querySelector('.ProseMirror').parentElement
     ).boxShadow"""
-    measure = """getComputedStyle(
-      document.querySelector('.ProseMirror')
-    ).maxWidth"""
+    width = """document.querySelector('.ProseMirror').getBoundingClientRect().width"""
 
     editor.click()
     page.keyboard.type("Der Ring folgt dem Caret.")
     assert page.evaluate(shadow) != "none", "no ring while the caret is inside"
-    inside = page.evaluate(measure)
+    inside = page.evaluate(width)
     # R49's tone step: the editor sits in a card painted around the
     # measured column — the measure itself stays the prose's 34rem. The
     # probe reads computed paint (a `sm:bg-card` token is not the class
@@ -86,7 +84,9 @@ def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) ->
     # The caret leaves: the heading takes the click, the ring lets go.
     page.get_by_role("heading", name="Der Karettring").click()
     assert page.evaluate(shadow) == "none", "ring stayed after the caret left"
-    assert page.evaluate(measure) == inside, "the measure moved with the ring"
+    # The rendered width, not the constant: a layout regression moves the
+    # real box, where the max-width string would sit still.
+    assert page.evaluate(width) == inside, "the measure moved with the ring"
     expect(wrapper).to_be_visible()
 
 
@@ -191,8 +191,11 @@ def test_depth_two_hides_the_frame_and_retracts_its_hint(page: Page, stack: Stac
 
     # The continue button is a writing control, not chrome (the final
     # wave's declined list): the workspace's one filled primary stays at
-    # the deepest step while the frame around it yields.
-    expect(page.get_by_role("button", name="Weiterschreiben")).to_be_visible()
+    # the deepest step while the frame around it yields — paint included,
+    # not merely present.
+    door = page.get_by_role("button", name="Weiterschreiben")
+    expect(door).to_be_visible()
+    expect(door).to_have_class(re.compile(r"bg-primary"))
 
     # Both are hidden at the deepest step, and the hint that offers Esc
     # shows once, then retracts.

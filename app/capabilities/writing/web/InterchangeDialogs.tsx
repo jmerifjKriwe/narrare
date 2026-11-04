@@ -7,8 +7,7 @@ import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
-import { FileInput } from "@shell/ui/field";
-import { Field, Input, Select } from "@shell/ui/field";
+import { Field, FileInput, Input, Select } from "@shell/ui/field";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
 
