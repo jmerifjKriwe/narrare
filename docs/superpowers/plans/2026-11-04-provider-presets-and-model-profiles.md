@@ -214,7 +214,7 @@ Expected: FAIL — `from_profile()` takes one argument; the model carries no pro
 
 `ProvidersSection` lists providers (name, kind, base URL, mask) with create/edit/delete; `ModelsSection` lists models with a provider select, model text field, tunables, default and test; `TasksSection` keeps the assignment selects, labels now `"{provider} · {model}"`. `ProvidersPanel` composes the three, and `SettingsHub.test.tsx` follows the page's new reads. i18n keys for the three headings and the provider fields in en, de, fr.
 
-- [ ] **Step 6: Run the suites that the cut touches**
+- [ ] **Step 6: Run the suites the cut touches**
 
 Run: `just test-file app/kernel/tests/test_llm_resolution.py`, `just test`, `just test-frontend`, `just test-e2e settings`, `just check`
 Expected: PASS on all five.
@@ -511,8 +511,8 @@ git commit -m "fix(kernel): a stream failure names its cause" \
 ### Task 9: Model state on the settings page
 
 **Files:**
-- Modify: `app/capabilities/settings/schemas.py` (`ModelRead`, `TaskEffectiveRead.profile_id`), `profiles_service.py` (last audit row), `router.py`, `app/capabilities/settings/web/ModelsSection.tsx`, `TasksSection.tsx`, `i18n/*.json`
-- Test: `app/capabilities/settings/tests/test_profiles.py`, `app/capabilities/settings/web/ModelsSection.test.tsx`
+- Modify: `app/capabilities/settings/schemas.py` (`ModelRead`, `TaskEffectiveRead.profile_id`), `models_service.py` (last audit row), `router.py`, `app/capabilities/settings/web/ModelsSection.tsx`, `TasksSection.tsx`, `i18n/*.json`
+- Test: `app/capabilities/settings/tests/test_models.py`, `app/capabilities/settings/web/ModelsSection.test.tsx`
 
 **Interfaces:**
 - Produces: `ModelRead.last_error_code: str | None`, `last_error_at: datetime | None`; `TaskEffectiveRead.profile_id: UUID | None`; the model row's three marks.
@@ -528,7 +528,7 @@ async def test_a_model_reports_its_last_failure(client, session) -> None:
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `just test-file app/capabilities/settings/tests/test_profiles.py -k last_failure`
+Run: `just test-file app/capabilities/settings/tests/test_models.py -k last_failure`
 Expected: FAIL — the key is absent.
 
 - [ ] **Step 3: Read the newest audit row per model**
@@ -541,7 +541,7 @@ One `select(LlmCall).where(user_id, profile_id).order_by(created_at.desc()).limi
 
 - [ ] **Step 5: Run the suites**
 
-Run: `just test-file app/capabilities/settings/tests/test_profiles.py`, `just test-frontend`, `just check`
+Run: `just test-file app/capabilities/settings/tests/test_models.py`, `just test-frontend`, `just check`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
