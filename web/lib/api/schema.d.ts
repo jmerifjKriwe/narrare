@@ -1297,6 +1297,11 @@ export interface components {
             /** Blurb */
             blurb: string | null;
             /**
+             * Chapter Count
+             * @default 0
+             */
+            chapter_count: number;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1317,6 +1322,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Word Count
+             * @default 0
+             */
+            word_count: number;
         };
         /**
          * ProfileCreate

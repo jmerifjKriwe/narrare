@@ -5,8 +5,11 @@ import type { Novel } from "@shell/lib/api/client";
 import { announce } from "@shell/lib/announce";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
+import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
-import { TextField } from "@shell/ui/TextField";
+import { Field, FileInput, Input, Select } from "@shell/ui/field";
+import { Icon } from "@shell/ui/icons";
+import { Notice } from "@shell/ui/Notice";
 
 import {
   detailOf,
@@ -19,11 +22,6 @@ import {
   type ImportReport,
   type InterchangeFailure,
 } from "./interchange";
-
-const PRIMARY_BUTTON =
-  "self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
-const QUIET_BUTTON =
-  "self-start rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 /** One labelled radio row: native input, native keyboard reach. */
 function RadioRow({
@@ -38,16 +36,22 @@ function RadioRow({
   onPick: () => void;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex items-center gap-2 text-label">
       <input type="radio" name={name} checked={checked} onChange={onPick} />
       {label}
     </label>
   );
 }
 
-/** A named refusal inside the dialog, where the retry is one press away. */
+/** A named refusal inside the dialog, where the retry is one press away.
+ *  The whole notice is worn, not a hand-picked red: the state colours
+ *  surface through `Notice` and nowhere else. */
 function FailureAlert({ message }: { message: string }) {
-  return <p role="alert" className="text-sm text-danger">{message}</p>;
+  return (
+    <Notice tone="danger" live="alert">
+      {message}
+    </Notice>
+  );
 }
 
 /**
@@ -58,9 +62,12 @@ function FailureAlert({ message }: { message: string }) {
  * a fresh folder and the refusal on non-empty targets stays the exception
  * it is meant to be.
  *
- * Controlled open, for an opener that is not a trigger on this page: the
- * palette's modal slot mounts the dialog already open, the palette row
- * having been the press. Absent keeps the trigger shape the shelf uses.
+ * The trigger is the icon button: every card carries one, and a row of
+ * visible "Exportieren" words would shout over the shelf; the accessible
+ * name carries the novel, so a screen reader's button list stays
+ * unambiguous. Controlled open, for an opener that is not a trigger on
+ * this page: the palette's modal slot mounts the dialog already open, the
+ * palette row having been the press. Absent keeps the icon trigger shape.
  */
 export function ExportNovelDialog({
   novel,
@@ -72,18 +79,28 @@ export function ExportNovelDialog({
   onOpenChange?: (open: boolean) => void;
 }) {
   const t = useTranslation();
+  const [open, setOpen] = useState(false);
+  const name = t("shelf.exportTitle", { title: novel.title });
+  if (isOpen !== undefined) {
+    return (
+      <Dialog title={name} isOpen={isOpen} onOpenChange={onOpenChange}>
+        {(close) => <ExportForm novel={novel} close={close} />}
+      </Dialog>
+    );
+  }
   return (
-    <Dialog
-      title={t("shelf.exportTitle", { title: novel.title })}
-      triggerLabel={t("shelf.export")}
-      // Every row shows the same word; the accessible name carries this
-      // novel, so a screen reader's button list stays unambiguous.
-      triggerAriaLabel={t("shelf.exportTitle", { title: novel.title })}
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-    >
-      {(close) => <ExportForm novel={novel} close={close} />}
-    </Dialog>
+    <>
+      <Button
+        variant="icon"
+        size="sm"
+        icon={<Icon name="export" />}
+        label={name}
+        onClick={() => setOpen(true)}
+      />
+      <Dialog title={name} isOpen={open} onOpenChange={setOpen}>
+        {(close) => <ExportForm novel={novel} close={close} />}
+      </Dialog>
+    </>
   );
 }
 
@@ -160,7 +177,7 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
     <div className="mt-4 flex flex-col gap-3">
       {receipt ? (
         <>
-          <div aria-labelledby={receiptId} className="flex flex-col gap-1 text-sm">
+          <div aria-labelledby={receiptId} className="flex flex-col gap-1 text-body">
             <h3 id={receiptId} className="font-medium">
               {t("shelf.export.doneHeading")}
             </h3>
@@ -168,14 +185,14 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
             <p>{t("shelf.export.doneChapters", { count: receipt.chapters })}</p>
             <p>{t("shelf.export.doneEntities", { count: receipt.entities })}</p>
           </div>
-          <button type="button" onClick={close} className={QUIET_BUTTON}>
+          <Button type="button" variant="secondary" className="self-start" onClick={close}>
             {t("shelf.export.close")}
-          </button>
+          </Button>
         </>
       ) : (
         <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
           <fieldset className="flex flex-col gap-1">
-            <legend className="text-sm font-medium">{t("shelf.export.modeLabel")}</legend>
+            <legend className="text-label font-medium">{t("shelf.export.modeLabel")}</legend>
             <RadioRow
               label={t("shelf.export.modePath")}
               name="export-mode"
@@ -190,18 +207,17 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
             />
           </fieldset>
           {mode === "path" ? (
-            <TextField
+            <Field
               label={t("shelf.export.pathLabel")}
-              value={path}
-              onChange={setPath}
-              isInvalid={pathInvalid}
-              validationMessage={pathInvalid ? t("shelf.export.pathRequired") : undefined}
-            />
+              error={pathInvalid ? t("shelf.export.pathRequired") : undefined}
+            >
+              <Input value={path} onChange={(event) => setPath(event.target.value)} />
+            </Field>
           ) : null}
           {refusal ? <FailureAlert message={refusal} /> : null}
-          <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
+          <Button type="submit" variant="primary" className="self-start" disabled={busy}>
             {t("shelf.export.submit")}
-          </button>
+          </Button>
         </form>
       )}
     </div>
@@ -217,8 +233,26 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
  * untouched. Conflict names arrive from the archive and render as text
  * nodes, never markup.
  */
-export function ImportArchiveDialog({ novels }: { novels: Novel[] }) {
+export function ImportArchiveDialog({
+  novels,
+  isOpen,
+  onOpenChange,
+}: {
+  novels: Novel[];
+  /** Controlled open, when the opener lives on the page that mounts this
+   *  dialog (the shelf's secondary header button). Absent keeps the
+   *  dialog's own trigger. */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const t = useTranslation();
+  if (isOpen !== undefined) {
+    return (
+      <Dialog title={t("shelf.importTitle")} isOpen={isOpen} onOpenChange={onOpenChange}>
+        {(close) => <ImportForm novels={novels} close={close} />}
+      </Dialog>
+    );
+  }
   return (
     <Dialog title={t("shelf.importTitle")} triggerLabel={t("shelf.import")}>
       {(close) => <ImportForm novels={novels} close={close} />}
@@ -307,7 +341,10 @@ function reportAnnouncement(report: ImportReport, t: Translate): string {
 
 function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
   const t = useTranslation();
-  const novelSelectId = useId();
+  // The file input is the one control the Field primitives don't carry (a
+  // ref needs the DOM node to empty it), so it takes the field's id itself:
+  // the label's `htmlFor` lands, and the association stays the primitive's.
+  const fileInputId = useId();
   const [file, setFile] = useState<File | null>(null);
   const [pathText, setPathText] = useState("");
   const [target, setTarget] = useState<"new" | "existing">("new");
@@ -404,31 +441,36 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
           {/* Both sources stand on the form at once: whichever is filled
               decides, and a fill on both is refused by name — a picked file
               is never silently dropped in favor of a typed path. */}
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("shelf.import.fileLabel")}
-            <input
+          <Field label={t("shelf.import.fileLabel")} id={fileInputId}>
+            <FileInput
               ref={fileInput}
-              type="file"
+              id={fileInputId}
               accept=".zip,application/zip"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              className="rounded-md border border-border bg-card px-3 py-2 text-sm font-normal file:mr-3 file:rounded file:border-0 file:bg-transparent file:text-sm file:font-medium"
             />
-          </label>
+          </Field>
           {file ? (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-body">
               <span className="text-muted">{file.name}</span>
-              <button type="button" onClick={removeFile} className={QUIET_BUTTON}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="self-start"
+                onClick={removeFile}
+              >
                 {t("shelf.import.fileRemove")}
-              </button>
+              </Button>
             </div>
           ) : null}
-          <TextField
-            label={t("shelf.import.pathLabel")}
-            value={pathText}
-            onChange={setPathText}
-          />
+          <Field label={t("shelf.import.pathLabel")}>
+            <Input
+              value={pathText}
+              onChange={(event) => setPathText(event.target.value)}
+            />
+          </Field>
           <fieldset className="flex flex-col gap-1">
-            <legend className="text-sm font-medium">{t("shelf.import.targetLabel")}</legend>
+            <legend className="text-label font-medium">{t("shelf.import.targetLabel")}</legend>
             <RadioRow
               label={t("shelf.import.targetNew")}
               name="import-target"
@@ -442,15 +484,10 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
               onPick={() => setTarget("existing")}
             />
             {target === "existing" ? (
-              <div className="mt-1 flex flex-col gap-1 text-sm font-medium">
-                <label htmlFor={novelSelectId}>
-                  {t("shelf.import.targetNovelLabel")}
-                </label>
-                <select
-                  id={novelSelectId}
+              <Field label={t("shelf.import.targetNovelLabel")} className="mt-1">
+                <Select
                   value={targetId}
                   onChange={(event) => setTargetId(event.target.value)}
-                  className="rounded-md border border-border bg-card px-3 py-2 text-sm font-normal"
                 >
                   <option value="">{t("shelf.import.targetPick")}</option>
                   {novels.map((novel) => (
@@ -458,15 +495,15 @@ function ImportForm({ novels, close }: { novels: Novel[]; close: () => void }) {
                       {novel.title}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
             ) : null}
           </fieldset>
           {problemText ? <FailureAlert message={problemText} /> : null}
           {refusal ? <FailureAlert message={refusal} /> : null}
-          <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
+          <Button type="submit" variant="primary" className="self-start" disabled={busy}>
             {t("shelf.import.submit")}
-          </button>
+          </Button>
         </form>
       )}
     </div>
@@ -486,7 +523,7 @@ function ImportReportView({ report, close }: { report: ImportReport; close: () =
   const headingId = useId();
   const refused = refusedRows(report);
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-3 text-body">
       <h3 id={headingId} className="font-medium">
         {t("shelf.report.heading")}
       </h3>
@@ -530,9 +567,9 @@ function ImportReportView({ report, close }: { report: ImportReport; close: () =
           </ul>
         </section>
       ) : null}
-      <button type="button" onClick={close} className={QUIET_BUTTON}>
+      <Button type="button" variant="secondary" className="self-start" onClick={close}>
         {t("shelf.report.close")}
-      </button>
+      </Button>
     </div>
   );
 }

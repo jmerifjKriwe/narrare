@@ -5,6 +5,7 @@ every depth still passes the accessibility floor. Real stack throughout —
 browser, API, Postgres.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -45,6 +46,50 @@ def _open_workbench(page: Page, title: str) -> None:
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
 
+def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) -> None:
+    """F18: the caret's ring lives on the wrapper, not the prose. Inside,
+    the box-shadow is there; out, it is gone — and the measure is
+    untouched either way (max-width 34rem, the same value both states)."""
+    _open_workbench(page, "Der Karettring")
+    editor = page.locator(".ProseMirror")
+    wrapper = editor.locator("xpath=..")
+
+    shadow = """getComputedStyle(
+      document.querySelector('.ProseMirror').parentElement
+    ).boxShadow"""
+    width = """document.querySelector('.ProseMirror').getBoundingClientRect().width"""
+
+    editor.click()
+    page.keyboard.type("Der Ring folgt dem Caret.")
+    assert page.evaluate(shadow) != "none", "no ring while the caret is inside"
+    inside = page.evaluate(width)
+    # R49's tone step: the editor sits in a card painted around the
+    # measured column — the measure itself stays the prose's 34rem. The
+    # probe reads computed paint (a `sm:bg-card` token is not the class
+    # `.bg-card`), asking for an ancestor whose ground differs from the
+    # page's own.
+    tone_step = page.evaluate(
+        """() => {
+          const ground = getComputedStyle(document.body).backgroundColor;
+          let n = document.querySelector('.ProseMirror').parentElement;
+          for (; n; n = n.parentElement) {
+            const bg = getComputedStyle(n).backgroundColor;
+            if (bg !== 'rgba(0, 0, 0, 0)' && bg !== ground) return bg;
+          }
+          return null;
+        }"""
+    )
+    assert tone_step, "the editor's tone step is missing"
+
+    # The caret leaves: the heading takes the click, the ring lets go.
+    page.get_by_role("heading", name="Der Karettring").click()
+    assert page.evaluate(shadow) == "none", "ring stayed after the caret left"
+    # The rendered width, not the constant: a layout regression moves the
+    # real box, where the max-width string would sit still.
+    assert page.evaluate(width) == inside, "the measure moved with the ring"
+    expect(wrapper).to_be_visible()
+
+
 def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     _open_workbench(page, "Die Stilllegung")
     editor = page.locator(".ProseMirror")
@@ -53,7 +98,7 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     # affordance that offers the first step.
     expect(page.get_by_role("complementary")).to_be_visible()
     expect(page.get_by_role("banner")).to_be_visible()
-    expect(page.get_by_role("button", name="Ablenkungen ausblenden")).to_be_visible()
+    expect(page.get_by_role("button", name="Fokus")).to_be_visible()
     assert_accessible(page)
 
     # F9 hides the panels: the rail yields whatever ?rail says, the chrome
@@ -61,13 +106,16 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     page.keyboard.press("F9")
     expect(page.get_by_role("complementary")).to_have_count(0)
     expect(page.get_by_role("banner")).to_be_visible()
-    expect(page.get_by_role("button", name="Ablenkungen einblenden")).to_be_visible()
+    expect(page.get_by_role("button", name="Fokus")).to_be_visible()
     assert "focus=1" in page.url
     assert_accessible(page)
 
-    # F9 again: chrome-free. Only the writing surface and its save controls.
+    # F9 again: chrome-free. Only the writing surface and its own controls —
+    # the frame (runhead, footer) yields with everything else.
     page.keyboard.press("F9")
     expect(page.get_by_role("banner")).to_have_count(0)
+    # The icon rail is chrome too (P8): the deepest step leaves none of it.
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_have_count(0)
     assert "focus=2" in page.url
     assert_accessible(page)
 
@@ -80,10 +128,12 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     # A third F9 is a no-op at the deepest step: still no chrome.
     page.keyboard.press("F9")
     expect(page.get_by_role("banner")).to_have_count(0)
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_have_count(0)
 
     # Esc walks it back one step at a time: the chrome first …
     page.keyboard.press("Escape")
     expect(page.get_by_role("banner")).to_be_visible()
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
     assert_accessible(page)
 
     # … then the rail, back to the state the URL held all along.
@@ -108,15 +158,56 @@ def test_focus_two_url_renders_chrome_free(page: Page, stack: Stack) -> None:
     expect(page.locator(".ProseMirror")).to_be_visible()
     expect(page.get_by_role("banner")).to_have_count(0)
     expect(page.get_by_role("complementary")).to_have_count(0)
+    # The icon rail is chrome too (P8): a direct depth-2 link renders none
+    # of it — and the way back (Esc below) must return both columns.
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_have_count(0)
     # The affordance is gone at the deepest step: the keyboard is the way
     # back, and nothing on the page pretends otherwise.
-    expect(page.get_by_role("button", name="Ablenkungen ausblenden")).to_have_count(0)
-    expect(page.get_by_role("button", name="Ablenkungen einblenden")).to_have_count(0)
+    expect(page.get_by_role("button", name="Fokus")).to_have_count(0)
     assert_accessible(page)
 
     # And the way back works from a direct render too.
     page.keyboard.press("Escape")
     expect(page.get_by_role("banner")).to_be_visible()
+    expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
+    assert_accessible(page)
+
+
+def test_depth_two_hides_the_frame_and_retracts_its_hint(page: Page, stack: Stack) -> None:
+    """The runhead and the footer belong to the frame: they name the chapter
+    and count its words at the workbench, and both are gone at the deepest
+    step — where the one-line hint offers the way back, once, and retracts
+    (F23). A hint whose hidden state broke the page would fail this floor."""
+    _open_workbench(page, "Der Seitensteg")
+
+    # Depth 0: the frame names the chapter and its position in the book.
+    expect(page.get_by_text("Der Seitensteg · Kapitel 1")).to_be_visible()
+    expect(page.get_by_text("Kapitel 1 von 1")).to_be_visible()
+
+    page.keyboard.press("F9")
+    page.keyboard.press("F9")
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    assert "focus=2" in page.url
+
+    # The continue button is a writing control, not chrome (the final
+    # wave's declined list): the workspace's one filled primary stays at
+    # the deepest step while the frame around it yields — paint included,
+    # not merely present.
+    door = page.get_by_role("button", name="Weiterschreiben")
+    expect(door).to_be_visible()
+    expect(door).to_have_class(re.compile(r"bg-primary"))
+
+    # Both are hidden at the deepest step, and the hint that offers Esc
+    # shows once, then retracts.
+    expect(page.get_by_text("Der Seitensteg · Kapitel 1")).to_have_count(0)
+    expect(page.get_by_text(re.compile(r"Wörter"))).to_have_count(0)
+    hint = page.get_by_text("Esc zeigt die Leiste wieder")
+    expect(hint).to_be_visible()
+    page.wait_for_timeout(4_800)
+    expect(hint).to_have_count(0)
+
+    # The retracted state must leave a whole page behind: no orphaned hint,
+    # no contrast the floor trips over, the keyboard still on the surface.
     assert_accessible(page)
 
 

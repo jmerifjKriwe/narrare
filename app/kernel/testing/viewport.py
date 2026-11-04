@@ -44,24 +44,84 @@ _MEASURE_CONTENT_BOX = r"""
 }
 """
 
+# Every fit number in one layout read: the document's two scroll faces, the
+# shell's own main box, and the viewport — one evaluate so the numbers cannot
+# disagree about a layout that changed between two reads.
+_MEASURE_FITS = r"""
+() => {
+  const main = document.getElementById("main");
+  return {
+    documentScrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+    main: main === null ? null : { scrollWidth: main.scrollWidth, clientWidth: main.clientWidth },
+    documentScrollHeight: document.documentElement.scrollHeight,
+    viewportHeight: window.innerHeight,
+  };
+}
+"""
+
 
 def assert_page_fits(page: Page, *, prose_selector: str | None = None) -> None:
-    """Fail unless ``page`` fits its viewport, its prose column at least 320 px.
+    """Fail unless ``page`` fits its viewport on both scroll faces, its prose column readable.
 
-    The fit is ``documentElement.scrollWidth`` — everything laid out, overlays
-    included — against the viewport's width. With a ``prose_selector`` the
-    content box (bounding rect minus computed horizontal paddings) must also
-    clear :data:`MIN_PROSE_WIDTH`; the editor's own padding is what a narrow
-    window spends on margins before the words lose their floor.
+    Two width faces and one height face, each named for the regression that
+    proves it can fail — a check that cannot fail protects nothing:
+
+    * ``documentElement.scrollWidth`` against the viewport's width — the
+      whole-page measure, everything laid out, overlays included;
+    * the shell's own main box (``#main``, the skip link's target) against
+      itself: ``scrollWidth <= clientWidth + 1``. Since the shell scroll
+      moved into ``main`` (P8), a too-wide page no longer widens the
+      document — it scrolls *inside* ``main``, and only this face sees it
+      (a 600 px block at a 360 px viewport: document 360, main 600);
+    * ``documentElement.scrollHeight`` against ``window.innerHeight + 1`` —
+      chrome must not manufacture scrollbars. The viewport-tall icon rail
+      under the bar (P8 round 1) scrolled every >=1280 page by 53 px while
+      both width faces measured clean.
+
+    The ``+1`` tolerances are sub-pixel rounding, nothing more. With a
+    ``prose_selector`` the content box (bounding rect minus computed
+    horizontal paddings) must also clear :data:`MIN_PROSE_WIDTH`; the
+    editor's own padding is what a narrow window spends on margins before
+    the words lose their floor.
     """
     viewport = page.viewport_size
     if viewport is None:
         pytest.fail(f"the page has no viewport to fit: {page.url}")
-    scroll_width = page.evaluate("() => document.documentElement.scrollWidth")
-    if scroll_width > viewport["width"]:
+    measured: object = page.evaluate(_MEASURE_FITS)
+    if not isinstance(measured, dict):
+        pytest.fail(f"the fit measurement came back malformed on {page.url}: {measured!r}")
+    fits = cast("dict[str, object]", measured)
+
+    def number(key: str) -> float:
+        value = fits.get(key)
+        if not isinstance(value, (int, float)):
+            pytest.fail(f"the fit measurement came back malformed on {page.url}: {measured!r}")
+        return float(value)
+
+    if number("documentScrollWidth") > viewport["width"]:
         pytest.fail(
             f"the page overflows its viewport on {page.url}: "
-            f"scrollWidth {scroll_width} > {viewport['width']}px"
+            f"scrollWidth {fits.get('documentScrollWidth')} > {viewport['width']}px"
+        )
+    main = fits.get("main")
+    if not isinstance(main, dict):
+        pytest.fail(f"the shell's main box is missing on {page.url}: #main matched nothing")
+    box = cast("dict[str, object]", main)
+    main_scroll, main_client = box.get("scrollWidth"), box.get("clientWidth")
+    if not isinstance(main_scroll, (int, float)) or not isinstance(main_client, (int, float)):
+        pytest.fail(f"the main box measurement came back malformed on {page.url}: {main!r}")
+    if float(main_scroll) > float(main_client) + 1:
+        pytest.fail(
+            f"the page overflows inside main on {page.url}: "
+            f"main scrollWidth {main_scroll}px > clientWidth {main_client}px — "
+            f"the shell's own box scrolls sideways though the document does not"
+        )
+    if number("documentScrollHeight") > number("viewportHeight") + 1:
+        pytest.fail(
+            f"chrome manufactures a scrollbar on {page.url}: document "
+            f"scrollHeight {fits.get('documentScrollHeight')}px > viewport "
+            f"{fits.get('viewportHeight')}px"
         )
     if prose_selector is None:
         return

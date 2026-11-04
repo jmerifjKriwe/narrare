@@ -17,6 +17,7 @@ through the misspelling Kathrina (D6). Real UI, real API, real Postgres;
 the fake holds only the LLM/embeddings boundary.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -169,11 +170,26 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     # novel's entries and the type from the suggested vocabulary.
     detail.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
+
+    # L1 with the add form showing (R46): the dialog's one filled primary
+    # is the Save — the relation submit beside it reads as a secondary.
+    add_relation = dialog.get_by_role("button", name="Beziehung hinzufügen")
+    expect(add_relation).to_be_visible()
+    expect(add_relation).not_to_have_class(re.compile(r"bg-primary"))
+    primaries = dialog.locator("button.bg-primary")
+    expect(primaries).to_have_count(1)
+    expect(primaries).to_have_text(re.compile("Speichern"))
+
     target = dialog.get_by_label("Verbinden mit")
     target.fill("Amulett")
     target.press("ArrowDown")
     target.press("Enter")
     expect(target).to_have_value("Amulett")
+    # R49's upload-preservation pin: with the add form holding typed work,
+    # the dialog's Save stands down — a press that would close over the
+    # form cannot happen. The spent form hands the Save back.
+    save = dialog.get_by_role("button", name="Speichern")
+    expect(save).to_be_disabled()
     kind = dialog.get_by_label("Beziehungsart")
     kind.fill("Besitzt")
     kind.press("ArrowDown")
@@ -181,11 +197,16 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(kind).to_have_value("Besitzt")
     dialog.get_by_label("Notiz (optional)").fill("Seit dem Fest")
     dialog.get_by_role("button", name="Beziehung hinzufügen").click()
-    edge_row = dialog.get_by_role("listitem").filter(has_text="Amulett")
+    edge_row = (
+        dialog.get_by_role("table", name="Verweist auf")
+        .get_by_role("row")
+        .filter(has_text="Amulett")
+    )
     expect(edge_row).to_contain_text("Besitzt")
     expect(edge_row).to_contain_text("Seit dem Fest")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde hinzugefügt")
-    dialog.get_by_role("button", name="Speichern").click()
+    expect(save).to_be_enabled()
+    save.click()
     expect(dialog).not_to_be_visible()
     expect(detail).to_contain_text("Amulett · Besitzt")
 

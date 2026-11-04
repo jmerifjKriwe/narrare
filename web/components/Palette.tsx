@@ -1,4 +1,4 @@
-import { ModalOverlay, Modal, Dialog as RacDialog, TextField as RacTextField, Input } from "react-aria-components";
+import { ModalOverlay, Modal, Dialog as RacDialog } from "react-aria-components";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 
@@ -10,6 +10,7 @@ import { commands } from "../lib/generated/commands";
 import { docks } from "../lib/generated/docks";
 import { useTranslation } from "../lib/i18n";
 import { useChaptersQuery, useEntitiesQuery, useNovelsQuery } from "../lib/query";
+import { Row } from "../ui/Row";
 
 /** The loader a command hands to the modal slot, exactly as the contract has it. */
 type ModalLoad = () => Promise<{ default: ComponentType }>;
@@ -18,16 +19,24 @@ type ModalLoad = () => Promise<{ default: ComponentType }>;
 type DockPath = (typeof docks)[number]["path"];
 type PagePath = (typeof nav)[number]["path"];
 
-const ROW_BUTTON =
-  "rounded-md px-3 py-2 text-left text-sm focus:bg-panel focus:outline-none";
-const GROUP_LABEL = "px-3 pb-1 pt-2 text-xs font-medium text-muted";
+const GROUP_LABEL =
+  "px-3 pb-1 pt-2 text-label uppercase tracking-[0.1em] text-muted";
 
 /**
- * One row of the palette: a button the keyboard walks into (the search
- * field's ArrowDown enters the list, the arrows walk it, ArrowUp on the
- * first row returns to the field) and Enter or a click activates.
+ * One row of the palette: the list primitive's 28 px row on the rule (the
+ * same `Row` every list wears), bound to the palette's own walk — a button
+ * the keyboard steps into (the search field's ArrowDown enters the list,
+ * the arrows walk it, ArrowUp on the first row returns to the field) and
+ * Enter or a click activates. The walk moves real focus, so no row is ever
+ * `selected`: the primitive's selection marker stays off.
+ *
+ * The label rides a shrinking, truncating span (GridList's pattern): a
+ * long title clips at the row's edge instead of wrapping past the fixed
+ * 28 px and over the row below. A trailing hint would sit outside the
+ * span; the accessible name rides the button's text, so the wrapper
+ * changes no name.
  */
-function Row({
+function PaletteRow({
   onActivate,
   onRowKeyDown,
   children,
@@ -37,9 +46,9 @@ function Row({
   children: ReactNode;
 }) {
   return (
-    <button type="button" data-palette-row onClick={onActivate} onKeyDown={onRowKeyDown} className={ROW_BUTTON}>
-      {children}
-    </button>
+    <Row data-palette-row onClick={onActivate} onKeyDown={onRowKeyDown}>
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </Row>
   );
 }
 
@@ -101,9 +110,9 @@ function ChaptersGroup({
   return (
     <Group label={t("palette.chapters")} count={rows.length} onCount={onCount}>
       {rows.map((chapter) => (
-        <Row key={chapter.id} onRowKeyDown={onRowKeyDown} onActivate={() => onJump(chapter.id)}>
+        <PaletteRow key={chapter.id} onRowKeyDown={onRowKeyDown} onActivate={() => onJump(chapter.id)}>
           {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
-        </Row>
+        </PaletteRow>
       ))}
     </Group>
   );
@@ -135,9 +144,9 @@ function EntitiesGroup({
   return (
     <Group label={t("palette.entities")} count={rows.length} onCount={onCount}>
       {rows.map((entity) => (
-        <Row key={entity.id} onRowKeyDown={onRowKeyDown} onActivate={() => onJump(entity.id)}>
+        <PaletteRow key={entity.id} onRowKeyDown={onRowKeyDown} onActivate={() => onJump(entity.id)}>
           {entity.name}
-        </Row>
+        </PaletteRow>
       ))}
     </Group>
   );
@@ -166,9 +175,9 @@ function NovelsGroup({
   return (
     <Group label={t("palette.novels")} count={rows.length} onCount={onCount}>
       {rows.map((novel) => (
-        <Row key={novel.id} onRowKeyDown={onRowKeyDown} onActivate={() => onJump(novel.id)}>
+        <PaletteRow key={novel.id} onRowKeyDown={onRowKeyDown} onActivate={() => onJump(novel.id)}>
           {novel.title}
-        </Row>
+        </PaletteRow>
       ))}
     </Group>
   );
@@ -218,13 +227,13 @@ function PagesGroup({
   return (
     <Group label={t("palette.pages")} count={rows.length} onCount={onCount}>
       {rows.map((page) => (
-        <Row
+        <PaletteRow
           key={page.key}
           onRowKeyDown={onRowKeyDown}
           onActivate={() => onOpen(page.path, page.novelScoped)}
         >
           {t(page.titleKey)}
-        </Row>
+        </PaletteRow>
       ))}
     </Group>
   );
@@ -258,7 +267,7 @@ function CommandsGroup({
   return (
     <Group label={t("palette.commands")} count={rows.length} onCount={onCount}>
       {rows.map((command) => (
-        <Row
+        <PaletteRow
           key={command.id}
           onRowKeyDown={onRowKeyDown}
           onActivate={() => {
@@ -267,7 +276,7 @@ function CommandsGroup({
           }}
         >
           {t(command.titleKey)}
-        </Row>
+        </PaletteRow>
       ))}
     </Group>
   );
@@ -442,21 +451,21 @@ export function Palette({
         className="fixed inset-0 z-40 overflow-y-auto bg-scrim p-4"
       >
         <Modal className="mx-auto mt-[10vh] mb-8 w-full max-w-xl overflow-hidden rounded-lg border border-border bg-card shadow-overlay">
-          <RacDialog aria-label={t("palette.title")} className="flex flex-col outline-none">
+          <RacDialog aria-label={t("palette.aria")} className="flex flex-col outline-none">
             <div className="border-b border-border">
-              <RacTextField
+              {/* A plain input: the palette's search labels itself
+                  (aria-label) and owns its walk, so it needs no field
+                  wrapper — the primitives' Field is for labelled form
+                  controls, this is the one question the palette asks. */}
+              <input
+                ref={searchRef}
                 aria-label={t("palette.searchLabel")}
                 value={query}
-                onChange={setQuery}
+                onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={onSearchKeyDown}
-                className="block w-full"
-              >
-                <Input
-                  ref={searchRef}
-                  placeholder={t("palette.searchLabel")}
-                  className="w-full bg-transparent px-4 py-3 text-base outline-none placeholder:text-muted"
-                />
-              </RacTextField>
+                placeholder={t("palette.searchLabel")}
+                className="w-full bg-transparent px-4 py-3 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus placeholder:text-muted"
+              />
             </div>
             <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
               {novelId !== null ? (
@@ -499,14 +508,14 @@ export function Palette({
                 onClose={() => onOpenChange(false)}
               />
               {nothing ? (
-                <p className="px-3 py-6 text-center text-sm text-muted">
+                <p className="px-3 py-6 text-center text-body text-muted">
                   {t("palette.noResults")}
                 </p>
               ) : null}
             </div>
             {/* §11's row: the focus shortcuts are named here and nowhere
                 else — the palette is the one place the keyboard's map lives. */}
-            <p className="border-t border-border px-4 py-2 text-xs text-muted">
+            <p className="border-t border-border px-4 py-2 text-meta text-muted">
               {t("workspace.shortcutHints")}
             </p>
           </RacDialog>

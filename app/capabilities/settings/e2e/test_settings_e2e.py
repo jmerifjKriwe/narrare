@@ -74,3 +74,69 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     expect(page.locator("#main")).to_be_focused()
 
     assert_accessible(page)
+
+
+def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) -> None:
+    """The settings frame's geometry: the cluster nav is a row list in its own
+    200 px column, and the pages render beside it — never spilled into it."""
+    page.goto("http://127.0.0.1:3100/settings")
+
+    # The area's one cluster navigation — distinct from the rail's
+    # Hauptnavigation by its name.
+    nav = page.get_by_role("navigation", name="Einstellungen")
+    links = nav.get_by_role("link")
+    # The area's two clusters plus every registry row (prompts contributes
+    # its page; a new cluster appears here with no edit to the layout).
+    expect(links).to_have_count(3)
+
+    # The nav is a column: 200 px wide, the rows stacked one under the next,
+    # each the row's 28 px control height — not a run of shrink-wrapped
+    # chips on one line.
+    nav_box = nav.bounding_box()
+    assert nav_box is not None
+    assert nav_box["width"] == 200
+    first = links.nth(0).bounding_box()
+    second = links.nth(1).bounding_box()
+    third = links.nth(2).bounding_box()
+    assert first is not None and second is not None and third is not None
+    assert first["y"] < second["y"] < third["y"]
+    for box in (first, second, third):
+        assert box["width"] == 200  # a row fills its column
+        assert box["height"] == 28  # the row's control height
+    # A row is square: the surface radius belongs to panels, never rows.
+    assert links.first.evaluate("el => getComputedStyle(el).borderRadius") == "0px"
+
+    # The frame keeps its columns to itself: every hub door renders beside
+    # the nav, at the content column's width — an unwrapped multi-root page
+    # auto-places its fragment children into the grid, and from the second
+    # section on they land in the nav's own cell (measured x=180 w=200),
+    # which is the regression this pin exists to catch.
+    for name in ("Sprache", "Anbieter", "Prompts"):
+        region_box = page.get_by_role("region", name=name).bounding_box()
+        assert region_box is not None
+        assert region_box["x"] >= nav_box["x"] + nav_box["width"]
+        assert abs(region_box["width"] - 736) <= 1  # 1000 - 2*16 - 200 - 32
+
+    assert_accessible(page)
+
+
+def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stack: Stack) -> None:
+    """The tab names the page showing (WCAG 2.4.2) on every settings page,
+    and the active cluster row says so with ``aria-current``."""
+    page.goto("http://127.0.0.1:3100/settings")
+    expect(page).to_have_title("Einstellungen — Narrare")
+
+    # A sub-page owns its own name — the landing's, not the area's.
+    page.goto("http://127.0.0.1:3100/settings/language")
+    expect(page).to_have_title("Sprache — Narrare")
+    expect(
+        page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Sprache")
+    ).to_have_attribute("aria-current", "page")
+
+    page.goto("http://127.0.0.1:3100/settings/provider")
+    expect(page).to_have_title("Anbieter — Narrare")
+    expect(
+        page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Anbieter")
+    ).to_have_attribute("aria-current", "page")
+
+    assert_accessible(page)

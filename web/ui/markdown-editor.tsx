@@ -17,8 +17,8 @@ const NO_EXTENSIONS: Extensions = [];
  * not a view of some HTML underneath. Rich text on screen, Markdown in the
  * store.
  *
- * The editable element is a real labelled textbox — the same `prose` paint,
- * explicit `role`, multiline and `aria-label` the chapter editor carries
+ * The editable element is a real labelled textbox — the same `.ProseMirror`
+ * paint, explicit `role`, multiline and `aria-label` the chapter editor carries
  * (@tiptap/core injects role="textbox" in createView, but the React binding
  * strips it again: EditorContent.init() re-parents the view and
  * setOptions({element}) re-props it from the raw editorProps — the explicit
@@ -63,7 +63,6 @@ export function MarkdownEditor({
     onUpdate: ({ editor: instance }) => emit.current(instance.getMarkdown()),
     editorProps: {
       attributes: {
-        class: "prose",
         role: "textbox",
         "aria-multiline": "true",
         "aria-label": label,
@@ -76,5 +75,14 @@ export function MarkdownEditor({
     return () => ready.current?.(null);
   }, [editor]);
 
-  return <EditorContent editor={editor} className={className} />;
+  return (
+    <EditorContent
+      editor={editor}
+      // F18: TipTap paints no caret affordance of its own — `.ProseMirror`
+      // keeps `outline: none` — so the wrapper carries the ring: visible
+      // whenever the caret is inside, gone when it leaves. The paint never
+      // touches the measure; the focus E2E pins both states.
+      className={`focus-within:ring-2 focus-within:ring-focus ${className ?? ""}`}
+    />
+  );
 }
