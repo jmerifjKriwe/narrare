@@ -104,6 +104,13 @@ export function EntitiesPanel() {
     a.localeCompare(b),
   );
 
+  // A refresh can remove the last entity carrying a selected filter. Clear
+  // that stale value so the select and the results agree on the live list.
+  useEffect(() => {
+    if (typeFilter && !typeOptions.includes(typeFilter)) setTypeFilter("");
+    if (tagFilter && !tagOptions.includes(tagFilter)) setTagFilter("");
+  }, [typeFilter, tagFilter, typeOptions.join("\0"), tagOptions.join("\0")]);
+
   // The detail follows the selection, not the filter: picking an entity and
   // then narrowing the search must not close what was opened. The param is
   // the selection: it is judged against the unfiltered list, and a param
