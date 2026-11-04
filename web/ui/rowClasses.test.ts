@@ -19,6 +19,8 @@ import { rowClass } from "./Row";
 
 const ROW_BASE =
   "group h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+const ROW_FLUSH =
+  "group h-7 flex w-full items-center gap-2 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 const SELECTED_ADDITIONS =
   "bg-soft font-semibold shadow-[inset_2px_0_0_var(--primary)]";
 
@@ -48,6 +50,13 @@ describe("rowClass", () => {
     // of text colour or shape rides along with the state.
     expect(rowClass(true)).toBe(`${rowClass(false)} ${SELECTED_ADDITIONS}`);
   });
+
+  it("drops its own gutter when the surface around it owns one", () => {
+    // A row inside a padded dock or panel body must not add a second inset
+    // to the text it shares a column with (the heading above it).
+    expect(rowClass(false, true)).toBe(ROW_FLUSH);
+    expect(rowClass(true, true)).toBe(`${ROW_FLUSH} ${SELECTED_ADDITIONS}`);
+  });
 });
 
 describe("panelClass", () => {
@@ -59,6 +68,10 @@ describe("panelClass", () => {
   it("lays the header out on the rule, with room for the actions at the far edge", () => {
     expect(panelHeaderClass()).toBe(
       "flex items-center gap-2 border-b border-rule px-3 py-2",
+    );
+    // A dense body sits at 10 px; its header must not sit at 12.
+    expect(panelHeaderClass(true)).toBe(
+      "flex items-center gap-2 border-b border-rule px-2.5 py-2",
     );
   });
 });

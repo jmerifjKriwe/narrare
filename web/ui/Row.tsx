@@ -23,14 +23,14 @@ import type { HTMLAttributes, MouseEventHandler, ReactNode } from "react";
  * them is a column, not a run of shrink-wrapped centred buttons.
  */
 
-/**
- * The row's constant classes: the control height, the full-width layout,
- * the body type, the `--rule` separator (a row is separated, never edged —
- * `--border` is for surfaces), the pointer's wash and the one focus ring
- * every interactive primitive carries.
- */
-const ROW_CLASSES =
-  "group h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+/** The row's frame, cut at the gutter so a flush row omits it without
+ *  disturbing the order the pinned class contract names. */
+const ROW_HEAD = "group h-7 flex w-full items-center gap-2";
+const ROW_TAIL =
+  "text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+
+/** The gutter a standalone row owns when no surface pads it. */
+const ROW_INSET = "px-3";
 
 /**
  * The selected row's additions: the weight and the edge marker — plus the
@@ -41,13 +41,22 @@ const ROW_SELECTED_CLASSES =
   "bg-soft font-semibold shadow-[inset_2px_0_0_var(--primary)]";
 
 /**
- * The whole row look for one boolean. Exported so React Aria
+ * The whole row look for one boolean. The optional `flush` drops the row's
+ * own gutter so a list inside a padded surface (a dock, a panel body) shares
+ * that surface's inset instead of adding a second one to it — a heading and
+ * the rows under it then start on one edge. Exported so React Aria
  * `GridList.Item` consumers pass the selection they already hold —
  * `rowClass(item.id === selectedId)` — and rows in a React-Aria list wear
  * exactly what a plain `Row` wears.
  */
-export function rowClass(selected: boolean): string {
-  return selected ? `${ROW_CLASSES} ${ROW_SELECTED_CLASSES}` : ROW_CLASSES;
+export function rowClass(selected: boolean, flush = false): string {
+  // The row's own frame either carries its gutter or yields to the surface
+  // that pads it: a list inside a dock or a panel body shares that surface's
+  // inset, so a heading and the rows under it start on one edge.
+  const base = flush
+    ? `${ROW_HEAD} ${ROW_TAIL}`
+    : `${ROW_HEAD} ${ROW_INSET} ${ROW_TAIL}`;
+  return selected ? `${base} ${ROW_SELECTED_CLASSES}` : base;
 }
 
 /**
@@ -61,6 +70,8 @@ export function rowClass(selected: boolean): string {
 type RowBase = Omit<HTMLAttributes<HTMLElement>, "onClick"> & {
   selected?: boolean;
   current?: boolean;
+  /** The surface around the row owns the gutter; the row adds none. */
+  flush?: boolean;
   /** A glyph or badge before the row's content. */
   leading?: ReactNode;
   /** Something after the content — a status, a count, a control. */
@@ -79,6 +90,7 @@ export function Row({
   as = "button",
   selected = false,
   current = false,
+  flush = false,
   leading,
   trailing,
   href,
@@ -91,8 +103,8 @@ export function Row({
   // extension (the P3 precedence). A utility that fights the matrix here
   // is a smell — extend `rowClass` instead.
   const classes = className
-    ? `${rowClass(selected)} ${className}`
-    : rowClass(selected);
+    ? `${rowClass(selected, flush)} ${className}`
+    : rowClass(selected, flush);
   const state = {
     "data-selected": selected || undefined,
     // `aria-current` is the navigation's "you are here"; it comes only
