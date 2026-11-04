@@ -269,6 +269,7 @@
   "shelf.report.nothingChanged": "Nothing changed — no chapter, knowledge entry or relation was written.",
   "shelf.report.close": "Close",
   "shell.notFound": "This page does not exist.",
+  "shell.notFoundBody": "That address belongs to no screen in this app — the library is one click away.",
   "shell.error": "This page could not be shown.",
   "novels.titleRequired": "Please enter a title.",
   "locale.name": "English",

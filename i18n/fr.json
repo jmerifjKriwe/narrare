@@ -269,6 +269,7 @@
   "shelf.report.nothingChanged": "Rien n'a changé — aucun chapitre, aucune entrée de connaissances, aucune relation n'a été écrit.",
   "shelf.report.close": "Fermer",
   "shell.notFound": "Cette page n'existe pas.",
+  "shell.notFoundBody": "Cette adresse ne correspond à aucun écran de l'application — la bibliothèque est à un clic.",
   "shell.error": "Cette page n'a pas pu être affichée.",
   "novels.titleRequired": "Veuillez saisir un titre.",
   "locale.name": "Français",

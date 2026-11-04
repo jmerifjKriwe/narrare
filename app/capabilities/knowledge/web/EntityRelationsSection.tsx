@@ -49,7 +49,7 @@ type RelationRow = {
  * offers; moving is delete plus add.
  */
 export function EntityRelationsSection(
-  { entity, rows, onRowEditorChange }: {
+  { entity, rows, onRowEditorChange, onAddDirtyChange }: {
     entity: Entity;
     rows: Entity[];
     /** Every open/close of a row editor reports upward: the dialog's own
@@ -57,6 +57,10 @@ export function EntityRelationsSection(
      *  can no longer close over it and silently discard the row's type
      *  and note. */
     onRowEditorChange?: (open: boolean) => void;
+    /** The add form's dirt reports upward the same way (R49): a target
+     *  or note the user typed must not die under a Save that never read
+     *  it — the dialog's Save stands down until the form is spent. */
+    onAddDirtyChange?: (dirty: boolean) => void;
   },
 ) {
   const t = useTranslation();
@@ -81,6 +85,9 @@ export function EntityRelationsSection(
   const [typeText, setTypeText] = useState("");
   const [note, setNote] = useState("");
   const [triedAdd, setTriedAdd] = useState(false);
+
+  const addDirty = targetText.trim() !== "" || note.trim() !== "";
+  useEffect(() => onAddDirtyChange?.(addDirty), [addDirty, onAddDirtyChange]);
 
   // The row edit: one at a time, prefilled with what the edge holds. The
   // form stands under the table whose rows it edits, named for its own

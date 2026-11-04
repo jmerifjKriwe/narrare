@@ -128,6 +128,19 @@ def test_the_icon_rail_answers_the_surface(page: Page, stack: Stack, width: int)
     expect(page.locator(ICON_RAIL)).to_be_visible()
 
 
+def test_the_unknown_url_names_itself_and_reads_the_scale(page: Page, stack: Stack) -> None:
+    """R49: the 404 joins the system — it names itself to the tab and the
+    bar (usePageTitle), and its heading walks the title step (20), not a
+    hand-picked size."""
+    page.goto(f"{WEB}/gibt-es-nicht")
+    expect(page).to_have_title("Diese Seite existiert nicht. — Narrare")
+    expect(page.get_by_role("heading", name="Diese Seite existiert nicht.")).to_be_visible()
+    assert (
+        page.evaluate("getComputedStyle(document.querySelector('h1.text-title')).fontSize")
+        == "20px"
+    )
+
+
 def test_the_workspace_shows_one_filled_primary_with_the_chat_dock_open(
     page: Page, stack: Stack
 ) -> None:

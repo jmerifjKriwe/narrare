@@ -7,8 +7,9 @@ import { TopBar } from "../components/TopBar";
 import { IconRail } from "../components/IconRail";
 import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
-import { PageTitleProvider, applyBaseTitle } from "../lib/pageTitle";
+import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
 import { useSettingsQuery } from "../lib/query";
+import { Notice } from "../ui/Notice";
 import "../globals.css";
 
 /**
@@ -144,15 +145,21 @@ function Shell() {
 
 /** The shell's answer to an unknown URL: the copy comes from the catalog —
  * TanStack's English default would break the i18n rule inside the localized
- * shell — and the way home is the shelf. */
+ * shell — and the way home is the shelf. R49: the page names itself (the
+ * tab and the bar read it), the failure rides a Notice, and the type
+ * walks the scale. */
 function NotFound() {
   const t = useTranslation();
+  usePageTitle(t("shell.notFound"));
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("shell.notFound")}</h1>
+      <h1 className="text-title font-semibold tracking-tight">{t("shell.notFound")}</h1>
+      <Notice tone="quiet" className="mt-4">
+        {t("shell.notFoundBody")}
+      </Notice>
       <Link
         to="/"
-        className="mt-4 inline-block text-sm text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="mt-4 inline-block text-body text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         {t("nav.back")}
       </Link>
@@ -162,19 +169,21 @@ function NotFound() {
 
 /** A route that throws lands here, not on TanStack's English default: the
  * failure is named in the catalog's language and the thrown message rides
- * along — a local-first app shows its own errors. */
+ * along — a local-first app shows its own errors. Same system as the
+ * unknown URL above: a named page, a danger Notice, the scale. */
 function RouteError({ error }: ErrorComponentProps) {
   const t = useTranslation();
   const message = error instanceof Error ? error.message : String(error);
+  usePageTitle(t("shell.error"));
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("shell.error")}</h1>
-      <p role="alert" className="mt-4 text-sm text-danger">
+      <h1 className="text-title font-semibold tracking-tight">{t("shell.error")}</h1>
+      <Notice tone="danger" live="alert" className="mt-4">
         {message}
-      </p>
+      </Notice>
       <Link
         to="/"
-        className="mt-4 inline-block text-sm text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="mt-4 inline-block text-body text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         {t("nav.back")}
       </Link>

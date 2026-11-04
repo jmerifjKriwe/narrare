@@ -23,22 +23,25 @@ export function TopBar() {
   const place = usePageTitleValue();
 
   return (
-    <header className="border-b border-border bg-panel text-sm">
+    <header className="border-b border-border bg-panel">
       {/* Hidden from sight until focused, and first in the bar so the first
           Tab finds it. Transform and opacity, not sr-only: the reveal then
           needs no second utility to undo the hiding. The ring is pre-applied
           rather than focus-visible-gated because reveal and focus coincide. */}
       <a
         href="#main"
-        className="fixed left-4 top-4 z-20 -translate-y-24 rounded-md bg-card px-3 py-2 text-sm text-foreground opacity-0 outline-none ring-2 ring-focus transition focus:translate-y-0 focus:opacity-100"
+        className="fixed left-4 top-4 z-20 -translate-y-24 rounded-[var(--radius)] bg-card px-3 py-2 text-body text-foreground opacity-0 outline-none ring-2 ring-focus transition focus:translate-y-0 focus:opacity-100"
       >
         {t("shell.skipToContent")}
       </a>
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
+      {/* The bar's content aligns with the app's nominal page container —
+          the shelf's 1200 (R49): the pages grew past the old 672 bar, and
+          controls parked at a column nothing else uses read as stray. */}
+      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-3">
         {/* The place. `min-w-0` lets a long title shrink instead of pushing
             the actions out of the bar; until a page names itself this side
             is empty, and the actions hold the right edge regardless. */}
-        <div className="min-w-0 font-medium">
+        <div className="min-w-0 text-body font-medium">
           <span className="block truncate">{place}</span>
         </div>
         <div className="flex items-center gap-4">

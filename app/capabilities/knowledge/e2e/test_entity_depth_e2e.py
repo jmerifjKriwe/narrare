@@ -185,6 +185,11 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     target.press("ArrowDown")
     target.press("Enter")
     expect(target).to_have_value("Amulett")
+    # R49's upload-preservation pin: with the add form holding typed work,
+    # the dialog's Save stands down — a press that would close over the
+    # form cannot happen. The spent form hands the Save back.
+    save = dialog.get_by_role("button", name="Speichern")
+    expect(save).to_be_disabled()
     kind = dialog.get_by_label("Beziehungsart")
     kind.fill("Besitzt")
     kind.press("ArrowDown")
@@ -200,7 +205,8 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(edge_row).to_contain_text("Besitzt")
     expect(edge_row).to_contain_text("Seit dem Fest")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde hinzugefügt")
-    dialog.get_by_role("button", name="Speichern").click()
+    expect(save).to_be_enabled()
+    save.click()
     expect(dialog).not_to_be_visible()
     expect(detail).to_contain_text("Amulett · Besitzt")
 

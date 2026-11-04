@@ -676,8 +676,16 @@ export function NovelPage() {
           className="flex min-w-0 flex-1 flex-col items-center"
           inert={railOverlay || dockOverlay || undefined}
         >
-          <div className="w-full max-w-[544px]">
-            {pending ? (
+          {/* The editor's tone step (R49): a band painted around the
+              measured column — the 544 the prose reads at is never the
+              chrome's victim. The workspace arithmetic leaves no
+              horizontal slack (rail + prose + dock sum to the container,
+              pinned at 1280 with the dock open), so the band takes its
+              ground, its rules and its air vertically: the measure lives
+              on the inner column untouched. */}
+          <div className="w-full border-y border-rule bg-card py-6">
+            <div className="mx-auto w-full max-w-[544px]">
+              {pending ? (
               // The page has asked and is waiting — a named state, not a blank
               // or empty-looking book. Quiet and polite: nothing is wrong.
               <Notice tone="quiet" live="status" className="mt-6">
@@ -742,6 +750,7 @@ export function NovelPage() {
                 ) : null}
               </>
             )}
+            </div>
           </div>
         </section>
 

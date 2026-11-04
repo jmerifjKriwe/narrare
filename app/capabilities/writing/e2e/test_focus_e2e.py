@@ -65,6 +65,23 @@ def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) ->
     page.keyboard.type("Der Ring folgt dem Caret.")
     assert page.evaluate(shadow) != "none", "no ring while the caret is inside"
     inside = page.evaluate(measure)
+    # R49's tone step: the editor sits in a card painted around the
+    # measured column — the measure itself stays the prose's 34rem. The
+    # probe reads computed paint (a `sm:bg-card` token is not the class
+    # `.bg-card`), asking for an ancestor whose ground differs from the
+    # page's own.
+    tone_step = page.evaluate(
+        """() => {
+          const ground = getComputedStyle(document.body).backgroundColor;
+          let n = document.querySelector('.ProseMirror').parentElement;
+          for (; n; n = n.parentElement) {
+            const bg = getComputedStyle(n).backgroundColor;
+            if (bg !== 'rgba(0, 0, 0, 0)' && bg !== ground) return bg;
+          }
+          return null;
+        }"""
+    )
+    assert tone_step, "the editor's tone step is missing"
 
     # The caret leaves: the heading takes the click, the ring lets go.
     page.get_by_role("heading", name="Der Karettring").click()

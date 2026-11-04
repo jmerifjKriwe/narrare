@@ -269,6 +269,7 @@
   "shelf.report.nothingChanged": "Nichts geändert — weder Kapitel noch Wissenseinträge noch Beziehungen wurden geschrieben.",
   "shelf.report.close": "Schließen",
   "shell.notFound": "Diese Seite existiert nicht.",
+  "shell.notFoundBody": "Diese Adresse gehört zu keinem Bildschirm der App — die Bibliothek ist einen Klick entfernt.",
   "shell.error": "Diese Seite konnte nicht angezeigt werden.",
   "novels.titleRequired": "Bitte gib einen Titel ein.",
   "locale.name": "Deutsch",

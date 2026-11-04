@@ -541,6 +541,7 @@ function EditEntityDialog({
   // about — saving and closing now would silently discard it, so the save
   // button stands down while one is open.
   const [rowEditorOpen, setRowEditorOpen] = useState(false);
+  const [addFormDirty, setAddFormDirty] = useState(false);
 
   const typeItems = (Object.keys(TYPE_KEYS) as (keyof typeof TYPE_KEYS)[]).map((type) => ({
     id: type,
@@ -621,6 +622,7 @@ function EditEntityDialog({
             entity={entity}
             rows={rows}
             onRowEditorChange={setRowEditorOpen}
+            onAddDirtyChange={setAddFormDirty}
           />
           {failed ? (
             <Notice tone="danger" live="alert">
@@ -631,7 +633,7 @@ function EditEntityDialog({
             <Button
               variant="primary"
               onClick={() => void save(close)}
-              disabled={rowEditorOpen}
+              disabled={rowEditorOpen || addFormDirty}
             >
               {t("knowledge.entitySave")}
             </Button>
