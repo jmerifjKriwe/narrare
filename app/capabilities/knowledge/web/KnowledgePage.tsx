@@ -278,7 +278,9 @@ export function KnowledgePage() {
                   className="h-auto flex-col items-stretch gap-1 py-2"
                 >
                   <span className="text-label font-semibold">{hit.document_title}</span>
-                  <span className="text-body leading-relaxed text-muted">{hit.text}</span>
+                  <span className="text-body leading-relaxed text-muted group-hover:text-foreground">
+                    {hit.text}
+                  </span>
                 </Row>
               ))}
             </div>

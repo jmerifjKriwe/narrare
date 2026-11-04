@@ -58,6 +58,38 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
     assert_accessible(page)
 
 
+def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: Path) -> None:
+    """R48's hover ink, probed where axe cannot look: a hover washes the
+    row in `--soft`, and the muted snippet under the title must restore
+    foreground there — muted on `--soft` is below AA, so the hover's
+    answer is the ink, not a darker grey. The row is the Row div inside
+    its list item (the li carries no paint), so the probe measures that."""
+    _upload(page, tmp_path, "Quellnotizen")
+
+    page.goto("http://127.0.0.1:3100/chat")
+    page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
+    page.get_by_role("button", name="Fragen").click()
+    region = page.get_by_role("region", name="Quellen")
+    row = region.get_by_role("listitem").first.locator("div.group")
+    snippet = row.locator("span.text-muted")
+    title = row.locator("span.text-label")
+    expect(snippet).to_be_visible()
+
+    rest_color = snippet.evaluate("el => getComputedStyle(el).color")
+    rest_bg = row.evaluate("el => getComputedStyle(el).backgroundColor")
+
+    row.hover()
+    hover_color = snippet.evaluate("el => getComputedStyle(el).color")
+    hover_bg = row.evaluate("el => getComputedStyle(el).backgroundColor")
+    ink = title.evaluate("el => getComputedStyle(el).color")
+
+    assert hover_bg != rest_bg, "the row did not wash in on hover"
+    assert hover_color == ink, "the hovered snippet kept its muted ink"
+    assert rest_color != ink, "the resting snippet was not muted to begin with"
+
+    assert_accessible(page)
+
+
 def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path) -> None:
     # Each test in this module uploads its own document (the stack's database
     # is module-scoped), and the titles share no substring so a page listing

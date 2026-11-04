@@ -13,6 +13,12 @@ import type { HTMLAttributes, MouseEventHandler, ReactNode } from "react";
  * light), and `bg-primary` fills are for the one primary action, never a
  * chosen row.
  *
+ * The hover ink (R48): the row carries `group`, the one hover hook —
+ * muted text inside a hoverable row restores foreground with
+ * `group-hover:text-foreground` at the site (the shelf's pattern). One
+ * hook, owned here; the hover-contrast E2E pins the restore, since axe
+ * cannot hover.
+ *
  * Rows fill their container and read left (`w-full text-left`): a list of
  * them is a column, not a run of shrink-wrapped centred buttons.
  */
@@ -24,7 +30,7 @@ import type { HTMLAttributes, MouseEventHandler, ReactNode } from "react";
  * every interactive primitive carries.
  */
 const ROW_CLASSES =
-  "h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  "group h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 /**
  * The selected row's additions: the weight and the edge marker — plus the

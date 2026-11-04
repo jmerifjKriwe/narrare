@@ -172,7 +172,9 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
                     }
                   >
                     <span className="text-label font-semibold">{source.document_title}</span>
-                    <span className="text-body leading-relaxed text-muted">{source.text}</span>
+                    <span className="text-body leading-relaxed text-muted group-hover:text-foreground">
+                      {source.text}
+                    </span>
                   </Row>
                 </li>
               ))}
