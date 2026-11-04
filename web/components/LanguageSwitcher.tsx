@@ -52,26 +52,31 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor={id} className="font-medium text-label">
-        {t("settings.language")}
-      </label>
-      <Select
-        id={id}
-        value={chosen ?? "auto"}
-        onChange={(event) => void choose(event.target.value)}
-      >
-        {/* "Automatic" is a real choice, not an empty one: it means the row
-            holds no preference and the browser decides. */}
-        <option value="auto">{t("settings.automatic")}</option>
-        {locales.map((code) => (
-          <option key={code} value={code}>
-            {/* Endonyms: a reader looking for their language finds it written
-                in their language, whatever the app currently speaks. */}
-            {catalogs[code]["locale.name"]}
-          </option>
-        ))}
-      </Select>
+    // The failure renders below the label-and-control row, never inside
+    // it: a padded block in the bar's non-wrapping row would overflow a
+    // narrow screen, and below is where a refusal reads anyway.
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2">
+        <label htmlFor={id} className="font-medium text-label">
+          {t("settings.language")}
+        </label>
+        <Select
+          id={id}
+          value={chosen ?? "auto"}
+          onChange={(event) => void choose(event.target.value)}
+        >
+          {/* "Automatic" is a real choice, not an empty one: it means the row
+              holds no preference and the browser decides. */}
+          <option value="auto">{t("settings.automatic")}</option>
+          {locales.map((code) => (
+            <option key={code} value={code}>
+              {/* Endonyms: a reader looking for their language finds it written
+                  in their language, whatever the app currently speaks. */}
+              {catalogs[code]["locale.name"]}
+            </option>
+          ))}
+        </Select>
+      </div>
       {failed ? (
         <Notice tone="danger" live="alert">
           {t("settings.errorSave")}

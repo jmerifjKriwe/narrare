@@ -11,7 +11,10 @@ Tab and Enter for every step from opening the dock to both decisions. The
 dock's failures are named: an unreachable backend reads as an outage, never
 as an empty list — the review queue no less than the entity list, each with
 its own words — and a job poll that meets a dead service reopens the
-trigger instead of locking it. The extraction is idempotent against a
+trigger instead of locking it. The running bar passes the axe floor while
+it moves: no natural run lasts long enough for the row's poll to sample a
+reported share, so the test stops the lane, sets the share by hand, and
+lets the poll recover under it. The extraction is idempotent against a
 re-run: the same chapter filed twice holds one card set, and a consumed
 suggestion files fresh on the next run. The search box reaches two tiers:
 the names it filters instantly, and the corpus's passages through the
@@ -50,14 +53,19 @@ param with a replace — the back button leaves the dock, not the clicks
 address, a dead link that degrades instead of erroring.
 """
 
+import asyncio
 import re
+from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 from playwright.sync_api import Locator, Page, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 
 if TYPE_CHECKING:
@@ -69,6 +77,8 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 # standalone search test's upload does — through the real service, its real
 # ingestion and the E2E stack's real embedding stand-in.
 API = "http://127.0.0.1:8000"
+
+DATABASE = "narrare_v2_knowledge_e2e"  # the stack's own database (e2e/conftest.py)
 
 # Capitalized words steer the fake provider's extraction (it derives names
 # from them): Mira, Haus, See, Draußen and Leuchtturm become the five
@@ -539,6 +549,139 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
     expect(dock.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)
+
+
+def _hold_running(job_id: str, progress: int) -> None:
+    """Set a job row to RUNNING with a reported share, from the test.
+
+    Runs in a worker thread: pytest-asyncio keeps a session loop running,
+    and asyncio.run refuses to start a second one in the same thread. No
+    natural run lasts long enough for the row's one-second poll to sample a
+    reported share — the fake provider answers within the gap between two
+    ticks — so the state the bar needs is arranged, not raced: the fresh
+    ``updated_at`` keeps the stale sweep's 30-second bound off the row for
+    the assertion's length, and with the lane down, no writer contests it.
+    """
+
+    async def run() -> None:
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE jobs SET status = 'running', progress = :progress,"
+                    " updated_at = now() WHERE id = :job_id"
+                ),
+                {"progress": progress, "job_id": job_id},
+            )
+        await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(asyncio.run, run()).result()
+
+
+def _settle_done(job_id: str) -> None:
+    """Put a hand-held row back to done, the state its run actually reached.
+
+    Same worker-thread pattern as ``_hold_running``; the module's later
+    tests inherit a settled lane instead of a row a sweep must requeue.
+    """
+
+    async def run() -> None:
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("UPDATE jobs SET status = 'done' WHERE id = :job_id"),
+                {"job_id": job_id},
+            )
+        await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(asyncio.run, run()).result()
+
+
+def _latest_job_id() -> str:
+    """The newest job row's id — the one this test's click just enqueued.
+
+    Same worker-thread pattern; within the stopped-API window no writer
+    exists, so the newest row is this test's own.
+    """
+
+    async def run() -> str:
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.connect() as connection:
+            row = (
+                await connection.execute(
+                    text("SELECT id FROM jobs ORDER BY created_at DESC LIMIT 1")
+                )
+            ).one()
+        await engine.dispose()
+        return str(row[0])
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return str(pool.submit(asyncio.run, run()).result())
+
+
+def test_the_running_bar_passes_the_axe_floor(page: Page, stack: Stack) -> None:
+    """The moving bar is on screen while the axe floor runs — and passes it.
+
+    No natural flow samples a RUNNING row with a reported share: the fake
+    provider answers inside one poll tick, so every flow's accessibility
+    pass has met only queued, done and failed rows. The arrangement stops
+    the API under a live poll (the row's interval survives an outage that
+    already had an answer, and recovers on its own), sets the share by hand
+    through the stack's own database, and restarts: the bar stands, named,
+    and the floor runs against exactly that state.
+    """
+    _open_workspace_with_validated_title(page, "Der Fortschritt der Bucht")
+
+    page.get_by_role("button", name="Neues Kapitel").click()
+    editor = page.locator(".ProseMirror")
+    expect(editor).to_be_visible()
+    editor.click()
+    page.keyboard.type(CHAPTER_BODY)
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+    tab = page.get_by_role("button", name="Wissen", exact=True)
+    tab.focus()
+    page.keyboard.press("Enter")
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    status = dock.locator("[data-job-status]")
+    # The stop lands under a first poll that saw an outstanding row: the
+    # first fetch fires with the POST's own resolution, and the lane cannot
+    # claim, run and settle a job inside that gap — but a spent chance is a
+    # retry, the way the failed-poll test races its own stop.
+    held: str | None = None
+    for _attempt in range(3):
+        extract.click()
+        expect(status).to_be_visible()
+        if status.get_attribute("data-job-status") != "done":
+            held = _latest_job_id()
+            stack.stop_api()
+            break
+        # The lane beat the fetch to done: the trigger is back, and the
+        # next click races a fresh job's first fetch.
+        expect(extract).to_be_enabled()
+    else:
+        pytest.fail("every first poll saw its run already settled")
+
+    _hold_running(held, 40)
+    stack.start_api()
+
+    # The poll recovers with the row standing: running, the reported share
+    # on the rule — and the floor runs against exactly that state. An
+    # unnamed bar is the WCAG 2 A failure this assertion exists to catch.
+    bar = dock.get_by_role("progressbar")
+    expect(bar).to_be_visible()
+    expect(bar).to_have_attribute("aria-valuenow", "40")
+    assert_accessible(page)
+
+    # The row goes back to done by hand — the assertion had its state, and
+    # the poll settles with it.
+    _settle_done(held)
+    expect(status).to_have_attribute("data-job-status", "done")
 
 
 def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack) -> None:

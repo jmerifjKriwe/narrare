@@ -43,10 +43,13 @@ export function JobStatus({ job }: { job: Job }) {
           {/* The movement the poll sees: the reported share on the 1 px
               rule, the fill riding it 2 px thick and named by its value —
               a screen reader hears the progress, the eye watches the fill.
-              Until the handler reports, there is nothing to draw. */}
+              The bar names itself: an unnamed progressbar is the axe
+              floor's WCAG 2 A failure. Until the handler reports, there
+              is nothing to draw. */}
           {job.progress !== null ? (
             <div
               role="progressbar"
+              aria-label={t("jobs.progress")}
               aria-valuenow={job.progress}
               aria-valuemin={0}
               aria-valuemax={100}

@@ -60,6 +60,10 @@ describe("JobStatus", () => {
     // the sentence about it.
     render(<JobStatus job={job({ status: "running", progress: 40 })} />);
     const bar = screen.getByRole("progressbar");
+    // The bar names itself: a progressbar with no accessible name is the
+    // axe floor's WCAG 2 A failure, and the row must not trade one voice
+    // for the lack of another.
+    expect(bar.getAttribute("aria-label")).toBe(t("jobs.progress"));
     expect(bar.getAttribute("aria-valuenow")).toBe("40");
     expect(bar.getAttribute("aria-valuemin")).toBe("0");
     expect(bar.getAttribute("aria-valuemax")).toBe("100");

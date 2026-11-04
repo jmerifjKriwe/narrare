@@ -189,6 +189,7 @@
   "jobs.queued": "In der Warteschlange…",
   "jobs.running": "Läuft…",
   "jobs.runningProgress": "Läuft… {progress, number, percent}",
+  "jobs.progress": "Auftragsfortschritt",
   "jobs.failed": "Fehlgeschlagen: {error}",
   "jobs.done.extract-entities": "{count, plural, one {# Vorschlag gefunden} other {# Vorschläge gefunden}}",
   "jobs.done.check-consistency": "{count, plural, one {# Widerspruch gefunden} other {# Widersprüche gefunden}}",

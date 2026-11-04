@@ -19,7 +19,8 @@ type ModalLoad = () => Promise<{ default: ComponentType }>;
 type DockPath = (typeof docks)[number]["path"];
 type PagePath = (typeof nav)[number]["path"];
 
-const GROUP_LABEL = "px-3 pb-1 pt-2 font-medium text-label text-muted";
+const GROUP_LABEL =
+  "px-3 pb-1 pt-2 text-label uppercase tracking-[0.1em] text-muted";
 
 /**
  * One row of the palette: the list primitive's 28 px row on the rule (the
@@ -508,7 +509,7 @@ export function Palette({
             </div>
             {/* §11's row: the focus shortcuts are named here and nowhere
                 else — the palette is the one place the keyboard's map lives. */}
-            <p className="border-t border-border px-4 py-2 text-label text-muted">
+            <p className="border-t border-border px-4 py-2 text-meta text-muted">
               {t("workspace.shortcutHints")}
             </p>
           </RacDialog>

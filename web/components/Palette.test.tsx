@@ -260,10 +260,16 @@ describe("the palette wears the system's rows", () => {
     // palette's keyboard walk moves focus, so no row is one.
     expect(row.getAttribute("data-selected")).toBeNull();
 
-    // The group label speaks at the label size.
+    // The group label speaks at the label size, in the eyebrow voice —
+    // the panel header's own treatment (§8.2: uppercase, tracked).
     const group = await paletteGroup(t("palette.chapters"));
     const label = group.querySelector("p") as HTMLElement;
     expect(label.className).toContain("text-label");
+    expect(label.className).toContain("uppercase");
+    expect(label.className).toContain("tracking-[0.1em]");
+    // The keyboard hints are the scale's meta voice, not the label's.
+    const hints = screen.getByText(t("workspace.shortcutHints"));
+    expect(hints.className).toContain("text-meta");
 
     // The palette names itself for what it is, not for what it offers.
     expect(screen.getByRole("dialog", { name: t("palette.aria") })).toBeTruthy();
