@@ -189,6 +189,11 @@ def test_depth_two_hides_the_frame_and_retracts_its_hint(page: Page, stack: Stac
     expect(page.locator(".ProseMirror")).to_be_visible()
     assert "focus=2" in page.url
 
+    # The continue button is a writing control, not chrome (the final
+    # wave's declined list): the workspace's one filled primary stays at
+    # the deepest step while the frame around it yields.
+    expect(page.get_by_role("button", name="Weiterschreiben")).to_be_visible()
+
     # Both are hidden at the deepest step, and the hint that offers Esc
     # shows once, then retracts.
     expect(page.get_by_text("Der Seitensteg · Kapitel 1")).to_have_count(0)
