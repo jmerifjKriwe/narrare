@@ -590,7 +590,15 @@ async def _pending_proposal(
 ) -> EntitySuggestion:
     """A pending suggestion carrying proposals, beside its own chapter."""
     async with Session() as session:
-        chapter = Chapter(user_id=LOCAL_USER_ID, novel_id=novel_id, title="Ankunft", position=0)
+        # One number per chapter is the table's rule now (#521); this fixture
+        # gives each proposal its own chapter in the novel, so it appends.
+        taken = await session.scalar(
+            text("SELECT coalesce(max(position) + 1, 0) FROM chapters WHERE novel_id = :n"),
+            {"n": novel_id},
+        )
+        chapter = Chapter(
+            user_id=LOCAL_USER_ID, novel_id=novel_id, title="Ankunft", position=int(taken or 0)
+        )
         session.add(chapter)
         await session.flush()
         suggestion = EntitySuggestion(

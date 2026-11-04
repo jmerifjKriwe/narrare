@@ -57,6 +57,7 @@ from app.kernel.contracts.models import (
     EntityRelation,
     Novel,
 )
+from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.base import ScopedRepository
 from app.kernel.interchange.format import (
     METADATA_NAME,
@@ -486,9 +487,13 @@ async def _merge_chapters(
     disagreement is a reported conflict; on matched chapters it is ignored.
     """
     chapters = _Chapters(session, user_id)
+    # The one allocator, and with it the novel-row lock: an import landing
+    # beside a creation — or beside another import — must not take the same
+    # number, and the lock is what makes the read see the other writer's
+    # committed chapters (#521).
+    position = await next_chapter_position(session, user_id=user_id, novel_id=novel.id)
     stock = await chapters.list_for_novel(novel.id)
     by_id = {chapter.id: chapter for chapter in stock}
-    position = max((chapter.position for chapter in stock), default=-1) + 1
     for file_chapter in archive.chapters:
         row = by_id.get(file_chapter.id) if file_chapter.id is not None else None
         if row is None:

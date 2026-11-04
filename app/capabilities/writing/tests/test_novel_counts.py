@@ -130,7 +130,7 @@ async def test_another_users_chapter_does_not_count() -> None:
                 text(
                     "INSERT INTO chapters (id, user_id, novel_id, title, position, body, "
                     "created_at, updated_at) "
-                    "VALUES (:id, :user_id, :novel_id, 'Fremd', 0, 'fremd worte', now(), now())"
+                    "VALUES (:id, :user_id, :novel_id, 'Fremd', 1, 'fremd worte', now(), now())"
                 ),
                 {"id": uuid4(), "user_id": OTHER_USER, "novel_id": UUID(novel_id)},
             )

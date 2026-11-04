@@ -6,6 +6,7 @@ and the import needs exactly one source, refuses what it cannot parse, and
 reports what it merged. No fakes at all.
 """
 
+import asyncio
 import io
 import struct
 import zipfile
@@ -248,6 +249,43 @@ async def test_import_path_merge_into_existing(tmp_path: Path) -> None:
         # Merged, not duplicated: the DB still carries exactly the one chapter.
         chapters = await client.get(f"/api/writing/novels/{novel_id}/chapters")
         assert [chapter["title"] for chapter in chapters.json()] == ["Erstes Kapitel"]
+
+
+async def test_imports_of_one_book_at_once_take_distinct_numbers() -> None:
+    """Two imports landing together each get their own chapter number.
+
+    The importer allocates the append slot itself; without the same lock the
+    creation path takes, both read one max and the second import dies on the
+    unique position (#521).
+    """
+    data = zip_bytes(
+        serialize_archive(
+            NovelArchive(
+                title="Der Nebel",
+                chapters=[ChapterFile(title="Kapitel eins", position=0, body="Der Anfang.\n")],
+                entities=[],
+            )
+        )
+    )
+
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+
+    async def one_import() -> int:
+        async with _client() as client:
+            response = await client.post(
+                "/api/writing/novels/import",
+                files={"archive": ("der-import.zip", data)},
+                data={"novel_id": str(novel_id)},
+            )
+            return response.status_code
+
+    codes = await asyncio.gather(*(one_import() for _ in range(4)))
+    assert codes == [201] * 4
+
+    async with _client() as client:
+        listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
+    assert [chapter["position"] for chapter in listed] == [0, 1, 2, 3]
 
 
 async def test_import_needs_exactly_one_source() -> None:
