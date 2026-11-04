@@ -332,13 +332,11 @@ def test_an_external_dock_param_parses_tolerantly(page: Page, stack: Stack) -> N
     expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
 
     # The router normalized the loaded URL through the route's search
-    # validation — pinned as found: the validator's merge keeps every
-    # accepted input key, so the foreign `dock` rides along while the
-    # validated `rail` joins it. Only the app's own links drop unmentioned
-    # keys, so this is the URL shape an external dock link leaves behind.
-    # (The gap against the routes' clean-URL comment is reported, not
-    # fixed here: a pin changes no behavior.)
-    expect(page).to_have_url(f"{novel_url}?dock=chat&rail=true")
+    # validation — pinned as found: the validator keeps the accepted input
+    # key it cannot own (`dock` rides along) and adds nothing else. `rail`
+    # stays absent because absence is the breakpoint's decision, not a
+    # default the validator writes; only the toggle writes a boolean.
+    expect(page).to_have_url(f"{novel_url}?dock=chat")
 
     # The dock opens the way the app opens it: by its route. The URL's
     # path is the dock's whole open state — the param never had a say.

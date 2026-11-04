@@ -63,8 +63,16 @@ const novelRoute = createRoute({
     chapter?: unknown;
   }): { rail?: boolean; focus?: FocusStep; chapter?: string } => {
     const focus = focusStep(search.focus);
+    // Absent is not a decision: the breakpoint makes it. Below 1024 the rail
+    // is a drawer and absent means closed, above it is a column and absent
+    // means open — so only an explicit boolean in the URL (what the toggle
+    // writes) is a choice, and the page reads absence as "the default".
+    const rail =
+      search.rail === undefined
+        ? undefined
+        : !(search.rail === "0" || search.rail === 0 || search.rail === false);
     return {
-      rail: !(search.rail === "0" || search.rail === 0 || search.rail === false),
+      ...(rail === undefined ? {} : { rail }),
       ...(focus > 0 ? { focus } : {}),
       ...(typeof search.chapter === "string" && search.chapter !== ""
         ? { chapter: search.chapter }
