@@ -84,6 +84,10 @@ export function Button({
   const classes = className
     ? `${buttonClass(variant, size)} ${className}`
     : buttonClass(variant, size);
+  // An icon beside a label needs a gap and a line box of its own: the glyph
+  // is a 16 px SVG, and inline-block flow would sit it on the text's
+  // baseline without air. Icon-only buttons are the `icon` variant's grid.
+  const withIcon = icon != null && children != null ? "inline-flex items-center gap-1.5" : "";
   return (
     <button
       // Set ahead of the spread so a caller's own aria-label still wins.
@@ -92,7 +96,7 @@ export function Button({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={classes}
+      className={withIcon ? `${classes} ${withIcon}` : classes}
     >
       {icon}
       {children}
