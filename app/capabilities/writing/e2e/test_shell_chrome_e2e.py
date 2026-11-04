@@ -12,6 +12,7 @@ through the FontFaceSet, so a face that silently fails to ship fails here
 instead of rendering as the synthesised stand-in a 400 would become.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -125,3 +126,27 @@ def test_the_icon_rail_answers_the_surface(page: Page, stack: Stack, width: int)
     page.goto(f"{WEB}/")
     expect(page.get_by_role("link", name=title)).to_be_visible()
     expect(page.locator(ICON_RAIL)).to_be_visible()
+
+
+def test_the_workspace_shows_one_filled_primary_with_the_chat_dock_open(
+    page: Page, stack: Stack
+) -> None:
+    """L1 on the busiest screen: with the chat dock open, the workspace
+    answers exactly one filled primary — the editor's Weiterschreiben. The
+    dock's ask button reads as a secondary (R46): its paint carries no
+    primary fill. The class is the contract's handle — the unit matrix pins
+    that `bg-primary` means the fill — so the screen pin counts the class,
+    and names the one survivor."""
+    _create_workspace(page, "Die eine Primärfarbe")
+
+    page.get_by_role("button", name="Chat", exact=True).click()
+    dock = page.get_by_role("complementary", name="Chat")
+    expect(dock).to_be_visible()
+
+    ask = dock.get_by_role("button", name="Fragen")
+    expect(ask).to_be_visible()
+    expect(ask).not_to_have_class(re.compile(r"bg-primary"))
+
+    primaries = page.locator("button.bg-primary")
+    expect(primaries).to_have_count(1)
+    expect(primaries).to_contain_text("Weiterschreiben")

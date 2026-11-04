@@ -98,7 +98,7 @@ export function ExtractionPanel() {
         <p className="mt-2 text-body text-muted">{t("knowledge.noActiveChapter")}</p>
       ) : (
         <div className="mt-2">
-          <Button variant="primary" onClick={() => void extract()} disabled={busy}>
+          <Button variant="secondary" onClick={() => void extract()} disabled={busy}>
             {t("knowledge.extractChapter")}
           </Button>
         </div>

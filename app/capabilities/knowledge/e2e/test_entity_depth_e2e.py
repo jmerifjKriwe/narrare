@@ -17,6 +17,7 @@ through the misspelling Kathrina (D6). Real UI, real API, real Postgres;
 the fake holds only the LLM/embeddings boundary.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -169,6 +170,16 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     # novel's entries and the type from the suggested vocabulary.
     detail.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
+
+    # L1 with the add form showing (R46): the dialog's one filled primary
+    # is the Save — the relation submit beside it reads as a secondary.
+    add_relation = dialog.get_by_role("button", name="Beziehung hinzufügen")
+    expect(add_relation).to_be_visible()
+    expect(add_relation).not_to_have_class(re.compile(r"bg-primary"))
+    primaries = dialog.locator("button.bg-primary")
+    expect(primaries).to_have_count(1)
+    expect(primaries).to_have_text(re.compile("Speichern"))
+
     target = dialog.get_by_label("Verbinden mit")
     target.fill("Amulett")
     target.press("ArrowDown")

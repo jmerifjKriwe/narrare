@@ -275,7 +275,7 @@ export function EntityRelationsSection(
         <Input value={editNote} onChange={(event) => setEditNote(event.target.value)} />
       </Field>
       <div className="flex gap-2">
-        <Button variant="primary" type="submit">
+        <Button variant="secondary" type="submit">
           {t("knowledge.entitySave")}
         </Button>
         <Button onClick={() => changeEditingId(null)}>{t("knowledge.entityCancel")}</Button>
@@ -374,7 +374,7 @@ export function EntityRelationsSection(
         <Field label={t("knowledge.relationNoteLabel")}>
           <Input value={note} onChange={(event) => setNote(event.target.value)} />
         </Field>
-        <Button variant="primary" type="submit">
+        <Button variant="secondary" type="submit">
           {t("knowledge.relationAdd")}
         </Button>
       </form>
