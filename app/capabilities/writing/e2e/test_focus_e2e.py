@@ -46,6 +46,33 @@ def _open_workbench(page: Page, title: str) -> None:
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
 
+def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) -> None:
+    """F18: the caret's ring lives on the wrapper, not the prose. Inside,
+    the box-shadow is there; out, it is gone — and the measure is
+    untouched either way (max-width 34rem, the same value both states)."""
+    _open_workbench(page, "Der Karettring")
+    editor = page.locator(".ProseMirror")
+    wrapper = editor.locator("xpath=..")
+
+    shadow = """getComputedStyle(
+      document.querySelector('.ProseMirror').parentElement
+    ).boxShadow"""
+    measure = """getComputedStyle(
+      document.querySelector('.ProseMirror')
+    ).maxWidth"""
+
+    editor.click()
+    page.keyboard.type("Der Ring folgt dem Caret.")
+    assert page.evaluate(shadow) != "none", "no ring while the caret is inside"
+    inside = page.evaluate(measure)
+
+    # The caret leaves: the heading takes the click, the ring lets go.
+    page.get_by_role("heading", name="Der Karettring").click()
+    assert page.evaluate(shadow) == "none", "ring stayed after the caret left"
+    assert page.evaluate(measure) == inside, "the measure moved with the ring"
+    expect(wrapper).to_be_visible()
+
+
 def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     _open_workbench(page, "Die Stilllegung")
     editor = page.locator(".ProseMirror")

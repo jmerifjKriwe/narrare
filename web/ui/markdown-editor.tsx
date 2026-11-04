@@ -75,5 +75,14 @@ export function MarkdownEditor({
     return () => ready.current?.(null);
   }, [editor]);
 
-  return <EditorContent editor={editor} className={className} />;
+  return (
+    <EditorContent
+      editor={editor}
+      // F18: TipTap paints no caret affordance of its own — `.ProseMirror`
+      // keeps `outline: none` — so the wrapper carries the ring: visible
+      // whenever the caret is inside, gone when it leaves. The paint never
+      // touches the measure; the focus E2E pins both states.
+      className={`focus-within:ring-2 focus-within:ring-focus ${className ?? ""}`}
+    />
+  );
 }
