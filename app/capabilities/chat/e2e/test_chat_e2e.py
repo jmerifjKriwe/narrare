@@ -44,6 +44,12 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
 
+# The hover probe's own document, in the module's shared database: its text
+# stays out of the Leuchtturm passage's words, so it never joins the tie
+# the identical-passage uploads race for in the sources ranking — the
+# locale-switch test below must keep finding its own document there.
+PROBE_PASSAGE = "Der Carolinum-Garten hinter der alten Mauer blüht seit dem Frühjahr."
+
 
 def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: Path) -> None:
     _upload(page, tmp_path, "Notizen")
@@ -63,11 +69,25 @@ def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: P
     row in `--soft`, and the muted snippet under the title must restore
     foreground there — muted on `--soft` is below AA, so the hover's
     answer is the ink, not a darker grey. The row is the Row div inside
-    its list item (the li carries no paint), so the probe measures that."""
-    _upload(page, tmp_path, "Quellnotizen")
+    its list item (the li carries no paint), so the probe measures that.
+    The document here carries its own passage (PROBE_PASSAGE): the
+    module's database is shared, and identical passages tie in the
+    sources ranking — a fifth competitor would shuffle which uploads the
+    other tests find."""
+    source = tmp_path / "quellnotizen.txt"
+    source.write_text(PROBE_PASSAGE, encoding="utf-8")
+
+    page.goto("http://127.0.0.1:3100/knowledge")
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill("Quellnotizen")
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text("Quellnotizen", exact=True)).to_be_visible()
 
     page.goto("http://127.0.0.1:3100/chat")
-    page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
+    page.get_by_label("Frage").fill("Wo blüht der Garten?")
     page.get_by_role("button", name="Fragen").click()
     region = page.get_by_role("region", name="Quellen")
     row = region.get_by_role("listitem").first.locator("div.group")
