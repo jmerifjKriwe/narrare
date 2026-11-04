@@ -206,7 +206,10 @@ export function KnowledgePage() {
     <div className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-title font-semibold tracking-tight">{t("knowledge.heading")}</h1>
       <p className="mt-2 text-body text-muted">
-        <Link to="/" className="underline-offset-4 hover:underline">
+        <Link
+          to="/"
+          className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
           {t("nav.back")}
         </Link>
       </p>
@@ -272,6 +275,7 @@ export function KnowledgePage() {
                 // between rows is what keeps the column readable.
                 <Row
                   as="div"
+                  flush
                   key={hit.chunk_id}
                   className="h-auto flex-col items-stretch gap-1 py-2"
                 >
@@ -339,7 +343,7 @@ export function KnowledgePage() {
         ) : (
           <div>
             {load.documents.map((document) => (
-              <Row as="div" key={document.id}>
+              <Row as="div" key={document.id} flush>
                 {document.title}
               </Row>
             ))}

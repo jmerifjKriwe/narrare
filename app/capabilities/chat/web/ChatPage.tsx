@@ -15,7 +15,10 @@ export function ChatPage() {
     <div className="mx-auto max-w-[40rem] px-4 py-10">
       <h1 className="text-title font-semibold tracking-tight">{t("chat.heading")}</h1>
       <p className="mt-2 text-body text-muted">
-        <Link to="/" className="underline-offset-4 hover:underline">
+        <Link
+          to="/"
+          className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
           {t("nav.back")}
         </Link>
       </p>

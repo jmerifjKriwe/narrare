@@ -45,7 +45,10 @@ export function SettingsLayout() {
     <div className="mx-auto max-w-[1000px] px-4 py-10">
       <h1 className="text-title font-semibold tracking-tight">{t("settings.heading")}</h1>
       <p className="mt-2 text-body text-muted">
-        <Link to="/" className="underline-offset-4 hover:underline">
+        <Link
+          to="/"
+          className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
           {t("settings.back")}
         </Link>
       </p>
@@ -56,7 +59,7 @@ export function SettingsLayout() {
             <Link
               key={cluster.id}
               to={cluster.path}
-              className={`${rowClass(false)} last:border-b-0 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:shadow-[inset_2px_0_0_var(--primary)]`}
+              className={`${rowClass(false, true)} last:border-b-0 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:shadow-[inset_2px_0_0_var(--primary)]`}
             >
               {t(cluster.titleKey)}
             </Link>
