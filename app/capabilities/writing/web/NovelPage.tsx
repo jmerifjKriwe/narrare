@@ -510,7 +510,7 @@ export function NovelPage() {
           {/* The heading names the book only when the book's row is here: an
               empty h1 on the outage page would be a heading about nothing. */}
           {novelQuery.data ? (
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-title font-semibold tracking-tight">
               {novelQuery.data.title}
             </h1>
           ) : null}

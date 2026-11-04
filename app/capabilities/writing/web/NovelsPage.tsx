@@ -119,7 +119,7 @@ function ShelfCard({ novel }: { novel: Novel }) {
           <Cover title={novel.title} />
           <span
             data-shelf-title
-            className="line-clamp-3 min-h-[3.9em] min-w-0 flex-1 break-words text-title font-semibold leading-[1.3]"
+            className="line-clamp-3 min-h-[3.9em] min-w-0 flex-1 break-words text-emph font-semibold leading-[1.3]"
           >
             {novel.title}
           </span>
@@ -346,7 +346,7 @@ export function NovelsPage() {
                 <div className="mt-3 flex items-center gap-4">
                   <Cover title={hero.title} size="lg" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-emph font-semibold">{hero.title}</p>
+                    <p className="text-hero font-semibold">{hero.title}</p>
                     {hero.genre ? (
                       <p className="mt-0.5 text-label text-muted">{hero.genre}</p>
                     ) : null}

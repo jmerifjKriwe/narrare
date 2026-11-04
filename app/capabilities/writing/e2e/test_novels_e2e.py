@@ -8,6 +8,7 @@ reach the service must keep the dialog (and the typed Titel) where they are
 and name the failure inside, not drop the user back onto a dead page.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -61,9 +62,32 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
     expect(hero.get_by_text("Der erste Wurf")).to_have_count(0)
     expect(hero).to_contain_text("Zuletzt bearbeitet")
 
-    # The hero's link opens the book it names.
+    # R47's hero steps on the shelf, in computed pixels: the hero's book
+    # title reads at the hero step (28), the shelf card's title at emph
+    # (15). A class swap that misses the token fails here as a wrong
+    # pixel, not as a silent drift. The hero keeps its face and its quiet
+    # door, too: the cover tile (any of the three token tones) and the
+    # secondary Weiterschreiben — the shelf's links carry no primary fill.
+    sizes = page.evaluate(
+        """() => ({
+          hero: getComputedStyle(document.querySelector('.text-hero')).fontSize,
+          card: getComputedStyle(document.querySelector('[data-shelf-title]')).fontSize,
+        })"""
+    )
+    assert sizes == {"hero": "28px", "card": "15px"}, sizes
+    expect(hero.locator("div.bg-rule, div.bg-primary, div.bg-foreground").first).to_be_visible()
+    door = hero.get_by_role("link", name="Weiterschreiben")
+    expect(door).to_be_visible()
+    expect(door).not_to_have_class(re.compile(r"bg-primary"))
+
+    # The hero's link opens the book it names, and the workspace's h1
+    # reads the title step (20) — the third of R47's pinned sizes.
     hero.get_by_role("link", name="Weiterschreiben").click()
     expect(page.get_by_role("heading", name="Der Sturm")).to_be_visible()
+    assert (
+        page.evaluate("getComputedStyle(document.querySelector('h1.text-title')).fontSize")
+        == "20px"
+    )
 
     assert_accessible(page)
 
