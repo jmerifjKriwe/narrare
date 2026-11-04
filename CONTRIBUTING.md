@@ -10,7 +10,10 @@ more.
 You need [Python 3.14+](https://www.python.org/downloads/) with
 [uv](https://docs.astral.sh/uv/), [Node.js 22+](https://nodejs.org/) with
 [pnpm](https://pnpm.io/), [Docker](https://docs.docker.com/get-docker/) with
-Compose, and [just](https://just.systems/). One command sets everything else
+Compose, [just](https://just.systems/), and the PostgreSQL 17 command-line
+client (`postgresql-client-17`: `pg_dump`/`pg_restore` — the migration tests
+and the release snapshots use them; nothing shipped depends on the tools
+being on `PATH`). One command sets everything else
 up — the Python environment, web dependencies, git hooks, the Postgres
 services and the schema:
 
@@ -20,8 +23,10 @@ just dev          # API on :8000, web on :3100
 ```
 
 Open <http://localhost:3100> — a fresh database lands on `/setup`. There is no
-other setup variant: the schema comes from the models (`just db-init`), and
-`just db-reset` recreates the development database when the models change.
+other setup variant: the schema comes from the models, brought to the migration
+history's head by `just db-init`. A schema change ships as a revision
+(`just db-revision` — see [Changing the Schema](#changing-the-schema));
+`just db-reset` remains for throwing a development database away.
 
 ## Branch Model
 
@@ -62,6 +67,58 @@ state what a user can now do: a `User-visible:` line in the commit body. Work no
 user can observe — including internal production code — goes under
 `chore(<scope>): …`. The `User-visible:` rule and the scope convention live in
 [`AGENTS.md`](AGENTS.md) and are checked in review.
+
+## Changing the Schema
+
+The models — `app/kernel/contracts/models.py`, `app/kernel/jobs/models.py`,
+`app/kernel/llm/models.py`, `app/kernel/prompts/models.py`, and each
+capability's `models.py`, all registered on the `Base` in
+`app/kernel/db/base.py` — are the single declaration of the schema, and
+the migration history is how a model change reaches a database that already
+holds data (the decision:
+[ADR-103](docs/architecture/decisions/ADR-103-schema-migrations.md)). A schema
+change ships as two files in **one commit** — the model change and its revision:
+
+1. **Change the models.**
+2. **Draft the revision:** `just db-revision "add chapters.word_count"`.
+3. **Read the draft — it is a draft, not the change.** Autogenerate cannot know
+   your intent, so fix what it gets wrong:
+   - a rename arrives as a drop plus an add — make it `op.alter_column` with
+     `new_column_name` (plus whatever data move it needs);
+   - a partial index needs its `postgresql_where`;
+   - a `Vector()` column renders as `pgvector.sqlalchemy.Vector()` — the
+     revision template already imports it;
+   - a downgrade ships without a body: the pre-migration dump is the way
+     back (design D6, ADR-103) — raise, like the baseline's `downgrade()`;
+   - data moves (backfills, re-embeddings, rebuilds) are jobs, never revisions.
+4. **Run the gates:** `just check && just test`. The migration tests
+   (`app/kernel/db/tests/test_migrations.py`) prove that upgrading an empty
+   database to head equals the models, that the 0.2.0 snapshot bootstraps
+   with its prose intact, and that drifted or ahead databases are
+   refused at startup. Operator note: the first bootstrap of an
+   unversioned database — one with tables but no history — needs
+   `CREATE DATABASE` (and extension rights) on the *server*, not just on
+   its own database: the comparison replays the baseline revision on a
+   scratch database beside it, and without that right the bootstrap
+   refuses with the way out (grant the right, or `alembic stamp`).
+5. **Refresh the release snapshot at release time:** create a scratch database
+   (`ensure_database` in `app/kernel/db/testsupport.py`), bring it to head with
+   `NARRE_DATABASE_URL=<scratch-url> just db-init`, then `pg_dump
+   --schema-only --no-owner --no-privileges` it into
+   `app/kernel/db/tests/fixtures/schema_<version>.sql` and strip the
+   `CREATE EXTENSION` lines and pg_dump's
+   `\restrict`/`\unrestrict` guards (the mechanics are documented where the
+   snapshot is loaded). From the release after 0.2.0 the snapshot carries the
+   `alembic_version` row: schema-only `pg_dump` never emits data, so after
+   dumping (leaving the table in place) append the row by hand —
+   `INSERT INTO public.alembic_version (version_num) VALUES ('<release head
+   revision>');` — so the next release's gate exercises the versioned replay
+   (the recorded revision, upgraded) directly instead of the 0.2.0 fixture's
+   baseline stamp.
+   `pg_dump` comes from `postgresql-client-17` — see
+   [Getting Started](#getting-started).
+6. **Commit both files together** — the commit message states *why* the
+   schema changed; one that does not is a review finding.
 
 ## Before You PR
 

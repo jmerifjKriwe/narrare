@@ -3,13 +3,29 @@
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import ForeignKey, Select, Uuid, select
+from sqlalchemy import ForeignKey, MetaData, Select, Uuid, select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+NAMING_CONVENTION = {
+    "ix": "ix_%(table_name)s_%(column_0_N_name)s",
+    "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+"""Addressable names for every constraint the models declare (design D9).
+
+A migration must be able to name what it drops, so the convention lands
+before the baseline revision, not after. It changes no DDL semantics — only
+the names the database assigns to constraints the models leave unnamed.
+"""
 
 
 class Base(DeclarativeBase):
     """Declarative base for the kernel contracts and capability tables."""
+
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 class UserOwned(Base):

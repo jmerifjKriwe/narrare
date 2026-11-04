@@ -23,6 +23,8 @@ from fastapi.responses import FileResponse
 
 from app.generated.capabilities import CAPABILITIES as REGISTERED
 from app.kernel.configuration import validate_configuration
+from app.kernel.db.migrate import prepare_database
+from app.kernel.db.session import DATABASE_URL
 from app.kernel.jobs.router import router as jobs_router
 from app.kernel.jobs.runtime import start_worker, stop_worker
 from app.kernel.version import __version__
@@ -71,11 +73,16 @@ def _job_handlers() -> dict[str, JobHandler]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    """Validate configuration and run the jobs worker for the app's lifetime.
+    """Bring the database to the history's head, then validate configuration
+    and run the jobs worker for the app's lifetime.
 
-    Startup validation, handler discovery, and worker startup errors propagate;
+    The migration runs first: a configuration check against an older schema
+    reports the wrong problem — a missing column reads as bad configuration
+    when the real answer is an upgrade that has not run yet. Startup errors
+    (a refused database, bad configuration, a handler collision) propagate;
     after a successful startup, exiting the context stops the worker.
     """
+    await prepare_database(DATABASE_URL)
     validate_configuration()
     await start_worker(app, _job_handlers())
     try:

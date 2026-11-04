@@ -22,7 +22,7 @@ violates one of its rules is a review finding, not a style question.
 suites the change touches) · `just verify all` (everything) · the capability's E2E.
 A gate counts only when its output was read.
 
-`just --list` is the whole command surface: 22 recipes, no hidden gates.
+`just --list` is the whole command surface: 23 recipes, no hidden gates.
 
 ## Follow-ups
 

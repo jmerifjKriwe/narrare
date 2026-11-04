@@ -34,7 +34,9 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
   an adapter plus one `PROFILE_KINDS` value. Keys and their two storage tiers are
   decided in [ADR-102](../architecture/decisions/ADR-102-provider-profiles-and-key-storage.md).
 - A second data store, a global store or a migration tool crosses a boundary and
-  needs the product owner's explicit approval (spec §8).
+  needs the product owner's explicit approval (spec §8). The migration tool's
+  approval exists: it is recorded in
+  [ADR-103](../architecture/decisions/ADR-103-schema-migrations.md).
 
 ## Read this in this order
 
