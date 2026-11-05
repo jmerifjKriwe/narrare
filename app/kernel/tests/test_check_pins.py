@@ -10,7 +10,7 @@ from scripts import check_pins
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def _pin(name: str, files: tuple[str, ...], pattern: str, count: int | None) -> check_pins.Pin:
+def _pin(name: str, files: tuple[str, ...], pattern: str, count: int) -> check_pins.Pin:
     return check_pins.Pin(
         name=name,
         files=files,
@@ -51,9 +51,18 @@ def test_missing_pin_is_an_error(tmp_path: Path) -> None:
 def test_disagreeing_copies_are_an_error(tmp_path: Path) -> None:
     (tmp_path / "a.yml").write_text("image: pin@sha256:aaa\n", encoding="utf-8")
     (tmp_path / "b.yml").write_text("image: pin@sha256:bbb\n", encoding="utf-8")
-    pin = _pin("shared", ("a.yml", "b.yml"), r"pin@(sha256:\w+)", None)
+    pin = _pin("shared", ("a.yml", "b.yml"), r"pin@(sha256:\w+)", 2)
 
     with pytest.raises(check_pins.PinError, match="disagreeing"):
+        check_pins.read_pins(tmp_path, pins=(pin,))
+
+
+def test_a_lost_site_is_an_error(tmp_path: Path) -> None:
+    (tmp_path / "a.yml").write_text("image: pin@sha256:aaa\n", encoding="utf-8")
+    (tmp_path / "b.yml").write_text("image: pin@sha256:aaa\n", encoding="utf-8")
+    pin = _pin("shared", ("a.yml", "b.yml"), r"pin@(sha256:\w+)", 3)
+
+    with pytest.raises(check_pins.PinError, match="expected 3"):
         check_pins.read_pins(tmp_path, pins=(pin,))
 
 

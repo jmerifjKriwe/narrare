@@ -37,8 +37,9 @@ class PinError(Exception):
 class Pin:
     """One value in the tree and where its upstream lives.
 
-    `count` is the exact number of matches expected; None means every match
-    must agree (a value written in several service blocks). `upstream` is
+    `count` is the exact number of matches expected across `files`; a value
+    written in several places must appear exactly that many times and agree.
+    A lost site is an error, never a smaller pass. `upstream` is
     ("github", "owner/repo") or ("docker", "image", "tag"), where a tag
     starting with "@" names another pin whose current value is the tag.
     """
@@ -46,7 +47,7 @@ class Pin:
     name: str
     files: tuple[str, ...]
     pattern: str
-    count: int | None
+    count: int
     upstream: tuple[str, ...]
 
 
@@ -91,7 +92,7 @@ PINS: tuple[Pin, ...] = (
         name="codecov-cli",
         files=(".github/workflows/_test.yml",),
         pattern=r"^\s+version:\s+(v\d+\.\d+\.\d+)$",
-        count=None,
+        count=2,
         upstream=("github", "codecov/codecov-cli"),
     ),
     Pin(
@@ -102,7 +103,7 @@ PINS: tuple[Pin, ...] = (
             "docker-compose.dev.yml",
         ),
         pattern=r"pgvector/pgvector@(sha256:[0-9a-f]{64})",
-        count=None,
+        count=4,
         upstream=("docker", "pgvector/pgvector", "pg17"),
     ),
 )
@@ -119,7 +120,7 @@ def read_pins(root: Path, pins: Sequence[Pin] = PINS) -> list[PinState]:
             if not found:
                 raise PinError(f"{pin.name}: no match for {pin.pattern!r} in {name}")
             values.extend(found)
-        if pin.count is not None and len(values) != pin.count:
+        if len(values) != pin.count:
             raise PinError(
                 f"{pin.name}: expected {pin.count} match(es), found {len(values)} in "
                 f"{', '.join(pin.files)}"

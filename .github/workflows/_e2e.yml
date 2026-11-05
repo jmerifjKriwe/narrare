@@ -70,10 +70,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('uv.lock') }}
           restore-keys: ${{ runner.os }}-playwright-
-      # The directory the cache step saves. A hit skips the chromium
-      # download; `--with-deps` still runs the apt system-dependency
-      # install every run — the browser is cached, the system packages
-      # are not.
+      # The directory the cache step saves. A hit on the exact key skips
+      # the chromium download; a restore-key hit may still fetch the browser
+      # the lock names. `--with-deps` runs the apt system-dependency install
+      # every run — the browser is cached, the system packages are not.
       - run: uv run playwright install --with-deps chromium
       # The matrix runs the same recipe the local gate runs.
       - name: E2E

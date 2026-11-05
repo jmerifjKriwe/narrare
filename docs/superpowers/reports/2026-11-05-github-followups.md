@@ -12,7 +12,9 @@ from the command named next to it, not inferred.
 Branch renamed from `follow-up/607-github-platform` to
 `ci/607-github-followups`; the worktree fast-forwarded to `narrare/main`
 673306b3 ("Dependabot accepts the Actions cooldown again"). `git status
---porcelain=v1` empty before the first edit.
+--porcelain=v1` empty before the first edit. `narrare/main` moved to 427eaec
+(`chore(deps): bump pydantic`) during the wave; the branch rebases onto it
+before the push, and the baseline numbers below stay from 673306b3.
 
 `gh run list --workflow scorecard.yml --limit 5` — three green `main` pushes:
 
@@ -109,9 +111,10 @@ rg -n "pgvector/pgvector" .github/workflows docker-compose.dev.yml
   → four lines, one digest
 ```
 
-The running dev services were not restarted: they already hold the same image,
-and `docker compose config` plus the pull prove the pin resolves. The PR's
-`tests` and e2e jobs start the pinned image for real.
+The running dev services were not restarted: port 5433 is held by the shared
+`narrare_v2_test` container from the other worktrees, so starting this compose
+project would collide. `docker compose config` plus the pull prove the pin
+resolves, and the PR's `tests` and e2e jobs start the pinned image for real.
 
 ## Task 4 — PGDG retry (#610)
 
@@ -170,13 +173,16 @@ Probes before the edit (2026-11-05):
 
 ```
 docker run … rhysd/actionlint:1.7.12 -color            → exit 0, no output
-uvx zizmor==1.30.1 …                                   → No findings
-uvx zizmor==1.32.0 …                                   → No findings
-  (both: 15 ignored, suppressed count differs between the two, raw findings equal)
+uvx zizmor==1.30.1 …                                   → No findings (15 ignored, 25 suppressed)
+uvx zizmor==1.32.0 …                                   → No findings (15 ignored, 25 suppressed)
+  15 raw findings under --no-ignores on both; the 27 → 25 step came from the
+  digest commit (97b6af2c), not from the version bump.
 ```
 
 Gates after: actionlint exit 0; zizmor 1.32.0 exit 0 (`No findings to
-report. Good job!`). `rg "1\.7\.7|version: 1\.30\.1"` → no match.
+report. Good job!`). `rg "1\.7\.7|version: 1\.30\.1" .github/workflows
+docs/architecture/github.md` → no match (the plan's red-proof instruction still
+quotes `1.30.1` on purpose).
 
 ## Task 7 — monthly pin check (#598)
 
@@ -188,10 +194,11 @@ A pin it cannot read, a disagreeing copy, or an upstream it cannot reach exits
 2; it can never say "current" without asking. `--json` prints
 `{"behind": [...], "report": "<table>"}`; `--tree` reads without the network.
 
-`app/kernel/tests/test_check_pins.py`: nine tests, hermetic. They cover the
-live tree (all six values read, the two Codecov copies and four pgvector
-digests agree), a missing pattern, disagreeing copies, the version compare with
-`v` prefixes, a changed digest, and the report naming only behind pins.
+`app/kernel/tests/test_check_pins.py`: ten tests, hermetic. They cover the
+live tree (all six values read; the two Codecov copies and four pgvector
+digests must appear exactly twice and four times and agree), a missing pattern,
+disagreeing copies, a lost site, the version compare with `v` prefixes, a
+changed digest, and the report naming only behind pins.
 
 `pins.yml`: monthly (1st, 08:23 UTC) and dispatch; `contents: read` +
 `issues: write`; one `ci/tool-pins` issue, opened/commented/closed exactly like
@@ -204,8 +211,10 @@ Red/green, 2026-11-05:
 uv run python -m scripts.check_pins --markdown        → six rows, all current
 temporary: zizmor version set back to 1.30.1
   → | zizmor | 1.30.1 | 1.32.0 | **behind** | … |      (reverted)
+temporary: the second compose service set back to `:pg17`
+  → check_pins: pgvector: expected 4 match(es), found 3 …  → exit 2 (reverted)
 uv run python -m scripts.check_pins --tree            → exit 0, six names
-uv run pytest app/kernel/tests/test_check_pins.py     → 9 passed
+uv run pytest app/kernel/tests/test_check_pins.py     → 10 passed
 uv run ruff check scripts … / ruff format --check     → clean
 uv run pyright scripts/check_pins.py                  → 0 errors
 actionlint 1.7.12 / zizmor 1.32.0                     → exit 0, no findings
@@ -215,7 +224,9 @@ Deviation: the module and its test landed in one edit, so the failing-first run
 was captured by removing the module again (`ImportError: cannot import name
 'check_pins'`) rather than before writing it. The first run with both files
 also found a real defect — the digest patterns captured the bare hex without
-`sha256:`, which the tree test caught — fixed before the commit.
+`sha256:`, which the tree test caught — fixed before the commit. The review
+found a second one: a pin written in several places passed when one site was
+deleted, so every pin now carries its exact count and a lost site exits 2.
 
 The workflow's own dispatch is proved after the push (Task 10).
 
@@ -231,7 +242,7 @@ legitimate skip, and dependency-review owed on a PR and skippable elsewhere.
 
 ```
 rg -n "legitimate skip|owed skip" docs/architecture/github.md .github/workflows/ci.yml
-  → ci.yml only (239, 240, 244, 296, 304; 258 is a step name)
+  → ci.yml only (239, 244, 258, 296, 304; 258 is a step name that also matches)
 ```
 
 ## Task 9 — the three records (#596, #600, #602)
@@ -265,5 +276,42 @@ release, `#732` open); the 14 suppressions stay.
 rg "Re-applying the settings PATCH|semver-major|not covered here|skips dev deps"
   docs/architecture/github.md → no match
 ```
+
+## Review findings and fixes
+
+One review pass over `narrare/main...HEAD` on 2026-11-05: two majors, four
+minors, six nits, all confirmed and fixed before the push.
+
+| Finding | Fix |
+|---|---|
+| `read_pins` passed a multi-site pin when one site was deleted or reformatted — a service back on a mutable tag read as "current" | every pin carries its exact count (4 pgvector blocks, 2 Codecov copies); a lost site is `PinError`. Proved: set the second compose service back to `:pg17` → exit 2, `expected 4 match(es), found 3` |
+| #604 had no closer and the report's Task 10 was an empty heading while three passages pointed at a "proof section" | filled after the push (Task 10), and #604 closes on its proof comment |
+| `_test.yml` still said the Codecov CLI bump was manual and invisible | the comment now names the monthly `Tool pins` check |
+| the actionlint comment claimed "Same ref the baseline ran" after the pin moved | rewritten: the tag is a comment, the digest is the pin |
+| the report and commit b95c96b3 blamed the version bump for zizmor's 27 → 25 suppressed count | corrected: both versions report 25 on that tree; the digest commit (97b6af2c) moved it |
+| nine of ten commits carried no `Assisted-by` trailer | added to every commit before the push |
+| the Playwright comment said "a hit skips the chromium download" | now distinguishes an exact-key hit from a restore-key hit |
+| Task 3 skipped the plan's service start | reason recorded: 5433 is held by the shared test container |
+| Task 8's line numbers and the scoped `rg` claim | corrected |
+| the plan's signatures and "five names" differ from the delivered script | recorded under Deviations |
+
+## Deviations
+
+- The implementer dispatch could not run: `zai-coding-plan/glm-5.3-flash` had
+  hit its 5-hour limit. The coordinator implemented, and the reviewer ran as a
+  separate dispatch on `opencode-go/deepseek-v4.1-flash` — the pinned reviewer,
+  and the same model as the coordinator.
+- The module was written before its test; the failing-first run was captured
+  afterwards by removing the module (Task 7).
+- `check_pins` takes the whole state map (`latest(pin, current)`,
+  `report(states, upstreams)`, `behind(states, upstreams)`) instead of the
+  plan's one-argument forms: the actionlint digest pin needs the version pin's
+  tag. The plan's five pins are six rows, because actionlint is checked on both
+  its version comment and its digest.
+- No separate "tag moved" wording or test: `compare` covers the digest, and the
+  table's `**behind**` cell is the wording.
+- Task 3 did not start the compose services (see above).
+- Commits stayed local; nothing was pushed and no PR was opened before this
+  review pass.
 
 ## Task 10 — the four proofs (#604)

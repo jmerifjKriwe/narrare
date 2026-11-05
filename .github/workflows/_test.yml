@@ -104,7 +104,8 @@ jobs:
       # default: without it every run pulls `cli.codecov.io/latest` —
       # v11.3.2 when this line was written — so an upstream release would
       # land in this job unreviewed. Dependabot follows the action's SHA
-      # and cannot see this input: the bump is manual.
+      # and cannot see this input; the monthly `Tool pins` check (`pins.yml`)
+      # reports a newer release.
       #
       # `fail_ci_if_error` on the coverage upload only. The report is what
       # the dashboard reads, so a run that could not deliver it says so

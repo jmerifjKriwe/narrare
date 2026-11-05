@@ -370,13 +370,12 @@ jobs:
         with:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
-      # Same ref the baseline ran: a tag is a mutable ref, so the image is
-      # pinned by digest — the tag is only a comment naming what it
-      # resolves to. Dependabot does not follow a digest; the monthly `Tool
-      # pins` check (`pins.yml`) reports a newer release and a moved digest,
-      # so the bump is visible instead of remembered. The digest still
-      # answers "can this image silently change under this workflow?" with
-      # no.
+      # A tag is a mutable ref, so the image is pinned by digest — the tag is
+      # only a comment naming what it resolves to. Dependabot does not follow
+      # a digest; the monthly `Tool pins` check (`pins.yml`) reports a newer
+      # release and a moved digest, so the bump is visible instead of
+      # remembered. The digest still answers "can this image silently change
+      # under this workflow?" with no.
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color # rhysd/actionlint:1.7.12
       - name: zizmor
