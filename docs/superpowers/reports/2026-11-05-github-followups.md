@@ -93,6 +93,26 @@ The cache-step proof is the PR's e2e run; recorded in the proof section.
 
 ## Task 3 — Postgres digest (#603)
 
+`pgvector/pgvector:pg17` resolves to the index digest
+`sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8`
+(`docker buildx imagetools inspect`, tag last updated 2026-10-31). All four
+service blocks now pin it with `# pg17` as the name: `_test.yml`, `_e2e.yml`,
+and both services in `docker-compose.dev.yml`.
+
+Gates, run 2026-11-05:
+
+```
+docker compose -f docker-compose.dev.yml config --quiet   → exit 0
+docker pull pgvector/pgvector@sha256:7d0a4146…            → exit 0
+docker run … rhysd/actionlint:1.7.12 -color               → exit 0
+rg -n "pgvector/pgvector" .github/workflows docker-compose.dev.yml
+  → four lines, one digest
+```
+
+The running dev services were not restarted: they already hold the same image,
+and `docker compose config` plus the pull prove the pin resolves. The PR's
+`tests` and e2e jobs start the pinned image for real.
+
 ## Task 4 — PGDG retry (#610)
 
 ## Task 5 — dev audit (#597)
