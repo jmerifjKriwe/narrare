@@ -724,18 +724,16 @@ describe("the rail's reorder", () => {
     // A plain list tells AT nothing about a reordering: every move is
     // announced — the row's composed label (the position-derived one for
     // an untitled chapter), the position it holds now, out of the book's
-    // total. The key no longer wraps the label in "Chapter": the label
-    // already carries its own kind word, and the doubled word is the
-    // bug this line pins dead.
+    // total. The label leads the sentence exactly once, in any locale:
+    // a key that wrapped it in a kind word it already carries
+    // ("Kapitel Kapitel 1, …") would neither start with the label nor
+    // keep it singular — two pins, both locale-free.
     const said = document.querySelector("[data-live-announcer]")?.textContent ?? "";
-    expect(said).toContain(
-      t("chapters.moved", {
-        title: t("chapters.defaultTitle", { n: 1 }),
-        n: 2,
-        m: 2,
-      }),
-    );
-    expect(said).not.toContain(`Chapter ${t("chapters.defaultTitle", { n: 1 })}`);
+    const label = t("chapters.defaultTitle", { n: 1 });
+    const spoken = said.trim();
+    expect(spoken).toContain(t("chapters.moved", { title: label, n: 2, m: 2 }));
+    expect(spoken.startsWith(label)).toBe(true);
+    expect(spoken.split(label).length - 1).toBe(1);
   });
 
   it("a_failed_move_does_not_clobber_a_later_moves_order", { timeout: 10_000 }, async () => {
@@ -814,6 +812,31 @@ describe("the rail's reorder", () => {
       THIRD_CHAPTER_ID,
       CHAPTER_ID,
     ]);
+  });
+
+  it("a_lone_failed_move_reverts_the_rail", { timeout: 10_000 }, async () => {
+    // One move, one refusal, nothing queued behind it. A transport
+    // failure (500) asks for no refetch — nothing rescues the cache — so
+    // the restore itself is the only thing that can put the rail back:
+    // the optimistic arrangement must come back off, or it stays on the
+    // screen forever claiming an order the server never took.
+    mockTwoNamedChapters();
+    api.PUT.mockResolvedValue({ response: new Response(null, { status: 500 }) });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The refusal is named, and the rail and the cache are the ones they
+    // were — the revert, not a refetch, put them there.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+    expect(railOrder()).toEqual([0, 1]);
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([CHAPTER_ID, SECOND_CHAPTER_ID]);
+    expect(cached?.map((row) => row.position)).toEqual([0, 1]);
   });
 
   it("a_drag_and_drop_moves_the_chapter", { timeout: 10_000 }, async () => {

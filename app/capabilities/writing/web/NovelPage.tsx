@@ -613,7 +613,14 @@ export function NovelPage() {
     );
     // The optimistic write: the rail and the cache agree at once, the
     // numbering rewritten to the arrangement the rows now stand in.
-    queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], next);
+    // `setQueryData` runs the value through structural sharing and
+    // answers with the object the cache actually stored — never the
+    // `next` we passed — so the identity guard below compares against
+    // the RETURN: the one reference a later read can still find there.
+    const written = queryClient.setQueryData<Array<Chapter>>(
+      ["chapters", novelId],
+      next,
+    );
     setOrderFailed(false);
     // The ask waits its turn: one arrangement on the wire at a time,
     // chained on the queue's tail. This move's promise (`ask`) can
@@ -627,14 +634,15 @@ export function NovelPage() {
       await ask;
     } catch (failure) {
       // Restore only what is still this move's to restore: the cache
-      // must hold this move's own arrangement, or a later move's
-      // optimistic order — newer than this snapshot — would be clobbered
-      // by an earlier failure. The notice still names the refusal either
-      // way. A 409 asks the key to refetch, the server's order arriving
-      // through the same door every list does; a transport failure asks
-      // for nothing — the service is not answering, and a second ask
-      // would only name a refresh failure beside work that stays.
-      if (queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]) === next) {
+      // must hold the very object this move's write stored, or a later
+      // move's optimistic order — newer than this snapshot — would be
+      // clobbered by an earlier failure. The notice still names the
+      // refusal either way. A 409 asks the key to refetch, the server's
+      // order arriving through the same door every list does; a
+      // transport failure asks for nothing — the service is not
+      // answering, and a second ask would only name a refresh failure
+      // beside work that stays.
+      if (queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]) === written) {
         queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], previous);
       }
       setOrderFailed(true);
