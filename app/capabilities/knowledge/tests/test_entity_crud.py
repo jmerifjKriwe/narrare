@@ -435,11 +435,12 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
     async with Session() as session_a, Session() as session_b:
         service_a = KnowledgeService(session_a, LOCAL_USER_ID, FakeEmbeddingProvider())
         service_b = KnowledgeService(session_b, LOCAL_USER_ID, FakeEmbeddingProvider())
-        race: dict[str, asyncio.Task[Entity]] = {}
+        task: asyncio.Task[Entity] | None = None
         original_locked = EntityRepository.locked
         locks = [0]
 
         async def racing_locked(self: EntityRepository, entity_id: UUID) -> Entity | None:
+            nonlocal task
             row = await original_locked(self, entity_id)
             if self.session is not session_a:
                 return row
@@ -451,16 +452,17 @@ async def test_a_merge_that_races_another_into_one_survivor_folds_from_the_fold(
             # without them it completes here and its fold is lost to the
             # first merge's stale overwrite. The final assertions tell the
             # two worlds apart.
-            race["task"] = asyncio.create_task(service_b.merge_entities(see.id, haus.id))
+            task = asyncio.create_task(service_b.merge_entities(see.id, haus.id))
             for _ in range(100):
-                if race["task"].done():
+                if task.done():
                     break
                 await asyncio.sleep(0.01)
             return row
 
         monkeypatch.setattr(EntityRepository, "locked", racing_locked)
         await service_a.merge_entities(mira.id, haus.id)
-        await race["task"]
+        assert task is not None, "the merge never took the second lock"
+        await task
 
     async with Session() as session:
         survivor = await session.get(Entity, haus.id)

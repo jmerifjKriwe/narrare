@@ -669,9 +669,11 @@ class KnowledgeService:
         locks also serialize a concurrent edge write on the relation
         paths: the add's insert takes ``FOR KEY SHARE`` on both entity
         ends for its foreign-key check, a mode ``FOR UPDATE`` conflicts
-        with. An insert naming the merged-away source waits for this
-        commit and is then refused as the scoped absence — the source
-        row is gone beneath its foreign key; an insert naming only the
+        with. An insert naming the merged-away source that lands before
+        the merge's ``FOR UPDATE`` is folded with the source's edges;
+        one that arrives while the lock is held waits for this commit
+        and is then refused as the scoped absence — the source row is
+        gone beneath its foreign key; an insert naming only the
         survivor waits on the same lock, lands after the commit, and
         stands. So an edge can be neither accepted and then cascaded
         away by the fold, nor slip past it unvisited.
@@ -697,12 +699,9 @@ class KnowledgeService:
         # survivor waits on the same lock, lands after the commit, and
         # stands (pinned by the merge race in test_relations.py).
         first_id, second_id = sorted((source_id, target_id))
-        locked_rows = {
-            first_id: await self.entities.locked(first_id),
-            second_id: await self.entities.locked(second_id),
-        }
-        source = locked_rows[source_id]
-        target = locked_rows[target_id]
+        first = await self.entities.locked(first_id)
+        second = await self.entities.locked(second_id)
+        source, target = (first, second) if source_id == first_id else (second, first)
         if source is None or target is None:
             raise NotFoundError
         if target.novel_id != source.novel_id:
