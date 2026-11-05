@@ -115,7 +115,7 @@ never runs fewer suites than the smoke.
 | `delete_branch_on_merge` | `false` |
 | `allow_auto_merge` | `false` |
 | "Allow GitHub Actions to create and approve pull requests" | off — why the release PR is authored by a GitHub App token and needs a human approval |
-| Secret scanning: `secret_scanning_non_provider_patterns`, `secret_scanning_validity_checks` | **`disabled`** — the settings PATCH that turns these on did not take during the 2026-11-05 rollout and is the open item on this page; everything else in that rollout did land. The limitation is live, not a documented intent: non-provider patterns and validity checks are not running. Re-applying the settings PATCH is the fix |
+| Secret scanning: `secret_scanning_non_provider_patterns`, `secret_scanning_validity_checks` | **`disabled`**, and not by choice. The repository is public and user-owned; GitHub offers both as Secret Protection features to organisation-owned repositories on Team/Enterprise. A repository PATCH answers 200 and leaves both `disabled` (re-probed 2026-11-05, issue #596), so no setting on this repository can turn them on, and non-provider patterns and validity checks are not running. Trigger: the repository moves under an organisation with Secret Protection, or GitHub makes the features repository-scoped |
 
 ## Sourcery — the review bot
 
@@ -186,7 +186,8 @@ protection rules only**. `main` is protected by a ruleset, and rulesets
 have no event — so a ruleset edit re-grades at the next push or weekly run,
 not on the edit itself. The trigger stays as the listener for classic
 protection settings; do not read its absence on a ruleset edit as silence
-meaning anything.
+meaning anything. Re-open the finding when GitHub adds a ruleset event, or
+when `main` moves back to classic protection.
 
 ## The nightly and its audit
 

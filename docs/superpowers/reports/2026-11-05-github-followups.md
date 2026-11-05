@@ -236,4 +236,34 @@ rg -n "legitimate skip|owed skip" docs/architecture/github.md .github/workflows/
 
 ## Task 9 — the three records (#596, #600, #602)
 
+PATCH probe, 2026-11-05 (coordinator):
+
+```
+gh api -X PATCH repos/jmerifjKriwe/narrare --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning_non_provider_patterns":{"status":"enabled"},
+ "secret_scanning_validity_checks":{"status":"enabled"}}}
+JSON
+  → 200, full repository object
+gh api repos/jmerifjKriwe/narrare --jq .security_and_analysis
+  → non_provider_patterns: disabled, validity_checks: disabled
+```
+
+GitHub accepts the request and ignores both fields, exactly as #596 recorded.
+The settings row now says why: the repository is public and user-owned, both
+features are Secret Protection features for organisation-owned repositories on
+Team/Enterprise, and no setting here can turn them on. Trigger recorded: the
+repository moves under such an organisation, or GitHub makes the features
+repository-scoped.
+
+#600: the Scorecard blind spot gained its re-open condition — GitHub adds a
+ruleset event, or `main` moves back to classic protection.
+
+#602: the `$`/ section was brought to 1.7.12 in Task 6 (actionlint's current
+release, `#732` open); the 14 suppressions stay.
+
+```
+rg "Re-applying the settings PATCH|semver-major|not covered here|skips dev deps"
+  docs/architecture/github.md → no match
+```
+
 ## Task 10 — the four proofs (#604)
