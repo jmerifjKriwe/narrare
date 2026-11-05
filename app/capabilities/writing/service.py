@@ -305,6 +305,28 @@ class WritingService:
         await self.session.commit()
         return chapter
 
+    async def delete_chapter(self, chapter_id: UUID) -> None:
+        """Delete one chapter and close the gap it leaves in the numbering.
+
+        The delete, the survivors' renumber and the novel's timestamp bump
+        are one transaction, so the rail never shows a missing number. The
+        renumber moves a position, never a "last written" — ``renumber``
+        pins each survivor's ``updated_at`` to itself, and the novel's row
+        is the one that advances: the archive lost a chapter (D8). The
+        chapter's pending suggestions ride the foreign key's cascade;
+        findings are the novel's and stay. Raise NotFoundError for an
+        absent or unowned chapter.
+        """
+        chapter = await self.chapters.get(chapter_id)
+        if chapter is None:
+            raise NotFoundError
+        novel_id = chapter.novel_id
+        await self.chapters.delete(chapter)
+        survivors = await self.chapters.list_for_novel(novel_id)
+        await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
+        await self.chapters.touch_novel(novel_id)
+        await self.session.commit()
+
     async def export_novel(
         self, novel_id: UUID, mode: Literal["path", "zip"], path: str | None
     ) -> ExportDone | tuple[str, bytes]:

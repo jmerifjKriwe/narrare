@@ -720,7 +720,16 @@ export interface paths {
          */
         put: operations["update_chapter_api_writing_chapters__chapter_id__put"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete Chapter
+         * @description Delete an owned chapter; the survivors close the gap, renumbered
+         *     contiguously in the same transaction, and the novel's timestamp
+         *     advances. The chapter's pending suggestions go with it; the novel's
+         *     findings stay.
+         *
+         *     Raise HTTP 404 for an absent or unowned chapter.
+         */
+        delete: operations["delete_chapter_api_writing_chapters__chapter_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3205,6 +3214,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChapterRead"];
                 };
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_chapter_api_writing_chapters__chapter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Chapter not found */
             404: {

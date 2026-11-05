@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.contracts.positions import next_chapter_position
@@ -148,7 +148,7 @@ class ChapterRepository(ScopedRepository[Chapter]):
             ),
         )
         self.session.add(chapter)
-        await self._touch_novel(novel_id)
+        await self.touch_novel(novel_id)
         await self.session.flush()
         return chapter
 
@@ -156,11 +156,43 @@ class ChapterRepository(ScopedRepository[Chapter]):
         """Apply an edit and mark the novel written-in; one write, one bump."""
         for field, value in changes.items():
             setattr(chapter, field, value)
-        await self._touch_novel(chapter.novel_id)
+        await self.touch_novel(chapter.novel_id)
         await self.session.flush()
         return chapter
 
-    async def _touch_novel(self, novel_id: UUID) -> None:
+    async def delete(self, chapter: Chapter) -> None:
+        """Drop the chapter and flush; the commit is the caller's.
+
+        The flush is load-bearing: the delete must be visible to the
+        survivor read that follows it, or the renumber would count the row
+        it just removed. The chapter-scoped foreign key cascades in the
+        database — its pending suggestions ride the delete — while the
+        novel's findings, which belong to the book and not to a chapter,
+        stay.
+        """
+        await self.session.delete(chapter)
+        await self.session.flush()
+
+    async def renumber(self, novel_id: UUID, ordered_ids: Sequence[UUID]) -> None:
+        """Write each listed chapter's ordinal as its position, 0 to n-1.
+
+        One Core UPDATE per chapter, and the timestamp is assigned its own
+        value: the column's ``onupdate`` fires only for a statement that
+        leaves ``updated_at`` unset, so the self-assignment is what keeps a
+        survivor's "last written" where it was — a delete moved a number,
+        not a hand (D8). The writes ride the caller's one transaction, where
+        the deferrable constraint checks the finished set instead of each
+        intermediate step (WP6 §1).
+        """
+        for position, chapter_id in enumerate(ordered_ids):
+            await self.session.execute(
+                update(Chapter)
+                .where(Chapter.id == chapter_id, Chapter.novel_id == novel_id)
+                .where(self.owned())
+                .values(position=position, updated_at=Chapter.updated_at)
+            )
+
+    async def touch_novel(self, novel_id: UUID) -> None:
         """Advance the parent novel's updated_at from a chapter write.
 
         The column's onupdate fires only for the row an UPDATE statement

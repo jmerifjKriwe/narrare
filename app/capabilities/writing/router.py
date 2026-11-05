@@ -379,6 +379,25 @@ async def update_chapter(
     return ChapterRead.model_validate(chapter)
 
 
+@router.delete(
+    "/chapters/{chapter_id}",
+    status_code=204,
+    responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
+)
+async def delete_chapter(chapter_id: UUID, service: ServiceDep) -> None:
+    """Delete an owned chapter; the survivors close the gap, renumbered
+    contiguously in the same transaction, and the novel's timestamp
+    advances. The chapter's pending suggestions go with it; the novel's
+    findings stay.
+
+    Raise HTTP 404 for an absent or unowned chapter.
+    """
+    try:
+        await service.delete_chapter(chapter_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+
+
 @router.post(
     "/chapters/{chapter_id}/continue",
     response_class=FinalizingStreamingResponse,

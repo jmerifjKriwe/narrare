@@ -4241,6 +4241,51 @@
       }
     },
     "/api/writing/chapters/{chapter_id}": {
+      "delete": {
+        "description": "Delete an owned chapter; the survivors close the gap, renumbered\ncontiguously in the same transaction, and the novel's timestamp\nadvances. The chapter's pending suggestions go with it; the novel's\nfindings stay.\n\nRaise HTTP 404 for an absent or unowned chapter.",
+        "operationId": "delete_chapter_api_writing_chapters__chapter_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Chapter",
+        "tags": [
+          "writing"
+        ]
+      },
       "get": {
         "description": "Return an owned chapter; respond with HTTP 404 when it is not found.",
         "operationId": "get_chapter_api_writing_chapters__chapter_id__get",
