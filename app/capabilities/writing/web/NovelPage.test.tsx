@@ -31,10 +31,11 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
@@ -117,6 +118,14 @@ const OTHER_CHAPTERS = [
   },
 ];
 
+/** Two chapters with names of their own. A reorder's witness needs them:
+ *  untitled rows are named by their position ("Kapitel n"), so a swapped
+ *  rail of unnamed chapters reads exactly like the one it replaced. */
+const TWO_NAMED_CHAPTERS = [
+  { ...TWO_CHAPTERS[0], title: "Erstes" },
+  { ...TWO_CHAPTERS[1], title: "Zweites" },
+];
+
 function ok(): Response {
   return new Response(null, { status: 200 });
 }
@@ -149,6 +158,16 @@ function mockTwoChapters(): void {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/writing/novels/{novel_id}/chapters") {
       return { data: TWO_CHAPTERS, response: ok() };
+    }
+    return loadedAnswer(path);
+  });
+}
+
+/** The loaded answers with the named pair in the rail's list. */
+function mockTwoNamedChapters(): void {
+  api.GET.mockImplementation(async (path: string) => {
+    if (path === "/api/writing/novels/{novel_id}/chapters") {
+      return { data: TWO_NAMED_CHAPTERS, response: ok() };
     }
     return loadedAnswer(path);
   });
@@ -206,6 +225,19 @@ function chapterRow(n: number): HTMLElement {
   return screen.getByRole("button", {
     name: new RegExp(`^${t("chapters.defaultTitle", { n })}\\b`),
   });
+}
+
+/** The rail's named chapters as DOM positions: where each titled row
+ *  sits in the list. `[1, 0]` is a reversed pair — "Zweites" is the
+ *  list's first. (Named rows, because a position-derived label moves
+ *  with the swap it names.) */
+function railOrder(): number[] {
+  const rail = screen.getByRole("complementary");
+  return ["Erstes", "Zweites"].map((name) =>
+    [...rail.querySelectorAll<HTMLButtonElement>("button")].findIndex((button) =>
+      (button.getAttribute("aria-label") ?? "").startsWith(`${name} `),
+    ),
+  );
 }
 
 afterEach(() => {
@@ -565,6 +597,154 @@ describe("the palette's novel jump", () => {
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anderer Anfang.");
     expect(screen.getByRole("heading", { name: OTHER_NOVEL.title })).toBeTruthy();
+  });
+});
+
+describe("the rail's reorder", () => {
+  /** A rail row by its title: named rows are identity-stable across a
+   *  reorder, where position-derived labels move with the swap. */
+  function titledRow(title: string): HTMLElement {
+    return screen.getByRole("button", { name: new RegExp(`^${title}\\b`) });
+  }
+
+  /** Two chapters in the rail, a workbench around them, and the keyboard
+   *  driver — the state every case in this block starts from. The named
+   *  pair for the cases that watch the DOM order, the unnamed one for
+   *  the cases that watch the announcement's fallback label. */
+  async function renderTwoChapters(named = true) {
+    (named ? mockTwoNamedChapters : mockTwoChapters)();
+    api.PUT.mockResolvedValue({ response: ok() });
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    return userEvent.setup({ pointerEventsCheck: 0 });
+  }
+
+  it("alt_arrow_down_moves_the_focused_chapter", { timeout: 10_000 }, async () => {
+    const user = await renderTwoChapters();
+
+    // Alt+ArrowDown on the focused row is a move, not a walk: the row the
+    // focus holds trades places with its neighbour.
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The PUT carries the whole rail in its new order — every id, the
+    // arrangement as one permutation.
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        {
+          params: { path: { novel_id: NOVEL_ID } },
+          body: { chapter_ids: [SECOND_CHAPTER_ID, CHAPTER_ID] },
+        },
+      ),
+    );
+    // The optimistic order is the rail's at once: the second chapter's
+    // row is the list's first, before any answer arrives.
+    expect(railOrder()).toEqual([1, 0]);
+    // The cache holds the same arrangement with positions rewritten to
+    // match — the numbering the rows now render is the cache's own.
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([SECOND_CHAPTER_ID, CHAPTER_ID]);
+    expect(cached?.map((row) => row.position)).toEqual([0, 1]);
+  });
+
+  it("a_refused_order_reverts_and_names_the_refusal", { timeout: 10_000 }, async () => {
+    mockTwoNamedChapters();
+    // A second tab rearranged the book first: the PUT answers 409, the
+    // one refusal whose truth the rail's own cache lacks.
+    api.PUT.mockResolvedValue({ response: new Response(null, { status: 409 }) });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The refusal is named in the rail, beside the button that asks…
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+    // …the optimistic arrangement is gone — the rail and the cache are
+    // the ones they were…
+    expect(railOrder()).toEqual([0, 1]);
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([CHAPTER_ID, SECOND_CHAPTER_ID]);
+    // …and the 409 asked the chapters key to refetch: the server's whole
+    // is the arrangement the cache cannot know. The shelf was asked for
+    // nothing — the reorder never happened, and a failed write never
+    // asks for anything it did not do.
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] }),
+    );
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["novels"] });
+    invalidate.mockRestore();
+  });
+
+  it("a_successful_move_invalidates_the_shelf", { timeout: 10_000 }, async () => {
+    const user = await renderTwoChapters(false);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    chapterRow(1).focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The arrangement advanced the novel's row (D8), so the shelf is
+    // asked for again — and the chapters key is not: the optimistic
+    // order is what the 204 acknowledged, and a refetch mid-unsaved-body
+    // is exactly the state the save-side rule guards against.
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["novels"] }),
+    );
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] });
+    invalidate.mockRestore();
+  });
+
+  it("the_move_is_announced_with_its_new_position", { timeout: 10_000 }, async () => {
+    const user = await renderTwoChapters(false);
+    clearAnnouncements();
+
+    chapterRow(1).focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // A plain list tells AT nothing about a reordering: every move is
+    // announced — the row's name as the move began (the position-derived
+    // label for an untitled one), the position it holds now, out of the
+    // book's total.
+    const said = document.querySelector("[data-live-announcer]")?.textContent ?? "";
+    expect(said).toContain(
+      t("chapters.moved", {
+        title: t("chapters.defaultTitle", { n: 1 }),
+        n: 2,
+        m: 2,
+      }),
+    );
+  });
+
+  it("a_drag_and_drop_moves_the_chapter", { timeout: 10_000 }, async () => {
+    // Beyond the brief's four: the E2E is the keyboard's (drag under
+    // Playwright is the spec's named flake), so the drag path's only
+    // proof is here, at the DOM — drivable because the dragged id rides
+    // component state, never dataTransfer.
+    await renderTwoChapters();
+
+    const slots = screen
+      .getByRole("complementary")
+      .querySelectorAll<HTMLLIElement>("ul > li");
+    expect(slots.length).toBe(2);
+    fireEvent.dragStart(titledRow("Erstes"));
+    fireEvent.dragOver(slots[1]!);
+    fireEvent.drop(slots[1]!);
+    fireEvent.dragEnd(titledRow("Erstes"));
+
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        {
+          params: { path: { novel_id: NOVEL_ID } },
+          body: { chapter_ids: [SECOND_CHAPTER_ID, CHAPTER_ID] },
+        },
+      ),
+    );
+    expect(railOrder()).toEqual([1, 0]);
   });
 });
 

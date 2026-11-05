@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { client, type Chapter } from "@shell/lib/api/client";
+import { announce } from "@shell/lib/announce";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { activeLocale } from "@shell/lib/locale";
@@ -19,6 +20,7 @@ import {
   queryClient,
   useChaptersQuery,
   useNovelQuery,
+  useReorderChapters,
 } from "@shell/lib/query";
 import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save";
 import { countWords, formatWordCount } from "@shell/lib/words";
@@ -35,6 +37,11 @@ import type { FocusStep } from "./routes";
 // their own neighbours so a stray call cannot walk off the scale.
 const DEEPEN: Record<FocusStep, FocusStep> = { 0: 1, 1: 2, 2: 2 };
 const RELEASE: Record<FocusStep, FocusStep> = { 0: 0, 1: 0, 2: 1 };
+
+// The drag's drop marker: a 2 px primary edge at the slot's top — the row
+// a drop would land at. Its look is the spec's "left to the builder"; it
+// lives on the slot so the Row's own classes stay untouched.
+const DROP_HINT = "shadow-[inset_0_2px_0_var(--primary)]";
 
 // One row of the generated dock registry. The workspace knows no dock by
 // name — its tabs, matching and labels all come from this table, and a new
@@ -541,6 +548,92 @@ export function NovelPage() {
     rows[next]?.focus();
   }, []);
 
+  // The rail's reorder (WP6): Alt+↑/↓ on the focused row and a desktop
+  // drag both end in one PUT of the whole rail. The arrangement is
+  // written into the cache optimistically — the rail is the new order at
+  // once, each row keeping its own updated_at (an arrangement is not a
+  // write) — and any failure restores the list the ask replaced beside a
+  // named notice. A 409 alone also refetches the key: the book's whole
+  // changed in another tab, and the server's arrangement is the truth the
+  // cache lacks. The shelf is asked for only on success, through the
+  // mutation's own `onSuccess`.
+  const reorder = useReorderChapters(novelId);
+  const [orderFailed, setOrderFailed] = useState(false);
+  // The rail's filter is Task 12's; until it exists no filter can be
+  // active. The seam is here already — `null` is "no filter", the one
+  // state in which a reorder is unambiguous — so Task 12 replaces the
+  // state's source, not the guard.
+  const [railFilter] = useState<string | null>(null);
+
+  /** Move one chapter one step: the keyboard's Alt+↑/↓ path, and the
+   *  address Task 10's menu items call. The ends are no-ops — nothing
+   *  moves, nothing is asked. */
+  async function move(chapterId: string, delta: -1 | 1): Promise<void> {
+    if (railFilter !== null) return;
+    const rows = queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]);
+    if (!rows) return;
+    const from = rows.findIndex((chapter) => chapter.id === chapterId);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= rows.length) return;
+    await moveTo(chapterId, to);
+  }
+
+  /** Move one chapter to an index: the drag path's landing, and move's
+   *  engine. Both reads are the cache's, not the render's list — two
+   *  moves before a re-render must not compute the second from the
+   *  first's before — and the first read doubles as the snapshot a
+   *  failure restores. */
+  async function moveTo(chapterId: string, index: number): Promise<void> {
+    if (railFilter !== null) return;
+    const previous = queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]);
+    if (!previous) return;
+    const from = previous.findIndex((chapter) => chapter.id === chapterId);
+    if (from < 0 || from === index || index < 0 || index >= previous.length) return;
+    const moved = previous[from];
+    const without = previous.filter((chapter) => chapter.id !== chapterId);
+    const next = [...without.slice(0, index), moved, ...without.slice(index)].map(
+      (chapter, position) => ({ ...chapter, position }),
+    );
+    // A plain list tells AT nothing about a reordering: every move is
+    // announced with the row's name — the one it wore as the move began,
+    // the name the keystroke or the grab was aimed at — and the position
+    // it holds now, out of the book's total.
+    announce(
+      t("chapters.moved", {
+        title: moved.title || t("chapters.defaultTitle", { n: moved.position + 1 }),
+        n: index + 1,
+        m: next.length,
+      }),
+    );
+    // The optimistic write: the rail and the cache agree at once, the
+    // numbering rewritten to the arrangement the rows now stand in.
+    queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], next);
+    setOrderFailed(false);
+    try {
+      await reorder.mutateAsync(next.map((chapter) => chapter.id));
+    } catch (failure) {
+      // Any failure restores the arrangement the ask replaced; the 409
+      // also asks the key to refetch, the server's order arriving through
+      // the same door every list does. A transport failure asks for
+      // nothing — the service is not answering, and a second ask would
+      // only name a refresh failure beside work that stays.
+      queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], previous);
+      setOrderFailed(true);
+      if ((failure as { status?: number }).status === 409) {
+        void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+      }
+    }
+  }
+
+  // The desktop drag's state. The dragged id rides component state, not
+  // `dataTransfer`: the DOM test drives the events alone, and no drop
+  // reads data some other surface would have to write. `dropIndex` is
+  // the marker's truth — which slot the drop would land at — read by the
+  // render, not by the drop itself (the slot's own handler knows its
+  // index; the state would be one event behind it).
+  const dragId = useRef<string | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
   // F22's choice: below the workbench breakpoint the rail and the dock stay
   // overlays — the viewport floor pins covering, never squeezing — so they
   // get what an overlay owes the page behind it: a scrim that takes the
@@ -680,7 +773,31 @@ export function NovelPage() {
                     ? walkedIndex === index
                     : isCurrent || (active === null && index === 0);
                 return (
-                  <li key={chapter.id}>
+                  <li
+                    key={chapter.id}
+                    /* The slot is the drop target, and the marker is the
+                       slot's own top edge — the row the drop would land
+                       at — so the Row's classes stay untouched (spec §7:
+                       no markup or role change). `onDragOver` must
+                       preventDefault for the drop to be allowed at all,
+                       and only while a drag of ours is in flight. */
+                    onDragOver={(event) => {
+                      if (dragId.current === null) return;
+                      event.preventDefault();
+                      setDropIndex(index);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const source = dragId.current;
+                      dragId.current = null;
+                      setDropIndex(null);
+                      if (source === null) return;
+                      void moveTo(source, index);
+                    }}
+                    className={
+                      dropIndex === index && dragId.current !== null ? DROP_HINT : undefined
+                    }
+                  >
                     <Row
                       current={isCurrent}
                       selected={isCurrent}
@@ -693,7 +810,38 @@ export function NovelPage() {
                          separator made explicit. */
                       aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
                       tabIndex={isTabStop ? 0 : -1}
-                      onKeyDown={(event) => walkRail(event, index)}
+                      /* The desktop drag: the row is the grab, the slot
+                         above is the landing. Wired only while no filter
+                         is active — a filtered list has no unambiguous
+                         drop index (Task 12's rule, its seam already
+                         here). */
+                      draggable={railFilter === null}
+                      onDragStart={
+                        railFilter === null
+                          ? () => {
+                              dragId.current = chapter.id;
+                            }
+                          : undefined
+                      }
+                      onDragEnd={() => {
+                        dragId.current = null;
+                        setDropIndex(null);
+                      }}
+                      onKeyDown={(event) => {
+                        // Alt+↑/↓ moves the focused row one step; the
+                        // plain arrows keep the walk. The handler is the
+                        // row's own, so the editor's Alt+arrows never
+                        // reach it — there they keep the OS meaning.
+                        if (
+                          event.altKey &&
+                          (event.key === "ArrowDown" || event.key === "ArrowUp")
+                        ) {
+                          event.preventDefault();
+                          void move(chapter.id, event.key === "ArrowDown" ? 1 : -1);
+                          return;
+                        }
+                        walkRail(event, index);
+                      }}
                       onClick={() => {
                         // The chapter already open is no switch: a second
                         // history entry for the same address would only eat
@@ -725,6 +873,11 @@ export function NovelPage() {
             <Button onClick={() => void createChapter()} className="mt-3 w-full">
               {t("chapters.new")}
             </Button>
+            {orderFailed ? (
+              <Notice tone="danger" live="alert" className="mt-2">
+                {t("chapters.orderFailed")}
+              </Notice>
+            ) : null}
             {createFailed ? (
               <Notice tone="danger" live="alert" className="mt-2">
                 {t("chapters.errorCreate")}

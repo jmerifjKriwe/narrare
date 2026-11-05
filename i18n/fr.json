@@ -75,6 +75,8 @@
   "chapters.retry": "Réessayer",
   "chapters.wordCount": "{count, plural, one {# mot} other {# mots}}",
   "chapters.position": "Chapitre {n} sur {m}",
+  "chapters.moved": "Chapitre {title}, position {n} sur {m}",
+  "chapters.orderFailed": "Le nouvel ordre n'a pas pu être enregistré. Le service local est-il démarré ?",
   "editor.ghostArrived": "Une suggestion attend au curseur.",
   "editor.ghostAccepted": "Suggestion acceptée.",
   "editor.ghostDiscarded": "Suggestion rejetée.",

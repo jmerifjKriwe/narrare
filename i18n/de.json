@@ -75,6 +75,8 @@
   "chapters.retry": "Erneut versuchen",
   "chapters.wordCount": "{count, plural, one {# Wort} other {# Wörter}}",
   "chapters.position": "Kapitel {n} von {m}",
+  "chapters.moved": "Kapitel {title}, Position {n} von {m}",
+  "chapters.orderFailed": "Die neue Reihenfolge konnte nicht gespeichert werden. Läuft der lokale Dienst?",
   "editor.ghostArrived": "Am Cursor wartet ein Vorschlag.",
   "editor.ghostAccepted": "Vorschlag übernommen.",
   "editor.ghostDiscarded": "Vorschlag verworfen.",

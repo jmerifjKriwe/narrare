@@ -163,6 +163,44 @@ export function activeChapterFallback(chapters: Chapter[]): string | null {
 }
 
 /**
+ * Reordering the rail: the PUT chapter-order write. The body is the whole
+ * rail — every chapter id in its new order — and the caller has already
+ * written that arrangement into the cache optimistically; the mutation is
+ * the ask behind it. Success invalidates the novels prefix only (Task 8's
+ * shelf rule: an arrangement advanced the novel's `updated_at`, D8) and
+ * never the chapters key — the optimistic order is what the 204
+ * acknowledged, and a chapters refetch mid-unsaved-body is exactly the
+ * state the save-side rule guards against. A failure invalidates nothing
+ * here, on `onSuccess` and not `onSettled` for that reason: the page
+ * restores the previous list itself and, on a 409 alone, asks the
+ * chapters key to refetch — the one failure whose truth the cache lacks.
+ */
+export function useReorderChapters(
+  novelId: string,
+): UseMutationResult<void, Error, string[]> {
+  return useMutation({
+    mutationFn: async (chapterIds: string[]) => {
+      const { response } = await client.PUT(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        { params: { path: { novel_id: novelId } }, body: { chapter_ids: chapterIds } },
+      );
+      if (!response.ok) {
+        // The status rides the throw, the accept-suggestion precedent: a
+        // 409 is the one refusal the page answers with a chapters
+        // refetch, so the machine-readable fact must survive the
+        // mutation boundary. Every other refusal keeps its error as is.
+        throw Object.assign(new Error(`reorder refused: ${response.status}`), {
+          status: response.status,
+        });
+      }
+    },
+    onSuccess: () => {
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/**
  * A durable job's row (spec §9 D10): the UI polls the state, never a
  * connection to the work. The poll lives here as the one place that knows a
  * queued or running row is still provisional — `refetchInterval` answers a

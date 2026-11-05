@@ -10,19 +10,51 @@ Every flow drives the real stack — browser, API, Postgres — and ends on the
 accessibility floor.
 """
 
+import asyncio
 import re
-from typing import TYPE_CHECKING
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from playwright.sync_api import Page, Route, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.workbench import new_chapter
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
+
+DATABASE = "narrare_v2_e2e"  # the stack's own database (e2e/conftest.py)
+
+
+def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
+    """Rows from the stack's database as plain tuples, in a worker thread.
+
+    The interchange suite's own helper, mirrored: pytest-asyncio keeps a
+    session loop running, and asyncio.run refuses to start a second one in
+    the same thread.
+    """
+
+    async def run() -> list[tuple[object, ...]]:
+        """Ask a fresh async engine; the dispose lands even on a failed query."""
+        engine = create_async_engine(url_for(DATABASE))
+        try:
+            async with engine.connect() as connection:
+                return [
+                    tuple(each) for each in await connection.execute(text(statement), params or {})
+                ]
+        finally:
+            await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, run()).result()
 
 
 def _create_book(page: Page, title: str) -> None:
@@ -525,6 +557,84 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
     # Activating a row ends the walk: the tab stop is the selection's again.
     page.keyboard.press("Enter")
     expect(second).to_have_attribute("aria-current", "true")
+
+    assert_accessible(page)
+
+
+def test_moving_a_chapter_by_keyboard_survives_a_reload(page: Page, stack: Stack) -> None:
+    """Alt+ArrowUp on the focused row is a write, not a view: the new order
+    survives a reload, every chapter row keeps its own updated_at (an
+    arrangement is not a write, D8), and the novel's row advanced."""
+    _create_book(page, "Die Umordnung")
+    for _ in range(3):
+        new_chapter(page)
+
+    # Named rows first: an unnamed row is named by its position ("Kapitel
+    # n"), so a reordered rail of unnamed chapters reads exactly like the
+    # one it replaced. Names of their own make the rail show who moved.
+    for number, name in enumerate(["Erstes", "Zweites", "Drittes"], start=1):
+        page.get_by_role("button", name=re.compile(rf"^Kapitel {number}\b")).click()
+        page.get_by_label("Kapiteltitel").fill(name)
+        expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+
+    match = re.search(r"/novels/([0-9a-f-]+)", page.url)
+    assert match is not None, f"the workspace never got an address: {page.url}"
+    novel_id = match.group(1)
+
+    def chapter_rows() -> dict[str, tuple[str, int, datetime]]:
+        """The book's chapters by id: title, position, the row's own touch."""
+        return {
+            str(row[0]): (str(row[1]), cast("int", row[2]), cast("datetime", row[3]))
+            for row in _rows(
+                "SELECT id, title, position, updated_at FROM chapters"
+                " WHERE novel_id = :id ORDER BY position",
+                {"id": novel_id},
+            )
+        }
+
+    def novel_touched() -> datetime:
+        """The novel row's own clock — the one an arrangement advances."""
+        [row] = _rows("SELECT updated_at FROM novels WHERE id = :id", {"id": novel_id})
+        return cast("datetime", row[0])
+
+    before = chapter_rows()
+    touched_before = novel_touched()
+    assert [row[1] for row in before.values()] == [0, 1, 2]
+
+    # Zweites trades places with its neighbour: focus the row, hold Alt.
+    page.get_by_role("button", name=re.compile(r"^Zweites\b")).focus()
+    with page.expect_response(
+        lambda response: "chapter-order" in response.url and response.request.method == "PUT"
+    ) as moved:
+        page.keyboard.press("Alt+ArrowUp")
+    assert moved.value.ok
+
+    # The optimistic order is the rail's at once — no refetch between the
+    # keystroke and the answer.
+    rows = page.get_by_role("complementary").get_by_role(
+        "button", name=re.compile(r"^(Erstes|Zweites|Drittes)\b")
+    )
+    expect(rows).to_have_count(3)
+    expect(rows.nth(0)).to_have_accessible_name(re.compile(r"^Zweites\b"))
+
+    # The reload proves the row, not the cache: the arrangement is the
+    # server's, and the numbering follows it.
+    page.reload()
+    expect(rows).to_have_count(3)
+    expect(rows.nth(0)).to_have_accessible_name(re.compile(r"^Zweites\b"))
+    expect(rows.nth(1)).to_have_accessible_name(re.compile(r"^Erstes\b"))
+    expect(rows.nth(2)).to_have_accessible_name(re.compile(r"^Drittes\b"))
+
+    # The database agrees: same rows, same touch instants — the moved one
+    # included — and only the novel's own clock advanced.
+    after = chapter_rows()
+    assert after.keys() == before.keys()
+    for chapter_id, row in after.items():
+        assert row[2] == before[chapter_id][2]
+    assert [row[1] for row in after.values()] == [0, 1, 2]
+    [moved_id] = [cid for cid, row in after.items() if row[0] == "Zweites"]
+    assert after[moved_id][1] == 0
+    assert novel_touched() > touched_before
 
     assert_accessible(page)
 

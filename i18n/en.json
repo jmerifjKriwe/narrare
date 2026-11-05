@@ -75,6 +75,8 @@
   "chapters.retry": "Try again",
   "chapters.wordCount": "{count, plural, one {# word} other {# words}}",
   "chapters.position": "Chapter {n} of {m}",
+  "chapters.moved": "Chapter {title}, position {n} of {m}",
+  "chapters.orderFailed": "The new order could not be saved. Is the local service running?",
   "editor.ghostArrived": "A suggestion is waiting at the caret.",
   "editor.ghostAccepted": "Suggestion accepted.",
   "editor.ghostDiscarded": "Suggestion discarded.",
