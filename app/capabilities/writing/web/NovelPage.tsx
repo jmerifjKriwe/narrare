@@ -779,7 +779,7 @@ export function NovelPage() {
           </div>
         </section>
 
-        {dockOverlay ? (
+        {dockOverlay && !railOverlay ? (
           <div
             aria-hidden="true"
             onClick={() => {
@@ -805,9 +805,12 @@ export function NovelPage() {
                takes the remaining height and scrolls alone. The rail's
                drawer sits a z-step above this one: a rail opened over a
                live dock covers it without unmounting it, so the dock's
-               in-progress ask survives behind the drawer. */
+               in-progress ask survives behind the drawer — and while it is
+               covered the dock goes `inert`, so the keyboard cannot land on
+               controls the drawer hides. */
             className="flex w-96 shrink-0 flex-col rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:max-h-[calc(100dvh-16rem)] lg:pl-6"
             aria-label={t(openDock.titleKey)}
+            inert={railOverlay || undefined}
           >
             <h2 className="text-emph font-semibold tracking-tight">{t(openDock.titleKey)}</h2>
             {/* The dock owns its scroll: it takes the height it needs up to
