@@ -137,6 +137,26 @@ Gate: `docker run … rhysd/actionlint:1.7.12 -color` → exit 0.
 
 ## Task 5 — dev audit (#597)
 
+`nightly.yml`'s `audit` job now exports the full locked set (`uv export
+--locked`, no `--no-dev`) and runs `pnpm audit --audit-level high` without
+`--prod`. No second job; the package name in the report says whether a finding
+is dev.
+
+Green on today's lock, probed 2026-11-05 before the edit:
+
+```
+uv export --locked --format requirements-txt --output-file /tmp/req-all.txt
+  → 1030 requirements (723 with --no-dev)
+uvx pip-audit==2.10.1 --strict -r /tmp/req-all.txt   → No known vulnerabilities found
+pnpm audit --audit-level high                        → No known vulnerabilities found
+```
+
+Two comments that became false were corrected: `ci.yml`'s `dependency-review`
+step (dev deps are no longer "otherwise uncovered") and the map's audit
+paragraph (dev dependencies are covered now).
+
+Gates: actionlint exit 0; zizmor exit 0 (`No findings to report`).
+
 ## Task 6 — tool pins bumped
 
 ## Task 7 — monthly pin check (#598)

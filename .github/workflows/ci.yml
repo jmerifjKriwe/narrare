@@ -205,9 +205,10 @@ jobs:
         with:
           # List inputs are comma-separated; the action splits them.
           fail-on-severity: high
-          # `runtime` is the default; `development` is added here because
-          # it is otherwise uncovered: the nightly audit skips dev deps
-          # (`--no-dev`/`--prod`), so nothing else judges them.
+          # `runtime` is the default; `development` is added here because a
+          # change to a dev dependency is judged before it lands — the
+          # nightly's whole-lockfile audit is the after-merge net, not a
+          # reason to wait for one.
           fail-on-scopes: runtime, development
           deny-licenses: AGPL-1.0, AGPL-3.0, GPL-2.0, GPL-3.0
           # A PR comment needs `pull-requests: write` — a token this

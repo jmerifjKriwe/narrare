@@ -202,15 +202,14 @@ meaning anything.
   no runner minutes. Manual dispatch always proceeds — whoever ran it
   asked for a sweep. It also resolves the full suite list from
   `scripts/affected.py --all --json`; the matrix is derived, never static.
-- `audit` is the lockfile sweep: `uv export --locked --no-dev` writes the
-  runtime requirements — judged directly by `uvx pip-audit==2.10.1
-  --strict` — and `pnpm audit --prod --audit-level high` checks the
-  JavaScript side. It
-  **reddens the nightly but blocks no PR**: a CVE published against an
-  existing prod dependency has no PR to ride in on, which is exactly why
-  the sweep exists. Dev dependencies are *not* covered here — they are
-  reviewed on PRs by `dependency-review` (high severity + the
-  AGPL/GPL deny list), so neither surface is unjudged.
+- `audit` is the lockfile sweep: `uv export --locked` writes every locked
+  requirement, runtime and dev, judged directly by `uvx pip-audit==2.10.1
+  --strict`; `pnpm audit --audit-level high` checks the JavaScript side, dev
+  dependencies included. It **reddens the nightly but blocks no PR**: a CVE
+  published against an existing dependency has no PR to ride in on, which is
+  exactly why the sweep exists. The package name in the report says which side
+  a finding is on. A PR's change is judged earlier by `dependency-review`
+  (high severity + the AGPL/GPL deny list).
 - `nightly-result` keeps **one** open issue labeled `ci/nightly`: opened
   on the first failure, a comment per further failure, closed the morning
   a nightly goes green. Scheduled runs only — a manual dispatch reports
