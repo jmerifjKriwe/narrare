@@ -286,7 +286,7 @@ jobs:
   # reports to no one but its own run log; it never touches the issue.
   nightly-result:
     needs: [gate, lint-types, tests, frontend, build, e2e-suites]
-    if: always() && github.event_name == 'schedule' && (needs.gate.result != 'success' || needs.gate.outputs.proceed == 'true')
+    if: always() && github.event_name ==
     runs-on: ubuntu-latest
     permissions:
       issues: write
