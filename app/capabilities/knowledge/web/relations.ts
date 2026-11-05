@@ -82,7 +82,7 @@ export function resolveRelationType(
   text: string,
 ): string {
   const trimmed = text.trim();
-  const lowered = trimmed.toLocaleLowerCase();
-  const picked = items.find((item) => item.text.toLocaleLowerCase() === lowered);
+  const lowered = trimmed.toLowerCase();
+  const picked = items.find((item) => item.text.toLowerCase() === lowered);
   return picked !== undefined ? picked.id : trimmed;
 }
