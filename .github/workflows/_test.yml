@@ -1,4 +1,4 @@
-# Reusable test gate: the single definition of the Python suite with its
+# Reusable test gate (harness proof): the single definition of the Python suite with its
 # Postgres service, called as `./.github/workflows/_test.yml` from ci.yml
 # and nightly.yml, which were two copies of the same job. This file
 # declares no trigger of its own (`on: workflow_call`): it does nothing
