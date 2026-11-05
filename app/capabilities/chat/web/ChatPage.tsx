@@ -17,7 +17,7 @@ export function ChatPage() {
       <p className="mt-2 text-body text-muted">
         <Link
           to="/"
-          className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >
           {t("nav.back")}
         </Link>

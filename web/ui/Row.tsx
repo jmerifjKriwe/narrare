@@ -27,7 +27,7 @@ import type { HTMLAttributes, MouseEventHandler, ReactNode } from "react";
  *  disturbing the order the pinned class contract names. */
 const ROW_HEAD = "group h-7 flex w-full items-center gap-2";
 const ROW_TAIL =
-  "text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  "text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 
 /** The gutter a standalone row owns when no surface pads it. */
 const ROW_INSET = "px-3";

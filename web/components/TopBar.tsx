@@ -38,7 +38,7 @@ export function TopBar() {
           rather than focus-visible-gated because reveal and focus coincide. */}
       <a
         href="#main"
-        className="fixed left-4 top-4 z-20 -translate-y-24 rounded-[var(--radius)] bg-card px-3 py-2 text-body text-foreground opacity-0 outline-none ring-2 ring-focus transition focus:translate-y-0 focus:opacity-100"
+        className="fixed left-4 top-4 z-20 -translate-y-24 rounded-[var(--radius)] bg-card px-3 py-2 text-body text-foreground opacity-0 outline-hidden ring-2 ring-focus transition focus:translate-y-0 focus:opacity-100"
       >
         {t("shell.skipToContent")}
       </a>

@@ -113,7 +113,7 @@ function ShelfCard({ novel }: { novel: Novel }) {
       <Link
         to="/novels/$id"
         params={{ id: novel.id }}
-        className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
       >
         <div className="flex items-start gap-3 pr-7">
           <Cover title={novel.title} />

@@ -32,7 +32,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 };
 
 const SHARED_CLASSES =
-  "rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
+  "rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   md: "h-7 px-2.5 text-body",

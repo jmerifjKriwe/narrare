@@ -18,9 +18,9 @@ import { panelClass, panelHeaderClass } from "./Panel";
 import { rowClass } from "./Row";
 
 const ROW_BASE =
-  "group h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  "group h-7 flex w-full items-center gap-2 px-3 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 const ROW_FLUSH =
-  "group h-7 flex w-full items-center gap-2 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  "group h-7 flex w-full items-center gap-2 text-left text-body border-b border-rule hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
 const SELECTED_ADDITIONS =
   "bg-soft font-semibold shadow-[inset_2px_0_0_var(--primary)]";
 
