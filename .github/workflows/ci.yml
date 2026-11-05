@@ -286,43 +286,10 @@ jobs:
           CAPABILITY: ${{ matrix.capability }}
         run: just test-e2e "$CAPABILITY"
 
-  # The required check is the context `e2e`, and the name must not move while
-  # the suites behind it multiply. `always()` because the hole this closes is
-  # a skipped job: a failed `changes` used to leave the whole e2e leg skipped,
-  # and a skipped required check passes. The semantics:
-  #   red   — `changes` did not succeed, or handed over no capabilities at all
-  #           (a successful run prints at least `[]`; an empty string is a
-  #           broken handoff, never "legitimately none"),
-  #   green — `changes` succeeded with `[]` and the matrix was skipped:
-  #           nothing owed, nothing run — the notice says so,
-  #   red   — the matrix ran and ended anything but success.
-  e2e:
-    name: e2e
-    needs: [changes, e2e-suites]
-    if: always()
-    runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 5
-    steps:
-      - name: Every owed suite passed, or none was owed
-        env:
-          CHANGES: ${{ needs.changes.result }}
-          SUITES: ${{ needs.e2e-suites.result }}
-          CAPABILITIES: ${{ needs.changes.outputs.capabilities }}
-        run: |
-          if [ "$CHANGES" != success ]; then
-            echo "::error::the changes job did not succeed; a change owes suites it cannot name"; exit 1; fi
-          if [ -z "$CAPABILITIES" ]; then
-            echo "::error::the changes job succeeded but handed over no capabilities; broken, not none"; exit 1; fi
-          if [ "$CAPABILITIES" = '[]' ]; then
-            echo "::notice::no capability owed a browser suite"; exit 0; fi
-          if [ "$SUITES" != success ]; then
-            echo "::error::e2e suites ended $SUITES"; exit 1; fi
-
   # The one required check: the ruleset names `ci-required` and nothing
   # else, so a job split never edits the ruleset again. It carries every
-  # gate this workflow runs and judges each result explicitly — the same
-  # semantics as the `e2e` job above, widened to all of them:
+  # gate this workflow runs and judges each result explicitly — the
+  # semantics the old `e2e` aggregator carried, widened to all gates:
   #   red   — `changes` did not succeed (its outputs are then gone; the
   #           empty-handoff check below answers only a succeeded `changes`),
   #   red   — `changes` succeeded but handed over no capabilities at all
@@ -344,8 +311,8 @@ jobs:
   # `always()`: the hole this closes is a skipped job — a failed `needs`
   # dependency used to leave everything downstream skipped, and a skipped
   # required check passes. No permissions: this job only reads results.
-  # Both aggregators (`e2e` and this) run green during the switch: the
-  # ruleset still requires `e2e` until it no longer names it.
+  # The old `e2e` aggregator is retired: the ruleset names `ci-required`
+  # alone, so this job is the only required context.
   ci-required:
     name: ci-required
     needs: [changes, lint-types, tests, frontend, build, workflow-lint, e2e-suites]
