@@ -33,7 +33,7 @@ dev:
 dev-setup:
     uv sync
     pnpm install
-    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
+    pre-commit install --install-hooks
     just dev-services
     just db-init
 
