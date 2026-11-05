@@ -74,6 +74,18 @@ class NovelRepository(ScopedRepository[Novel]):
     async def get(self, novel_id: UUID) -> Novel | None:
         return await self.session.scalar(self.query().where(Novel.id == novel_id))
 
+    async def save(self, novel: Novel, changes: dict[str, Any]) -> Novel:
+        """Apply a metadata edit and flush; the commit is the caller's.
+
+        The novel is its own root — no parent to mark written-in — so
+        ``updated_at`` rides the row's UPDATE through the column's
+        ``onupdate``, and an empty change set writes nothing at all.
+        """
+        for field, value in changes.items():
+            setattr(novel, field, value)
+        await self.session.flush()
+        return novel
+
     async def create(
         self,
         title: str,

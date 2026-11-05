@@ -977,6 +977,18 @@
             ],
             "title": "Language"
           },
+          "last_exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Exported At"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1000,9 +1012,72 @@
           "author",
           "language",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "last_exported_at"
         ],
         "title": "NovelRead",
+        "type": "object"
+      },
+      "NovelUpdate": {
+        "description": "The PATCH body: only the fields present are the change.\n\n``None`` is ambiguous by shape alone — an absent field and a cleared\nauthor both look like None — so the service reads\n``model_fields_set`` to tell a carried change from a missing one. The\nvalues are checked there, against the novel contract's trims and\nlimits: this schema carries the fields, the contract decides what a\nvalue may be. A carried ``null`` clears author, genre, blurb or\nlanguage; the title is never clearable.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "blurb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blurb"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "NovelUpdate",
         "type": "object"
       },
       "ProfileCreate": {
@@ -4529,6 +4604,68 @@
           }
         },
         "summary": "Get Novel",
+        "tags": [
+          "writing"
+        ]
+      },
+      "patch": {
+        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel; raise HTTP 404 for an absent or unowned novel, or\nHTTP 422 naming the field for a blank or over-long title, an over-long\ngenre, or a language that is not a BCP-47-ish code.",
+        "operationId": "update_novel_api_writing_novels__novel_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NovelRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "An invalid field, named in `detail`"
+          }
+        },
+        "summary": "Update Novel",
         "tags": [
           "writing"
         ]

@@ -1,5 +1,6 @@
 """Writing logic. Routers delegate here; this module knows the unit of work."""
 
+import re
 import zlib
 from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.writing.prompts import render_continuation
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
-from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead
+from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
@@ -28,6 +29,14 @@ from app.kernel.interchange import engine as interchange_engine
 
 class NotFoundError(Exception):
     """The row does not exist or belongs to another user; the two are one answer."""
+
+
+class InvalidNovelUpdateError(ValueError):
+    """A metadata edit breaks the novel contract; ``field`` names the offender."""
+
+    def __init__(self, field: str) -> None:
+        super().__init__(f"invalid {field}")
+        self.field = field
 
 
 class TargetNotEmptyError(Exception):
@@ -69,6 +78,11 @@ upload would hold the worker for no good novel (the knowledge cap's reason)."""
 
 _ARCHIVE = "<archive>"
 """The whole archive, when no single file is at fault — the engine's own word."""
+
+_LANGUAGE_CODE = re.compile(r"[a-z]{2}(-[A-Za-z]{2,})?")
+"""A BCP-47-ish language tag: two lowercase letters, then optionally a
+region or script after a dash (`de`, `en-GB`). The export writes the tag
+into the archive's front matter; anything looser would not round-trip."""
 
 
 class WritingService:
@@ -123,6 +137,55 @@ class WritingService:
         return NovelRead.model_validate(novel).model_copy(
             update={"chapter_count": chapter_count, "word_count": word_count}
         )
+
+    async def update_novel(self, novel_id: UUID, changes: NovelUpdate) -> Novel:
+        """Correct a novel's five metadata fields: only the fields the body carries.
+
+        The values are checked here, in the service, so a hand-written call
+        cannot skip the contract: a title is trimmed and may be neither
+        blank nor over 200 characters (a novel has no placeholder), a genre
+        is trimmed and may not be over 80, an author and a blurb are trimmed
+        with the empty string clearing them, and a language is trimmed, with
+        the empty string clearing it, and must otherwise be a BCP-47-ish
+        code (`de`, `en-GB`). ``model_fields_set`` is what makes the update
+        partial: a field the body does not carry is not a change, and a
+        carried ``null`` is one — the cleared state. The write is one UPDATE
+        through the repository's save, and ``updated_at`` rides it through
+        the column's ``onupdate``, so an edit makes the export trace
+        honestly stale.
+
+        Commit and return the novel. Raise NotFoundError if it is absent or
+        unowned, or InvalidNovelUpdateError for an invalid field, named.
+        """
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        provided = changes.model_fields_set
+        # One field at a time, validate and carry together: the
+        # assignments are in-memory until the single commit below, so a
+        # refusal on any field leaves the row exactly as it was.
+        if "title" in provided:
+            title = (changes.title or "").strip()
+            if not title or len(title) > 200:
+                raise InvalidNovelUpdateError("title")
+            changes.title = title
+        if "genre" in provided:
+            genre = changes.genre.strip() if changes.genre is not None else None
+            if genre is not None and len(genre) > 80:
+                raise InvalidNovelUpdateError("genre")
+            changes.genre = genre
+        if "author" in provided:
+            changes.author = (changes.author or "").strip() or None
+        if "blurb" in provided:
+            changes.blurb = (changes.blurb or "").strip() or None
+        if "language" in provided:
+            language = (changes.language or "").strip() or None
+            if language is not None and not _LANGUAGE_CODE.fullmatch(language):
+                raise InvalidNovelUpdateError("language")
+            changes.language = language
+        novel = await self.novels.save(novel, changes.model_dump(exclude_unset=True))
+        await self.session.commit()
+        return novel
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()

@@ -21,6 +21,7 @@ from app.capabilities.writing.schemas import (
     ImportReportRead,
     NovelCreate,
     NovelRead,
+    NovelUpdate,
     WritingErrorRead,
 )
 from app.capabilities.writing.service import (
@@ -28,6 +29,7 @@ from app.capabilities.writing.service import (
     ArchiveInvalidError,
     ArchiveTooLargeError,
     FieldRefusedError,
+    InvalidNovelUpdateError,
     NotFoundError,
     TargetNotEmptyError,
     WritingService,
@@ -149,6 +151,30 @@ async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
         novel = await service.create_novel(payload.title, genre=payload.genre, blurb=payload.blurb)
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
+    return NovelRead.model_validate(novel)
+
+
+@router.patch(
+    "/novels/{novel_id}",
+    response_model=NovelRead,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        422: {"model": WritingErrorRead, "description": "An invalid field, named in `detail`"},
+    },
+)
+async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep) -> NovelRead:
+    """Correct a novel by hand: only the fields the body carries change.
+
+    Return the novel; raise HTTP 404 for an absent or unowned novel, or
+    HTTP 422 naming the field for a blank or over-long title, an over-long
+    genre, or a language that is not a BCP-47-ish code.
+    """
+    try:
+        novel = await service.update_novel(novel_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except InvalidNovelUpdateError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
     return NovelRead.model_validate(novel)
 
 

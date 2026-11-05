@@ -814,7 +814,15 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Novel
+         * @description Correct a novel by hand: only the fields the body carries change.
+         *
+         *     Return the novel; raise HTTP 404 for an absent or unowned novel, or
+         *     HTTP 422 naming the field for a blank or over-long title, an over-long
+         *     genre, or a language that is not a BCP-47-ish code.
+         */
+        patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;
     };
     "/api/writing/novels/{novel_id}/chapters": {
@@ -1315,6 +1323,8 @@ export interface components {
             id: string;
             /** Language */
             language: string | null;
+            /** Last Exported At */
+            last_exported_at: string | null;
             /** Title */
             title: string;
             /**
@@ -1327,6 +1337,30 @@ export interface components {
              * @default 0
              */
             word_count: number;
+        };
+        /**
+         * NovelUpdate
+         * @description The PATCH body: only the fields present are the change.
+         *
+         *     ``None`` is ambiguous by shape alone — an absent field and a cleared
+         *     author both look like None — so the service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one. The
+         *     values are checked there, against the novel contract's trims and
+         *     limits: this schema carries the fields, the contract decides what a
+         *     value may be. A carried ``null`` clears author, genre, blurb or
+         *     language; the title is never clearable.
+         */
+        NovelUpdate: {
+            /** Author */
+            author?: string | null;
+            /** Blurb */
+            blurb?: string | null;
+            /** Genre */
+            genre?: string | null;
+            /** Language */
+            language?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /**
          * ProfileCreate
@@ -3380,6 +3414,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_novel_api_writing_novels__novel_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovelRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description An invalid field, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
                 };
             };
         };
