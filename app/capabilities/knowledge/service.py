@@ -29,6 +29,7 @@ from app.capabilities.knowledge.repository import (
     EntitySuggestionRepository,
     RelationRepository,
     entity_search_text,
+    touch_novel,
 )
 from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult, RelationPatch
 from app.kernel.auth import SetupRequiredError
@@ -353,6 +354,8 @@ class KnowledgeService:
         )
         skipped = await self._resolve_proposals(entity, suggestion)
         suggestion.status = ACCEPTED
+        # the canon gained a row (D8): the accept is a write to the book
+        await touch_novel(self.session, self.user_id, suggestion.novel_id)
         await self.session.commit()
         return entity, skipped
 
@@ -540,6 +543,8 @@ class KnowledgeService:
             # body-only edit moves no identity word, and a type change alone
             # moves nothing, so those are plain column writes.
             entity.search_text = entity_search_text(entity.name, entity.aliases, entity.tags)
+        # the canon changed (D8): the correction is a write to the book
+        await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
         return entity
 
@@ -558,6 +563,8 @@ class KnowledgeService:
         if entity is None:
             raise NotFoundError
         await self.entities.delete(entity)
+        # the canon lost a row (D8): the deletion is a write to the book
+        await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
 
     async def entity_relations(self, entity_id: UUID) -> Sequence[EntityRelation]:
@@ -617,6 +624,8 @@ class KnowledgeService:
             if getattr(error.orig, "sqlstate", None) == UNIQUE_VIOLATION:
                 raise RelationExistsError from None
             raise NotFoundError from None
+        # the canon gained an edge (D8): the book was written in
+        await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
         return relation
 
@@ -635,6 +644,12 @@ class KnowledgeService:
         relation = await self.relations.get(relation_id)
         if relation is None:
             raise NotFoundError
+        # The edge's novel, from either end: an edge joins one story —
+        # add_relation enforces it at birth and a merge cannot cross
+        # novels — so the from-end's row answers for the whole edge. Read
+        # before the patch: a later read would autoflush the pending
+        # retype outside the race backstop the commit below carries.
+        end = await self.entities.get(relation.from_entity_id)
         provided = changes.model_fields_set
         if "relation_type" in provided:
             checked = _validate_relation_type(changes.relation_type)
@@ -648,6 +663,10 @@ class KnowledgeService:
         if "note" in provided:
             relation.note = changes.note
         try:
+            # the canon changed (D8): the retype is a write to the book,
+            # and a refused one rolls back with the retype it rode
+            if end is not None:
+                await touch_novel(self.session, self.user_id, end.novel_id)
             await self.session.commit()
         except IntegrityError:
             # The constraint caught what the look-before-write missed: a
@@ -668,7 +687,12 @@ class KnowledgeService:
         relation = await self.relations.get(relation_id)
         if relation is None:
             raise NotFoundError
+        # Either end names the edge's novel (see update_relation): the
+        # canon is about to lose an edge (D8), and the book was written in.
+        end = await self.entities.get(relation.from_entity_id)
         await self.relations.delete(relation)
+        if end is not None:
+            await touch_novel(self.session, self.user_id, end.novel_id)
         await self.session.commit()
 
     async def merge_entities(self, source_id: UUID, target_id: UUID) -> Entity:

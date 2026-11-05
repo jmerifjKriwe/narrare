@@ -1,6 +1,7 @@
 """Document, chunk, entity, relation and suggestion persistence. All scoped to one user."""
 
 from collections.abc import Sequence  # noqa: TC003
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
@@ -13,10 +14,13 @@ from app.kernel.contracts.models import (
     Entity,
     EntityRelation,
     EntitySuggestion,
+    Novel,
 )
 from app.kernel.db.base import ScopedRepository
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from app.capabilities.knowledge.prompts import ParsedEntity, ParsedFinding
 
 # The review contract's three states. A suggestion is born pending and is
@@ -45,6 +49,24 @@ def entity_search_text(name: str, aliases: Sequence[str], tags: Sequence[str]) -
     identity words (update, merge).
     """
     return " ".join([name, *aliases, *tags])
+
+
+async def touch_novel(session: AsyncSession, user_id: UUID, novel_id: UUID) -> None:
+    """Advance the parent novel's ``updated_at`` from a canon write (D8).
+
+    Writing's ``touch_novel`` shape, this capability's own copy — no
+    capability imports another. The scoped select answers absent for
+    another user's row, the assignment rides the caller's transaction,
+    and the commit is the write path's own: working on the canon counts
+    as touching the book, so the bump belongs inside the write that
+    earns it. A write that changes nothing the export archive carries
+    (documents, findings, enqueues, a discard) never calls this.
+    """
+    novel = await session.scalar(
+        select(Novel).where(Novel.id == novel_id, Novel.user_id == user_id)
+    )
+    if novel is not None:
+        novel.updated_at = datetime.now(UTC)
 
 
 class DocumentRepository(ScopedRepository[Document]):
