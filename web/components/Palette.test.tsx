@@ -172,9 +172,12 @@ function renderAt(path: string) {
 /** The keyboard opens the palette wherever the focus sits — the shell's
  *  listener reads the window, no page participates. The press waits for the
  *  shell's own mount: the pre-paint gate holds the shell back while the
- *  locale read answers, and the listener attaches with it. */
+ *  locale read answers, and the listener attaches with it. The wait is the
+ *  skip link — the shell's first element, so its presence says the shell
+ *  — and its listener — is there. */
 async function openPalette(): Promise<void> {
-  await screen.findByRole("link", { name: t("chat.heading") });
+  const banner = await screen.findByRole("banner");
+  await within(banner).findByRole("link", { name: t("shell.skipToContent") });
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
   await screen.findByRole("dialog");
 }
@@ -210,8 +213,10 @@ describe("the palette's keyboard contract", () => {
   it("opens with ⌘K and with Ctrl+K, closes with Esc, and the focus returns to the opener", async () => {
     mockBare();
     renderAt("/");
-    // The opener is an ordinary page element — the top bar's first link.
-    const opener = await screen.findByRole("link", { name: t("chat.heading") });
+    // The opener is an ordinary page element — the bar's settings link.
+    const opener = await within(await screen.findByRole("banner")).findByRole("link", {
+      name: t("shell.settings"),
+    });
     opener.focus();
 
     await openPalette();
@@ -235,6 +240,71 @@ describe("the palette's keyboard contract", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+});
+
+describe("the palette wears the system's rows", () => {
+  it("rows are the primitive's 28 px rows on the rule — the old hand-rolled paint is gone", async () => {
+    mockWorkspace();
+    renderAt(`/novels/${NOVEL_ID}`);
+    await openPalette();
+
+    const row = await paletteRow("Der Anfang");
+    // rowClass's control height and rule separator carry the rows now, not
+    // the old py-2/text-sm paint.
+    expect(row.className).toContain("h-7");
+    expect(row.className).toContain("border-rule");
+    expect(row.className).not.toContain("text-sm");
+    expect(row.className).not.toContain("rounded-md");
+    // The primitive's selection marker belongs to a selected row; the
+    // palette's keyboard walk moves focus, so no row is one.
+    expect(row.getAttribute("data-selected")).toBeNull();
+
+    // The group label speaks at the label size, in the eyebrow voice —
+    // the panel header's own treatment (§8.2: uppercase, tracked).
+    const group = await paletteGroup(t("palette.chapters"));
+    const label = group.querySelector("p") as HTMLElement;
+    expect(label.className).toContain("text-label");
+    expect(label.className).toContain("uppercase");
+    expect(label.className).toContain("tracking-[0.1em]");
+    // The keyboard hints are the scale's meta voice, not the label's.
+    const hints = screen.getByText(t("workspace.shortcutHints"));
+    expect(hints.className).toContain("text-meta");
+
+    // The palette names itself for what it is, not for what it offers.
+    expect(screen.getByRole("dialog", { name: t("palette.aria") })).toBeTruthy();
+  });
+
+  it("long labels clip inside the row — the span shrinks and truncates, the name rides the text", async () => {
+    mockWorkspace();
+    renderAt(`/novels/${NOVEL_ID}`);
+    await openPalette();
+
+    const row = await paletteRow("Der Anfang");
+    // The label rides a shrinking, truncating span inside the fixed 28 px
+    // row — an 80-character title clips at the row's edge instead of
+    // wrapping past it and over the row below. jsdom does no layout, so
+    // `scrollWidth`/`clientWidth` cannot tell the truth here; the pin is
+    // the classes, the same level the rows test above pins at. A trailing
+    // hint would sit outside the span.
+    const label = row.querySelector("span") as HTMLElement | null;
+    expect(label).toBeTruthy();
+    expect(label!.className).toContain("min-w-0");
+    expect(label!.className).toContain("flex-1");
+    expect(label!.className).toContain("truncate");
+    // The wrapper is invisible to the name: it rides the button's text.
+    expect(row.textContent).toBe("Der Anfang");
+  });
+
+  it("the search field carries the one focus treatment, not a bare outline-none", async () => {
+    mockBare();
+    renderAt("/");
+    await openPalette();
+
+    const input = await searchBox();
+    expect(input.className).toContain("focus-visible:outline-none");
+    expect(input.className).toContain("focus-visible:ring-2");
+    expect(input.className).toContain("focus-visible:ring-focus");
   });
 });
 
@@ -449,7 +519,7 @@ describe("the commands run", () => {
     });
     // The palette stepped aside: the export dialog owns the stage, and it
     // is the only dialog on it.
-    expect(screen.queryByRole("dialog", { name: t("palette.title") })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: t("palette.aria") })).toBeNull();
 
     // ⌘K during the dialog is refused: opening would stack a second focus
     // trap over the first, typing would drive a page the dialog shadows,
@@ -460,7 +530,7 @@ describe("the commands run", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(screen.queryByRole("dialog", { name: t("palette.title") })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: t("palette.aria") })).toBeNull();
     // The dialog that owned the stage still owns it.
     expect(
       screen.getByRole("heading", { name: t("shelf.exportTitle", { title: NOVEL.title }) }),

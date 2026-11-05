@@ -83,9 +83,12 @@ describe("the settings area's frame", () => {
 
     // The frame's one container: a contributed page's own container would
     // sit inside it and double the horizontal inset. The container classes
-    // are the DOM witness — a page that brings its own `mx-auto max-w-2xl`
-    // is exactly the regression this names.
-    const containers = document.querySelectorAll("main .mx-auto.max-w-2xl");
+    // are the DOM witness — a page that brings its own `mx-auto max-w-…`
+    // container is exactly the regression this names. The width follows the
+    // frame's own (nav 200 + content 56 rem under the 1000 px cap, P16a).
+    const containers = document.querySelectorAll(
+      "main .mx-auto.max-w-\\[1000px\\]",
+    );
     expect(containers).toHaveLength(1);
     expect(
       within(containers[0] as HTMLElement).getByRole("heading", {

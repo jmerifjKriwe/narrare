@@ -261,7 +261,7 @@ def _row_named(entities: Locator, name: str) -> Locator:
     return entities.get_by_role("gridcell", name=name, exact=True)
 
 
-def _open_palette(page: Page, title: str = "Springen zu") -> Locator:
+def _open_palette(page: Page, title: str = "Befehlspalette") -> Locator:
     """⌘K opens the palette over whatever the page holds; the dialog answers."""
     page.keyboard.press("Control+k")
     palette = page.get_by_role("dialog", name=title)
@@ -295,7 +295,12 @@ def _create_fake_profile(page: Page) -> None:
     its own — and the continuation later must name exactly this row.
     """
     page.get_by_label("Name", exact=True).fill(PROFILE_NAME)
-    page.get_by_label("Art").select_option(label="Fake (deterministisch, ohne Netzwerk)")
+    # Scoped to main: the label wraps its select, so its text runs "Art
+    # Fake (deterministisch, …)" — a substring match, which the rail's
+    # Startseite link (outside main) would also answer.
+    page.get_by_role("main").get_by_label("Art").select_option(
+        label="Fake (deterministisch, ohne Netzwerk)"
+    )
     page.get_by_label("Modell").fill(PROFILE_MODEL)
     page.get_by_role("button", name="Profil hinzufügen").click()
     row = page.get_by_role("listitem").filter(has_text=PROFILE_NAME)
@@ -376,7 +381,11 @@ def test_the_writer_s_day_holds_together_end_to_end(
     _row_named(entities, RELATION_CARRIER).click()
     detail = dock.get_by_role("region", name=RELATION_CARRIER)
     expect(detail).to_be_visible()
-    expect(detail).to_contain_text("→ Johann Bauer")
+    # No arrow glyph: relations stopped being a sentence with arrows
+    # (0909a16c) — the edge reads as its two facts, target and type. This
+    # expectation stayed behind in that round; the repair lands here because
+    # this suite is where it bites.
+    expect(detail).to_contain_text("Johann Bauer · Verbunden mit")
     assert_accessible(page)
 
     # --- The merge: two entries for the same thing fold into one. The floor
@@ -418,8 +427,10 @@ def test_the_writer_s_day_holds_together_end_to_end(
     assert_accessible(page)
 
     # --- The settings chain, through its own doors: the hub, then the
-    # provider page, then the prompts page.
-    page.get_by_role("link", name="Einstellungen").click()
+    # provider page, then the prompts page. The first door is the bar's
+    # gear, scoped to the banner — the rail's Settings anchor is the
+    # settings area's own twin, not this door.
+    page.get_by_role("banner").get_by_role("link", name="Einstellungen").click()
     expect(page).to_have_url(f"{BASE}/settings")
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
     assert_accessible(page)
@@ -500,10 +511,12 @@ def test_the_writer_s_day_holds_together_end_to_end(
     )
     assert chapter_one_id in wire[1]
     # The rail gained the chapter, the address moved to it, the editor shows
-    # the empty chapter the command made — and the row holds the line.
+    # the empty chapter the command made — and the row holds the line. The
+    # row's name carries its word count beside the title (F20), so the
+    # match is anchored at the front, not made exact.
     new_position = _latest_chapter_position(novel_id)
     expect(
-        page.get_by_role("button", name=f"Kapitel {new_position + 1}", exact=True)
+        page.get_by_role("button", name=re.compile(rf"^Kapitel {new_position + 1}\b"))
     ).to_be_visible()
     [new_chapter_id] = [
         str(row[0])
@@ -529,7 +542,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
         expect(page.get_by_role("region", name=region)).to_be_visible()
     assert_accessible(page)
     # The palette is a surface of its own: its words re-render with the page.
-    palette = _open_palette(page, title="Jump to")
+    palette = _open_palette(page, title="Command palette")
     expect(palette.get_by_role("textbox")).to_have_attribute(
         "placeholder", "Search chapters, entities, pages and commands"
     )

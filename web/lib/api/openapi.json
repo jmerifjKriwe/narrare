@@ -940,6 +940,11 @@
             ],
             "title": "Blurb"
           },
+          "chapter_count": {
+            "default": 0,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -980,6 +985,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "word_count": {
+            "default": 0,
+            "title": "Word Count",
+            "type": "integer"
           }
         },
         "required": [

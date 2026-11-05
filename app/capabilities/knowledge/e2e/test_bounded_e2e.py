@@ -6,6 +6,7 @@ real UI, the real API and the real database — the provider stays the product's
 fake, the one permitted fake, at its own boundary.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -37,13 +38,16 @@ def _chapter(page: Page, body: str) -> None:
     The switch remounts the editor on the new chapter, so an editor that is
     merely visible can still be the *previous* chapter's: typing then lands in
     a chapter the caller did not name, and the new one stays empty. The rail's
-    pressed row is the proof that the switch has landed.
+    current row (aria-current, F20 — never a pressed toggle) is the proof
+    that the switch has landed.
     """
     rail = page.get_by_role("complementary", name="Kapitel")
     count = rail.get_by_role("listitem").count()
     page.get_by_role("button", name="Neues Kapitel").click()
     expect(rail.get_by_role("listitem")).to_have_count(count + 1)
-    expect(rail.locator('button[aria-pressed="true"]')).to_have_text(f"Kapitel {count + 1}")
+    expect(rail.locator('button[aria-current="true"]')).to_have_text(
+        re.compile(rf"^Kapitel {count + 1}\b")
+    )
     editor = page.locator(".ProseMirror")
     expect(editor).to_be_visible()
     editor.click()

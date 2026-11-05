@@ -207,9 +207,12 @@ def _sliced_sections(prompt: str) -> tuple[str, str, str, str]:
 
 
 def _open_settings(page: Page) -> None:
-    """The gear's door: from the shelf's top bar through the hub to the provider page."""
+    """The gear's door: from the shelf's top bar through the hub to the provider page.
+
+    The gear is the banner's, scoped there: the rail's Settings anchor is
+    the settings area's own twin, not this door."""
     page.goto(BASE + "/")
-    page.get_by_role("link", name="Einstellungen").click()
+    page.get_by_role("banner").get_by_role("link", name="Einstellungen").click()
     expect(page).to_have_url(f"{BASE}/settings")
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
     page.get_by_role("region", name="Anbieter").get_by_role("link", name="Anbieter").click()
@@ -227,7 +230,12 @@ def _create_profile_and_assign(page: Page, name: str, context_window: str) -> No
     """
     _open_settings(page)
     page.get_by_label("Name", exact=True).fill(name)
-    page.get_by_label("Art").select_option(label="Fake (deterministisch, ohne Netzwerk)")
+    # Scoped to main: the label wraps its select, so its text runs "Art
+    # Fake (deterministisch, …)" — a substring match, which the rail's
+    # Startseite link (outside main) would also answer.
+    page.get_by_role("main").get_by_label("Art").select_option(
+        label="Fake (deterministisch, ohne Netzwerk)"
+    )
     page.get_by_label("Modell").fill(f"modell-{name.split()[-1].lower()}")
     page.get_by_label("Kontextfenster (Tokens)").fill(context_window)
     page.get_by_role("button", name="Profil hinzufügen").click()

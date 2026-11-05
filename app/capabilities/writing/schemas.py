@@ -28,6 +28,13 @@ class NovelRead(BaseModel):
     blurb: str | None
     author: str | None
     language: str | None
+    # Derived, not stored: how long the novel is, counted from its
+    # chapters — a chapter per row, a word per whitespace-separated
+    # token of the trimmed body, an empty body worth nothing. The
+    # defaults keep a novel with no chapters at zeros and old clients
+    # reading the grown payload unbroken.
+    chapter_count: int = 0
+    word_count: int = 0
     created_at: datetime
     updated_at: datetime
 

@@ -109,7 +109,11 @@ def test_setup_with_a_demo_loads_its_content(page: Page, stack: Stack) -> None:
         expect(entities.get_by_role("gridcell", name=name, exact=True)).to_be_visible()
     entities.get_by_role("gridcell", name="Anna Müller", exact=True).click()
     detail = dock.get_by_role("region", name="Anna Müller")
-    expect(detail).to_contain_text("→ Johann Bauer · Verbunden mit")
+    # No arrow glyph: relations stopped being a sentence with arrows
+    # (0909a16c) — the edge reads as its two facts, target and type. This
+    # expectation stayed behind in that round; the repair lands here because
+    # this suite is where it bites.
+    expect(detail).to_contain_text("Johann Bauer · Verbunden mit")
     assert_accessible(page)
 
     # The screen and the database agree on what first run created.
@@ -122,6 +126,60 @@ def test_setup_with_a_demo_loads_its_content(page: Page, stack: Stack) -> None:
     ]
     assert len(_rows("SELECT id FROM entities")) == DEMO_ENTITY_COUNT
     assert len(_rows("SELECT id FROM entity_relations")) == DEMO_RELATION_COUNT
+
+
+def test_setup_fits_the_first_screen(page: Page, stack: Stack) -> None:
+    """First run is one screen at laptop size: neither the document nor the
+    shell's main column scrolls at 1280x800.
+
+    The plan's pin is the document half. The main half is the regression
+    the 100vh card used to buy: a viewport-tall card inside a bar-bounded
+    main scrolled by exactly one bar's height, invisible to the document
+    pin but visible as a scrollbar with nowhere to go.
+    """
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(BASE + "/setup")
+    expect(page.get_by_role("heading", name="Willkommen bei Narrare")).to_be_visible()
+
+    # The document never grows past the viewport.
+    assert page.evaluate("document.scrollingElement.scrollHeight <= window.innerHeight")
+    # …and main does not scroll either: the page's own height stays inside
+    # the column the bar leaves it.
+    assert page.evaluate(
+        """() => {
+            const main = document.getElementById("main");
+            return main.scrollHeight <= main.clientHeight;
+        }"""
+    )
+
+    assert_accessible(page)
+
+
+def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
+    """Each demo entry shows the book a face: one generated cover tile per
+    demo — a 3:4 object beside the words, hidden from the accessibility tree
+    (the radio's name already carries the title, and a second copy of it
+    would read twice). The tab names the page short, too: ``<page> —
+    Narrare``, not the welcome sentence twice."""
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(BASE + "/setup")
+    expect(page.get_by_role("heading", name="Willkommen bei Narrare")).to_be_visible()
+
+    expect(page).to_have_title("Willkommen — Narrare")
+
+    for title in ("Im Stillen Wald", "Dead Signal", "Echoes of the Thornwall"):
+        tile = (
+            page.get_by_role("radio", name=title)
+            .locator("xpath=ancestor::label[1]")
+            .locator("[aria-hidden='true']")
+        )
+        expect(tile).to_have_count(1)
+        box = tile.bounding_box()
+        assert box is not None
+        # The cover's 3:4 tile: an object on the row, not a text block.
+        assert abs(box["width"] / box["height"] - 0.75) <= 0.02
+
+    assert_accessible(page)
 
 
 def test_blank_path_unchanged(page: Page, stack: Stack) -> None:

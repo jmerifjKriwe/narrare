@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
+import { announce } from "@shell/lib/announce";
 import { client, isModelChange } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { offerProposal } from "@shell/lib/proposal";
 import { readFrames, type Source } from "@shell/lib/stream";
+import { Button } from "@shell/ui/Button";
+import { Field, Input } from "@shell/ui/field";
+import { Notice } from "@shell/ui/Notice";
+import { Row } from "@shell/ui/Row";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
 /** One question, one streamed answer, the sources it cites — the flow both
@@ -29,6 +34,11 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
   async function ask(event: React.FormEvent) {
     event.preventDefault();
     if (question.trim() === "") return;
+    // A second ask while one streams supersedes it: abort the in-flight
+    // fetch so its late deltas can never write into this ask's fresh
+    // answer — and a superseded ask never announces, its loop returning
+    // before the completion line below.
+    askAbort.current?.abort();
     const controller = new AbortController();
     askAbort.current = controller;
     setAsking(true);
@@ -37,6 +47,9 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
     setFailed(false);
     setModelChanged(false);
     setOfferSpent(false);
+    // Whether this ask actually wrote words: an empty-but-clean stream has
+    // no answer to call ready, so it stays silent with its empty region.
+    let sawDelta = false;
     try {
       // parseAs "stream": the answer arrives as frames while it is written.
       const limit = 5; // the server's own default, pinned here by the request type
@@ -56,7 +69,10 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
         // nothing more into it.
         if (controller.signal.aborted) return;
         if (frame.sources) setSources(frame.sources);
-        if (frame.delta) setAnswer((current) => current + frame.delta);
+        if (frame.delta) {
+          sawDelta = true;
+          setAnswer((current) => current + frame.delta);
+        }
         // An error frame replaces the done frame: the provider died, and a
         // silent end would look like a complete answer.
         if (frame.error) {
@@ -64,6 +80,14 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           return;
         }
       }
+      // F16: the stream ended clean and wrote an answer — that fact is
+      // spoken once, here. The deltas streamed silently; the reader hears
+      // one sentence, not a murmur per token. The failure paths above and
+      // below return without announcing: their alerts speak instead. The
+      // `t` here is the live module function (useTranslation returns it
+      // unchanged), so the string resolves in the locale active at announce
+      // time — a language switched mid-stream announces in the new one.
+      if (sawDelta) announce(t("chat.answerReady"));
     } catch {
       // The abort of a departed panel is the user's doing, not a failure —
       // the fetch rejects with it, and there is no panel left to tell.
@@ -83,29 +107,34 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
 
   return (
     <>
-      <form onSubmit={ask} className="flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t("chat.questionLabel")}
-          <input
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none"
-          />
-        </label>
-        <button
+      {/* The ask on one row (§8.7's chat row, the one surface row that
+          says so): the field grows, the button holds its label's width and
+          sits on the input's line — down to the dock's 384 px and a 360 px
+          viewport, where `min-w-0` lets the field shrink first. The fill
+          follows the surface (L1, R46): on the standalone page the ask is
+          its screen's one filled primary; in the workspace dock it defers
+          to the editor's Weiterschreiben (`canOffer` is the dock's mark).
+          The offer card's decisions beside the answer are a pair of
+          equals, neither of them a fill. */}
+      <form onSubmit={ask} className="flex items-end gap-2">
+        <Field label={t("chat.questionLabel")} className="min-w-0 flex-1">
+          <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
+        </Field>
+        <Button
           type="submit"
+          variant={canOffer ? "secondary" : "primary"}
           disabled={asking}
-          className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          className="shrink-0"
         >
           {t("chat.ask")}
-        </button>
+        </Button>
       </form>
-      <section aria-label={t("chat.answerLabel")} className="mt-8">
-        <p className="whitespace-pre-wrap leading-relaxed">{answer}</p>
+      <section aria-label={t("chat.answerLabel")} className="mt-6">
+        <p className="whitespace-pre-wrap text-body leading-relaxed">{answer}</p>
         {failed ? (
-          <p role="alert" className="mt-2 text-sm text-danger">
+          <Notice tone="danger" live="alert" className="mt-2">
             {modelChanged ? t("chat.modelChanged") : t("chat.error")}
-          </p>
+          </Notice>
         ) : null}
         {/* The dock's own follow-through: a complete answer can be handed
             to the editor beside it — as a ghost there, never as text
@@ -124,15 +153,34 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
         ) : null}
       </section>
       {sources === null ? null : (
-        <section aria-label={t("chat.sources")} className="mt-8">
+        <section aria-label={t("chat.sources")} className="mt-6">
           {sources.length === 0 ? (
-            <p className="text-sm text-muted">{t("chat.noSources")}</p>
+            <Notice tone="quiet">{t("chat.noSources")}</Notice>
           ) : (
-            <ul className="flex flex-col gap-3">
-              {sources.map((source) => (
-                <li key={source.chunk_id} className="rounded-lg border border-border bg-card p-4">
-                  <strong className="text-sm font-semibold">{source.document_title}</strong>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">{source.text}</p>
+            // The sources are a real list (assistive tech announces the
+            // count); each entry is a row on the rule — the document's
+            // title, the quoted passage under it. The last row yields its
+            // rule through an index-pinned inline style: a class-level
+            // `:last-child` is useless here — every Row is its li's only
+            // child, so it matches all of them — and an inline declaration
+            // beats the utilities the row already wears, reliably.
+            <ul className="flex flex-col">
+              {sources.map((source, index) => (
+                <li key={source.chunk_id}>
+                  <Row
+                    as="div"
+                    className="h-auto flex-col items-stretch py-2"
+                    style={
+                      index === sources.length - 1
+                        ? { borderBottomWidth: 0 }
+                        : undefined
+                    }
+                  >
+                    <span className="text-label font-semibold">{source.document_title}</span>
+                    <span className="text-body leading-relaxed text-muted group-hover:text-foreground">
+                      {source.text}
+                    </span>
+                  </Row>
                 </li>
               ))}
             </ul>
