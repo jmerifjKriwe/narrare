@@ -2025,7 +2025,7 @@
         "type": "object"
       },
       "SkippedRelationRead": {
-        "description": "A proposed relation accept could not place: the target's name as the\nproposal spelled it, the type as stored — the stripped form, not the\nproposal's raw words.",
+        "description": "A proposed relation accept could not place: the target's name as the\nproposal spelled it, the type as accept stores it — the stripped form\na hand-added edge would carry, not the proposal's raw words.",
         "properties": {
           "relation_type": {
             "title": "Relation Type",

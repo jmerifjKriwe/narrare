@@ -103,7 +103,7 @@ class RelationExistsError(Exception):
 
 class SkippedRelation(NamedTuple):
     """A proposed relation accept could not place. The target's name rides
-    as the proposal spelled it; the type rides as it was stored — the
+    as the proposal spelled it; the type rides as accept stores it — the
     stripped form a hand-added edge would carry, not the proposal's raw
     words. The skip is transient — the accept response carries it once
     (D8), nothing persists it."""
