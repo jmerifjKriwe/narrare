@@ -340,7 +340,7 @@ state:
 | Rule | Target |
 | --- | --- |
 | `required_status_checks` (`tests`, `e2e`, `lint-types`, `build`; strict) | replaced by `ci-required` alone; strict policy stays |
-| `pull_request` (1 approval, `require_last_push_approval: true`, `dismiss_stale_reviews_on_push: false`, `required_review_thread_resolution: true`, `require_extra_approval_for_attributed_changes: true`, `require_code_owner_review: false`) | unchanged |
+| `pull_request` (1 approval, `require_last_push_approval: true`, `dismiss_stale_reviews_on_push: false`, `required_review_thread_resolution: true`, `require_extra_approval_for_unattributed_changes: true`, `require_code_owner_review: false`) | unchanged |
 | `allowed_merge_methods: ["merge", "squash"]` | `["merge"]` only |
 | `copilot_code_review` (`review_on_push: true`) | kept — removing a review signal is not this design's claim |
 | `code_quality` (warnings) | kept |

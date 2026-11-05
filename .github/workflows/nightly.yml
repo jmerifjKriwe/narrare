@@ -26,7 +26,7 @@ permissions: {}
 # release-please.yml, which carries write tokens, has always done it this way.
 # A major tag is a mutable ref: its owners can move `v7` to any commit, and that
 # commit then runs with this workflow's token — no diff here, no review.
-# Dependabot's monthly `github-actions` update keeps the pins current.
+# Dependabot's weekly `github-actions` update keeps the pins current.
 #
 # The pin also fixes the runtime: every action below runs on Node 24, so no
 # action is forced onto a runtime its own CI never tested.

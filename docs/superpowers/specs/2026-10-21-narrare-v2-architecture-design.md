@@ -443,6 +443,8 @@ not by a document:
    real database, with the fake provider at the boundary.
 4. **The §2 numbers reach their targets**: ADRs ≤ 15, rules ≤ 5, hooks ≤ 10, check
    scripts ≤ 3, recipes 24, CI jobs ≤ 7 (5 gates + 2 scheduling guards), zero hand-written API type modules.
+   CI jobs is beyond that target deliberately; see the 2026-11-05 deviation note
+   in §2 and the [2026-11-05 GitHub platform design](2026-11-05-github-platform-design.md).
 5. **The local gate runs in under 10 s and under 60 s**, and a capability port is a
    folder plus a test, not a tour of the repository.
 

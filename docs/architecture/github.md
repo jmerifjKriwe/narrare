@@ -48,9 +48,14 @@ Two named, deliberate shapes a reader should not "fix":
   `_lint.yml`, `_test.yml`, `_e2e.yml`).
 - **Pin hygiene.** Actions are pinned by commit SHA with a trailing release
   comment; Dependabot's weekly `github-actions` group keeps the pins
-  current. Three versions Dependabot cannot see are pinned as inputs and
-  bump manually: the actionlint digest, zizmor's `version: 1.30.1`, and the
-  Codecov CLI (`version: v11.3.2`).
+  current. Four versions Dependabot cannot see are pinned as inputs or
+  inline and bump manually: the actionlint digest, zizmor's
+  `version: 1.30.1`, the Codecov CLI (`version: v11.3.2`) and
+  `pip-audit==2.10.1` (the `uvx` invocation in nightly's audit job).
+  Dependabot's updater scans workflow files only, so it may not bump the
+  `uses:` pins inside a composite action's `action.yml` — verify after the
+  first composite lands (`.github/actions/setup`) that its nested pins move
+  with the weekly group; if they do not, they join this list.
 
 ## `ci-required` — the required-check aggregator
 

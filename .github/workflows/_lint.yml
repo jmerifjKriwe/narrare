@@ -29,7 +29,7 @@ on:
 # Actions are pinned by commit SHA and name their release in a trailing
 # comment, like every other workflow here. A major tag is a mutable ref:
 # its owners can move `v7` to any commit, and that commit then runs with
-# this workflow's token — no diff here, no review. Dependabot's monthly
+# this workflow's token — no diff here, no review. Dependabot's weekly
 # `github-actions` update keeps the pins current.
 
 jobs:

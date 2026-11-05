@@ -23,7 +23,7 @@ permissions: {}
 # release-please.yml, which carries write tokens, has always done it this way.
 # A major tag is a mutable ref: its owners can move `v7` to any commit, and that
 # commit then runs with this workflow's token — no diff here, no review.
-# Dependabot's monthly `github-actions` update keeps the pins current.
+# Dependabot's weekly `github-actions` update keeps the pins current.
 #
 # The pin also fixes the runtime: every action below runs on Node 24, so no
 # action is forced onto a runtime its own CI never tested.
@@ -37,7 +37,7 @@ jobs:
   # pinned actionlint image (1.7.7) does not know it yet — the two gate
   # probes must pass together. Flip to `$/` when the actionlint pin is
   # bumped past the version that understands `$/`, or when
-  # `sha_pinning_required` (Task 15) rejects the `./` reference.
+  # `sha_pinning_required` rejects the `./` reference.
   lint-types:
     uses: ./.github/workflows/_lint.yml # zizmor: ignore[self-repository]
     permissions:
@@ -353,8 +353,8 @@ jobs:
   # no path filter: a path-filtered required workflow is the pending-check
   # trap — touching a workflow but not its parent directory leaves the
   # check missing, and a missing required check passes. The two probes
-  # together cost seconds. A plain job for now: it becomes blocking once
-  # ci-required names it (Task 4).
+  # together cost seconds. The job is blocking: `ci-required` gates on it,
+  # so a red probe here reddens the required check and blocks the merge.
   workflow-lint:
     runs-on: ubuntu-latest
     permissions:

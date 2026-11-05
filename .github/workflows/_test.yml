@@ -56,7 +56,7 @@ jobs:
       # pinned actionlint image (1.7.7) does not know it yet — the two gate
       # probes must pass together. Flip to `$/` when the actionlint pin is
       # bumped past the version that understands `$/`, or when
-      # `sha_pinning_required` (Task 15) rejects the `./` reference.
+      # `sha_pinning_required` rejects the `./` reference.
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
         with:
           node: "false"
