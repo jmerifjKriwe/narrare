@@ -328,6 +328,7 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -348,6 +349,7 @@ export function useUpdateRelation(): UseMutationResult<
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -362,6 +364,7 @@ export function useDeleteRelation(): UseMutationResult<void, Error, { relationId
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -534,6 +537,7 @@ export function useAcceptSuggestion(
     },
     onSettled: () => {
       void invalidateKnowledge(novelId);
+      void invalidateNovelShelf();
     },
   });
 }
@@ -581,6 +585,7 @@ export function useUpdateEntity(
     },
     onSettled: () => {
       void invalidateEntities(novelId);
+      void invalidateNovelShelf();
     },
   });
 }
@@ -599,6 +604,7 @@ export function useDeleteEntity(novelId: string): UseMutationResult<void, Error,
       // The deleted row's edges cascade: every card that showed one of
       // them must ask again, whoever's end it stood on.
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -621,6 +627,7 @@ export function useMergeEntities(
       // The merge re-points the source's edges to the target: cards on
       // either end of a moved edge must ask again.
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -638,4 +645,16 @@ function invalidateKnowledge(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+}
+
+/** D8's canon rule, seen from the shelf: every knowledge write that
+ *  changes what the export archive carries advances the novel's
+ *  `updated_at` on the server, and the shelf's last-touched hero and the
+ *  export warning read that column — through this cache's 30 s
+ *  staleTime unless the canon-writing mutations invalidate the key
+ *  themselves, which would leave the rule unobservable for half a
+ *  minute. The `["novels"]` prefix also covers `["novels", id]`, so the
+ *  workbench's own novel row refreshes with the shelf. */
+function invalidateNovelShelf(): void {
+  void queryClient.invalidateQueries({ queryKey: ["novels"] });
 }
