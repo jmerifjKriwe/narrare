@@ -88,6 +88,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Document
+         * @description Delete a document. Its chunks' foreign key cascades: the passages go
+         *     with the row, and search cannot find its text again.
+         *
+         *     Raise HTTP 404 for an absent or unowned document.
+         */
+        delete: operations["delete_document_api_knowledge_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/entities/{entity_id}": {
         parameters: {
             query?: never;
@@ -1083,6 +1106,13 @@ export interface components {
         };
         /** DocumentRead */
         DocumentRead: {
+            /** Byte Size */
+            byte_size: number | null;
+            /**
+             * Chunk Count
+             * @default 0
+             */
+            chunk_count: number;
             /**
              * Created At
              * Format: date-time
@@ -2079,6 +2109,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_knowledge_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -4,7 +4,7 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from app.kernel.contracts.models import (
     Chunk,
@@ -54,15 +54,43 @@ class DocumentRepository(ScopedRepository[Document]):
         result = await self.session.scalars(self.query().order_by(Document.created_at.desc()))
         return result.all()
 
-    async def create(self, title: str, embedding_width: int) -> Document:
-        document = Document(user_id=self.user_id, title=title, embedding_width=embedding_width)
+    async def create(self, title: str, embedding_width: int, byte_size: int) -> Document:
+        document = Document(
+            user_id=self.user_id,
+            title=title,
+            embedding_width=embedding_width,
+            byte_size=byte_size,
+        )
         self.session.add(document)
         await self.session.flush()
         return document
 
+    async def get(self, document_id: UUID) -> Document | None:
+        """The row, scoped: another user's document answers as absent, the
+        way every scoped read in this product answers."""
+        return await self.session.scalar(self.query().where(Document.id == document_id))
+
+    async def delete(self, document: Document) -> None:
+        """Mark the supplied document for deletion; the caller commits the change."""
+        await self.session.delete(document)
+
 
 class ChunkRepository(ScopedRepository[Chunk]):
     model = Chunk
+
+    async def count_chunks(self, document_ids: Sequence[UUID]) -> dict[UUID, int]:
+        """{document_id: passage count} for the given documents, scoped to
+        this user — one GROUP BY, one round trip, however many rows the
+        list shows. A document without passages is simply absent from the
+        answer; the caller reads the zero."""
+        if not document_ids:
+            return {}
+        result = await self.session.execute(
+            select(Chunk.document_id, func.count())
+            .where(self.owned(), Chunk.document_id.in_(document_ids))
+            .group_by(Chunk.document_id)
+        )
+        return dict(result.all())
 
     async def of_document(self, document_id: UUID) -> Sequence[Chunk]:
         """The document's chunks, in reading order."""

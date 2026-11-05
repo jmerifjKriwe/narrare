@@ -12,6 +12,13 @@ class DocumentRead(BaseModel):
     id: UUID
     title: str
     created_at: datetime
+    # NULL for rows ingested before the column existed; the list shows
+    # nothing for them. The count is not a column: it is the grouped
+    # query's answer, which every builder copies in over the default —
+    # validate-then-model_copy is the seam, so the default is what a
+    # Document row alone can say (it carries no passages of its own).
+    byte_size: int | None
+    chunk_count: int = 0
 
 
 class SearchRequest(BaseModel):

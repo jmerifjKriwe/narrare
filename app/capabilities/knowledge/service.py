@@ -184,11 +184,23 @@ class KnowledgeService:
         self.suggestions = EntitySuggestionRepository(session, user_id)
         self.findings = ConsistencyFindingRepository(session, user_id)
 
-    async def list_documents(self) -> Sequence[Document]:
-        return await self.documents.list()
+    async def list_documents(self) -> list[tuple[Document, int]]:
+        """The documents, newest first, each paired with its passage count
+        from one grouped query — the list states size and count without a
+        query per row."""
+        documents = await self.documents.list()
+        counts = await self.chunks.count_chunks([document.id for document in documents])
+        return [(document, counts.get(document.id, 0)) for document in documents]
+
+    async def chunk_count(self, document_id: UUID) -> int:
+        """One document's passage count — the upload response's answer, the
+        same grouped count the list runs for every row at once."""
+        counts = await self.chunks.count_chunks([document_id])
+        return counts.get(document_id, 0)
 
     async def ingest(self, title: str, text: str) -> Document:
-        if len(text.encode("utf-8")) > MAX_UPLOAD_BYTES:
+        byte_size = len(text.encode("utf-8"))
+        if byte_size > MAX_UPLOAD_BYTES:
             raise DocumentTooLargeError
         if await self.session.get(User, self.user_id) is None:
             raise SetupRequiredError
@@ -200,10 +212,26 @@ class KnowledgeService:
         stored = await self.passages.stored_width()
         if stored is not None and stored != width:
             raise EmbeddingMismatchError(stored, width)
-        document = await self.documents.create(title, width)
+        document = await self.documents.create(title, width, byte_size)
         await self.chunks.create_many(document.id, chunks, vectors)
         await self.session.commit()
         return document
+
+    async def delete_document(self, document_id: UUID) -> None:
+        """Delete a document: the row goes, and its passages go with it.
+
+        The chunks' foreign key cascades, so a wrong upload leaves no
+        residue — the text cannot answer a search again (D4's hard delete,
+        the export the safety net).
+
+        Commit the deletion; raise NotFoundError for an absent or unowned
+        document.
+        """
+        document = await self.documents.get(document_id)
+        if document is None:
+            raise NotFoundError
+        await self.documents.delete(document)
+        await self.session.commit()
 
     async def search(self, query: str, limit: int) -> Sequence[Passage]:
         [vector] = await self.embeddings.embed([query])

@@ -339,6 +339,22 @@
       },
       "DocumentRead": {
         "properties": {
+          "byte_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Byte Size"
+          },
+          "chunk_count": {
+            "default": 0,
+            "title": "Chunk Count",
+            "type": "integer"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -357,7 +373,8 @@
         "required": [
           "id",
           "title",
-          "created_at"
+          "created_at",
+          "byte_size"
         ],
         "title": "DocumentRead",
         "type": "object"
@@ -2566,6 +2583,43 @@
           }
         },
         "summary": "Upload Document",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/documents/{document_id}": {
+      "delete": {
+        "description": "Delete a document. Its chunks' foreign key cascades: the passages go\nwith the row, and search cannot find its text again.\n\nRaise HTTP 404 for an absent or unowned document.",
+        "operationId": "delete_document_api_knowledge_documents__document_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Document",
         "tags": [
           "knowledge"
         ]
