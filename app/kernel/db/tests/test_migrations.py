@@ -16,6 +16,7 @@ refusing a drifted or unknown-revision one by name (D3.4, D4, D6).
 import asyncio
 import shutil
 import subprocess
+import sys
 from os import environ, utime
 from pathlib import Path
 from time import monotonic
@@ -142,6 +143,40 @@ def test_head_revision_is_found_from_any_working_directory(
     # directory beside this test.
     versions = Path(__file__).parent.parent / "migrations" / "versions"
     assert any(file.name.startswith(f"{head}_") for file in versions.glob("*.py"))
+
+
+def test_alembic_cli_imports_the_app_from_any_working_directory(tmp_path: Path) -> None:
+    """The alembic CLI runs ``env.py`` from any directory, not only the repo root.
+
+    ``prepend_sys_path`` was ``.``, resolved against the working directory, so
+    from anywhere else ``env.py`` could not import ``app``. The ini names the
+    repo root instead (``%(here)s``), the same way ``script_location`` does.
+    """
+    result = subprocess.run(  # noqa: S603  fixed argv: the CLI under test, no shell
+        [
+            sys.executable,
+            "-m",
+            "alembic",
+            "-c",
+            str(migrate_module.ALEMBIC_INI),
+            "upgrade",
+            "head",
+            "--sql",
+        ],
+        cwd=tmp_path,
+        env={
+            **environ,
+            # Empty, not inherited: an exported repo root (the workaround this
+            # fix retires) would import ``app`` without the ini's prepend path,
+            # hiding the regression from whoever runs the test locally.
+            "PYTHONPATH": "",
+            "NARRE_DATABASE_URL": "postgresql+asyncpg://u:p@localhost:1/offline",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 async def test_empty_database_migrated_equals_the_models(url: str) -> None:
