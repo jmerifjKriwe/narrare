@@ -38,12 +38,12 @@ Two named, deliberate shapes a reader should not "fix":
 
 - **The `./` vs `$/` trade.** Every internal `uses:` is written
   `./.github/...` with a `zizmor: ignore[self-repository]` comment. zizmor
-  prefers the `$/{...}` self-repository template, but the actionlint image
-  the `workflow-lint` job pins (1.7.7, by digest) does not know that
-  syntax — and this gate needs both probes green together. Flip to `$/`
-  when either trigger fires:
-  1. the actionlint image pin is bumped past the version that understands
-     `$/`, or
+  prefers the `$/{...}` self-repository template, but actionlint has no
+  release that knows that syntax — 1.7.12, the current release (2026-11-05),
+  still rejects it, and rhysd/actionlint#732 is open. This gate needs both
+  probes green together, so the suppressions stay. Flip to `$/` when either
+  trigger fires:
+  1. an actionlint release ships `$/` support and the pin is bumped to it, or
   2. `sha_pinning_required` (see settings below) rejects the `./`
      self-reference.
   The trade is commented at every site (`ci.yml`, `nightly.yml`,
@@ -52,7 +52,7 @@ Two named, deliberate shapes a reader should not "fix":
   comment; Dependabot's weekly `github-actions` group keeps the pins
   current. Four versions Dependabot cannot see are pinned as inputs or
   inline and bump manually: the actionlint digest, zizmor's
-  `version: 1.30.1`, the Codecov CLI (`version: v11.3.2`) and
+  `version: 1.32.0`, the Codecov CLI (`version: v11.3.2`) and
   `pip-audit==2.10.1` (the `uvx` invocation in nightly's audit job).
   Dependabot's updater scans workflow files only, so it may not bump the
   `uses:` pins inside a composite action's `action.yml` — verify after the

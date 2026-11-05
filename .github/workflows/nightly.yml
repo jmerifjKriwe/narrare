@@ -106,7 +106,7 @@ jobs:
         with:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
-      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
       - name: Export locked requirements
         # --locked: judge the committed lockfile, not a fresh resolution.
         run: uv export --locked --format requirements-txt --output-file /tmp/requirements.txt
@@ -122,7 +122,7 @@ jobs:
   # `_lint.yml`. Same job name as ci.yml's caller, same inputs.
   #
   # `./`, not `$/`: same trade as ci.yml's comment — the pinned actionlint
-  # image (1.7.7) does not know the self-repository syntax zizmor prefers.
+  # image (1.7.12) does not know the self-repository syntax zizmor prefers.
   # Flip to `$/` when the actionlint pin is bumped past the version that
   # understands `$/`, or when `sha_pinning_required` rejects the `./`
   # reference.
@@ -145,7 +145,7 @@ jobs:
   # through its `ci/nightly` issue instead and never instruments here.
   #
   # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
-  # actionlint image (1.7.7) does not know the self-repository syntax
+  # actionlint image (1.7.12) does not know the self-repository syntax
   # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
   # the version that understands `$/`, or when `sha_pinning_required`
   # rejects the `./` reference.
@@ -174,7 +174,7 @@ jobs:
         with:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
-      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
         with:
           python: "false"
       - run: just test-frontend
@@ -191,7 +191,7 @@ jobs:
         with:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
-      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
         with:
           python: "false"
       - run: just build
@@ -205,7 +205,7 @@ jobs:
   # name, so `nightly-result` still names `e2e-suites`.
   #
   # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
-  # actionlint image (1.7.7) does not know the self-repository syntax
+  # actionlint image (1.7.12) does not know the self-repository syntax
   # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
   # the version that understands `$/`, or when `sha_pinning_required`
   # rejects the `./` reference.

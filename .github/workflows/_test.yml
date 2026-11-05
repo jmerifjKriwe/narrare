@@ -53,7 +53,7 @@ jobs:
       # skips pnpm and Node entirely (`node: "false"`).
       #
       # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
-      # pinned actionlint image (1.7.7) does not know it yet — the two gate
+      # pinned actionlint image (1.7.12) does not know it yet — the two gate
       # probes must pass together. Flip to `$/` when the actionlint pin is
       # bumped past the version that understands `$/`, or when
       # `sha_pinning_required` rejects the `./` reference.

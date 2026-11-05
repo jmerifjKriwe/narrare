@@ -159,6 +159,25 @@ Gates: actionlint exit 0; zizmor exit 0 (`No findings to report`).
 
 ## Task 6 — tool pins bumped
 
+actionlint 1.7.7 → **1.7.12**, pinned by the index digest
+`sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667`
+(`docker buildx imagetools inspect` and Docker Hub's tag API agree); zizmor
+1.30.1 → **1.32.0**. All 16 `1.7.7` mentions became `1.7.12`; the 14
+`zizmor: ignore[self-repository]` comments stay, because 1.7.12 still rejects
+`$/`.
+
+Probes before the edit (2026-11-05):
+
+```
+docker run … rhysd/actionlint:1.7.12 -color            → exit 0, no output
+uvx zizmor==1.30.1 …                                   → No findings
+uvx zizmor==1.32.0 …                                   → No findings
+  (both: 15 ignored, suppressed count differs between the two, raw findings equal)
+```
+
+Gates after: actionlint exit 0; zizmor 1.32.0 exit 0 (`No findings to
+report. Good job!`). `rg "1\.7\.7|version: 1\.30\.1"` → no match.
+
 ## Task 7 — monthly pin check (#598)
 
 ## Task 8 — one copy of the verdicts (#605)

@@ -34,7 +34,7 @@ jobs:
   # `e2e-suites` wait on; the check it reports is `lint-types / lint-types`.
   #
   # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
-  # pinned actionlint image (1.7.7) does not know it yet — the two gate
+  # pinned actionlint image (1.7.12) does not know it yet — the two gate
   # probes must pass together. Flip to `$/` when the actionlint pin is
   # bumped past the version that understands `$/`, or when
   # `sha_pinning_required` rejects the `./` reference.
@@ -134,7 +134,7 @@ jobs:
   # explicitly, never via `secrets: inherit` (spec: reusable workflows).
   #
   # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
-  # actionlint image (1.7.7) does not know the self-repository syntax
+  # actionlint image (1.7.12) does not know the self-repository syntax
   # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
   # the version that understands `$/`, or when `sha_pinning_required`
   # rejects the `./` reference.
@@ -158,7 +158,7 @@ jobs:
   # (<capability>)`.
   #
   # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
-  # actionlint image (1.7.7) does not know the self-repository syntax
+  # actionlint image (1.7.12) does not know the self-repository syntax
   # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
   # the version that understands `$/`, or when `sha_pinning_required`
   # rejects the `./` reference.
@@ -333,7 +333,7 @@ jobs:
         with:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
-      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
         with:
           python: "false"
       - run: just test-frontend
@@ -348,7 +348,7 @@ jobs:
         with:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
-      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
         with:
           python: "false"
       - run: just build
@@ -372,11 +372,13 @@ jobs:
           persist-credentials: false
       # Same ref the baseline ran: a tag is a mutable ref, so the image is
       # pinned by digest — the tag is only a comment naming what it
-      # resolves to. Dependabot does not follow a digest; the bump is
-      # manual, and the digest answers "can this image silently change
-      # under this workflow?" with no.
+      # resolves to. Dependabot does not follow a digest; the monthly `Tool
+      # pins` check (`pins.yml`) reports a newer release and a moved digest,
+      # so the bump is visible instead of remembered. The digest still
+      # answers "can this image silently change under this workflow?" with
+      # no.
       - name: actionlint
-        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 -color # rhysd/actionlint:1.7.7
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color # rhysd/actionlint:1.7.12
       - name: zizmor
         uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
@@ -384,12 +386,12 @@ jobs:
           # both trees are audited, so no finding can hide behind an
           # unlisted input.
           inputs: .github/workflows .github/actions
-          # The baseline ran with v1.30.1; `latest` is a mutable ref and
-          # an upstream zizmor release would change what this gate
-          # enforces without a review. Dependabot does not see this
-          # input, so the bump is manual.
-          version: 1.30.1
-          # The baseline runs offline (v1.30.1's default): no API-backed
+          # The baseline ran with v1.30.1; `latest` is a mutable ref and an
+          # upstream zizmor release would change what this gate enforces
+          # without a review. Dependabot does not see this input; the
+          # monthly `Tool pins` check reports a newer release.
+          version: 1.32.0
+          # `online-audits: false` matches the baseline: no API-backed
           # audits either, so a stalled api.github.com cannot red this job.
           online-audits: false
           # False by default; true legal because `advanced-security: false`
