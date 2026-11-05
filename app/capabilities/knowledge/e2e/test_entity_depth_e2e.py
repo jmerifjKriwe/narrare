@@ -21,7 +21,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import Locator, Page, Request, expect
 
 from app.kernel.testing.a11y import assert_accessible
 
@@ -180,9 +180,25 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(primaries).to_have_count(1)
     expect(primaries).to_have_text(re.compile("Speichern"))
 
+    # No pick may write: the one add is the button below, after the note.
+    # The listener is the witness — the table alone would pass its absence
+    # check before a premature request's refetch had landed.
+    relation_posts: list[str] = []
+
+    def remember_relation_post(request: Request) -> None:
+        if request.method == "POST" and request.url.endswith("/relations"):
+            relation_posts.append(request.url)
+
+    page.on("request", remember_relation_post)
+
     target = dialog.get_by_label("Verbinden mit")
     target.fill("Amulett")
     target.press("ArrowDown")
+    # Enter picks only while the list is open: with the list still closed,
+    # the same Enter is the form's submit and files the edge before the
+    # note below is typed — the row then lands note-less, which is what
+    # made this test red once. Wait for the suggestion itself, then pick.
+    expect(page.get_by_role("option", name="Amulett", exact=True)).to_be_visible()
     target.press("Enter")
     expect(target).to_have_value("Amulett")
     # R49's upload-preservation pin: with the add form holding typed work,
@@ -191,11 +207,17 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     save = dialog.get_by_role("button", name="Speichern")
     expect(save).to_be_disabled()
     kind = dialog.get_by_label("Beziehungsart")
-    kind.fill("Besitzt")
+    # A prefix, not the label: the assertion below is what proves the pick,
+    # and a typed label would read back the same whether or not the pick
+    # landed (free text still resolves to the vocabulary's id).
+    kind.fill("Besitz")
     kind.press("ArrowDown")
+    expect(page.get_by_role("option", name="Besitzt", exact=True)).to_be_visible()
     kind.press("Enter")
     expect(kind).to_have_value("Besitzt")
     dialog.get_by_label("Notiz (optional)").fill("Seit dem Fest")
+    # The picks wrote nothing: this press is the flow's first add.
+    assert relation_posts == []
     dialog.get_by_role("button", name="Beziehung hinzufügen").click()
     edge_row = (
         dialog.get_by_role("table", name="Verweist auf")
