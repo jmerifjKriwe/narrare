@@ -75,6 +75,22 @@ Wall clock: the baseline is `main` run 42088177589 (`frontend` 52 s, `build`
 
 ## Task 2 — Playwright cache (#599)
 
+The browser cache keeps the exact key
+`${{ runner.os }}-playwright-${{ hashFiles('uv.lock') }}` and gains
+`restore-keys: ${{ runner.os }}-playwright-`. The comment above it was wrong
+after the change ("a stale browser can never match a new lock") and now says
+what happens: a restore may hand back the previous browser, `playwright install`
+adds the one the new lock names, and a Playwright bump still saves under a new
+key instead of overwriting the old one.
+
+Gate, run 2026-11-05:
+
+```
+docker run … rhysd/actionlint:1.7.12 -color → exit 0, no output
+```
+
+The cache-step proof is the PR's e2e run; recorded in the proof section.
+
 ## Task 3 — Postgres digest (#603)
 
 ## Task 4 — PGDG retry (#610)

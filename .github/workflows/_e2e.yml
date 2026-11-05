@@ -58,14 +58,18 @@ jobs:
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
       # The matrix runs once per capability, on runners that share nothing —
       # without this cache every entry downloads chromium afresh. The
-      # Playwright version lives in uv.lock, so `hashFiles('uv.lock')` is
-      # the key that turns: bump Playwright, key changes, fresh download —
-      # a stale browser can never match a new lock.
+      # Playwright version lives in uv.lock, so the exact key still turns on
+      # a Playwright bump: the new run saves under the new key and never
+      # overwrites the old browser. `restore-keys` is what keeps every other
+      # Python bump from paying for that download again — a restore may hand
+      # back the previous browser, and `playwright install` below then adds
+      # the browser the new lock names.
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('uv.lock') }}
+          restore-keys: ${{ runner.os }}-playwright-
       # The directory the cache step saves. A hit skips the chromium
       # download; `--with-deps` still runs the apt system-dependency
       # install every run — the browser is cached, the system packages
