@@ -52,6 +52,27 @@ the full setup composite.
 
 ## Task 1 — setup `python: false` (#606)
 
+The composite gained a `python` input (default `"true"`); `astral-sh/setup-uv`,
+`actions/setup-python` and the `uv sync --locked` step carry
+`if: inputs.python != 'false'`. `extractions/setup-just` stays ungated — every
+job but the nightly `audit` runs a `just` recipe, and one ungated install keeps
+the composite a single answer.
+
+Four call sites pass `with: { python: "false" }`: `frontend` and `build` in
+`ci.yml`, and `frontend` and `build` in `nightly.yml`.
+
+Gates, run 2026-11-05:
+
+```
+docker run … rhysd/actionlint:1.7.12 -color        → exit 0, no output
+uvx zizmor==1.32.0 .github/workflows .github/actions →
+  No findings to report. Good job! (15 ignored, 27 suppressed)   → exit 0
+```
+
+Wall clock: the baseline is `main` run 42088177589 (`frontend` 52 s, `build`
+22 s). The after is the PR run; its step list must show no
+`Sync Python dependencies` step in either job. Recorded in the proof section.
+
 ## Task 2 — Playwright cache (#599)
 
 ## Task 3 — Postgres digest (#603)

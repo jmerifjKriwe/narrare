@@ -333,6 +333,8 @@ jobs:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+        with:
+          python: "false"
       - run: just test-frontend
 
   build:
@@ -346,6 +348,8 @@ jobs:
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+        with:
+          python: "false"
       - run: just build
 
   # Static checks for the workflow surface itself: structure (actionlint)

@@ -30,7 +30,9 @@ push. (Shape and its permissions are specified in the design spec,
 call them with the same job names, so aggregators never had to rename a
 gate. The Postgres service and the Playwright cache live inside the
 reusables; the composite in `.github/actions/setup` carries uv, Python, the
-locked sync, pnpm, Node and just, one place for the versions.
+locked sync, pnpm, Node and just, one place for the versions — with
+`python: false` and `node: false` for the jobs that need only the other
+half (`frontend` and `build` take no Python).
 
 Two named, deliberate shapes a reader should not "fix":
 
