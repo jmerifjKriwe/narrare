@@ -63,6 +63,7 @@
   "chat.noSources": "Keine Quelle gefunden",
   "chat.dockTitle": "Chat",
   "chapters.editorLabel": "Kapiteltext",
+  "chapters.titleLabel": "Kapiteltitel",
   "workspace.railToggle": "Kapitelleiste",
   "workspace.dockToggle": "Docks",
   "workspace.focusToggle": "Fokus",

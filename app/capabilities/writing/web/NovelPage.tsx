@@ -20,7 +20,7 @@ import {
   useChaptersQuery,
   useNovelQuery,
 } from "@shell/lib/query";
-import { useAutosave, unsavedStatus } from "@shell/lib/save";
+import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save";
 import { countWords, formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
@@ -369,17 +369,17 @@ export function NovelPage() {
   }
 
   const remember = useCallback(
-    (chapterId: string, body: string) => {
-      // The saved body reaches the cache before the ask: the patch makes
-      // the settled text the key's own answer — the words and the freshness
-      // their updated_at stands for — so a refetch that never answers (or
-      // answers refused) cannot remount the pre-save row over them on a
-      // later switch. The refetch stays the truth; the patch only holds
-      // the page's ground until it lands.
+    (chapterId: string, draft: DocumentDraft) => {
+      // The saved draft reaches the cache before the ask: the patch makes
+      // the settled document — title and body both — the key's own answer,
+      // so the words, the row's name and the freshness their updated_at
+      // stands for cannot be remounted over by a refetch that never
+      // answers (or answers refused) on a later switch. The refetch stays
+      // the truth; the patch only holds the page's ground until it lands.
       queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
         rows?.map((row) =>
           row.id === chapterId
-            ? { ...row, body, updated_at: new Date().toISOString() }
+            ? { ...row, ...draft, updated_at: new Date().toISOString() }
             : row,
         ),
       );
@@ -402,6 +402,43 @@ export function NovelPage() {
   // editor shows `status` beside the text and feeds `schedule` on update;
   // `flush` is the page's own handle on what has not reached the server.
   const { status, schedule, flush, discard } = useAutosave(current?.id ?? null, remember);
+
+  // The document the writer holds: title beside body, one draft — the
+  // autosave's unit of work. It belongs to the open chapter, and the
+  // selection's change is its reset, done in render (the state-adjust
+  // pattern) so the new chapter's first paint already carries its own
+  // name: an effect would paint the old book's title over the new chapter
+  // for a frame. Every schedule — the editor's body, the runhead's title —
+  // passes through one wrapper, so the state and the pending save can
+  // never disagree: `remember` patches the row from the whole draft, and a
+  // stale half would patch a regression.
+  const [held, setHeld] = useState<{ id: string | null; draft: DocumentDraft }>({
+    id: null,
+    draft: { title: "", body: "" },
+  });
+  const currentId = current?.id ?? null;
+  if (held.id !== currentId) {
+    setHeld({
+      id: currentId,
+      draft: { title: current?.title ?? "", body: current?.body ?? "" },
+    });
+  }
+  const draft = held.draft;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const scheduleDraft = useCallback(
+    (next: DocumentDraft, changed: keyof DocumentDraft) => {
+      setHeld((previous) => ({ ...previous, draft: next }));
+      schedule(next, changed);
+    },
+    [schedule],
+  );
+  /** The runhead's title keystrokes: the draft's body is whatever the page
+   *  last held, so the rename rides beside — never over — the text. */
+  const changeTitle = useCallback(
+    (value: string) => scheduleDraft({ ...draftRef.current, title: value }, "title"),
+    [scheduleDraft],
+  );
 
   // The page's one opinion about unsaved text, shared by every guard: a body
   // waiting for its debounce, one on the wire, or one that did not land.
@@ -760,14 +797,13 @@ export function NovelPage() {
                     key={current.id}
                     chapterId={current.id}
                     body={current.body}
+                    title={draft.title}
+                    onTitleChange={changeTitle}
                     status={status}
-                    schedule={schedule}
+                    schedule={scheduleDraft}
                     proposal={offer ?? undefined}
                     onProposalResolve={resolveOffer}
                     bookTitle={novelQuery.data?.title}
-                    chapterTitle={
-                      current.title || t("chapters.defaultTitle", { n: current.position + 1 })
-                    }
                     chapterNumber={current.position + 1}
                     chapterTotal={chapters.length}
                     focusDepth={focus}

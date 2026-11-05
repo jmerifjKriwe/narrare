@@ -63,6 +63,7 @@
   "chat.noSources": "No source found",
   "chat.dockTitle": "Chat",
   "chapters.editorLabel": "Chapter text",
+  "chapters.titleLabel": "Chapter title",
   "workspace.railToggle": "Chapter rail",
   "workspace.dockToggle": "Docks",
   "workspace.focusToggle": "Focus",

@@ -5,9 +5,23 @@ import { useTranslation } from "./i18n";
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "failed";
 /** `stale` is an answer addressed to an attempt that is no longer the page's:
- *  the body was discarded or the hook went away. It is neither a save nor a
+ *  the draft was discarded or the hook went away. It is neither a save nor a
  *  failure to ask the user about. */
 export type FlushOutcome = "clean" | "saved" | "failed" | "stale";
+
+/** The document the autosave works on: the chapter's title beside its body,
+ *  one status for both — and sent field by field, only the ones that
+ *  changed, so an edit of one can never rewrite the other. */
+export type DocumentDraft = { title: string; body: string };
+
+/** The save request's body: only the fields the draft marked dirty fly. */
+type DirtyPayload = { title?: string; body?: string };
+
+/** What `schedule` holds between a keystroke and the wire: the whole draft,
+ *  and which of its fields have yet to reach the server. The slot is
+ *  replaced, never patched in place — a newer draft mid-flight is a new
+ *  attempt, and the reference is what tells them apart. */
+type PendingSlot = { draft: DocumentDraft; dirty: Set<keyof DocumentDraft> };
 
 const DELAY_MS = 800;
 
@@ -23,76 +37,91 @@ export function unsavedStatus(status: SaveStatus): boolean {
 
 /**
  * Debounced save that tells the truth about the answer: a refused or failed
- * write is `failed` — named beside the text — and the body it carried stays
+ * write is `failed` — named beside the text — and the draft it carried stays
  * in memory, so the next keystroke retries it. Success, and only success, is
  * `saved`. The endpoint is idempotent, so a duplicate flush costs nothing.
  *
+ * The unit is the document, not the body: `schedule` receives the whole
+ * draft and the one field that changed, and a flush sends only the fields
+ * still dirty — a body edit never rewrites the title (a rename made
+ * elsewhere survives a body flush that lands after it), and a rename never
+ * re-sends the text. `onSaved` receives the full draft either way, because
+ * the page patches its cache from the document, not from the fields that
+ * happened to fly.
+ *
  * Writes are serialized: a flush that arrives while one is on the wire waits
- * for it and then carries the latest body. Two overlapping PUTs could answer
- * out of order and let the older body win both the page's cache and the
- * server row; one at a time cannot.
+ * for it and then carries the latest draft. Two overlapping PUTs could
+ * answer out of order and let the older text win both the page's cache and
+ * the server row; one at a time cannot.
  */
 export function useAutosave(
   chapterId: string | null,
-  onSaved?: (chapterId: string, body: string) => void,
+  onSaved?: (chapterId: string, draft: DocumentDraft) => void,
 ) {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const timer = useRef<number | null>(null);
-  const pending = useRef<string | null>(null);
+  const pending = useRef<PendingSlot | null>(null);
   const id = useRef(chapterId);
   id.current = chapterId;
   const saved = useRef(onSaved);
   saved.current = onSaved;
-  // Bumped when the hook goes away or the body is dropped: an answer that
+  // Bumped when the hook goes away or the draft is dropped: an answer that
   // lands after that belongs to an attempt nobody is waiting for.
   const generation = useRef(0);
   // The tail of the write queue. Never rejects: `attempt` resolves every path.
   const writes = useRef<Promise<FlushOutcome>>(Promise.resolve("clean"));
 
-  /** Write the current body once, retaining newer text and ignoring retired answers. */
+  /** Write the dirty fields once, retaining newer text and ignoring retired answers. */
   const attempt = useCallback(async (): Promise<FlushOutcome> => {
-    const body = pending.current;
+    const slot = pending.current;
     const target = id.current;
-    if (body === null || target === null) return "clean";
-    // The body stays in `pending` until the answer: dropping it here is what
-    // made a refused write unrecoverable. A body typed while this request is
-    // in flight replaces it there and must survive the answer.
+    if (slot === null || target === null) return "clean";
+    // The slot stays in `pending` until the answer: dropping it here is
+    // what made a refused write unrecoverable. A draft edited while this
+    // request is in flight replaces it there and must survive the answer.
     const attemptGeneration = generation.current;
+    // Only the dirty fields fly: the endpoint's `exclude_none` leaves the
+    // rest of the row untouched, so neither field can overwrite the other.
+    const payload: DirtyPayload = {};
+    if (slot.dirty.has("title")) payload.title = slot.draft.title;
+    if (slot.dirty.has("body")) payload.body = slot.draft.body;
     setStatus("saving");
     try {
       const { error, response } = await client.PUT(
         "/api/writing/chapters/{chapter_id}",
-        { params: { path: { chapter_id: target } }, body: { body } },
+        { params: { path: { chapter_id: target } }, body: payload },
       );
       if (attemptGeneration !== generation.current) return "stale";
       // `error` is the parsed error body; a non-2xx with an empty body (a
       // proxy's 502, a bare 413) leaves it undefined while still not saving
       // anything. The status is the authority, not the body.
       if (error !== undefined || !response.ok) {
-        if (pending.current === null) pending.current = body;
         setStatus("failed");
         return "failed";
       }
-      if (pending.current === body) {
-        pending.current = null;
+      if (pending.current === slot) {
+        // This attempt's fields are on the server. A field a newer
+        // keystroke dirtied lives in a newer slot, and stays that slot's
+        // to send; an emptied slot retires.
+        for (const field of slot.dirty) slot.dirty.delete(field);
+        if (slot.dirty.size === 0) pending.current = null;
         setStatus("saved");
       } else {
-        // A newer body is waiting: this answer saved older text, and saying
-        // "Gespeichert" over the newer, unsent sentence would be the lie this
-        // hook exists to remove. Its flush says so when it lands.
+        // A newer draft is waiting: this answer saved older fields, and
+        // saying "Gespeichert" over the newer, unsent words would be the
+        // lie this hook exists to remove. Its flush says so when it lands.
         setStatus("pending");
       }
-      saved.current?.(target, body);
+      saved.current?.(target, slot.draft);
       return "saved";
     } catch {
       if (attemptGeneration !== generation.current) return "stale";
-      if (pending.current === null) pending.current = body;
       setStatus("failed");
       return "failed";
     }
   }, []);
 
-  /** Serialize writes and settle the latest body before allowing a caller to leave. */
+  /** Serialize writes and settle the latest draft before allowing a caller to leave. */
   const flush = useCallback((): Promise<FlushOutcome> => {
     if (timer.current !== null) {
       clearTimeout(timer.current);
@@ -100,7 +129,7 @@ export function useAutosave(
     }
     const next = writes.current.then(async () => {
       let outcome = await attempt();
-      // Typing can replace the body while its PUT is in flight. A leave
+      // Typing can replace the draft while its PUT is in flight. A leave
       // must wait for that replacement too, and stop if any write fails.
       while (outcome === "saved" && pending.current !== null) {
         outcome = await attempt();
@@ -111,11 +140,17 @@ export function useAutosave(
     return next;
   }, [attempt]);
 
-  /** Keep the latest body and restart its debounce without hiding a failed save. */
+  /** Keep the latest draft and restart its debounce without hiding a failed save. */
   const schedule = useCallback(
-    (body: string) => {
-      pending.current = body;
-      // A failure stays named while its body waits for the retry — a message
+    (draft: DocumentDraft, changed: keyof DocumentDraft) => {
+      // One slot per debounce: a later edit joins the earlier one's dirty
+      // set — the flush carries every field that has not flown, from the
+      // latest draft, as one request.
+      pending.current =
+        pending.current === null
+          ? { draft, dirty: new Set([changed]) }
+          : { draft, dirty: new Set(pending.current.dirty).add(changed) };
+      // A failure stays named while its draft waits for the retry — a message
       // that vanishes on the next keystroke and returns 800 ms later is
       // flicker, not information. Only a flushed success clears it.
       setStatus((s) => (s === "failed" ? "failed" : "pending"));
@@ -125,7 +160,7 @@ export function useAutosave(
     [flush],
   );
 
-  /** Drop the unsaved body: the user chose to leave it behind. */
+  /** Drop the unsaved draft: the user chose to leave it behind. */
   const discard = useCallback(() => {
     pending.current = null;
     generation.current += 1;
@@ -143,9 +178,9 @@ export function useAutosave(
     document.addEventListener("visibilitychange", onHidden);
     return () => {
       document.removeEventListener("visibilitychange", onHidden);
-      // Retire every answer still in flight first, then send the last body:
-      // this flush's own attempt is captured after the bump, so it lands —
-      // the earlier ones do not.
+      // Retire every answer still in flight first, then send the last
+      // draft: this flush's own attempt is captured after the bump, so it
+      // lands — the earlier ones do not.
       generation.current += 1;
       void flush();
     };

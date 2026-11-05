@@ -63,6 +63,7 @@
   "chat.noSources": "Aucune source trouvée",
   "chat.dockTitle": "Discussion",
   "chapters.editorLabel": "Texte du chapitre",
+  "chapters.titleLabel": "Titre du chapitre",
   "workspace.railToggle": "Liste des chapitres",
   "workspace.dockToggle": "Docks",
   "workspace.focusToggle": "Focus",

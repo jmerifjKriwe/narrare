@@ -574,8 +574,12 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     expect(page.locator(".ProseMirror")).to_contain_text("Wort")
 
     # The runhead: book · chapter on the left, the save state on the right —
-    # the save state is the runhead's, so typing proves it lives there.
-    expect(page.get_by_text("Das Zählwerk · Kapitel 2")).to_be_visible()
+    # the chapter's own name is written in the runhead's input now, and an
+    # untitled chapter wears the localized placeholder in it. The save
+    # state is the runhead's, so typing proves it lives there.
+    title_field = page.get_by_label("Kapiteltitel")
+    expect(page.get_by_text("Das Zählwerk ·")).to_be_visible()
+    expect(title_field).to_have_attribute("placeholder", "Kapitel 2")
     # The footer: the chapter's word count and its position in the book.
     expect(page.get_by_text("2.107 Wörter")).to_be_visible()
     expect(page.get_by_text("Kapitel 2 von 4")).to_be_visible()
@@ -587,5 +591,45 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=10_000)
     # The count is the live document's, not the stored row's.
     expect(page.get_by_text("2.108 Wörter")).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack: Stack) -> None:
+    """The runhead's title is written where it is read: typing it saves, the
+    rail answers to the new name, and the shelf learns of the write. The
+    rename is the book's last touch — a second book, created after the
+    chapter, held the hero until the rename landed, so the hero's flip is
+    the rename's own doing, not the create's."""
+    _create_book(page, "Der stille Hof")
+    new_chapter(page)
+
+    # A second book, created later: it is the shelf's last-touched one —
+    # the hero names it, and the flip below is what the rename changes.
+    # (The hero's own paragraph, not the cover's title span: the generated
+    # cover repeats the book's name inside the same section.)
+    page.get_by_role("link", name="Alle Romane").click()
+    page.get_by_role("button", name="Neues Buch").click()
+    page.get_by_label("Titel").fill("Die späte Fähre")
+    page.get_by_role("button", name="Anlegen").click()
+    hero = page.locator("section[aria-labelledby='novels-continue']")
+    expect(hero.get_by_role("paragraph").filter(has_text="Die späte Fähre")).to_be_visible()
+
+    # Back into the first book, whose only chapter opens untitled.
+    page.get_by_role("link", name="Der stille Hof").click()
+    expect(page.get_by_role("heading", name="Der stille Hof")).to_be_visible()
+
+    page.get_by_label("Kapiteltitel").fill("Winternacht")
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+    # The rail answers to the new name — the placeholder row is gone.
+    expect(page.get_by_role("button", name=re.compile(r"Winternacht"))).to_be_visible()
+    expect(page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_count(0)
+
+    # The shelf learned of the write: the hero names the renamed book now,
+    # and its card still opens it.
+    page.get_by_role("link", name="Alle Romane").click()
+    expect(hero.get_by_role("paragraph").filter(has_text="Der stille Hof")).to_be_visible()
+    expect(page.get_by_role("link", name=re.compile(r"Der stille Hof"))).to_be_visible()
 
     assert_accessible(page)

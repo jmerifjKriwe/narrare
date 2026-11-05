@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { announce } from "@shell/lib/announce";
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
-import { SaveIndicator, type SaveStatus } from "@shell/lib/save";
+import { SaveIndicator, type DocumentDraft, type SaveStatus } from "@shell/lib/save";
 import { readFrames } from "@shell/lib/stream";
 import { countWords } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
@@ -17,33 +17,42 @@ import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
  * Edit a chapter, with proposals kept as ghost text until accepted. Saving is
  * the page's, not the editor's: it receives the autosave's `status` (shown in
  * the runhead) and `schedule` (fed on every update with the document as
- * Markdown — the storage format). `body` initializes the editor; remount
- * with a new key when switching chapters.
+ * Markdown — the storage format — and the field that changed). The runhead's
+ * chapter line is the title input: the chapter's name is written where it is
+ * read, and `onTitleChange` hands each keystroke to the page, which holds
+ * the draft. `body` initializes the editor; remount with a new key when
+ * switching chapters.
  *
- * The frame (F4) is the runhead above the text — book · chapter on the left,
- * the save state on the right — and the footer below it: the chapter's word
- * count, counted live with the shared rule, and its position in the book.
- * Both name the writing, so both yield at focus depth 2, where only the
- * writing surface remains. The names arrive as props; without them the frame
- * still carries the save state, and the footer counts what it has.
+ * The frame (F4) is the runhead above the text — book · the title input on
+ * the left, the save state on the right — and the footer below it: the
+ * chapter's word count, counted live with the shared rule, and its position
+ * in the book. Both name the writing, so both yield at focus depth 2, where
+ * only the writing surface remains. The book's name arrives as a prop;
+ * without it the frame still carries the title input and the save state,
+ * and the footer counts what it has.
  */
 export function ChapterEditor({
   chapterId,
   body,
+  title,
+  onTitleChange,
   status,
   schedule,
   proposal,
   onProposalResolve,
   bookTitle,
-  chapterTitle,
   chapterNumber,
   chapterTotal,
   focusDepth = 0,
 }: {
   chapterId: string;
   body: string;
+  /** The chapter's own name, as the page's draft holds it — editable here. */
+  title: string;
+  /** Each keystroke on the title, handed to the page's draft. */
+  onTitleChange: (value: string) => void;
   status: SaveStatus;
-  schedule: (body: string) => void;
+  schedule: (draft: DocumentDraft, changed: keyof DocumentDraft) => void;
   /** A proposal from outside (the proposal bus, later): rendered as a ghost
    *  at the caret. `undefined` leaves the floor to this component's own
    *  continuation stream; `null` is an explicit "no proposal". */
@@ -52,9 +61,8 @@ export function ChapterEditor({
   onProposalResolve?: (accepted: boolean) => void;
   /** The frame's left name: the book's title, muted before the chapter's. */
   bookTitle?: string;
-  /** The frame's own name — the heading that wears the 600 face. */
-  chapterTitle?: string;
-  /** The chapter's one-based position, for the footer's "n von m". */
+  /** The chapter's one-based position, for the footer's "n von m" and the
+   *  title input's placeholder when the chapter is unnamed. */
   chapterNumber?: number;
   /** The book's chapter count; absent or zero leaves the position unsaid. */
   chapterTotal?: number;
@@ -73,9 +81,9 @@ export function ChapterEditor({
   const scheduleAndCount = useCallback(
     (markdown: string) => {
       setWords(countWords(markdown));
-      schedule(markdown);
+      schedule({ title, body: markdown }, "body");
     },
-    [schedule],
+    [schedule, title],
   );
   // The editor instance, handed back by the shared MarkdownEditor once
   // mounted — the ghost machinery drives the view, so it needs the editor,
@@ -237,21 +245,32 @@ export function ChapterEditor({
     <div>
       {focusDepth < 2 ? (
         <header className="flex items-baseline justify-between gap-4">
-          {chapterTitle !== undefined || bookTitle !== undefined ? (
-            /* A paragraph, not a heading: its accessible name carries the
-               book's title too, and a second heading that contains it turns
-               every "heading <book>" query into a coin toss — the runhead is
-               the page's label, not a node of its outline. The chapter's own
-               name still wears the 600 face. */
-            <p className="min-w-0 truncate text-body font-semibold">
-              {bookTitle !== undefined ? (
-                <span className="font-normal text-muted">{bookTitle} · </span>
-              ) : null}
-              {chapterTitle}
-            </p>
-          ) : (
-            <span aria-hidden="true" />
-          )}
+          {/* A paragraph, not a heading: its accessible name carries the
+              book's title too, and a second heading that contains it turns
+              every "heading <book>" query into a coin toss — the runhead is
+              the page's label, not a node of its outline. The chapter's own
+              name is written here, in the input that wears the 600 face the
+              line always had: empty is legal (the placeholder names the
+              position, and the placeholder is a rendering, never a stored
+              value), the server's 200-character ceiling held client-side. */}
+          <p className="flex min-w-0 items-baseline text-body font-semibold">
+            {bookTitle !== undefined ? (
+              <span className="font-normal text-muted">{bookTitle} · </span>
+            ) : null}
+            <input
+              type="text"
+              aria-label={t("chapters.titleLabel")}
+              maxLength={200}
+              value={title}
+              onChange={(event) => onTitleChange(event.target.value)}
+              placeholder={
+                chapterNumber !== undefined
+                  ? t("chapters.defaultTitle", { n: chapterNumber })
+                  : undefined
+              }
+              className="min-w-0 flex-1 basis-32 border-0 bg-transparent p-0 font-semibold text-inherit caret-current placeholder:font-normal placeholder:text-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            />
+          </p>
           <SaveIndicator status={status} />
         </header>
       ) : null}
