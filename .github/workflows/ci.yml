@@ -501,10 +501,10 @@ jobs:
       - name: zizmor
         uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
-          # What the baseline audited: `.github/workflows`, not the whole
-          # tree — the composite action gets its own auditing instrumented
-          # when it is introduced, so no finding can hide behind it.
-          inputs: .github/workflows
+          # What the baseline audited, plus the composite setup action:
+          # both trees are audited, so no finding can hide behind an
+          # unlisted input.
+          inputs: .github/workflows .github/actions
           # The baseline ran with v1.30.1; `latest` is a mutable ref and
           # an upstream zizmor release would change what this gate
           # enforces without a review. Dependabot does not see this
