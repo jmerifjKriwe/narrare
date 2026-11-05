@@ -169,6 +169,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
                 <li key={source.chunk_id}>
                   <Row
                     as="div"
+                    flush
                     className="h-auto flex-col items-stretch py-2"
                     style={
                       index === sources.length - 1

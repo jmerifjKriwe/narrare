@@ -21,9 +21,12 @@ export function panelClass(dense = false): string {
   return dense ? "p-2.5" : "p-3";
 }
 
-/** The header row: its label and actions on the `--rule` separator. */
-export function panelHeaderClass(): string {
-  return "flex items-center gap-2 border-b border-rule px-3 py-2";
+/** The header row: its label and actions on the `--rule` separator. The
+ *  inset follows the body's measure (10 px dense, 12 px regular), so the
+ *  header label starts on the same edge as the content it names. */
+export function panelHeaderClass(dense = false): string {
+  const inset = dense ? "px-2.5" : "px-3";
+  return `flex items-center gap-2 border-b border-rule ${inset} py-2`;
 }
 
 export function Panel({
@@ -56,7 +59,7 @@ export function Panel({
       }
     >
       {title != null || actions != null ? (
-        <header className={panelHeaderClass()}>
+        <header className={panelHeaderClass(dense)}>
           {title != null ? (
             <Heading className={TITLE_CLASSES}>{title}</Heading>
           ) : null}

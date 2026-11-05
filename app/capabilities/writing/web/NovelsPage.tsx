@@ -113,13 +113,13 @@ function ShelfCard({ novel }: { novel: Novel }) {
       <Link
         to="/novels/$id"
         params={{ id: novel.id }}
-        className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline underline-offset-4 hover:bg-soft hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
       >
         <div className="flex items-start gap-3 pr-7">
           <Cover title={novel.title} />
           <span
             data-shelf-title
-            className="line-clamp-3 min-h-[3.9em] min-w-0 flex-1 break-words text-emph font-semibold leading-[1.3]"
+            className="line-clamp-3 min-h-[3.9em] min-w-0 flex-1 break-words text-emph font-semibold leading-[1.3] underline-offset-4 group-hover:underline"
           >
             {novel.title}
           </span>
@@ -131,7 +131,7 @@ function ShelfCard({ novel }: { novel: Novel }) {
         ) : null}
         {novel.language ? (
           <span className="mt-0.5 text-label text-muted group-hover:text-foreground">
-            {novel.language}
+            {t("shelf.language", { language: novel.language })}
           </span>
         ) : null}
         <span className="mt-1 text-meta text-muted group-hover:text-foreground">
@@ -290,10 +290,12 @@ export function NovelsPage() {
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-10">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-title font-semibold tracking-tight">{t("novels.heading")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <h1 className="w-full text-title font-semibold tracking-tight sm:w-auto">
+          {t("novels.heading")}
+        </h1>
         {!outage && (
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <Button
               variant="secondary"
               icon={<Icon name="import" />}
@@ -343,7 +345,7 @@ export function NovelsPage() {
                 <h2 className="text-label uppercase tracking-[0.1em] text-muted" id="novels-continue">
                   {t("novels.continue")}
                 </h2>
-                <div className="mt-3 flex items-center gap-4">
+                <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Cover title={hero.title} size="lg" />
                   <div className="min-w-0 flex-1">
                     <p className="text-hero font-semibold">{hero.title}</p>
@@ -351,7 +353,9 @@ export function NovelsPage() {
                       <p className="mt-0.5 text-label text-muted">{hero.genre}</p>
                     ) : null}
                     {hero.language ? (
-                      <p className="mt-0.5 text-label text-muted">{hero.language}</p>
+                      <p className="mt-0.5 text-label text-muted">
+                        {t("shelf.language", { language: hero.language })}
+                      </p>
                     ) : null}
                     <p className="mt-0.5 text-meta text-muted">
                       {t("novels.lastTouched", { time: formatRelative(hero.updated_at) })}
@@ -360,7 +364,7 @@ export function NovelsPage() {
                   <Link
                     to="/novels/$id"
                     params={{ id: hero.id }}
-                    className={`${buttonClass("secondary", "md")} inline-flex items-center justify-center no-underline`}
+                    className={`${buttonClass("secondary", "md")} inline-flex self-start items-center justify-center no-underline sm:self-auto`}
                   >
                     {t("chapters.continue")}
                   </Link>

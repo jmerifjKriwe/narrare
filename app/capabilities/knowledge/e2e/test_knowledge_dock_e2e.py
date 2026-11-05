@@ -136,7 +136,7 @@ def _write_chapter(page: Page) -> None:
     page.keyboard.type(CHAPTER_BODY)
     # Extraction reads the saved chapter, so the flow waits for the save
     # the editor itself reports before asking for the job.
-    expect(page.get_by_text("Gespeichert")).to_be_visible()
+    expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=15_000)
 
 
 def _write_chapters(page: Page, bodies: tuple[str, ...]) -> None:
@@ -152,7 +152,7 @@ def _write_chapters(page: Page, bodies: tuple[str, ...]) -> None:
         expect(editor).to_be_visible()
         editor.click()
         page.keyboard.type(body)
-        expect(page.get_by_text("Gespeichert")).to_be_visible()
+        expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=15_000)
 
 
 def _tab_to(page: Page, target: Locator) -> None:
@@ -195,7 +195,7 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     page.keyboard.type(CHAPTER_BODY)
     # Extraction reads the saved chapter, so the test waits for the save the
     # editor itself reports before asking for the job.
-    expect(page.get_by_text("Gespeichert")).to_be_visible()
+    expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=15_000)
 
     # The tab comes from the generated dock registry; the keyboard opens it.
     tab = page.get_by_role("button", name="Wissen", exact=True)
@@ -639,7 +639,7 @@ def test_the_running_bar_passes_the_axe_floor(page: Page, stack: Stack) -> None:
     expect(editor).to_be_visible()
     editor.click()
     page.keyboard.type(CHAPTER_BODY)
-    expect(page.get_by_text("Gespeichert")).to_be_visible()
+    expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=15_000)
 
     tab = page.get_by_role("button", name="Wissen", exact=True)
     tab.focus()

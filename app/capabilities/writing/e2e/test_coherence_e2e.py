@@ -570,11 +570,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     novel_url = f"{BASE}/novels/{novel_id}"
     dock_url = f"{novel_url}/wissen?entity={waldgeist_id}"
 
-    def workbench_open() -> None:
-        """Both halves of the desktop face: the prose and the rail beside it."""
-        expect(page.locator(PROSE)).to_be_visible()
-        expect(page.locator(RAIL)).to_be_visible()
-
     faces: list[tuple[str, str, Callable[[], None], bool]] = [
         (
             "shelf",
@@ -582,7 +577,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
             lambda: expect(page.get_by_role("link", name=NOVEL)).to_be_visible(),
             False,
         ),
-        ("workspace, rail open", novel_url, workbench_open, True),
+        ("workspace", novel_url, lambda: expect(page.locator(PROSE)).to_be_visible(), True),
         (
             "workspace, dock open",
             dock_url,
@@ -612,3 +607,10 @@ def test_the_writer_s_day_holds_together_end_to_end(
         page.set_viewport_size({"width": width, "height": 720})
         for _label, url, witness, prose in faces:
             _sweep_face(page, url, witness, prose=prose)
+            if url == novel_url:
+                # The rail is a column at and above the overlay breakpoint and
+                # starts closed below it: the width decides, not the visit.
+                if width >= 1024:
+                    expect(page.locator(RAIL)).to_be_visible()
+                else:
+                    expect(page.locator(RAIL)).to_have_count(0)

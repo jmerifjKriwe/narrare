@@ -17,6 +17,7 @@ import pytest
 from playwright.sync_api import Dialog, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.workbench import new_chapter
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -40,7 +41,7 @@ def _create_book(page: Page, title: str) -> None:
 def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Stack) -> None:
     """Retain failed text, retry it after recovery and prove it survives a reload."""
     _create_book(page, "Die Bucht")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
 
     stack.stop_api()
@@ -80,9 +81,11 @@ def _answer_leave_guard(page: Page, action: Callable[[], None]) -> None:
 def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None:
     """Protect failed text on chapter switches, links and history navigation."""
     _create_book(page, "Der Priel")
-    page.get_by_role("button", name="Neues Kapitel").click()
-    page.get_by_role("button", name="Neues Kapitel").click()
-    page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
+    new_chapter(page)
+    new_chapter(page)
+    first = page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))
+    first.click()
+    expect(first).to_have_attribute("aria-current", "true")
     page.locator(".ProseMirror").click()
 
     # The outage owns the rest of the proof, and the finally restores the API:
@@ -147,7 +150,7 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
 def test_closing_a_tab_with_a_failed_save_asks(page: Page, stack: Stack) -> None:
     """Prompt on unload only while the chapter contains text the server lacks."""
     _create_book(page, "Der Grund")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
 
     seen: list[str] = []
@@ -190,7 +193,7 @@ def test_closing_a_tab_with_a_failed_save_asks(page: Page, stack: Stack) -> None
 def test_failed_chapter_creation_keeps_the_unsaved_body(page: Page, stack: Stack) -> None:
     """Keep failure and leave protection until a requested new chapter exists."""
     _create_book(page, "Die Sandbank")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
 
     stack.stop_api()

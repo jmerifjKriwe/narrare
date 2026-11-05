@@ -20,13 +20,13 @@ describe("fieldAria", () => {
 describe("controlClass", () => {
   it("pins input and select to the fixed 28px control", () => {
     expect(controlClass()).toBe(
-      "h-7 rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50",
+      "h-7 rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50",
     );
   });
 
   it("lets the textarea grow from the same 28px minimum", () => {
     expect(controlClass(true)).toBe(
-      "min-h-7 rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50",
+      "min-h-7 rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50",
     );
   });
 });

@@ -161,7 +161,7 @@ function NotFound() {
       </Notice>
       <Link
         to="/"
-        className="mt-4 inline-block text-body text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="mt-4 inline-block text-body text-muted underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
       >
         {t("nav.back")}
       </Link>
@@ -186,7 +186,7 @@ function RouteError({ error }: ErrorComponentProps) {
       </Notice>
       <Link
         to="/"
-        className="mt-4 inline-block text-body text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="mt-4 inline-block text-body text-muted underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
       >
         {t("nav.back")}
       </Link>

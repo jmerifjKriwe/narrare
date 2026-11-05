@@ -21,7 +21,7 @@ import {
  */
 
 const CONTROL_BASE =
-  "rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
+  "rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
 
 /**
  * The control's class matrix — the input/select/textarea contract, pinned
