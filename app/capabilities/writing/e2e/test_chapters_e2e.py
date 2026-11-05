@@ -220,11 +220,16 @@ def test_a_dead_chapter_param_degrades_to_the_last_touched_and_cleans_the_url(
     the last-touched chapter opens and the dead value leaves the address —
     by replace, so history never gains a step for the cleanup."""
     _create_book(page, "Das tote Vorzeichen")
+    # A create selects through a refetch, so the runhead is what proves the new
+    # chapter is the one the caret will reach — a click right after the button
+    # can still land on the chapter that was open before it.
     page.get_by_role("button", name="Neues Kapitel").click()
+    expect(page.get_by_text("Das tote Vorzeichen · Kapitel 1")).to_be_visible()
     page.locator(".ProseMirror").click()
     page.keyboard.type("Kalter Wind.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
     page.get_by_role("button", name="Neues Kapitel").click()
+    expect(page.get_by_text("Das tote Vorzeichen · Kapitel 2")).to_be_visible()
     page.locator(".ProseMirror").click()
     page.keyboard.type("Springflut.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
@@ -481,9 +486,13 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
     rows (Review Focus 2). The walk moves focus, never the selection: the
     chapter changes when a row is activated, not when it is walked past."""
     _create_book(page, "Das Verzeichnis")
-    for _ in range(3):
+    # Each create selects through a refetch: wait for the row it lands on, not
+    # for a `chapter=` parameter the previous click already left in the URL.
+    for position in range(1, 4):
         page.get_by_role("button", name="Neues Kapitel").click()
-        expect(page).to_have_url(re.compile(r"chapter="))
+        expect(
+            page.get_by_role("button", name=re.compile(rf"^Kapitel {position}\b"))
+        ).to_be_visible()
 
     rail = page.get_by_role("complementary")
     first = rail.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))
