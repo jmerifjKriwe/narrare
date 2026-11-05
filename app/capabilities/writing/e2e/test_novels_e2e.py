@@ -457,3 +457,43 @@ def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     expect(page.get_by_role("banner").get_by_role("navigation")).to_have_count(0)
 
     assert_accessible(page)
+
+
+def test_header_controls_keep_their_content_inside_the_control(page: Page, stack: Stack) -> None:
+    """An icon beside a label is one line: the control's height is its contract.
+
+    The header carries two controls that pair a glyph with a word. Tailwind's
+    preflight makes the glyph a block, so a control that lets its children
+    flow stacks them: the 28 px box keeps its height and the label lands
+    past its bottom edge, over the shelf below. The assertion reads the
+    rendered boxes, not the classes — overflow is what a writer sees.
+    """
+    created = page.request.post(
+        "http://127.0.0.1:8000/api/writing/novels", data={"title": "Der Knopf"}
+    )
+    assert created.ok, created.text()
+    page.goto("http://127.0.0.1:3100/")
+
+    # Both controls need a book to stand on: the empty shelf swaps the header's
+    # actions for its one create door.
+    for name in ("Importieren", "Neues Buch"):
+        expect(page.get_by_role("button", name=name)).to_be_visible()
+
+    rows = page.evaluate(
+        """() => ["Importieren", "Neues Buch"].map((name) => {
+            const button = [...document.querySelectorAll("button")].find(
+                (candidate) => candidate.textContent.trim() === name
+            );
+            return button === undefined
+                ? {name, found: false}
+                : {name, found: true,
+                   content: button.scrollHeight,
+                   height: button.clientHeight};
+        })"""
+    )
+
+    for row in rows:
+        assert row["found"], row
+        assert row["content"] <= row["height"], row
+
+    assert_accessible(page)

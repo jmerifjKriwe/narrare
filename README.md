@@ -30,7 +30,7 @@ the contradictions you left behind.
 </tr>
 <tr>
 <td><img src="assets/screenshots/04-knowledge-search.png" alt="The knowledge page: two uploaded notes and a search whose results show the matching passages" width="400"></td>
-<td><img src="assets/screenshots/05-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every row" width="400"></td>
+<td><img src="assets/screenshots/05-shelf.png" alt="The shelf: three novels with the last one offered for resuming, and export on every card" width="400"></td>
 </tr>
 <tr>
 <td>Upload the story bible. It is chunked, embedded and searched in your own Postgres.</td>
