@@ -66,21 +66,12 @@ Two named, deliberate shapes a reader should not "fix":
 
 The ruleset requires `ci-required` and nothing else, so a job split never
 edits the ruleset. The job runs `if: always()` (a skipped required check
-passes — the hole this closes) and judges each result explicitly. The `jobs:` comment in `ci.yml` states the same conditions; this table
-summarises them:
+passes — the hole this closes) and judges each result explicitly against the
+`needs` list it carries.
 
-| Result handed to a gate | Verdict | Why |
-| --- | --- | --- |
-| `changes` succeeded, capabilities `[]`, `e2e-suites` **skipped** | green | nothing was owed; the skip is the owed one |
-| `dependency-review` **skipped** on a push or dispatch | green | the dependency review is a pull-request duty; this is the second legitimate skip |
-| all gates `success` (dependency-review `success` on a PR) | green | |
-| `changes` ended anything but `success` | red | it cannot name the owed suites |
-| `changes` succeeded but handed over an **empty** capabilities string | red | a successful run prints at least `[]`; empty is a broken handoff, never "legitimately none" |
-| capabilities `[]` but `e2e-suites` ended anything but **skipped** | red | nothing was owed, so it must be skipped |
-| capabilities non-empty and `e2e-suites` ended anything but `success` | red | the suites were owed |
-| `lint-types`, `tests`, `frontend`, `build` or `workflow-lint` ended anything but `success` | red | none of these has a legitimate skip — a `skipped` result is a broken graph, and a skipped required check passes |
-| `dependency-review` on a pull request ended anything but `success` | red | a pull request owes the review |
-| `dependency-review` on a push or dispatch ended anything but `skipped` or `success` | red | only a pull request runs it, so only `success` and `skipped` are legitimate outside one |
+The verdicts — which skipped gate is owed, which result is red, and why — are
+stated once, in the `ci-required` job comment in `ci.yml`. This page does not
+repeat them: a second copy is a second thing to drift.
 
 ## `scripts/affected.py` — who owes which suite
 

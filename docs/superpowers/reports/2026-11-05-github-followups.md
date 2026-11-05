@@ -221,6 +221,19 @@ The workflow's own dispatch is proved after the push (Task 10).
 
 ## Task 8 — one copy of the verdicts (#605)
 
+The ten-row verdict table left `docs/architecture/github.md`; the section now
+says the job runs `if: always()` and judges each result, and points at the
+`ci-required` job comment in `ci.yml` as the one copy. The comment was read
+before deleting the table and still states every verdict: `changes` red or an
+empty handoff, `[]` + skipped matrix green, `[]` + anything else red,
+non-empty + anything but success red, the five blocking jobs with no
+legitimate skip, and dependency-review owed on a PR and skippable elsewhere.
+
+```
+rg -n "legitimate skip|owed skip" docs/architecture/github.md .github/workflows/ci.yml
+  → ci.yml only (239, 240, 244, 296, 304; 258 is a step name)
+```
+
 ## Task 9 — the three records (#596, #600, #602)
 
 ## Task 10 — the four proofs (#604)
