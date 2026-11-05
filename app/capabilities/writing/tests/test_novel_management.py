@@ -64,7 +64,7 @@ async def test_patch_refuses_an_empty_title() -> None:
 async def test_patch_refuses_a_bad_language_code() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         novel_id = await _novel_id(client)
-        for code in ("deutsch", "d", "DE", "en_GB"):
+        for code in ("deutsch", "d", "de-", "en_GB"):
             refused = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": code})
             assert refused.status_code == 422, code
             assert refused.json()["detail"] == "invalid language"
@@ -104,6 +104,14 @@ async def test_patch_accepts_bcp47_like_codes() -> None:
             assert patched.json()["language"] == code
 
 
+async def test_patch_folds_a_shouted_language_code() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        patched = await client.patch(f"/api/writing/novels/{novel_id}", json={"language": "DE"})
+        assert patched.status_code == 200
+        assert patched.json()["language"] == "de"
+
+
 async def test_patch_refuses_a_genre_over_80() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         novel_id = await _novel_id(client)
@@ -113,6 +121,24 @@ async def test_patch_refuses_a_genre_over_80() -> None:
         # the refusal wrote nothing
         fetched = await client.get(f"/api/writing/novels/{novel_id}")
         assert fetched.json()["genre"] is None
+
+
+async def test_patch_clears_an_empty_genre() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client, genre="Mystery")
+
+        # an empty genre is no genre, not an empty string stored
+        emptied = await client.patch(f"/api/writing/novels/{novel_id}", json={"genre": "  "})
+        assert emptied.status_code == 200
+        assert emptied.json()["genre"] is None
+
+        # a carried null keeps clearing too
+        chose = await client.patch(f"/api/writing/novels/{novel_id}", json={"genre": "Mystery"})
+        assert chose.status_code == 200
+        assert chose.json()["genre"] == "Mystery"
+        nulled = await client.patch(f"/api/writing/novels/{novel_id}", json={"genre": None})
+        assert nulled.status_code == 200
+        assert nulled.json()["genre"] is None
 
 
 async def test_patch_bumps_updated_at() -> None:

@@ -144,12 +144,15 @@ class WritingService:
         The values are checked here, in the service, so a hand-written call
         cannot skip the contract: a title is trimmed and may be neither
         blank nor over 200 characters (a novel has no placeholder), a genre
-        is trimmed and may not be over 80, an author and a blurb are trimmed
-        with the empty string clearing them, and a language is trimmed, with
-        the empty string clearing it, and must otherwise be a BCP-47-ish
-        code (`de`, `en-GB`). ``model_fields_set`` is what makes the update
-        partial: a field the body does not carry is not a change, and a
-        carried ``null`` is one — the cleared state. The write is one UPDATE
+        is trimmed with the empty string clearing it and may not be over 80,
+        an author and a blurb are trimmed with the empty string clearing
+        them, and a language is trimmed, its primary subtag folded to
+        lowercase (``DE`` is ``de``; the remainder keeps its case, so
+        ``en-GB`` stays ``en-GB``), with the empty string clearing it, and
+        must otherwise be a BCP-47-ish code (`de`, `en-GB`).
+        ``model_fields_set`` is what makes the update partial: a field the
+        body does not carry is not a change, and a carried ``null`` is one —
+        the cleared state. The write is one UPDATE
         through the repository's save, and ``updated_at`` rides it through
         the column's ``onupdate``, so an edit makes the export trace
         honestly stale.
@@ -170,7 +173,7 @@ class WritingService:
                 raise InvalidNovelUpdateError("title")
             changes.title = title
         if "genre" in provided:
-            genre = changes.genre.strip() if changes.genre is not None else None
+            genre = (changes.genre or "").strip() or None
             if genre is not None and len(genre) > 80:
                 raise InvalidNovelUpdateError("genre")
             changes.genre = genre
@@ -180,8 +183,13 @@ class WritingService:
             changes.blurb = (changes.blurb or "").strip() or None
         if "language" in provided:
             language = (changes.language or "").strip() or None
-            if language is not None and not _LANGUAGE_CODE.fullmatch(language):
-                raise InvalidNovelUpdateError("language")
+            if language is not None:
+                # The primary subtag folds to lowercase; the remainder keeps
+                # the case it was typed in (spec §2: DE is de, en-GB stays).
+                primary, separator, remainder = language.partition("-")
+                language = f"{primary.lower()}{separator}{remainder}"
+                if not _LANGUAGE_CODE.fullmatch(language):
+                    raise InvalidNovelUpdateError("language")
             changes.language = language
         novel = await self.novels.save(novel, changes.model_dump(exclude_unset=True))
         await self.session.commit()
