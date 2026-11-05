@@ -1,11 +1,12 @@
 # Each hook names a failure that has happened: unformatted code, lint
-# findings, type errors that only show up across files, a leaked secret, and
-# the gates a developer should not push past.
+# findings, type errors that only show up across files, a leaked secret, a
+# commit subject release-please cannot parse, and the gates a developer
+# should not push past.
 #
 # A commit checks the staged files; a push checks the pushed tree. The web
 # suite follows that split: the commit runs only the tests the change reaches,
 # a push that touches web runs all of them.
-default_install_hook_types: [pre-commit, pre-push]
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
 
 repos:
   - repo: local
@@ -61,6 +62,15 @@ repos:
         pass_filenames: false
         files: (^web/|^app/capabilities/.*/web/|^i18n/)
         stages: [pre-commit]
+
+      # Only the subject grammar: release-please reads the type, and a subject
+      # it cannot parse is lost from the changelog. Whether a `User-visible:`
+      # line is real stays review's call (CONTRIBUTING).
+      - id: commit-message
+        name: Commit message
+        entry: python3 scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]
 
       - id: pyright-full
         name: Pyright (whole project)
