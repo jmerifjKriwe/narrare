@@ -1,6 +1,9 @@
 # Narrare
 
 [![CI](https://github.com/jmerifjKriwe/narrare/actions/workflows/ci.yml/badge.svg)](https://github.com/jmerifjKriwe/narrare/actions/workflows/ci.yml)
+[![Nightly](https://github.com/jmerifjKriwe/narrare/actions/workflows/nightly.yml/badge.svg)](https://github.com/jmerifjKriwe/narrare/actions/workflows/nightly.yml)
+[![CodeQL](https://github.com/jmerifjKriwe/narrare/actions/workflows/codeql.yml/badge.svg)](https://github.com/jmerifjKriwe/narrare/actions/workflows/codeql.yml)
+[![Scorecard](https://github.com/jmerifjKriwe/narrare/actions/workflows/scorecard.yml/badge.svg)](https://github.com/jmerifjKriwe/narrare/actions/workflows/scorecard.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)

@@ -56,7 +56,7 @@ otherwise. Two numbers from the design dialogue had moved and are corrected here
 | Documentation | **406 files / 160,689 lines** | 406 / 161k | editorial only |
 | Intent declaration surfaces | **8** — cited from the 2026-10-19 throughput spec, *not re-counted* | 8 | 0 hand-edited |
 | Provider declaration surfaces | **1 hand-edited** (`llm/_providers/catalog.yaml`) + 2 generated; was 15 | 15 → 1 | 1 catalog entry |
-| `justfile` public recipes | **95** | 95 | 21 |
+| `justfile` public recipes | **95** | 95 | 24 |
 | CI jobs | **7 in `ci.yml` (5 gates + `changes` + `nightly-guard`) + `release-please`** | 7 | ≤ 7 (5 gates + 2 scheduling guards) |
 | Hand-written TS API type modules (`packages/web/lib/api/*.ts`) | **64** | — | 0 |
 
@@ -76,8 +76,23 @@ Corrections and notes:
   plus an aggregator named `e2e` (the required check); the matrix is one job
   definition, so the workflow holds seven. The local gate runs the suites a change
   touches; `just verify all` runs every one.
-- **Recipes: the target is 21, not 22.** The §6 list has 21 entries; the 22 that
-  stood here and in §12 was a miscount, corrected 2026-10-22.
+- **CI jobs: the 2026-11-05 GitHub platform deliberately exceeds the ≤ 7
+  target, noted 2026-11-05.** The target was budgeted for one `ci.yml` of
+  gate jobs; the platform split puts nine jobs in `ci.yml` (six gates, the
+  resolver, the dependency review and the `ci-required` aggregator) and
+  eight in `nightly.yml`, each named for one concern, with containment
+  trades instead of a smaller tree — one required check (`ci-required`)
+  instead of per-job contexts, no extra job in a reusable call layer, and
+  the sweep moved out of the PR gate entirely. This note is the record of
+  the deviation: it exceeds the target on purpose. The shape that exceeds
+  it — the workflow map, the single required check, and why the split took
+  that shape — is recorded in
+  [the 2026-11-05 GitHub platform design](2026-11-05-github-platform-design.md)
+  and its plan; the target above stays as written.
+- **Recipes: the target is 24.** The §6 list and this target read 22, then a
+  corrected 21; the justfile actually carried 23 without `test-cov`, and the
+  GitHub platform work (2026-11-05) added `test-cov` — §6 lists 24 since
+  2026-11-05, and both targets here were aligned to it at the same time.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
   `packages/`, tests included. The old value is stale, not wrong in method.
 - **Provider surfaces: the 15 → 1 consolidation is already banked** (ADR-099). One
@@ -224,13 +239,13 @@ direct push is covered by the nightly; the nightly runs every capability.
 `release-please` runs separately. The wall clock is the longest capability suite —
 the suites run side by side, the aggregator waits on them in seconds.
 
-**`justfile` keeps 21 public recipes:**
+**`justfile` keeps 24 public recipes:**
 
 ```text
 dev, dev-api, dev-web, dev-services, dev-services-stop, dev-setup,
-check, verify, lint, typecheck, format,
-test, test-file, test-e2e, test-frontend,
-build, db-init, db-reset, db-shell,
+check, verify, lint, typecheck, format, callers,
+test, test-cov, test-file, test-e2e, test-frontend,
+build, db-init, db-reset, db-revision, db-shell,
 generate, new-capability
 ```
 
@@ -427,7 +442,9 @@ not by a document:
 3. **A capability is done only with a green E2E** through the real UI, real backend and
    real database, with the fake provider at the boundary.
 4. **The §2 numbers reach their targets**: ADRs ≤ 15, rules ≤ 5, hooks ≤ 10, check
-   scripts ≤ 3, recipes 21, CI jobs ≤ 7 (5 gates + 2 scheduling guards), zero hand-written API type modules.
+   scripts ≤ 3, recipes 24, CI jobs ≤ 7 (5 gates + 2 scheduling guards), zero hand-written API type modules.
+   CI jobs is beyond that target deliberately; see the 2026-11-05 deviation note
+   in §2 and the [2026-11-05 GitHub platform design](2026-11-05-github-platform-design.md).
 5. **The local gate runs in under 10 s and under 60 s**, and a capability port is a
    folder plus a test, not a tour of the repository.
 

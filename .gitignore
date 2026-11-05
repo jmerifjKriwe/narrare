@@ -22,6 +22,7 @@ build/
 .coverage.*
 coverage.xml
 coverage.*.xml
+junit.xml
 htmlcov/
 .tox/
 *,cover
