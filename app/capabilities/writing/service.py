@@ -48,6 +48,15 @@ class TargetNotEmptyError(Exception):
         self.path = path
 
 
+class OrderMismatchError(Exception):
+    """The body is not the book's current whole of chapter ids; `current` is,
+    in position order — the arrangement the client reverts to."""
+
+    def __init__(self, current: list[UUID]) -> None:
+        super().__init__("order mismatch")
+        self.current = current
+
+
 class ArchiveTooLargeError(Exception):
     """The archive is larger than MAX_ARCHIVE_BYTES."""
 
@@ -328,6 +337,36 @@ class WritingService:
         await self.chapters.delete(chapter)
         survivors = await self.chapters.list_for_novel(novel_id)
         await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
+        await self.chapters.touch_novel(novel_id)
+        await self.session.commit()
+
+    async def reorder_chapters(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> None:
+        """Rewrite the novel's chapter order as the one whole the body carries.
+
+        The body must be exactly the book's current ids — the same set, the
+        same length. Both the comparison and the rewrite sit under the
+        novel-row lock, the one every append takes: a chapter added or
+        deleted beside the reorder either commits before the read (and the
+        body, now short or long, is refused) or waits and takes its number
+        after the rewrite. A body that repeats an id is refused the same
+        way — its set or its length is wrong; the comparison is exact, no
+        intersection. On a mismatch nothing is written and
+        ``OrderMismatchError`` carries the stored ids in their position
+        order, what the client reverts to. The rewrite is ``renumber``
+        (each row's ``updated_at`` pinned to itself: an arrangement is not
+        a write, D8); the novel's row is the one that advances. Commit
+        once. Raise NotFoundError for an absent or unowned novel.
+        """
+        if await self.novels.get(novel_id) is None:
+            raise NotFoundError
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        current = [chapter.id for chapter in await self.chapters.list_for_novel(novel_id)]
+        # Set and length, one comparison each: the set catches an id the
+        # book does not hold (a deleted chapter, a foreign one), the length
+        # a body that repeats an id. Nothing is written before both agree.
+        if set(chapter_ids) != set(current) or len(chapter_ids) != len(current):
+            raise OrderMismatchError(current)
+        await self.chapters.renumber(novel_id, chapter_ids)
         await self.chapters.touch_novel(novel_id)
         await self.session.commit()
 

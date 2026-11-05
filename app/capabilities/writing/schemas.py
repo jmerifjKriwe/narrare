@@ -73,6 +73,19 @@ class ChapterUpdate(BaseModel):
     body: str | None = None
 
 
+class ChapterOrderUpdate(BaseModel):
+    """The PUT chapter-order body: the whole rail, in its new order.
+
+    Every chapter of the novel and nothing else — an arrangement is a
+    permutation of the ids the book holds this moment, so the service
+    compares the body against the stored set as one whole and refuses a
+    stale one (a second tab's add, delete or repeat) with the current
+    order, rather than reshape what the writer no longer sees.
+    """
+
+    chapter_ids: list[UUID]
+
+
 class ChapterRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -173,6 +173,24 @@
         "title": "ChapterCreate",
         "type": "object"
       },
+      "ChapterOrderUpdate": {
+        "description": "The PUT chapter-order body: the whole rail, in its new order.\n\nEvery chapter of the novel and nothing else — an arrangement is a\npermutation of the ids the book holds this moment, so the service\ncompares the body against the stored set as one whole and refuses a\nstale one (a second tab's add, delete or repeat) with the current\norder, rather than reshape what the writer no longer sees.",
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Chapter Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "ChapterOrderUpdate",
+        "type": "object"
+      },
       "ChapterRead": {
         "properties": {
           "body": {
@@ -4756,6 +4774,79 @@
           }
         },
         "summary": "Update Novel",
+        "tags": [
+          "writing"
+        ]
+      }
+    },
+    "/api/writing/novels/{novel_id}/chapter-order": {
+      "put": {
+        "description": "Rewrite an owned novel's chapter order as one whole.\n\nThe body carries every chapter of the novel in its new order. Respond\nwith HTTP 204, HTTP 404 for an absent or unowned novel, or HTTP 409\nwhen the body is not the book's current whole — a chapter added or\ndeleted in a second tab, or an id repeated — with\n``detail.chapter_ids`` holding the stored ids in their position order:\nthe arrangement the client reverts to.",
+        "operationId": "reorder_chapters_api_writing_novels__novel_id__chapter_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChapterOrderUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "chapter_ids": [
+                      "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
+                      "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1"
+                    ],
+                    "code": "order_mismatch"
+                  }
+                }
+              }
+            },
+            "description": "The body is not the book's current whole of chapter ids"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Chapters",
         "tags": [
           "writing"
         ]

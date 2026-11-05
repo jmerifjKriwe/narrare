@@ -1,6 +1,8 @@
-"""Deleting a chapter: the row goes, the survivors close the gap in one
-transaction, and no survivor's "last written" moves — the book lost a
-chapter, no words were written (the novel's row is what advances, D8)."""
+"""Chapter management: deleting a chapter closes its gap in one transaction,
+and the order is written as one whole. A delete moves a number, never a
+"last written" — the book lost a chapter, no words were written (the novel's
+row is what advances, D8) — and a reorder whose body is not exactly the
+book's current ids is refused with those ids, never silently reshaped."""
 
 import asyncio
 from collections.abc import Sequence  # noqa: TC003
@@ -260,3 +262,188 @@ async def test_delete_chapter_answers_404_for_a_foreign_chapter() -> None:
             text("SELECT count(*) FROM chapters WHERE id = :id"), {"id": chapter_id}
         )
         assert kept == 1
+
+
+async def test_reorder_rewrites_contiguously() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+
+        reordered = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapters[2]["id"], chapters[0]["id"], chapters[1]["id"]]},
+        )
+        assert reordered.status_code == 204
+
+        listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
+    # the rail shows the arrangement the body asked for, numbered 0 to n-1
+    assert [chapter["title"] for chapter in listed] == ["Abfahrt", "Ankunft", "Nacht"]
+    assert [chapter["position"] for chapter in listed] == [0, 1, 2]
+
+
+async def test_reorder_keeps_each_rows_updated_at() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+
+        reordered = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapter["id"] for chapter in reversed(chapters)]},
+        )
+        assert reordered.status_code == 204
+
+        for chapter in chapters:
+            reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
+            assert reloaded.status_code == 200
+            # the number moved; the "last written" did not — an arrangement
+            # is not a write (D8, the renumber's own pin)
+            assert reloaded.json()["updated_at"] == chapter["updated_at"]
+
+
+async def test_reorder_advances_the_novel_timestamp() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+        before = datetime.fromisoformat(
+            (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
+        )
+
+        reordered = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapter["id"] for chapter in reversed(chapters)]},
+        )
+        assert reordered.status_code == 204
+
+        after = datetime.fromisoformat(
+            (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
+        )
+    # the arrangement changed the book (D8): the novel's row is what advances
+    assert after > before
+
+
+async def test_reorder_refuses_a_missing_id() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+
+        # a second tab created a chapter the body does not know: the body is
+        # the old rail, one id short of the book
+        refused = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapters[0]["id"], chapters[2]["id"]]},
+        )
+        assert refused.status_code == 409
+        # the answer is the book's current whole, in its stored order — what
+        # the client reverts to, not what it asked for
+        assert refused.json() == {
+            "detail": {
+                "code": "order_mismatch",
+                "chapter_ids": [chapter["id"] for chapter in chapters],
+            }
+        }
+
+
+async def test_reorder_refuses_an_extra_id() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+
+        # a second tab deleted a chapter the body still carries: an id the
+        # book no longer holds
+        refused = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapters[0]["id"], chapters[1]["id"], str(uuid4())]},
+        )
+        assert refused.status_code == 409
+        assert refused.json()["detail"]["code"] == "order_mismatch"
+
+
+async def test_reorder_refuses_a_foreign_id() -> None:
+    await seed_user(OTHER_USER)
+    foreign_novel, foreign_chapter = uuid4(), uuid4()
+    async with Session() as session:
+        await session.execute(
+            text(
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
+            ),
+            {"id": foreign_novel, "user_id": OTHER_USER, "title": "Fremd"},
+        )
+        await session.execute(
+            text(
+                "INSERT INTO chapters "
+                "(id, user_id, novel_id, title, position, body, created_at, updated_at) "
+                "VALUES (:id, :user_id, :novel_id, :title, 0, '', now(), now())"
+            ),
+            {
+                "id": foreign_chapter,
+                "user_id": OTHER_USER,
+                "novel_id": foreign_novel,
+                "title": "Fremd",
+            },
+        )
+        await session.commit()
+
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+
+        # the foreign chapter is a real row, another reader's: an id this
+        # book does not hold, refused like any other — never adopted
+        refused = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={"chapter_ids": [chapters[0]["id"], chapters[1]["id"], str(foreign_chapter)]},
+        )
+        assert refused.status_code == 409
+        assert refused.json()["detail"]["code"] == "order_mismatch"
+
+    # the refusal reached nothing beyond this book: the foreign row kept its place
+    async with Session() as session:
+        position = await session.scalar(
+            text("SELECT position FROM chapters WHERE id = :id"), {"id": foreign_chapter}
+        )
+        assert position == 0
+
+
+async def test_reorder_refuses_a_duplicate_id() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+
+        # every id the book holds and one twice: the set matches, the length
+        # does not — a repeated id is a stale arrangement like any other
+        # (spec §2), not a field error
+        refused = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={
+                "chapter_ids": [
+                    chapters[0]["id"],
+                    chapters[1]["id"],
+                    chapters[2]["id"],
+                    chapters[1]["id"],
+                ]
+            },
+        )
+        assert refused.status_code == 409
+        assert refused.json()["detail"]["code"] == "order_mismatch"
+
+
+async def test_reorder_leaves_the_order_untouched_on_refusal() -> None:
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+        novel_before = (await client.get(f"/api/writing/novels/{novel_id}")).json()
+
+        # a body that would have moved every row, were it the book's whole
+        refused = await client.put(
+            f"/api/writing/novels/{novel_id}/chapter-order",
+            json={
+                "chapter_ids": [chapter["id"] for chapter in reversed(chapters)] + [str(uuid4())]
+            },
+        )
+        assert refused.status_code == 409
+
+        listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
+        for chapter in chapters:
+            reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
+            # each row's number and "last written" are what they were
+            assert reloaded.json()["position"] == chapter["position"]
+            assert reloaded.json()["updated_at"] == chapter["updated_at"]
+        novel_after = (await client.get(f"/api/writing/novels/{novel_id}")).json()
+    # the refusal wrote nothing: the rail and the novel's own timestamp
+    # are what they were
+    assert [chapter["title"] for chapter in listed] == ["Ankunft", "Nacht", "Abfahrt"]
+    assert [chapter["position"] for chapter in listed] == [0, 1, 2]
+    assert novel_after["updated_at"] == novel_before["updated_at"]

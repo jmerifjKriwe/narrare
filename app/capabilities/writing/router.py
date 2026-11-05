@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.writing.schemas import (
     ChapterCreate,
+    ChapterOrderUpdate,
     ChapterRead,
     ChapterUpdate,
     ExportDone,
@@ -31,6 +32,7 @@ from app.capabilities.writing.service import (
     FieldRefusedError,
     InvalidNovelUpdateError,
     NotFoundError,
+    OrderMismatchError,
     TargetNotEmptyError,
     WritingService,
 )
@@ -347,6 +349,57 @@ async def create_chapter(
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
     return ChapterRead.model_validate(chapter)
+
+
+@router.put(
+    "/novels/{novel_id}/chapter-order",
+    status_code=204,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {
+            "description": "The body is not the book's current whole of chapter ids",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": {
+                            "code": "order_mismatch",
+                            "chapter_ids": [
+                                "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
+                                "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1",
+                            ],
+                        }
+                    }
+                }
+            },
+        },
+    },
+)
+async def reorder_chapters(
+    novel_id: UUID, payload: ChapterOrderUpdate, service: ServiceDep
+) -> None:
+    """Rewrite an owned novel's chapter order as one whole.
+
+    The body carries every chapter of the novel in its new order. Respond
+    with HTTP 204, HTTP 404 for an absent or unowned novel, or HTTP 409
+    when the body is not the book's current whole — a chapter added or
+    deleted in a second tab, or an id repeated — with
+    ``detail.chapter_ids`` holding the stored ids in their position order:
+    the arrangement the client reverts to.
+    """
+    try:
+        await service.reorder_chapters(novel_id, payload.chapter_ids)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except OrderMismatchError as error:
+        # A dict, not a sentence: the client reverts to the order these ids
+        # name, and `code` is the stable key it localizes.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "order_mismatch",
+                "chapter_ids": [str(chapter_id) for chapter_id in error.current],
+            },
+        ) from None
 
 
 @router.get(

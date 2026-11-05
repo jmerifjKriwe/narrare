@@ -843,6 +843,33 @@ export interface paths {
         patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;
     };
+    "/api/writing/novels/{novel_id}/chapter-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Chapters
+         * @description Rewrite an owned novel's chapter order as one whole.
+         *
+         *     The body carries every chapter of the novel in its new order. Respond
+         *     with HTTP 204, HTTP 404 for an absent or unowned novel, or HTTP 409
+         *     when the body is not the book's current whole — a chapter added or
+         *     deleted in a second tab, or an id repeated — with
+         *     ``detail.chapter_ids`` holding the stored ids in their position order:
+         *     the arrangement the client reverts to.
+         */
+        put: operations["reorder_chapters_api_writing_novels__novel_id__chapter_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/writing/novels/{novel_id}/chapters": {
         parameters: {
             query?: never;
@@ -961,6 +988,20 @@ export interface components {
              * @default
              */
             title: string;
+        };
+        /**
+         * ChapterOrderUpdate
+         * @description The PUT chapter-order body: the whole rail, in its new order.
+         *
+         *     Every chapter of the novel and nothing else — an arrangement is a
+         *     permutation of the ids the book holds this moment, so the service
+         *     compares the body against the stored set as one whole and refuses a
+         *     stale one (a second tab's add, delete or repeat) with the current
+         *     order, rather than reshape what the writer no longer sees.
+         */
+        ChapterOrderUpdate: {
+            /** Chapter Ids */
+            chapter_ids: string[];
         };
         /** ChapterRead */
         ChapterRead: {
@@ -3552,6 +3593,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+        };
+    };
+    reorder_chapters_api_writing_novels__novel_id__chapter_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChapterOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description The body is not the book's current whole of chapter ids */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": {
+                     *         "chapter_ids": [
+                     *           "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
+                     *           "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1"
+                     *         ],
+                     *         "code": "order_mismatch"
+                     *       }
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
