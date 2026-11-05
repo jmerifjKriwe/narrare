@@ -108,6 +108,17 @@ class NovelRepository(ScopedRepository[Novel]):
         await self.session.flush()
         return novel
 
+    async def delete(self, novel: Novel) -> None:
+        """Mark the supplied novel for deletion; the caller commits the change.
+
+        One DELETE of the one root row: the novel-scoped foreign keys cascade
+        in the database (`ondelete="CASCADE"`), so the chapters, entities and
+        their relations, suggestions and findings go with it — no manual
+        child deletes, each of which would be a second statement the
+        constraint already makes unnecessary.
+        """
+        await self.session.delete(novel)
+
 
 class ChapterRepository(ScopedRepository[Chapter]):
     model = Chapter

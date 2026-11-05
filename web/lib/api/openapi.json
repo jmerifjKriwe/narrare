@@ -4556,6 +4556,51 @@
       }
     },
     "/api/writing/novels/{novel_id}": {
+      "delete": {
+        "description": "Delete an owned novel. The novel-scoped foreign keys cascade: its\nchapters, entities, relations, suggestions and findings go with the\nrow; the library's documents are not the novel's and stay.\n\nRaise HTTP 404 for an absent or unowned novel.",
+        "operationId": "delete_novel_api_writing_novels__novel_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Novel",
+        "tags": [
+          "writing"
+        ]
+      },
       "get": {
         "description": "Return an owned novel; respond with HTTP 404 when it is not found.",
         "operationId": "get_novel_api_writing_novels__novel_id__get",

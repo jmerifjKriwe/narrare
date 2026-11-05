@@ -1,4 +1,6 @@
-"""Editing a novel's metadata: PATCH changes only the fields the body carries."""
+"""Managing a novel: PATCH changes only the fields the body carries; DELETE
+takes the whole book — its chapters, entities, relations, suggestions and
+findings — while the library's documents survive."""
 
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -8,6 +10,14 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
+from app.kernel.auth import LOCAL_USER_ID
+from app.kernel.contracts.models import (
+    ConsistencyFinding,
+    Document,
+    Entity,
+    EntityRelation,
+    EntitySuggestion,
+)
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -217,3 +227,134 @@ async def test_patch_answers_404_for_a_foreign_novel() -> None:
         )
         assert patched.status_code == 404
         assert patched.json()["detail"] == "novel not found"
+
+
+async def test_delete_novel_answers_204_and_is_gone() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        deleted = await client.delete(f"/api/writing/novels/{novel_id}")
+        assert deleted.status_code == 204
+        # gone means gone: the shelf no longer knows the book
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.status_code == 404
+
+
+async def test_delete_novel_cascades_chapters_entities_relations_suggestions_findings() -> None:
+    """The database's cascades, not the route's promises: after the delete,
+    every novel-scoped row for the id is gone — chapters, entities and their
+    relations, pending suggestions, findings."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = UUID(await _novel_id(client))
+        chapter = await client.post(
+            f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"}
+        )
+        assert chapter.status_code == 201
+
+    # The novel's canon through the kernel models (never another capability):
+    # two entities, their edge, one pending suggestion and one finding.
+    async with Session() as session:
+        mira = Entity(user_id=LOCAL_USER_ID, novel_id=novel_id, name="Mira Vale", type="character")
+        tower = Entity(user_id=LOCAL_USER_ID, novel_id=novel_id, name="Leuchtturm", type="location")
+        session.add_all([mira, tower])
+        await session.flush()
+        session.add(
+            EntityRelation(
+                user_id=LOCAL_USER_ID,
+                from_entity_id=mira.id,
+                to_entity_id=tower.id,
+                relation_type="bewacht",
+            )
+        )
+        session.add(
+            EntitySuggestion(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel_id,
+                chapter_id=UUID(chapter.json()["id"]),
+                name="Robbe",
+                type="object",
+                status="pending",
+            )
+        )
+        session.add(
+            ConsistencyFinding(
+                user_id=LOCAL_USER_ID,
+                novel_id=novel_id,
+                summary="Miras Augen sind blau und grün",
+                status="pending",
+            )
+        )
+        await session.commit()
+        ends = (mira.id, tower.id)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        deleted = await client.delete(f"/api/writing/novels/{novel_id}")
+        assert deleted.status_code == 204
+
+    async with Session() as session:
+        # one row of scalar subqueries: the answer for every table at once
+        (chapters, entities, suggestions, findings, edges) = (
+            await session.execute(
+                text(
+                    "SELECT"
+                    " (SELECT count(*) FROM chapters WHERE novel_id = :novel_id),"
+                    " (SELECT count(*) FROM entities WHERE novel_id = :novel_id),"
+                    " (SELECT count(*) FROM entity_suggestions WHERE novel_id = :novel_id),"
+                    " (SELECT count(*) FROM consistency_findings WHERE novel_id = :novel_id),"
+                    " (SELECT count(*) FROM entity_relations"
+                    "   WHERE from_entity_id IN (:first, :second)"
+                    "      OR to_entity_id IN (:first, :second))"
+                ),
+                {"novel_id": novel_id, "first": ends[0], "second": ends[1]},
+            )
+        ).one()
+        assert chapters == 0, "chapters"
+        assert entities == 0, "entities"
+        assert suggestions == 0, "entity_suggestions"
+        assert findings == 0, "consistency_findings"
+        # relations carry no novel column; their ends were this novel's entities
+        assert edges == 0, "entity_relations"
+
+
+async def test_delete_novel_leaves_documents_alone() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+
+    # a document is the library's, not the novel's — it has no novel column
+    async with Session() as session:
+        session.add(Document(user_id=LOCAL_USER_ID, title="Recherche", embedding_width=8))
+        await session.commit()
+        before = await session.scalar(text("SELECT count(*) FROM documents"))
+        assert before == 1
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        deleted = await client.delete(f"/api/writing/novels/{novel_id}")
+        assert deleted.status_code == 204
+
+    async with Session() as session:
+        after = await session.scalar(text("SELECT count(*) FROM documents"))
+        assert after == 1
+
+
+async def test_delete_novel_answers_404_for_a_foreign_novel() -> None:
+    await seed_user(OTHER_USER)
+    foreign_id = uuid4()
+    async with Session() as session:
+        await session.execute(
+            text(
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, now(), now())"
+            ),
+            {"id": foreign_id, "user_id": OTHER_USER, "title": "Fremd"},
+        )
+        await session.commit()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        deleted = await client.delete(f"/api/writing/novels/{foreign_id}")
+        assert deleted.status_code == 404
+        assert deleted.json()["detail"] == "novel not found"
+    # the refusal deleted nothing: the foreign book keeps its rows
+    async with Session() as session:
+        kept = await session.scalar(
+            text("SELECT count(*) FROM novels WHERE id = :id"), {"id": foreign_id}
+        )
+        assert kept == 1

@@ -811,7 +811,15 @@ export interface paths {
         get: operations["get_novel_api_writing_novels__novel_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Novel
+         * @description Delete an owned novel. The novel-scoped foreign keys cascade: its
+         *     chapters, entities, relations, suggestions and findings go with the
+         *     row; the library's documents are not the novel's and stay.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel.
+         */
+        delete: operations["delete_novel_api_writing_novels__novel_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -3398,6 +3406,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NovelRead"];
                 };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_novel_api_writing_novels__novel_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Novel not found */
             404: {

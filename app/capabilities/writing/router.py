@@ -179,6 +179,24 @@ async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep
     return NovelRead.model_validate(novel)
 
 
+@router.delete(
+    "/novels/{novel_id}",
+    status_code=204,
+    responses={404: {"model": WritingErrorRead, "description": "Novel not found"}},
+)
+async def delete_novel(novel_id: UUID, service: ServiceDep) -> None:
+    """Delete an owned novel. The novel-scoped foreign keys cascade: its
+    chapters, entities, relations, suggestions and findings go with the
+    row; the library's documents are not the novel's and stay.
+
+    Raise HTTP 404 for an absent or unowned novel.
+    """
+    try:
+        await service.delete_novel(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+
+
 @router.post(
     "/novels/{novel_id}/export",
     response_model=ExportDone,

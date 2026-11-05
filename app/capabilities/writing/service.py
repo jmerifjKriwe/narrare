@@ -203,6 +203,22 @@ class WritingService:
         await self.session.commit()
         return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
 
+    async def delete_novel(self, novel_id: UUID) -> None:
+        """Delete a novel: the row goes, and everything it carried goes with it.
+
+        The novel-scoped foreign keys cascade in the database — chapters,
+        entities, suggestions, findings, and the entities' relations ride
+        their ends — so one delete of the root row is the whole book, and
+        the export is the safety net. Documents are the library's, not the
+        novel's, and survive. Commit the deletion; raise NotFoundError for
+        an absent or unowned novel.
+        """
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        await self.novels.delete(novel)
+        await self.session.commit()
+
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
         if await self.novels.get(novel_id) is None:
