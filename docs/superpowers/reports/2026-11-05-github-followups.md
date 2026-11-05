@@ -72,8 +72,10 @@ uvx zizmor==1.32.0 .github/workflows .github/actions →
 ```
 
 Wall clock: the baseline is `main` run 42088177589 (`frontend` 52 s, `build`
-22 s). The after is the PR run; its step list must show no
-`Sync Python dependencies` step in either job. Recorded in the proof section.
+22 s). On run 42104375844 (the branch at d39582ba), `frontend` and `build` pass
+`python: false`, and `setup-uv`, `setup-python` and `Sync Python dependencies`
+each end `outcome=skipped;conclusion=skipped` — the jobs still install the
+JavaScript toolchain and run `just test-frontend` / `just build`.
 
 ## Task 2 — Playwright cache (#599)
 
@@ -338,3 +340,14 @@ The bot's ten findings on PR #613 (2026-11-05), triaged:
 | the four proofs were unfinished | recorded in Task 10 after the push |
 
 ## Task 10 — the four proofs (#604)
+
+| Proof | Evidence |
+|---|---|
+| Scorecard | three green `main` pushes (42080606005, 42086972305, 42088177236); code scanning holds three `Scorecard` analyses per run on `refs/heads/main` (`supply-chain/local`, `supply-chain/branch-protection`, `supply-chain/online-scm`), newest 2026-11-05T18:51:24Z |
+| HARNESS | PR #614 (one comment line under `.github/workflows/_test.yml`, run 42101522854): `changes` logged `##[notice]harness change: smoke suite only` and `capabilities=["settings"]`; the only matrix entry was `e2e-suites (settings) / e2e (settings)`; every job green |
+| dependency review | PR #615 pins `lodash@4.17.20` (run 42104276858): `pnpm-lock.yaml » lodash@4.17.20 – Command Injection in lodash (high severity)` → `##[error]Dependency review detected vulnerable packages.`; `dependency-review` failed and `ci-required` ended red |
+| nightly dispatch | after merge: `gh workflow run nightly.yml --ref main`; recorded on #604 when it completes |
+
+The PR's own run is the SHARED proof: the new kernel test makes `changes`
+resolve every suite, and the matrix runs all six. Both scratch PRs are closed
+unmerged and their branches deleted; `main`'s lockfile is untouched.
