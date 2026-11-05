@@ -339,6 +339,89 @@ jobs:
           if [ "$SUITES" != success ]; then
             echo "::error::e2e suites ended $SUITES"; exit 1; fi
 
+  # The one required check: the ruleset names `ci-required` and nothing
+  # else, so a job split never edits the ruleset again. It carries every
+  # gate this workflow runs and judges each result explicitly — the same
+  # semantics as the `e2e` job above, widened to all of them:
+  #   red   — `changes` did not succeed (its outputs are then gone; the
+  #           empty-handoff check below answers only a succeeded `changes`),
+  #   red   — `changes` succeeded but handed over no capabilities at all
+  #           (a successful run prints at least `[]`; an empty string is a
+  #           broken handoff, never "legitimately none"),
+  #   green — `changes` succeeded with `[]` and the matrix was skipped:
+  #           nothing owed, nothing run — the notice says so,
+  #   red   — capabilities `[]` but the matrix ended anything but skipped:
+  #           nothing was owed, so it must be skipped,
+  #   red   — capabilities non-empty and the matrix ended anything but
+  #           success,
+  #   red   — any of `lint-types`, `tests`, `frontend`, `build`,
+  #           `workflow-lint` ended anything but `success`. None of them
+  #           has a legitimate skip: a `skipped` result here is a broken
+  #           graph, not a decision, and a skipped required check passes.
+  #   (skip allowed) — `dependency-review` joins in Task 12; its
+  #           `skipped` on non-PR events is then the second owed skip,
+  #           beside `e2e-suites`'s skip when nothing is owed.
+  # `always()`: the hole this closes is a skipped job — a failed `needs`
+  # dependency used to leave everything downstream skipped, and a skipped
+  # required check passes. No permissions: this job only reads results.
+  # Both aggregators (`e2e` and this) run green during the switch: the
+  # ruleset still requires `e2e` until it no longer names it.
+  ci-required:
+    name: ci-required
+    needs: [changes, lint-types, tests, frontend, build, workflow-lint, e2e-suites]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 5
+    steps:
+      - name: Every gate passed, or only owed skips
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CAPABILITIES: ${{ needs.changes.outputs.capabilities }}
+          SUITES: ${{ needs.e2e-suites.result }}
+          LINT_TYPES: ${{ needs.lint-types.result }}
+          TESTS: ${{ needs.tests.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          BUILD: ${{ needs.build.result }}
+          WORKFLOW_LINT: ${{ needs.workflow-lint.result }}
+        run: |
+          red=""
+          note() { red="${red:+$red; }$1"; return 0; }
+
+          if [ "$CHANGES" != success ]; then
+            echo "::error::changes ended $CHANGES; a change owes suites it cannot name"
+            note "changes=$CHANGES"
+          elif [ -z "$CAPABILITIES" ]; then
+            echo "::error::changes succeeded but handed over no capabilities; broken, not none"
+            note "changes.capabilities=(empty)"
+          fi
+          if [ "$CAPABILITIES" = '[]' ]; then
+            if [ "$SUITES" != skipped ]; then
+              echo "::error::e2e suites ended $SUITES; nothing was owed, so the matrix must be skipped"
+              note "e2e-suites=$SUITES (nothing was owed, so it must be skipped)"
+            fi
+          elif [ "$SUITES" != success ]; then
+            echo "::error::e2e suites ended $SUITES"
+            note "e2e-suites=$SUITES"
+          fi
+          for gate in "lint-types=$LINT_TYPES" "tests=$TESTS" "frontend=$FRONTEND" "build=$BUILD" "workflow-lint=$WORKFLOW_LINT"; do
+            result=${gate#*=}
+            if [ "$result" != success ]; then
+              if [ "$result" = skipped ]; then
+                note "$gate (skipped is a failure: none of these jobs has a legitimate skip)"
+              else
+                note "$gate"
+              fi
+            fi
+          done
+          if [ -n "$red" ]; then
+            echo "::error::ci-required red; not at success: $red"
+            exit 1
+          fi
+          if [ "$CAPABILITIES" = '[]' ]; then
+            echo "::notice::no capability owed a browser suite; e2e-suites skipped because nothing was owed"
+          fi
+
   # The web unit suite — six files (four in `web/`, two in capability `web/`
   # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
   # has that hook, a drive-by contributor does not, so their frontend could
