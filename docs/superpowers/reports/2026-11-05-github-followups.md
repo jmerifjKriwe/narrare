@@ -1,0 +1,353 @@
+# GitHub platform follow-ups — wave report
+
+**Date:** 2026-11-05 · **Branch:** `ci/607-github-followups` · **Index:** #607
+**Plan:** `docs/superpowers/plans/2026-11-05-github-followups.md`
+**Design:** `docs/superpowers/specs/2026-11-05-github-followups-design.md`
+
+One section per task, appended when the task lands. Every number here was read
+from the command named next to it, not inferred.
+
+## Task 0 — baseline
+
+Branch renamed from `follow-up/607-github-platform` to
+`ci/607-github-followups`; the worktree fast-forwarded to `narrare/main`
+673306b3 ("Dependabot accepts the Actions cooldown again"). `git status
+--porcelain=v1` empty before the first edit. `narrare/main` moved to 427eaec
+(`chore(deps): bump pydantic`) during the wave; the branch rebases onto it
+before the push, and the baseline numbers below stay from 673306b3.
+
+`gh run list --workflow scorecard.yml --limit 5` — three green `main` pushes:
+
+| Run | Head | Result |
+|---|---|---|
+| 42088177236 | 673306b | success |
+| 42086972305 | b38f11e | success |
+| 42080606005 | ddd1b31 | success |
+
+`gh api …/code-scanning/analyses` — nine Scorecard analyses, three categories
+(`supply-chain/local`, `supply-chain/branch-protection`,
+`supply-chain/online-scm`) on `refs/heads/main` per run, newest 2026-11-05T18:51:24Z.
+
+`gh run list --workflow nightly.yml --limit 5` — one run, 42054755419, failed in
+0 seconds on branch `ci/gate-proof`. No `schedule` and no `workflow_dispatch` run
+of `nightly.yml` has ever completed.
+
+`gh api repos/jmerifjKriwe/narrare --jq .security_and_analysis`:
+
+```
+secret_scanning                       enabled
+secret_scanning_push_protection       enabled
+secret_scanning_non_provider_patterns disabled
+secret_scanning_validity_checks       disabled
+dependabot_security_updates           enabled
+```
+
+`rg -c "zizmor: ignore\[self-repository\]" .github/workflows` — 14
+(`ci.yml` 5, `nightly.yml` 6, `_lint.yml` 1, `_test.yml` 1, `_e2e.yml` 1).
+`rg -c "1\.7\.7" .github/workflows docs/architecture/github.md` — 16
+(`ci.yml` 6, `nightly.yml` 6, `_lint.yml` 1, `_test.yml` 1, `_e2e.yml` 1,
+`docs/architecture/github.md` 1).
+
+Cost baseline, `main` CI run 42088177589 (`673306b`): `frontend` 18:50:55 →
+18:51:47 (52 s), `build` 18:50:55 → 18:51:17 (22 s). Both include checkout and
+the full setup composite.
+
+## Task 1 — setup `python: false` (#606)
+
+The composite gained a `python` input (default `"true"`); `astral-sh/setup-uv`,
+`actions/setup-python` and the `uv sync --locked` step carry
+`if: inputs.python != 'false'`. `extractions/setup-just` stays ungated — every
+job but the nightly `audit` runs a `just` recipe, and one ungated install keeps
+the composite a single answer.
+
+Four call sites pass `with: { python: "false" }`: `frontend` and `build` in
+`ci.yml`, and `frontend` and `build` in `nightly.yml`.
+
+Gates, run 2026-11-05:
+
+```
+docker run … rhysd/actionlint:1.7.12 -color        → exit 0, no output
+uvx zizmor==1.32.0 .github/workflows .github/actions →
+  No findings to report. Good job! (15 ignored, 27 suppressed)   → exit 0
+```
+
+Wall clock: the baseline is `main` run 42088177589 (`frontend` 52 s, `build`
+22 s). On run 42104375844 (the branch at d39582ba), `frontend` and `build` pass
+`python: false`, and `setup-uv`, `setup-python` and `Sync Python dependencies`
+each end `outcome=skipped;conclusion=skipped` — the jobs still install the
+JavaScript toolchain and run `just test-frontend` / `just build`.
+
+## Task 2 — Playwright cache (#599)
+
+The browser cache keeps the exact key
+`${{ runner.os }}-playwright-${{ hashFiles('uv.lock') }}` and gains
+`restore-keys: ${{ runner.os }}-playwright-`. The comment above it was wrong
+after the change ("a stale browser can never match a new lock") and now says
+what happens: a restore may hand back the previous browser, `playwright install`
+adds the one the new lock names, and a Playwright bump still saves under a new
+key instead of overwriting the old one.
+
+Gate, run 2026-11-05:
+
+```
+docker run … rhysd/actionlint:1.7.12 -color → exit 0, no output
+```
+
+The cache-step proof is the PR's e2e run; recorded in the proof section.
+
+## Task 3 — Postgres digest (#603)
+
+`pgvector/pgvector:pg17` resolves to the index digest
+`sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8`
+(`docker buildx imagetools inspect`, tag last updated 2026-10-31). All four
+service blocks now pin it with `# pg17` as the name: `_test.yml`, `_e2e.yml`,
+and both services in `docker-compose.dev.yml`.
+
+Gates, run 2026-11-05:
+
+```
+docker compose -f docker-compose.dev.yml config --quiet   → exit 0
+docker pull pgvector/pgvector@sha256:7d0a4146…            → exit 0
+docker run … rhysd/actionlint:1.7.12 -color               → exit 0
+rg -n "pgvector/pgvector" .github/workflows docker-compose.dev.yml
+  → four lines, one digest
+```
+
+The running dev services were not restarted: port 5433 is held by the shared
+`narrare_v2_test` container from the other worktrees, so starting this compose
+project would collide. `docker compose config` plus the pull prove the pin
+resolves, and the PR's `tests` and e2e jobs start the pinned image for real.
+
+## Task 4 — PGDG retry (#610)
+
+The key fetch gains `--retry 5 --retry-all-errors --retry-delay 2`; `--fail`
+stays, so a 404 still fails. The comment names the failure it answers (run
+42088177589, `curl: (55) OpenSSL SSL_read: unexpected eof while reading`, on
+`ubuntu-26.04`, passed on rerun).
+
+Codename premise, probed 2026-11-05:
+
+```
+noble    200
+resolute 200
+plucky   404
+questing 404
+```
+
+`resolute-pgdg` exists, so the moving codename is not the gap; the TLS EOF was.
+`plucky`/`questing` have no PGDG suite and no runner image here uses them —
+recorded, not fixed.
+
+Gate: `docker run … rhysd/actionlint:1.7.12 -color` → exit 0.
+
+## Task 5 — dev audit (#597)
+
+`nightly.yml`'s `audit` job now exports the full locked set (`uv export
+--locked`, no `--no-dev`) and runs `pnpm audit --audit-level high` without
+`--prod`. No second job; the package name in the report says whether a finding
+is dev.
+
+Green on today's lock, probed 2026-11-05 before the edit:
+
+```
+uv export --locked --format requirements-txt --output-file /tmp/req-all.txt
+  → 1030 requirements (723 with --no-dev)
+uvx pip-audit==2.10.1 --strict -r /tmp/req-all.txt   → No known vulnerabilities found
+pnpm audit --audit-level high                        → No known vulnerabilities found
+```
+
+Two comments that became false were corrected: `ci.yml`'s `dependency-review`
+step (dev deps are no longer "otherwise uncovered") and the map's audit
+paragraph (dev dependencies are covered now).
+
+Gates: actionlint exit 0; zizmor exit 0 (`No findings to report`).
+
+## Task 6 — tool pins bumped
+
+actionlint 1.7.7 → **1.7.12**, pinned by the index digest
+`sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667`
+(`docker buildx imagetools inspect` and Docker Hub's tag API agree); zizmor
+1.30.1 → **1.32.0**. All 16 `1.7.7` mentions became `1.7.12`; the 14
+`zizmor: ignore[self-repository]` comments stay, because 1.7.12 still rejects
+`$/`.
+
+Probes before the edit (2026-11-05):
+
+```
+docker run … rhysd/actionlint:1.7.12 -color            → exit 0, no output
+uvx zizmor==1.30.1 …                                   → No findings (15 ignored, 25 suppressed)
+uvx zizmor==1.32.0 …                                   → No findings (15 ignored, 25 suppressed)
+  15 raw findings under --no-ignores on both; the 27 → 25 step came from the
+  digest commit (97b6af2c), not from the version bump.
+```
+
+Gates after: actionlint exit 0; zizmor 1.32.0 exit 0 (`No findings to
+report. Good job!`). `rg "1\.7\.7|version: 1\.30\.1" .github/workflows
+docs/architecture/github.md` → no match (the plan's red-proof instruction still
+quotes `1.30.1` on purpose).
+
+## Task 7 — monthly pin check (#598)
+
+`scripts/check_pins.py` (stdlib, 3.10-compatible) reads six values from the
+files that carry them — actionlint's version comment and image digest,
+zizmor's `version:` input, the Codecov CLI, `pip-audit`, the Postgres digest —
+and asks `gh api …/releases/latest` and Docker Hub's tag API for the upstream.
+A pin it cannot read, a disagreeing copy, or an upstream it cannot reach exits
+2; it can never say "current" without asking. `--json` prints
+`{"behind": [...], "report": "<table>"}`; `--tree` reads without the network.
+
+`app/kernel/tests/test_check_pins.py`: thirteen tests, hermetic. They cover the
+live tree (all six values read; the two Codecov copies and four pgvector
+digests must appear exactly twice and four times, per file, and agree), a
+missing pattern, a missing file, disagreeing copies, a lost site, a duplicate
+that cannot mask a lost site, a commented digest that does not satisfy a pin,
+the version compare with `v` prefixes, a changed digest, and the report naming
+only behind pins.
+
+`pins.yml`: monthly (1st, 08:23 UTC) and dispatch; `contents: read` +
+`issues: write`; one `ci/tool-pins` issue, opened/commented/closed exactly like
+`nightly-result` does for `ci/nightly`. A failed check stops before the issue
+step, so it cannot close an issue it did not read.
+
+Red/green, 2026-11-05:
+
+```
+uv run python -m scripts.check_pins --markdown        → six rows, all current
+temporary: zizmor version set back to 1.30.1
+  → | zizmor | 1.30.1 | 1.32.0 | **behind** | … |      (reverted)
+temporary: the second compose service set back to `:pg17`
+  → check_pins: pgvector: expected 2 match(es) in docker-compose.dev.yml, found 1 (reverted)
+temporary: active image on `:pg17`, old digest left in the trailing comment
+  → check_pins: pgvector: expected 1 match(es) in .github/workflows/_test.yml, found 0 (reverted)
+temporary: docker-compose.dev.yml renamed away
+  → check_pins: pgvector: cannot read docker-compose.dev.yml: [Errno 2] …   → exit 2 (restored)
+uv run python -m scripts.check_pins --tree            → exit 0, six names
+uv run pytest app/kernel/tests/test_check_pins.py     → 13 passed
+uv run ruff check scripts … / ruff format --check     → clean
+uv run pyright scripts/check_pins.py                  → 0 errors
+actionlint 1.7.12 / zizmor 1.32.0                     → exit 0, no findings
+```
+
+Deviation: the module and its test landed in one edit, so the failing-first run
+was captured by removing the module again (`ImportError: cannot import name
+'check_pins'`) rather than before writing it. The first run with both files
+also found a real defect — the digest patterns captured the bare hex without
+`sha256:`, which the tree test caught — fixed before the commit. The review
+found a second one: a pin written in several places passed when one site was
+deleted, so every pin now carries its exact count and a lost site exits 2.
+
+The workflow's own dispatch is proved after the push (Task 10).
+
+## Task 8 — one copy of the verdicts (#605)
+
+The ten-row verdict table left `docs/architecture/github.md`; the section now
+says the job runs `if: always()` and judges each result, and points at the
+`ci-required` job comment in `ci.yml` as the one copy. The comment was read
+before deleting the table and still states every verdict: `changes` red or an
+empty handoff, `[]` + skipped matrix green, `[]` + anything else red,
+non-empty + anything but success red, the five blocking jobs with no
+legitimate skip, and dependency-review owed on a PR and skippable elsewhere.
+
+```
+rg -n "legitimate skip|owed skip" docs/architecture/github.md .github/workflows/ci.yml
+  → ci.yml only (239, 244, 258, 296, 304; 258 is a step name that also matches)
+```
+
+## Task 9 — the three records (#596, #600, #602)
+
+PATCH probe, 2026-11-05 (coordinator):
+
+```
+gh api -X PATCH repos/jmerifjKriwe/narrare --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning_non_provider_patterns":{"status":"enabled"},
+ "secret_scanning_validity_checks":{"status":"enabled"}}}
+JSON
+  → 200, full repository object
+gh api repos/jmerifjKriwe/narrare --jq .security_and_analysis
+  → non_provider_patterns: disabled, validity_checks: disabled
+```
+
+GitHub accepts the request and ignores both fields, exactly as #596 recorded.
+The settings row now says why: the repository is public and user-owned, both
+features are Secret Protection features for organisation-owned repositories on
+Team/Enterprise, and no setting here can turn them on. Trigger recorded: the
+repository moves under such an organisation, or GitHub makes the features
+repository-scoped.
+
+#600: the Scorecard blind spot gained its re-open condition — GitHub adds a
+ruleset event, or `main` moves back to classic protection.
+
+#602: the `$`/ section was brought to 1.7.12 in Task 6 (actionlint's current
+release, `#732` open); the 14 suppressions stay.
+
+```
+rg "Re-applying the settings PATCH|semver-major|not covered here|skips dev deps"
+  docs/architecture/github.md → no match
+```
+
+## Review findings and fixes
+
+One review pass over `narrare/main...HEAD` on 2026-11-05: two majors, four
+minors, six nits, all confirmed and fixed before the push.
+
+| Finding | Fix |
+|---|---|
+| `read_pins` passed a multi-site pin when one site was deleted or reformatted — a service back on a mutable tag read as "current" | every pin carries its exact count (4 pgvector blocks, 2 Codecov copies); a lost site is `PinError`. Proved: set the second compose service back to `:pg17` → exit 2, `expected 4 match(es), found 3` |
+| #604 had no closer and the report's Task 10 was an empty heading while three passages pointed at a "proof section" | filled after the push (Task 10), and #604 closes on its proof comment |
+| `_test.yml` still said the Codecov CLI bump was manual and invisible | the comment now names the monthly `Tool pins` check |
+| the actionlint comment claimed "Same ref the baseline ran" after the pin moved | rewritten: the tag is a comment, the digest is the pin |
+| the report and commit b95c96b3 blamed the version bump for zizmor's 27 → 25 suppressed count | corrected: both versions report 25 on that tree; the digest commit (97b6af2c) moved it |
+| nine of ten commits carried no `Assisted-by` trailer | added to every commit before the push |
+| the Playwright comment said "a hit skips the chromium download" | now distinguishes an exact-key hit from a restore-key hit |
+| Task 3 skipped the plan's service start | reason recorded: 5433 is held by the shared test container |
+| Task 8's line numbers and the scoped `rg` claim | corrected |
+| the plan's signatures and "five names" differ from the delivered script | recorded under Deviations |
+
+## Deviations
+
+- The implementer dispatch could not run: `zai-coding-plan/glm-5.3-flash` had
+  hit its 5-hour limit. The coordinator implemented, and the reviewer ran as a
+  separate dispatch on `opencode-go/deepseek-v4.1-flash` — the pinned reviewer,
+  and the same model as the coordinator.
+- The module was written before its test; the failing-first run was captured
+  afterwards by removing the module (Task 7).
+- `check_pins` takes the whole state map (`latest(pin, current)`,
+  `report(states, upstreams)`, `behind(states, upstreams)`) instead of the
+  plan's one-argument forms: the actionlint digest pin needs the version pin's
+  tag. The plan's five pins are six rows, because actionlint is checked on both
+  its version comment and its digest.
+- No separate "tag moved" wording or test: `compare` covers the digest, and the
+  table's `**behind**` cell is the wording.
+- Task 3 did not start the compose services (see above).
+- Commits stayed local; nothing was pushed and no PR was opened before this
+  review pass.
+
+## Sourcery review findings and fixes
+
+The bot's ten findings on PR #613 (2026-11-05), triaged:
+
+| Finding | Disposition |
+|---|---|
+| a new check script needs product-owner approval | approved in the planning session ("Beides bauen"); the three governance statements are recorded on the PR |
+| the checker exceeds the secrets/licences script scope | the same approval covers it; it is the second check script, inside the ≤3 budget |
+| a commented digest satisfies a pin | every pattern now anchors on the active YAML key (`image:`, `run:`, `version:`); a test proves a digest left in a comment does not count |
+| a duplicate in one file replaces a lost site | each file carries its own expected count; a duplicate cannot mask a missing site |
+| composite-action pins stay unmonitored | a second Dependabot entry with `directories: ["/.github/actions/*"]` (dependabot-core#6949) |
+| a dispatch from a feature branch skews the `main` alert | checkout uses `github.event.repository.default_branch` |
+| a closed alert stays closed | `gh issue reopen --comment`, not `gh issue comment` |
+| duplicate open pin issues | every open one is closed when current; extras are closed when behind |
+| a missing pin file crashes the CLI | `OSError` becomes a `PinError`, exit 2, with the pin and file named |
+| the four proofs were unfinished | recorded in Task 10 after the push |
+
+## Task 10 — the four proofs (#604)
+
+| Proof | Evidence |
+|---|---|
+| Scorecard | three green `main` pushes (42080606005, 42086972305, 42088177236); code scanning holds three `Scorecard` analyses per run on `refs/heads/main` (`supply-chain/local`, `supply-chain/branch-protection`, `supply-chain/online-scm`), newest 2026-11-05T18:51:24Z |
+| HARNESS | PR #614 (one comment line under `.github/workflows/_test.yml`, run 42101522854): `changes` logged `##[notice]harness change: smoke suite only` and `capabilities=["settings"]`; the only matrix entry was `e2e-suites (settings) / e2e (settings)`; every job green |
+| dependency review | PR #615 pins `lodash@4.17.20` (run 42104276858): `pnpm-lock.yaml » lodash@4.17.20 – Command Injection in lodash (high severity)` → `##[error]Dependency review detected vulnerable packages.`; `dependency-review` failed and `ci-required` ended red |
+| nightly dispatch | after merge: `gh workflow run nightly.yml --ref main`; recorded on #604 when it completes |
+
+The PR's own run is the SHARED proof: the new kernel test makes `changes`
+resolve every suite, and the matrix runs all six. Both scratch PRs are closed
+unmerged and their branches deleted; `main`'s lockfile is untouched.

@@ -51,7 +51,7 @@ jobs:
       # main with uv.lock still at 0.1.0. Enforced inside the composite.
       #
       # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
-      # pinned actionlint image (1.7.7) does not know it yet — the internal
+      # pinned actionlint image (1.7.12) does not know it yet — the internal
       # reference is still this commit's tree, so nothing mutable is being
       # trusted. Flip to `$/` when the actionlint pin is bumped past the
       # version that understands `$/`, or when `sha_pinning_required`

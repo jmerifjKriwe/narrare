@@ -77,3 +77,26 @@ updates:
         update-types: ["minor", "patch"]
       actions-major:
         update-types: ["major"]
+
+  # The composite action's own `uses:` pins. The updater reads
+  # `.github/workflows/**` only, so a `directory: "/"` entry never sees
+  # `.github/actions/setup/action.yml` (dependabot-core#6949); the `directories`
+  # glob names the action tree explicitly. Same cooldown, grouping and commit
+  # shape as the workflow entry above.
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/.github/actions/*"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels: ["dependencies", "github-actions"]
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
+      actions-major:
+        update-types: ["major"]

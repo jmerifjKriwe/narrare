@@ -16,6 +16,7 @@ way it is lives in the design spec, not here.
 | `release-please.yml` | `push: main`, `workflow_dispatch` | `release-please` | no |
 | `codeql.yml` | `pull_request` (code paths), `push: main` (code paths), `schedule` (weekly, Sunday 06:07 UTC), `workflow_dispatch` | `analyze` (matrix: `python`, `javascript-typescript`, `actions`) | no — advisory |
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
+| `pins.yml` | `schedule` (monthly, 1st 08:23 UTC), `workflow_dispatch` | `check` | no — advisory; reports through the [`ci/tool-pins` issue](#dependabot) |
 | `publish.yml` | *(dormant)* | image build, attest, SBOM, release assets | no |
 
 `publish.yml` is dormant: **it does not exist on the tree** and nothing runs
@@ -28,54 +29,48 @@ push. (Shape and its permissions are specified in the design spec,
 (`on: workflow_call` only): each defines one job (`lint-types`, `tests`,
 `e2e (<capability>)`) and runs only when called — `ci.yml` and `nightly.yml`
 call them with the same job names, so aggregators never had to rename a
-gate. The Postgres service and the Playwright cache live inside the
-reusables; the composite in `.github/actions/setup` carries uv, Python, the
-locked sync, pnpm, Node and just, one place for the versions.
+gate. The Postgres service (pinned by digest, `pg17`) and the Playwright
+cache live inside the reusables; the composite in `.github/actions/setup`
+carries uv, Python, the locked sync, pnpm, Node and just, one place for the
+versions — with `python: false` and `node: false` for the jobs that need
+only the other half (`frontend` and `build` take no Python).
 
 Two named, deliberate shapes a reader should not "fix":
 
 - **The `./` vs `$/` trade.** Every internal `uses:` is written
   `./.github/...` with a `zizmor: ignore[self-repository]` comment. zizmor
-  prefers the `$/{...}` self-repository template, but the actionlint image
-  the `workflow-lint` job pins (1.7.7, by digest) does not know that
-  syntax — and this gate needs both probes green together. Flip to `$/`
-  when either trigger fires:
-  1. the actionlint image pin is bumped past the version that understands
-     `$/`, or
+  prefers the `$/{...}` self-repository template, but actionlint has no
+  release that knows that syntax — 1.7.12, the current release (2026-11-05),
+  still rejects it, and rhysd/actionlint#732 is open. This gate needs both
+  probes green together, so the suppressions stay. Flip to `$/` when either
+  trigger fires:
+  1. an actionlint release ships `$/` support and the pin is bumped to it, or
   2. `sha_pinning_required` (see settings below) rejects the `./`
      self-reference.
   The trade is commented at every site (`ci.yml`, `nightly.yml`,
   `_lint.yml`, `_test.yml`, `_e2e.yml`).
 - **Pin hygiene.** Actions are pinned by commit SHA with a trailing release
-  comment; Dependabot's weekly `github-actions` group keeps the pins
-  current. Four versions Dependabot cannot see are pinned as inputs or
-  inline and bump manually: the actionlint digest, zizmor's
-  `version: 1.30.1`, the Codecov CLI (`version: v11.3.2`) and
-  `pip-audit==2.10.1` (the `uvx` invocation in nightly's audit job).
-  Dependabot's updater scans workflow files only, so it may not bump the
-  `uses:` pins inside a composite action's `action.yml` — verify after the
-  first composite lands (`.github/actions/setup`) that its nested pins move
-  with the weekly group; if they do not, they join this list.
+  comment; Dependabot's weekly `github-actions` group keeps them current.
+  Six values it cannot see are read from the tree by
+  `scripts/check_pins.py` and reported monthly by `pins.yml` in one
+  `ci/tool-pins` issue: actionlint's version comment **and** its image
+  digest, zizmor's `version:` input, the Codecov CLI, `pip-audit`, and the
+  Postgres image digest. The check is advisory; a pin it cannot read or an
+  upstream it cannot reach reddens the run rather than passing.
+  Dependabot's `github-actions` updater reads `.github/workflows/**` only
+  (dependabot-core#6949), so a second entry names `/.github/actions/*` and
+  keeps the composite's five pins current too.
 
 ## `ci-required` — the required-check aggregator
 
 The ruleset requires `ci-required` and nothing else, so a job split never
 edits the ruleset. The job runs `if: always()` (a skipped required check
-passes — the hole this closes) and judges each result explicitly. The `jobs:` comment in `ci.yml` states the same conditions; this table
-summarises them:
+passes — the hole this closes) and judges each result explicitly against the
+`needs` list it carries.
 
-| Result handed to a gate | Verdict | Why |
-| --- | --- | --- |
-| `changes` succeeded, capabilities `[]`, `e2e-suites` **skipped** | green | nothing was owed; the skip is the owed one |
-| `dependency-review` **skipped** on a push or dispatch | green | the dependency review is a pull-request duty; this is the second legitimate skip |
-| all gates `success` (dependency-review `success` on a PR) | green | |
-| `changes` ended anything but `success` | red | it cannot name the owed suites |
-| `changes` succeeded but handed over an **empty** capabilities string | red | a successful run prints at least `[]`; empty is a broken handoff, never "legitimately none" |
-| capabilities `[]` but `e2e-suites` ended anything but **skipped** | red | nothing was owed, so it must be skipped |
-| capabilities non-empty and `e2e-suites` ended anything but `success` | red | the suites were owed |
-| `lint-types`, `tests`, `frontend`, `build` or `workflow-lint` ended anything but `success` | red | none of these has a legitimate skip — a `skipped` result is a broken graph, and a skipped required check passes |
-| `dependency-review` on a pull request ended anything but `success` | red | a pull request owes the review |
-| `dependency-review` on a push or dispatch ended anything but `skipped` or `success` | red | only a pull request runs it, so only `success` and `skipped` are legitimate outside one |
+The verdicts — which skipped gate is owed, which result is red, and why — are
+stated once, in the `ci-required` job comment in `ci.yml`. This page does not
+repeat them: a second copy is a second thing to drift.
 
 ## `scripts/affected.py` — who owes which suite
 
@@ -119,7 +114,7 @@ never runs fewer suites than the smoke.
 | `delete_branch_on_merge` | `false` |
 | `allow_auto_merge` | `false` |
 | "Allow GitHub Actions to create and approve pull requests" | off — why the release PR is authored by a GitHub App token and needs a human approval |
-| Secret scanning: `secret_scanning_non_provider_patterns`, `secret_scanning_validity_checks` | **`disabled`** — the settings PATCH that turns these on did not take during the 2026-11-05 rollout and is the open item on this page; everything else in that rollout did land. The limitation is live, not a documented intent: non-provider patterns and validity checks are not running. Re-applying the settings PATCH is the fix |
+| Secret scanning: `secret_scanning_non_provider_patterns`, `secret_scanning_validity_checks` | **`disabled`**, and not by choice. The repository is public and user-owned; GitHub offers both as Secret Protection features to organisation-owned repositories on Team/Enterprise. A repository PATCH answers 200 and leaves both `disabled` (re-probed 2026-11-05, issue #596), so no setting on this repository can turn them on, and non-provider patterns and validity checks are not running. Trigger: the repository moves under an organisation with Secret Protection, or GitHub makes the features repository-scoped |
 
 ## Sourcery — the review bot
 
@@ -190,7 +185,8 @@ protection rules only**. `main` is protected by a ruleset, and rulesets
 have no event — so a ruleset edit re-grades at the next push or weekly run,
 not on the edit itself. The trigger stays as the listener for classic
 protection settings; do not read its absence on a ruleset edit as silence
-meaning anything.
+meaning anything. Re-open the finding when GitHub adds a ruleset event, or
+when `main` moves back to classic protection.
 
 ## The nightly and its audit
 
@@ -200,15 +196,14 @@ meaning anything.
   no runner minutes. Manual dispatch always proceeds — whoever ran it
   asked for a sweep. It also resolves the full suite list from
   `scripts/affected.py --all --json`; the matrix is derived, never static.
-- `audit` is the lockfile sweep: `uv export --locked --no-dev` writes the
-  runtime requirements — judged directly by `uvx pip-audit==2.10.1
-  --strict` — and `pnpm audit --prod --audit-level high` checks the
-  JavaScript side. It
-  **reddens the nightly but blocks no PR**: a CVE published against an
-  existing prod dependency has no PR to ride in on, which is exactly why
-  the sweep exists. Dev dependencies are *not* covered here — they are
-  reviewed on PRs by `dependency-review` (high severity + the
-  AGPL/GPL deny list), so neither surface is unjudged.
+- `audit` is the lockfile sweep: `uv export --locked` writes every locked
+  requirement, runtime and dev, judged directly by `uvx pip-audit==2.10.1
+  --strict`; `pnpm audit --audit-level high` checks the JavaScript side, dev
+  dependencies included. It **reddens the nightly but blocks no PR**: a CVE
+  published against an existing dependency has no PR to ride in on, which is
+  exactly why the sweep exists. The package name in the report says which side
+  a finding is on. A PR's change is judged earlier by `dependency-review`
+  (high severity + the AGPL/GPL deny list).
 - `nightly-result` keeps **one** open issue labeled `ci/nightly`: opened
   on the first failure, a comment per further failure, closed the morning
   a nightly goes green. Scheduled runs only — a manual dispatch reports
@@ -220,7 +215,7 @@ meaning anything.
 | --- | --- | --- | --- | --- |
 | `uv` | monthly | minor/patch, major | `default-days: 7`, majors 30 | `uv`, never `pip` — the pip updater cannot touch `uv.lock` |
 | `npm` | monthly | minor/patch, major | `default-days: 7`, majors 30 | entry at `/`, not `/web`, so `pnpm-lock.yaml` moves with the manifest |
-| `github-actions` | weekly | minor/patch, major | `default-days: 3` — the Actions updater supports `default-days` only, so there is no 14-day major hold | weekly is what keeps the SHA pins current |
+| `github-actions` | weekly | minor/patch, major | `default-days: 3` — the Actions updater supports `default-days` only, so there is no 14-day major hold | two entries — workflows (`/`) and the composite tree (`/.github/actions/*`); weekly is what keeps the SHA pins current |
 
 - No `docker` and no `devcontainers` entry: a `docker` entry returns with a
   `Dockerfile`, a `devcontainers` entry with a dev container. Empty entries
@@ -234,3 +229,6 @@ meaning anything.
   setup comes from grouping (one PR per group, not per bump), not from
   testing less — dependency paths stay `SHARED` in `affected.py` and owe
   every suite.
+- The pins Dependabot cannot follow are not left to memory: `pins.yml`
+  checks them monthly and keeps one open `ci/tool-pins` issue while any is
+  behind (see pin hygiene above).
