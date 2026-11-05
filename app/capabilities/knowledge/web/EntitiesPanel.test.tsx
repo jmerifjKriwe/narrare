@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -63,17 +63,16 @@ describe("EntitiesPanel filters", () => {
     await screen.findByText("Aster");
 
     entities = [entity("Harbor", "location", ["coast"])];
-    const callsBeforeRefresh = api.GET.mock.calls.length;
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", "novel"] });
     });
 
-    await waitFor(() => expect((filter as HTMLSelectElement).value).toBe(""));
-    await waitFor(() => expect((tagFilter as HTMLSelectElement).value).toBe(""));
-    await waitFor(() => expect(api.GET.mock.calls.slice(callsBeforeRefresh).some(([, options]) => {
-      const query = (options as { params?: { query?: { type?: string; tag?: string } } })?.params?.query;
-      return !query?.type && !query?.tag;
-    })).toBe(true));
+    // The recovery is judged on the list, because that is the only place the
+    // defect was visible: a select whose value matches no option reads back
+    // as "" and displays its first option, so the stale state never shows in
+    // the DOM. Harbor proves both filters fell away — either one left
+    // standing would still narrow it out.
     expect(await screen.findByText("Harbor")).toBeTruthy();
+    expect(screen.queryByText("No results")).toBeNull();
   });
 });
