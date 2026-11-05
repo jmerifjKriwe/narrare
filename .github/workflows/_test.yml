@@ -1,0 +1,130 @@
+# Reusable test gate: the single definition of the Python suite with its
+# Postgres service, called as `./.github/workflows/_test.yml` from ci.yml
+# and nightly.yml, which were two copies of the same job. This file
+# declares no trigger of its own (`on: workflow_call`): it does nothing
+# until called.
+
+on:
+  workflow_call:
+    inputs:
+      coverage:
+        description: >-
+          Run `just test-cov` and, on a main push only, upload coverage.xml
+          and junit.xml to Codecov. Default: plain `just test`, no uploads.
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        description: >-
+          Codecov upload token. Used only by the coverage uploads; passed
+          explicitly by the caller, never through inherit-all-secrets.
+        required: false
+
+# Actions are pinned by commit SHA and name their release in a trailing
+# comment, like every other workflow here (see ci.yml's header comment).
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: narrare
+          POSTGRES_PASSWORD: narrare
+          POSTGRES_DB: narrare
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U narrare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      # No Node here: this job runs only Python-side steps, so the composite
+      # skips pnpm and Node entirely (`node: "false"`).
+      #
+      # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
+      # pinned actionlint image (1.7.7) does not know it yet — the two gate
+      # probes must pass together. Flip to `$/` when the actionlint pin is
+      # bumped past the version that understands `$/`, or when
+      # `sha_pinning_required` (Task 15) rejects the `./` reference.
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
+        with:
+          node: "false"
+      # The round-trip gate needs a pg_dump matching the service's major
+      # version; noble's archive ships client 16 only, so the PGDG repo is
+      # added first (this also survives ubuntu-latest moving to 26.04).
+      # The composite does not carry this: frontend and build owe no
+      # database client, and the e2e jobs do not run pg_dump either.
+      - run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
+      # One suite, run once. A PR keeps `just test`, so nothing instruments a
+      # PR; the covered recipe below replaces the plain one on a main push,
+      # where the Codecov dashboard expects its report.
+      - name: Test
+        if: ${{ !inputs.coverage }}
+        run: just test
+      - name: Tests with coverage
+        if: ${{ inputs.coverage }}
+        run: just test-cov
+      # The Codecov uploads are a `main`-push-only affair keyed on
+      # `coverage`, and `!cancelled()` on both: a report is worth uploading
+      # even when a test failed, and a report that stays away is worse than
+      # a red one. A bare `if:` carries `success()`, so the coverage upload
+      # skipped itself on every failing `main` push: 0a468e49 reached
+      # Codecov as a commit with no report at all (`state: pending`,
+      # `totals: null`), and the dashboard kept showing the previous
+      # merge — the failing run is exactly the one whose coverage matters.
+      # `always()` would be wrong in the other direction: it also uploads
+      # from a run `concurrency` cancelled mid-suite, which is partial by
+      # construction. A hard crash that leaves no `coverage.xml` still
+      # fails the upload step, and should: on a green run that is a real
+      # defect. `github.event_name`/`github.ref` are the caller's event:
+      # inside a reusable workflow the `github` context is preserved.
+      #
+      # `version` pins the CLI the action downloads, which is unchecked by
+      # default: without it every run pulls `cli.codecov.io/latest` —
+      # v11.3.2 when this line was written — so an upstream release would
+      # land in this job unreviewed. Dependabot follows the action's SHA
+      # and cannot see this input: the bump is manual.
+      #
+      # `fail_ci_if_error` on the coverage upload only. The report is what
+      # the dashboard reads, so a run that could not deliver it says so
+      # instead of going green with nothing to show — that silence is what
+      # left the dashboard on an older merge. It cannot gate anything:
+      # both uploads run only on a `main` push, so `tests` blocks a merge
+      # on a red suite and never on Codecov. The junit upload keeps the
+      # default, because test analytics failing should not red an
+      # otherwise green suite.
+      - name: Upload coverage reports to Codecov
+        if: ${{ !cancelled() && inputs.coverage && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          version: v11.3.2
+          fail_ci_if_error: true
+      # A second run of the same action with `report_type`, not Codecov's
+      # separate test-results-action: that one is deprecated in favor of
+      # this (it says so on every run) and would be the only Node-20
+      # action left in this file.
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && inputs.coverage && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
+          version: v11.3.2
+          report_type: test_results

@@ -127,100 +127,25 @@ jobs:
           echo "capabilities=$capabilities"
           echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
 
+  # The Python suite — one definition for every workflow: `_test.yml`.
+  # Same job name, so `ci-required` still names `tests`; the check it
+  # reports is `tests / tests`. Coverage is a main-push concern — the
+  # Codecov dashboard keys on those runs — and `CODECOV_TOKEN` is passed
+  # explicitly, never via `secrets: inherit` (spec: reusable workflows).
+  #
+  # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
+  # actionlint image (1.7.7) does not know the self-repository syntax
+  # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
+  # the version that understands `$/`, or when `sha_pinning_required`
+  # rejects the `./` reference.
   tests:
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/_test.yml # zizmor: ignore[self-repository]
     permissions:
       contents: read
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: narrare
-          POSTGRES_PASSWORD: narrare
-          POSTGRES_DB: narrare
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U narrare"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # Nothing below pushes; the token has no work to persist.
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.14"
-      - run: uv sync --locked
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-        with:
-          just-version: "1.58.0"
-      # The round-trip gate needs a pg_dump matching the service's major
-      # version; noble's archive ships client 16 only, so the PGDG repo is
-      # added first (this also survives ubuntu-latest moving to 26.04).
-      - run: |
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
-      # One suite, run once. A PR keeps `just test`, so nothing instruments a
-      # PR; the covered recipe below replaces the plain one on a main push,
-      # where the Codecov dashboard expects its report.
-      - run: just test
-        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
-      - name: Tests with coverage
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: just test-cov
-      # `!cancelled()` on both uploads: a report is worth uploading even when a
-      # test failed, and a report that stays away is worse than a red one. A
-      # bare `if:` carries `success()`, so the coverage upload skipped itself on
-      # every failing `main` push: 0a468e49 reached Codecov as a commit with no
-      # report at all (`state: pending`, `totals: null`), and the dashboard kept
-      # showing the previous merge — the failing run is exactly the one whose
-      # coverage matters. `always()` would be wrong in the other direction: it
-      # also uploads from a run `concurrency` cancelled mid-suite, which is
-      # partial by construction. A hard crash that leaves no `coverage.xml`
-      # still fails the upload step, and should: on a green run that is a real
-      # defect.
-      #
-      # `version` pins the CLI the action downloads, which is unchecked by
-      # default: without it every run pulls `cli.codecov.io/latest` — v11.3.2
-      # when this line was written — so an upstream release would land in this
-      # job unreviewed. Dependabot follows the action's SHA and cannot see this
-      # input: the bump is manual.
-      #
-      # `fail_ci_if_error` on the coverage upload only. The report is what the
-      # dashboard reads, so a run that could not deliver it says so instead of
-      # going green with nothing to show — that silence is what left the
-      # dashboard on an older merge. It cannot gate anything: both uploads run
-      # only on a `main` push, so `tests` blocks a merge on a red suite and
-      # never on Codecov. The junit upload keeps the default, because test
-      # analytics failing should not red an otherwise green suite.
-      - name: Upload coverage reports to Codecov
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.xml
-          version: v11.3.2
-          fail_ci_if_error: true
-      # A second run of the same action with `report_type`, not Codecov's
-      # separate test-results-action: that one is deprecated in favor of this
-      # (it says so on every run) and would be the only Node-20 action left in
-      # this file.
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: junit.xml
-          version: v11.3.2
-          report_type: test_results
+    with:
+      coverage: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # The suites the changes job named, one runner per capability, side by
   # side — writing is the slowest and becomes the wall clock. `fail-fast:
