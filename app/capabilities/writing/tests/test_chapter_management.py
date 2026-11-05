@@ -2,6 +2,7 @@
 transaction, and no survivor's "last written" moves — the book lost a
 chapter, no words were written (the novel's row is what advances, D8)."""
 
+import asyncio
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -11,8 +12,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from app.api.main import app
+from app.capabilities.writing.repository import ChapterRepository
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import ConsistencyFinding, EntitySuggestion
+from app.kernel.contracts.positions import lock_novel, next_chapter_position
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -149,6 +152,53 @@ async def test_delete_chapter_leaves_findings() -> None:
             {"novel_id": UUID(novel_id)},
         )
         assert findings == 1
+
+
+async def test_a_delete_holds_the_books_lock_against_an_append() -> None:
+    """An append must not allocate beside an uncommitted delete.
+
+    The race the lock forbids: A deletes a chapter and renumbers while
+    uncommitted; B, on its own connection, reads the committed max — 2 —
+    and takes 3; A commits its renumber to [0, 1] and the rail shows
+    [0, 1, 3], a hole no constraint catches, because nothing collided.
+    The book's row lock — the one every append already takes — is what
+    serialises the two: the delete holds it from its scoped load to its
+    commit, so B either waits for the renumber and reads the closed-up
+    max, or commits first and is renumbered with the survivors.
+
+    Session A here is the delete held open at that window: the scoped
+    load, the lock, the delete and the renumber through the flow's own
+    repository calls, with the commit — the one boundary where the race
+    happens — still ahead.
+    """
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+    novel, doomed = UUID(novel_id), UUID(chapters[1]["id"])
+
+    async with Session() as a:
+        repository = ChapterRepository(a, LOCAL_USER_ID)
+        chapter = await repository.get(doomed)
+        assert chapter is not None
+        await lock_novel(a, user_id=LOCAL_USER_ID, novel_id=novel)
+        await repository.delete(chapter)
+        survivors = await repository.list_for_novel(novel)
+        await repository.renumber(novel, [survivor.id for survivor in survivors])
+
+        # B allocates while A's renumber sits uncommitted
+        async with Session() as b:
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(
+                    next_chapter_position(b, user_id=LOCAL_USER_ID, novel_id=novel),
+                    timeout=0.5,
+                )
+
+        await a.commit()
+
+    async with Session() as b:
+        position = await next_chapter_position(b, user_id=LOCAL_USER_ID, novel_id=novel)
+    # the survivors committed at 0 and 1, so the next number is 2 — not 3,
+    # the hole a racing append would have taken from the stale max
+    assert position == 2
 
 
 async def test_delete_chapter_answers_404_for_a_foreign_chapter() -> None:

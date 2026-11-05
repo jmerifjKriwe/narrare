@@ -16,6 +16,7 @@ from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRea
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
+from app.kernel.contracts.positions import lock_novel
 from app.kernel.interchange import (
     ArchiveError,
     ArchiveTree,
@@ -309,18 +310,21 @@ class WritingService:
         """Delete one chapter and close the gap it leaves in the numbering.
 
         The delete, the survivors' renumber and the novel's timestamp bump
-        are one transaction, so the rail never shows a missing number. The
-        renumber moves a position, never a "last written" — ``renumber``
-        pins each survivor's ``updated_at`` to itself, and the novel's row
-        is the one that advances: the archive lost a chapter (D8). The
-        chapter's pending suggestions ride the foreign key's cascade;
-        findings are the novel's and stay. Raise NotFoundError for an
-        absent or unowned chapter.
+        are one transaction, so the rail never shows a missing number —
+        held under the book's row lock, the one every append takes: a
+        chapter created beside the delete either commits before the
+        survivors are read (and is renumbered with them) or waits and
+        allocates the number after the gap closed. The renumber moves a
+        position, never a "last written" — ``renumber`` pins each
+        survivor's ``updated_at`` to itself, and the novel's row is the
+        one that advances: the archive lost a chapter (D8). The chapter's
+        pending suggestions ride the foreign key's cascade; findings are
+        the novel's and stay. Raise NotFoundError for an absent or
+        unowned chapter.
         """
-        chapter = await self.chapters.get(chapter_id)
-        if chapter is None:
-            raise NotFoundError
+        chapter = await self.get_chapter(chapter_id)
         novel_id = chapter.novel_id
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
         await self.chapters.delete(chapter)
         survivors = await self.chapters.list_for_novel(novel_id)
         await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
