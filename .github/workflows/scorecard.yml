@@ -1,0 +1,87 @@
+name: Scorecard
+
+# OSSF Scorecard (spec §`scorecard.yml`): the supply-chain posture of this
+# repository itself — how the branch protection, the SHA pinning and the
+# token scopes this directory is responsible for grade out as a score.
+# It publishes the result publicly (`publish_results: true` — the repository
+# is public, which is what makes the published score and its OSSF badge
+# valid) and uploads the same SARIF to the Security tab via code scanning.
+#
+# Advisory by design — it names no context in `ci-required` — a red or a
+# dropping score here is a finding to triage, not a blocked merge.
+#
+# The `branch_protection_rule` trigger re-runs the analysis whenever a classic
+# protection rule changes, because branch protection is one of Scorecard's
+# heaviest-weighted checks: the score should react the day the setting
+# moves, not the next Sunday. It covers classic branch protection rules only —
+# this repository protects `main` with a ruleset, and GitHub offers no ruleset
+# event — so ruleset changes are graded by the weekly and push runs instead;
+# the trigger stays because the brief mandates it and it is the right listener
+# for the settings it does cover.
+
+on:
+  schedule:
+    # Weekly, Sunday 07:11 UTC — off the nightly's 03:17 slot and off
+    # CodeQL's 06:07 sweep: this whole directory of timed work should
+    # never bunch up on the same runner-hour.
+    - cron: "11 7 * * 0"
+  push:
+    branches: [main]
+    # No path filter: the score covers repository settings and the whole
+    # tree, not the files a commit touched, and the weekly cadence is
+    # coarse enough that per-commit runs are cheap.
+  branch_protection_rule:
+    # Classic protection rules only (see header): rulesets have no event.
+  workflow_dispatch:
+    # Manual dispatch never skips: whoever runs it asked for the grade.
+    # It must target `main` — the scorecard API rejects a publish from
+    # a non-default branch, so a dispatch against another ref fails.
+
+# A shared group without cancellation may still drop a run: GitHub cancels
+# the *pending* runs of a group when a newer one queues there, even with
+# `cancel-in-progress: false` — with the group shared and at most one running,
+# a burst of main pushes leaves the middle commit without a run.
+# That is accepted here, unlike in CodeQL, because the score is repo-level,
+# not per-SHA: the newest run re-grades the same repository, its settings and
+# its tree, so a superseded middle commit has nothing of its own to lose.
+# What the group buys is serialization — two analyses never publish at once.
+concurrency:
+  group: scorecard
+  cancel-in-progress: false
+
+permissions: {}
+
+# Actions are pinned by commit SHA and name their release in a trailing comment;
+# release-please.yml, which carries write tokens, has always done it this way.
+# A major tag is a mutable ref: its owners can move `v2` to any commit, and that
+# commit then runs with this workflow's token — no diff here, no review.
+# Dependabot's `github-actions` updates keep the pins current.
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # Each permission carries why, on its own line — the linter audits the
+      # grant, not the job comment above the block.
+      security-events: write # the job's own purpose: SARIF upload to code scanning
+      id-token: write # publish_results trades the PAT for a federated OIDC token
+      contents: read # checkout of the source being graded; nothing below pushes
+      actions: read # the stock scorecard grant, kept for the private-repo case (public analysis needs nothing); harmless here
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - name: Run Scorecard analysis
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # The repository is public, so the results may be published to the
+          # OSSF API — that is what makes the score and its badge real.
+          publish_results: true
+      - name: Upload Scorecard SARIF
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: results.sarif
