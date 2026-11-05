@@ -219,6 +219,7 @@ export function EntitiesPanel() {
         <div className="mt-2">
           <GridList
             label={t("knowledge.entitiesHeading")}
+            flush
             items={shown}
             getId={(entity) => entity.id}
             textOf={(entity) => entity.name}

@@ -17,6 +17,7 @@ import pytest
 from playwright.sync_api import Page, Route, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.workbench import new_chapter
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -46,7 +47,7 @@ def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:
     page.get_by_role("link", name="Der Nebel").click()
     expect(page.get_by_role("heading", name="Der Nebel")).to_be_visible()
 
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     editor = page.locator(".ProseMirror")
     editor.click()
     page.keyboard.type("Der Nebel kam von See.")
@@ -121,7 +122,7 @@ def test_back_button_restores_the_expanded_rail(page: Page, stack: Stack) -> Non
 
 def test_typed_text_survives_a_chapter_switch(page: Page, stack: Stack) -> None:
     _create_book(page, "Die Mole")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     editor = page.locator(".ProseMirror")
     editor.click()
     page.keyboard.type("Erster Satz am Kai.")
@@ -155,14 +156,14 @@ def test_typed_text_survives_a_chapter_switch(page: Page, stack: Stack) -> None:
 
 def test_the_latest_touched_chapter_opens_first(page: Page, stack: Stack) -> None:
     _create_book(page, "Deichgraf")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     editor = page.locator(".ProseMirror")
     editor.click()
     page.keyboard.type("Kalter Wind.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
     # The second chapter is not just created later — it is written in later.
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
     page.keyboard.type("Springflut.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
@@ -180,8 +181,8 @@ def test_back_button_walks_chapters_and_the_switch_flushes(page: Page, stack: St
     address, and the switch that left it flushed its body first — the saved
     row is what comes back, not a body kept in memory."""
     _create_book(page, "Die Kehre")
-    page.get_by_role("button", name="Neues Kapitel").click()
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
+    new_chapter(page)
     editor = page.locator(".ProseMirror")
     expect(editor).to_have_text("")
     editor.click()
@@ -220,11 +221,11 @@ def test_a_dead_chapter_param_degrades_to_the_last_touched_and_cleans_the_url(
     the last-touched chapter opens and the dead value leaves the address —
     by replace, so history never gains a step for the cleanup."""
     _create_book(page, "Das tote Vorzeichen")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
     page.keyboard.type("Kalter Wind.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
     page.keyboard.type("Springflut.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
@@ -256,11 +257,11 @@ def test_a_bare_arrival_opens_the_last_touched_chapter_and_writes_nothing(
     opens, and arrival writes no chapter param — the address never names
     the server's fallback choice, so a reload still proves it."""
     _create_book(page, "Die stille Adresse")
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
     page.keyboard.type("Kalter Wind.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
-    page.get_by_role("button", name="Neues Kapitel").click()
+    new_chapter(page)
     page.locator(".ProseMirror").click()
     page.keyboard.type("Springflut.")
     expect(page.get_by_text("Gespeichert")).to_be_visible()
@@ -482,8 +483,7 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
     chapter changes when a row is activated, not when it is walked past."""
     _create_book(page, "Das Verzeichnis")
     for _ in range(3):
-        page.get_by_role("button", name="Neues Kapitel").click()
-        expect(page).to_have_url(re.compile(r"chapter="))
+        new_chapter(page)
 
     rail = page.get_by_role("complementary")
     first = rail.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))
@@ -547,9 +547,10 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     one word typed, one word in the footer."""
     _create_book(page, "Das Zählwerk")
     for _ in range(4):
-        page.get_by_role("button", name="Neues Kapitel").click()
-        expect(page).to_have_url(re.compile(r"chapter="))
-    page.get_by_role("button", name=re.compile(r"^Kapitel 2\b")).click()
+        new_chapter(page)
+    second = page.get_by_role("button", name=re.compile(r"^Kapitel 2\b"))
+    second.click()
+    expect(second).to_have_attribute("aria-current", "true")
     address = re.search(r"chapter=([0-9a-f-]+)", page.url)
     assert address is not None, f"the selection never got an address: {page.url}"
     chapter_id = address.group(1)

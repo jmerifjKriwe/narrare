@@ -18,20 +18,20 @@ const MATRIX: Record<
   Record<(typeof BUTTON_SIZES)[number], string>
 > = {
   primary: {
-    md: "bg-primary text-primary-foreground hover:brightness-95 active:brightness-90 rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
-    sm: "bg-primary text-primary-foreground hover:brightness-95 active:brightness-90 rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
+    md: "bg-primary text-primary-foreground hover:brightness-95 active:brightness-90 rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
+    sm: "bg-primary text-primary-foreground hover:brightness-95 active:brightness-90 rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
   },
   secondary: {
-    md: "border border-border bg-card hover:bg-soft rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
-    sm: "border border-border bg-card hover:bg-soft rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
+    md: "border border-border bg-card hover:bg-soft rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
+    sm: "border border-border bg-card hover:bg-soft rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
   },
   ghost: {
-    md: "text-muted hover:bg-soft hover:text-foreground rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
-    sm: "text-muted hover:bg-soft hover:text-foreground rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
+    md: "text-muted hover:bg-soft hover:text-foreground rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
+    sm: "text-muted hover:bg-soft hover:text-foreground rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
   },
   icon: {
-    md: "grid place-items-center text-muted hover:bg-soft rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
-    sm: "grid place-items-center text-muted hover:bg-soft rounded-[var(--radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
+    md: "grid place-items-center text-muted hover:bg-soft rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-7 px-2.5 text-body",
+    sm: "grid place-items-center text-muted hover:bg-soft rounded-[var(--radius)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 h-6 px-2 text-label",
   },
 };
 

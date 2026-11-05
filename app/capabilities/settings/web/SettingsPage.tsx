@@ -36,7 +36,7 @@ export function SettingsPage() {
           <h2 id={`settings-cluster-${cluster.id}`} className="text-emph font-semibold">
             <Link
               to={cluster.path}
-              className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             >
               {t(cluster.titleKey)}
             </Link>

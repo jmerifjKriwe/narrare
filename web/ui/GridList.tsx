@@ -27,6 +27,7 @@ import { rowClass } from "./Row";
  */
 export function GridList<T>({
   label,
+  flush = false,
   items,
   getId,
   render,
@@ -35,6 +36,8 @@ export function GridList<T>({
   onSelect,
 }: {
   label: string;
+  /** The surface around the list owns the gutter; rows add none. */
+  flush?: boolean;
   items: T[];
   getId: (item: T) => string;
   render: (item: T) => ReactNode;
@@ -63,7 +66,7 @@ export function GridList<T>({
           key={getId(item)}
           id={getId(item)}
           textValue={textOf?.(item)}
-          className={`${rowClass(getId(item) === selectedId)} data-focus-visible:ring-2 data-focus-visible:ring-focus`}
+          className={`${rowClass(getId(item) === selectedId, flush)} data-focus-visible:ring-2 data-focus-visible:ring-focus`}
         >
           <span className="min-w-0 flex-1 truncate">{render(item)}</span>
         </GridListItem>
