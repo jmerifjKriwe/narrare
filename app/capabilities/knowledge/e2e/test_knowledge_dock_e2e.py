@@ -43,7 +43,10 @@ against the novel's other entries with the suggested vocabulary as
 autocomplete, retyped inline, deleted exactly. The card stays compact
 and shows what the dialog filed: chips, the source preview, both
 directions of every edge, and the mark that flags a self-relation. A
-proposal card reads its suggested type and relations, and an accept
+duplicate edge is named in its own words — a 409 is the user's pair,
+not an outage — and the add's button stands down while its request is
+in flight, so one click is one request. A proposal card reads its
+suggested type and relations, and an accept
 that cannot place a relation says so once, aloud.
 
 The selection is URL state beside the editor: a link naming an entity
@@ -61,7 +64,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 import pytest
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import Locator, Page, Route, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -231,8 +234,17 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     expect(cards).to_have_count(5)
 
     # The proposal rides the card: the suggested type and the relation in
-    # the review's words.
+    # the review's words. The proposal reads as headings (#314): the
+    # card's name is a level-4 heading under ProposalCard's own h3 title,
+    # and the relations subtitle a level-5 heading — heading navigation
+    # reaches them.
     mira_card = cards.filter(has_text="Mira · Figur")
+    expect(
+        mira_card.get_by_role("heading", name="Mira · Figur", exact=True, level=4)
+    ).to_be_visible()
+    expect(
+        mira_card.get_by_role("heading", name="Vorgeschlagene Beziehungen", level=5)
+    ).to_be_visible()
     expect(mira_card).to_contain_text("Verbunden mit")
     expect(mira_card).to_contain_text("Haus")
 
@@ -1248,6 +1260,10 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
 
     _row_named(entities, "Leuchtturm").click()
     detail = dock.get_by_role("region", name="Leuchtturm")
+    # The card's direction labels are headings (#314): heading navigation
+    # reaches the relations block beside the entity's name — a level-6
+    # label under the card's h4 name and h5 relations heading.
+    expect(detail.get_by_role("heading", name="Verweist auf", level=6)).to_be_visible()
     detail.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
 
@@ -1255,6 +1271,9 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     # with arrows. The seeded loop stands in both tables; a novel with no
     # edges renders the empty Notice instead of the pair.
     expect(dialog.get_by_role("table")).to_have_count(2)
+    # The dialog's relations block is a heading too (#314): the section
+    # h3 under the dialog's own h2 title.
+    expect(dialog.get_by_role("heading", name="Beziehungen", level=3)).to_be_visible()
 
     # Add: the target from the novel's other entries, the type from the
     # vocabulary, the note optional.
@@ -1300,6 +1319,9 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     _row_named(entities, "Haus").click()
     haus = dock.get_by_role("region", name="Haus")
     expect(haus).to_contain_text("Leuchtturm · Verfeindet mit")
+    # The incoming direction's label is a heading where the card has one
+    # (#314), pinned at the same level as its outgoing sibling.
+    expect(haus.get_by_role("heading", name="Wird verwiesen von", level=6)).to_be_visible()
 
     # The other direction inside its dialog: Haus's incoming table holds
     # the same edge with its source and type — the half of the split a
@@ -1336,6 +1358,77 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(dock.get_by_role("region", name="Leuchtturm")).not_to_contain_text("Verfeindet mit")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Selbstbezug")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Mira · Verbunden mit")
+
+    assert_accessible(page)
+
+
+def test_a_duplicate_relation_is_named_and_the_add_guards_a_double_submit(
+    page: Page, stack: Stack
+) -> None:
+    """A duplicate edge names the duplicate, and one click is one request.
+
+    Submitting a pair the tables already hold is a 409: the dialog answers
+    with the duplicate's own words (#309), never the outage copy a bare
+    throw renders — and while the add's request is in flight the button
+    stands down (#313), so a second click cannot send a second request
+    behind the first. Kept apart from the maintenance flow above so no
+    dirty add form leaks into it.
+    """
+    novel_id = _seed_entities("Die doppelte Beziehung")
+    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die doppelte Beziehung")).to_be_visible()
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Leuchtturm")).to_be_visible()
+    _row_named(entities, "Leuchtturm").click()
+    detail = dock.get_by_role("region", name="Leuchtturm")
+    detail.get_by_role("button", name="Bearbeiten").click()
+    dialog = page.get_by_role("dialog")
+
+    def fill_add_row() -> None:
+        target = dialog.get_by_label("Verbinden mit")
+        target.fill("Haus")
+        target.press("ArrowDown")
+        target.press("Enter")
+        expect(target).to_have_value("Haus")
+        kind = dialog.get_by_label("Beziehungsart")
+        kind.fill("Verbündet")
+        kind.press("ArrowDown")
+        kind.press("Enter")
+        expect(kind).to_have_value("Verbündet mit")
+
+    # One click is one request (#313): the relations POST is held for a
+    # moment, the button stands down while it is in flight, and exactly one
+    # request goes out for the click.
+    held = {"posts": 0}
+
+    def hold_relations_post(route: Route) -> None:
+        if route.request.method != "POST":
+            route.continue_()
+            return
+        held["posts"] += 1
+        sleep(1)
+        route.continue_()
+
+    fill_add_row()
+    page.route("**/api/knowledge/entities/*/relations", hold_relations_post)
+    add_button = dialog.get_by_role("button", name="Beziehung hinzufügen")
+    add_button.click()
+    expect(add_button).to_be_disabled()
+    table = dialog.get_by_role("table", name="Verweist auf")
+    row = table.get_by_role("row").filter(has_text="Haus")
+    expect(row).to_contain_text("Verbündet mit")
+    page.unroute("**/api/knowledge/entities/*/relations", hold_relations_post)
+    assert held["posts"] == 1
+
+    # The identical pair again: the 409 names the duplicate (#309), the
+    # outage copy stays out of it, and the table still holds one Haus row.
+    fill_add_row()
+    add_button.click()
+    expect(page.get_by_text("Diese Beziehung besteht bereits.")).to_be_visible()
+    expect(page.get_by_text("Läuft der lokale Dienst?")).to_have_count(0)
+    expect(table.get_by_role("row").filter(has_text="Haus")).to_have_count(1)
 
     assert_accessible(page)
 

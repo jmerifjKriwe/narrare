@@ -50,11 +50,25 @@ describe("resolveRelationType", () => {
     expect(resolveRelationType(items, t("knowledge.relation.owns"))).toBe("owns");
   });
 
-  it("keeps free text as the stored answer, whatever its casing", () => {
-    // D7: only the vocabulary's exact label resolves to its id — anything
-    // else, a differently cased near-hit included, stores as typed.
+  it("resolves a label whatever its casing", () => {
+    // The box's lookup answers a typed label case-insensitively (#311):
+    // a lowercased or mixed-case spelling of a vocabulary label resolves
+    // to the entry's id, not to free text.
+    expect(resolveRelationType(items, t("knowledge.relation.ally_of").toLowerCase())).toBe(
+      "ally_of",
+    );
+    const scrambled = t("knowledge.relation.owns")
+      .split("")
+      .map((ch, index) => (index % 2 === 0 ? ch.toLocaleLowerCase() : ch.toLocaleUpperCase()))
+      .join("");
+    expect(resolveRelationType(items, `  ${scrambled}  `)).toBe("owns");
+  });
+
+  it("keeps free text as the stored answer", () => {
+    // D7 is about the API accepting free text, not about this lookup: a
+    // string no vocabulary label matches — case-insensitively — stores
+    // as typed.
     expect(resolveRelationType(items, "bewohnt")).toBe("bewohnt");
-    expect(resolveRelationType(items, "Ally OF")).toBe("Ally OF");
   });
 
   it("trims what the box carries before the lookup", () => {

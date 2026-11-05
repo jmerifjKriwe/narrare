@@ -72,15 +72,17 @@ export function relationTypeLabel(
 
 /**
  * The box's text resolved back to what the edge stores: a vocabulary
- * entry when the text is one of its labels, otherwise the text itself —
- * free text is a first-class answer, not a refusal. An empty box carries
- * no type at all.
+ * entry when the text matches one of its labels — trimmed, and matched
+ * case-insensitively, because a typed label's casing is not an answer
+ * of its own — otherwise the text itself; free text is a first-class
+ * answer, not a refusal, and an empty box carries no type at all.
  */
 export function resolveRelationType(
   items: { id: string; text: string }[],
   text: string,
 ): string {
   const trimmed = text.trim();
-  const picked = items.find((item) => item.text === trimmed);
+  const lowered = trimmed.toLocaleLowerCase();
+  const picked = items.find((item) => item.text.toLocaleLowerCase() === lowered);
   return picked !== undefined ? picked.id : trimmed;
 }
