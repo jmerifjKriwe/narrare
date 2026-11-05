@@ -45,8 +45,10 @@ own cap (`calc(100dvh-16rem)`), keeps its title in place, and scrolls its body.
 **Narrow.** Below 1024 the rail started open, so a phone visit landed on a
 drawer over the text. Absence in the URL is now the breakpoint's decision (the
 validator no longer writes `rail=true`); the toggle writes the explicit boolean.
-Opening a dock retires an open rail drawer and vice versa, so one pressed tab
-and one scrim are all that can be on screen. The place in the bar yields below
+Opening a dock retires an open rail drawer — the rail holds nothing that can be
+lost — while opening the rail over a live dock covers it one z-step above,
+without unmounting it: the dock's in-progress ask survives behind the drawer.
+The place in the bar yields below
 sm instead of truncating to "Dea…", and the shelf's two actions wrap to their
 own line instead of overlapping.
 

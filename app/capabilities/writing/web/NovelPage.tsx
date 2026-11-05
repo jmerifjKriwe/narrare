@@ -204,9 +204,9 @@ export function NovelPage() {
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
   // `to: "."` keeps the navigation on whatever route is showing: collapsing
-  // the rail while a dock child route is open must not throw the dock away.
-  // It is defined below the dock's own state: opening the rail at narrow has
-  // to retire an open dock, and that is the dock registry's answer.
+  // the rail while a dock child route is open must not throw the dock away
+  // (a dock holds the ask in progress, so the drawer above it may cover the
+  // dock, never unmount it).
 
   // Focus depth is URL state too, so it shares rail's properties: linkable,
   // back-button-true. The updater takes the function form on purpose — it
@@ -251,9 +251,10 @@ export function NovelPage() {
           : {
               to: dock.path,
               params: { id: novelId },
-              // One overlay at a time (the rail's mirror): a dock opened over
-              // an open rail drawer closes it, so nothing pressed stays
-              // invisible under the panel that covers the text.
+              // A dock opened over an open rail drawer closes it: the dock's
+              // ask is the thing worth keeping, and the rail holds nothing
+              // that can be lost — its own open, by contrast, covers the
+              // dock without unmounting it.
               search: (prev) => ({
                 ...prev,
                 ...(narrow && !collapsed ? { rail: false } : {}),
@@ -264,23 +265,16 @@ export function NovelPage() {
     [navigate, novelId, activeDock, narrow, collapsed],
   );
 
-  // The rail's collapse (above, explained): at narrow its open also retires
-  // an open dock, so exactly one panel covers the text — two drawers with two
-  // scrims would leave the lower one pressed and invisible.
+  // The rail's collapse (above, explained): at narrow the rail drawer paints
+  // above the dock's (z-30 over z-20), so opening it never needs to close the
+  // dock — the dock stays mounted with its in-progress question and answer,
+  // and closing the rail brings it back.
   const toggleRail = useCallback(() => {
-    if (narrow && collapsed && activeDock !== null) {
-      void navigate({
-        to: "/novels/$id",
-        params: { id: novelId },
-        search: (prev) => ({ ...prev, rail: true }),
-      });
-      return;
-    }
     void navigate({
       to: ".",
       search: (prev) => ({ ...prev, rail: collapsed }),
     });
-  }, [navigate, collapsed, narrow, activeDock, novelId]);
+  }, [navigate, collapsed]);
 
   // The leave guard's state, ahead of the keyboard contract: while an ask
   // stands, F9/Esc are the dialog's keys, not the workbench's — a second
@@ -529,7 +523,7 @@ export function NovelPage() {
         <>
           <Link
             to="/"
-            className="text-body text-muted underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            className="text-body text-muted underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
           >
             {t("nav.back")}
           </Link>
@@ -618,8 +612,11 @@ export function NovelPage() {
                inside the column (lg:pr-6), so rail + prose + dock sum to
                the container with no gap to account for. The list bounds
                its height and scrolls inside itself (Review Focus 2); below
-               the breakpoint the whole drawer scrolls instead. */
-            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+               the breakpoint the whole drawer scrolls instead. The drawer
+               paints one z-step above the dock's: opening it over a live
+               dock covers the dock without unmounting it, so the dock's
+               own draft survives behind it. */
+            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
             aria-label={t("chapters.heading")}
           >
             <h2 className="text-emph font-semibold tracking-tight">{t("chapters.heading")}</h2>
@@ -805,7 +802,10 @@ export function NovelPage() {
                384 the dock takes are the arithmetic's own; its gutter to
                the prose lives inside the column. The column is a flex
                stack so the title holds its place while the body under it
-               takes the remaining height and scrolls alone. */
+               takes the remaining height and scrolls alone. The rail's
+               drawer sits a z-step above this one: a rail opened over a
+               live dock covers it without unmounting it, so the dock's
+               in-progress ask survives behind the drawer. */
             className="flex w-96 shrink-0 flex-col rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:max-h-[calc(100dvh-16rem)] lg:pl-6"
             aria-label={t(openDock.titleKey)}
           >
