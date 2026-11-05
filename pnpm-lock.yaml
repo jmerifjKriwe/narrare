@@ -10,7 +10,11 @@ overrides:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      lodash:
+        specifier: 4.17.20
+        version: 4.17.20
 
   web:
     dependencies:
@@ -1379,6 +1383,9 @@ packages:
 
   linkifyjs@4.4.0:
     resolution: {integrity: sha512-InTexvtbai+2c+dEVGcc6O6P2DMVIiwD9a/i4zFroazOIYLOS6FSVmAJ7kFeumnCMx6/gQqNAkbUvgMubV4+MA==}
+
+  lodash@4.17.20:
+    resolution: {integrity: sha512-PlhdFcillOINfeV7Ni6oF1TAEayyZBoZ8bcshTHqOYJYlrqzRK5hagpagky5o4HfCzzd1TRkXPMFq6cKk9rGmA==}
 
   lru-cache@11.5.3:
     resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
@@ -2838,6 +2845,8 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.33.0
 
   linkifyjs@4.4.0: {}
+
+  lodash@4.17.20: {}
 
   lru-cache@11.5.3: {}
 

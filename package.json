@@ -2,5 +2,8 @@
   "name": "narrare-workspace",
   "version": "0.2.0",
   "private": true,
-  "packageManager": "pnpm@11.5.2"
+  "packageManager": "pnpm@11.5.2",
+  "dependencies": {
+    "lodash": "4.17.20"
+  }
 }
