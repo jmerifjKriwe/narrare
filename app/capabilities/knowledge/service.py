@@ -787,5 +787,9 @@ class KnowledgeService:
             )
         target.search_text = entity_search_text(target.name, target.aliases, target.tags)
         await self.entities.delete(source)
+        # the archive changed three ways — a row gone, its edges re-pointed,
+        # its fields folded (D8): the book was written in. The ends share a
+        # novel by the check above, so the survivor's novel is the merge's.
+        await touch_novel(self.session, self.user_id, target.novel_id)
         await self.session.commit()
         return target

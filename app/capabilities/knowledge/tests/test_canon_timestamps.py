@@ -19,6 +19,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from app.api.main import app
+from app.capabilities.knowledge.repository import RelationRepository
 from app.capabilities.knowledge.service import KnowledgeService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import (
@@ -175,6 +176,19 @@ async def test_accepting_a_suggestion_advances_the_novel() -> None:
     async with _client() as client:
         accepted = await client.post(f"/api/knowledge/suggestions/{suggestion.id}/accept")
         assert accepted.status_code == 200
+    assert await _written_at(novel.id) > before
+
+
+async def test_merging_entities_advances_the_novel() -> None:
+    novel, [mira, haus] = await _seed_novel("Mira", "Haus")
+    async with Session() as session:
+        await RelationRepository(session, LOCAL_USER_ID).create(mira.id, haus.id, "lebt_in", None)
+        await session.commit()
+    before = await _written_at(novel.id)
+    async with Session() as session:
+        await KnowledgeService(session, LOCAL_USER_ID, FakeEmbeddingProvider()).merge_entities(
+            mira.id, haus.id
+        )
     assert await _written_at(novel.id) > before
 
 
