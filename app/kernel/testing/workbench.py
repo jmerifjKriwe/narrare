@@ -31,6 +31,14 @@ def new_chapter(page: Page) -> None:
     rail = page.get_by_role("complementary")
     rows = rail.get_by_role("button", name=CHAPTER_ROW)
     before = rows.count()
+    before_url = page.url
     page.get_by_role("button", name="Neues Kapitel").click()
     expect(rows).to_have_count(before + 1)
     expect(rows.last).to_have_attribute("aria-current", "true")
+    # The row can turn current through the list's fallback before the create's
+    # own selection navigates; the address is what proves that navigation
+    # landed, so the next click or keystroke cannot race it. The "differs from
+    # before" half matters: an earlier create already left a `chapter=`, and
+    # the pattern alone would match it.
+    expect(page).to_have_url(re.compile(r"[?&]chapter=[^&]+"))
+    expect(page).not_to_have_url(before_url)
