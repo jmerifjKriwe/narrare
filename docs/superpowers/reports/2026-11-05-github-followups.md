@@ -180,6 +180,45 @@ report. Good job!`). `rg "1\.7\.7|version: 1\.30\.1"` → no match.
 
 ## Task 7 — monthly pin check (#598)
 
+`scripts/check_pins.py` (stdlib, 3.10-compatible) reads six values from the
+files that carry them — actionlint's version comment and image digest,
+zizmor's `version:` input, the Codecov CLI, `pip-audit`, the Postgres digest —
+and asks `gh api …/releases/latest` and Docker Hub's tag API for the upstream.
+A pin it cannot read, a disagreeing copy, or an upstream it cannot reach exits
+2; it can never say "current" without asking. `--json` prints
+`{"behind": [...], "report": "<table>"}`; `--tree` reads without the network.
+
+`app/kernel/tests/test_check_pins.py`: nine tests, hermetic. They cover the
+live tree (all six values read, the two Codecov copies and four pgvector
+digests agree), a missing pattern, disagreeing copies, the version compare with
+`v` prefixes, a changed digest, and the report naming only behind pins.
+
+`pins.yml`: monthly (1st, 08:23 UTC) and dispatch; `contents: read` +
+`issues: write`; one `ci/tool-pins` issue, opened/commented/closed exactly like
+`nightly-result` does for `ci/nightly`. A failed check stops before the issue
+step, so it cannot close an issue it did not read.
+
+Red/green, 2026-11-05:
+
+```
+uv run python -m scripts.check_pins --markdown        → six rows, all current
+temporary: zizmor version set back to 1.30.1
+  → | zizmor | 1.30.1 | 1.32.0 | **behind** | … |      (reverted)
+uv run python -m scripts.check_pins --tree            → exit 0, six names
+uv run pytest app/kernel/tests/test_check_pins.py     → 9 passed
+uv run ruff check scripts … / ruff format --check     → clean
+uv run pyright scripts/check_pins.py                  → 0 errors
+actionlint 1.7.12 / zizmor 1.32.0                     → exit 0, no findings
+```
+
+Deviation: the module and its test landed in one edit, so the failing-first run
+was captured by removing the module again (`ImportError: cannot import name
+'check_pins'`) rather than before writing it. The first run with both files
+also found a real defect — the digest patterns captured the bare hex without
+`sha256:`, which the tree test caught — fixed before the commit.
+
+The workflow's own dispatch is proved after the push (Task 10).
+
 ## Task 8 — one copy of the verdicts (#605)
 
 ## Task 9 — the three records (#596, #600, #602)

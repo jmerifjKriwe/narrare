@@ -16,6 +16,7 @@ way it is lives in the design spec, not here.
 | `release-please.yml` | `push: main`, `workflow_dispatch` | `release-please` | no |
 | `codeql.yml` | `pull_request` (code paths), `push: main` (code paths), `schedule` (weekly, Sunday 06:07 UTC), `workflow_dispatch` | `analyze` (matrix: `python`, `javascript-typescript`, `actions`) | no — advisory |
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
+| `pins.yml` | `schedule` (monthly, 1st 08:23 UTC), `workflow_dispatch` | `check` | no — advisory; reports through the [`ci/tool-pins` issue](#dependabot) |
 | `publish.yml` | *(dormant)* | image build, attest, SBOM, release assets | no |
 
 `publish.yml` is dormant: **it does not exist on the tree** and nothing runs
@@ -49,11 +50,13 @@ Two named, deliberate shapes a reader should not "fix":
   The trade is commented at every site (`ci.yml`, `nightly.yml`,
   `_lint.yml`, `_test.yml`, `_e2e.yml`).
 - **Pin hygiene.** Actions are pinned by commit SHA with a trailing release
-  comment; Dependabot's weekly `github-actions` group keeps the pins
-  current. Four versions Dependabot cannot see are pinned as inputs or
-  inline and bump manually: the actionlint digest, zizmor's
-  `version: 1.32.0`, the Codecov CLI (`version: v11.3.2`) and
-  `pip-audit==2.10.1` (the `uvx` invocation in nightly's audit job).
+  comment; Dependabot's weekly `github-actions` group keeps them current.
+  Six values it cannot see are read from the tree by
+  `scripts/check_pins.py` and reported monthly by `pins.yml` in one
+  `ci/tool-pins` issue: actionlint's version comment **and** its image
+  digest, zizmor's `version:` input, the Codecov CLI, `pip-audit`, and the
+  Postgres image digest. The check is advisory; a pin it cannot read or an
+  upstream it cannot reach reddens the run rather than passing.
   Dependabot's updater scans workflow files only, so it may not bump the
   `uses:` pins inside a composite action's `action.yml` — verify after the
   first composite lands (`.github/actions/setup`) that its nested pins move
@@ -235,3 +238,6 @@ meaning anything.
   setup comes from grouping (one PR per group, not per bump), not from
   testing less — dependency paths stay `SHARED` in `affected.py` and owe
   every suite.
+- The pins Dependabot cannot follow are not left to memory: `pins.yml`
+  checks them monthly and keeps one open `ci/tool-pins` issue while any is
+  behind (see pin hygiene above).
