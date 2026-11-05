@@ -198,7 +198,7 @@ async def test_zip_export_records_the_timestamp() -> None:
         after = await client.get(f"/api/writing/novels/{novel_id}")
         stamp = after.json()["last_exported_at"]
         assert stamp is not None
-        assert datetime.fromisoformat(stamp)
+        assert datetime.fromisoformat(stamp).tzinfo is not None
 
 
 async def test_path_export_records_the_timestamp(tmp_path: Path) -> None:
@@ -217,7 +217,7 @@ async def test_path_export_records_the_timestamp(tmp_path: Path) -> None:
         after = await client.get(f"/api/writing/novels/{novel_id}")
         stamp = after.json()["last_exported_at"]
         assert stamp is not None
-        assert datetime.fromisoformat(stamp)
+        assert datetime.fromisoformat(stamp).tzinfo is not None
 
 
 async def test_a_refused_path_export_records_nothing(tmp_path: Path) -> None:

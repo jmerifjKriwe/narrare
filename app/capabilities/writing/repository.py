@@ -123,15 +123,18 @@ class NovelRepository(ScopedRepository[Novel]):
         """Stamp the novel's export trace; the caller commits the write.
 
         The export path's own timestamp writer, `touch_novel`'s shape for a
-        different rule: only a successful export ever sets the column, so
-        `updated_at` stays where it was and a later edit reads as change
-        against the backup the stamp names. No other column moves here.
+        different rule: only a successful export ever sets the column. One
+        Core UPDATE naming both timestamps — the self-assignment is what
+        keeps ``updated_at`` where it was (``renumber``'s idiom): an ORM
+        flush that left the column unset would fire its ``onupdate`` and
+        record the backup as the book's last write, and a later edit would
+        no longer read as change against the backup the stamp names.
         """
-        novel = await self.session.scalar(
-            select(Novel).where(Novel.id == novel_id, Novel.user_id == self.user_id)
+        await self.session.execute(
+            update(Novel)
+            .where(Novel.id == novel_id, Novel.user_id == self.user_id)
+            .values(last_exported_at=datetime.now(UTC), updated_at=Novel.updated_at)
         )
-        if novel is not None:
-            novel.last_exported_at = datetime.now(UTC)
 
 
 class ChapterRepository(ScopedRepository[Chapter]):

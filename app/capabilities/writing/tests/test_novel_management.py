@@ -4,6 +4,7 @@ findings — while the library's documents survive. The read carries the
 export's trace, set by an export and by nothing else."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import pytest
@@ -21,6 +22,9 @@ from app.kernel.contracts.models import (
 )
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -243,6 +247,38 @@ async def test_novel_read_carries_the_timestamp() -> None:
         traced = await client.get(f"/api/writing/novels/{novel_id}")
         stamp = datetime.fromisoformat(traced.json()["last_exported_at"])
         assert stamp.tzinfo is not None
+
+
+async def test_an_export_leaves_the_novels_updated_at_alone(tmp_path: Path) -> None:
+    """An export is a backup, not an edit: updated_at does not move.
+
+    The column's onupdate stamps any ORM flush that touches the row without
+    naming it, so the trace writer must name updated_at itself — the
+    renumber idiom — or every export reads as the book's last write and the
+    trace is born stale.
+    """
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        before = (await client.get(f"/api/writing/novels/{novel_id}")).json()
+        written_at = before["updated_at"]
+
+        zipped = await client.post(f"/api/writing/novels/{novel_id}/export", json={"mode": "zip"})
+        assert zipped.status_code == 200
+        after_zip = (await client.get(f"/api/writing/novels/{novel_id}")).json()
+        # byte-equal: the export added a backup stamp, not a book write
+        assert after_zip["updated_at"] == written_at
+        assert after_zip["last_exported_at"] is not None
+
+        filed = await client.post(
+            f"/api/writing/novels/{novel_id}/export",
+            json={"mode": "path", "path": str(tmp_path / "export")},
+        )
+        assert filed.status_code == 200
+        after_path = (await client.get(f"/api/writing/novels/{novel_id}")).json()
+        assert after_path["updated_at"] == written_at
+        assert datetime.fromisoformat(after_path["last_exported_at"]) >= datetime.fromisoformat(
+            after_zip["last_exported_at"]
+        )
 
 
 async def test_delete_novel_answers_204_and_is_gone() -> None:

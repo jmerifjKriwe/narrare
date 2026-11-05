@@ -384,8 +384,8 @@ class WritingService:
         named fields. Both deliveries leave the export's trace:
         `last_exported_at` is written and committed only after the engine
         has read the rows and, in path mode, the directory write has
-        succeeded — the ZIP's commit carries nothing but the stamp — so a
-        refused or failed export sets nothing.
+        succeeded — the ZIP commits the stamp before the bytes are
+        returned — so a refused or failed export sets nothing.
         """
         try:
             slug, files = await interchange_engine.export_novel(
