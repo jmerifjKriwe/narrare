@@ -42,12 +42,6 @@ theirs.
 | --- | --- | --- | --- |
 | `models.json` (snapshot data) | [models.dev](https://models.dev) ([anomalyco/models.dev](https://github.com/anomalyco/models.dev)) | MIT | [LICENSE](app/kernel/llm/data/LICENSE), bundled with the snapshot |
 
-## OpenCode harness material (`.opencode/`)
-
-| Skill | Source | License | Notice |
-| --- | --- | --- | --- |
-| context7 | built around the Context7 API; the [upstash/context7](https://github.com/upstash/context7) project is MIT | none declared | **Open item:** not tracked in `skills-lock.json` and carries no license statement — clarify the source or replace |
-
 ## The built web app (`web/dist/`)
 
 The production bundle inlines the web application's production dependency
