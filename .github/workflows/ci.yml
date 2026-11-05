@@ -175,6 +175,49 @@ jobs:
     with:
       capability: ${{ matrix.capability }}
 
+  # Repository scorecards live elsewhere (scorecard.yml); this job answers
+  # the only question the diff can answer before merge: what does this pull
+  # request add to the dependency graph? GitHub's dependency review compares
+  # the PR's base with its head through GitHub's dependency graph API —
+  # no checkout, no working tree — and reddens the run when a change arrives
+  # with a `high` vulnerability or a license on the deny list — the licenses
+  # this project treats as viral (spec: "Security"). Push builds skip it: a
+  # push to main lands exactly what the PR's run already judged, and a
+  # merge without a PR is judged by the nightly sweep. The summary stays in
+  # the job log (`comment-summary-in-pr: never`), so the action never needs
+  # a write token.
+  #
+  # Two ways this gate can redden that are not a verdict, and neither is
+  # fixed from here: the repository's Dependency graph must stay enabled
+  # (the action fails closed without it), and a dependency whose license is
+  # not valid SPDX fails as unresolved rather than denied — so a red here
+  # can mean unreadable, and the log, not the severity alone, says which.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    timeout-minutes: 10
+    steps:
+      - name: dependency-review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # List inputs are comma-separated; the action splits them.
+          fail-on-severity: high
+          # `runtime` is the default; `development` is added here because
+          # it is otherwise uncovered: the nightly audit skips dev deps
+          # (`--no-dev`/`--prod`), so nothing else judges them.
+          fail-on-scopes: runtime, development
+          deny-licenses: AGPL-1.0, AGPL-3.0, GPL-2.0, GPL-3.0
+          # A PR comment needs `pull-requests: write` — a token this
+          # workflow does not hold. The log carries the summary instead.
+          comment-summary-in-pr: never
+          # On by default; every mark is an outbound call to
+          # scorecards.dev/deps.dev, and a network failure must not be
+          # able to redden a gate that blocks every merge.
+          show-openssf-scorecard: false
+
   # The one required check: the ruleset names `ci-required` and nothing
   # else, so a job split never edits the ruleset again. It carries every
   # gate this workflow runs and judges each result explicitly — the
@@ -194,9 +237,10 @@ jobs:
   #           `workflow-lint` ended anything but `success`. None of them
   #           has a legitimate skip: a `skipped` result here is a broken
   #           graph, not a decision, and a skipped required check passes.
-  #   (skip allowed) — `dependency-review` joins in Task 12; its
-  #           `skipped` on non-PR events is then the second owed skip,
-  #           beside `e2e-suites`'s skip when nothing is owed.
+  #   red   — `dependency-review` on a pull request ended anything but
+  #           `success`; on any other event, anything but `skipped` or
+  #           `success`. Its skip on a push or dispatch is the second
+  #           owed skip, beside e2e-suites' skip when nothing was owed.
   # `always()`: the hole this closes is a skipped job — a failed `needs`
   # dependency used to leave everything downstream skipped, and a skipped
   # required check passes. No permissions: this job only reads results.
@@ -204,7 +248,7 @@ jobs:
   # alone, so this job is the only required context.
   ci-required:
     name: ci-required
-    needs: [changes, lint-types, tests, frontend, build, workflow-lint, e2e-suites]
+    needs: [changes, lint-types, tests, frontend, build, workflow-lint, dependency-review, e2e-suites]
     if: always()
     runs-on: ubuntu-latest
     permissions: {}
@@ -220,6 +264,10 @@ jobs:
           FRONTEND: ${{ needs.frontend.result }}
           BUILD: ${{ needs.build.result }}
           WORKFLOW_LINT: ${{ needs.workflow-lint.result }}
+          # The dependency review is a pull-request duty: the event decides
+          # whether its result is owed or legitimately skipped.
+          EVENT: ${{ github.event_name }}
+          DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
         run: |
           red=""
           note() { red="${red:+$red; }$1"; return 0; }
@@ -250,6 +298,18 @@ jobs:
               fi
             fi
           done
+          # The dependency review is owed by a pull request only: on one it
+          # must have succeeded, on a push or dispatch its skip is
+          # legitimate — the second owed skip — and red is anything else.
+          if [ "$EVENT" = pull_request ]; then
+            if [ "$DEPENDENCY_REVIEW" != success ]; then
+              echo "::error::dependency-review ended $DEPENDENCY_REVIEW; a pull request owes the review"
+              note "dependency-review=$DEPENDENCY_REVIEW (a pull request owes the review)"
+            fi
+          elif [ "$DEPENDENCY_REVIEW" != success ] && [ "$DEPENDENCY_REVIEW" != skipped ]; then
+            echo "::error::dependency-review ended $DEPENDENCY_REVIEW; only a pull request runs it, so only success or skipped is legitimate"
+            note "dependency-review=$DEPENDENCY_REVIEW"
+          fi
           if [ -n "$red" ]; then
             echo "::error::ci-required red; not at success: $red"
             exit 1
