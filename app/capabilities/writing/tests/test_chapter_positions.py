@@ -133,7 +133,8 @@ async def test_positions_constraint_is_deferred() -> None:
             await session.execute(
                 text(
                     "SELECT condeferrable, condeferred FROM pg_constraint "
-                    "WHERE conname = 'uq_chapters_novel_id_position'"
+                    "WHERE contype = 'u' AND conrelid = 'chapters'::regclass "
+                    "AND conname = 'uq_chapters_novel_id_position'"
                 )
             )
         ).one()

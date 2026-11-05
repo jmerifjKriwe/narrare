@@ -188,6 +188,27 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     # start inside this test's loop; the upgrade gets its own thread.
     await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
     assert await _models_diff(url) == []
+    # The diff above compares names and columns, not check timing: it cannot
+    # see deferrability, so the same gate pins the property a diff is blind
+    # to — the replayed history leaves the positions constraint DEFERRABLE
+    # INITIALLY DEFERRED (the deferrable-positions revision), the form a
+    # renumber needs. A history that rebuilt it plain would pass the diff
+    # while every upgraded database refused reorders.
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            deferrable, initially_deferred = (
+                await connection.execute(
+                    text(
+                        "SELECT condeferrable, condeferred FROM pg_constraint "
+                        "WHERE conname = 'uq_chapters_novel_id_position'"
+                    )
+                )
+            ).one()
+    finally:
+        await engine.dispose()
+    assert deferrable is True
+    assert initially_deferred is True
 
 
 # The snapshot the gate below loads: the release schema, checked in. Produced
