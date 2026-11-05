@@ -11,7 +11,10 @@ Tab and Enter for every step from opening the dock to both decisions. The
 dock's failures are named: an unreachable backend reads as an outage, never
 as an empty list — the review queue no less than the entity list, each with
 its own words — and a job poll that meets a dead service reopens the
-trigger instead of locking it. The extraction is idempotent against a
+trigger instead of locking it. The running bar passes the axe floor while
+it moves: no natural run lasts long enough for the row's poll to sample a
+reported share, so the test stops the lane, sets the share by hand, and
+lets the poll recover under it. The extraction is idempotent against a
 re-run: the same chapter filed twice holds one card set, and a consumed
 suggestion files fresh on the next run. The search box reaches two tiers:
 the names it filters instantly, and the corpus's passages through the
@@ -50,14 +53,19 @@ param with a replace — the back button leaves the dock, not the clicks
 address, a dead link that degrades instead of erroring.
 """
 
+import asyncio
 import re
+from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 from playwright.sync_api import Locator, Page, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 
 if TYPE_CHECKING:
@@ -69,6 +77,8 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 # standalone search test's upload does — through the real service, its real
 # ingestion and the E2E stack's real embedding stand-in.
 API = "http://127.0.0.1:8000"
+
+DATABASE = "narrare_v2_knowledge_e2e"  # the stack's own database (e2e/conftest.py)
 
 # Capitalized words steer the fake provider's extraction (it derives names
 # from them): Mira, Haus, See, Draußen and Leuchtturm become the five
@@ -539,6 +549,141 @@ def test_a_failed_poll_reopens_the_extraction_trigger(page: Page, stack: Stack) 
     expect(dock.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)
+
+
+def _hold_running(job_id: str, progress: int) -> None:
+    """Set a job row to RUNNING with a reported share, from the test.
+
+    Runs in a worker thread: pytest-asyncio keeps a session loop running,
+    and asyncio.run refuses to start a second one in the same thread. No
+    natural run lasts long enough for the row's one-second poll to sample a
+    reported share — the fake provider answers within the gap between two
+    ticks — so the state the bar needs is arranged, not raced: the fresh
+    ``updated_at`` keeps the stale sweep's 30-second bound off the row for
+    the assertion's length, and with the lane down, no writer contests it.
+    """
+
+    async def run() -> None:
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE jobs SET status = 'running', progress = :progress,"
+                    " updated_at = now() WHERE id = :job_id"
+                ),
+                {"progress": progress, "job_id": job_id},
+            )
+        await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(asyncio.run, run()).result()
+
+
+def _settle_done(job_id: str) -> None:
+    """Put a hand-held row back to done, the state its run actually reached.
+
+    Same worker-thread pattern as ``_hold_running``; the module's later
+    tests inherit a settled lane instead of a row a sweep must requeue.
+    """
+
+    async def run() -> None:
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.begin() as connection:
+            await connection.execute(
+                text("UPDATE jobs SET status = 'done' WHERE id = :job_id"),
+                {"job_id": job_id},
+            )
+        await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(asyncio.run, run()).result()
+
+
+def _latest_job_id() -> str:
+    """The newest job row's id — the one this test's click just enqueued.
+
+    Same worker-thread pattern; within the stopped-API window no writer
+    exists, so the newest row is this test's own.
+    """
+
+    async def run() -> str:
+        engine = create_async_engine(url_for(DATABASE))
+        async with engine.connect() as connection:
+            row = (
+                await connection.execute(
+                    text("SELECT id FROM jobs ORDER BY created_at DESC LIMIT 1")
+                )
+            ).one()
+        await engine.dispose()
+        return str(row[0])
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return str(pool.submit(asyncio.run, run()).result())
+
+
+def test_the_running_bar_passes_the_axe_floor(page: Page, stack: Stack) -> None:
+    """The moving bar is on screen while the axe floor runs — and passes it.
+
+    No natural flow samples a RUNNING row with a reported share: the fake
+    provider answers inside one poll tick, so every flow's accessibility
+    pass has met only queued, done and failed rows. The arrangement stops
+    the API under a live poll (the row's interval survives an outage that
+    already had an answer, and recovers on its own), sets the share by hand
+    through the stack's own database, and restarts: the bar stands, named,
+    and the floor runs against exactly that state.
+    """
+    _open_workspace_with_validated_title(page, "Der Fortschritt der Bucht")
+
+    page.get_by_role("button", name="Neues Kapitel").click()
+    editor = page.locator(".ProseMirror")
+    expect(editor).to_be_visible()
+    editor.click()
+    page.keyboard.type(CHAPTER_BODY)
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+    tab = page.get_by_role("button", name="Wissen", exact=True)
+    tab.focus()
+    page.keyboard.press("Enter")
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+
+    extract = dock.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    status = dock.locator("[data-job-status]")
+    # The stop lands under a first poll that saw an outstanding row: the
+    # first fetch fires with the POST's own resolution, and the lane cannot
+    # claim, run and settle a job inside that gap — but a spent chance is a
+    # retry, the way the failed-poll test races its own stop.
+    held: str | None = None
+    for _attempt in range(3):
+        extract.click()
+        expect(status).to_be_visible()
+        if status.get_attribute("data-job-status") != "done":
+            held = _latest_job_id()
+            stack.stop_api()
+            break
+        # The lane beat the fetch to done: the trigger is back, and the
+        # next click races a fresh job's first fetch.
+        expect(extract).to_be_enabled()
+    else:
+        pytest.fail("every first poll saw its run already settled")
+
+    try:
+        _hold_running(held, 40)
+    finally:
+        stack.start_api()
+
+    # The poll recovers with the row standing: running, the reported share
+    # on the rule — and the floor runs against exactly that state. An
+    # unnamed bar is the WCAG 2 A failure this assertion exists to catch.
+    bar = dock.get_by_role("progressbar")
+    expect(bar).to_be_visible()
+    expect(bar).to_have_attribute("aria-valuenow", "40")
+    assert_accessible(page)
+
+    # The row goes back to done by hand — the assertion had its state, and
+    # the poll settles with it.
+    _settle_done(held)
+    expect(status).to_have_attribute("data-job-status", "done")
 
 
 def test_the_review_queue_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
@@ -1082,10 +1227,14 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     dock = page.get_by_role("complementary", name="Wissen")
     entities = dock.get_by_role("region", name="Entitäten")
     expect(_row_named(entities, "Leuchtturm")).to_be_visible()
+    # The list keeps its grid contract: the five seeded rows are gridcells.
+    # (Read with the dialog closed — the modal aria-hides the page behind it.)
+    expect(page.get_by_role("gridcell")).to_have_count(5)
     _row_named(entities, "Leuchtturm").click()
     detail = dock.get_by_role("region", name="Leuchtturm")
-    # The compact card: the seeded edge, and the loop with its mark.
-    expect(detail).to_contain_text("→ Mira")
+    # The compact card: the seeded edge, and the loop with its mark —
+    # both directions by name, no arrows.
+    expect(detail).to_contain_text("Mira · Verbunden mit")
     expect(detail).to_contain_text("Verbunden mit")
     expect(detail).to_contain_text("Selbstbezug")
 
@@ -1102,6 +1251,11 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     detail.get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
 
+    # The relations are two tables — outgoing and incoming — not a sentence
+    # with arrows. The seeded loop stands in both tables; a novel with no
+    # edges renders the empty Notice instead of the pair.
+    expect(dialog.get_by_role("table")).to_have_count(2)
+
     # Add: the target from the novel's other entries, the type from the
     # vocabulary, the note optional.
     target = dialog.get_by_label("Verbinden mit")
@@ -1116,18 +1270,23 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     expect(kind).to_have_value("Verbündet mit")
     dialog.get_by_label("Notiz (optional)").fill("Seit dem Sturm")
     dialog.get_by_role("button", name="Beziehung hinzufügen").click()
-    row = dialog.get_by_role("listitem").filter(has_text="Haus")
+    # The new edge is outgoing: its row stands in the outgoing table, the
+    # note riding the Typ cell it belongs to.
+    table = dialog.get_by_role("table", name="Verweist auf")
+    row = table.get_by_role("row").filter(has_text="Haus")
     expect(row).to_contain_text("Verbündet mit")
     expect(row).to_contain_text("Seit dem Sturm")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde hinzugefügt")
 
-    # Inline edit: the type retypes, the ends never move.
+    # Inline edit: the type retypes, the ends never move. The row's edit
+    # form is the named form under its table.
     row.get_by_role("button", name="Beziehung bearbeiten").click()
-    row_kind = row.get_by_label("Beziehungsart")
+    form = dialog.get_by_role("form", name="Beziehung ändern")
+    row_kind = form.get_by_label("Beziehungsart")
     row_kind.fill("Verfeindet")
     row_kind.press("ArrowDown")
     row_kind.press("Enter")
-    row.get_by_role("button", name="Speichern").click()
+    form.get_by_role("button", name="Speichern").click()
     expect(row).to_contain_text("Verfeindet mit")
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gespeichert")
 
@@ -1137,25 +1296,46 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
     # The card keeps what the dialog filed, and Haus reads the same edge
     # from the other side — a revisit, so the cached answer from before
     # the edit must not be what the card serves.
-    expect(detail).to_contain_text("→ Haus · Verfeindet mit")
+    expect(detail).to_contain_text("Haus · Verfeindet mit")
     _row_named(entities, "Haus").click()
     haus = dock.get_by_role("region", name="Haus")
-    expect(haus).to_contain_text("← Leuchtturm · Verfeindet mit")
+    expect(haus).to_contain_text("Leuchtturm · Verfeindet mit")
+
+    # The other direction inside its dialog: Haus's incoming table holds
+    # the same edge with its source and type — the half of the split a
+    # one-table reading could silently lose.
+    haus.get_by_role("button", name="Bearbeiten").click()
+    incoming_row = (
+        page.get_by_role("dialog")
+        .get_by_role("table", name="Wird verwiesen von")
+        .get_by_role("row")
+        .filter(has_text="Leuchtturm")
+    )
+    expect(incoming_row).to_contain_text("Verfeindet mit")
+    dialog.get_by_role("button", name="Abbrechen").click()
+    expect(dialog).not_to_be_visible()
 
     # Deleting takes exactly the one edge: the loop and the seeded edge
     # survive on the same card.
     _row_named(entities, "Leuchtturm").click()
     dock.get_by_role("region", name="Leuchtturm").get_by_role("button", name="Bearbeiten").click()
     dialog = page.get_by_role("dialog")
-    row = dialog.get_by_role("listitem").filter(has_text="Verfeindet")
+    row = (
+        dialog.get_by_role("table", name="Verweist auf")
+        .get_by_role("row")
+        .filter(has_text="Verfeindet")
+    )
     row.get_by_role("button", name="Beziehung löschen").click()
+    # The delete asks first: the confirm names the edge before it takes it.
+    confirm = page.get_by_role("dialog", name="Beziehung löschen")
+    confirm.get_by_role("button", name="Endgültig löschen").click()
     expect(row).to_have_count(0)
     expect(page.locator("[data-live-announcer]")).to_contain_text("Die Beziehung wurde gelöscht")
     dialog.get_by_role("button", name="Abbrechen").click()
     expect(dialog).not_to_be_visible()
     expect(dock.get_by_role("region", name="Leuchtturm")).not_to_contain_text("Verfeindet mit")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Selbstbezug")
-    expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("→ Mira")
+    expect(dock.get_by_role("region", name="Leuchtturm")).to_contain_text("Mira · Verbunden mit")
 
     assert_accessible(page)
 
@@ -1185,7 +1365,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     expect(detail).to_be_visible()
     # The relations, not the default of none: the edge the seeded review
     # chain left (Leuchtturm's proposal pointed at Mira, already filed).
-    expect(detail).to_contain_text("→ Mira")
+    expect(detail).to_contain_text("Mira · Verbunden mit")
 
     # Selecting writes the address with a replace: the next entry back is
     # the workspace without the dock, never the previous selection. (The

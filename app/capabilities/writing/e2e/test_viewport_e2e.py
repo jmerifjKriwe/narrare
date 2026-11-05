@@ -15,11 +15,13 @@ instead of stopping: one run reports every face every width broke, and the
 recorded red is the defect's whole shape, not its first symptom.
 """
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
 
+from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.viewport import assert_overlay, assert_page_fits
 
 if TYPE_CHECKING:
@@ -38,7 +40,7 @@ EDITOR = "section.min-w-0"
 # are what a screen reader reads, so they are the selectors a test can trust.
 RAIL = 'aside[aria-label="Kapitel"]'
 DOCK = 'aside[aria-label="Wissen"]'
-FOCUS_TOGGLE = "Ablenkungen ausblenden"
+FOCUS_TOGGLE = "Fokus"
 DOCK_TAB = "Wissen"
 WIDTHS = [360, 768, 1024, 1280]
 # The breakpoint the workbench's own classes use: below it the panels are
@@ -85,9 +87,10 @@ def _control_clears_the_drawer(page: Page, label: str) -> None:
         """([x, y, label]) => {
           const hit = document.elementFromPoint(x, y);
           const button = hit && hit.closest("button");
-          return button && button.textContent.trim() === label
-            ? "clear"
-            : "covered";
+          // The toolbar's controls are icon buttons: their name lives in
+          // the aria-label, not in a textContent an icon would leave empty.
+          const name = button && (button.getAttribute("aria-label") ?? button.textContent);
+          return name && name.trim() === label ? "clear" : "covered";
         }""",
         [box["x"] + box["width"] / 2, box["y"] + box["height"] / 2, label],
     )
@@ -120,7 +123,7 @@ def _pin_drawer_scrolls(page: Page) -> None:
         pytest.fail(f"the rail drawer does not scroll: slack {slack}")
     drawer.evaluate("el => { el.scrollTop = el.scrollHeight }")
     drawer_box = drawer.bounding_box()
-    last = drawer.get_by_role("button", name="Kapitel 8", exact=True)
+    last = drawer.get_by_role("button", name=re.compile(r"^Kapitel 8\b"))
     last_box = last.bounding_box()
     if drawer_box is None or last_box is None:
         pytest.fail("the drawer or its last chapter has no box")
@@ -132,6 +135,57 @@ def _pin_drawer_scrolls(page: Page) -> None:
         )
     # The reachability half: Playwright refuses a click it cannot land.
     last.click()
+
+
+# The container the workbench is bound to (F25): one width, with and
+# without the dock. The attribute-substring form is what a class with
+# brackets needs from querySelector.
+CONTAINER_SELECTOR = '[class*="max-w-[1152px]"]'
+_CONTAINER_WIDTH = (
+    f"() => document.querySelector('{CONTAINER_SELECTOR}')?.getBoundingClientRect().width"
+)
+
+
+def _container_width(page: Page) -> float:
+    width: object = page.evaluate(_CONTAINER_WIDTH)
+    if not isinstance(width, (int, float)):
+        pytest.fail(f"the workbench container matched nothing: {CONTAINER_SELECTOR}")
+    return float(width)
+
+
+def test_the_prose_keeps_its_measure_when_the_dock_opens(page: Page, stack: Stack) -> None:
+    """F25: one container width with and without the dock, and the prose
+    keeps its 544 px measure at 1280x800 — opening a panel never reflows
+    the text."""
+    _create_workspace(page, "Das Bleiband")
+    page.set_viewport_size({"width": 1280, "height": 800})
+    expect(page.locator(PROSE)).to_be_visible()
+
+    def prose_width() -> float:
+        box = page.locator(PROSE).bounding_box()
+        if box is None:
+            pytest.fail("the prose column has no box to measure")
+        return box["width"]
+
+    closed = prose_width()
+    if abs(closed - 544) > 1:
+        pytest.fail(f"the prose column is {closed}px at 1280x800, not 544±1")
+    container_closed = _container_width(page)
+
+    page.get_by_role("button", name=DOCK_TAB, exact=True).click()
+    expect(page.locator(DOCK)).to_be_visible()
+
+    opened = prose_width()
+    if abs(opened - 544) > 1:
+        pytest.fail(f"the prose column is {opened}px with the dock open, not 544±1")
+    container_opened = _container_width(page)
+    if container_closed != container_opened:
+        pytest.fail(
+            f"the container reflows when the dock opens: "
+            f"{container_closed}px closed, {container_opened}px open"
+        )
+
+    assert_accessible(page)
 
 
 @pytest.mark.parametrize("width", WIDTHS)
@@ -206,7 +260,7 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
         expect(page.locator(RAIL)).to_be_visible()
         for _ in range(7):
             page.get_by_role("button", name="Neues Kapitel").click()
-        expect(page.get_by_role("button", name="Kapitel 8", exact=True)).to_be_visible()
+        expect(page.get_by_role("button", name=re.compile(r"^Kapitel 8\b"))).to_be_visible()
         _probe(failures, "360px rail drawer scrolls", lambda: _pin_drawer_scrolls(page))
 
     # The settings hub and the prompts page: no editor on either — the fit alone.

@@ -8,6 +8,8 @@ import {
 } from "react-aria-components";
 import type { ReactNode } from "react";
 
+import { buttonClass } from "./Button";
+
 const MODAL_CHROME =
   "m-auto w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-overlay";
 
@@ -57,6 +59,7 @@ function DialogSurface({
 export function Dialog({
   title,
   triggerLabel,
+  triggerVariant = "secondary",
   triggerAriaLabel,
   children,
   isOpen,
@@ -65,6 +68,13 @@ export function Dialog({
   title: string;
   /** The visible label of the trigger, in the trigger shape. */
   triggerLabel?: string;
+  /** The trigger's paint, through `buttonClass` — the shell button matrix
+   *  the RAC trigger child wears (the primitive's <button> cannot sit in
+   *  the trigger slot). The default is the quiet secondary: a dialog
+   *  trigger is an opener, not the page's action (R37 — the old hardcoded
+   *  `bg-primary` painted a filled primary onto every caller). Only a
+   *  trigger that is its screen's one primary passes "primary" explicitly. */
+  triggerVariant?: "primary" | "secondary";
   /** The accessible name of the trigger, when the visible label is not
    *  enough to tell one trigger from its siblings (a row of identical
    *  "Export" buttons names its novel here; the visible label stays). */
@@ -89,10 +99,13 @@ export function Dialog({
   }
   return (
     <DialogTrigger>
-      <Button
-        aria-label={triggerAriaLabel}
-        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground data-focus-visible:outline-none data-focus-visible:ring-2 data-focus-visible:ring-focus"
-      >
+      {/* RAC's Button, not the shell's: the trigger child must answer the
+          press context the DialogTrigger provides (PressResponder warns
+          and the trigger dies without it), and the primitive's <button>
+          cannot. The paint still comes from the one matrix — `buttonClass`
+          is exactly its export for a control that is not the primitive
+          (the bar's settings link wears it the same way). */}
+      <Button aria-label={triggerAriaLabel} className={buttonClass(triggerVariant, "md")}>
         {triggerLabel}
       </Button>
       <ModalOverlay

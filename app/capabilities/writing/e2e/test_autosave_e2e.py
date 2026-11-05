@@ -4,11 +4,12 @@ A refused write is named beside the text and never worn as "saved"; the body
 it carried survives in memory, and the next keystroke retries it against the
 recovered service — proven on the real stack, outage included. Leaving with
 a body that never reached the server asks first: every navigation passes the
-flush gate, so the chapter switch, the shelf link and the dock tab confirm
-after their flush fails, and a reload mid-failure meets the browser's own
-leave dialog.
+flush gate, so the chapter switch, the shelf link and the dock tab ask
+through the page's own dialog after their flush fails, and a reload
+mid-failure meets the browser's own leave dialog.
 """
 
+import re
 from collections.abc import Callable  # noqa: TC003
 from typing import TYPE_CHECKING
 
@@ -59,30 +60,21 @@ def test_a_refused_save_is_named_and_never_shown_as_saved(page: Page, stack: Sta
     assert_accessible(page)
 
 
-def _answer_confirm(page: Page, action: Callable[[], None], *, accept: bool = False) -> str:
-    """Run a leave action and answer the native confirm it raises.
+def _answer_leave_guard(page: Page, action: Callable[[], None]) -> None:
+    """Run a leave action and answer the page's leave dialog with "Bleiben".
 
-    The handler is registered *before* the action on purpose. Playwright's
-    click waits for the dialog a handler must answer, so awaiting the event
-    around the click deadlocks when the click's own handler raises it: the
-    click never returns, so the code that would answer never runs. Registered
-    first, the click returns and the wait sees the event that was answered.
-    An action that raises no dialog fails rather than passing quietly.
+    The ask is the gate's own dialog now (F21), not the browser's: it appears
+    once the refused flush has failed, and staying is the answer that keeps
+    the work. The action runs first and the dialog is awaited after it — the
+    click that starts a blocked navigation returns, and the ask it raised is
+    what this helper finds. An action that raises no dialog fails rather than
+    passing quietly.
     """
-    seen: list[str] = []
-
-    def answer(dialog: Dialog) -> None:
-        seen.append(dialog.type)
-        if accept:
-            dialog.accept()
-        else:
-            dialog.dismiss()
-
-    page.once("dialog", answer)
-    with page.expect_event("dialog", timeout=10_000) as asked:
-        action()
-    assert seen, "the leave asked nothing"
-    return asked.value.type
+    action()
+    leave_dialog = page.get_by_role("dialog")
+    expect(leave_dialog).to_be_visible(timeout=10_000)
+    leave_dialog.get_by_role("button", name="Bleiben").click()
+    expect(leave_dialog).to_have_count(0)
 
 
 def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None:
@@ -90,7 +82,7 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
     _create_book(page, "Der Priel")
     page.get_by_role("button", name="Neues Kapitel").click()
     page.get_by_role("button", name="Neues Kapitel").click()
-    page.get_by_role("button", name="Kapitel 1", exact=True).click()
+    page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
     page.locator(".ProseMirror").click()
 
     # The outage owns the rest of the proof, and the finally restores the API:
@@ -101,30 +93,32 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         page.keyboard.type("Bleibt hier.")
         expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible(timeout=10_000)
 
-        # Each leave asks through window.confirm after its flush fails.
-        seen: list[str] = []
-
+        # Each leave asks through the page's dialog after its flush fails,
+        # and a dismissed ask ("Bleiben") keeps the work every time.
         def switch() -> None:
-            page.get_by_role("button", name="Kapitel 2", exact=True).click()
+            page.get_by_role("button", name=re.compile(r"^Kapitel 2\b")).click()
 
-        seen.append(_answer_confirm(page, switch))
-        expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_have_attribute(
-            "aria-pressed", "true"
+        _answer_leave_guard(page, switch)
+        expect(page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_attribute(
+            "aria-current", "true"
         )
         expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
 
         def shelf() -> None:
             page.get_by_role("link", name="Alle Romane").click()
 
-        seen.append(_answer_confirm(page, shelf))
+        _answer_leave_guard(page, shelf)
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
-        # The shell's top bar is outside this page and a router navigation
+        # The shell's chrome is outside this page and a router navigation
         # like any other: the blocker is the one place all of them pass.
-        def topbar() -> None:
+        # The rail owns the map since P9 — the bar carries the place, not
+        # links — so the door is the rail's Chat entry, the one link the
+        # document names Chat.
+        def rail() -> None:
             page.get_by_role("link", name="Chat").click()
 
-        seen.append(_answer_confirm(page, topbar))
+        _answer_leave_guard(page, rail)
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
 
         # Back is history, not a click. Driven directly so the assertion is
@@ -132,7 +126,7 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         def back() -> None:
             page.evaluate("window.history.back()")
 
-        seen.append(_answer_confirm(page, back))
+        _answer_leave_guard(page, back)
         expect(page.get_by_role("heading", name="Der Priel")).to_be_visible()
         expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
 
@@ -143,11 +137,9 @@ def test_leaving_with_a_failed_save_asks_first(page: Page, stack: Stack) -> None
         def dock() -> None:
             page.get_by_role("button", name="Chat", exact=True).click()
 
-        seen.append(_answer_confirm(page, dock))
+        _answer_leave_guard(page, dock)
         expect(page.get_by_role("complementary", name="Chat")).to_have_count(0)
         expect(page.locator(".ProseMirror")).to_contain_text("Bleibt hier.")
-
-        assert seen == ["confirm", "confirm", "confirm", "confirm", "confirm"]
     finally:
         stack.start_api()
 
@@ -217,14 +209,15 @@ def test_failed_chapter_creation_keeps_the_unsaved_body(page: Page, stack: Stack
         ).to_be_visible()
         expect(page.get_by_text("Nicht gespeichert", exact=True)).to_be_visible()
         expect(page.locator(".ProseMirror")).to_contain_text("Diesen Satz behalten.")
-        expect(page.get_by_role("button", name="Kapitel 1", exact=True)).to_have_attribute(
-            "aria-pressed", "true"
+        expect(page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_attribute(
+            "aria-current", "true"
         )
 
-        with page.expect_event("dialog") as asked:
-            page.once("dialog", lambda dialog: dialog.dismiss())
+        # The ask is the page's dialog; dismissal keeps the failed body.
+        def shelf() -> None:
             page.get_by_role("link", name="Alle Romane").click()
-        assert asked.value.type == "confirm"
+
+        _answer_leave_guard(page, shelf)
         expect(page.locator(".ProseMirror")).to_contain_text("Diesen Satz behalten.")
     finally:
         stack.start_api()
@@ -234,9 +227,9 @@ def test_failed_chapter_creation_keeps_the_unsaved_body(page: Page, stack: Stack
     page.keyboard.type(" Jetzt speichern.")
     expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible(timeout=10_000)
     page.get_by_role("button", name="Neues Kapitel").click()
-    expect(page.get_by_role("button", name="Kapitel 2", exact=True)).to_have_attribute(
-        "aria-pressed", "true"
+    expect(page.get_by_role("button", name=re.compile(r"^Kapitel 2\b"))).to_have_attribute(
+        "aria-current", "true"
     )
     expect(page.get_by_text("Gespeichert", exact=True)).to_have_count(0)
-    page.get_by_role("button", name="Kapitel 1", exact=True).click()
+    page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
     expect(page.locator(".ProseMirror")).to_contain_text("Diesen Satz behalten. Jetzt speichern.")

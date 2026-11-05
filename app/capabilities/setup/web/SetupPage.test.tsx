@@ -48,9 +48,12 @@ describe("SetupPage", () => {
   it("renders the blank start and one card per demo", () => {
     render(<SetupPage />);
     expect(screen.getByText(t("setup.demo.blank"))).toBeTruthy();
-    expect(screen.getByText("Im Stillen Wald")).toBeTruthy();
-    expect(screen.getByText("Dead Signal")).toBeTruthy();
-    expect(screen.getByText("Echoes of the Thornwall")).toBeTruthy();
+    // The title reaches the accessibility tree once — through the radio's
+    // name; the cover's lettering is aria-hidden by contract, so a text
+    // query now finds it twice (tile plus row) and cannot be the pin.
+    for (const demo of ["Im Stillen Wald", "Dead Signal", "Echoes of the Thornwall"]) {
+      expect(screen.getByRole("radio", { name: new RegExp(demo) })).toBeTruthy();
+    }
     const subtitle = (language: string, chapters: number, entities: number): string =>
       `${t("setup.demo.language", { language })} · ${t("setup.demo.chapters", { count: chapters })} · ${t("setup.demo.entities", { count: entities })}`;
     expect(screen.getByText(subtitle("de", 2, 6))).toBeTruthy();

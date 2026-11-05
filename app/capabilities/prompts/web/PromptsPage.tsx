@@ -3,6 +3,11 @@ import { Fragment, useEffect, useId, useState } from "react";
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { usePageTitle } from "@shell/lib/pageTitle";
+import { Button } from "@shell/ui/Button";
+import { Field, Select, Textarea } from "@shell/ui/field";
+import { Notice } from "@shell/ui/Notice";
+import { Panel } from "@shell/ui/Panel";
 
 type PromptSummary = components["schemas"]["PromptSummary"];
 type PromptDetail = components["schemas"]["PromptDetail"];
@@ -122,19 +127,9 @@ function sideBySide(bundled: string, override: string): DiffRow[] {
   return rows;
 }
 
-const field =
-  "rounded-md border border-border bg-background px-3 py-2 text-base font-normal focus:border-primary focus:outline-none";
-const action = "rounded-md border border-border px-2 py-1 text-sm font-medium";
-const primaryAction =
-  "rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50";
-
 /** A scope chip: the name of the tier the lines under it speak about. */
 function Chip({ children }: { children: string }) {
-  return (
-    <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium">
-      {children}
-    </span>
-  );
+  return <span className="rounded-full bg-panel px-2 py-0.5 text-label">{children}</span>;
 }
 
 /**
@@ -296,42 +291,39 @@ function PromptEditor(props: {
       : novelTitle;
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="mt-3 rounded-md border border-border px-3 py-3"
-    >
-      <h3 id={headingId} className="text-sm font-semibold">
+    // The editor sits on a rule of its own inside the key's block — the
+    // separation is a rule, never a second box inside the card (L3, L5).
+    <section aria-labelledby={headingId} className="mt-3 border-t border-rule pt-3">
+      <h3 id={headingId} className="text-body font-semibold">
         {keyLabel} · {scopeName}
       </h3>
       {detail === null ? (
         detailFailed ? (
           <>
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <Notice tone="danger" live="alert" className="mt-2">
               {t("prompts.editor.detailFailed")}
-            </p>
+            </Notice>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setAttempt((current) => current + 1)}
-                className={action}
-              >
+              <Button variant="secondary" onClick={() => setAttempt((current) => current + 1)}>
                 {t("prompts.editor.retry")}
-              </button>
-              <button type="button" onClick={onClose} className={action}>
+              </Button>
+              <Button variant="secondary" onClick={onClose}>
                 {t("prompts.editor.cancel")}
-              </button>
+              </Button>
             </div>
           </>
         ) : (
-          <p className="mt-2 text-sm text-muted">{t("prompts.loading")}</p>
+          <Notice tone="quiet" live="status" className="mt-2">
+            {t("prompts.loading")}
+          </Notice>
         )
       ) : (
         <>
           <div className="mt-2">
-            <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">
+            <h4 className="text-label font-semibold uppercase tracking-[0.1em] text-muted">
               {t("prompts.legend")}
             </h4>
-            <ul className="mt-1 list-disc pl-5 text-xs text-muted">
+            <ul className="mt-1 list-disc pl-5 text-label text-muted">
               {detail.variables.map((variable) => (
                 <li key={variable.name}>
                   {t("prompts.variable", { name: variable.name, example: variable.example })}
@@ -339,42 +331,43 @@ function PromptEditor(props: {
               ))}
             </ul>
           </div>
-          <label className="mt-3 flex flex-col gap-1 text-sm font-medium">
-            {t("prompts.editor.contentLabel")}
-            <textarea
+          <Field label={t("prompts.editor.contentLabel")} className="mt-3">
+            {/* The template keeps the mono face: it is code the render
+                executes, not prose the reader reads. */}
+            <Textarea
               value={content}
               onChange={(event) => setContent(event.target.value)}
               rows={10}
-              className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs focus:border-primary focus:outline-none"
+              className="font-mono"
             />
-          </label>
+          </Field>
           {refusal !== null ? (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <Notice tone="danger" live="alert" className="mt-2">
               {t("prompts.saveRefused", {
                 reason: reasonLabelOf(refusal.reason, t),
                 detail: refusal.detail,
               })}
-            </p>
+            </Notice>
           ) : null}
           {actionFailed ? (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <Notice tone="danger" live="alert" className="mt-2">
               {t("prompts.errorAction")}
-            </p>
+            </Notice>
           ) : null}
           {diff === null ? null : diff === "failed" ? (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <Notice tone="danger" live="alert" className="mt-2">
               {t("prompts.editor.diffFailed")}
-            </p>
+            </Notice>
           ) : (
             <div className="mt-3">
-              <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-muted">
+              <div className="grid grid-cols-2 gap-2 text-label font-semibold text-muted">
                 <h4>{t("prompts.diff.bundled")}</h4>
                 <h4>{t("prompts.diff.override")}</h4>
               </div>
               {diff.override_content === null ? (
-                <p className="mt-2 text-xs text-muted">{t("prompts.diff.none")}</p>
+                <p className="mt-2 text-label text-muted">{t("prompts.diff.none")}</p>
               ) : (
-                <div className="mt-1 grid grid-cols-2 gap-2 font-mono text-xs">
+                <div className="mt-1 grid grid-cols-2 gap-2 font-mono text-label">
                   {sideBySide(diff.bundled_content, diff.override_content).map((row, index) => (
                     <Fragment key={index}>
                       <pre
@@ -398,20 +391,23 @@ function PromptEditor(props: {
             </div>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" disabled={busy} onClick={() => void save()} className={primaryAction}>
+            {/* The save is this screen's one filled primary (L1); every
+                companion action — diff, reset, cancel — is a bordered
+                equal. */}
+            <Button variant="primary" disabled={busy} onClick={() => void save()}>
               {t("prompts.editor.save")}
-            </button>
-            <button type="button" onClick={() => void toggleDiff()} className={action}>
+            </Button>
+            <Button variant="secondary" onClick={() => void toggleDiff()}>
               {diff === null ? t("prompts.editor.diff") : t("prompts.editor.hideDiff")}
-            </button>
+            </Button>
             {resettable ? (
-              <button type="button" disabled={busy} onClick={() => void reset()} className={action}>
+              <Button variant="secondary" disabled={busy} onClick={() => void reset()}>
                 {t("prompts.editor.reset")}
-              </button>
+              </Button>
             ) : null}
-            <button type="button" onClick={onClose} className={action}>
+            <Button variant="secondary" onClick={onClose}>
               {t("prompts.editor.cancel")}
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -420,9 +416,11 @@ function PromptEditor(props: {
 }
 
 /**
- * One key's card: the two scope chips with their honest state lines, the
- * explicit actions, and the editor when one of this card's scopes is open.
+ * One key's block: the two scope chips with their honest state lines, the
+ * explicit actions, and the editor when one of this key's scopes is open.
  * Every fact comes from the summary row — the page mints none of its own.
+ * The blocks are rows of one list panel, separated by rules — never cards
+ * inside the card (L5).
  */
 function PromptCard(props: {
   summary: PromptSummary;
@@ -436,25 +434,25 @@ function PromptCard(props: {
   const { summary, novelSelected, editor, onEdit, onClose, onSaved } = props;
   const label = keyLabelOf(summary.key, t);
   return (
-    <li className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-      <h2 className="flex flex-wrap items-baseline gap-2 text-sm font-medium">
+    <li className="border-b border-rule py-3 first:pt-0 last:border-b-0 last:pb-0">
+      <h2 className="flex flex-wrap items-baseline gap-2 text-body font-medium">
         {label}
-        <code className="text-xs font-normal text-muted">{summary.key}</code>
+        <code className="text-label font-normal text-muted">{summary.key}</code>
       </h2>
-      <p className="mt-1 text-muted">{summary.bundled_summary}</p>
+      <p className="mt-1 text-body text-muted">{summary.bundled_summary}</p>
 
       <div className="mt-3 flex flex-col gap-3">
         <div>
           <Chip>{t("prompts.scope.global")}</Chip>
-          <p className="mt-1 text-xs text-muted">
+          <p className="mt-1 text-label text-muted">
             {summary.override_global
               ? t("prompts.globalOverridden")
               : t("prompts.globalBundled")}
           </p>
           <div className="mt-2">
-            <button type="button" onClick={() => onEdit("global")} className={action}>
+            <Button variant="secondary" onClick={() => onEdit("global")}>
               {t("prompts.edit")}
-            </button>
+            </Button>
           </div>
         </div>
         {summary.novel_scopable ? (
@@ -462,7 +460,7 @@ function PromptCard(props: {
             <Chip>{t("prompts.scope.novel")}</Chip>
             {novelSelected ? (
               <>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-label text-muted">
                   {summary.override_novel
                     ? t("prompts.novelOverridden")
                     : t("prompts.inherits", {
@@ -472,13 +470,13 @@ function PromptCard(props: {
                       })}
                 </p>
                 <div className="mt-2">
-                  <button type="button" onClick={() => onEdit("novel")} className={action}>
+                  <Button variant="secondary" onClick={() => onEdit("novel")}>
                     {summary.override_novel ? t("prompts.editNovel") : t("prompts.create")}
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : (
-              <p className="mt-1 text-xs text-muted">{t("prompts.pickNovel")}</p>
+              <p className="mt-1 text-label text-muted">{t("prompts.pickNovel")}</p>
             )}
           </div>
         ) : null}
@@ -506,11 +504,14 @@ function PromptCard(props: {
  * page's data — the writing capability's code stays behind its router.
  * The settings area's frame owns the page's shape — the container and the
  * area's single <h1> — so this page is a section under an <h2>, like every
- * contributed settings page.
+ * contributed settings page. The key blocks share one list panel: the
+ * surface is the panel's, the rows' separators are rules.
  */
 export function PromptsPage() {
   const t = useTranslation();
-  const filterId = useId();
+  // The tab's name: this page is "Prompts" for as long as it shows, and the
+  // top bar's place indicator reads the same stack's top.
+  usePageTitle(t("prompts.settingsTitle"));
   const [novels, setNovels] = useState<Novel[]>([]);
   const [novelId, setNovelId] = useState("");
   const [rows, setRows] = useState<PromptSummary[] | null>(null);
@@ -565,13 +566,10 @@ export function PromptsPage() {
         {t("prompts.heading")}
       </h2>
 
-      <div className="mt-6 flex max-w-64 flex-col gap-1 text-sm font-medium">
-        <label htmlFor={filterId}>{t("prompts.filter")}</label>
-        <select
-          id={filterId}
+      <Field label={t("prompts.filter")} className="mt-6 max-w-64">
+        <Select
           value={novelId}
           onChange={(event) => setNovelId(event.target.value)}
-          className={field}
         >
           <option value="">{t("prompts.filter.all")}</option>
           {novels.map((novel) => (
@@ -579,62 +577,66 @@ export function PromptsPage() {
               {novel.title}
             </option>
           ))}
-        </select>
-      </div>
+        </Select>
+      </Field>
 
       {listFailed ? (
-        <div className="mt-4">
-          <p role="alert" className="text-sm text-danger">
-            {t("prompts.errorLoad")}
-          </p>
-          {/* The way back is one press: the effect asks both reads again, no
-              reload demanded — the page-level answer to a dead loading state. */}
-          <button
-            type="button"
-            onClick={() => setRefresh((current) => current + 1)}
-            className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-          >
-            {t("prompts.retry")}
-          </button>
-        </div>
+        // The outage is named where the way back is: one alert, one press —
+        // the effect asks both reads again, no reload demanded.
+        <Notice
+          tone="danger"
+          live="alert"
+          className="mt-4"
+          action={
+            <Button variant="secondary" onClick={() => setRefresh((current) => current + 1)}>
+              {t("prompts.retry")}
+            </Button>
+          }
+        >
+          {t("prompts.errorLoad")}
+        </Notice>
       ) : null}
 
       {novelsFailed ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-4">
           {t("prompts.errorLoadNovels")}
-        </p>
+        </Notice>
       ) : null}
 
       {rows === null ? (
         listFailed ? null : (
-          <p className="mt-4 text-sm text-muted">{t("prompts.loading")}</p>
+          <Notice tone="quiet" live="status" className="mt-4">
+            {t("prompts.loading")}
+          </Notice>
         )
       ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {rows.map((summary) => (
-            <PromptCard
-              key={summary.key}
-              summary={summary}
-              novelSelected={novelId !== ""}
-              editor={
-                editor?.key === summary.key
-                  ? {
-                      scope: editor.scope,
-                      novelId: editor.novelId,
-                      novelTitle:
-                        novels.find((novel) => novel.id === editor.novelId)?.title ?? null,
-                    }
-                  : null
-              }
-              onEdit={(scope) => setEditor({ key: summary.key, scope, novelId })}
-              onClose={() => setEditor(null)}
-              onSaved={() => {
-                setEditor(null);
-                setRefresh((current) => current + 1);
-              }}
-            />
-          ))}
-        </ul>
+        <Panel className="mt-4">
+          <ul className="flex flex-col">
+            {rows.map((summary) => (
+              <PromptCard
+                key={summary.key}
+                summary={summary}
+                novelSelected={novelId !== ""}
+                editor={
+                  editor?.key === summary.key
+                    ? {
+                        scope: editor.scope,
+                        novelId: editor.novelId,
+                        novelTitle:
+                          novels.find((novel) => novel.id === editor.novelId)?.title ?? null,
+                      }
+                    : null
+                }
+                onEdit={(scope) => setEditor({ key: summary.key, scope, novelId })}
+                onClose={() => setEditor(null)}
+                onSaved={() => {
+                  setEditor(null);
+                  setRefresh((current) => current + 1);
+                }}
+              />
+            ))}
+          </ul>
+        </Panel>
       )}
     </section>
   );

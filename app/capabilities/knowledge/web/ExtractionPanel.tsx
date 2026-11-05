@@ -13,7 +13,9 @@ import {
   useJobQuery,
   usePendingSuggestionsQuery,
 } from "@shell/lib/query";
+import { Button } from "@shell/ui/Button";
 import { JobStatus } from "@shell/ui/JobStatus";
+import { Notice } from "@shell/ui/Notice";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
 import { entityTypeLabel } from "./EntitiesPanel";
@@ -89,25 +91,22 @@ export function ExtractionPanel() {
 
   return (
     <section aria-labelledby={headingId}>
-      <h3 id={headingId} className="text-sm font-semibold">
+      <h3 id={headingId} className="text-body font-semibold">
         {t("knowledge.extractionHeading")}
       </h3>
       {chapterId === null ? (
-        <p className="mt-2 text-sm text-muted">{t("knowledge.noActiveChapter")}</p>
+        <p className="mt-2 text-body text-muted">{t("knowledge.noActiveChapter")}</p>
       ) : (
-        <button
-          type="button"
-          onClick={() => void extract()}
-          disabled={busy}
-          className="mt-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t("knowledge.extractChapter")}
-        </button>
+        <div className="mt-2">
+          <Button variant="secondary" onClick={() => void extract()} disabled={busy}>
+            {t("knowledge.extractChapter")}
+          </Button>
+        </div>
       )}
       {enqueueFailed ? (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.extractionError")}
-        </p>
+        </Notice>
       ) : null}
       {job.data && !(pollFailed && (job.data.status === "queued" || job.data.status === "running")) ? (
         // The last-known row renders only what it can still stand behind.
@@ -123,22 +122,24 @@ export function ExtractionPanel() {
       {pollFailed ? (
         // The failed poll names itself where the trigger it unlocked sits:
         // the outage reads as an outage, and the retry is one click away.
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.errorJob")}
-        </p>
+        </Notice>
       ) : null}
       {/* The review queue outlives the job that filled it: a dock reopened
           later still owes the writer the decisions, so the cards render from
-          the query, not from the job's lifecycle. */}
+          the query, not from the job's lifecycle. The card is the review's
+          own surface (P17's to restyle): consumed as it stands, with the
+          proposal's name, type and relations riding it. */}
       {suggestions.isError ? (
         // The queue's own outage, named apart from the entity list's (the
         // two panels share the dock, and both queries fail together — a
         // writer reading two alerts must know which answer is missing).
         // Silence here would read as a spent queue, the same mask the
         // entity list shed in its own outage test.
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <Notice tone="danger" live="alert" className="mt-2">
           {t("knowledge.errorQueue")}
-        </p>
+        </Notice>
       ) : (
         (suggestions.data ?? []).map((suggestion) => (
           <ProposalCard
@@ -168,7 +169,7 @@ export function ExtractionPanel() {
               void discard.mutateAsync(suggestion.id).catch(() => undefined);
             }}
           >
-            <p className="mt-2 text-sm font-medium">
+            <p className="mt-2 text-body font-medium">
               {suggestion.name} · {entityTypeLabel(t, suggestion.type)}
             </p>
             {suggestion.relations.length > 0 ? (
@@ -176,14 +177,14 @@ export function ExtractionPanel() {
               // the suggested type, the vocabulary's wording or the raw
               // proposal's own words.
               <div className="mt-2">
-                <p className="text-sm font-medium">
+                <p className="text-body font-medium">
                   {t("knowledge.suggestionRelationsHeading")}
                 </p>
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {suggestion.relations.map((relation) => (
                     <li
                       key={`${relation.target_name}\u0000${relation.relation_type}`}
-                      className="text-sm text-muted"
+                      className="text-body text-muted"
                     >
                       → {relation.target_name} · {relationTypeLabel(t, relation.relation_type)}
                     </li>

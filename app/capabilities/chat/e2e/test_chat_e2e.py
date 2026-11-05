@@ -44,16 +44,15 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 PASSAGE = "Der Leuchtturm am Horizont war seit Jahren dunkel."
 
+# The hover probe's own document, in the module's shared database: its text
+# stays out of the Leuchtturm passage's words, so it never joins the tie
+# the identical-passage uploads race for in the sources ranking — the
+# locale-switch test below must keep finding its own document there.
+PROBE_PASSAGE = "Der Carolinum-Garten hinter der alten Mauer blüht seit dem Frühjahr."
+
 
 def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: Path) -> None:
-    source = tmp_path / "notizen.txt"
-    source.write_text(PASSAGE, encoding="utf-8")
-
-    page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill("Notizen")
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text("Notizen")).to_be_visible()
+    _upload(page, tmp_path, "Notizen")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -62,21 +61,70 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
     expect(page.get_by_role("region", name="Antwort")).to_contain_text(PASSAGE)
     expect(page.get_by_role("region", name="Quellen")).to_contain_text("Notizen")
 
+    # L1 on the standalone page (R46): with answer and sources on screen,
+    # /chat answers exactly one filled primary — the ask itself.
+    primaries = page.locator("button.bg-primary")
+    expect(primaries).to_have_count(1)
+    expect(primaries.first).to_have_text(re.compile("Fragen"))
+
+    assert_accessible(page)
+
+
+def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: Path) -> None:
+    """R48's hover ink, probed where axe cannot look: a hover washes the
+    row in `--soft`, and the muted snippet under the title must restore
+    foreground there — muted on `--soft` is below AA, so the hover's
+    answer is the ink, not a darker grey. The row is the Row div inside
+    its list item (the li carries no paint), so the probe measures that.
+    The document here carries its own passage (PROBE_PASSAGE): the
+    module's database is shared, and identical passages tie in the
+    sources ranking — a fifth competitor would shuffle which uploads the
+    other tests find."""
+    source = tmp_path / "quellnotizen.txt"
+    source.write_text(PROBE_PASSAGE, encoding="utf-8")
+
+    page.goto("http://127.0.0.1:3100/knowledge")
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill("Quellnotizen")
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text("Quellnotizen", exact=True)).to_be_visible()
+
+    page.goto("http://127.0.0.1:3100/chat")
+    page.get_by_label("Frage").fill("Wo blüht der Garten?")
+    page.get_by_role("button", name="Fragen").click()
+    region = page.get_by_role("region", name="Quellen")
+    row = region.get_by_role("listitem").first.locator("div.group")
+    snippet = row.locator("span.text-muted")
+    title = row.locator("span.text-label")
+    expect(snippet).to_be_visible()
+
+    rest_color = snippet.evaluate("el => getComputedStyle(el).color")
+    rest_bg = row.evaluate("el => getComputedStyle(el).backgroundColor")
+
+    row.hover()
+    hover_color = snippet.evaluate("el => getComputedStyle(el).color")
+    hover_bg = row.evaluate("el => getComputedStyle(el).backgroundColor")
+    ink = title.evaluate("el => getComputedStyle(el).color")
+
+    assert hover_bg != rest_bg, "the row did not wash in on hover"
+    assert hover_color == ink, "the hovered snippet kept its muted ink"
+    assert rest_color != ink, "the resting snippet was not muted to begin with"
+
     assert_accessible(page)
 
 
 def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path) -> None:
     # Each test in this module uploads its own document (the stack's database
     # is module-scoped), and the titles share no substring so a page listing
-    # every upload still resolves each one to a single element.
-    source = tmp_path / "notizen.txt"
-    source.write_text(PASSAGE, encoding="utf-8")
-
-    page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill("Stylistik")
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text("Stylistik")).to_be_visible()
+    # every upload still resolves each one to a single element. The second
+    # document keeps the corpus at two chunks even when this test runs first
+    # (pytest-randomly) — the source-row rule pin below needs a first and a
+    # last row to tell apart.
+    _upload(page, tmp_path, "Stylistik")
+    _upload(page, tmp_path, "Randnotiz")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -88,25 +136,55 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     bg = ask.evaluate("el => getComputedStyle(el).backgroundColor")
     assert bg not in ("", "rgba(0, 0, 0, 0)")  # Tailwind painted the button
 
-    # The button's bg-primary also exists on other pages, so it alone would
-    # not prove Tailwind scanned the capability's folder. whitespace-pre-wrap
-    # is the chat page's alone: if the moved file was not a source, the rule
-    # is absent and the computed style is the browser's default ("normal").
+    # The assertion walks /chat, where the ask is the surface's one filled
+    # primary again (R46: the dock's ask defers to the editor and carries
+    # no fill there). The fill alone would not prove Tailwind scanned the
+    # capability's folder — bg-primary exists on other pages — so
+    # whitespace-pre-wrap is the chat page's own second half: if the moved
+    # file was not a source, the rule is absent and the computed style is
+    # the browser's default ("normal").
     answer = page.get_by_role("region", name="Antwort").locator("p").first
     assert answer.evaluate("el => getComputedStyle(el).whiteSpace") == "pre-wrap"
+
+    # §8.7's chat row, at the narrowest page width (the dock's 384 px is
+    # pinned in the dock test): the field shrinks first (min-w-0), the ask
+    # keeps its label's width, and nothing overflows the column.
+    page.set_viewport_size({"width": 360, "height": 800})
+    ask_box = page.get_by_role("button", name="Fragen").bounding_box()
+    assert ask_box is not None
+    assert ask_box["x"] >= 0 and ask_box["x"] + ask_box["width"] <= 360
+    page.set_viewport_size({"width": 1280, "height": 720})
+
+    # F16: the finished answer is spoken once, on completion. React-aria's
+    # polite log appends one leaf div per announcement, so the count pin
+    # fails where a containment pin cannot: a regression that announces per
+    # delta appends a leaf per token and the count climbs past one. The
+    # answer's own words stay out of the announcer entirely.
+    announcer = page.locator("[data-live-announcer]")
+    expect(
+        announcer.locator("div[aria-live='polite'] > div").filter(has_text="Antwort bereit.")
+    ).to_have_count(1)
+    expect(announcer).not_to_contain_text("Leuchtturm")
+
+    # The sources are a real list — assistive tech hears how many — and the
+    # rules between rows survive: every non-final row computes a 1 px bottom
+    # rule, only the last one yields (0 px).
+    rows = page.get_by_role("region", name="Quellen").get_by_role("listitem")
+    expect(rows.first).to_be_visible()
+    count = rows.count()
+    assert count >= 2
+    widths = [
+        rows.nth(index).evaluate("el => getComputedStyle(el.firstElementChild).borderBottomWidth")
+        for index in range(count)
+    ]
+    assert all(width == "1px" for width in widths[:-1])
+    assert widths[-1] == "0px"
 
     assert_accessible(page)
 
 
 def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_path: Path) -> None:
-    source = tmp_path / "notizen.txt"
-    source.write_text(PASSAGE, encoding="utf-8")
-
-    page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill("Sprachwechsel")
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text("Sprachwechsel")).to_be_visible()
+    _upload(page, tmp_path, "Sprachwechsel")
 
     page.goto("http://127.0.0.1:3100/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
@@ -134,15 +212,24 @@ def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_pat
 
 
 def _upload(page: Page, tmp_path: Path, title: str) -> None:
-    """Seed the knowledge base through the only door a user has."""
+    """Seed the knowledge base through the only door a user has: the upload
+    form behind its dialog — the page holds one "+ Dokument" control since
+    the knowledge re-set, the dialog owns the fields, and a landed upload
+    closes it.
+    """
     source = tmp_path / "notizen.txt"
     source.write_text(PASSAGE, encoding="utf-8")
 
     page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill(title)
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text(title)).to_be_visible()
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill(title)
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    # exact=True: the module's database is shared, so a substring ("Notizen"
+    # inside an earlier "Docknotizen") would tie the check to the run's order.
+    expect(page.get_by_text(title, exact=True)).to_be_visible()
 
 
 def _open_workspace(page: Page, title: str) -> None:
@@ -177,6 +264,12 @@ def test_dock_answers_beside_the_editor(page: Page, stack: Stack, tmp_path: Path
     editor = page.locator(".ProseMirror")
     expect(dock).to_be_visible()
     expect(editor).to_be_visible()
+    # §8.7's chat row inside the dock's 384 px: the ask sits beside the
+    # question on one row — never wrapped beneath it.
+    field_box = dock.get_by_label("Frage").bounding_box()
+    ask_box = dock.get_by_role("button", name="Fragen").bounding_box()
+    assert field_box is not None and ask_box is not None
+    assert field_box["x"] + field_box["width"] <= ask_box["x"]
     # The open dock is URL state: the child route is the whole of it. No
     # dock param rides along — omit-at-default, like focus.
     assert page.url.split("?")[0].endswith("/chat")
@@ -261,7 +354,9 @@ def test_dock_toggle_preserves_rail_and_focus(page: Page, stack: Stack) -> None:
 
     # A workspace state the dock must not disturb: rail collapsed, focus at
     # depth 1 — both URL state, both carried by the dock's own navigation.
-    page.get_by_role("button", name="Kapitelleiste ausblenden").click()
+    # The rail's toggle is the toolbar's icon button since F20; at depth 1
+    # it yields with the rail it answers.
+    page.get_by_role("button", name="Kapitelleiste").click()
     expect(page.get_by_role("complementary")).to_have_count(0)
     page.keyboard.press("F9")
     assert "rail=false" in page.url and "focus=1" in page.url
@@ -307,10 +402,13 @@ def _ask_in_dock(page: Page, tmp_path: Path, title: str, passage: str, question:
     source = tmp_path / "notizen.txt"
     source.write_text(passage, encoding="utf-8")
     page.goto("http://127.0.0.1:3100/knowledge")
-    page.get_by_label("Dokument").set_input_files(str(source))
-    page.get_by_label("Titel (optional)").fill(title)
-    page.get_by_role("button", name="Hochladen").click()
-    expect(page.get_by_text(title)).to_be_visible()
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill(title)
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text(title, exact=True)).to_be_visible()
 
     _open_workspace(page, f"Die {title}")
 

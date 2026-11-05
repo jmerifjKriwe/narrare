@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { Button } from "@shell/ui/Button";
+import { Field, Input, Select } from "@shell/ui/field";
+import { Notice } from "@shell/ui/Notice";
+import { Panel } from "@shell/ui/Panel";
 
 type Profile = components["schemas"]["ProfileRead"];
 type ProfileTestResult = components["schemas"]["ProfileTestResult"];
@@ -31,6 +35,16 @@ const TASK_LABELS: Record<string, MessageKey> = {
   "knowledge.check-consistency": "settings.task.knowledge.check-consistency",
   "settings.test": "settings.tasks.settings.test",
 };
+
+/**
+ * The one label grid this panel's forms speak: the label sits in the grid's
+ * own 128 px track, the control beside it at the field's 28 px. The column
+ * comes from the track, never from a sized label — and `grid` appended after
+ * `Field`'s own `flex` is what turns the field into the row (the E2E pins the
+ * computed `gridTemplateColumns`, so a Tailwind reorder that let the stack
+ * win again goes red loudly instead of drifting quietly).
+ */
+const LABEL_ROW = "grid grid-cols-[128px_minmax(0,1fr)] items-center gap-x-2";
 
 /** One text field of the profile form, as the input holds it. */
 type FormState = {
@@ -96,6 +110,12 @@ function tuned(value: string): number | null {
  * The provider section: the list with its per-profile actions, the create
  * and edit form, and the per-task assignments. Everything a user can do to
  * a profile happens here, against the same masked surface the API serves.
+ *
+ * The sub-page's one filled primary is the form's save (L1); every other
+ * control — the list actions, the retries, the key box's done — is a
+ * bordered equal. The states speak through `Notice`: the wait, the empty
+ * list, the load failure with its retry, the save and action refusals, and
+ * the row's own probe outcomes.
  */
 export function ProvidersPanel() {
   const t = useTranslation();
@@ -110,6 +130,10 @@ export function ProvidersPanel() {
   const [deleteRefused, setDeleteRefused] = useState<"default" | "other" | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProfileTestResult>>({});
   const [models, setModels] = useState<Record<string, string[] | "failed">>({});
+  // The stored-key hint's id: wired to the key input by hand, because the
+  // hint belongs to the control's column of the grid row (Field's own hint
+  // would land under the label).
+  const apiKeyHintId = useId();
 
   useEffect(() => {
     // Both views load on mount: the assignment selects display their values
@@ -313,325 +337,304 @@ export function ProvidersPanel() {
     }
   }
 
-  const field =
-    "rounded-md border border-border bg-card px-3 py-2 text-base font-normal focus:border-primary focus:outline-none";
-  const action = "rounded-md border border-border px-2 py-1 text-sm font-medium";
-
   return (
     <>
-      <section className="mt-10" aria-labelledby="settings-providers-heading">
-        <h2 id="settings-providers-heading" className="text-lg font-semibold">
+      <section aria-labelledby="settings-providers-heading">
+        <h2 id="settings-providers-heading" className="text-emph font-semibold">
           {t("settings.providers")}
         </h2>
 
         {created ? (
-          <p
-            role="status"
-            className="mt-3 rounded-lg border border-border bg-card px-4 py-3 text-sm"
+          <Notice
+            tone="info"
+            live="status"
+            className="mt-3"
+            action={
+              <Button variant="secondary" onClick={() => setCreated(null)}>
+                {t("settings.profiles.keyOnceDone")}
+              </Button>
+            }
           >
-            {t("settings.profiles.keyOnce", { name: created.name, key: created.apiKey })}{" "}
-            <button type="button" onClick={() => setCreated(null)} className={action}>
-              {t("settings.profiles.keyOnceDone")}
-            </button>
-          </p>
+            {t("settings.profiles.keyOnce", { name: created.name, key: created.apiKey })}
+          </Notice>
         ) : null}
 
         {saveFailed ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
+          <Notice tone="danger" live="alert" className="mt-3">
             {t("settings.profiles.errorSave")}
-          </p>
+          </Notice>
         ) : null}
         {deleteRefused !== null ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
+          <Notice tone="danger" live="alert" className="mt-3">
             {deleteRefused === "default"
               ? t("settings.profiles.errorDefaultDelete")
               : t("settings.profiles.errorDelete")}
-          </p>
+          </Notice>
         ) : null}
         {failure !== null ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
+          // The reads failed: said where the way back is — one press asks
+          // all three again, no reload demanded.
+          <Notice
+            tone="danger"
+            live="alert"
+            className="mt-3"
+            action={
+              <Button variant="secondary" onClick={() => void reload()}>
+                {t("settings.retry")}
+              </Button>
+            }
+          >
             {t(failure)}
-          </p>
+          </Notice>
         ) : null}
 
-        {profiles === null ? null : profiles.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">{t("settings.profiles.empty")}</p>
+        {profiles === null ? (
+          // The answer has not arrived yet: the wait is named, not silence.
+          // A failed load speaks through the alert above, not twice here.
+          failure === null ? (
+            <Notice tone="quiet" live="status" className="mt-3">
+              {t("settings.profiles.loading")}
+            </Notice>
+          ) : null
+        ) : profiles.length === 0 ? (
+          <Notice tone="quiet" className="mt-3">
+            {t("settings.profiles.empty")}
+          </Notice>
         ) : (
-          <ul className="mt-3 flex flex-col gap-2">
-            {profiles.map((profile) => {
-              const result = testResults[profile.id];
-              const discovered = models[profile.id];
-              return (
-              <li
-                key={profile.id}
-                className="rounded-lg border border-border bg-card px-4 py-3 text-sm"
-              >
-                <p className="flex flex-wrap items-center gap-2 font-medium">
-                  {profile.name}
-                  {profile.is_default ? (
-                    <span className="rounded-full border border-border px-2 py-0.5 text-xs font-normal text-muted">
-                      {t("settings.profiles.defaultBadge")}
-                    </span>
-                  ) : null}
-                </p>
-                <p className="mt-1 text-muted">
-                  {KIND_LABELS[profile.kind] === undefined
-                    ? profile.kind
-                    : t(KIND_LABELS[profile.kind])}
-                  {" · "}
-                  {profile.model ?? "—"}
-                  {profile.api_key_mask ? ` · ${profile.api_key_mask}` : ""}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {!profile.is_default ? (
-                    <button
-                      type="button"
-                      onClick={() => void makeDefault(profile)}
-                      className={action}
-                    >
-                      {t("settings.profiles.makeDefault")}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => startEditing(profile)}
-                    className={action}
+          <Panel dense className="mt-3">
+            <ul className="flex flex-col">
+              {profiles.map((profile) => {
+                const result = testResults[profile.id];
+                const discovered = models[profile.id];
+                return (
+                  <li
+                    key={profile.id}
+                    className="border-b border-rule py-3 first:pt-0 last:border-b-0 last:pb-0"
                   >
-                    {t("settings.profiles.edit")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void testConnection(profile)}
-                    className={action}
-                  >
-                    {t("settings.profiles.test")}
-                  </button>
-                  {profile.kind === "openai-chat" ? (
-                    <button
-                      type="button"
-                      onClick={() => void discoverModels(profile)}
-                      className={action}
-                    >
-                      {t("settings.profiles.discover")}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void remove(profile)}
-                    className={action}
-                  >
-                    {t("settings.profiles.delete")}
-                  </button>
-                </div>
-                {result === undefined ? null : (
-                  <p role="status" className="mt-2 text-muted">
-                    {result.ok
-                      ? t("settings.profiles.testOk", { ms: result.latency_ms })
-                      : t("settings.profiles.testFailed", { error: result.error ?? "" })}
-                  </p>
-                )}
-                {discovered === undefined ? null : (
-                  <p className="mt-2 text-muted">
-                    {discovered === "failed"
-                      ? t("settings.profiles.errorModels")
-                      : t("settings.profiles.models", { models: discovered.join(", ") })}
-                  </p>
-                )}
-              </li>
-              );
-            })}
-          </ul>
+                    <p className="flex flex-wrap items-baseline gap-2 text-body font-medium">
+                      {profile.name}
+                      {profile.is_default ? (
+                        <span className="rounded-full bg-panel px-2 py-0.5 text-label">
+                          {t("settings.profiles.defaultBadge")}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-1 text-body text-muted">
+                      {KIND_LABELS[profile.kind] === undefined
+                        ? profile.kind
+                        : t(KIND_LABELS[profile.kind])}
+                      {" · "}
+                      {profile.model ?? "—"}
+                      {profile.api_key_mask ? ` · ${profile.api_key_mask}` : ""}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {!profile.is_default ? (
+                        <Button variant="secondary" onClick={() => void makeDefault(profile)}>
+                          {t("settings.profiles.makeDefault")}
+                        </Button>
+                      ) : null}
+                      <Button variant="secondary" onClick={() => startEditing(profile)}>
+                        {t("settings.profiles.edit")}
+                      </Button>
+                      <Button variant="secondary" onClick={() => void testConnection(profile)}>
+                        {t("settings.profiles.test")}
+                      </Button>
+                      {profile.kind === "openai-chat" ? (
+                        <Button variant="secondary" onClick={() => void discoverModels(profile)}>
+                          {t("settings.profiles.discover")}
+                        </Button>
+                      ) : null}
+                      <Button variant="secondary" onClick={() => void remove(profile)}>
+                        {t("settings.profiles.delete")}
+                      </Button>
+                    </div>
+                    {result === undefined ? null : (
+                      <Notice tone={result.ok ? "quiet" : "warning"} live="status" className="mt-2">
+                        {result.ok
+                          ? t("settings.profiles.testOk", { ms: result.latency_ms })
+                          : t("settings.profiles.testFailed", { error: result.error ?? "" })}
+                      </Notice>
+                    )}
+                    {discovered === undefined ? null : (
+                      <Notice
+                        tone={discovered === "failed" ? "warning" : "quiet"}
+                        live="status"
+                        className="mt-2"
+                      >
+                        {discovered === "failed"
+                          ? t("settings.profiles.errorModels")
+                          : t("settings.profiles.models", { models: discovered.join(", ") })}
+                      </Notice>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
         )}
 
-        <form onSubmit={submit} className="mt-6 flex flex-col gap-3">
-          {editing === null ? null : (
-            <p className="text-sm text-muted">{editing.name}</p>
-          )}
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-              {t("settings.profiles.nameLabel")}
-              <input
-                value={form.name}
-                onChange={(event) => set("name", event.target.value)}
-                className={field}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {t("settings.profiles.kindLabel")}
-              <select
-                value={form.kind}
-                onChange={(event) => set("kind", event.target.value)}
-                disabled={editing !== null}
-                className={field}
-              >
-                {KINDS.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {KIND_LABELS[kind] === undefined ? kind : t(KIND_LABELS[kind])}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("settings.profiles.baseUrlLabel")}
-            <input
+        <form onSubmit={submit} className="mt-5 flex flex-col gap-2">
+          {editing === null ? null : <p className="text-body text-muted">{editing.name}</p>}
+          <Field label={t("settings.profiles.nameLabel")} className={LABEL_ROW}>
+            <Input
+              value={form.name}
+              onChange={(event) => set("name", event.target.value)}
+            />
+          </Field>
+          <Field label={t("settings.profiles.kindLabel")} className={LABEL_ROW}>
+            <Select
+              value={form.kind}
+              onChange={(event) => set("kind", event.target.value)}
+              disabled={editing !== null}
+            >
+              {KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {KIND_LABELS[kind] === undefined ? kind : t(KIND_LABELS[kind])}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={t("settings.profiles.baseUrlLabel")} className={LABEL_ROW}>
+            <Input
               value={form.baseUrl}
               onChange={(event) => set("baseUrl", event.target.value)}
-              className={field}
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("settings.profiles.modelLabel")}
-            <input
+          </Field>
+          <Field label={t("settings.profiles.modelLabel")} className={LABEL_ROW}>
+            <Input
               value={form.model}
               onChange={(event) => set("model", event.target.value)}
-              className={field}
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            {t("settings.profiles.apiKeyLabel")}
-            <input
+          </Field>
+          <Field label={t("settings.profiles.apiKeyLabel")} className={LABEL_ROW}>
+            <Input
               type="password"
               value={form.apiKey}
               onChange={(event) => set("apiKey", event.target.value)}
-              aria-describedby="settings-api-key-hint"
-              className={field}
+              aria-describedby={apiKeyHintId}
             />
-          </label>
-          {editing !== null && editing.api_key_mask !== null ? (
-            <p id="settings-api-key-hint" className="-mt-2 text-xs text-muted">
-              {t("settings.profiles.apiKeyHint")}
-            </p>
-          ) : null}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-              {t("settings.profiles.contextWindowLabel")}
-              <input
-                type="number"
-                min={1}
-                value={form.contextWindow}
-                onChange={(event) => set("contextWindow", event.target.value)}
-                className={field}
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-              {t("settings.profiles.maxOutputLabel")}
-              <input
-                type="number"
-                min={1}
-                value={form.maxOutput}
-                onChange={(event) => set("maxOutput", event.target.value)}
-                className={field}
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-              {t("settings.profiles.temperatureLabel")}
-              <input
-                type="number"
-                min={0}
-                max={2}
-                step={0.1}
-                value={form.temperature}
-                onChange={(event) => set("temperature", event.target.value)}
-                className={field}
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
-              {t("settings.profiles.timeoutLabel")}
-              <input
-                type="number"
-                min={0.5}
-                step={0.5}
-                value={form.timeout}
-                onChange={(event) => set("timeout", event.target.value)}
-                className={field}
-              />
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
+            {editing !== null && editing.api_key_mask !== null ? (
+              <p id={apiKeyHintId} className="col-start-2 text-label text-muted">
+                {t("settings.profiles.apiKeyHint")}
+              </p>
+            ) : null}
+          </Field>
+          <Field label={t("settings.profiles.contextWindowLabel")} className={LABEL_ROW}>
+            <Input
+              type="number"
+              min={1}
+              value={form.contextWindow}
+              onChange={(event) => set("contextWindow", event.target.value)}
+            />
+          </Field>
+          <Field label={t("settings.profiles.maxOutputLabel")} className={LABEL_ROW}>
+            <Input
+              type="number"
+              min={1}
+              value={form.maxOutput}
+              onChange={(event) => set("maxOutput", event.target.value)}
+            />
+          </Field>
+          <Field label={t("settings.profiles.temperatureLabel")} className={LABEL_ROW}>
+            <Input
+              type="number"
+              min={0}
+              max={2}
+              step={0.1}
+              value={form.temperature}
+              onChange={(event) => set("temperature", event.target.value)}
+            />
+          </Field>
+          <Field label={t("settings.profiles.timeoutLabel")} className={LABEL_ROW}>
+            <Input
+              type="number"
+              min={0.5}
+              step={0.5}
+              value={form.timeout}
+              onChange={(event) => set("timeout", event.target.value)}
+            />
+          </Field>
+          <div className="mt-2 flex items-center gap-2">
+            {/* The save is this sub-page's one filled primary (L1); the
+                cancel beside it is a bordered equal. */}
+            <Button
               type="submit"
+              variant="primary"
               disabled={form.name.trim() === ""}
-              className="self-start rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
             >
               {editing === null
                 ? t("settings.profiles.create")
                 : t("settings.profiles.save")}
-            </button>
+            </Button>
             {editing === null ? null : (
-              <button
-                type="button"
-                onClick={stopEditing}
-                className="self-start rounded-md border border-border px-3 py-2 text-sm font-medium"
-              >
+              <Button variant="secondary" onClick={stopEditing}>
                 {t("settings.profiles.cancel")}
-              </button>
+              </Button>
             )}
           </div>
         </form>
       </section>
 
-      <section className="mt-10" aria-labelledby="settings-assignments-heading">
-        <h2 id="settings-assignments-heading" className="text-lg font-semibold">
+      <section aria-labelledby="settings-assignments-heading" className="mt-5">
+        <h2 id="settings-assignments-heading" className="text-emph font-semibold">
           {t("settings.assignments")}
         </h2>
-        {tasks.map((task) => {
-          const assigned = assignments.find((row) => row.task_key === task.task_key);
-          const labelKey = TASK_LABELS[task.task_key];
-          const label = labelKey === undefined ? t("settings.tasks.unknown") : t(labelKey);
-          const kindKey = KIND_LABELS[task.kind];
-          if (!task.assignable) {
-            // An audit-only key (the settings probe's) has no serving tier and
-            // no assignment to offer: one labelled line explains what it is.
+        <div className="mt-3 flex flex-col gap-2">
+          {tasks.map((task) => {
+            const assigned = assignments.find((row) => row.task_key === task.task_key);
+            const labelKey = TASK_LABELS[task.task_key];
+            const label = labelKey === undefined ? t("settings.tasks.unknown") : t(labelKey);
+            const kindKey = KIND_LABELS[task.kind];
+            if (!task.assignable) {
+              // An audit-only key (the settings probe's) has no serving tier and
+              // no assignment to offer: one labelled line explains what it is.
+              // A plain text pair, not a `Field`: there is no control for a
+              // label to point at.
+              return (
+                <div
+                  key={task.task_key}
+                  className={`${LABEL_ROW} text-label font-medium`}
+                >
+                  <span>{label}</span>
+                  <p className="font-normal text-muted">
+                    {t("settings.profiles.taskAuditOnly")}
+                  </p>
+                </div>
+              );
+            }
+            // What actually answers, not the stored choice: the cascade can
+            // serve a sibling's assignment or the default from here.
+            const effective =
+              task.profile_name !== null
+                ? t("settings.assignments.via", { profile: task.profile_name })
+                : t("settings.assignments.environment", {
+                    kind: kindKey === undefined ? task.kind : t(kindKey),
+                  });
             return (
-              <div
-                key={task.task_key}
-                className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
-              >
-                <span>{label}</span>
-                <p className="text-xs font-normal text-muted">
-                  {t("settings.profiles.taskAuditOnly")}
+              <Field key={task.task_key} label={label} className={LABEL_ROW}>
+                <Select
+                  value={assigned?.profile_id ?? ""}
+                  onChange={(event) => void assign(task.task_key, event.target.value)}
+                  aria-describedby={`settings-task-effective-${task.task_key}`}
+                  className="max-w-64"
+                >
+                  <option value="">{t("settings.assignments.auto")}</option>
+                  {(profiles ?? []).map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.name}
+                    </option>
+                  ))}
+                </Select>
+                <p
+                  id={`settings-task-effective-${task.task_key}`}
+                  className="col-start-2 text-label font-normal text-muted"
+                >
+                  {effective}
                 </p>
-              </div>
+              </Field>
             );
-          }
-          // What actually answers, not the stored choice: the cascade can
-          // serve a sibling's assignment or the default from here.
-          const effective =
-            task.profile_name !== null
-              ? t("settings.assignments.via", { profile: task.profile_name })
-              : t("settings.assignments.environment", {
-                  kind: kindKey === undefined ? task.kind : t(kindKey),
-                });
-          return (
-            <div
-              key={task.task_key}
-              className="mt-3 flex flex-col gap-1 text-sm font-medium sm:flex-row sm:items-center sm:gap-4"
-            >
-              <label htmlFor={`settings-task-${task.task_key}`}>{label}</label>
-              <select
-                id={`settings-task-${task.task_key}`}
-                value={assigned?.profile_id ?? ""}
-                onChange={(event) => void assign(task.task_key, event.target.value)}
-                aria-describedby={`settings-task-effective-${task.task_key}`}
-                className={`${field} sm:max-w-64`}
-              >
-                <option value="">{t("settings.assignments.auto")}</option>
-                {(profiles ?? []).map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.name}
-                  </option>
-                ))}
-              </select>
-              <p
-                id={`settings-task-effective-${task.task_key}`}
-                className="text-xs font-normal text-muted"
-              >
-                {effective}
-              </p>
-            </div>
-          );
-        })}
+          })}
+        </div>
       </section>
     </>
   );

@@ -288,7 +288,10 @@ def _import_as_new_novel(page: Page, source: Path, title: str) -> None:
 def test_the_prompts_page_opens_over_the_real_stack(page: Page, stack: Stack) -> None:
     """The hub's card is the door: every bundled key, and the novel tiers say wait."""
     page.goto(BASE + "/")
-    page.get_by_role("link", name="Einstellungen").click()
+    # The door this flow means is the bar's gear — scoped to the banner,
+    # because the rail's Settings anchor (P8) is the settings area's own
+    # twin and an unscoped name query finds both.
+    page.get_by_role("banner").get_by_role("link", name="Einstellungen").click()
     page.get_by_role("region", name="Prompts").get_by_role("link", name="Prompts").click()
     expect(page).to_have_url(f"{BASE}/settings/prompts")
     expect(page.get_by_role("heading", name="Prompts")).to_be_visible()

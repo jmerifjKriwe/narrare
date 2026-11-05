@@ -1,9 +1,18 @@
 import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 
 import { client, type Chapter } from "@shell/lib/api/client";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
+import { usePageTitle } from "@shell/lib/pageTitle";
 import { subscribeProposal } from "@shell/lib/proposal";
 import {
   activeChapterFallback,
@@ -12,6 +21,12 @@ import {
   useNovelQuery,
 } from "@shell/lib/query";
 import { useAutosave, unsavedStatus } from "@shell/lib/save";
+import { countWords, formatWordCount } from "@shell/lib/words";
+import { Button } from "@shell/ui/Button";
+import { Dialog } from "@shell/ui/Dialog";
+import { Icon } from "@shell/ui/icons";
+import { Notice } from "@shell/ui/Notice";
+import { Row } from "@shell/ui/Row";
 
 import { ChapterEditor } from "./ChapterEditor";
 import type { FocusStep } from "./routes";
@@ -25,6 +40,31 @@ const RELEASE: Record<FocusStep, FocusStep> = { 0: 0, 1: 0, 2: 1 };
 // name — its tabs, matching and labels all come from this table, and a new
 // dock (the Wissen dock) renders by appearing in it.
 type DockRow = (typeof docks)[number];
+
+/**
+ * The workbench breakpoint as JS. Below it the rail and the dock are
+ * overlays — the same width the `max-lg:` classes answer — and an overlay
+ * owes the page it covers a scrim and its focus; the hook exists so `inert`
+ * can answer the same media query the classes do. jsdom has no matchMedia:
+ * it gets the desktop answer, which keeps the unit tests in the columns.
+ */
+function useBelowWorkbenchBreakpoint(): boolean {
+  const query = "(max-width: 1023.98px)";
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(query).matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(query);
+    const onChange = () => setNarrow(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+  return narrow;
+}
 
 /** The novel workbench: the chapter rail beside the editor, panel state in the URL. */
 export function NovelPage() {
@@ -46,6 +86,15 @@ export function NovelPage() {
   const novelQuery = useNovelQuery(novelId);
   const chaptersQuery = useChaptersQuery(novelId);
   const chapters = chaptersQuery.data ?? [];
+  // One split per body per list, not per render: the rail's counts are
+  // derived where the list arrives, and a keystroke re-renders for free.
+  const chapterCounts = useMemo(
+    () => new Map(chapters.map((chapter) => [chapter.id, countWords(chapter.body)])),
+    [chapters],
+  );
+  // The page's name (§8.7): the book's title once its row is here — a
+  // catalog fallback while it waits, never an empty string.
+  usePageTitle(novelQuery.data?.title ?? t("chapters.loading"));
   // The four states of the contract, derived per read, none stored: a read's
   // error is judged against its own cache. An error with nothing from that
   // read on screen is the named outage — the retry asks again, and the page
@@ -210,6 +259,21 @@ export function NovelPage() {
     [navigate, novelId, activeDock],
   );
 
+  // The leave guard's state, ahead of the keyboard contract: while an ask
+  // stands, F9/Esc are the dialog's keys, not the workbench's — a second
+  // ask would overwrite the first answer's resolver and strand the
+  // navigation that is still waiting on it.
+  const [guardOpen, setGuardOpen] = useState(false);
+  const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
+  const guardBusy = useRef(false);
+  const answerGuard = useCallback((leave: boolean) => {
+    setGuardOpen(false);
+    guardBusy.current = false;
+    const answer = guardAnswer.current;
+    guardAnswer.current = null;
+    answer?.(leave);
+  }, []);
+
   // The keyboard contract. Phase 5's ghost text layers ABOVE this: its Esc
   // discards a suggestion first and marks the event handled, and only an Esc
   // that arrives unhandled here steps the focus back. F9 has no such tenant.
@@ -220,6 +284,10 @@ export function NovelPage() {
       // composition's Esc would tear the mode mid-word.
       if (event.repeat || event.isComposing) return;
       if (event.defaultPrevented) return;
+      // The leave dialog owns the keyboard while it stands: stepping the
+      // focus from under an unanswered ask would start a second navigation
+      // behind the one that is waiting for this answer.
+      if (guardOpen) return;
       if (event.key === "F9") {
         event.preventDefault();
         step(DEEPEN[focus]);
@@ -230,7 +298,7 @@ export function NovelPage() {
     };
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
-  }, [focus, step]);
+  }, [focus, step, guardOpen]);
 
   // The shell cannot be imported here (capabilities never reach across), so
   // the deepest step is published as a body attribute the shell subscribes
@@ -342,12 +410,27 @@ export function NovelPage() {
   // the page really goes (the autosave's own teardown).
   // `enableBeforeUnload` is the same question for the tab close, which has
   // no navigation to intercept.
+  //
+  // The ask itself is the shell's dialog (F21), not window.confirm: the
+  // page's own clothes, focus contained while it stands, and the two
+  // answers as the two buttons the question names. The blocker awaits the
+  // answer as a promise; Escape and an outside click are RAC dismissals,
+  // which land in `onOpenChange` as a "stay". `guardBusy` stands only
+  // once the ask stands — it is set after a flush has failed, not while
+  // it runs — so two navigations inside the flush window are last-wins
+  // by design: the second ask replaces the first.
   useBlocker({
     shouldBlockFn: async () => {
       if (!unsavedNow.current) return false;
+      if (guardBusy.current) return true;
       const outcome = await flush();
       if (outcome !== "failed") return false;
-      return !window.confirm(t("save.confirmLeave"));
+      guardBusy.current = true;
+      const leave = await new Promise<boolean>((resolve) => {
+        guardAnswer.current = resolve;
+        setGuardOpen(true);
+      });
+      return !leave;
     },
     enableBeforeUnload: () => unsavedNow.current,
   });
@@ -369,224 +452,363 @@ export function NovelPage() {
   const showRail = focus === 0 && !collapsed;
   const openDock = activeDock !== undefined && focus === 0 ? activeDock : null;
 
+  // The depth-2 hint (F23): one line that offers Esc back, shown once at the
+  // deepest step and retracted after a few seconds — it is a message, not
+  // chrome. The retraction is a clean unmount, not an opacity fade: a hint
+  // caught mid-fade is a contrast the a11y floor could sample and fail, and
+  // a message that is simply gone cannot break any state it is read in.
+  const [hintShown, setHintShown] = useState(false);
+  useEffect(() => {
+    if (focus !== 2) {
+      setHintShown(false);
+      return;
+    }
+    setHintShown(true);
+    const timer = window.setTimeout(() => setHintShown(false), 4200);
+    return () => window.clearTimeout(timer);
+  }, [focus]);
+
+  // The rail's roving walk (F20): the current row is the one tab stop, and
+  // Up/Down move the focus along the rows. The walk moves focus only — the
+  // chapter changes when a row is activated, never when it is walked past —
+  // but the tab stop follows the focus while the walk lasts (APG): walk
+  // away and one Tab returns to the row the user was on, not the row they
+  // had selected. Activating a row hands the tab stop back to the selection.
+  const railListRef = useRef<HTMLUListElement | null>(null);
+  const [walkedIndex, setWalkedIndex] = useState<number | null>(null);
+  const walkRail = useCallback((event: ReactKeyboardEvent, index: number) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    const rows = railListRef.current?.querySelectorAll<HTMLButtonElement>("button");
+    if (!rows) return;
+    const next = event.key === "ArrowDown" ? index + 1 : index - 1;
+    if (next < 0 || next >= rows.length) return;
+    setWalkedIndex(next);
+    rows[next]?.focus();
+  }, []);
+
+  // F22's choice: below the workbench breakpoint the rail and the dock stay
+  // overlays — the viewport floor pins covering, never squeezing — so they
+  // get what an overlay owes the page behind it: a scrim that takes the
+  // pointer's dismissal, and `inert` on the work they cover, which is the
+  // focus containment. React Aria's modal machinery would remount the
+  // dock's Outlet to trap focus; `inert` contains it without the remount,
+  // and the toolbar band above the row stays live — it is the workbench's
+  // own controls, and the way either drawer closes. The rail half is gated
+  // on the rail's own render condition: an overlay with no drawer would
+  // scrim the loading and outage states and inert their retry.
+  const narrow = useBelowWorkbenchBreakpoint();
+  const railOverlay = narrow && showRail && !pending && !failed;
+  const dockOverlay = narrow && openDock !== null;
+
   return (
-    <div
-      className={openDock ? "mx-auto max-w-6xl px-4 py-10" : "mx-auto max-w-4xl px-4 py-10"}
-    >
+    <div className="mx-auto max-w-[1152px] px-4 py-10 xl:px-0">
       {focus < 2 ? (
         <>
-          <Link to="/" className="text-sm text-muted underline-offset-4 hover:underline">
+          <Link to="/" className="text-body text-muted underline-offset-4 hover:underline">
             {t("nav.back")}
           </Link>
           {/* The heading names the book only when the book's row is here: an
               empty h1 on the outage page would be a heading about nothing. */}
           {novelQuery.data ? (
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-title font-semibold tracking-tight">
               {novelQuery.data.title}
             </h1>
           ) : null}
         </>
       ) : null}
 
+      {focus === 2 && hintShown ? (
+        <p role="status" className="mt-4 text-center text-meta text-muted">
+          {t("workspace.focusHint")}
+        </p>
+      ) : null}
+
+      {/* The toolbar band (F26): one gap group of icon buttons — focus, rail,
+          the dock tabs the registry names. The rail's collapse control lives
+          here now, not above the chapter list; at depth 1 the rail is hidden,
+          so its toggle is hidden with it. The dock tabs keep their pressed
+          state (they toggle); the group's name is the one dock control the
+          toolbar carries — no separate dock toggle beside the tabs. */}
+      {focus < 2 ? (
+        <div className="mt-6 flex items-center gap-2">
+          <Button
+            variant="icon"
+            icon={<Icon name="focus" />}
+            label={t("workspace.focusToggle")}
+            aria-pressed={focus > 0}
+            onClick={() => step(focus === 0 ? 1 : 0)}
+          />
+          {focus === 0 ? (
+            <Button
+              variant="icon"
+              icon={<Icon name={collapsed ? "railShow" : "railHide"} />}
+              label={t("workspace.railToggle")}
+              aria-pressed={collapsed}
+              onClick={toggleRail}
+            />
+          ) : null}
+          <div role="group" aria-label={t("workspace.dockToggle")} className="flex items-center gap-2">
+            {docks.map((dock) => (
+              <Button
+                key={dock.id}
+                variant="icon"
+                icon={<Icon name={dock.id} />}
+                label={t(dock.titleKey)}
+                aria-pressed={activeDock?.path === dock.path}
+                onClick={() => toggleDock(dock)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* The workbench: the rail beside the editor, so writing never scrolls
-          past the chapter list. Collapsed, the rail unmounts and the editor
-          takes the full width. The frame stays while the book loads or
-          fails — the toolbar and the docks are independent of the book's
-          row, and a dock's own outage story must stay reachable. Below the
-          desktop breakpoint the row is the overlays' containing block: the
-          panels float above the editor instead of standing beside it. */}
-      <div className="mt-6 flex items-start gap-6 max-lg:relative">
+          past the chapter list. The container is one width in both states
+          (F25) — rail 224, prose 544, dock 384 sum to it exactly — and the
+          prose column centres, so opening a panel never reflows the text.
+          The frame stays while the book loads or fails — the toolbar and the
+          docks are independent of the book's row, and a dock's own outage
+          story must stay reachable. Below the desktop breakpoint the row is
+          the overlays' containing block: the panels float above the editor
+          instead of standing beside it. */}
+      <div className="mt-6 flex items-start max-lg:relative">
+        {railOverlay ? (
+          <div
+            aria-hidden="true"
+            onClick={toggleRail}
+            className="hidden max-lg:absolute max-lg:inset-0 max-lg:z-10 max-lg:block max-lg:bg-scrim"
+          />
+        ) : null}
         {/* The rail needs the chapter list. While it loads, or after the
             load failed, there is no list to be empty — the empty copy would
             mask exactly the state this page just named in the editor column. */}
         {showRail && !pending && !failed ? (
           <aside
             /* Beside the editor at ≥1024 (the columns the desktop E2Es
-               pin); below, a drawer over it: anchored to the row's left
-               edge but starting below the toolbar band, so the focus
-               toggle and the dock tabs stay clickable while the editor is
-               covered. The list scrolls inside the drawer instead of
-               spilling past its background onto the page. The width stays
-               in flow terms — the overlay answers the media query, the
-               collapse machinery answers the user. */
-            className="w-56 shrink-0 max-lg:absolute max-lg:top-12 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-lg max-lg:border max-lg:border-border max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+               pin); below, a drawer over it. The 224 the rail takes are
+               the desktop arithmetic's own — the gutter to the prose lives
+               inside the column (lg:pr-6), so rail + prose + dock sum to
+               the container with no gap to account for. The list bounds
+               its height and scrolls inside itself (Review Focus 2); below
+               the breakpoint the whole drawer scrolls instead. */
+            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
             aria-label={t("chapters.heading")}
           >
-            <h2 className="text-lg font-semibold">{t("chapters.heading")}</h2>
-            <button
-              type="button"
-              onClick={toggleRail}
-              className="mt-2 w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-            >
-              {t("workspace.collapseRail")}
-            </button>
+            <h2 className="text-title font-semibold tracking-tight">{t("chapters.heading")}</h2>
             {chapters.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">{t("chapters.empty")}</p>
+              <p className="mt-2 text-body text-muted">{t("chapters.empty")}</p>
             ) : null}
-            <ul className="mt-3 flex flex-col gap-2">
-              {chapters.map((chapter) => (
-                <li key={chapter.id}>
-                  <button
-                    type="button"
-                    aria-pressed={chapter.id === active}
-                    onClick={() => {
-                      // The chapter already open is no switch: a second
-                      // history entry for the same address would only eat
-                      // the back button.
-                      if (chapter.id === active) return;
-                      select(chapter.id);
-                    }}
-                    className="w-full rounded-md border border-border bg-card px-4 py-2 text-left text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                  >
-                    {chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 })}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => void createChapter()}
-              className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium"
+            {/* The list scrolls itself in the desktop columns only (its
+                bounded height is a column fact); below 1024 the drawer
+                scrolls whole, so the list must neither clip nor shrink
+                there. */}
+            <ul
+              ref={railListRef}
+              className="mt-3 flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
             >
+              {chapters.map((chapter, index) => {
+                const isCurrent = chapter.id === active;
+                const title = chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
+                // The count is spoken as the sentence the footer prints
+                // ("… 2.107 Wörter") and shown as its number alone — the
+                // localized grouping, so the row and the footer read alike.
+                const words = chapterCounts.get(chapter.id) ?? 0;
+                const isTabStop =
+                  walkedIndex !== null
+                    ? walkedIndex === index
+                    : isCurrent || (active === null && index === 0);
+                return (
+                  <li key={chapter.id}>
+                    <Row
+                      current={isCurrent}
+                      selected={isCurrent}
+                      /* The name is composed, not computed: title and count
+                         sit in separate flex items, and every accname
+                         implementation stitches those together by its own
+                         whitespace rules — a title ending in a digit would
+                         reach the reader as one number ("Kapitel 11"). The
+                         label spells exactly the words on screen, with the
+                         separator made explicit. */
+                      aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
+                      tabIndex={isTabStop ? 0 : -1}
+                      onKeyDown={(event) => walkRail(event, index)}
+                      onClick={() => {
+                        // The chapter already open is no switch: a second
+                        // history entry for the same address would only eat
+                        // the back button. Either way the walk is over —
+                        // the tab stop returns to the selection.
+                        setWalkedIndex(null);
+                        if (chapter.id === active) return;
+                        select(chapter.id);
+                      }}
+                    >
+                      {/* The separator is visible text, not only label:
+                          axe requires the visible words to be part of the
+                          accessible name, and without a space in the
+                          content the reader would still stitch "Kapitel"
+                          and the count into one number. The count stays
+                          foreground — muted on the selected row's wash is
+                          below AA, the exact case the Row's own docs name. */}
+                      <span className="min-w-0 flex-1 truncate">
+                        {title}{" "}
+                      </span>
+                      <span className="shrink-0 text-meta tabular-nums">
+                        {formatWordCount(words, activeLocale())}
+                      </span>
+                    </Row>
+                  </li>
+                );
+              })}
+            </ul>
+            <Button onClick={() => void createChapter()} className="mt-3 w-full">
               {t("chapters.new")}
-            </button>
+            </Button>
             {createFailed ? (
-              <p role="alert" className="mt-2 text-sm text-danger">
+              <Notice tone="danger" live="alert" className="mt-2">
                 {t("chapters.errorCreate")}
-              </p>
+              </Notice>
             ) : null}
           </aside>
         ) : null}
 
-        <section className="min-w-0 flex-1">
-          {/* The way back when the rail is gone: the toggle lives in the rail
-              while it exists, so the collapsed page needs its own handle. */}
-          {collapsed && focus === 0 ? (
-            <button
-              type="button"
-              onClick={toggleRail}
-              className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-            >
-              {t("workspace.expandRail")}
-            </button>
-          ) : null}
-          {/* The focus affordance, mouse's one step in and out. At depth 2 it
-              is deliberately absent: the deepest step is left by keyboard,
-              which is what makes the mode distraction-free. The dock tabs
-              sit beside it, one per registry row: the label is the dock's
-              own (its capability's catalog key), and a tab is pressed
-              exactly while its route is the matched child. */}
-          {focus < 2 ? (
-            <button
-              type="button"
-              onClick={() => step(focus === 0 ? 1 : 0)}
-              className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-            >
-              {focus === 0 ? t("workspace.focus") : t("workspace.unfocus")}
-            </button>
-          ) : null}
-          {focus < 2
-            ? docks.map((dock) => (
-                <button
-                  key={dock.id}
-                  type="button"
-                  onClick={() => toggleDock(dock)}
-                  aria-pressed={activeDock?.path === dock.path}
-                  className="ml-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                >
-                  {t(dock.titleKey)}
-                </button>
-              ))
-            : null}
-          {pending ? (
-            // The page has asked and is waiting — a named state, not a blank
-            // or empty-looking book.
-            <p className="mt-6 text-sm text-muted">{t("chapters.loading")}</p>
-          ) : failed ? (
-            // The book could not be loaded — refused or unreachable, with
-            // nothing on screen to keep. The failure is named where the
-            // retry is one press away.
-            <div className="mt-6">
-              <p role="alert" className="text-sm text-danger">
-                {t("chapters.errorLoad")}
-              </p>
-              <button
-                type="button"
-                onClick={retry}
-                className="mt-3 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-panel"
-              >
-                {t("chapters.retry")}
-              </button>
-            </div>
-          ) : (
-            <>
-              {refreshFailed ? (
-                // The refresh failed, but the chapters on screen are the
-                // last loaded ones: a quiet note beside the work, not the
-                // outage's louder clothes — the editor and the rail stay,
-                // and the retry asks again. `role="status"` is what keeps
-                // the note from being silent to a screen reader: background
-                // speech about work that stays, not an alert about work
-                // that is gone.
-                <div className="mt-6 flex items-baseline gap-3">
-                  <p role="status" className="text-sm text-muted">
-                    {t("chapters.refreshFailed")}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={retry}
-                    className="text-sm text-muted underline-offset-4 hover:underline"
-                  >
+        <section
+          className="flex min-w-0 flex-1 flex-col items-center"
+          inert={railOverlay || dockOverlay || undefined}
+        >
+          {/* The editor's tone step (R49): a band painted around the
+              measured column — the 544 the prose reads at is never the
+              chrome's victim. The workspace arithmetic leaves no
+              horizontal slack (rail + prose + dock sum to the container,
+              pinned at 1280 with the dock open), so the band takes its
+              ground, its rules and its air vertically: the measure lives
+              on the inner column untouched. */}
+          <div className="w-full border-y border-rule bg-card py-6">
+            <div className="mx-auto w-full max-w-[544px]">
+              {pending ? (
+              // The page has asked and is waiting — a named state, not a blank
+              // or empty-looking book. Quiet and polite: nothing is wrong.
+              <Notice tone="quiet" live="status" className="mt-6">
+                {t("chapters.loading")}
+              </Notice>
+            ) : failed ? (
+              // The book could not be loaded — refused or unreachable, with
+              // nothing on screen to keep. The failure is named where the
+              // retry is one press away (the shelf's outage shape).
+              <Notice
+                tone="danger"
+                live="alert"
+                className="mt-6"
+                action={
+                  <Button variant="secondary" onClick={retry}>
                     {t("chapters.retry")}
-                  </button>
-                </div>
-              ) : null}
-              {current ? (
-                <ChapterEditor
-                  key={current.id}
-                  chapterId={current.id}
-                  body={current.body}
-                  status={status}
-                  schedule={schedule}
-                  proposal={offer ?? undefined}
-                  onProposalResolve={resolveOffer}
-                />
-              ) : null}
-            </>
-          )}
+                  </Button>
+                }
+              >
+                {t("chapters.errorLoad")}
+              </Notice>
+            ) : (
+              <>
+                {refreshFailed ? (
+                  // The refresh failed, but the chapters on screen are the
+                  // last loaded ones: a quiet note beside the work, not the
+                  // outage's louder clothes — the editor and the rail stay,
+                  // and the retry asks again. The shelf's derived-boolean
+                  // pattern: one Notice, `live="status"` keeps it from being
+                  // silent to a screen reader — background speech about work
+                  // that stays, not an alert about work that is gone.
+                  <Notice
+                    tone="quiet"
+                    live="status"
+                    className="mt-6"
+                    action={
+                      <Button variant="secondary" onClick={retry}>
+                        {t("chapters.retry")}
+                      </Button>
+                    }
+                  >
+                    {t("chapters.refreshFailed")}
+                  </Notice>
+                ) : null}
+                {current ? (
+                  <ChapterEditor
+                    key={current.id}
+                    chapterId={current.id}
+                    body={current.body}
+                    status={status}
+                    schedule={schedule}
+                    proposal={offer ?? undefined}
+                    onProposalResolve={resolveOffer}
+                    bookTitle={novelQuery.data?.title}
+                    chapterTitle={
+                      current.title || t("chapters.defaultTitle", { n: current.position + 1 })
+                    }
+                    chapterNumber={current.position + 1}
+                    chapterTotal={chapters.length}
+                    focusDepth={focus}
+                  />
+                ) : null}
+              </>
+            )}
+            </div>
+          </div>
         </section>
+
+        {dockOverlay ? (
+          <div
+            aria-hidden="true"
+            onClick={() => {
+              if (openDock) toggleDock(openDock);
+            }}
+            className="hidden max-lg:absolute max-lg:inset-0 max-lg:z-10 max-lg:block max-lg:bg-scrim"
+          />
+        ) : null}
 
         {/* The right dock: the open registry row's child route renders here —
             the tab's navigation decided which one, and the matched child is
-            the dock's open state. The column scrolls alone so a long answer
-            never scrolls the editor out of view. */}
+            the dock's open state. The tab is the dock's one control: it
+            toggles, the back button closes, and no second close control
+            squats in the header (one control per panel). The column scrolls
+            alone so a long answer never scrolls the editor out of view. */}
         {openDock ? (
           <aside
             /* Same contract as the rail, mirrored: a drawer from the
-               right below 1024, the desktop's dock column at ≥1024 — also
-               starting below the toolbar band, so switching docks stays a
-               tab click. The panel surface it already had (border,
-               bg-panel, padding) is what the drawer floats on; only the
-               anchor and the shadow are breakpoint-bound. */
-            className="w-96 shrink-0 rounded-lg border border-border bg-panel p-4 max-lg:absolute max-lg:top-12 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay"
+               right below 1024, the desktop's dock column at ≥1024. The
+               384 the dock takes are the arithmetic's own; its gutter to
+               the prose lives inside the column. */
+            className="w-96 shrink-0 rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:pl-6"
             aria-label={t(openDock.titleKey)}
           >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">{t(openDock.titleKey)}</h2>
-              <button
-                type="button"
-                onClick={() => toggleDock(openDock)}
-                className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-card"
-              >
-                {t("workspace.dockClose")}
-              </button>
-            </div>
+            <h2 className="text-title font-semibold tracking-tight">{t(openDock.titleKey)}</h2>
             <div className="mt-3 max-h-[50vh] overflow-y-auto">
               <Outlet />
             </div>
           </aside>
         ) : null}
       </div>
+
+      {/* The leave guard's ask (F21): the shell's dialog, not window.confirm
+          — the question the gate owes, in the page's own clothes. Escape and
+          an outside click are dismissals: the work stays. */}
+      <Dialog
+        title={t("save.leaveTitle")}
+        isOpen={guardOpen}
+        onOpenChange={(open) => {
+          if (!open) answerGuard(false);
+        }}
+      >
+        {() => (
+          <>
+            <p className="mt-2 text-body text-muted">{t("save.confirmLeave")}</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button onClick={() => answerGuard(false)}>{t("save.leaveStay")}</Button>
+              <Button variant="primary" onClick={() => answerGuard(true)}>
+                {t("save.leaveGo")}
+              </Button>
+            </div>
+          </>
+        )}
+      </Dialog>
     </div>
   );
 }

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.writing.prompts import render_continuation
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
-from app.capabilities.writing.schemas import ChapterUpdate, ExportDone
+from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
@@ -98,14 +98,31 @@ class WritingService:
         await self.session.commit()
         return novel
 
-    async def list_novels(self) -> Sequence[Novel]:
-        return await self.novels.list()
+    async def list_novels(self) -> Sequence[NovelRead]:
+        """The shelf's rows, each carrying its derived counts.
 
-    async def get_novel(self, novel_id: UUID) -> Novel:
+        The counts arrive as one grouped query (never one per novel, the
+        bodies never in Python); the rows are the response shape because
+        only they can carry what the raw novel has no column for.
+        """
+        counts = await self.novels.counts()
+        return [
+            self._with_counts(novel, counts.get(novel.id, (0, 0)))
+            for novel in await self.novels.list()
+        ]
+
+    async def get_novel(self, novel_id: UUID) -> NovelRead:
         novel = await self.novels.get(novel_id)
         if novel is None:
             raise NotFoundError
-        return novel
+        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
+
+    def _with_counts(self, novel: Novel, counts: tuple[int, int]) -> NovelRead:
+        """One novel row as the response shape, its two counts filled in."""
+        chapter_count, word_count = counts
+        return NovelRead.model_validate(novel).model_copy(
+            update={"chapter_count": chapter_count, "word_count": word_count}
+        )
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()

@@ -95,13 +95,16 @@ describe("ChatPanel's in-flight ask", () => {
     await waitFor(() => expect(askButton.disabled).toBe(false)); // the finally ran
   });
 
-  it("keeps the unmount abort when an earlier ask settles beside a later one", { timeout: 10_000 }, async () => {
-    // The identity guard's witness. A second ask while the first streams
-    // is UI-unreachable today — the button disables for the whole ask —
-    // so the second ask is started the way a future affordance (a stop
-    // button mid-answer) would start it: a real submit event through the
-    // form's own onSubmit, the same entry point the button uses. No
-    // module is mocked; both asks, both sockets and the unmount are real.
+  it("supersedes a mid-stream ask: the old socket tears down, the new one keeps its unmount abort", { timeout: 10_000 }, async () => {
+    // The supersession contract. A second ask while the first streams is
+    // UI-unreachable today — the button disables for the whole ask — so
+    // the second ask is started the way a future affordance (a stop
+    // button mid-answer, a re-ask) would start it: a real submit event
+    // through the form's own onSubmit, the same entry point the button
+    // uses. The ask's entry aborts the in-flight fetch: the old socket
+    // tears down at once — no two answers stream into one panel — and the
+    // unmount abort passes whole to the successor. No module is mocked;
+    // both asks, both sockets and the unmount are real.
     chatServer.answerWith = `data: ${JSON.stringify({ delta: "Erste halbe Antwort" })}\n\n`;
     chatServer.hold = true;
     const { container } = render(<ChatPanel />);
@@ -115,29 +118,32 @@ describe("ChatPanel's in-flight ask", () => {
     await waitFor(() => expect(answer.textContent).toContain("Erste halbe Antwort"));
     expect(chatServer.asks).toHaveLength(1);
 
-    // The second ask begins while the first is still held mid-answer.
+    // The second ask begins while the first is still held mid-answer, and
+    // the first connection dies here — superseded, not left streaming.
     chatServer.answerWith = `data: ${JSON.stringify({ delta: "Zweite halbe Antwort" })}\n\n`;
     fireEvent.submit(container.querySelector("form")!);
+    await Promise.race([
+      chatServer.asks[0]!.closed,
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("the superseded ask kept its connection open")),
+          5_000,
+        ),
+      ),
+    ]);
     await waitFor(() => expect(answer.textContent).toContain("Zweite halbe Antwort"));
     expect(chatServer.asks).toHaveLength(2);
 
-    // The first ask settles now: its finally runs — the button coming
-    // back is the same finally's setAsking(false), so by then its cleanup
-    // has already done whatever it did to the shared ref.
-    chatServer.asks[0]!.finish();
-    const askButton = screen.getByRole("button", { name: t("chat.ask") }) as HTMLButtonElement;
-    await waitFor(() => expect(askButton.disabled).toBe(false));
-
     // The panel goes away with the second ask still streaming. Its
-    // controller must have survived the first ask's cleanup: an
-    // unconditional null would leave the unmount nothing to abort, and
-    // the second connection would outlive its panel.
+    // controller owns the ref now — the superseded ask's cleanup saw the
+    // ref replaced and kept its hands off — so the unmount aborts the
+    // survivor and its connection tears down.
     cleanup();
     await Promise.race([
       chatServer.asks[1]!.closed,
       new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error("the second ask lost its abort to the first ask's cleanup")),
+          () => reject(new Error("the second ask lost its abort in the supersession")),
           5_000,
         ),
       ),
