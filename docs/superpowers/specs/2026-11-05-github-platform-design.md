@@ -325,7 +325,8 @@ the rulesets and settings sections here are responsible for.
   `default-days: 7`, `semver-major-days: 30`, `open-pull-requests-limit:
   5`.
 - `github-actions`: weekly, grouped (`actions-minor-patch`,
-  `actions-major`), `cooldown` `default-days: 3`, `semver-major-days: 14`.
+  `actions-major`), `cooldown` `default-days: 3` only — the Actions updater
+  does not support `semver-major-days`; GitHub rejects the key.
 - `rebase-strategy: disabled` removed (default `auto`).
 - Commit prefixes and labels unchanged (`chore` + scope, so release-please
   ignores the bumps).

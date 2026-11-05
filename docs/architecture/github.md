@@ -220,7 +220,7 @@ meaning anything.
 | --- | --- | --- | --- | --- |
 | `uv` | monthly | minor/patch, major | `default-days: 7`, majors 30 | `uv`, never `pip` — the pip updater cannot touch `uv.lock` |
 | `npm` | monthly | minor/patch, major | `default-days: 7`, majors 30 | entry at `/`, not `/web`, so `pnpm-lock.yaml` moves with the manifest |
-| `github-actions` | weekly | minor/patch, major | `default-days: 3` — **and `semver-major-days: 14`, which is schema-valid but inert**: the Actions updater applies `default-days` only | weekly is what keeps the SHA pins current |
+| `github-actions` | weekly | minor/patch, major | `default-days: 3` — the Actions updater supports `default-days` only, so there is no 14-day major hold | weekly is what keeps the SHA pins current |
 
 - No `docker` and no `devcontainers` entry: a `docker` entry returns with a
   `Dockerfile`, a `devcontainers` entry with a dev container. Empty entries

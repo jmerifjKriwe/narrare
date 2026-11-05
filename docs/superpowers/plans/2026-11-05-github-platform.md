@@ -857,7 +857,8 @@ git commit -m "ci(release): release-please only orchestrates releases" \
   groups, `cooldown` `default-days: 7`, `semver-major-days: 30`,
   `open-pull-requests-limit: 5`; `github-actions` weekly with
   `actions-minor-patch` and `actions-major` groups, `cooldown`
-  `default-days: 3`, `semver-major-days: 14`; no `docker` entry; no
+  `default-days: 3` only (GitHub rejects `semver-major-days` for this
+  ecosystem); no `docker` entry; no
   `rebase-strategy: disabled`; `chore` + scope commit prefixes and the
   existing labels unchanged.
 
@@ -872,7 +873,9 @@ returns only with a devcontainer; a `docker` entry at `/` returns only with a
 
 `uv`/`npm`: monthly, groups as above, `cooldown: {default-days: 7,
 semver-major-days: 30}`, limit 5. `github-actions`: weekly, groups as above,
-`cooldown: {default-days: 3, semver-major-days: 14}`, limit 5. Delete every
+`cooldown: {default-days: 3}`, limit 5. (The original plan asked for
+`semver-major-days: 14`; GitHub rejects that key for `github-actions`, so it
+was removed. Majors remain grouped.) Delete every
 `rebase-strategy: disabled` line; the default `auto` is the chosen behavior.
 
 - [ ] **Step 3: Verify the schema**
