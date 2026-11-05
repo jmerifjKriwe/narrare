@@ -171,7 +171,17 @@ body {
 }
 
 .ProseMirror:focus {
-  outline: none;
+  outline-style: none;
+}
+
+/* Forced-colors mode repaints a transparent outline with the system's focus
+ * colour while it strips the wrapper's box-shadow ring — without this pair
+ * the caret's focus indicator disappears exactly where it matters most. */
+@media (forced-colors: active) {
+  .ProseMirror:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
 }
 
 /*
@@ -276,6 +286,13 @@ body {
   font-style: italic;
   margin: 1em 0;
   padding-left: 1em;
+}
+
+/* Inside an italic block, emphasis is invisible — both render slanted. The
+ * classic editorial answer: the block stays italic, its emphasis turns
+ * roman, and the writer can see where the stress falls. */
+.ProseMirror blockquote em {
+  font-style: normal;
 }
 
 .ProseMirror code {
