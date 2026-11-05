@@ -119,6 +119,20 @@ class NovelRepository(ScopedRepository[Novel]):
         """
         await self.session.delete(novel)
 
+    async def touch_exported(self, novel_id: UUID) -> None:
+        """Stamp the novel's export trace; the caller commits the write.
+
+        The export path's own timestamp writer, `touch_novel`'s shape for a
+        different rule: only a successful export ever sets the column, so
+        `updated_at` stays where it was and a later edit reads as change
+        against the backup the stamp names. No other column moves here.
+        """
+        novel = await self.session.scalar(
+            select(Novel).where(Novel.id == novel_id, Novel.user_id == self.user_id)
+        )
+        if novel is not None:
+            novel.last_exported_at = datetime.now(UTC)
+
 
 class ChapterRepository(ScopedRepository[Chapter]):
     model = Chapter

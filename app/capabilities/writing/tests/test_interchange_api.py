@@ -10,12 +10,13 @@ import asyncio
 import io
 import struct
 import zipfile
+from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 from starlette.datastructures import UploadFile
 
 from app.api.main import app
@@ -182,6 +183,76 @@ async def test_export_path_target_that_is_a_file_is_422_named(tmp_path: Path) ->
         assert "is a file" in detail[0]["msg"]
         # The file is untouched: a refusal writes nothing.
         assert target.read_bytes() == b"not a directory yet"
+
+
+async def test_zip_export_records_the_timestamp() -> None:
+    """A ZIP export leaves its trace: the read answers a last_exported_at."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel", chapter="Erstes Kapitel")
+        before = await client.get(f"/api/writing/novels/{novel_id}")
+        assert before.json()["last_exported_at"] is None
+
+        exported = await client.post(f"/api/writing/novels/{novel_id}/export", json={"mode": "zip"})
+        assert exported.status_code == 200
+
+        after = await client.get(f"/api/writing/novels/{novel_id}")
+        stamp = after.json()["last_exported_at"]
+        assert stamp is not None
+        assert datetime.fromisoformat(stamp)
+
+
+async def test_path_export_records_the_timestamp(tmp_path: Path) -> None:
+    """A path export leaves the same trace as the ZIP delivery."""
+    target = tmp_path / "export"
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel", chapter="Erstes Kapitel")
+        before = await client.get(f"/api/writing/novels/{novel_id}")
+        assert before.json()["last_exported_at"] is None
+
+        done = await client.post(
+            f"/api/writing/novels/{novel_id}/export", json={"mode": "path", "path": str(target)}
+        )
+        assert done.status_code == 200
+
+        after = await client.get(f"/api/writing/novels/{novel_id}")
+        stamp = after.json()["last_exported_at"]
+        assert stamp is not None
+        assert datetime.fromisoformat(stamp)
+
+
+async def test_a_refused_path_export_records_nothing(tmp_path: Path) -> None:
+    """A refused export leaves no trace: the column stays None."""
+    target = tmp_path / "export"
+    target.mkdir()
+    (target / "metadata.json").write_text("{}")
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+
+        refused = await client.post(
+            f"/api/writing/novels/{novel_id}/export", json={"mode": "path", "path": str(target)}
+        )
+        assert refused.status_code == 409
+
+        after = await client.get(f"/api/writing/novels/{novel_id}")
+        assert after.json()["last_exported_at"] is None
+
+
+async def test_a_missing_novel_export_records_nothing() -> None:
+    """A 404 export sets nothing: no row anywhere gains a trace."""
+    async with _client() as client:
+        novel_id = await _create_novel(client, "Der Nebel")
+
+        missing = await client.post(f"/api/writing/novels/{uuid4()}/export", json={"mode": "zip"})
+        assert missing.status_code == 404
+
+        # The refusal wrote nothing: the one novel that exists carries no stamp.
+        async with Session() as session:
+            traced = await session.scalar(
+                text("SELECT count(*) FROM novels WHERE last_exported_at IS NOT NULL")
+            )
+            assert traced == 0
+        after = await client.get(f"/api/writing/novels/{novel_id}")
+        assert after.json()["last_exported_at"] is None
 
 
 async def test_import_zip_as_new_novel() -> None:

@@ -1,6 +1,7 @@
 """Managing a novel: PATCH changes only the fields the body carries; DELETE
 takes the whole book — its chapters, entities, relations, suggestions and
-findings — while the library's documents survive."""
+findings — while the library's documents survive. The read carries the
+export's trace, set by an export and by nothing else."""
 
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -227,6 +228,21 @@ async def test_patch_answers_404_for_a_foreign_novel() -> None:
         )
         assert patched.status_code == 404
         assert patched.json()["detail"] == "novel not found"
+
+
+async def test_novel_read_carries_the_timestamp() -> None:
+    """The read carries the export's trace: None until a first export sets it."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        fresh = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fresh.json()["last_exported_at"] is None
+
+        exported = await client.post(f"/api/writing/novels/{novel_id}/export", json={"mode": "zip"})
+        assert exported.status_code == 200
+
+        traced = await client.get(f"/api/writing/novels/{novel_id}")
+        stamp = datetime.fromisoformat(traced.json()["last_exported_at"])
+        assert stamp.tzinfo is not None
 
 
 async def test_delete_novel_answers_204_and_is_gone() -> None:

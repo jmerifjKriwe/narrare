@@ -381,7 +381,11 @@ class WritingService:
         receipt. The kernel engine reads the rows and raises
         `NovelNotFoundError` for a missing or foreign novel, which becomes
         NotFoundError here; the transport's own failures are the caller's
-        named fields.
+        named fields. Both deliveries leave the export's trace:
+        `last_exported_at` is written and committed only after the engine
+        has read the rows and, in path mode, the directory write has
+        succeeded — the ZIP's commit carries nothing but the stamp — so a
+        refused or failed export sets nothing.
         """
         try:
             slug, files = await interchange_engine.export_novel(
@@ -390,7 +394,10 @@ class WritingService:
         except interchange_engine.NovelNotFoundError:
             raise NotFoundError from None
         if mode == "zip":
-            return slug, zip_bytes(files)
+            payload = zip_bytes(files)
+            await self.novels.touch_exported(novel_id)
+            await self.session.commit()
+            return slug, payload
         if path is None or not path.strip():
             raise FieldRefusedError(("path",), "exporting to a path needs a target path")
         # A file is not a target: say so, rather than call it a non-empty
@@ -408,6 +415,8 @@ class WritingService:
             # name). Both are the request's fault and come back named.
             reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
             raise FieldRefusedError(("path",), f"{path}: {reason}") from None
+        await self.novels.touch_exported(novel_id)
+        await self.session.commit()
         tree = ArchiveTree(files)
         return ExportDone(
             # The directory actually written: a relative target is resolved so
