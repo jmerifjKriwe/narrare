@@ -560,13 +560,13 @@ git commit -m "ci(gates): the E2E matrix calls one workflow per capability" \
 - Test: `app/kernel/tests/test_affected.py`
 
 **Interfaces:**
-- Produces: `SMOKE = "setup"`; `HARNESS: tuple[str, ...] = (".github/workflows/", ".github/actions/")`; `resolve([".github/workflows/ci.yml"]).capabilities == ["setup"]`; if `SMOKE` is not a known capability, the answer fails open to `None` with a reason.
+- Produces: `SMOKE = "settings"`; `HARNESS: tuple[str, ...] = (".github/workflows/", ".github/actions/")`; `resolve([".github/workflows/ci.yml"]).capabilities == ["settings"]`; if `SMOKE` is not a known capability, the answer fails open to `None` with a reason. (`settings`, not the planned `setup`: measured on PR #594's CI, settings 1m33s against setup 1m54s — the fastest of the six suites.)
 - Removes: `.github/workflows/ci.yml` from `SHARED`; `.github/` stays `INERT` for everything else.
 - No `--dependabot` flag and no `DEPENDENCY` class: dependency paths stay `SHARED`.
 
 - [ ] **Step 1: Write the failing tests**
 
-In `app/kernel/tests/test_affected.py`, add `"setup"` to
+In `app/kernel/tests/test_affected.py`, add `"settings"` to
 `FIXTURE_CAPABILITIES` and update the two all-suite expectations that count
 the fixture's capabilities. Add:
 
@@ -578,11 +578,11 @@ def test_a_workflow_change_owes_only_the_smoke_suite():
         ".github/workflows/_e2e.yml",
         ".github/actions/setup/action.yml",
     ):
-        assert resolve([path]).capabilities == ["setup"], path
+        assert resolve([path]).capabilities == ["settings"], path
 
 
 def test_a_harness_change_without_a_known_smoke_suite_fails_open():
-    # known={"chat"} has no setup suite
+    # known={"chat"} has no settings suite
     assert resolve([".github/workflows/ci.yml"], known={"chat"}).capabilities is None
 ```
 
@@ -611,9 +611,12 @@ Expected: PASS, including the existing six-suite discovery test.
 
 - [ ] **Step 5: Measure the smoke suite**
 
-Run `just test-e2e <each capability>` on the current tree and record the wall
-clock. If `setup` is not the fastest, change `SMOKE` to the fastest and
-update the tests. Record the measurement in the task report.
+Done 2026-11-05: the measurement ran on the current tree on PR #594's CI —
+`settings` 1m33s is the fastest; `setup` is 1m54s, chat 1m58s, knowledge
+4m6s, writing 7m48s, prompts 13m12s. `SMOKE` is `"settings"`, not the
+`setup` this task originally wrote, and the tests above already spell
+`settings`. The measurement is recorded in `scripts/affected.py`'s
+`SMOKE` comment and the task-10 report.
 
 - [ ] **Step 6: Commit after review**
 

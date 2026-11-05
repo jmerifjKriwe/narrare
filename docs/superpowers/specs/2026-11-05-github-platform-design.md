@@ -112,7 +112,7 @@ Rejected for now; Phase 6 records the revisit triggers.
 | `require_last_push_approval` | stays `true` | re-approval after a Dependabot rebase on foreign PRs is accepted; owner bypass covers the solo case |
 | Sourcery approval | off | bot approval would satisfy the 1-approval rule for foreign PRs too; raising to 2 weakens it instead |
 | Sourcery review check | advisory, not required | it is an AI review, not a deterministic gate; security findings surface through CodeQL/dependency review |
-| HARNESS smoke | one suite, default `setup` | proves the harness works without six browser suites; builder verifies `setup` is the fastest |
+| HARNESS smoke | one suite, `settings` | proves the harness works without six browser suites; measured on PR #594's CI, `settings` is the fastest (1m33s against `setup` 1m54s) — `setup` was the design's default and was corrected by the measurement |
 | Reusable workflows | yes, three | `_lint`, `_test`, `_e2e`; `frontend` and `build` are plain jobs on the composite action — the duplication worth removing is the Python+Node+Postgres setup, not three pnpm lines |
 | Auto-merge | off | a compromised action release runs with the workflow token; blast radius too high |
 | Merge queue | not now | solo repo, merge commits, low volume; revisit when combined merges break `main` |
@@ -301,9 +301,11 @@ the rulesets and settings sections here are responsible for.
 ### `affected.py`
 
 - `HARNESS`: `.github/workflows/**`, `.github/actions/**` → one smoke
-  suite (default `setup`; the builder verifies it is the fastest) instead
-  of all suites. Proves the harness works; a broken invocation is caught
-  same-day, not next nightly.
+  suite (`settings`, measured fastest on PR #594's CI — 1m33s against
+  `setup` 1m54s, chat 1m58s, knowledge 4m6s, writing 7m48s, prompts
+  13m12s; `setup` was the default and the measurement corrected it)
+  instead of all suites. Proves the harness works; a broken invocation is
+  caught same-day, not next nightly.
 - `RELEASE`: unchanged.
 - `SHARED`: unchanged, except `.github/workflows/ci.yml` moves to
   `HARNESS` (the whole workflows directory takes its place).
@@ -439,8 +441,9 @@ contexts would go pending and block every PR mid-migration.
   actual, 24 after this plan).
 - The ruleset and settings changes as `gh api` calls, in order, with the
   API diff read back after each.
-- Whether `setup` is the fastest suite for the HARNESS smoke; pick the
-  fastest, record the measurement.
+- The HARNESS smoke suite choice: resolved 2026-11-05 — `settings`, measured
+  fastest on PR #594's CI (1m33s; `setup`, the default, was 1m54s); the
+  measurement is recorded in `scripts/affected.py` and the task-10 report.
 - The `actionlint` + `zizmor` baseline pass and every suppression comment
   it produces.
 - The nightly `audit` job's exact tools and thresholds.
