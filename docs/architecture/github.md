@@ -57,10 +57,9 @@ Two named, deliberate shapes a reader should not "fix":
   digest, zizmor's `version:` input, the Codecov CLI, `pip-audit`, and the
   Postgres image digest. The check is advisory; a pin it cannot read or an
   upstream it cannot reach reddens the run rather than passing.
-  Dependabot's updater scans workflow files only, so it may not bump the
-  `uses:` pins inside a composite action's `action.yml` — verify after the
-  first composite lands (`.github/actions/setup`) that its nested pins move
-  with the weekly group; if they do not, they join this list.
+  Dependabot's `github-actions` updater reads `.github/workflows/**` only
+  (dependabot-core#6949), so a second entry names `/.github/actions/*` and
+  keeps the composite's five pins current too.
 
 ## `ci-required` — the required-check aggregator
 
@@ -216,7 +215,7 @@ when `main` moves back to classic protection.
 | --- | --- | --- | --- | --- |
 | `uv` | monthly | minor/patch, major | `default-days: 7`, majors 30 | `uv`, never `pip` — the pip updater cannot touch `uv.lock` |
 | `npm` | monthly | minor/patch, major | `default-days: 7`, majors 30 | entry at `/`, not `/web`, so `pnpm-lock.yaml` moves with the manifest |
-| `github-actions` | weekly | minor/patch, major | `default-days: 3` — the Actions updater supports `default-days` only, so there is no 14-day major hold | weekly is what keeps the SHA pins current |
+| `github-actions` | weekly | minor/patch, major | `default-days: 3` — the Actions updater supports `default-days` only, so there is no 14-day major hold | two entries — workflows (`/`) and the composite tree (`/.github/actions/*`); weekly is what keeps the SHA pins current |
 
 - No `docker` and no `devcontainers` entry: a `docker` entry returns with a
   `Dockerfile`, a `devcontainers` entry with a dev container. Empty entries

@@ -194,11 +194,13 @@ A pin it cannot read, a disagreeing copy, or an upstream it cannot reach exits
 2; it can never say "current" without asking. `--json` prints
 `{"behind": [...], "report": "<table>"}`; `--tree` reads without the network.
 
-`app/kernel/tests/test_check_pins.py`: ten tests, hermetic. They cover the
+`app/kernel/tests/test_check_pins.py`: thirteen tests, hermetic. They cover the
 live tree (all six values read; the two Codecov copies and four pgvector
-digests must appear exactly twice and four times and agree), a missing pattern,
-disagreeing copies, a lost site, the version compare with `v` prefixes, a
-changed digest, and the report naming only behind pins.
+digests must appear exactly twice and four times, per file, and agree), a
+missing pattern, a missing file, disagreeing copies, a lost site, a duplicate
+that cannot mask a lost site, a commented digest that does not satisfy a pin,
+the version compare with `v` prefixes, a changed digest, and the report naming
+only behind pins.
 
 `pins.yml`: monthly (1st, 08:23 UTC) and dispatch; `contents: read` +
 `issues: write`; one `ci/tool-pins` issue, opened/commented/closed exactly like
@@ -212,9 +214,13 @@ uv run python -m scripts.check_pins --markdown        → six rows, all current
 temporary: zizmor version set back to 1.30.1
   → | zizmor | 1.30.1 | 1.32.0 | **behind** | … |      (reverted)
 temporary: the second compose service set back to `:pg17`
-  → check_pins: pgvector: expected 4 match(es), found 3 …  → exit 2 (reverted)
+  → check_pins: pgvector: expected 2 match(es) in docker-compose.dev.yml, found 1 (reverted)
+temporary: active image on `:pg17`, old digest left in the trailing comment
+  → check_pins: pgvector: expected 1 match(es) in .github/workflows/_test.yml, found 0 (reverted)
+temporary: docker-compose.dev.yml renamed away
+  → check_pins: pgvector: cannot read docker-compose.dev.yml: [Errno 2] …   → exit 2 (restored)
 uv run python -m scripts.check_pins --tree            → exit 0, six names
-uv run pytest app/kernel/tests/test_check_pins.py     → 10 passed
+uv run pytest app/kernel/tests/test_check_pins.py     → 13 passed
 uv run ruff check scripts … / ruff format --check     → clean
 uv run pyright scripts/check_pins.py                  → 0 errors
 actionlint 1.7.12 / zizmor 1.32.0                     → exit 0, no findings
@@ -313,5 +319,22 @@ minors, six nits, all confirmed and fixed before the push.
 - Task 3 did not start the compose services (see above).
 - Commits stayed local; nothing was pushed and no PR was opened before this
   review pass.
+
+## Sourcery review findings and fixes
+
+The bot's ten findings on PR #613 (2026-11-05), triaged:
+
+| Finding | Disposition |
+|---|---|
+| a new check script needs product-owner approval | approved in the planning session ("Beides bauen"); the three governance statements are recorded on the PR |
+| the checker exceeds the secrets/licences script scope | the same approval covers it; it is the second check script, inside the ≤3 budget |
+| a commented digest satisfies a pin | every pattern now anchors on the active YAML key (`image:`, `run:`, `version:`); a test proves a digest left in a comment does not count |
+| a duplicate in one file replaces a lost site | each file carries its own expected count; a duplicate cannot mask a missing site |
+| composite-action pins stay unmonitored | a second Dependabot entry with `directories: ["/.github/actions/*"]` (dependabot-core#6949) |
+| a dispatch from a feature branch skews the `main` alert | checkout uses `github.event.repository.default_branch` |
+| a closed alert stays closed | `gh issue reopen --comment`, not `gh issue comment` |
+| duplicate open pin issues | every open one is closed when current; extras are closed when behind |
+| a missing pin file crashes the CLI | `OSError` becomes a `PinError`, exit 2, with the pin and file named |
+| the four proofs were unfinished | recorded in Task 10 after the push |
 
 ## Task 10 — the four proofs (#604)

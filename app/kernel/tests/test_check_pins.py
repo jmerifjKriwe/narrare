@@ -10,12 +10,11 @@ from scripts import check_pins
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def _pin(name: str, files: tuple[str, ...], pattern: str, count: int) -> check_pins.Pin:
+def _pin(name: str, files: tuple[tuple[str, int], ...], pattern: str) -> check_pins.Pin:
     return check_pins.Pin(
         name=name,
         files=files,
         pattern=pattern,
-        count=count,
         upstream=("github", f"owner/{name}"),
     )
 
@@ -42,16 +41,23 @@ def test_reads_every_pin_from_the_tree() -> None:
 
 def test_missing_pin_is_an_error(tmp_path: Path) -> None:
     (tmp_path / "only.yml").write_text("nothing to see\n", encoding="utf-8")
-    pin = _pin("missing", ("only.yml",), r"pin=(\d+)", 1)
+    pin = _pin("missing", (("only.yml", 1),), r"pin=(\d+)")
 
-    with pytest.raises(check_pins.PinError, match=r"only\.yml"):
+    with pytest.raises(check_pins.PinError, match=r"expected 1 match\(es\) in only\.yml"):
+        check_pins.read_pins(tmp_path, pins=(pin,))
+
+
+def test_a_missing_file_is_a_pin_error(tmp_path: Path) -> None:
+    pin = _pin("absent", (("absent.yml", 1),), r"pin=(\d+)")
+
+    with pytest.raises(check_pins.PinError, match=r"cannot read absent\.yml"):
         check_pins.read_pins(tmp_path, pins=(pin,))
 
 
 def test_disagreeing_copies_are_an_error(tmp_path: Path) -> None:
     (tmp_path / "a.yml").write_text("image: pin@sha256:aaa\n", encoding="utf-8")
     (tmp_path / "b.yml").write_text("image: pin@sha256:bbb\n", encoding="utf-8")
-    pin = _pin("shared", ("a.yml", "b.yml"), r"pin@(sha256:\w+)", 2)
+    pin = _pin("shared", (("a.yml", 1), ("b.yml", 1)), r"^image: pin@(sha256:\w+)")
 
     with pytest.raises(check_pins.PinError, match="disagreeing"):
         check_pins.read_pins(tmp_path, pins=(pin,))
@@ -59,10 +65,36 @@ def test_disagreeing_copies_are_an_error(tmp_path: Path) -> None:
 
 def test_a_lost_site_is_an_error(tmp_path: Path) -> None:
     (tmp_path / "a.yml").write_text("image: pin@sha256:aaa\n", encoding="utf-8")
-    (tmp_path / "b.yml").write_text("image: pin@sha256:aaa\n", encoding="utf-8")
-    pin = _pin("shared", ("a.yml", "b.yml"), r"pin@(sha256:\w+)", 3)
+    (tmp_path / "b.yml").write_text("image: pin:pg17\n", encoding="utf-8")
+    pin = _pin("shared", (("a.yml", 1), ("b.yml", 1)), r"^image: pin@(sha256:\w+)")
 
-    with pytest.raises(check_pins.PinError, match="expected 3"):
+    with pytest.raises(check_pins.PinError, match=r"expected 1 match\(es\) in b\.yml"):
+        check_pins.read_pins(tmp_path, pins=(pin,))
+
+
+def test_a_duplicate_cannot_replace_a_lost_site(tmp_path: Path) -> None:
+    (tmp_path / "a.yml").write_text(
+        "image: pin@sha256:aaa\nimage: pin@sha256:aaa\n", encoding="utf-8"
+    )
+    (tmp_path / "b.yml").write_text("image: pin:pg17\n", encoding="utf-8")
+    pin = _pin("shared", (("a.yml", 2), ("b.yml", 1)), r"^image: pin@(sha256:\w+)")
+
+    with pytest.raises(check_pins.PinError, match=r"expected 1 match\(es\) in b\.yml"):
+        check_pins.read_pins(tmp_path, pins=(pin,))
+
+
+def test_a_commented_digest_does_not_satisfy_a_pin(tmp_path: Path) -> None:
+    (tmp_path / "a.yml").write_text(
+        "    image: pgvector/pgvector:pg17 # was pgvector/pgvector@sha256:aaa\n",
+        encoding="utf-8",
+    )
+    pin = _pin(
+        "shared",
+        (("a.yml", 1),),
+        r"^[ \t]+image:[ \t]*pgvector/pgvector@(sha256:\w+)",
+    )
+
+    with pytest.raises(check_pins.PinError, match=r"expected 1 match\(es\) in a\.yml"):
         check_pins.read_pins(tmp_path, pins=(pin,))
 
 
@@ -85,8 +117,8 @@ def test_a_changed_digest_is_behind() -> None:
 
 
 def test_report_names_only_the_behind_pins() -> None:
-    stale = _pin("stale", ("a.yml",), r"x", 1)
-    fresh = _pin("fresh", ("b.yml",), r"x", 1)
+    stale = _pin("stale", (("a.yml", 1),), r"x")
+    fresh = _pin("fresh", (("b.yml", 1),), r"x")
     states = [check_pins.PinState(stale, "1.0.0"), check_pins.PinState(fresh, "2.0.0")]
     upstreams = {"stale": "1.1.0", "fresh": "2.0.0"}
 

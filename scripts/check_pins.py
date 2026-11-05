@@ -37,17 +37,20 @@ class PinError(Exception):
 class Pin:
     """One value in the tree and where its upstream lives.
 
-    `count` is the exact number of matches expected across `files`; a value
-    written in several places must appear exactly that many times and agree.
-    A lost site is an error, never a smaller pass. `upstream` is
-    ("github", "owner/repo") or ("docker", "image", "tag"), where a tag
-    starting with "@" names another pin whose current value is the tag.
+    `files` is (path, expected matches in that file). Every file is read on
+    its own: a lost site in one file is an error even when another file gained
+    a copy, and every match must agree. `upstream` is ("github", "owner/repo")
+    or ("docker", "image", "tag"), where a tag starting with "@" names another
+    pin whose current value is the tag.
+
+    The patterns anchor on the active YAML key (`image:`, `run:`, `version:`),
+    never on raw text: a digest left in a comment must not satisfy a pin whose
+    live reference went back to a mutable tag.
     """
 
     name: str
-    files: tuple[str, ...]
+    files: tuple[tuple[str, int], ...]
     pattern: str
-    count: int
     upstream: tuple[str, ...]
 
 
@@ -62,72 +65,69 @@ class PinState:
 PINS: tuple[Pin, ...] = (
     Pin(
         name="actionlint",
-        files=(".github/workflows/ci.yml",),
-        pattern=r"#\s*rhysd/actionlint:(\d+\.\d+\.\d+)",
-        count=1,
+        files=((".github/workflows/ci.yml", 1),),
+        pattern=r"^[ \t]+run:.*# rhysd/actionlint:(\d+\.\d+\.\d+)$",
         upstream=("github", "rhysd/actionlint"),
     ),
     Pin(
         name="actionlint-digest",
-        files=(".github/workflows/ci.yml",),
-        pattern=r"rhysd/actionlint@(sha256:[0-9a-f]{64})",
-        count=1,
+        files=((".github/workflows/ci.yml", 1),),
+        pattern=r"^[ \t]+run:.*rhysd/actionlint@(sha256:[0-9a-f]{64})",
         upstream=("docker", "rhysd/actionlint", "@actionlint"),
     ),
     Pin(
         name="zizmor",
-        files=(".github/workflows/ci.yml",),
-        pattern=r"^\s+version:\s+(\d+\.\d+\.\d+)$",
-        count=1,
+        files=((".github/workflows/ci.yml", 1),),
+        pattern=r"^[ \t]+version:[ \t]+(\d+\.\d+\.\d+)[ \t]*$",
         upstream=("github", "zizmorcore/zizmor"),
     ),
     Pin(
         name="pip-audit",
-        files=(".github/workflows/nightly.yml",),
-        pattern=r"uvx pip-audit==(\d+\.\d+\.\d+)",
-        count=1,
+        files=((".github/workflows/nightly.yml", 1),),
+        pattern=r"^[ \t]+run:[ \t]+uvx pip-audit==(\d+\.\d+\.\d+)",
         upstream=("github", "pypa/pip-audit"),
     ),
     Pin(
         name="codecov-cli",
-        files=(".github/workflows/_test.yml",),
-        pattern=r"^\s+version:\s+(v\d+\.\d+\.\d+)$",
-        count=2,
+        files=((".github/workflows/_test.yml", 2),),
+        pattern=r"^[ \t]+version:[ \t]+(v\d+\.\d+\.\d+)[ \t]*$",
         upstream=("github", "codecov/codecov-cli"),
     ),
     Pin(
         name="pgvector",
         files=(
-            ".github/workflows/_test.yml",
-            ".github/workflows/_e2e.yml",
-            "docker-compose.dev.yml",
+            (".github/workflows/_test.yml", 1),
+            (".github/workflows/_e2e.yml", 1),
+            ("docker-compose.dev.yml", 2),
         ),
-        pattern=r"pgvector/pgvector@(sha256:[0-9a-f]{64})",
-        count=4,
+        pattern=r"^[ \t]+image:[ \t]*pgvector/pgvector@(sha256:[0-9a-f]{64})",
         upstream=("docker", "pgvector/pgvector", "pg17"),
     ),
 )
 
 
 def read_pins(root: Path, pins: Sequence[Pin] = PINS) -> list[PinState]:
-    """Read every pin from the tree; a missing or disagreeing value raises."""
+    """Read every pin from the tree; a missing file, lost site or disagreement raises."""
     states: list[PinState] = []
     for pin in pins:
         values: list[str] = []
-        for name in pin.files:
-            text = (root / name).read_text(encoding="utf-8")
+        for name, expected in pin.files:
+            try:
+                text = (root / name).read_text(encoding="utf-8")
+            except OSError as error:
+                raise PinError(f"{pin.name}: cannot read {name}: {error}") from error
             found = re.findall(pin.pattern, text, flags=re.MULTILINE)
-            if not found:
-                raise PinError(f"{pin.name}: no match for {pin.pattern!r} in {name}")
+            if len(found) != expected:
+                raise PinError(
+                    f"{pin.name}: expected {expected} match(es) in {name}, found {len(found)}"
+                )
             values.extend(found)
-        if len(values) != pin.count:
-            raise PinError(
-                f"{pin.name}: expected {pin.count} match(es), found {len(values)} in "
-                f"{', '.join(pin.files)}"
-            )
         distinct = sorted(set(values))
         if len(distinct) != 1:
-            raise PinError(f"{pin.name}: disagreeing values in {', '.join(pin.files)}: {distinct}")
+            raise PinError(
+                f"{pin.name}: disagreeing values in {', '.join(name for name, _ in pin.files)}: "
+                f"{distinct}"
+            )
         states.append(PinState(pin=pin, current=distinct[0]))
     return states
 
@@ -205,7 +205,7 @@ def report(states: Sequence[PinState], upstreams: Mapping[str, str]) -> str:
         verdict = "**behind**" if compare(state.current, upstream) else "current"
         rows.append(
             f"| {pin.name} | {_short(state.current)} | {_short(upstream)} | {verdict} | "
-            f"{', '.join(pin.files)} |"
+            f"{', '.join(name for name, _ in pin.files)} |"
         )
     return "\n".join(rows)
 

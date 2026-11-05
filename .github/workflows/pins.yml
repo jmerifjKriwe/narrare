@@ -38,6 +38,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Judge `main`, not the ref a manual dispatch was started from: the
+          # issue this job maintains is the repository's alert, and a stale
+          # feature branch must not close or skew it.
+          ref: ${{ github.event.repository.default_branch }}
           # Nothing below pushes; the token has no work to persist.
           persist-credentials: false
       # The runner's python3, no uv sync: the script is stdlib only, like
@@ -50,7 +54,9 @@ jobs:
       # One issue carries the answer: opened on the first behind pin, a comment
       # per further run while it stays behind, closed the month everything is
       # current. A failed check never reaches this step (the one above failed),
-      # so it cannot close an issue it did not read.
+      # so it cannot close an issue it did not read. Reopen rather than
+      # comment, and close every duplicate: the invariant is exactly one open
+      # `ci/tool-pins` issue.
       - name: Open, update or close the ci/tool-pins issue
         run: |
           set -euo pipefail
@@ -61,17 +67,25 @@ jobs:
           # check for it first, exactly as nightly-result does.
           gh label list --search ci/tool-pins --json name --jq '.[].name' | grep -qx ci/tool-pins \
             || gh label create ci/tool-pins --description "A CI tool pin is behind its upstream" --color D93F0B
-          existing=$(gh issue list --label ci/tool-pins --state open --limit 1 \
-            --json number --jq '.[0].number // empty')
+          open=$(gh issue list --label ci/tool-pins --state open --limit 100 \
+            --json number --jq 'sort_by(.number) | .[].number')
+          first=$(printf '%s\n' "$open" | head -1)
           if [ "$behind" != "0" ]; then
             body=$(printf '%s\n\nRun: %s\n' "$report" "$run_url")
-            if [ -n "$existing" ]; then
-              gh issue comment "$existing" --body "$body"
+            if [ -n "$first" ]; then
+              # A maintainer may close the issue between the list and this
+              # line; a comment on a closed issue is not an alert, a reopen is.
+              gh issue reopen "$first" --comment "$body"
+              for extra in $(printf '%s\n' "$open" | tail -n +2); do
+                gh issue close "$extra" --comment "Superseded by #$first."
+              done
             else
               gh issue create --label ci/tool-pins --title "CI tool pins are behind" --body "$body"
             fi
-          elif [ -n "$existing" ]; then
-            gh issue close "$existing" --comment "All pins current: $run_url"
+          elif [ -n "$open" ]; then
+            for issue in $open; do
+              gh issue close "$issue" --comment "All pins current: $run_url"
+            done
           else
             echo "::notice::All pins current; no open ci/tool-pins issue."
           fi
