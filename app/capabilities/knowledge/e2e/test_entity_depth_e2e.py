@@ -182,13 +182,13 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
 
     target = dialog.get_by_label("Verbinden mit")
     target.fill("Amulett")
-    # The pick is a click on the suggestion, never Enter: Enter in the add
-    # row's text field is also the form's submit, and a submit that takes
-    # the pick's keystroke files the edge before the note below is typed —
-    # the row then lands note-less, which is what made this test red once.
-    # The click waits for the list itself, so the pick cannot race the
-    # popover either.
-    page.get_by_role("option", name="Amulett", exact=True).click()
+    target.press("ArrowDown")
+    # Enter picks only while the list is open: with the list still closed,
+    # the same Enter is the form's submit and files the edge before the
+    # note below is typed — the row then lands note-less, which is what
+    # made this test red once. Wait for the suggestion itself, then pick.
+    expect(page.get_by_role("option", name="Amulett", exact=True)).to_be_visible()
+    target.press("Enter")
     expect(target).to_have_value("Amulett")
     # R49's upload-preservation pin: with the add form holding typed work,
     # the dialog's Save stands down — a press that would close over the
@@ -197,7 +197,9 @@ def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Sta
     expect(save).to_be_disabled()
     kind = dialog.get_by_label("Beziehungsart")
     kind.fill("Besitzt")
-    page.get_by_role("option", name="Besitzt", exact=True).click()
+    kind.press("ArrowDown")
+    expect(page.get_by_role("option", name="Besitzt", exact=True)).to_be_visible()
+    kind.press("Enter")
     expect(kind).to_have_value("Besitzt")
     # The two picks spent nothing: the edge reaches the table only after the
     # note is typed and the row is submitted.
