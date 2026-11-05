@@ -115,6 +115,26 @@ and `docker compose config` plus the pull prove the pin resolves. The PR's
 
 ## Task 4 — PGDG retry (#610)
 
+The key fetch gains `--retry 5 --retry-all-errors --retry-delay 2`; `--fail`
+stays, so a 404 still fails. The comment names the failure it answers (run
+42088177589, `curl: (55) OpenSSL SSL_read: unexpected eof while reading`, on
+`ubuntu-26.04`, passed on rerun).
+
+Codename premise, probed 2026-11-05:
+
+```
+noble    200
+resolute 200
+plucky   404
+questing 404
+```
+
+`resolute-pgdg` exists, so the moving codename is not the gap; the TLS EOF was.
+`plucky`/`questing` have no PGDG suite and no runner image here uses them —
+recorded, not fixed.
+
+Gate: `docker run … rhysd/actionlint:1.7.12 -color` → exit 0.
+
 ## Task 5 — dev audit (#597)
 
 ## Task 6 — tool pins bumped

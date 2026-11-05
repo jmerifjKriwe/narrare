@@ -65,9 +65,15 @@ jobs:
       # added first (this also survives ubuntu-latest moving to 26.04).
       # The composite does not carry this: frontend and build owe no
       # database client, and the e2e jobs do not run pg_dump either.
+      #
+      # The key fetch retries: run 42088177589 died on `curl: (55) OpenSSL
+      # SSL_read: unexpected eof while reading` on ubuntu-26.04 and passed on
+      # the rerun. A transport flake must not redden a required job, and the
+      # codename was not the gap — `resolute-pgdg` exists (probed 2026-11-05),
+      # as does `noble-pgdg`.
       - run: |
           sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail --retry 5 --retry-all-errors --retry-delay 2 https://www.postgresql.org/media/keys/ACCC4CF8.asc
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
       # One suite, run once. A PR keeps `just test`, so nothing instruments a
