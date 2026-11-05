@@ -42,6 +42,7 @@ RAIL = 'aside[aria-label="Kapitel"]'
 DOCK = 'aside[aria-label="Wissen"]'
 FOCUS_TOGGLE = "Fokus"
 DOCK_TAB = "Wissen"
+RAIL_TOGGLE = "Kapitelleiste"
 WIDTHS = [360, 768, 1024, 1280]
 # The breakpoint the workbench's own classes use: below it the panels are
 # overlays, at and above it they are the desktop columns the older E2Es pin.
@@ -140,7 +141,7 @@ def _pin_drawer_scrolls(page: Page) -> None:
 # The container the workbench is bound to (F25): one width, with and
 # without the dock. The attribute-substring form is what a class with
 # brackets needs from querySelector.
-CONTAINER_SELECTOR = '[class*="max-w-[1152px]"]'
+CONTAINER_SELECTOR = '[class*="max-w-[1200px]"]'
 _CONTAINER_WIDTH = (
     f"() => document.querySelector('{CONTAINER_SELECTOR}')?.getBoundingClientRect().width"
 )
@@ -202,18 +203,24 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
     expect(page.get_by_role("link", name=title)).to_be_visible()
     _probe(failures, f"{width}px /", lambda: assert_page_fits(page))
 
-    # The workbench, rail open (the default): the prose floor where an
-    # editor is on screen; below 1024 the rail must cover the editor —
-    # not the workbench's own controls.
+    # The workbench: on the desktop columns the rail stands open with the
+    # page; below 1024 it starts closed, so a narrow visit lands on the text
+    # rather than on a drawer. Opening it covers the editor — never the
+    # workbench's own controls.
     page.goto(novel_url)
     expect(page.locator(PROSE)).to_be_visible()
-    expect(page.locator(RAIL)).to_be_visible()
+    if width < OVERLAY_BELOW:
+        expect(page.locator(RAIL)).to_have_count(0)
+    else:
+        expect(page.locator(RAIL)).to_be_visible()
     _probe(
         failures,
-        f"{width}px /novels rail open",
+        f"{width}px /novels",
         lambda: assert_page_fits(page, prose_selector=PROSE),
     )
     if width < OVERLAY_BELOW:
+        page.get_by_role("button", name=RAIL_TOGGLE).click()
+        expect(page.locator(RAIL)).to_be_visible()
         _probe(
             failures,
             f"{width}px /novels rail overlay",
@@ -227,18 +234,20 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
     else:
         _probe(failures, f"{width}px columns", lambda: _pin_columns(page))
 
-    # The dock open on top of the still-open rail — the worst case a narrow
-    # window must survive. From 768 up the dock's own tab opens it: the rail
-    # drawer starts below the toolbar band, and the click is Playwright's
-    # occlusion proof. At 360 the toolbar wraps and its second line sits
-    # under the drawers whatever the anchor does, so the visit arrives the
-    # way a deep link does — at the dock's own address, which is the dock's
-    # whole state.
+    # The dock open on top of the rail drawer — the worst case a narrow
+    # window must survive. Opening it retires the rail drawer (one overlay at
+    # a time), so the dock is the only panel over the text. From 768 up the
+    # dock's own tab opens it: the click is Playwright's occlusion proof. At
+    # 360 the toolbar wraps and its second line sits under the drawers, so
+    # the visit arrives the way a deep link does — at the dock's own address,
+    # which is the dock's whole state.
     if width == 360:
         page.goto(f"{novel_url}/wissen")
     else:
         page.get_by_role("button", name=DOCK_TAB, exact=True).click()
     expect(page.locator(DOCK)).to_be_visible()
+    if width < OVERLAY_BELOW:
+        expect(page.locator(RAIL)).to_have_count(0)
     _probe(
         failures,
         f"{width}px /novels dock open",
@@ -252,11 +261,12 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
         )
 
     # At 360 only: a tall fixture — seven more chapters, the only way a user
-    # makes them — to pin the drawer containing its own list. The dock is
-    # open when this face ends, and its drawer covers the rail's own button,
-    # so the bare workbench address (no dock child route) comes first.
+    # makes them — to pin the drawer containing its own list. The drawer is
+    # opened from the toolbar first: at this width it starts closed.
     if width == 360:
         page.goto(novel_url)
+        expect(page.locator(RAIL)).to_have_count(0)
+        page.get_by_role("button", name=RAIL_TOGGLE).click()
         expect(page.locator(RAIL)).to_be_visible()
         for _ in range(7):
             page.get_by_role("button", name="Neues Kapitel").click()

@@ -302,7 +302,7 @@ describe("the palette wears the system's rows", () => {
     await openPalette();
 
     const input = await searchBox();
-    expect(input.className).toContain("focus-visible:outline-none");
+    expect(input.className).toContain("focus-visible:outline-hidden");
     expect(input.className).toContain("focus-visible:ring-2");
     expect(input.className).toContain("focus-visible:ring-focus");
   });

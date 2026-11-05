@@ -522,8 +522,12 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
       timeout: 5000,
     });
-    // The server holds the text now; a close has nothing to lose.
-    expect(unloadPrevented()).toBe(false);
+    // The server holds the text now; a close has nothing to lose. The guard
+    // is waited for, not sampled once: under a loaded runner the indicator's
+    // paint and the blocker's release can land one frame apart, and the
+    // contract is "released once it landed", not "released in the same frame
+    // the indicator painted".
+    await waitFor(() => expect(unloadPrevented()).toBe(false), { timeout: 5000 });
   });
 
   it("announces a superseding offer once per supersede", { timeout: 10_000 }, async () => {

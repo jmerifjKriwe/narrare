@@ -211,6 +211,7 @@
   "shelf.export": "Export",
   "shelf.exportTitle": "Export “{title}”",
   "shelf.card.words": "{count, plural, one {# word} other {# words}}",
+  "shelf.language": "{language, select, de {German} en {English} fr {French} other {{language}}}",
   "shelf.export.modeLabel": "Destination",
   "shelf.export.modePath": "Folder on disk",
   "shelf.export.modeZip": "ZIP download",

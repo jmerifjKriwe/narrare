@@ -73,9 +73,12 @@ export function NovelPage() {
   // routes.tsx, and the registered router still types `id` from the string.
   const { id: novelId } = useParams({ from: "/novels/$id" });
   const { rail, focus: focusParam, chapter: chapterParam } = useSearch({ from: "/novels/$id" });
-  // Absent means expanded: only an explicit collapsed encoding (validated to
-  // false in routes.tsx) hides the rail.
-  const collapsed = rail === false;
+  // Below the workbench breakpoint the rail is a drawer over the text, so
+  // there "absent" has to mean closed: opening it needs the explicit
+  // `?rail=true` the toggle writes. On the desktop columns absent still
+  // means expanded, and only a `?rail=false` closes the column.
+  const narrow = useBelowWorkbenchBreakpoint();
+  const collapsed = rail === false || (rail === undefined && narrow);
   // Absent means the workbench: the URL names a depth only once it deepens.
   const focus: FocusStep = focusParam ?? 0;
   const navigate = useNavigate();
@@ -201,13 +204,9 @@ export function NovelPage() {
   // The collapse is a navigation, not local state: the panel state becomes
   // part of the URL — a shareable workspace, and one the back button undoes.
   // `to: "."` keeps the navigation on whatever route is showing: collapsing
-  // the rail while a dock child route is open must not throw the dock away.
-  const toggleRail = useCallback(() => {
-    void navigate({
-      to: ".",
-      search: (prev) => ({ ...prev, rail: collapsed }),
-    });
-  }, [navigate, collapsed]);
+  // the rail while a dock child route is open must not throw the dock away
+  // (a dock holds the ask in progress, so the drawer above it may cover the
+  // dock, never unmount it).
 
   // Focus depth is URL state too, so it shares rail's properties: linkable,
   // back-button-true. The updater takes the function form on purpose — it
@@ -252,12 +251,30 @@ export function NovelPage() {
           : {
               to: dock.path,
               params: { id: novelId },
-              search: (prev) => ({ ...prev }),
+              // A dock opened over an open rail drawer closes it: the dock's
+              // ask is the thing worth keeping, and the rail holds nothing
+              // that can be lost — its own open, by contrast, covers the
+              // dock without unmounting it.
+              search: (prev) => ({
+                ...prev,
+                ...(narrow && !collapsed ? { rail: false } : {}),
+              }),
             },
       );
     },
-    [navigate, novelId, activeDock],
+    [navigate, novelId, activeDock, narrow, collapsed],
   );
+
+  // The rail's collapse (above, explained): at narrow the rail drawer paints
+  // above the dock's (z-30 over z-20), so opening it never needs to close the
+  // dock — the dock stays mounted with its in-progress question and answer,
+  // and closing the rail brings it back.
+  const toggleRail = useCallback(() => {
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, rail: collapsed }),
+    });
+  }, [navigate, collapsed]);
 
   // The leave guard's state, ahead of the keyboard contract: while an ask
   // stands, F9/Esc are the dialog's keys, not the workbench's — a second
@@ -497,15 +514,17 @@ export function NovelPage() {
   // own controls, and the way either drawer closes. The rail half is gated
   // on the rail's own render condition: an overlay with no drawer would
   // scrim the loading and outage states and inert their retry.
-  const narrow = useBelowWorkbenchBreakpoint();
   const railOverlay = narrow && showRail && !pending && !failed;
   const dockOverlay = narrow && openDock !== null;
 
   return (
-    <div className="mx-auto max-w-[1152px] px-4 py-10 xl:px-0">
+    <div className="mx-auto max-w-[1200px] px-4 py-10">
       {focus < 2 ? (
         <>
-          <Link to="/" className="text-body text-muted underline-offset-4 hover:underline">
+          <Link
+            to="/"
+            className="text-body text-muted underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          >
             {t("nav.back")}
           </Link>
           {/* The heading names the book only when the book's row is here: an
@@ -565,13 +584,15 @@ export function NovelPage() {
 
       {/* The workbench: the rail beside the editor, so writing never scrolls
           past the chapter list. The container is one width in both states
-          (F25) — rail 224, prose 544, dock 384 sum to it exactly — and the
-          prose column centres, so opening a panel never reflows the text.
-          The frame stays while the book loads or fails — the toolbar and the
-          docks are independent of the book's row, and a dock's own outage
-          story must stay reachable. Below the desktop breakpoint the row is
-          the overlays' containing block: the panels float above the editor
-          instead of standing beside it. */}
+          (F25) — 1200, the shelf's own, so the bar, the shelf and this page
+          share one left edge: rail 224, dock 384, and the prose column that
+          remains carries the 544 measure with air on both sides (592 with
+          the dock open, 24 px each side). The frame stays while the book
+          loads or fails — the toolbar and the docks are independent of the
+          book's row, and a dock's own outage story must stay reachable.
+          Below the desktop breakpoint the row is the overlays' containing
+          block: the panels float above the editor instead of standing
+          beside it. */}
       <div className="mt-6 flex items-start max-lg:relative">
         {railOverlay ? (
           <div
@@ -591,11 +612,14 @@ export function NovelPage() {
                inside the column (lg:pr-6), so rail + prose + dock sum to
                the container with no gap to account for. The list bounds
                its height and scrolls inside itself (Review Focus 2); below
-               the breakpoint the whole drawer scrolls instead. */
-            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-20 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+               the breakpoint the whole drawer scrolls instead. The drawer
+               paints one z-step above the dock's: opening it over a live
+               dock covers the dock without unmounting it, so the dock's
+               own draft survives behind it. */
+            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
             aria-label={t("chapters.heading")}
           >
-            <h2 className="text-title font-semibold tracking-tight">{t("chapters.heading")}</h2>
+            <h2 className="text-emph font-semibold tracking-tight">{t("chapters.heading")}</h2>
             {chapters.length === 0 ? (
               <p className="mt-2 text-body text-muted">{t("chapters.empty")}</p>
             ) : null}
@@ -678,11 +702,12 @@ export function NovelPage() {
         >
           {/* The editor's tone step (R49): a band painted around the
               measured column — the 544 the prose reads at is never the
-              chrome's victim. The workspace arithmetic leaves no
-              horizontal slack (rail + prose + dock sum to the container,
-              pinned at 1280 with the dock open), so the band takes its
-              ground, its rules and its air vertically: the measure lives
-              on the inner column untouched. */}
+              chrome's victim. The prose column keeps 592 with the dock open
+              (rail 224 + prose 592 + dock 384 = 1200), so the measure
+              centres with 24 px of air on each side instead of touching the
+              band's edge; the band takes its ground, its rules and its air
+              vertically, and the measure lives on the inner column
+              untouched. */}
           <div className="w-full border-y border-rule bg-card py-6">
             <div className="mx-auto w-full max-w-[544px]">
               {pending ? (
@@ -754,7 +779,7 @@ export function NovelPage() {
           </div>
         </section>
 
-        {dockOverlay ? (
+        {dockOverlay && !railOverlay ? (
           <div
             aria-hidden="true"
             onClick={() => {
@@ -775,12 +800,24 @@ export function NovelPage() {
             /* Same contract as the rail, mirrored: a drawer from the
                right below 1024, the desktop's dock column at ≥1024. The
                384 the dock takes are the arithmetic's own; its gutter to
-               the prose lives inside the column. */
-            className="w-96 shrink-0 rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:pl-6"
+               the prose lives inside the column. The column is a flex
+               stack so the title holds its place while the body under it
+               takes the remaining height and scrolls alone. The rail's
+               drawer sits a z-step above this one: a rail opened over a
+               live dock covers it without unmounting it, so the dock's
+               in-progress ask survives behind the drawer — and while it is
+               covered the dock goes `inert`, so the keyboard cannot land on
+               controls the drawer hides. */
+            className="flex w-96 shrink-0 flex-col rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:max-h-[calc(100dvh-16rem)] lg:pl-6"
             aria-label={t(openDock.titleKey)}
+            inert={railOverlay || undefined}
           >
-            <h2 className="text-title font-semibold tracking-tight">{t(openDock.titleKey)}</h2>
-            <div className="mt-3 max-h-[50vh] overflow-y-auto">
+            <h2 className="text-emph font-semibold tracking-tight">{t(openDock.titleKey)}</h2>
+            {/* The dock owns its scroll: it takes the height it needs up to
+                the viewport's own cap (the rail's arithmetic), and the body
+                under the title scrolls inside it. A fixed 50 vh window used
+                to cut a row in half while 200 px of the page stood unused. */}
+            <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
               <Outlet />
             </div>
           </aside>

@@ -464,7 +464,7 @@ export function Palette({
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={onSearchKeyDown}
                 placeholder={t("palette.searchLabel")}
-                className="w-full bg-transparent px-4 py-3 text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus placeholder:text-muted"
+                className="w-full bg-transparent px-4 py-3 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus placeholder:text-muted"
               />
             </div>
             <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
