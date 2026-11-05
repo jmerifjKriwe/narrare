@@ -1,7 +1,7 @@
 # Each hook names a failure that has happened: unformatted code, lint
 # findings, type errors that only show up across files, a leaked secret, a
-# commit subject release-please cannot parse, and the gates a developer
-# should not push past.
+# commit subject release-please cannot parse, a lockfile that no longer
+# matches pyproject, and the gates a developer should not push past.
 #
 # A commit checks the staged files; a push checks the pushed tree. The web
 # suite follows that split: the commit runs only the tests the change reaches,
@@ -71,6 +71,19 @@ repos:
         entry: python3 scripts/check_commit_msg.py
         language: system
         stages: [commit-msg]
+
+      # The lockfile check is first at push: a stale lock costs nothing to
+      # find and two minutes to wait for behind the suites. A push hook runs
+      # against the index (pre-commit stashes unstaged changes), so the guard
+      # refuses a lock update that is staged but not committed; `uv lock
+      # --check` then reads the pair the push actually carries.
+      - id: uv-lock
+        name: Lockfile (uv)
+        entry: bash -c 'git diff --quiet HEAD -- pyproject.toml uv.lock || { echo "uncommitted dependency change — commit or revert it before pushing"; exit 1; }; uv lock --check'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
 
       - id: pyright-full
         name: Pyright (whole project)
