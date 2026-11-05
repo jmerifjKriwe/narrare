@@ -126,6 +126,22 @@ const TWO_NAMED_CHAPTERS = [
   { ...TWO_CHAPTERS[1], title: "Zweites" },
 ];
 
+const THIRD_CHAPTER_ID = "b2f8ea7d-4a3b-4c5d-9e2f-8a1b0c3d4e06";
+/** Three named chapters: enough room that a second move is its own
+ *  arrangement, not the first one undone. */
+const THREE_NAMED_CHAPTERS = [
+  ...TWO_NAMED_CHAPTERS,
+  {
+    id: THIRD_CHAPTER_ID,
+    novel_id: NOVEL_ID,
+    title: "Drittes",
+    body: "",
+    position: 2,
+    created_at: "2026-10-30T09:00:00Z",
+    updated_at: "2026-10-30T09:00:00Z",
+  },
+];
+
 function ok(): Response {
   return new Response(null, { status: 200 });
 }
@@ -706,9 +722,11 @@ describe("the rail's reorder", () => {
     await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
 
     // A plain list tells AT nothing about a reordering: every move is
-    // announced — the row's name as the move began (the position-derived
-    // label for an untitled one), the position it holds now, out of the
-    // book's total.
+    // announced — the row's composed label (the position-derived one for
+    // an untitled chapter), the position it holds now, out of the book's
+    // total. The key no longer wraps the label in "Chapter": the label
+    // already carries its own kind word, and the doubled word is the
+    // bug this line pins dead.
     const said = document.querySelector("[data-live-announcer]")?.textContent ?? "";
     expect(said).toContain(
       t("chapters.moved", {
@@ -717,6 +735,85 @@ describe("the rail's reorder", () => {
         m: 2,
       }),
     );
+    expect(said).not.toContain(`Chapter ${t("chapters.defaultTitle", { n: 1 })}`);
+  });
+
+  it("a_failed_move_does_not_clobber_a_later_moves_order", { timeout: 10_000 }, async () => {
+    // Key repeat is two moves in one breath: the first ask fails, the
+    // second lands. The first move's failure must restore nothing — the
+    // cache no longer holds its arrangement, and clobbering the later
+    // move's optimistic order with the earlier snapshot would show a
+    // rail the server never held.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: THREE_NAMED_CHAPTERS, response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+    // The answers land on the test's clock, not the mock's: key repeat
+    // fires both keystrokes before any network answer exists, so both
+    // arrangements are outstanding at once when the earlier one fails.
+    const answers: Array<(value: { response: Response }) => void> = [];
+    api.PUT.mockImplementation(
+      () => new Promise((resolve) => answers.push(resolve as never)),
+    );
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // Move A: Erstes down one — [Zweites, Erstes, Drittes]; its PUT fails.
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    // Move B: Drittes up one, computed from A's arrangement —
+    // [Zweites, Drittes, Erstes]; its PUT is the one that lands.
+    titledRow("Drittes").focus();
+    await user.keyboard("{Alt>}{ArrowUp}{/Alt}");
+
+    // The queue is one arrangement wide: A's ask flew, B's waits its
+    // turn — two PUTs can never be on the wire together committing
+    // inverted. Both keystrokes have happened by now.
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+    expect(api.PUT).toHaveBeenLastCalledWith(
+      "/api/writing/novels/{novel_id}/chapter-order",
+      {
+        params: { path: { novel_id: NOVEL_ID } },
+        body: { chapter_ids: [SECOND_CHAPTER_ID, CHAPTER_ID, THIRD_CHAPTER_ID] },
+      },
+    );
+
+    // A's answer lands as a failure — and the queue releases B's ask,
+    // which carries the arrangement B computed from A's optimistic one.
+    await act(async () => {
+      answers[0]?.({ response: new Response(null, { status: 500 }) });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(2));
+    expect(api.PUT).toHaveBeenLastCalledWith(
+      "/api/writing/novels/{novel_id}/chapter-order",
+      {
+        params: { path: { novel_id: NOVEL_ID } },
+        body: { chapter_ids: [SECOND_CHAPTER_ID, THIRD_CHAPTER_ID, CHAPTER_ID] },
+      },
+    );
+
+    // B's answer lands as the success it is.
+    await act(async () => {
+      answers[1]?.({ response: ok() });
+      await Promise.resolve();
+    });
+
+    // The failure is still named — one of the moves did not land…
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+    // …but the rail holds the arrangement that did: Zweites leads and
+    // Erstes is last (B's order), not the original A would have restored.
+    expect(railOrder()).toEqual([2, 0]);
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([
+      SECOND_CHAPTER_ID,
+      THIRD_CHAPTER_ID,
+      CHAPTER_ID,
+    ]);
   });
 
   it("a_drag_and_drop_moves_the_chapter", { timeout: 10_000 }, async () => {

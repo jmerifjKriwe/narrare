@@ -559,6 +559,12 @@ export function NovelPage() {
   // mutation's own `onSuccess`.
   const reorder = useReorderChapters(novelId);
   const [orderFailed, setOrderFailed] = useState(false);
+  // The tail of the reorder queue, the autosave's own pattern: never
+  // rejects, so one failed ask cannot eat the moves queued behind it.
+  // Serialization is the promise "survives a reload" keeps under key
+  // repeat — two arrangements in flight at once can commit inverted, the
+  // server holding the earlier permutation while the rail shows the last.
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
   // The rail's filter is Task 12's; until it exists no filter can be
   // active. The seam is here already — `null` is "no filter", the one
   // state in which a reorder is unambiguous — so Task 12 replaces the
@@ -609,15 +615,28 @@ export function NovelPage() {
     // numbering rewritten to the arrangement the rows now stand in.
     queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], next);
     setOrderFailed(false);
+    // The ask waits its turn: one arrangement on the wire at a time,
+    // chained on the queue's tail. This move's promise (`ask`) can
+    // reject into its own handler; the tail cannot, or a later keystroke
+    // would queue behind a failure and never fly.
+    const ask = writes.current.then(() =>
+      reorder.mutateAsync(next.map((chapter) => chapter.id)),
+    );
+    writes.current = ask.catch(() => undefined);
     try {
-      await reorder.mutateAsync(next.map((chapter) => chapter.id));
+      await ask;
     } catch (failure) {
-      // Any failure restores the arrangement the ask replaced; the 409
-      // also asks the key to refetch, the server's order arriving through
-      // the same door every list does. A transport failure asks for
-      // nothing — the service is not answering, and a second ask would
-      // only name a refresh failure beside work that stays.
-      queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], previous);
+      // Restore only what is still this move's to restore: the cache
+      // must hold this move's own arrangement, or a later move's
+      // optimistic order — newer than this snapshot — would be clobbered
+      // by an earlier failure. The notice still names the refusal either
+      // way. A 409 asks the key to refetch, the server's order arriving
+      // through the same door every list does; a transport failure asks
+      // for nothing — the service is not answering, and a second ask
+      // would only name a refresh failure beside work that stays.
+      if (queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]) === next) {
+        queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], previous);
+      }
       setOrderFailed(true);
       if ((failure as { status?: number }).status === 409) {
         void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
