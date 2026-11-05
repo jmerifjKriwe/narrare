@@ -665,7 +665,16 @@ class KnowledgeService:
         one story, so another novel's row is an invalid target, not a
         missing one. Both ends are read under row locks, lower id first,
         so two concurrent merges into one survivor fold one after the
-        other instead of each overwriting the other's fold.
+        other instead of each overwriting the other's fold. The same
+        locks also serialize a concurrent edge write on the relation
+        paths: the add's insert takes ``FOR KEY SHARE`` on both entity
+        ends for its foreign-key check, a mode ``FOR UPDATE`` conflicts
+        with. An insert naming the merged-away source waits for this
+        commit and is then refused as the scoped absence — the source
+        row is gone beneath its foreign key; an insert naming only the
+        survivor waits on the same lock, lands after the commit, and
+        stands. So an edge can be neither accepted and then cascaded
+        away by the fold, nor slip past it unvisited.
 
         Commit and return the folded target. Raise SelfMergeError for equal
         IDs, NotFoundError for either absent or unowned row, or CrossNovelMergeError
@@ -679,7 +688,14 @@ class KnowledgeService:
         # the earlier one's commit and folds from the folded state, where
         # two unlocked reads would both fold from the same pre-fold row
         # and the later commit would overwrite the earlier fold, whose
-        # source is gone (see EntityRepository.locked).
+        # source is gone (see EntityRepository.locked). The same pair of
+        # locks stands between a concurrent edge write and the fold: the
+        # add's insert takes FOR KEY SHARE on both ends for its
+        # foreign-key check, a mode FOR UPDATE conflicts with. An insert
+        # naming the merged-away source waits for this commit and is
+        # then refused as the scoped absence; an insert naming only the
+        # survivor waits on the same lock, lands after the commit, and
+        # stands (pinned by the merge race in test_relations.py).
         first_id, second_id = sorted((source_id, target_id))
         locked_rows = {
             first_id: await self.entities.locked(first_id),
