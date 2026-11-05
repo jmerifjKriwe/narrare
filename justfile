@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 23 public recipes; private helpers start with `_`.
+# 24 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -79,6 +79,10 @@ test:
 # One file or one node: just test-file app/capabilities/chat/tests/test_chat.py
 test-file file:
     uv run pytest {{file}} -v
+
+# Every integration test with coverage, for the main-push report.
+test-cov:
+    uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
 
 # Every capability E2E: real browser, real API, real Postgres. `all` or a
 # capability name overrides the default;

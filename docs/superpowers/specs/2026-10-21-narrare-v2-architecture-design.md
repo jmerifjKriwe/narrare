@@ -224,13 +224,13 @@ direct push is covered by the nightly; the nightly runs every capability.
 `release-please` runs separately. The wall clock is the longest capability suite —
 the suites run side by side, the aggregator waits on them in seconds.
 
-**`justfile` keeps 21 public recipes:**
+**`justfile` keeps 24 public recipes:**
 
 ```text
 dev, dev-api, dev-web, dev-services, dev-services-stop, dev-setup,
-check, verify, lint, typecheck, format,
-test, test-file, test-e2e, test-frontend,
-build, db-init, db-reset, db-shell,
+check, verify, lint, typecheck, format, callers,
+test, test-cov, test-file, test-e2e, test-frontend,
+build, db-init, db-reset, db-revision, db-shell,
 generate, new-capability
 ```
 

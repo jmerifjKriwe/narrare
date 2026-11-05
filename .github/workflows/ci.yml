@@ -189,13 +189,13 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
       # One suite, run once. A PR keeps `just test`, so nothing instruments a
-      # PR; the covered invocation below replaces the plain one on a main
-      # push, where the Codecov dashboard expects its report.
+      # PR; the covered recipe below replaces the plain one on a main push,
+      # where the Codecov dashboard expects its report.
       - run: just test
         if: github.event_name != 'push' || github.ref != 'refs/heads/main'
       - name: Tests with coverage
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+        run: just test-cov
       # `!cancelled()` on both uploads: a report is worth uploading even when a
       # test failed, and a report that stays away is worse than a red one. A
       # bare `if:` carries `success()`, so the coverage upload skipped itself on
