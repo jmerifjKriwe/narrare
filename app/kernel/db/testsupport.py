@@ -2,9 +2,15 @@
 
 Each suite gets its own database: they are created and dropped per run, and a
 shared database would carry one suite's rows into the next.
+
+The server itself is the compose default unless the environment says
+otherwise: two checkouts share one machine, and ``NARRE_TEST_DATABASE_URL``
+is how the second one aims its suites — and its E2E stacks — at its own
+Postgres instead of waiting for the port's first holder.
 """
 
 import asyncio
+import os
 from contextlib import suppress
 from uuid import UUID  # noqa: TC003
 
@@ -12,7 +18,9 @@ from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import create_async_engine
 
-SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+SERVER = os.environ.get(
+    "NARRE_TEST_DATABASE_URL", "postgresql+asyncpg://narrare:narrare@localhost:5433"
+)
 
 
 def url_for(database: str) -> str:
