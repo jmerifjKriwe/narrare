@@ -34,7 +34,7 @@ vi.mock("./api/client", () => ({
   },
 }));
 
-import { useAutosave, type DocumentDraft } from "./save";
+import { useAutosave, type DocumentDraft, type FlushOutcome } from "./save";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
 
@@ -104,6 +104,23 @@ describe("useAutosave's draft", () => {
     expect(wire.calls).toStrictEqual([{ title: "Wald", body: "Text." }]);
   });
 
+  it("a_successful_save_clears_its_dirty_fields", async () => {
+    render(<Probe />);
+    await save({ title: "Wald", body: "Der Satz." }, "title");
+
+    // The title flew and was spent: with nothing dirty there is nothing to
+    // send — a second flush is "clean" and the wire still holds one call.
+    // This is the line that keeps a saved field from being re-sent (and
+    // so from overwriting a newer change made elsewhere) by a later
+    // leave's flush.
+    let outcome: FlushOutcome | undefined;
+    await act(async () => {
+      outcome = await autosave.flush();
+    });
+    expect(outcome).toBe("clean");
+    expect(wire.calls).toStrictEqual([{ title: "Wald" }]);
+  });
+
   it("a_refused_save_keeps_its_draft", async () => {
     render(<Probe />);
     wire.refuse = true;
@@ -120,5 +137,14 @@ describe("useAutosave's draft", () => {
     });
     expect(wire.calls).toStrictEqual([{ title: "Wald" }, { title: "Wald" }]);
     expect(screen.getByText("saved")).toBeTruthy();
+
+    // The retry's success spent the field too: a third flush has nothing
+    // left to carry.
+    let settled: FlushOutcome | undefined;
+    await act(async () => {
+      settled = await autosave.flush();
+    });
+    expect(settled).toBe("clean");
+    expect(wire.calls).toStrictEqual([{ title: "Wald" }, { title: "Wald" }]);
   });
 });

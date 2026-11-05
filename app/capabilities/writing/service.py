@@ -233,7 +233,9 @@ class WritingService:
         await self._require_user()
         if await self.novels.get(novel_id) is None:
             raise NotFoundError
-        chapter = await self.chapters.create(novel_id, title)
+        # The same rule as the update: spaces are not a name, and "" after
+        # the trim is the honest unnamed.
+        chapter = await self.chapters.create(novel_id, title.strip())
         await self.session.commit()
         return chapter
 
