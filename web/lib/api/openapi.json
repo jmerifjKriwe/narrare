@@ -4609,7 +4609,7 @@
         ]
       },
       "patch": {
-        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel; raise HTTP 404 for an absent or unowned novel, or\nHTTP 422 naming the field for a blank or over-long title, an over-long\ngenre, or a language that is not a BCP-47-ish code.",
+        "description": "Correct a novel by hand: only the fields the body carries change.\n\nReturn the novel with its derived counts; raise HTTP 404 for an absent\nor unowned novel, or HTTP 422 naming the field for a blank or over-long\ntitle, an over-long genre or author, or a language that is over-long\nor not a BCP-47-ish code.",
         "operationId": "update_novel_api_writing_novels__novel_id__patch",
         "parameters": [
           {

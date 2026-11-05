@@ -39,6 +39,28 @@ async def test_patch_changes_only_the_fields_sent() -> None:
         assert body["language"] is None
 
 
+async def test_patch_answers_the_real_chapter_and_word_counts() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post("/api/writing/novels", json={"title": "Der Nebel"})
+        novel_id = created.json()["id"]
+        chapter = await client.post(
+            f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"}
+        )
+        assert chapter.status_code == 201
+        written = await client.put(
+            f"/api/writing/chapters/{chapter.json()['id']}",
+            json={"body": "Der Nebel legt sich über die Bucht."},
+        )
+        assert written.status_code == 200
+        patched = await client.patch(
+            f"/api/writing/novels/{novel_id}", json={"author": "J. Autorin"}
+        )
+        assert patched.status_code == 200
+        # the patch answers the novel's real length, not the schema's zeros
+        assert patched.json()["chapter_count"] == 1
+        assert patched.json()["word_count"] == 7
+
+
 async def test_patch_trims_the_title() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         novel_id = await _novel_id(client)
@@ -71,6 +93,17 @@ async def test_patch_refuses_a_bad_language_code() -> None:
         # the refusals wrote nothing
         fetched = await client.get(f"/api/writing/novels/{novel_id}")
         assert fetched.json()["language"] is None
+
+
+async def test_patch_refuses_an_over_long_language() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        # "de-" + 14 letters matches the pattern and is wider than the column
+        refused = await client.patch(
+            f"/api/writing/novels/{novel_id}", json={"language": f"de-{'x' * 14}"}
+        )
+        assert refused.status_code == 422
+        assert refused.json()["detail"] == "invalid language"
 
 
 async def test_patch_clears_the_language_with_null_and_with_empty_string() -> None:
@@ -121,6 +154,17 @@ async def test_patch_refuses_a_genre_over_80() -> None:
         # the refusal wrote nothing
         fetched = await client.get(f"/api/writing/novels/{novel_id}")
         assert fetched.json()["genre"] is None
+
+
+async def test_patch_refuses_an_over_long_author() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        novel_id = await _novel_id(client)
+        refused = await client.patch(f"/api/writing/novels/{novel_id}", json={"author": "x" * 201})
+        assert refused.status_code == 422
+        assert refused.json()["detail"] == "invalid author"
+        # the refusal wrote nothing
+        fetched = await client.get(f"/api/writing/novels/{novel_id}")
+        assert fetched.json()["author"] is None
 
 
 async def test_patch_clears_an_empty_genre() -> None:

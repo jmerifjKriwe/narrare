@@ -818,9 +818,10 @@ export interface paths {
          * Update Novel
          * @description Correct a novel by hand: only the fields the body carries change.
          *
-         *     Return the novel; raise HTTP 404 for an absent or unowned novel, or
-         *     HTTP 422 naming the field for a blank or over-long title, an over-long
-         *     genre, or a language that is not a BCP-47-ish code.
+         *     Return the novel with its derived counts; raise HTTP 404 for an absent
+         *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
+         *     title, an over-long genre or author, or a language that is over-long
+         *     or not a BCP-47-ish code.
          */
         patch: operations["update_novel_api_writing_novels__novel_id__patch"];
         trace?: never;

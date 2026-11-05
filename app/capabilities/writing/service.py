@@ -138,7 +138,7 @@ class WritingService:
             update={"chapter_count": chapter_count, "word_count": word_count}
         )
 
-    async def update_novel(self, novel_id: UUID, changes: NovelUpdate) -> Novel:
+    async def update_novel(self, novel_id: UUID, changes: NovelUpdate) -> NovelRead:
         """Correct a novel's five metadata fields: only the fields the body carries.
 
         The values are checked here, in the service, so a hand-written call
@@ -146,18 +146,20 @@ class WritingService:
         blank nor over 200 characters (a novel has no placeholder), a genre
         is trimmed with the empty string clearing it and may not be over 80,
         an author and a blurb are trimmed with the empty string clearing
-        them, and a language is trimmed, its primary subtag folded to
-        lowercase (``DE`` is ``de``; the remainder keeps its case, so
-        ``en-GB`` stays ``en-GB``), with the empty string clearing it, and
-        must otherwise be a BCP-47-ish code (`de`, `en-GB`).
-        ``model_fields_set`` is what makes the update partial: a field the
-        body does not carry is not a change, and a carried ``null`` is one —
-        the cleared state. The write is one UPDATE
-        through the repository's save, and ``updated_at`` rides it through
-        the column's ``onupdate``, so an edit makes the export trace
-        honestly stale.
+        them, the author at most 200 characters, and a language is trimmed,
+        its primary subtag folded to lowercase (``DE`` is ``de``; the
+        remainder keeps its case, so ``en-GB`` stays ``en-GB``), with the
+        empty string clearing it, at most 16 characters, and must otherwise
+        be a BCP-47-ish code (`de`, `en-GB`). ``model_fields_set`` is what
+        makes the update partial: a field the body does not carry is not a
+        change, and a carried ``null`` is one — the cleared state. The
+        write is one UPDATE through the repository's save, and
+        ``updated_at`` rides it through the column's ``onupdate``, so an
+        edit makes the export trace honestly stale; an empty body carries
+        no field and writes nothing.
 
-        Commit and return the novel. Raise NotFoundError if it is absent or
+        Commit and return the novel, its derived counts filled the way the
+        read paths fill them. Raise NotFoundError if it is absent or
         unowned, or InvalidNovelUpdateError for an invalid field, named.
         """
         novel = await self.novels.get(novel_id)
@@ -178,7 +180,10 @@ class WritingService:
                 raise InvalidNovelUpdateError("genre")
             changes.genre = genre
         if "author" in provided:
-            changes.author = (changes.author or "").strip() or None
+            author = (changes.author or "").strip() or None
+            if author is not None and len(author) > 200:
+                raise InvalidNovelUpdateError("author")
+            changes.author = author
         if "blurb" in provided:
             changes.blurb = (changes.blurb or "").strip() or None
         if "language" in provided:
@@ -188,12 +193,15 @@ class WritingService:
                 # the case it was typed in (spec §2: DE is de, en-GB stays).
                 primary, separator, remainder = language.partition("-")
                 language = f"{primary.lower()}{separator}{remainder}"
-                if not _LANGUAGE_CODE.fullmatch(language):
+                # The widths are the columns' own (String(16) here,
+                # String(200) above) — the interchange path guards the same
+                # widths on the way in from an archive.
+                if len(language) > 16 or not _LANGUAGE_CODE.fullmatch(language):
                     raise InvalidNovelUpdateError("language")
             changes.language = language
         novel = await self.novels.save(novel, changes.model_dump(exclude_unset=True))
         await self.session.commit()
-        return novel
+        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
 
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
