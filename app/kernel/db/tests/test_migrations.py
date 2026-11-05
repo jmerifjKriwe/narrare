@@ -152,20 +152,26 @@ def test_alembic_cli_imports_the_app_from_any_working_directory(tmp_path: Path) 
     from anywhere else ``env.py`` could not import ``app``. The ini names the
     repo root instead (``%(here)s``), the same way ``script_location`` does.
     """
-    repo_root = Path(__file__).parents[4]
     result = subprocess.run(  # noqa: S603  fixed argv: the CLI under test, no shell
         [
             sys.executable,
             "-m",
             "alembic",
             "-c",
-            str(repo_root / "alembic.ini"),
+            str(migrate_module.ALEMBIC_INI),
             "upgrade",
             "head",
             "--sql",
         ],
         cwd=tmp_path,
-        env={**environ, "NARRE_DATABASE_URL": "postgresql+asyncpg://u:p@localhost:1/offline"},
+        env={
+            **environ,
+            # Empty, not inherited: an exported repo root (the workaround this
+            # fix retires) would import ``app`` without the ini's prepend path,
+            # hiding the regression from whoever runs the test locally.
+            "PYTHONPATH": "",
+            "NARRE_DATABASE_URL": "postgresql+asyncpg://u:p@localhost:1/offline",
+        },
         capture_output=True,
         text=True,
         check=False,
