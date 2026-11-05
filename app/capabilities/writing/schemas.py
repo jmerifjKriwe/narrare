@@ -69,7 +69,10 @@ class ChapterCreate(BaseModel):
 
 
 class ChapterUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
+    # `None` means unchanged (`exclude_none` keeps that); `""` after the
+    # service's trim is the honest unnamed — the chapter list's placeholder
+    # is a rendering, not a value. The length is the schema's one refusal.
+    title: str | None = Field(default=None, max_length=200)
     body: str | None = None
 
 

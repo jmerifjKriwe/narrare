@@ -308,9 +308,17 @@ class WritingService:
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
         """Commit non-null edits and update the parent novel's timestamp.
 
+        A carried title is trimmed here, in the service, so a hand-written
+        call cannot skip it: spaces are not a name, and ``""`` after the
+        trim is the chapter returned to unnamed — stored as it is, with the
+        list's placeholder a rendering of it. Over-long stays the schema's
+        422; nothing else is refused.
+
         Return the chapter; raise NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
+        if changes.title is not None:
+            changes.title = changes.title.strip()
         chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))
         await self.session.commit()
         return chapter
