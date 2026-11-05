@@ -87,6 +87,34 @@ jobs:
           echo "::notice::the nightly owes: $capabilities"
           echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
 
+  # The lockfile audit: Python runtime dependencies (`uv.lock`, dev
+  # dependencies excluded — the shipped runtime does not carry pytest and
+  # friends) and the production JavaScript dependencies, each checked
+  # against its advisories. New or changed dev dependencies are reviewed on
+  # PRs; a CVE published later against an existing dev dependency is not
+  # covered here. It reddens the nightly but blocks nothing on the PR path.
+  audit:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.7 rejects `$/`
+      - name: Export runtime requirements
+        # --locked: judge the committed lockfile, not a fresh resolution.
+        run: uv export --locked --format requirements-txt --no-dev --output-file /tmp/requirements.txt
+      - name: pip-audit
+        # --strict: a dependency pip-audit cannot collect must not exit 0.
+        run: uvx pip-audit==2.10.1 --strict -r /tmp/requirements.txt
+      - name: pnpm audit
+        run: pnpm audit --prod --audit-level high
+
   # Lint, typecheck and secrets scan — one definition for every workflow:
   # `_lint.yml`. Same job name as ci.yml's caller, same inputs.
   #
@@ -197,7 +225,7 @@ jobs:
   # below the gate ran, so there is nothing to report). A manual dispatch
   # reports to no one but its own run log; it never touches the issue.
   nightly-result:
-    needs: [gate, lint-types, tests, frontend, build, e2e-suites]
+    needs: [gate, audit, lint-types, tests, frontend, build, e2e-suites]
     if: always() && github.event_name == 'schedule' && (needs.gate.result != 'success' || needs.gate.outputs.proceed == 'true')
     runs-on: ubuntu-latest
     permissions:
@@ -211,6 +239,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GATE_RESULT: ${{ needs.gate.result }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
           LINT_TYPES_RESULT: ${{ needs.lint-types.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
@@ -226,6 +255,7 @@ jobs:
             fi
           }
           note "gate" "$GATE_RESULT"
+          note "audit" "$AUDIT_RESULT"
           note "lint-types" "$LINT_TYPES_RESULT"
           note "tests" "$TESTS_RESULT"
           note "frontend" "$FRONTEND_RESULT"
