@@ -4,22 +4,20 @@ on:
   pull_request:
   push:
     branches: [main]
-  schedule:
-    # Nightly: every capability, every suite — but only when main moved since
-    # the last successful nightly (the guard job decides). 03:17 UTC.
-    - cron: "17 3 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # A narrow change on top of a wide one supersedes it, so a new push cancels
-  # the run of the commit it stands on: two pushes in a row used to run two
-  # full suites side by side, for two trees where the newer one contains the
-  # older. The nightly is exempt, because a push at 03:18 must not cancel the
-  # one run the nightly-guard reads back tomorrow.
-  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+  # A narrow change on top of a wide one supersedes it, so a pull request
+  # cancels the run of the commit it stands on. A push to main keeps its
+  # own run per SHA (cancel off, group per SHA): the same group with
+  # cancellation off would serialize runs, and cancelling a main push
+  # would delete a coverage report only that run could produce — every
+  # merge delivers its own report for its own SHA. The nightly, which has
+  # its own question to answer, lives in its own workflow now (nightly.yml).
+  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
+permissions: {}
 
 # Actions are pinned by commit SHA and name their release in a trailing comment;
 # release-please.yml, which carries write tokens, has always done it this way.
@@ -31,49 +29,19 @@ permissions:
 # action is forced onto a runtime its own CI never tested.
 
 jobs:
-  # One cheap job every other job waits for. On a nightly it answers the
-  # only question that matters first: is main still where the last
-  # successful nightly left it? Then nothing below runs, because the same
-  # commit has already been tested — no runner minutes, no credits, and
-  # every job below reports skipped. On PRs and pushes it always proceeds.
-  nightly-guard:
+  lint-types:
     runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: read
-    outputs:
-      proceed: ${{ steps.guard.outputs.proceed }}
-    steps:
-      - id: guard
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" != schedule ]; then
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # gh api prefixes nothing: a relative path without repos/<owner>/<repo>
-          # resolves to api.github.com/actions/... and answers 404.
-          last=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?event=schedule&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
-          echo "last successful nightly tested: ${last:-none}"
-          if [ -n "$last" ] && [ "$last" = "$GITHUB_SHA" ]; then
-            echo "proceed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Nightly skipped: main is unchanged since the last successful nightly."
-          else
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-  lint-types:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
-    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       # Full history: gitleaks scans the push range base^..head, which needs
       # the base commit that a shallow (depth-1) checkout does not have.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -104,18 +72,23 @@ jobs:
   # resolver, not a second copy of the mapping here (spec §6 "affected
   # capabilities": the capabilities a change touches, or all of them when a
   # shared surface moved). This job only picks the resolver's mode per event:
-  # a pull request is measured against where it branched, a push to main owes
-  # nothing (why at the push branch below), and a nightly takes everything.
+  # a pull request is measured against where it branched, and a push to main
+  # owes nothing (why at the push branch below). A nightly takes everything,
+  # and does it in nightly.yml's own gate — this workflow no longer runs on
+  # a schedule.
   changes:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
     outputs:
       capabilities: ${{ steps.suites.outputs.capabilities }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
       - id: suites
         env:
           # What kind of event this is: the resolver's mode differs per event.
@@ -137,7 +110,7 @@ jobs:
             # workflow decides the mode, so no range is read.
             mode="--none"
           else
-            # A nightly has no range to read: every suite.
+            # A manual dispatch asks for a sweep: every suite.
             mode="--all"
           fi
           # No single condition below is trustable alone: a fork may take the
@@ -161,6 +134,9 @@ jobs:
           # precedes the exit.
           reason_file=$(mktemp)
           status=0
+          # Splitting is deliberate: $mode expands to two arguments (`--base`
+          # and `origin/main`), so quoting it would break the resolver's usage.
+          # shellcheck disable=SC2086
           capabilities=$(python3 scripts/affected.py $mode $release_pr --json 2>"$reason_file") || status=$?
           echo "::notice::$(cat "$reason_file")"
           rm -f "$reason_file"
@@ -172,9 +148,10 @@ jobs:
           echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
 
   tests:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -191,6 +168,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -208,10 +188,9 @@ jobs:
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
-      # One suite, run once. `main` is where coverage is measured, and a second
-      # job used to measure it by running the same suite a second time; the
-      # covered invocation replaces the plain one on a main push instead. A PR
-      # keeps `just test`, so nothing instruments a PR.
+      # One suite, run once. A PR keeps `just test`, so nothing instruments a
+      # PR; the covered invocation below replaces the plain one on a main
+      # push, where the Codecov dashboard expects its report.
       - run: just test
         if: github.event_name != 'push' || github.ref != 'refs/heads/main'
       - name: Tests with coverage
@@ -273,6 +252,9 @@ jobs:
     needs: [lint-types, changes]
     if: needs.changes.outputs.capabilities != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -294,6 +276,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -314,7 +299,12 @@ jobs:
           just-version: "1.58.0"
       # The matrix runs the same recipe the local gate runs.
       - name: E2E
-        run: just test-e2e ${{ matrix.capability }}
+        env:
+          # Indirection for zizmor's template-injection audit: the capability
+          # name reaches the shell as an env value, never as an expanded
+          # expression in the command line.
+          CAPABILITY: ${{ matrix.capability }}
+        run: just test-e2e "$CAPABILITY"
 
   # The required check is the context `e2e`, and the name must not move while
   # the suites behind it multiply. `always()` because the hole this closes is
@@ -326,16 +316,13 @@ jobs:
   #   green — `changes` succeeded with `[]` and the matrix was skipped:
   #           nothing owed, nothing run — the notice says so,
   #   red   — the matrix ran and ended anything but success.
-  # On a nightly the guard may skip the whole run (main unchanged since the
-  # last successful one); then this job skips with the rest. `always()` alone
-  # would run it against a `changes` that never meant to run and turn every
-  # quiet night red. A PR or push never takes that branch: the guard proceeds
-  # on every non-schedule event, so `always()` governs there unchanged.
   e2e:
     name: e2e
-    needs: [nightly-guard, changes, e2e-suites]
-    if: always() && (github.event_name != 'schedule' || needs.nightly-guard.outputs.proceed == 'true')
+    needs: [changes, e2e-suites]
+    if: always()
     runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 5
     steps:
       - name: Every owed suite passed, or none was owed
         env:
@@ -352,12 +339,20 @@ jobs:
           if [ "$SUITES" != success ]; then
             echo "::error::e2e suites ended $SUITES"; exit 1; fi
 
-  build:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
+  # The web unit suite — six files (four in `web/`, two in capability `web/`
+  # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
+  # has that hook, a drive-by contributor does not, so their frontend could
+  # reach `main` with `vitest` red.
+  frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.2
@@ -370,11 +365,28 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
         with:
           just-version: "1.58.0"
-      # The web unit suite — six files (four in `web/`, two in capability `web/`
-      # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
-      # has that hook, a drive-by contributor does not, so their frontend could
-      # reach `main` with `vitest` red. It runs before the build because it is
-      # the cheaper step.
       - run: just test-frontend
-      - run: just build
 
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      - run: just build

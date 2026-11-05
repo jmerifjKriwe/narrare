@@ -1,0 +1,360 @@
+name: Nightly
+
+# The nightly is its own workflow, not a schedule branch of the PR gate: its
+# trigger surface (schedule + manual dispatch) and its question (did main
+# move since the last successful nightly?) are not the pull request's, and
+# it reports through the `ci/nightly` issue, not through required checks.
+
+on:
+  schedule:
+    # Nightly: every capability, every suite — but only when main moved since
+    # the last successful nightly (the gate job decides). 03:17 UTC.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    # Manual dispatch never skips: whoever runs it asked for a sweep.
+
+# A nightly must not cancel the previous one: the gate reads the last
+# successful scheduled run, so the one run this workflow depends on is the
+# one still in flight. Queued sequentially, never dropped.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions: {}
+
+# Actions are pinned by commit SHA and name their release in a trailing comment;
+# release-please.yml, which carries write tokens, has always done it this way.
+# A major tag is a mutable ref: its owners can move `v7` to any commit, and that
+# commit then runs with this workflow's token — no diff here, no review.
+# Dependabot's monthly `github-actions` update keeps the pins current.
+#
+# The pin also fixes the runtime: every action below runs on Node 24, so no
+# action is forced onto a runtime its own CI never tested.
+
+jobs:
+  # One cheap job every other job waits for. On a schedule it answers the
+  # only question that matters first: is main still where the last
+  # successful nightly left it? Then nothing below runs, because the same
+  # commit has already been tested — no runner minutes, no credits, and
+  # every job below reports skipped. On a manual dispatch it always
+  # proceeds, because whoever dispatched asked for a sweep. On the way out
+  # it resolves the full suite list once, for the e2e matrix to fan out
+  # over.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      proceed: ${{ steps.guard.outputs.proceed }}
+      capabilities: ${{ steps.capabilities.outputs.capabilities }}
+    steps:
+      - id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != schedule ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # gh api prefixes nothing: a relative path without repos/<owner>/<repo>
+          # resolves to api.github.com/actions/... and answers 404.
+          last=$(gh api "repos/$GH_REPO/actions/workflows/nightly.yml/runs?event=schedule&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          echo "last successful nightly tested: ${last:-none}"
+          if [ -n "$last" ] && [ "$last" = "$GITHUB_SHA" ]; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nightly skipped: main is unchanged since the last successful nightly."
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # Same gate as the resolver step: a night that owes nothing owes no
+        # checkout either, so a checkout failure on such a night cannot redden
+        # the gate and open an issue over main unchanged.
+        if: steps.guard.outputs.proceed == 'true'
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      # The resolver is stdlib only, so the runner's python3 before any uv
+      # sync. A nightly has no range to read: --all names every suite, and
+      # the matrix below is derived, never a static list.
+      - id: capabilities
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          capabilities=$(python3 scripts/affected.py --all --json)
+          echo "::notice::the nightly owes: $capabilities"
+          echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
+
+  lint-types:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      # Full history: gitleaks scans the push range base^..head, which needs
+      # the base commit that a shallow (depth-1) checkout does not have.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      # --locked, not a plain sync: uv otherwise rewrites a stale lock inside
+      # the throwaway checkout and reports success. That is how 0.2.0 reached
+      # main with uv.lock still at 0.1.0.
+      - run: uv sync --locked
+      - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      - run: just lint
+      - run: just typecheck
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  tests:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: narrare
+          POSTGRES_PASSWORD: narrare
+          POSTGRES_DB: narrare
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U narrare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      # The round-trip gate needs a pg_dump matching the service's major
+      # version; noble's archive ships client 16 only, so the PGDG repo is
+      # added first (this also survives ubuntu-latest moving to 26.04).
+      - run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
+      # One suite, run once, plain. Coverage is a main-push concern — the
+      # Codecov dashboard keys on those runs — so the nightly reports
+      # through its `ci/nightly` issue instead and never instruments here.
+      - run: just test
+
+  # The web unit suite — six files (four in `web/`, two in capability `web/`
+  # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
+  # has that hook, a drive-by contributor does not, so their frontend could
+  # reach `main` with `vitest` red.
+  frontend:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      - run: just test-frontend
+
+  build:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      - run: just build
+
+  # The suites the gate resolved, one runner per capability, side by side —
+  # writing is the slowest and becomes the wall clock. `fail-fast: false`:
+  # a red writing suite must not hide whether knowledge is red too. A
+  # nightly owes every suite, and the gate's --all resolution decides what
+  # those are — no name is ever expanded into a path by string surgery on
+  # the JSON list.
+  e2e-suites:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        capability: ${{ fromJSON(needs.gate.outputs.capabilities) }}
+    name: e2e (${{ matrix.capability }})
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: narrare
+          POSTGRES_PASSWORD: narrare
+          POSTGRES_DB: narrare
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U narrare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: uv sync --locked
+      - run: uv run playwright install --with-deps chromium
+      - run: pnpm install --frozen-lockfile
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+      # The matrix runs the same recipe the local gate runs.
+      - name: E2E
+        env:
+          # Indirection for zizmor's template-injection audit: the capability
+          # name reaches the shell as an env value, never as an expanded
+          # expression in the command line.
+          CAPABILITY: ${{ matrix.capability }}
+        run: just test-e2e "$CAPABILITY"
+
+  # A red nightly must not be discoverable only by scrolling through
+  # Actions: one open issue labeled `ci/nightly` carries the failed run and
+  # the jobs that did not reach green, gains a comment for each further
+  # failure while it stays red, and is closed the morning a nightly goes
+  # green again. A gate
+  # that failed outright is also red news and reports here; the
+  # unchanged-main skip is not (`proceed` empty or 'false' — nothing
+  # below the gate ran, so there is nothing to report). A manual dispatch
+  # reports to no one but its own run log; it never touches the issue.
+  nightly-result:
+    needs: [gate, lint-types, tests, frontend, build, e2e-suites]
+    if: always() && github.event_name == 'schedule' && (needs.gate.result != 'success' || needs.gate.outputs.proceed == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: Open, update or close the ci/nightly issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GATE_RESULT: ${{ needs.gate.result }}
+          LINT_TYPES_RESULT: ${{ needs.lint-types.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          E2E_SUITES_RESULT: ${{ needs.e2e-suites.result }}
+        run: |
+          failed=""
+          note() {
+            # The new `if` can pass a failed gate through, too; whatever did
+            # not end success — failed, cancelled or skipped — is red news.
+            if [ "$2" != success ]; then
+              failed="${failed:+$failed, }$1 ($2)"
+            fi
+          }
+          note "gate" "$GATE_RESULT"
+          note "lint-types" "$LINT_TYPES_RESULT"
+          note "tests" "$TESTS_RESULT"
+          note "frontend" "$FRONTEND_RESULT"
+          note "build" "$BUILD_RESULT"
+          note "e2e-suites" "$E2E_SUITES_RESULT"
+          # `gh issue create --label` fails when the label does not exist, so
+          # check for `ci/nightly` first and create it only when a real
+          # failure to look up must not be missed — no swallowed errors.
+          gh label list --search ci/nightly --json name --jq '.[].name' | grep -qx ci/nightly || gh label create ci/nightly --description "A nightly run failed" --color D93F0B
+          existing=$(gh issue list --label ci/nightly --state open --limit 1 \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$failed" ]; then
+            body=$(printf 'Nightly not green: %s\n\nNot green jobs: %s\n' "$RUN_URL" "$failed")
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "$body"
+            else
+              gh issue create --label ci/nightly --title "Nightly failed" --body "$body"
+            fi
+          elif [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "Nightly green: $RUN_URL"
+          else
+            echo "::notice::Nightly green; no open ci/nightly issue to close."
+          fi
