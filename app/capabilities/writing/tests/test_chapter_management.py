@@ -3,6 +3,7 @@ transaction, and no survivor's "last written" moves — the book lost a
 chapter, no words were written (the novel's row is what advances, D8)."""
 
 import asyncio
+from collections.abc import Sequence  # noqa: TC003
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -13,9 +14,10 @@ from sqlalchemy import text
 
 from app.api.main import app
 from app.capabilities.writing.repository import ChapterRepository
+from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
-from app.kernel.contracts.models import ConsistencyFinding, EntitySuggestion
-from app.kernel.contracts.positions import lock_novel, next_chapter_position
+from app.kernel.contracts.models import Chapter, ConsistencyFinding, EntitySuggestion
+from app.kernel.contracts.positions import next_chapter_position
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 
@@ -154,7 +156,9 @@ async def test_delete_chapter_leaves_findings() -> None:
         assert findings == 1
 
 
-async def test_a_delete_holds_the_books_lock_against_an_append() -> None:
+async def test_a_delete_holds_the_books_lock_against_an_append(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """An append must not allocate beside an uncommitted delete.
 
     The race the lock forbids: A deletes a chapter and renumbers while
@@ -166,33 +170,57 @@ async def test_a_delete_holds_the_books_lock_against_an_append() -> None:
     commit, so B either waits for the renumber and reads the closed-up
     max, or commits first and is renumbered with the survivors.
 
-    Session A here is the delete held open at that window: the scoped
-    load, the lock, the delete and the renumber through the flow's own
-    repository calls, with the commit — the one boundary where the race
-    happens — still ahead.
+    The delete is the service's own method, gated open at its survivor
+    read — the read whose uncommitted result a racing append stales, the
+    one statement between the lock and the renumber — by a patched
+    repository call that signals and waits: the scoped load, the lock and
+    the delete have all really run when B tries, so removing the lock
+    from the flow itself, or taking it a statement late, is what turns
+    this test red.
     """
     async with _client() as client:
         novel_id, chapters = await _three_chapters(client)
     novel, doomed = UUID(novel_id), UUID(chapters[1]["id"])
 
+    reached = asyncio.Event()
+    release = asyncio.Event()
+    original_survivors = ChapterRepository.list_for_novel
+
+    async def survivors_gated_open(
+        repository: ChapterRepository, novel_id: UUID
+    ) -> Sequence[Chapter]:
+        # The service is mid-transaction here — the lock taken, the row
+        # gone, the commit ahead — holding the numbers B is about to read.
+        reached.set()
+        await release.wait()
+        return await original_survivors(repository, novel_id)
+
+    monkeypatch.setattr(ChapterRepository, "list_for_novel", survivors_gated_open)
+
     async with Session() as a:
-        repository = ChapterRepository(a, LOCAL_USER_ID)
-        chapter = await repository.get(doomed)
-        assert chapter is not None
-        await lock_novel(a, user_id=LOCAL_USER_ID, novel_id=novel)
-        await repository.delete(chapter)
-        survivors = await repository.list_for_novel(novel)
-        await repository.renumber(novel, [survivor.id for survivor in survivors])
+        delete = asyncio.create_task(WritingService(a, LOCAL_USER_ID).delete_chapter(doomed))
+        await asyncio.wait_for(reached.wait(), timeout=5)
 
-        # B allocates while A's renumber sits uncommitted
-        async with Session() as b:
-            with pytest.raises(TimeoutError):
-                await asyncio.wait_for(
-                    next_chapter_position(b, user_id=LOCAL_USER_ID, novel_id=novel),
-                    timeout=0.5,
-                )
+        try:
+            # B allocates while the delete sits uncommitted, lock held
+            async with Session() as b:
+                with pytest.raises(TimeoutError):
+                    await asyncio.wait_for(
+                        next_chapter_position(b, user_id=LOCAL_USER_ID, novel_id=novel),
+                        timeout=0.5,
+                    )
+                # the refusal is a block, not a stalled loop: B's
+                # statement reached the server and its transaction is
+                # open, waiting on the row
+                assert b.in_transaction()
+        finally:
+            release.set()
+            await delete
 
-        await a.commit()
+    # the rail the delete committed: the survivors closed the gap
+    async with _client() as client:
+        listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
+    assert [chapter["position"] for chapter in listed] == [0, 1]
 
     async with Session() as b:
         position = await next_chapter_position(b, user_id=LOCAL_USER_ID, novel_id=novel)
