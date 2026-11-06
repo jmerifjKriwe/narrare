@@ -1,7 +1,10 @@
 version: 2
 
 # Code ecosystems run monthly with a 7-day cooldown held to 30 days for
-# majors. Actions run weekly with a 3-day default cooldown; the Actions
+# majors. Docker has no cooldown at all: its ecosystem documents no
+# `semver-major-days`, and one unsupported key makes Dependabot discard the
+# whole file — which stops every updater, not just this one. Actions run weekly
+# with a 3-day default cooldown; the Actions
 # updater supports only `default-days`, so majors there have no separate
 # hold. Grouping plus the cooldown keeps PRs
 # few and safe: minor/patch bumps sit for a week before they open, majors for
