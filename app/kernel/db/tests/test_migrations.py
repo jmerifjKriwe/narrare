@@ -891,6 +891,19 @@ async def test_extension_privilege_failure_is_refused(
     assert "create extensions" in str(refused.value)  # the sentence, complete
 
 
+def test_extension_refusal_names_every_missing_extension() -> None:
+    sentence = migrate_module.extension_refusal(["vector", "unaccent"])
+    assert "'vector'" in sentence and "'unaccent'" in sentence
+    assert "pg_trgm" not in sentence  # only what is missing, not the whole list
+    assert "pgvector" in sentence  # and what to do about it
+
+
+def test_missing_extensions_keeps_the_required_order() -> None:
+    """The refusal reads in the schema's order, not the catalog's."""
+    assert migrate_module.missing_extensions({"pg_trgm"}) == ["vector", "unaccent"]
+    assert migrate_module.missing_extensions(set(migrate_module.REQUIRED_EXTENSIONS)) == []
+
+
 async def test_unreachable_database_surfaces_unchanged(
     url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:

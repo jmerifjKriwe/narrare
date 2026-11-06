@@ -36,7 +36,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import ForeignKeyConstraint, MetaData, UniqueConstraint, text
+from sqlalchemy import ForeignKeyConstraint, MetaData, UniqueConstraint, bindparam, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -45,6 +45,8 @@ from app.kernel.db.backup import BackupFailed, dump_database
 from app.kernel.db.base import Base
 
 if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
+
     from sqlalchemy.engine import Connection
     from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -55,6 +57,10 @@ ALEMBIC_INI = Path(__file__).resolve().parents[3] / "alembic.ini"
 # Postgres SQLSTATE for undefined_table — the version table of a database
 # that has never been migrated.
 UNDEFINED_TABLE = "42P01"
+
+REQUIRED_EXTENSIONS: tuple[str, ...] = ("vector", "pg_trgm", "unaccent")
+"""Every table's DDL assumes these: vector for the embedding columns, pg_trgm for
+the trigram index over ``search_text``, unaccent for the query side's folding."""
 
 # Postgres SQLSTATE for insufficient_privilege — the extension pre-step's
 # one tolerable failure, because there the platform owns the step (D7).
@@ -85,23 +91,51 @@ def default_config() -> Config:
 
 
 async def ensure_extensions(database_url: str) -> None:
-    """Create the three extensions every table's DDL assumes; idempotent.
+    """Create the extensions every table's DDL assumes; idempotent.
 
     A separate pre-step, not DDL inside a revision: on a hosted database the
     app user may not be allowed to create extensions, and there the platform
     owns that step (design D7). It lives in this module, not in ``init.py``:
     ``prepare_database`` runs it before anything else, and ``init.py``
     imports this module — the other direction would be the cycle.
+
+    The catalog is consulted first: a server that cannot offer an extension is
+    refused with its name, because the driver's own error for that case is a
+    bare ``CREATE EXTENSION`` failure an operator has to decode. A server that
+    offers them but forbids creating them stays the privilege refusal below.
     """
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
-        # vector: the embedding columns; pg_trgm: the trigram search over
-        # search_text; unaccent: the diacritics-folding the query side
-        # applies (the index itself is a plain gin_trgm_ops on the column).
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+        offered = {
+            name
+            for (name,) in await connection.execute(
+                text("SELECT name FROM pg_available_extensions WHERE name IN :names").bindparams(
+                    bindparam("names", expanding=True)
+                ),
+                {"names": list(REQUIRED_EXTENSIONS)},
+            )
+        }
+        if missing := missing_extensions(offered):
+            raise MigrationRefused(extension_refusal(missing))
+        for extension in REQUIRED_EXTENSIONS:
+            await connection.execute(text(f"CREATE EXTENSION IF NOT EXISTS {extension}"))
     await engine.dispose()
+
+
+def missing_extensions(available: Collection[str]) -> list[str]:
+    """The required extensions this server does not offer, in schema order."""
+    return [extension for extension in REQUIRED_EXTENSIONS if extension not in available]
+
+
+def extension_refusal(missing: Sequence[str]) -> str:
+    """The one sentence an operator reads when the server cannot serve the schema."""
+    names = ", ".join(f"'{name}'" for name in missing)
+    return (
+        f"the database cannot provide the extension(s) Narrare's schema needs: {names}"
+        " — it must be able to CREATE EXTENSION; a plain PostgreSQL needs a"
+        " pgvector-capable build (the pgvector/pgvector image) and the distribution's"
+        " contrib package, and a hosted database has its platform create them"
+    )
 
 
 def head_revision(config: Config | None = None) -> str:
