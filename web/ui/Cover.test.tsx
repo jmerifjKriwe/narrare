@@ -80,6 +80,8 @@ describe("Cover", () => {
   it("wears the eyebrow's genre, or the language when there is none", () => {
     const withGenre = render(<Cover title="Der Sturm" genre="Roman" language="de" />);
     expect(withGenre.getByText("Roman")).toBeTruthy();
+    // One line: a long genre must not wrap over the title below it.
+    expect(withGenre.getByText("Roman").className).toContain("truncate");
     cleanup();
     const withoutGenre = render(<Cover title="Der Sturm" language="de" />);
     expect(withoutGenre.getByText("DE")).toBeTruthy();

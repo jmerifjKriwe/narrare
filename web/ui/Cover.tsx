@@ -91,7 +91,7 @@ export function Cover({
            * an object, not UI text, and the census only sees the named scale
            * steps. 0.8, not 0.7: at 0.7 the dark sepia pair measured 4.30:1,
            * under AA; 0.8 measures 5.12:1. */
-          className="absolute left-1.5 top-1.5 text-[8px] uppercase tracking-[0.08em] opacity-80"
+          className="absolute left-1.5 right-1.5 top-1.5 truncate text-[8px] uppercase tracking-[0.08em] opacity-80"
         >
           {eyebrow}
         </span>
