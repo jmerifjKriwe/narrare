@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.api import main
 from app.kernel.db.migrate import head_revision
+from app.kernel.db.testsupport import test_database as the_suite_database
 from app.kernel.db.testsupport import url_for
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 CAPABILITIES = Path(main.__file__).parent.parent / "capabilities"
 
-DATABASE = "narrare_v2_test"
+DATABASE = the_suite_database()
 
 
 async def _version_rows(database: str) -> list[str]:

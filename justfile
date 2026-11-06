@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 23 public recipes; private helpers start with `_`.
+# 25 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -11,11 +11,17 @@ dev-services:
 dev-services-stop:
     docker compose -f docker-compose.dev.yml down
 
-# API with reload on :8000.
-dev-api:
-    uv run uvicorn app.api.main:app --reload --port 8000
+# The ports of both dev stacks are the E2E env pair, not literals: the same
+# NARRE_E2E_API_PORT / NARRE_E2E_WEB_PORT configures `just dev` and the E2E
+# stacks (stack.py forwards its environment to `pnpm dev`, which vite reads),
+# so two stacks on one machine are an env difference, not a code edit.
 
-# Web app on :3100.
+# API with reload on the configured port (default 8000).
+dev-api:
+    uv run uvicorn app.api.main:app --reload --port "${NARRE_E2E_API_PORT:-8000}"
+
+# Web app on the configured port (default 3100): vite reads
+# NARRE_E2E_WEB_PORT itself, no flag needed here.
 dev-web:
     pnpm --dir web dev
 
@@ -33,7 +39,7 @@ dev:
 dev-setup:
     uv sync
     pnpm install
-    pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
+    pre-commit install --install-hooks
     just dev-services
     just db-init
 
@@ -80,6 +86,10 @@ test:
 test-file file:
     uv run pytest {{file}} -v
 
+# Every integration test with coverage, for the main-push report.
+test-cov:
+    uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+
 # Every capability E2E: real browser, real API, real Postgres. `all` or a
 # capability name overrides the default;
 # by default only the suites the change touches run.
@@ -92,6 +102,13 @@ test-e2e scope="affected":
       exit 0
     fi
     uv run pytest $paths -v -m e2e --timeout=60
+
+# Bounded Atheris run over the interchange parser: just fuzz 60 (seconds).
+# Seeds are fuzz/corpus; new units and a finding land in the gitignored
+# fuzz/workdir/ and fuzz/crash-*.
+fuzz seconds="300":
+    mkdir -p fuzz/workdir
+    uv run --group fuzz python -m scripts.fuzz_archive fuzz/workdir fuzz/corpus -max_total_time={{seconds}} -artifact_prefix=fuzz/
 
 # Web unit tests.
 test-frontend:
@@ -132,6 +149,22 @@ generate:
     uv run python -m scripts.export_openapi
     uv run python -m scripts.generate_capabilities
     pnpm --dir web generate
+
+# Compares only the generated paths, so unrelated dirt in the working tree does
+# not matter. CI runs it on every PR and every nightly.
+# Regenerate and fail when the committed generated files differ.
+check-generated:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just generate
+    changed=$(git status --porcelain --untracked-files=all -- \
+        app/generated web/lib/generated \
+        web/lib/api/openapi.json web/lib/api/schema.d.ts docs/user/INDEX.md)
+    if [ -n "$changed" ]; then
+        printf '%s\n' "$changed" >&2
+        echo "committed generated files are stale: commit the regenerated files, or revert the input change" >&2
+        exit 1
+    fi
 
 # Scaffold a capability folder: just new-capability notes
 new-capability name:

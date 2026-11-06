@@ -32,6 +32,8 @@ from app.capabilities.settings.schemas import (
     ProfileTestResult,
     ProfileUpdate,
     SettingsRead,
+    SettingsThemeRead,
+    SettingsThemeUpdate,
     SettingsUpdate,
     TaskEffectiveRead,
 )
@@ -110,7 +112,7 @@ def _profile_errors(error: Exception) -> HTTPException:
 
 @router.get("", response_model=SettingsRead)
 async def get_settings(service: ServiceDep) -> SettingsRead:
-    return SettingsRead(locale=await service.read_locale())
+    return SettingsRead(locale=await service.read_locale(), theme=await service.read_theme())
 
 
 @router.patch("", response_model=SettingsRead)
@@ -119,7 +121,16 @@ async def update_settings(payload: SettingsUpdate, service: ServiceDep) -> Setti
         locale = await service.write_locale(payload.locale)
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
-    return SettingsRead(locale=locale)
+    return SettingsRead(locale=locale, theme=await service.read_theme())
+
+
+@router.patch("/theme", response_model=SettingsThemeRead)
+async def update_theme(payload: SettingsThemeUpdate, service: ServiceDep) -> SettingsThemeRead:
+    try:
+        theme = await service.write_theme(payload.theme)
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    return SettingsThemeRead(theme=theme)
 
 
 @router.get("/profiles", response_model=list[ProfileRead])

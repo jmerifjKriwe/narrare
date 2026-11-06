@@ -37,6 +37,7 @@ export function MarkdownEditor({
   label,
   extensions = NO_EXTENSIONS,
   onReady,
+  focusRing = true,
   className,
 }: {
   value: string;
@@ -47,6 +48,10 @@ export function MarkdownEditor({
   /** The live instance, once mounted (null before and after). Kept in a ref
    *  on this side, so a fresh closure per render cannot remount the editor. */
   onReady?: (editor: Editor | null) => void;
+  /** Whether this component paints the caret's focus ring itself. The
+   *  chapter's card carries it (F18), so the chapter passes `false`; the
+   *  entity dialog keeps the default. */
+  focusRing?: boolean;
   className?: string;
 }) {
   const emit = useRef(onChange);
@@ -81,8 +86,12 @@ export function MarkdownEditor({
       // F18: TipTap paints no caret affordance of its own — `.ProseMirror`
       // keeps `outline: none` — so the wrapper carries the ring: visible
       // whenever the caret is inside, gone when it leaves. The paint never
-      // touches the measure; the focus E2E pins both states.
-      className={`focus-within:ring-2 focus-within:ring-focus ${className ?? ""}`}
+      // touches the measure; the focus E2E pins both states. A host whose
+      // surface already rings (the chapter's card) turns this off instead of
+      // drawing a second ring inside its own.
+      className={[focusRing ? "focus-within:ring-2 focus-within:ring-focus" : "", className]
+        .filter(Boolean)
+        .join(" ")}
     />
   );
 }

@@ -19,6 +19,7 @@ from app.kernel.llm.models import PROFILE_KINDS
 
 class SettingsRead(BaseModel):
     locale: str | None
+    theme: str | None
 
 
 class SettingsUpdate(BaseModel):
@@ -35,6 +36,27 @@ class SettingsUpdate(BaseModel):
         if value is not None and value not in LOCALES:
             known = ", ".join(LOCALES)
             raise ValueError(f"unknown locale {value!r}; the catalog carries {known}")
+        return value
+
+
+THEMES: tuple[str, ...] = ("light", "dark")
+
+
+class SettingsThemeRead(BaseModel):
+    theme: str | None
+
+
+class SettingsThemeUpdate(BaseModel):
+    # Present and nullable for the same reason as the locale: ``{"theme": null}``
+    # hands the choice back to the system, while ``{}`` is a client bug.
+    theme: str | None
+
+    @field_validator("theme")
+    @classmethod
+    def _one_of_the_two(cls, value: str | None) -> str | None:
+        if value is not None and value not in THEMES:
+            known = ", ".join(THEMES)
+            raise ValueError(f"unknown theme {value!r}; the app carries {known}")
         return value
 
 

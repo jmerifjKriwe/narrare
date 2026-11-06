@@ -148,13 +148,18 @@ Token laws:
 - **L5** A card never sits inside a card; `--panel` never contains `--card` content
   except in overlays.
 
+Area hues (`--area-writing`, `--area-knowledge`, `--area-chat`,
+`--area-settings`) are **navigation identity marks**: the rail entry's icon and
+nothing else. They never fill a control, colour text, or land on a cover or a
+notice; each clears 3:1 against `--panel` in both themes.
+
 ### 8.2 Type scale (`@theme inline`, so `text-meta` … `text-hero` exist)
 
 | Token | Size / line | Use |
 |---|---|---|
-| `text-meta` | 11 px / 1.45 | counts, keyboard hints, timestamps, table headers |
-| `text-label` | 12 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
-| `text-body` | 13 px / 1.55 | all UI text, table cells, list rows |
+| `text-meta` | 12 px / 1.45 | counts, keyboard hints, timestamps, table headers |
+| `text-label` | 13 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
+| `text-body` | 14 px / 1.55 | all UI text, table cells, list rows |
 | `text-emph` | 15 px / 1.5, 600 | card titles, section titles |
 | `text-title` | 20 px / 1.3, 600 | the page title, one per page |
 | `text-hero` | 28 px / 1.1, 600 | the continue-hero's book title and numerals only |
@@ -215,18 +220,25 @@ platforms). Every icon-only control gets a catalog key in en/de/fr.
 ### 8.6 Covers
 
 Generated, deterministic, no files: a cover is a rounded 3:4 tile whose ground is
-one of three token-derived tones — sepia (`--primary`), ink (dark,
-foreground-derived), pale (`--rule`-derived) — chosen by a stable hash of the
-title; the title is set in the serif face on the tile, 3 lines, ellipsis (the
-clamp the shelf pins; an earlier draft said 2). Genre and
-language do not affect the tone. No fourth tone, no gradients beyond a single
-inner shade, no uploaded artwork. Three tones are enough for a shelf of ten books;
-a rainbow is not.
+one of three cover tokens — pale, sepia and ink — chosen by a stable hash of the
+title. The tokens are the cover's own (`--cover-*-ground` / `--cover-*-ink`,
+`light-dark()` pairs); a cover never borrows the action's fill, so in dark mode
+the sepia tile stays quieter than the one primary button (#590). The tone also
+chooses the composition: pale and sepia set the title at the foot with the
+book's genre (or its language) in the corner, sepia adds an inset hairline and a
+spine strip, ink centres its title. The title is set in the serif face, 3 lines,
+ellipsis (the clamp the shelf pins). Genre and language do not affect the tone.
+No fourth tone, no gradients beyond a single inner shade, no uploaded artwork.
+Three tones are enough for a shelf of ten books; a rainbow is not.
 
 ### 8.7 Surfaces
 
 The shell frame is global: the **icon rail** is shell chrome on every route, the
 **top bar** carries the place (breadcrumb), ⌘K, settings and the language control.
+The rail keeps its 48 px column in the layout and opens over the page on hover or
+focus — the names were always in the DOM, and a pointer's hover moves no page
+pixel. A coarse pointer has no hover, so there the rail stands open with its
+names. Each entry's icon wears its area's hue (§8.1), and nothing else does.
 Rail entries, top to bottom: a fixed Home (the shelf, `/`), then the generated
 `nav` (chat, knowledge), then Settings anchored at the bottom. `writing` stays
 `nav: false` — the shelf *is* home, not a destination — so no `capability.yaml`
@@ -243,8 +255,8 @@ accessibility constraint.
 | Surface | Layout | What changes |
 |---|---|---|
 | **Shelf** `/` | fluid, max 1200; continue-hero full width; card grid 3 / 2 / 1 columns | hero gets a cover; grid cards replace the row list; "+ Buch" is the one primary action; import is secondary. Card metadata = genre, language, last touched, chapter count and word count (the last two from the derived aggregate, T5b) |
-| **Workspace** `/novels/$id` | **one** container width (max 1152) in every state; rail 224; dock 384; prose measure fixed 544, centred in whatever column remains | opening the dock no longer changes the text measure; rail rows 28 px with `aria-current`; toolbar = icon buttons in one `gap` group; collapse control moves out of the list; focus depth 2 gets a visible hint. **Runhead** (inside the editor card, above the text): book title · chapter title on the left, save state on the right. **Footer** (inside the card, below the text): chapter word count and "Kapitel n von m". Both hide at focus depth 2, where only the text remains (the E2E asserts chrome-free). Word count = whitespace-separated tokens of the chapter's Markdown body, counted client-side |
-| **Knowledge** | dock `/novels/$id/wissen` at 384 px; `/knowledge` stays the global documents-and-search page | dock: entity list keeps its RAC `GridList` roles (the dock E2E asserts `gridcell`/`row`), restyled through `Row`'s token classes; relations = a real `<table>` split into outgoing/incoming — **no chapter column and no mention list: neither has a data source** (`RelationRead` carries ids, type, note; there is no mention index and no passage-to-chapter link). `/knowledge`: documents become a `Panel` list with one "+ Dokument" dialog, and search becomes one field with the existing `limit`, **no filter pills** (the API has no filter dimension) |
+| **Workspace** `/novels/$id` | **one** container width (max 1200) in every state; rail 224; dock 352; editor column 592; prose measure fixed 544, centred in whatever column remains | opening the dock no longer changes the text measure; rail rows 28 px with `aria-current`; toolbar = icon buttons in one `gap` group; collapse control moves out of the list; focus depth 2 gets a visible hint. **Runhead** (inside the editor card, above the text): book title · chapter title on the left, save state on the right. **Footer** (inside the card, below the text): chapter word count and "Kapitel n von m". Both hide at focus depth 2, where only the text remains (the E2E asserts chrome-free). The writing surface is the card: 576 = the 544 measure plus 16 px on each side (the 1 px edge included), and the continue action stands above the card, never in it, so the focus ring encloses no control. Word count = whitespace-separated tokens of the chapter's Markdown body, counted client-side |
+| **Knowledge** | dock `/novels/$id/wissen` at 352 px; `/knowledge` stays the global documents-and-search page | dock: entity list keeps its RAC `GridList` roles (the dock E2E asserts `gridcell`/`row`), restyled through `Row`'s token classes; relations = a real `<table>` split into outgoing/incoming — **no chapter column and no mention list: neither has a data source** (`RelationRead` carries ids, type, note; there is no mention index and no passage-to-chapter link). `/knowledge`: documents become a `Panel` list with one "+ Dokument" dialog, and search becomes one field with the existing `limit`, **no filter pills** (the API has no filter dimension) |
 | **Chat** `/chat` | single column, max 640 | input + ask on one row; answer in `Notice`-free prose block; sources as `Row`s; the dock tab keeps `aria-pressed` |
 | **Prompts** `/prompts/settings` | nav 200 + content 56 rem, max 1000 | panels replace the free-floating sections; the prompt body keeps its editor |
 | **Settings** `/settings` | nav 200 + content 56 rem, max 1000 | cluster nav as a vertical `Row` list; provider rows on the 128 px label grid; one primary action per sub-page |
@@ -271,8 +283,9 @@ One vocabulary, four honesty levels, unchanged in meaning:
 - Chapter selection uses `aria-current="true"` + `--soft` (L2), not `aria-pressed`.
   The rail is a single tab stop with roving `tabindex` and Up/Down.
 - Dock tabs keep `aria-pressed` (they toggle a panel — that *is* a toggle).
-- One focus treatment (`ring-2 ring-focus`), including the ProseMirror surface,
-  which today has `outline: none` and no ring at all.
+- One focus treatment (`ring-2 ring-focus`). On the editor it sits on the card's
+  edge, 16 px from the text — not on the ProseMirror surface, whose own ring is
+  switched off (F18).
 - Overlays below 1024 px (rail, dock) get a scrim and a focus trap, or they stop
   being overlays; the palette already does this through React Aria.
 - Depth 2 shows a one-line hint ("Esc zeigt die Leiste wieder") that fades after a
@@ -282,9 +295,12 @@ One vocabulary, four honesty levels, unchanged in meaning:
 
 ### 8.10 Dark mode
 
-Same roles, system-following. `--card` sits one step above `--background`;
-`--soft` is a step above `--card`; `--rule` is dimmer than `--border`. No second
-palette, no toggle.
+Same roles, one `light-dark()` table resolved by `color-scheme`. The reader's
+choice is user data (`users.theme`, null = the system); a stored value forces one
+side, and the OS decides only when nobody chose. A small `localStorage` mirror
+paints the choice before the settings query answers — a cache, never a source.
+`--card` sits one step above `--background`; `--soft` is a step above `--card`;
+`--rule` is dimmer than `--border`. No second palette.
 
 ## 9. Findings
 
@@ -373,12 +389,19 @@ type/colour/spacing drift is not:
 
 - `text-sm` = 0 (the scale is `text-body` and friends; `text-sm` survives only
   inside `web/ui/`)
-- `bg-primary` = 0 outside `Button` and `Cover` (a cover's ground is an
-  object surface, §8.6)
+- `bg-primary` = 0 outside `Button` (a cover's ground is an object surface,
+  §8.6, and now has its own tokens)
 - `border-border` = 0 in capability folders (legal on `web/components` chrome, R42)
 - `rounded-md` / `rounded-lg` = 0 in capability folders (rounded-lg legal on `web/components` chrome, R42) (radii come from tokens)
 - `ml-*` / `mr-*` between siblings = 0
-- `text-danger` = 0 outside `Notice`
+- `text-danger` = 0 outside `Notice` **in the folders this census scans**
+  (`app/capabilities/*/web/`, `web/components/`). Three status lines outside
+  those folders carry it deliberately — the field's own error line
+  (`web/ui/field.tsx`), a failed job row (`web/ui/JobStatus.tsx`) and the save
+  indicator (`web/lib/save.tsx`) — each `role="alert"`/`role="status"`, none a
+  notice surface. The prompts diff view is the fourth named surface: an added
+  line is `border-success`, a removed one `border-danger`; `--primary` keeps one
+  meaning, the action.
 
 Plus the standing gates: `just check`, `just test`, `just test-frontend`,
 `just build`, `just test-e2e <capability>` per task, `just verify all` at the end,

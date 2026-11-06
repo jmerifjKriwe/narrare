@@ -31,16 +31,19 @@ from playwright.sync_api import Locator, Page, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-BASE = "http://127.0.0.1:3100"
-DATABASE = "narrare_v2_prompts_e2e"  # the stack's own database (e2e/conftest.py)
+BASE = WEB_URL
+# this run's stack database (e2e/conftest.py)
+DATABASE = testsupport.test_database("narrare_v2_prompts_e2e")
 
 APP = Path(__file__).resolve().parents[3]
 DEMO = APP / "kernel" / "interchange" / "demos" / "im-stillen-wald"
@@ -477,3 +480,58 @@ def test_an_export_carries_the_closed_surface_and_no_override(
     assert len(_entities_of(source_id)) == DEMO_ENTITIES
     assert _override_count(source_id) == 1
     assert _override_count(copy_id) == 0
+
+
+def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> None:
+    """Typed words the server does not hold are not thrown away by a click:
+    the editor's cancel asks, and an untouched editor never does."""
+    page.goto(f"{BASE}/settings/prompts")
+    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    template = page.get_by_label("Vorlage")
+    expect(template).to_be_visible()
+
+    # Pristine: the same close, no question — and the editor really closes.
+    page.get_by_role("button", name="Abbrechen").click()
+    expect(page.get_by_role("dialog", name="Ungespeicherter Text")).to_have_count(0)
+    expect(template).to_have_count(0)
+
+    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    template = page.get_by_label("Vorlage")
+    expect(template).to_be_visible()
+    template.fill(template.input_value() + " ")
+
+    # Dirty: stay leaves the words; leave closes the editor.
+    page.get_by_role("button", name="Abbrechen").click()
+    dialog = page.get_by_role("dialog", name="Ungespeicherter Text")
+    expect(dialog).to_be_visible()
+    dialog.get_by_role("button", name="Bleiben").click()
+    expect(template).to_be_visible()
+
+    page.get_by_role("button", name="Abbrechen").click()
+    page.get_by_role("dialog", name="Ungespeicherter Text").get_by_role(
+        "button", name="Trotzdem wechseln"
+    ).click()
+    expect(template).to_have_count(0)
+
+
+def test_leaving_the_page_with_a_dirty_editor_asks_first(page: Page, stack: Stack) -> None:
+    """The third door: a route change with typed words asks too; Stay keeps
+    the editor, Leave follows the link."""
+    page.goto(f"{BASE}/settings/prompts")
+    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    template = page.get_by_label("Vorlage")
+    expect(template).to_be_visible()
+    template.fill(template.input_value() + " ")
+
+    nav = page.get_by_role("navigation", name="Einstellungen")
+    nav.get_by_role("link", name="Sprache").click()
+    dialog = page.get_by_role("dialog", name="Ungespeicherter Text")
+    expect(dialog).to_be_visible()
+    dialog.get_by_role("button", name="Bleiben").click()
+    expect(page.get_by_label("Vorlage")).to_be_visible()
+
+    nav.get_by_role("link", name="Sprache").click()
+    page.get_by_role("dialog", name="Ungespeicherter Text").get_by_role(
+        "button", name="Trotzdem wechseln"
+    ).click()
+    expect(page).to_have_title("Sprache — Narrare")

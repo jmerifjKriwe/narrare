@@ -13,11 +13,12 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.stack import Stack, run_stack
 from app.kernel.testing.vendor import EmbeddingsVendor, embeddings_vendor
 
-DATABASE = "narrare_v2_knowledge_e2e"
+DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
 
 
 def _truncate() -> None:

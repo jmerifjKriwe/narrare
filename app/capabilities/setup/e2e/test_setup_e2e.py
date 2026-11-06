@@ -18,16 +18,19 @@ from playwright.sync_api import Page, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-BASE = "http://127.0.0.1:3100"
-DATABASE = "narrare_v2_setup_e2e"  # the stack's own database (e2e/conftest.py)
+BASE = WEB_URL
+# this run's stack database (e2e/conftest.py)
+DATABASE = testsupport.test_database("narrare_v2_setup_e2e")
 
 DEMO_TITLE = "Im Stillen Wald"
 """The demo's own title, from the archive's metadata — never the typed one."""
@@ -167,7 +170,11 @@ def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
 
     expect(page).to_have_title("Willkommen — Narrare")
 
-    for title in ("Im Stillen Wald", "Dead Signal", "Echoes of the Thornwall"):
+    for title, language in (
+        ("Im Stillen Wald", "DE"),
+        ("Dead Signal", "EN"),
+        ("Echoes of the Thornwall", "EN"),
+    ):
         tile = (
             page.get_by_role("radio", name=title)
             .locator("xpath=ancestor::label[1]")
@@ -178,6 +185,11 @@ def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
         assert box is not None
         # The cover's 3:4 tile: an object on the row, not a text block.
         assert abs(box["width"] / box["height"] - 0.75) <= 0.02
+        # The demo entries have no genre, so the eyebrow falls back to the
+        # language — the first screen a user ever sees names the book's.
+        tone = tile.get_attribute("data-cover-tone")
+        assert tone in {"pale", "sepia", "ink"}, tone
+        expect(tile.locator("[data-cover-eyebrow]")).to_have_text(language)
 
     assert_accessible(page)
 

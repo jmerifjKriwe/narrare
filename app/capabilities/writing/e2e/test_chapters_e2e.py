@@ -20,8 +20,10 @@ from playwright.sync_api import Page, Route, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
 from app.kernel.testing.workbench import new_chapter
 
@@ -32,7 +34,10 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-DATABASE = "narrare_v2_e2e"  # the stack's own database (e2e/conftest.py)
+# The stack's own database (e2e/conftest.py), named per run: the same
+# process, the same minted name — the conftest's stack and this module's
+# row reads land on one database whatever run named it.
+DATABASE = testsupport.test_database("narrare_v2_e2e")
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
@@ -63,7 +68,7 @@ def _create_book(page: Page, title: str) -> None:
 
     The module's database is shared, so every test owns a title no other uses.
     """
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen").click()
@@ -72,7 +77,7 @@ def _create_book(page: Page, title: str) -> None:
 
 
 def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Der Nebel")
     page.get_by_role("button", name="Anlegen").click()
@@ -345,7 +350,7 @@ def test_a_dead_chapter_param_degrades_to_the_last_touched_and_cleans_the_url(
     # place and the pin below can name it.
     bare = page.url.split("?")[0]
     page.get_by_role("link", name="Alle Romane").click()
-    expect(page).to_have_url("http://127.0.0.1:3100/")
+    expect(page).to_have_url(f"{WEB_URL}/")
     page.goto(f"{bare}?chapter=00000000-0000-4000-8000-000000000000")
     expect(page.locator(".ProseMirror")).to_contain_text("Springflut.")
     expect(page.locator(".ProseMirror")).not_to_contain_text("Kalter Wind.")
@@ -356,7 +361,7 @@ def test_a_dead_chapter_param_degrades_to_the_last_touched_and_cleans_the_url(
     # param must go.)
     expect(page).to_have_url(re.compile(r"^(?!.*chapter=).*$"))
     page.go_back()
-    expect(page).to_have_url("http://127.0.0.1:3100/")
+    expect(page).to_have_url(f"{WEB_URL}/")
 
     assert_accessible(page)
 
@@ -556,7 +561,7 @@ def test_the_outage_stays_reachable_at_a_narrow_window(page: Page, stack: Stack)
 
 def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack) -> None:
     """A 404 is the same honesty: the error copy, not an empty chapter rail."""
-    page.goto("http://127.0.0.1:3100/novels/00000000-0000-4000-8000-000000000000")
+    page.goto(f"{WEB_URL}/novels/00000000-0000-4000-8000-000000000000")
     expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
     # The empty-rail copy is a loaded book's truth, not a missing one's.
     expect(page.get_by_text("Noch kein Kapitel")).not_to_be_visible()

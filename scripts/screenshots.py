@@ -93,6 +93,8 @@ SHOTS = (
     "03-knowledge-dock.png",
     "04-knowledge-search.png",
     "05-shelf.png",
+    "06-shelf-dark.png",
+    "07-workspace-dark.png",
 )
 
 
@@ -139,7 +141,10 @@ def _plant_contradiction(api: httpx.Client, chapter: dict[str, object]) -> None:
     The demo names Research Facility 7 in two chapters; one of them becomes 9.
     A name carrying two numbers is what the consistency contract reports.
     """
-    body = str(chapter["body"]).replace("Research Facility 7", "Research Facility 9", 1)
+    original = str(chapter["body"])
+    body = original.replace("Research Facility 7", "Research Facility 9", 1)
+    if body == original:
+        raise SystemExit("the demo no longer names Research Facility 7")
     updated = api.put(f"/api/writing/chapters/{chapter['id']}", json={"body": body})
     updated.raise_for_status()
 
@@ -204,8 +209,9 @@ def _capture(
     novel_id: str,
     chapters: list[dict[str, object]],
     vendor: ChatVendor,
+    api: httpx.Client,
 ) -> list[Path]:
-    """Shoot the five frames in the order the page tells them."""
+    """Shoot the frames in the order the page tells them."""
     written: list[Path] = []
     first = chapters[0]
 
@@ -227,8 +233,7 @@ def _capture(
     expect(editor).to_be_visible()
     # The suggestion lands at the caret, so the caret goes where a writer
     # stopped: the end of the chapter's opening paragraph. Placed through the
-    # DOM because End walks the visual line, not the paragraph, and the file's
-    # own tail carries a leaked metadata block that is not this frame's story.
+    # DOM because End walks the visual line, not the paragraph.
     page.evaluate(
         """() => {
             const paragraph = document.querySelector(".ProseMirror p");
@@ -273,10 +278,17 @@ def _capture(
     # entity one is not this frame's subject: wait for the finding itself. The
     # frame claims a pair of readings, not their order, so both are accepted.
     expect(knowledge.get_by_text(re.compile(r"Facility: (?:7 vs\. 9|9 vs\. 7)"))).to_be_visible()
-    # The dock scrolls alone, and its own scrollbar is the only way to the
-    # entity controls below the finding.
-    knowledge.hover()
-    page.mouse.wheel(0, 120)
+    # The dock's content area is half the viewport and the extraction panel
+    # sits above the check: the frame opens on the check button it names,
+    # whole, with the finding and the entities under it. The dock scrolls
+    # alone — `scrollIntoView` would take the workbench with it.
+    knowledge.get_by_role("button", name="Check the whole book").evaluate(
+        """button => {
+            const area = button.closest("div.overflow-y-auto");
+            const shift = button.getBoundingClientRect().top - area.getBoundingClientRect().top;
+            area.scrollTop += shift;
+        }"""
+    )
     shot(SHOTS[2])
 
     # 4. The knowledge page: the notes on file, and a search that finds them.
@@ -284,9 +296,10 @@ def _capture(
     expect(page.get_by_text("Horizon Station — cast and places")).to_be_visible()
     page.get_by_label("Search term").fill("facility built the device")
     page.get_by_role("button", name="Search").click()
-    expect(
-        page.get_by_role("listitem").filter(has_text="the device was moved off the site")
-    ).to_be_visible()
+    # A hit is a row in the Hits panel, not a list item: the row renders as a
+    # plain element (the panel groups it), so the frame waits for the passage.
+    expect(page.get_by_role("heading", name="Hits")).to_be_visible()
+    expect(page.get_by_text("the device was moved off the site")).to_be_visible()
     shot(SHOTS[3])
 
     # 5. The shelf: the books, and the door out of the app.
@@ -294,11 +307,26 @@ def _capture(
     expect(page.get_by_role("heading", name="Novels")).to_be_visible()
     shot(SHOTS[4], height=700)
 
+    # 6. The chosen dark: the reader's setting, proven against a light OS.
+    #    Shot with the setting, not `color_scheme="dark"` — the claim is that
+    #    the stored choice beats the system.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/")
+    expect(page.get_by_role("heading", name="Novels")).to_be_visible()
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    shot(SHOTS[5], height=700)
+
+    # 7. The workbench in the same light: the prose surface is the object.
+    page.goto(f"{WEB}/novels/{novel_id}")
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    shot(SHOTS[6])
+
+    api.patch("/api/settings/theme", json={"theme": None})
     return written
 
 
 def capture(out: Path) -> list[Path]:
-    """Boot the stack, seed a writer's novel, and write the five frames."""
+    """Boot the stack, seed a writer's novel, and write every frame."""
     out.mkdir(parents=True, exist_ok=True)
     with (
         chat_vendor() as vendor,
@@ -324,12 +352,12 @@ def capture(out: Path) -> list[Path]:
 
         page = context.new_page()
         vendor.set_answer(CHAT_ANSWER)
-        written = _capture(page, out, novel_id, chapters, vendor)
+        written = _capture(page, out, novel_id, chapters, vendor, api)
     return written
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Write the README's images; exit non-zero when fewer than five were written."""
+    """Write the README's images; exit non-zero when fewer than SHOTS were."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--out",

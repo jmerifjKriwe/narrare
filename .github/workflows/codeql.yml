@@ -1,0 +1,143 @@
+name: CodeQL
+
+# Advanced-setup CodeQL (spec §`codeql.yml`): the security signal the old
+# default setup carried, as an explicit workflow. Advisory by design — it
+# names no context in `ci-required` — a red here is a finding to triage, not
+# a blocked merge; the pull request's required gates live in ci.yml.
+#
+# A pull request is analyzed unfiltered. It used to be path-filtered, and
+# Scorecard's SAST check counts a merged PR's commits as checked only when
+# the PR head carries a completed CodeQL run: a PR confined to
+# `docker-compose.dev.yml` got no run at all and dropped the score to 9
+# (alert #10) for as long as it sat in the rolling window. A public
+# repository pays nothing for the extra runs, three advisory jobs in
+# parallel cost a couple of minutes, and a signal that says "unchecked" for
+# a docs-only PR is a signal that lies.
+#
+# A push to `main` keeps the filters: what it re-analyzes is the merge tree,
+# whose PR already ran the analysis moments earlier, so a docs-only merge
+# owes no second pass. The excludes are the generated code:
+# `app/generated/**` and `web/lib/api/**` are produced sources, `web/dist/**`
+# is a build output, and `assets/**` is data. `!` patterns keep one filter
+# list instead of `paths-ignore`'s complement semantics. The weekly sweep has
+# no path filter on purpose: a schedule always asks about the whole tree, and
+# CodeQL's own incremental cache never fully replaces re-analyzing everything.
+#
+# Accepted trade-off (spec: revisit trigger): advanced setup cannot upload
+# SARIF for pull_request events from forks — `security-events: write` is not
+# granted there. Default setup handled forks; if external contributors
+# become regular, revisit.
+#
+# Migration order is binding (spec: "Migration order"): GitHub rejects
+# advanced setup while default setup is configured, so the default setup was
+# disabled before this file merged. The two land as one operation.
+
+on:
+  # Unfiltered on purpose: see the header. A path-filtered pull request left
+  # Scorecard's SAST check at 9 (alert #10) even when it changed no code.
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "web/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - "!app/generated/**"
+      - "!web/lib/api/**"
+      - "!web/dist/**"
+      - "!assets/**"
+  schedule:
+    # Weekly sweep of the whole tree, Sunday 06:07 UTC — off the nightly's
+    # 03:17 slot and off consolidation: this run re-analyzes everything,
+    # so it takes minutes, not seconds.
+    - cron: "7 6 * * 0"
+  workflow_dispatch:
+    # Manual dispatch never filters: whoever runs it asked for the analysis.
+
+# No `cancel-in-progress` on a push: the same reason as ci.yml — SARIF is
+# delivered per SHA, and cancelling a main push would drop the analysis for
+# the very commit that just landed. A pull request supersedes its base,
+# because only its head's verdict matters.
+concurrency:
+  group: codeql-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+# Actions are pinned by commit SHA and name their release in a trailing comment;
+# release-please.yml, which carries write tokens, has always done it this way.
+# A major tag is a mutable ref: its owners can move `v7` to any commit, and that
+# commit then runs with this workflow's token — no diff here, no review.
+# Dependabot's `github-actions` updates keep the pins current.
+#
+# The pin also fixes the runtime: every action below runs on Node 24, so no
+# action is forced onto a runtime its own CI never tested.
+
+jobs:
+  analyze:
+    # One language per runner, side by side — the Python and JS/TS analyses
+    # are the long poles, and serializing them would multiply the wall clock.
+    # `fail-fast: false`: a red JavaScript analysis must not hide whether
+    # Python is red too; each language's analysis is its own finding.
+    #
+    # The `paths` filters above decide when this workflow runs, not what
+    # CodeQL analyzes: each session below reads the checkout it finds.
+    strategy:
+      fail-fast: false
+      # One `include:` entry per language, build mode stated inside the
+      # entry: a language is added by adding a record, never by inheriting
+      # whatever mode the existing list carries. (A parallel axis instead of
+      # `include:` would pair every language with every mode — the Cartesian
+      # product, not the intent.)
+      matrix:
+        include:
+          # `python`: `app/` and `scripts/` — both are Python.
+          - language: python
+            build-mode: none
+          # `javascript-typescript`: the `web/` tree — one bundle, one
+          # analysis in CodeQL, not two.
+          - language: javascript-typescript
+            build-mode: none
+          # `actions`: the workflow surface this repository runs on —
+          # injection and stolen-secret patterns in the very YAML that
+          # grants the tokens. No non-`none` mode exists for it.
+          - language: actions
+            build-mode: none
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Each permission carries why, on its own line — the linter audits the
+      # grant, not the job comment above the block.
+      security-events: write # the job's own purpose: SARIF upload to code scanning
+      contents: read # checkout of the source being analyzed; nothing below pushes
+      actions: read # the runner reads workflow metadata and prior run state
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # `code-scanning` is the action's default suite and the equivalent
+          # of default setup's queries — the two run the same thing, so the
+          # switch changes who runs CodeQL, not what it looks for. The spec's
+          # "not `security-and-quality` — raise later" still holds: raising
+          # the suite is a later, separate decision with its own review of
+          # the noise it would bring. (`default` is a placeholder some
+          # examples carry; it is no query pack the CLI resolves, and `init`
+          # fails with "Query pack default cannot be found" on the bundle
+          # this file pins.)
+          queries: code-scanning
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          # `category` is what makes the uploads collision-free in a matrix:
+          # one per language, each SARIF lands under its own key instead of
+          # three uploads racing over the default category.
+          category: "/language:${{ matrix.language }}"

@@ -22,6 +22,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 from app.kernel.testing.viewport import assert_overlay, assert_page_fits
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-WEB = "http://127.0.0.1:3100"
+WEB = WEB_URL
 PROSE = ".ProseMirror"
 # The workbench's editor column: the min-w-0 flex item the panels must never
 # move. The overlay delta is measured here, not on the prose element — the
@@ -179,12 +180,54 @@ def test_the_prose_keeps_its_measure_when_the_dock_opens(page: Page, stack: Stac
     opened = prose_width()
     if abs(opened - 544) > 1:
         pytest.fail(f"the prose column is {opened}px with the dock open, not 544±1")
+    # The card's arithmetic (1168 = 224 + 592 + 352): the column is the card
+    # plus the 16 px gap the focus ring needs, so the ring never lands on the
+    # dock's seam. A drift in any of the three is a different layout.
+    dock_box = page.locator(DOCK).bounding_box()
+    editor_box = page.locator(EDITOR).bounding_box()
+    card_box = page.locator("[data-editor-card]").bounding_box()
+    if dock_box is None or editor_box is None or card_box is None:
+        pytest.fail("the dock, the editor column or the editor card has no box")
+    if abs(dock_box["width"] - 352) > 1:
+        pytest.fail(f"the dock is {dock_box['width']}px, not 352±1")
+    if abs(editor_box["width"] - 592) > 1:
+        pytest.fail(f"the editor column is {editor_box['width']}px, not 592±1")
+    if abs(card_box["width"] - 576) > 1:
+        pytest.fail(f"the editor card is {card_box['width']}px, not 576±1")
+    if abs((card_box["x"] + card_box["width"] + 16) - dock_box["x"]) > 1:
+        pytest.fail("the 16 px gap does not sit between the card and the dock")
     container_opened = _container_width(page)
     if container_closed != container_opened:
         pytest.fail(
             f"the container reflows when the dock opens: "
             f"{container_closed}px closed, {container_opened}px open"
         )
+
+    assert_accessible(page)
+
+
+def test_the_card_centres_its_measure(page: Page, stack: Stack) -> None:
+    """The card is 576 wherever the column can hold it, and the measure sits
+    in its middle: 16 px of air on each side. A card wider than 576 would
+    leave the 544 px measure flush left, with the air all on the right; only
+    below 576 does the card bleed to the viewport, where the 360 px visit
+    keeps the prose floor."""
+    _create_workspace(page, "Die Mittellage")
+    page.set_viewport_size({"width": 768, "height": 800})
+    expect(page.locator(PROSE)).to_be_visible()
+
+    card = page.locator("[data-editor-card]").bounding_box()
+    prose = page.locator(PROSE).bounding_box()
+    if card is None or prose is None:
+        pytest.fail("the card or the prose has no box at 768")
+    if abs(card["width"] - 576) > 1:
+        pytest.fail(f"the card is {card['width']}px at 768, not 576±1")
+    if abs(prose["width"] - 544) > 1:
+        pytest.fail(f"the prose is {prose['width']}px at 768, not 544±1")
+    left = prose["x"] - card["x"]
+    right = (card["x"] + card["width"]) - (prose["x"] + prose["width"])
+    if abs(left - right) > 1:
+        pytest.fail(f"the measure is off-centre in the card: {left}px left, {right}px right")
 
     assert_accessible(page)
 

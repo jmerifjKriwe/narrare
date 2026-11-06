@@ -19,7 +19,7 @@ unit and integration tests exist to make failures cheap to find and fix.
 
 | Layer | Tool | Scope | Database |
 |---|---|---|---|
-| Backend unit/integration | pytest (async) | Repositories, services, providers, parsing | Real Postgres (`narrare_v2_test`) |
+| Backend unit/integration | pytest (async) | Repositories, services, providers, parsing | Real Postgres (per-run database) |
 | Frontend unit | vitest | Logic with state or parsing (stream parser, autosave, i18n pluralization, routing params, pub/sub seams) | None (API client mocked) |
 | End-to-end | pytest + Playwright | One spec per capability, real browser + API + DB | Real Postgres (per-suite database) |
 
@@ -57,25 +57,35 @@ Pure rendering and wiring do not require unit tests.
 ## Gates and CI
 
 - `just check` — lint and types (ruff, pyright, tsc).
+- `just check-generated` — regenerates the capability views, the OpenAPI document,
+  the typed client and the docs index; fails if the committed files change (CI
+  only: `pnpm dlx` needs the network).
 - `just test` — backend integration suite.
 - `just test-frontend` — vitest unit suite.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
-- `just verify` — all of the above plus the production build, with the E2E narrowed the same way.
+- `just fuzz [seconds]` — a bounded Atheris run over the interchange parser
+  (advisory; weekly in CI via `fuzz.yml`, not part of `verify`).
+- `just verify` — check, test, test-frontend and the E2E, plus the production
+  build, with the E2E narrowed the same way; it deliberately omits the CI-only
+  `check-generated`.
 
-CI runs all four on every PR, plus the production build; the E2E narrows to the
-capabilities a change touches and runs in parallel per capability behind one `e2e`
-check. A push to `main` owes no E2E — the merge tree is the tree the PR tested —
-and the nightly runs every suite, covering direct pushes too, when `main` moved.
+CI runs `just check`, `just check-generated`, `just test` and `just test-frontend`
+on every PR, plus the production build; the E2E narrows to the capabilities a
+change touches and runs in parallel per capability behind one `e2e` check. A push
+to `main` owes no E2E — the merge tree is the tree the PR tested — and the nightly
+runs every suite, covering direct pushes too, when `main` moved.
 All of them must pass. No new gate or
 tool is introduced by this document — it states expectations, not mechanisms.
 
 ## Data and fixtures
 
-- Backend tests use the real test database (`narrare_v2_test`), reset per
-  session. No in-memory substitutes.
+- Backend tests get the real test database named per run — worktree token plus
+  a per-run token, so two pytest runs never share tables — reset per session. No
+  in-memory substitutes.
 - The test server defaults to the compose stack (`localhost:5433`); when
   another checkout holds that port, `NARRE_TEST_DATABASE_URL` re-aims every
-  suite and every E2E stack at its own Postgres.
+  suite and every E2E stack at its own Postgres; the per-run names are minted
+  on whichever server that door opens.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases; see the capability conftests.
 

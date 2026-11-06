@@ -12,6 +12,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -33,7 +34,7 @@ def _open_workbench(page: Page, title: str) -> None:
 
     The module's database is shared, so every test owns a title no other uses.
     """
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen").click()
@@ -47,15 +48,15 @@ def _open_workbench(page: Page, title: str) -> None:
 
 
 def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) -> None:
-    """F18: the caret's ring lives on the wrapper, not the prose. Inside,
+    """F18: the caret's ring lives on the editor card, not the prose. Inside,
     the box-shadow is there; out, it is gone — and the measure is
     untouched either way (max-width 34rem, the same value both states)."""
     _open_workbench(page, "Der Karettring")
     editor = page.locator(".ProseMirror")
-    wrapper = editor.locator("xpath=..")
+    card = page.locator("[data-editor-card]")
 
     shadow = """getComputedStyle(
-      document.querySelector('.ProseMirror').parentElement
+      document.querySelector('[data-editor-card]')
     ).boxShadow"""
     width = """document.querySelector('.ProseMirror').getBoundingClientRect().width"""
 
@@ -87,7 +88,7 @@ def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) ->
     # The rendered width, not the constant: a layout regression moves the
     # real box, where the max-width string would sit still.
     assert page.evaluate(width) == inside, "the measure moved with the ring"
-    expect(wrapper).to_be_visible()
+    expect(card).to_be_visible()
 
 
 def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
@@ -119,9 +120,13 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     assert "focus=2" in page.url
     assert_accessible(page)
 
-    # The keyboard still reaches the page: Tab lands on something interactive
-    # (the editor or the one button left), never outside the document.
+    # The keyboard still reaches the page: the first Tab takes the page's own
+    # scroller — the shell keeps `main` in the tab order so a scroll container
+    # is reachable without a pointer (#638) — and the second one an interactive
+    # control, never the document's outside.
     page.evaluate("document.activeElement && document.activeElement.blur()")
+    page.keyboard.press("Tab")
+    assert page.evaluate("() => document.activeElement && document.activeElement.id") == "main"
     page.keyboard.press("Tab")
     assert page.evaluate(f"() => {_INTERACTIVE}")
 

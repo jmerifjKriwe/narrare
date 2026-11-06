@@ -6,19 +6,23 @@ If the choice lived in localStorage, that second window would fall back to the
 browser's language — which is de-DE, so the failure is visible and not a guess.
 """
 
+import itertools
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-URL = "http://127.0.0.1:3100/knowledge"
+URL = f"{WEB_URL}/knowledge"
+APPEARANCE = f"{WEB_URL}/settings/appearance"
+THEME_PATCH = "/api/settings/theme"
 
 
 def test_a_chosen_language_survives_a_fresh_browser(
@@ -59,7 +63,20 @@ def test_a_chosen_language_survives_a_fresh_browser(
 
 
 def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    # A short window with books on the shelf, so the page really scrolls: the
+    # shell is one viewport tall and #main owns the page scroll, so the rule
+    # under test — a scroll container must be reachable by keyboard — is only
+    # exercised while the content overflows (#638). The assertion below proves
+    # that state instead of trusting the viewport; a taller shelf would
+    # otherwise pass this test for the wrong reason.
+    page.set_viewport_size({"width": 1280, "height": 320})
+    for index in range(6):
+        created = page.request.post(
+            f"{API_URL}/api/writing/novels", data={"title": f"Regal {index}"}
+        )
+        assert created.ok, created.text()
+    page.goto(f"{WEB_URL}/")
+    expect(page.get_by_role("link", name="Regal 0")).to_be_visible()
     # The shell paints only after the settings query answers — the locale
     # gate — so the Tab below must wait for the bar to exist.
     expect(page.locator("header")).to_be_visible()
@@ -73,21 +90,33 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     page.keyboard.press("Enter")
     expect(page.locator("#main")).to_be_focused()
 
+    # The state the rule is about: the region scrolls, and it is in the tab
+    # order. -1 held the skip link's landing and left the scroller unreachable
+    # by keyboard; 0 is the stop the rule asks for.
+    measured = page.evaluate(
+        "() => { const main = document.getElementById('main');"
+        " return main === null ? null : [main.scrollHeight, main.clientHeight]; }"
+    )
+    assert measured is not None and measured[0] > measured[1], (
+        f"the page does not scroll, so the rule is not exercised: {measured}"
+    )
     assert_accessible(page)
+
+    expect(page.locator("#main")).to_have_attribute("tabindex", "0")
 
 
 def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) -> None:
     """The settings frame's geometry: the cluster nav is a row list in its own
     200 px column, and the pages render beside it — never spilled into it."""
-    page.goto("http://127.0.0.1:3100/settings")
+    page.goto(f"{WEB_URL}/settings")
 
     # The area's one cluster navigation — distinct from the rail's
     # Hauptnavigation by its name.
     nav = page.get_by_role("navigation", name="Einstellungen")
     links = nav.get_by_role("link")
-    # The area's two clusters plus every registry row (prompts contributes
+    # The area's three clusters plus every registry row (prompts contributes
     # its page; a new cluster appears here with no edit to the layout).
-    expect(links).to_have_count(3)
+    expect(links).to_have_count(4)
 
     # The nav is a column: 200 px wide, the rows stacked one under the next,
     # each the row's 28 px control height — not a run of shrink-wrapped
@@ -95,12 +124,12 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
     nav_box = nav.bounding_box()
     assert nav_box is not None
     assert nav_box["width"] == 200
-    first = links.nth(0).bounding_box()
-    second = links.nth(1).bounding_box()
-    third = links.nth(2).bounding_box()
-    assert first is not None and second is not None and third is not None
-    assert first["y"] < second["y"] < third["y"]
-    for box in (first, second, third):
+    rows = [links.nth(index).bounding_box() for index in range(4)]
+    boxes = [box for box in rows if box is not None]
+    assert len(boxes) == 4
+    for earlier, later in itertools.pairwise(boxes):
+        assert earlier["y"] < later["y"]
+    for box in boxes:
         assert box["width"] == 200  # a row fills its column
         assert box["height"] == 28  # the row's control height
     # A row is square: the surface radius belongs to panels, never rows.
@@ -111,7 +140,7 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
     # auto-places its fragment children into the grid, and from the second
     # section on they land in the nav's own cell (measured x=180 w=200),
     # which is the regression this pin exists to catch.
-    for name in ("Sprache", "Anbieter", "Prompts"):
+    for name in ("Sprache", "Darstellung", "Anbieter", "Prompts"):
         region_box = page.get_by_role("region", name=name).bounding_box()
         assert region_box is not None
         assert region_box["x"] >= nav_box["x"] + nav_box["width"]
@@ -123,20 +152,102 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
 def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stack: Stack) -> None:
     """The tab names the page showing (WCAG 2.4.2) on every settings page,
     and the active cluster row says so with ``aria-current``."""
-    page.goto("http://127.0.0.1:3100/settings")
+    page.goto(f"{WEB_URL}/settings")
     expect(page).to_have_title("Einstellungen — Narrare")
 
     # A sub-page owns its own name — the landing's, not the area's.
-    page.goto("http://127.0.0.1:3100/settings/language")
+    page.goto(f"{WEB_URL}/settings/language")
     expect(page).to_have_title("Sprache — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Sprache")
     ).to_have_attribute("aria-current", "page")
 
-    page.goto("http://127.0.0.1:3100/settings/provider")
+    page.goto(f"{WEB_URL}/settings/provider")
     expect(page).to_have_title("Anbieter — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Anbieter")
     ).to_have_attribute("aria-current", "page")
 
+    page.goto(APPEARANCE)
+    expect(page).to_have_title("Darstellung — Narrare")
+    expect(
+        page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Darstellung")
+    ).to_have_attribute("aria-current", "page")
+
     assert_accessible(page)
+
+
+def test_a_chosen_theme_survives_a_reload(page: Page, stack: Stack) -> None:
+    """The reader's light is user data, not a browser preference: with the
+    paint hint cleared, only the row can make the next reload wear it."""
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
+    page.goto(APPEARANCE)
+    expect(page.get_by_role("heading", name="Darstellung")).to_be_visible()
+
+    # The write must land before the reload: an unload mid-request would
+    # leave the row unset and the test would pass on the hint alone.
+    with page.expect_response(
+        lambda response: response.url.endswith(THEME_PATCH) and response.request.method == "PATCH"
+    ):
+        page.get_by_label("Farbschema").select_option("dark")
+    page.evaluate("localStorage.removeItem('narrare.theme')")
+    page.reload()
+    expect(page.get_by_role("heading", name="Darstellung")).to_be_visible()
+    assert page.evaluate("document.documentElement.dataset.theme") == "dark"
+    dark = page.evaluate("getComputedStyle(document.body).backgroundColor")
+
+    with page.expect_response(
+        lambda response: response.url.endswith(THEME_PATCH) and response.request.method == "PATCH"
+    ):
+        page.get_by_label("Farbschema").select_option("light")
+    page.evaluate("localStorage.removeItem('narrare.theme')")
+    page.reload()
+    expect(page.get_by_role("heading", name="Darstellung")).to_be_visible()
+    assert page.evaluate("document.documentElement.dataset.theme") == "light"
+    light = page.evaluate("getComputedStyle(document.body).backgroundColor")
+    assert dark != light
+
+    # Leave the row as the suite found it: the system case must decide from
+    # the media query, not from this choice.
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
+
+
+def test_an_unchosen_theme_follows_the_system(browser: Browser, stack: Stack) -> None:
+    """No stored choice: `light-dark()` follows the OS live, both ways, and
+    no attribute is written."""
+    context = browser.new_context(color_scheme="light", locale="de-DE")
+    try:
+        page = context.new_page()
+        page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
+        page.goto(URL)
+        assert page.evaluate("document.documentElement.dataset.theme ?? null") is None
+        light = page.evaluate("getComputedStyle(document.body).backgroundColor")
+
+        page.emulate_media(color_scheme="dark")
+        page.wait_for_function(
+            "(light) => getComputedStyle(document.body).backgroundColor !== light",
+            arg=light,
+        )
+        assert page.evaluate("document.documentElement.dataset.theme ?? null") is None
+
+        page.emulate_media(color_scheme="light")
+        page.wait_for_function(
+            "(light) => getComputedStyle(document.body).backgroundColor === light",
+            arg=light,
+        )
+    finally:
+        context.close()
+
+
+def test_a_forced_theme_ignores_the_system(page: Page, stack: Stack) -> None:
+    """A stored value wins over the OS, in both directions."""
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": "light"})
+    page.goto(APPEARANCE)
+    expect(page.get_by_role("heading", name="Darstellung")).to_be_visible()
+    light = page.evaluate("getComputedStyle(document.body).backgroundColor")
+
+    page.emulate_media(color_scheme="dark")
+    assert page.evaluate("document.documentElement.dataset.theme") == "light"
+    assert page.evaluate("getComputedStyle(document.body).backgroundColor") == light
+
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})

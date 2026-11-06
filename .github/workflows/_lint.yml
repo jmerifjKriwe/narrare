@@ -1,0 +1,74 @@
+# Reusable lint/typecheck/generated gate: the single definition of `just lint` +
+# `just typecheck` + `just check-generated` + gitleaks. Called as
+# `./.github/workflows/_lint.yml` from ci.yml and nightly.yml, which were two
+# copies of the same job. The leading underscore keeps this file triggerless:
+# it does nothing on its own, only when called.
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version for the setup action.
+        type: string
+        required: true
+      node-version:
+        description: Node version for the setup action.
+        type: string
+        required: true
+      pnpm-version:
+        description: >-
+          pnpm version for the setup action. Must match package.json's
+          `packageManager` field: pnpm/action-setup v6 rejects a mismatch.
+        type: string
+        required: true
+      just-version:
+        description: just version for the setup action.
+        type: string
+        required: true
+
+# Deny by default: the job below grants the one scope it uses.
+permissions: {}
+
+# Actions are pinned by commit SHA and name their release in a trailing
+# comment, like every other workflow here. A major tag is a mutable ref:
+# its owners can move `v7` to any commit, and that commit then runs with
+# this workflow's token — no diff here, no review. Dependabot's weekly
+# `github-actions` update keeps the pins current.
+
+jobs:
+  lint-types:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      # Full history: gitleaks scans the push range base^..head, which needs
+      # the base commit that a shallow (depth-1) checkout does not have.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      # --locked, not a plain sync: uv otherwise rewrites a stale lock inside
+      # the throwaway checkout and reports success. That is how 0.2.0 reached
+      # main with uv.lock still at 0.1.0. Enforced inside the composite.
+      #
+      # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
+      # pinned actionlint image (1.7.12) does not know it yet — the internal
+      # reference is still this commit's tree, so nothing mutable is being
+      # trusted. Flip to `$/` when the actionlint pin is bumped past the
+      # version that understands `$/`, or when `sha_pinning_required`
+      # rejects the `./` reference.
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
+        with:
+          python-version: ${{ inputs.python-version }}
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          just-version: ${{ inputs.just-version }}
+      - run: just lint
+      - run: just typecheck
+      - name: Generated files are current
+        run: just check-generated
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

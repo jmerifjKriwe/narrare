@@ -20,6 +20,11 @@ const LanguagePage = lazy(async () => {
   return { default: page.LanguagePage };
 });
 
+const AppearancePage = lazy(async () => {
+  const page = await import("./AppearancePage");
+  return { default: page.AppearancePage };
+});
+
 const ProviderPage = lazy(async () => {
   const page = await import("./ProviderPage");
   return { default: page.ProviderPage };
@@ -46,6 +51,12 @@ const languageRoute = createRoute({
   component: LanguagePage,
 });
 
+const appearanceRoute = createRoute({
+  getParentRoute: () => settingsLayoutRoute,
+  path: "appearance",
+  component: AppearancePage,
+});
+
 const providerRoute = createRoute({
   getParentRoute: () => settingsLayoutRoute,
   path: "provider",
@@ -69,5 +80,6 @@ export const routes = [
   settingsLayoutRoute,
   settingsIndexRoute,
   languageRoute,
+  appearanceRoute,
   providerRoute,
 ] as const;

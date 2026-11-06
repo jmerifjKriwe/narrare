@@ -38,25 +38,28 @@ export const queryClient = new QueryClient({
 });
 
 /**
- * The stored settings row, as `{ locale }` — the same contract the boot
- * effect in the shell used to own: an answer carries the row's locale, an
- * unreachable service resolves to `locale: null`, and the browser's
- * language decides from there. The outage is an answer, not an error
- * state, so no consumer needs a fallback branch of its own.
+ * The stored settings row, as `{ locale, theme }` — the same contract the boot
+ * effect in the shell used to own: an answer carries the row's choices, an
+ * unreachable service resolves to `null`s, and the browser's language and the
+ * system's colour scheme decide from there. The outage is an answer, not an
+ * error state, so no consumer needs a fallback branch of its own.
  */
-export function useSettingsQuery(): UseQueryResult<{ locale: string | null }> {
+export function useSettingsQuery(): UseQueryResult<{
+  locale: string | null;
+  theme: string | null;
+}> {
   return useQuery({
     queryKey: ["settings"],
     // No refetch on window focus: a focus refetch while the service is down
-    // would erase the locale adopted at boot. The row changes only through
-    // the switcher, which invalidates this key itself.
+    // would erase the values adopted at boot. The row changes only through
+    // the switchers, which invalidate this key themselves.
     refetchOnWindowFocus: false,
     queryFn: async () => {
       try {
         const { data } = await client.GET("/api/settings");
-        return { locale: data?.locale ?? null };
+        return { locale: data?.locale ?? null, theme: data?.theme ?? null };
       } catch {
-        return { locale: null };
+        return { locale: null, theme: null };
       }
     },
   });
@@ -386,7 +389,15 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
           },
         },
       );
-      if (!response.ok || !data) throw new Error(`add relation refused: ${response.status}`);
+      if (!response.ok || !data) {
+        // The refusal's status rides the throw (the accept path's carry):
+        // a 409 is a duplicate the dialog names in its own words, not an
+        // outage, so the machine-readable status must survive the mutation
+        // boundary. Every other refusal keeps its status-only Error.
+        throw Object.assign(new Error(`add relation refused: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
     },
     onSettled: () => {
@@ -407,7 +418,13 @@ export function useUpdateRelation(): UseMutationResult<
         params: { path: { relation_id: input.relationId } },
         body: { relation_type: input.relationType, note: input.note },
       });
-      if (!response.ok || !data) throw new Error(`relation update refused: ${response.status}`);
+      if (!response.ok || !data) {
+        // The add path's carry: the status rides the throw, so a 409 can
+        // be named as the duplicate it is, not as an outage.
+        throw Object.assign(new Error(`relation update refused: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
     },
     onSettled: () => {

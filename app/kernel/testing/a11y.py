@@ -21,17 +21,29 @@ AXE_PATH = ROOT / "web" / "node_modules" / "axe-core" / "axe.min.js"
 # that is not a string means axe never delivered a verdict at all.
 _AXE_RUN = r"""
 () => {
+  // The element's own markup, because the target alone does not always name
+  // what axe measured: a class selector can land on a node the rule should not
+  // have matched at all (#451's `.px-1.5`), and a bare tag names nothing. One
+  // bounded line — a section's outerHTML is tens of kilobytes, and the failure
+  // text has to stay readable in a terminal and pasted into an issue.
+  const MARKUP_CHARS = 200;
   const run = window.axe.run(document.body, {
     runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
   });
   return run.then((report) => {
     const blocks = report.violations.map((violation) => {
-      const nodes = violation.nodes
-        .slice(0, 5)
-        .map((node) => `    ${node.target.join(" ")}: ${node.failureSummary}`);
+      const nodes = violation.nodes.slice(0, 5).map((node) => {
+        const raw = typeof node.html === "string" ? node.html : "(no html)";
+        const html = raw.replace(/\s+/g, " ").trim();
+        const shown = html.length > MARKUP_CHARS ? `${html.slice(0, MARKUP_CHARS)}…` : html;
+        return `    ${node.target.join(" ")}: ${node.failureSummary}\n      html: ${shown}`;
+      });
+      const dropped = violation.nodes.length - nodes.length;
+      const more =
+        dropped > 0 ? `\n    … ${dropped} more node${dropped === 1 ? "" : "s"}` : "";
       const impact = violation.impact ?? "unknown";
       const head = `[${impact}] ${violation.id}: ${violation.help} (${violation.helpUrl})`;
-      return `${head}\n${nodes.join("\n")}`;
+      return `${head}\n${nodes.join("\n")}${more}`;
     });
     return blocks.join("\n\n");
   });

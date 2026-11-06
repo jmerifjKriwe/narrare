@@ -15,6 +15,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -24,7 +25,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 def _create_book(page: Page, title: str, genre: str = "") -> None:
     """Create a novel the only way a user can: through the new-book dialog."""
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     if genre:
@@ -75,7 +76,22 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
         })"""
     )
     assert sizes == {"hero": "28px", "card": "15px"}, sizes
-    expect(hero.locator("div.bg-rule, div.bg-primary, div.bg-foreground").first).to_be_visible()
+
+    # The text steps render at the scale, not just in the CSS: a token edit
+    # that never reaches a surface fails here as a pixel. `text-label` is not
+    # pinned here — its lines (genre, language) are conditional; the token pin
+    # in typeScale.test.ts covers that step.
+    steps = page.evaluate(
+        """() => {
+          const hero = document.querySelector('section[aria-labelledby="novels-continue"]');
+          return {
+            body: getComputedStyle(document.querySelector('header .truncate')).fontSize,
+            meta: getComputedStyle(hero.querySelector('p.text-meta')).fontSize,
+          };
+        }"""
+    )
+    assert steps == {"body": "14px", "meta": "12px"}, steps
+    expect(hero.locator("[data-cover-tone]").first).to_be_visible()
     door = hero.get_by_role("link", name="Weiterschreiben")
     expect(door).to_be_visible()
     expect(door).not_to_have_class(re.compile(r"bg-primary"))
@@ -100,18 +116,14 @@ def test_writing_a_chapter_makes_its_book_the_hero(page: Page, stack: Stack) -> 
     gap this test pins — the workbench's chapter writes must invalidate it
     too, or the hero names a stale last-touched book for the 30 s staleTime.
     """
-    older = page.request.post(
-        "http://127.0.0.1:8000/api/writing/novels", data={"title": "Die Halligen"}
-    )
+    older = page.request.post(f"{API_URL}/api/writing/novels", data={"title": "Die Halligen"})
     assert older.ok, older.text()
-    newer = page.request.post(
-        "http://127.0.0.1:8000/api/writing/novels", data={"title": "Der Strandwall"}
-    )
+    newer = page.request.post(f"{API_URL}/api/writing/novels", data={"title": "Der Strandwall"})
     assert newer.ok, newer.text()
 
     # The shelf loads, the cache settles: the hero names the newer book.
     # This is the cached truth a returning writer carries in memory.
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     hero = page.get_by_role("region", name="Mach weiter")
     expect(hero).to_contain_text("Der Strandwall")
 
@@ -137,7 +149,7 @@ def test_writing_a_chapter_makes_its_book_the_hero(page: Page, stack: Stack) -> 
 
 
 def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
     # No mouse anywhere: Tab walks the page to the trigger, Enter opens.
@@ -162,7 +174,7 @@ def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> No
 
 
 def test_the_open_dialog_passes_the_accessibility_floor(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     expect(page.get_by_label("Titel")).to_be_visible()
 
@@ -172,7 +184,7 @@ def test_the_open_dialog_passes_the_accessibility_floor(page: Page, stack: Stack
 
 
 def test_create_failure_keeps_the_dialog_open_with_its_message(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     dialog = page.get_by_role("dialog")
     expect(dialog).to_be_visible()
@@ -197,7 +209,7 @@ def test_create_failure_keeps_the_dialog_open_with_its_message(page: Page, stack
 
 def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -> None:
     """A local service the user has not started must be named, not shown as empty."""
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
     stack.stop_api()
@@ -217,7 +229,7 @@ def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -
 
 def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) -> None:
     """The dead-backend story has a second act: the retry button, not F5."""
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
     stack.stop_api()
@@ -237,7 +249,7 @@ def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) 
 
 def _seed_novel(page: Page, title: str) -> dict[str, object]:
     """Create a novel through the API, the way a second device would."""
-    response = page.request.post("http://127.0.0.1:8000/api/writing/novels", data={"title": title})
+    response = page.request.post(f"{API_URL}/api/writing/novels", data={"title": title})
     assert response.ok, response.text()
     return response.json()
 
@@ -250,14 +262,14 @@ def _seed_chapter(page: Page, novel_id: str, title: str, body: str = "") -> None
     the dialog.
     """
     response = page.request.post(
-        f"http://127.0.0.1:8000/api/writing/novels/{novel_id}/chapters",
+        f"{API_URL}/api/writing/novels/{novel_id}/chapters",
         data={"title": title},
     )
     assert response.ok, response.text()
     chapter_id = response.json()["id"]
     if body:
         written = page.request.put(
-            f"http://127.0.0.1:8000/api/writing/chapters/{chapter_id}", data={"body": body}
+            f"{API_URL}/api/writing/chapters/{chapter_id}", data={"body": body}
         )
         assert written.ok, written.text()
 
@@ -273,7 +285,7 @@ def test_shelf_cards_show_length_in_words_not_percentages(page: Page, stack: Sta
     for index, words in enumerate([2000, 2000, 2843, 0]):
         _seed_chapter(page, str(novel["id"]), f"Kapitel {index + 1}", "Wort " * words)
 
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     card = page.get_by_role("list").get_by_role("link", name="Das Zählwerk")
     expect(card).to_be_visible()
     expect(card).to_contain_text("4 Kapitel")
@@ -302,7 +314,7 @@ def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack
     _seed_novel(page, "Der kurze Wurf")
     _seed_novel(page, long_title)
 
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     shelf = page.get_by_role("list")
     short_card = shelf.get_by_role("link", name="Der kurze Wurf")
     long_card = shelf.get_by_role("link", name=long_title)
@@ -340,7 +352,7 @@ def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> 
     """
     _seed_novel(page, "Der stille Strand")
 
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     card = page.get_by_role("list").get_by_role("link", name="Der stille Strand")
     expect(card).to_be_visible()
     expect(card).to_contain_text("0 Kapitel")
@@ -448,12 +460,50 @@ def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     capability link has grown back into the top bar, and the app navigates
     from two places again.
     """
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
     expect(page.get_by_role("link", name="Wissen")).to_have_count(1)
     # And the banner carries none of it: the rail is the map, the bar is
     # the place — a navigation landmark back inside the banner is a
     # capability link growing back into the bar.
     expect(page.get_by_role("banner").get_by_role("navigation")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def test_header_controls_keep_their_content_inside_the_control(page: Page, stack: Stack) -> None:
+    """An icon beside a label is one line: the control's height is its contract.
+
+    The header carries two controls that pair a glyph with a word. Tailwind's
+    preflight makes the glyph a block, so a control that lets its children
+    flow stacks them: the 28 px box keeps its height and the label lands
+    past its bottom edge, over the shelf below. The assertion reads the
+    rendered boxes, not the classes — overflow is what a writer sees.
+    """
+    created = page.request.post(f"{API_URL}/api/writing/novels", data={"title": "Der Knopf"})
+    assert created.ok, created.text()
+    page.goto(f"{WEB_URL}/")
+
+    # Both controls need a book to stand on: the empty shelf swaps the header's
+    # actions for its one create door.
+    for name in ("Importieren", "Neues Buch"):
+        expect(page.get_by_role("button", name=name)).to_be_visible()
+
+    rows = page.evaluate(
+        """() => ["Importieren", "Neues Buch"].map((name) => {
+            const button = [...document.querySelectorAll("button")].find(
+                (candidate) => candidate.textContent.trim() === name
+            );
+            return button === undefined
+                ? {name, found: false}
+                : {name, found: true,
+                   content: button.scrollHeight,
+                   height: button.clientHeight};
+        })"""
+    )
+
+    for row in rows:
+        assert row["found"], row
+        assert row["content"] <= row["height"], row
 
     assert_accessible(page)

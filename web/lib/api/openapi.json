@@ -271,8 +271,8 @@
         "properties": {
           "limit": {
             "default": 5,
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
@@ -1143,7 +1143,7 @@
           "context_window": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1159,7 +1159,7 @@
           "max_output_tokens": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1189,7 +1189,7 @@
           "request_timeout": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "number"
               },
               {
@@ -1201,8 +1201,8 @@
           "temperature": {
             "anyOf": [
               {
-                "maximum": 2.0,
-                "minimum": 0.0,
+                "maximum": 2,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -1542,7 +1542,7 @@
           "context_window": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1565,7 +1565,7 @@
           "max_output_tokens": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "integer"
               },
               {
@@ -1602,7 +1602,7 @@
           "request_timeout": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "number"
               },
               {
@@ -1614,8 +1614,8 @@
           "temperature": {
             "anyOf": [
               {
-                "maximum": 2.0,
-                "minimum": 0.0,
+                "maximum": 2,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -2017,8 +2017,8 @@
         "properties": {
           "limit": {
             "default": 5,
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           },
@@ -2047,12 +2047,64 @@
               }
             ],
             "title": "Locale"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
           }
         },
         "required": [
-          "locale"
+          "locale",
+          "theme"
         ],
         "title": "SettingsRead",
+        "type": "object"
+      },
+      "SettingsThemeRead": {
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "SettingsThemeRead",
+        "type": "object"
+      },
+      "SettingsThemeUpdate": {
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "SettingsThemeUpdate",
         "type": "object"
       },
       "SettingsUpdate": {
@@ -2134,7 +2186,7 @@
         "type": "object"
       },
       "SkippedRelationRead": {
-        "description": "A proposed relation accept could not place: the target's name as the\nproposal spelled it, the type as stored — the stripped form, not the\nproposal's raw words.",
+        "description": "A proposed relation accept could not place: the target's name as the\nproposal spelled it, the type as accept stores it — the stripped form\na hand-added edge would carry, not the proposal's raw words.",
         "properties": {
           "relation_type": {
             "title": "Relation Type",
@@ -4244,6 +4296,47 @@
           }
         },
         "summary": "List Tasks",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/theme": {
+      "patch": {
+        "operationId": "update_theme_api_settings_theme_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsThemeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsThemeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Theme",
         "tags": [
           "settings"
         ]

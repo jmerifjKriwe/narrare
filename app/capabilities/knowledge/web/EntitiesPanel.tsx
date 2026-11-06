@@ -304,7 +304,7 @@ function EdgeGroup({
   const t = useTranslation();
   return (
     <div className="mt-1">
-      <p className="text-label text-muted">{label}</p>
+      <h6 className="text-label text-muted">{label}</h6>
       <ul className="mt-0.5 flex flex-col">
         {edges.map((relation) => (
           <li key={relation.id} className="text-body text-muted">
@@ -383,7 +383,7 @@ function EntityDetail({
           </Notice>
         ) : edges.length > 0 ? (
           <div className="mt-2">
-            <p className="text-label font-medium">{t("knowledge.relationsHeading")}</p>
+            <h5 className="text-label font-medium">{t("knowledge.relationsHeading")}</h5>
             {loops.map((relation) => (
               <p key={relation.id} className="mt-1 text-body text-muted">
                 {`${relationTypeLabel(t, relation.relation_type)} · ${t("knowledge.relationSelf")}`}
@@ -563,6 +563,9 @@ function EditEntityDialog({
 
   /** Save changed fields, clearing a blank body; keep the dialog open on refusal. */
   async function save(close: () => void) {
+    // One submit is one request: a click the pending save already owns is
+    // no second ask.
+    if (update.isPending) return;
     setTriedSave(true);
     setFailed(false);
     const trimmedName = name.trim();
@@ -641,7 +644,7 @@ function EditEntityDialog({
             <Button
               variant="primary"
               onClick={() => void save(close)}
-              disabled={rowEditorOpen || addFormDirty}
+              disabled={rowEditorOpen || addFormDirty || update.isPending}
             >
               {t("knowledge.entitySave")}
             </Button>
@@ -670,6 +673,9 @@ function DeleteEntityDialog({
 
   /** Delete and clear the selection on success; keep the dialog open on failure. */
   async function destroy(close: () => void) {
+    // One confirm is one request: a second press of the open dialog's
+    // button waits for the first to settle.
+    if (remove.isPending) return;
     setFailed(false);
     try {
       await remove.mutateAsync(entity.id);
@@ -699,7 +705,7 @@ function DeleteEntityDialog({
                 the dialog's text carries the warning; the filled
                 `--primary` is for the one advancing action, never for the
                 button that destroys (the P12 guard's precedent). */}
-            <Button onClick={() => void destroy(close)}>
+            <Button onClick={() => void destroy(close)} disabled={remove.isPending}>
               {t("knowledge.entityDeleteConfirm")}
             </Button>
             <Button onClick={close}>{t("knowledge.entityCancel")}</Button>
@@ -737,6 +743,9 @@ function MergeEntityDialog({
 
   /** Merge into the still-matching picked target and select the survivor; expose failures. */
   async function mergeThem(close: () => void) {
+    // One submit is one request, the save's rule again: a merge doubles a
+    // deletion, so a second click must not race the first.
+    if (merge.isPending) return;
     setTriedSave(true);
     setFailed(false);
     if (target === null || target.name !== targetText.trim()) return;
@@ -781,7 +790,11 @@ function MergeEntityDialog({
             </Notice>
           ) : null}
           <div className="flex gap-2">
-            <Button variant="primary" onClick={() => void mergeThem(close)}>
+            <Button
+              variant="primary"
+              onClick={() => void mergeThem(close)}
+              disabled={merge.isPending}
+            >
               {t("knowledge.entityMergeConfirm")}
             </Button>
             <Button onClick={close}>{t("knowledge.entityCancel")}</Button>

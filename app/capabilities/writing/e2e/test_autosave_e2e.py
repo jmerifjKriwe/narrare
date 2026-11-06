@@ -17,6 +17,7 @@ import pytest
 from playwright.sync_api import Dialog, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 from app.kernel.testing.workbench import new_chapter
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ def _create_book(page: Page, title: str) -> None:
 
     The module's database is shared, so every test owns a title no other uses.
     """
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen").click()

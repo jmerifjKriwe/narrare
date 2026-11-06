@@ -164,8 +164,8 @@ class SuggestionRead(BaseModel):
 
 class SkippedRelationRead(BaseModel):
     """A proposed relation accept could not place: the target's name as the
-    proposal spelled it, the type as stored — the stripped form, not the
-    proposal's raw words."""
+    proposal spelled it, the type as accept stores it — the stripped form
+    a hand-added edge would carry, not the proposal's raw words."""
 
     target_name: str
     relation_type: str

@@ -1,8 +1,10 @@
 """Decide which E2E suites a set of changed paths owes.
 
 One resolver, one answer: a shared surface (kernel, api, generated client,
-web shell, i18n, the locks, the CI workflow) owes every suite; a path under
-a known capability owes that capability's suite; docs, tooling and release
+web shell, i18n, the locks) owes every suite; CI definition files (the
+workflows, the composite actions) owe the harness smoke suite — proof the
+harness works, nothing more; a path under a known capability owes that
+capability's suite; docs, tooling and release
 bookkeeping owe nothing; and anything the tables do not recognize owes every
 suite — an unrecognized change is a reason to run more, never less. Every
 resolution, including every fallback, prints its reason to stderr and exits
@@ -41,11 +43,20 @@ SHARED: tuple[str, ...] = (
     "pyproject.toml",
     "uv.lock",
     "pnpm-lock.yaml",
-    ".github/workflows/ci.yml",
 )
+
+# CI definition files: the workflows and the composite actions. A change
+# here cannot break a capability's code, only the harness that runs it, so
+# it owes one fast real suite — the smoke — as proof the harness still
+# works same day, not next nightly.
+SMOKE: str = "settings"
+# Fastest of the six suites on PR #594's CI: settings 1m33s vs setup 1m54s,
+# chat 1m58s, knowledge 4m6s, writing 7m48s, prompts 13m12s.
+HARNESS: tuple[str, ...] = (".github/workflows/", ".github/actions/")
 
 # A change here cannot break a suite, so it owes none of them.
 INERT: tuple[str, ...] = (
+    ".bestpractices.json",
     "docs/",
     "README*",
     "CHANGELOG.md",
@@ -94,6 +105,19 @@ def _matches(path: str, entry: str) -> bool:
     return path.startswith(entry)
 
 
+def _is_harness(path: str) -> bool:
+    """A harness entry matches its children and the bare directory itself.
+
+    The bare-directory half is for direct callers, not for `changed()`:
+    git's `--name-only` diffs list files, never directories, so CI never
+    passes one here — but a scripted caller may ask `resolve()` about
+    the directory itself, and the harness class should still answer the
+    smoke suite rather than let `.github/` — inert — swallow the path
+    into owing nothing.
+    """
+    return any(path == entry.rstrip("/") or path.startswith(entry) for entry in HARNESS)
+
+
 def resolve(
     paths: Sequence[str], *, known: set[str] | None = None, release: bool = False
 ) -> Resolution:
@@ -101,6 +125,9 @@ def resolve(
 
     The release check runs first: a release PR touches only release-please
     files and owes nothing, even though two of them are shared surfaces.
+    A harness path beside any other kind of path loses to it — the other
+    path's answer (shared: all suites, capability: its suite, unknown: all
+    suites) never runs fewer than the harness's smoke.
     """
     names = known_capabilities() if known is None else set(known)
     if release and paths and all(path in RELEASE for path in paths):
@@ -108,10 +135,13 @@ def resolve(
     suites: set[str] = set()
     owed_everywhere: list[str] = []
     inert: list[str] = []
+    harness: list[str] = []
     prefix = f"{CAPABILITIES.as_posix()}/"
     for raw in paths:
         path = raw.removeprefix("./")
-        if any(_matches(path, entry) for entry in SHARED):
+        if _is_harness(path):
+            harness.append(path)
+        elif any(_matches(path, entry) for entry in SHARED):
             owed_everywhere.append(f"{path} is a shared surface")
         elif path.startswith(prefix):
             name = path.removeprefix(prefix).split("/", 1)[0]
@@ -123,6 +153,10 @@ def resolve(
             inert.append(path)
         else:
             owed_everywhere.append(f"{path} is not recognized")
+    if harness and not owed_everywhere and not suites:
+        if SMOKE in names:
+            return Resolution([SMOKE], "harness change: smoke suite only")
+        return Resolution(None, "harness change: smoke suite not found — all suites")
     if owed_everywhere:
         return Resolution(None, "all suites — " + "; ".join(owed_everywhere))
     if suites:

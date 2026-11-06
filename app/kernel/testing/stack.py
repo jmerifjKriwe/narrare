@@ -6,7 +6,14 @@ boundary.
 
 Each capability's ``e2e/conftest.py`` wraps :func:`run_stack` in a module-scoped
 fixture. Module scope matters: a session-scoped stack would outlive the module
-and keep ports 8000 and 3100 bound while the next capability starts its own.
+and keep the stack's configured ports bound while the next capability starts
+its own.
+
+``NARRE_E2E_ATTACH`` points the same suites at an instance that is already
+running — the container image, which serves the shell and the API on one origin
+where a development stack serves them on two. Nothing is spawned and nothing is
+reset, because the database under test is the artefact's own: the release gate
+runs a suite against a virgin instance and reads what that first boot produced.
 """
 
 import asyncio
@@ -49,6 +56,17 @@ restored row stays decryptable across runs), never so that it hides anything.
 # this machine, must not need a code edit. The defaults are the ones the docs use.
 API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000"))
 WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100"))
+
+_ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
+
+ATTACH = bool(_ATTACH_URL)
+"""A running instance to drive instead of spawning one; empty means spawn."""
+
+# One origin when attached, as the image serves it: the shell and the API answer
+# on the same port, so a suite that named two would test a shape the product
+# does not have in production.
+API_URL = _ATTACH_URL or f"http://127.0.0.1:{API_PORT}"
+WEB_URL = _ATTACH_URL or f"http://127.0.0.1:{WEB_PORT}"
 SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
@@ -144,6 +162,24 @@ def _prepare(database: str, seed_user: bool) -> None:
     asyncio.run(_reset(database, seed_user))
 
 
+async def _seed_local_user(database_url: str, seed_user: bool) -> None:
+    """The one precondition an attached instance cannot get from ``_prepare``.
+
+    There is no reset: the attached database belongs to the artefact, and
+    truncating it would destroy the state under test. Only the local user row
+    is added, and only when the caller asked for an installed instance.
+    """
+    if not seed_user:
+        return
+    engine = create_async_engine(database_url)
+    async with engine.begin() as connection:
+        await connection.execute(
+            text("INSERT INTO users (id, created_at) VALUES (:id, now()) ON CONFLICT DO NOTHING"),
+            {"id": LOCAL_USER_ID},
+        )
+    await engine.dispose()
+
+
 def _spawn_api(environment: dict[str, str]) -> subprocess.Popen[bytes]:
     _fd, _ = tempfile.mkstemp(prefix="narrare-api-")
     log_file = os.fdopen(_fd, "w+b")
@@ -204,15 +240,54 @@ class Stack:
     """
 
     environment: dict[str, str]
-    api: subprocess.Popen[bytes]
-    web: subprocess.Popen[bytes]
+    # None when this stack is attached to a running instance: there is no
+    # process to signal, and saying so beats a TypeError from a None.
+    api: subprocess.Popen[bytes] | None
+    web: subprocess.Popen[bytes] | None
 
     def stop_api(self) -> None:
+        if self.api is None:
+            raise RuntimeError(
+                "this stack is attached to a running instance; the API is the"
+                " container's process and cannot be stopped from the test"
+            )
         _stop(self.api)
 
     def start_api(self) -> None:
+        if self.api is None:
+            raise RuntimeError(
+                "this stack is attached to a running instance; the API is the"
+                " container's process and cannot be restarted from the test"
+            )
         self.api = _spawn_api(self.environment)
-        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json")
+        _wait_for(f"{API_URL}/openapi.json")
+
+
+def _environment(database: str, env: dict[str, str] | None) -> dict[str, str]:
+    """The children's environment, with the stack's cache contract last.
+
+    A caller's extras choose a provider stand-in and are merged over the
+    pinned keys; the cache flag is not a provider boundary, so a caller cannot
+    switch it off (#634).
+    """
+    if ATTACH:
+        # The instance brought its own configuration; a test's extras still win.
+        return {**os.environ, **(env or {})}
+    return {
+        **os.environ,
+        "NARRE_DATABASE_URL": url_for(database),
+        "NARRE_SECRET_KEY": E2E_SECRET_KEY,
+        "NARRE_KEYRING": "off",
+        **(env or {}),
+        # Vite otherwise answers transformed modules with no-cache, and each of
+        # the sweep's hard navigations revalidates the whole dev graph with
+        # 304s; Chromium drops cached module bodies after enough of them
+        # (net::ERR_INSUFFICIENT_RESOURCES) and the page never renders (#634).
+        # no-store keeps every E2E load a fresh 200; `just dev-web` keeps the
+        # default, so a developer's reloads still cache. Last, not before the
+        # extras: a caller cannot switch the stack's contract off.
+        "NARRE_E2E_NO_HTTP_CACHE": "1",
+    }
 
 
 @contextmanager
@@ -222,23 +297,28 @@ def run_stack(
     # The handover between capability stacks: both ports must be silent before
     # this stack binds them, or the health check below would pass on a server
     # that belongs to the module before this one.
+    if ATTACH:
+        database_url = environ.get("NARRE_DATABASE_URL", "")
+        if not database_url:
+            raise RuntimeError(
+                "NARRE_E2E_ATTACH needs NARRE_DATABASE_URL: the attached"
+                " instance's database is where the preconditions are seeded"
+            )
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(asyncio.run, _seed_local_user(database_url, seed_user)).result()
+        yield Stack(environment=_environment(database, env), api=None, web=None)
+        return
+
     _wait_for_free_port(API_PORT)
     _wait_for_free_port(WEB_PORT)
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 
-    # Extra environment reaches the API only: a stack may point a provider at a
-    # test-owned stand-in (the one boundary a fake may hold). The key store is
-    # pinned the same way, before the caller's extras: every stack runs the
-    # Fernet tier under this test key, deterministically, and no run ever
-    # touches a developer's real OS keychain (design, the keychain module).
-    environment = {
-        **os.environ,
-        "NARRE_DATABASE_URL": url_for(database),
-        "NARRE_SECRET_KEY": E2E_SECRET_KEY,
-        "NARRE_KEYRING": "off",
-        **(env or {}),
-    }
+    # A caller's extras point a provider at a test-owned stand-in, the one
+    # boundary a fake may hold. Everything else is the stack's own: the Fernet
+    # tier runs under this test key (never a developer's real OS keychain) and
+    # the cache flag stays on, so no capability can bring the 304s back.
+    environment = _environment(database, env)
     pnpm = shutil.which("pnpm")
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")
@@ -256,12 +336,14 @@ def run_stack(
     web_process._log_file = web_log  # type: ignore[attr-defined]
     stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
-        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json", process=api_process)
-        _wait_for(f"http://127.0.0.1:{WEB_PORT}", process=web_process)
+        _wait_for(f"{API_URL}/openapi.json", process=api_process)
+        _wait_for(WEB_URL, process=web_process)
         yield stack
     finally:
         # pnpm runs its server in a child process; kill the whole group or the
         # port stays bound after the test run. A test may have stopped the API
         # itself and failed before bringing it back: skip what is already gone.
-        _stop(stack.web)
-        _stop(stack.api)
+        if stack.web is not None:  # None only on an attached stack
+            _stop(stack.web)
+        if stack.api is not None:
+            _stop(stack.api)

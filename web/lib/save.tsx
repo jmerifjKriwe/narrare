@@ -194,14 +194,14 @@ export function SaveIndicator({ status }: { status: SaveStatus }) {
   const t = useTranslation();
   if (status === "failed") {
     return (
-      <p role="alert" className="text-sm text-danger">
+      <p role="alert" className="text-meta text-danger">
         {t("save.failed")}
       </p>
     );
   }
   if (status === "idle" || status === "pending") return null;
   return (
-    <span role="status" className="text-sm text-muted">
+    <span role="status" className="text-meta text-muted">
       {t(status === "saving" ? "save.saving" : "save.saved")}
     </span>
   );

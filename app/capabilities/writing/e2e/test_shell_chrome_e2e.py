@@ -16,16 +16,17 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Browser, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-WEB = "http://127.0.0.1:3100"
+WEB = WEB_URL
 PROSE = ".ProseMirror"
 # The global rail announces itself to every reader; the label is what a
 # test can trust. (The workbench's chapter aside has its own file.)
@@ -168,3 +169,85 @@ def test_the_workspace_shows_one_filled_primary_with_the_chat_dock_open(
     primaries = page.locator("button.bg-primary")
     expect(primaries).to_have_count(1)
     expect(primaries).to_contain_text("Weiterschreiben")
+
+
+def test_the_palette_key_opens_it_by_pointer(page: Page, stack: Stack) -> None:
+    """The bar's keycap is a door, not a decoration: a pointer user reaches
+    the palette without knowing the shortcut."""
+    page.goto(f"{WEB}/")
+    page.get_by_role("button", name="Befehlspalette öffnen").click()
+    expect(page.get_by_role("dialog", name="Befehlspalette")).to_be_visible()
+
+
+def test_the_rail_names_itself_on_hover(page: Page, stack: Stack) -> None:
+    """The icon rail opens over the page on hover: the names were always in
+    the DOM, and the collapsed rail clips them at 48 px."""
+    page.goto(f"{WEB}/")
+    rail = page.locator(ICON_RAIL)
+    label = rail.get_by_text("Wissen")
+    expect(rail).to_have_css("width", "48px")
+    expect(label).to_have_css("opacity", "0")
+    rail.hover()
+    expect(rail).to_have_css("width", "168px")
+    expect(label).to_have_css("opacity", "1")
+
+
+@pytest.mark.parametrize("width", [1024, 1280])
+def test_the_expanded_rail_moves_no_page_pixels(page: Page, stack: Stack, width: int) -> None:
+    """The expansion is an overlay in a fixed slot: the page axis stays put
+    at both breakpoints that show the rail."""
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(f"{WEB}/")
+    before = page.locator("main").bounding_box()
+    page.locator(ICON_RAIL).hover()
+    assert page.locator("main").bounding_box() == before
+
+
+def test_the_rail_tells_the_four_areas_apart(page: Page, stack: Stack) -> None:
+    """Each entry's icon wrapper carries its area's token; four areas, four
+    colours, none of them the link's muted ink."""
+    page.goto(f"{WEB}/")
+    # The shell paints after its settings query answers: wait for it, or the
+    # lookup races an empty document.
+    expect(page.locator(ICON_RAIL)).to_be_visible()
+    colours = page.evaluate(
+        """() => ["Startseite", "Wissen", "Chat", "Einstellungen"].map((name) => {
+          const link = document.querySelector(`nav a[aria-label="${name}"]`);
+          return getComputedStyle(link.querySelector("span")).color;
+        })"""
+    )
+    assert len(set(colours)) == 4, colours
+
+
+def test_tabbing_into_the_rail_opens_it(page: Page, stack: Stack) -> None:
+    """A keyboard user gets the names too: focus-within opens the rail."""
+    page.goto(f"{WEB}/")
+    for _ in range(20):
+        page.keyboard.press("Tab")
+        if page.evaluate("document.activeElement?.closest('nav') !== null"):
+            break
+    else:
+        raise AssertionError("the tab order never reached the rail")
+    expect(page.locator(ICON_RAIL)).to_have_css("width", "168px")
+
+
+def test_a_touch_pointer_gets_permanent_labels(browser: Browser, stack: Stack) -> None:
+    """No hover on a coarse pointer, so the names stand open there."""
+    # The suite's `de-DE` lives in `browser_context_args`
+    # (app/capabilities/conftest.py) and reaches only the `page` fixture. A
+    # hand-made context inherits the host's locale — German here, en-US on the
+    # runner — and with the seeded user holding no locale the app follows it:
+    # the rail would answer "Main navigation" and the German selector below
+    # would miss. Repeat the pin, as the settings suite does.
+    context = browser.new_context(
+        has_touch=True,
+        viewport={"width": 1280, "height": 900},
+        locale="de-DE",
+    )
+    try:
+        page = context.new_page()
+        page.goto(f"{WEB}/")
+        expect(page.locator(ICON_RAIL)).to_have_css("width", "168px")
+        expect(page.locator(ICON_RAIL).get_by_text("Wissen")).to_have_css("opacity", "1")
+    finally:
+        context.close()

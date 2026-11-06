@@ -116,7 +116,7 @@ function ShelfCard({ novel }: { novel: Novel }) {
         className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
       >
         <div className="flex items-start gap-3 pr-7">
-          <Cover title={novel.title} />
+          <Cover title={novel.title} genre={novel.genre} language={novel.language} />
           <span
             data-shelf-title
             className="line-clamp-3 min-h-[3.9em] min-w-0 flex-1 break-words text-emph font-semibold leading-[1.3] underline-offset-4 group-hover:underline"
@@ -346,7 +346,7 @@ export function NovelsPage() {
                   {t("novels.continue")}
                 </h2>
                 <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <Cover title={hero.title} size="lg" />
+                  <Cover title={hero.title} size="lg" genre={hero.genre} language={hero.language} />
                   <div className="min-w-0 flex-1">
                     <p className="text-hero font-semibold">{hero.title}</p>
                     {hero.genre ? (

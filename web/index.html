@@ -11,6 +11,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // The paint hint: the first frame wears the reader's stored choice
+      // before the settings query answers. The server row overwrites this
+      // mirror as soon as it lands; it is a cache, never a source.
+      try {
+        var t = localStorage.getItem("narrare.theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>
