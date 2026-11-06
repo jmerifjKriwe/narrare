@@ -525,6 +525,8 @@ export function ProvidersPanel() {
             <Input
               value={form.name}
               onChange={(event) => set("name", event.target.value)}
+              spellCheck={false}
+              autoComplete="off"
             />
           </Field>
           <Field label={t("settings.profiles.kindLabel")} className={LABEL_ROW}>
@@ -544,12 +546,16 @@ export function ProvidersPanel() {
             <Input
               value={form.baseUrl}
               onChange={(event) => set("baseUrl", event.target.value)}
+              spellCheck={false}
+              autoComplete="off"
             />
           </Field>
           <Field label={t("settings.profiles.modelLabel")} className={LABEL_ROW}>
             <Input
               value={form.model}
               onChange={(event) => set("model", event.target.value)}
+              spellCheck={false}
+              autoComplete="off"
             />
           </Field>
           <Field label={t("settings.profiles.apiKeyLabel")} className={LABEL_ROW}>
@@ -558,6 +564,8 @@ export function ProvidersPanel() {
               value={form.apiKey}
               onChange={(event) => set("apiKey", event.target.value)}
               aria-describedby={apiKeyHintId}
+              spellCheck={false}
+              autoComplete="new-password"
             />
             {editing !== null && editing.api_key_mask !== null ? (
               <p id={apiKeyHintId} className="col-start-2 text-label text-muted">

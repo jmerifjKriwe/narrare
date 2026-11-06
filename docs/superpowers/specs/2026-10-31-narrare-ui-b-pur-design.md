@@ -378,7 +378,14 @@ type/colour/spacing drift is not:
 - `border-border` = 0 in capability folders (legal on `web/components` chrome, R42)
 - `rounded-md` / `rounded-lg` = 0 in capability folders (rounded-lg legal on `web/components` chrome, R42) (radii come from tokens)
 - `ml-*` / `mr-*` between siblings = 0
-- `text-danger` = 0 outside `Notice`
+- `text-danger` = 0 outside `Notice` **in the folders this census scans**
+  (`app/capabilities/*/web/`, `web/components/`). Three status lines outside
+  those folders carry it deliberately — the field's own error line
+  (`web/ui/field.tsx`), a failed job row (`web/ui/JobStatus.tsx`) and the save
+  indicator (`web/lib/save.tsx`) — each `role="alert"`/`role="status"`, none a
+  notice surface. The prompts diff view is the fourth named surface: an added
+  line is `border-success`, a removed one `border-danger`; `--primary` keeps one
+  meaning, the action.
 
 Plus the standing gates: `just check`, `just test`, `just test-frontend`,
 `just build`, `just test-e2e <capability>` per task, `just verify all` at the end,

@@ -404,7 +404,7 @@ function PromptEditor(props: {
                       </pre>
                       <pre
                         className={`min-w-0 break-words whitespace-pre-wrap ${
-                          row.left === null ? "border-l-2 border-primary pl-1" : "text-muted"
+                          row.left === null ? "border-l-2 border-success pl-1" : "text-muted"
                         }`}
                       >
                         {row.right}

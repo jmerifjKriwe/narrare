@@ -145,6 +145,27 @@ describe("the task list", () => {
   });
 });
 
+describe("the form's inputs", () => {
+  it("keeps spellcheck and autofill off the technical values", async () => {
+    await renderPanel();
+
+    for (const label of [
+      t("settings.profiles.nameLabel"),
+      t("settings.profiles.baseUrlLabel"),
+      t("settings.profiles.modelLabel"),
+    ]) {
+      const input = screen.getByLabelText(label);
+      expect(input.getAttribute("spellcheck")).toBe("false");
+      expect(input.getAttribute("autocomplete")).toBe("off");
+    }
+
+    const key = screen.getByLabelText(t("settings.profiles.apiKeyLabel"));
+    expect(key.getAttribute("type")).toBe("password");
+    expect(key.getAttribute("autocomplete")).toBe("new-password");
+    expect(key.getAttribute("spellcheck")).toBe("false");
+  });
+});
+
 describe("the mount's reads", () => {
   /** The profile list survives a task-list failure, with the alert beside it. */
   async function expectProfilesSurvive(): Promise<void> {
