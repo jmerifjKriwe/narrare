@@ -9,6 +9,7 @@ import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
 import { useSettingsQuery } from "../lib/query";
+import { adoptServerTheme } from "../lib/theme";
 import { Notice } from "../ui/Notice";
 import "../globals.css";
 
@@ -53,6 +54,7 @@ function Shell() {
   useEffect(() => {
     if (!settings.isSuccess) return;
     adoptServerLocale(settings.data.locale);
+    adoptServerTheme(settings.data.theme);
     setReady(true);
   }, [settings.data, settings.isSuccess]);
 

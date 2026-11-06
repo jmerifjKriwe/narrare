@@ -38,25 +38,28 @@ export const queryClient = new QueryClient({
 });
 
 /**
- * The stored settings row, as `{ locale }` — the same contract the boot
- * effect in the shell used to own: an answer carries the row's locale, an
- * unreachable service resolves to `locale: null`, and the browser's
- * language decides from there. The outage is an answer, not an error
- * state, so no consumer needs a fallback branch of its own.
+ * The stored settings row, as `{ locale, theme }` — the same contract the boot
+ * effect in the shell used to own: an answer carries the row's choices, an
+ * unreachable service resolves to `null`s, and the browser's language and the
+ * system's colour scheme decide from there. The outage is an answer, not an
+ * error state, so no consumer needs a fallback branch of its own.
  */
-export function useSettingsQuery(): UseQueryResult<{ locale: string | null }> {
+export function useSettingsQuery(): UseQueryResult<{
+  locale: string | null;
+  theme: string | null;
+}> {
   return useQuery({
     queryKey: ["settings"],
     // No refetch on window focus: a focus refetch while the service is down
-    // would erase the locale adopted at boot. The row changes only through
-    // the switcher, which invalidates this key itself.
+    // would erase the values adopted at boot. The row changes only through
+    // the switchers, which invalidate this key themselves.
     refetchOnWindowFocus: false,
     queryFn: async () => {
       try {
         const { data } = await client.GET("/api/settings");
-        return { locale: data?.locale ?? null };
+        return { locale: data?.locale ?? null, theme: data?.theme ?? null };
       } catch {
-        return { locale: null };
+        return { locale: null, theme: null };
       }
     },
   });

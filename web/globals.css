@@ -16,30 +16,31 @@
  */
 
 :root {
-  /* The tokens follow the system, and this makes the browser's own surfaces
-   * follow them too: scrollbars, native select popups and form controls are
-   * painted light on a light page and dark on a dark one. Without it a dark
-   * page kept a white scrollbar and a white option list. */
-  color-scheme: light;
-  --background: oklch(0.965 0.008 85);
-  --foreground: oklch(0.25 0.01 85);
+  /* The tokens follow the reader's choice; `light-dark()` resolves against
+   * `color-scheme`, which makes the browser's own surfaces follow too:
+   * scrollbars, native select popups and form controls are painted light on a
+   * light page and dark on a dark one. Without it a dark page kept a white
+   * scrollbar and a white option list. */
+  color-scheme: light dark;
+  --background: light-dark(oklch(0.965 0.008 85), oklch(0.19 0.01 85));
+  --foreground: light-dark(oklch(0.25 0.01 85), oklch(0.9 0.005 85));
   /* Secondary text sits on the page ground everywhere, so it keeps AA on
    * the deepened ground: 0.55 measured 4.39:1 there, under the 4.5 the
    * suite's axe gate demands. */
-  --muted: oklch(0.53 0.01 85);
-  --card: oklch(1 0 0);
+  --muted: light-dark(oklch(0.53 0.01 85), oklch(0.62 0.01 85));
+  --card: light-dark(oklch(1 0 0), oklch(0.24 0.01 85));
   /* Quiet surfaces between the page and a card: the top bar today, rails and
    * docks later. Raised, but not raised enough to be a card. */
-  --panel: oklch(0.99 0.004 85);
+  --panel: light-dark(oklch(0.99 0.004 85), oklch(0.215 0.01 85));
   /* The wash under selection and hover: weight 600 on top marks the chosen
    * row, so a selection never needs a filled primary block. */
-  --soft: oklch(0.94 0.012 85);
-  --border: oklch(0.9 0.006 85);
+  --soft: light-dark(oklch(0.94 0.012 85), oklch(0.28 0.012 85));
+  --border: light-dark(oklch(0.9 0.006 85), oklch(0.32 0.01 85));
   /* Separators inside content — table rows, list rows, panel headers. Edges
    * keep --border; a row is never edged with it. */
-  --rule: oklch(0.94 0.008 85);
-  --primary: oklch(0.42 0.09 45);
-  --primary-foreground: oklch(0.98 0.005 85);
+  --rule: light-dark(oklch(0.94 0.008 85), oklch(0.3 0.01 85));
+  --primary: light-dark(oklch(0.42 0.09 45), oklch(0.72 0.1 60));
+  --primary-foreground: light-dark(oklch(0.98 0.005 85), oklch(0.2 0.02 60));
   /* Two radii, no others: controls (buttons, fields, rows) and the surfaces
    * that hold them (cards, panels, dialogs). Pills stay reserved for filter
    * pills and avatars. */
@@ -47,7 +48,7 @@
   --radius-lg: 8px;
   /* The keyboard's pointer: primary's family one step brighter, so the ring
    * reads against text, surfaces and both themes. */
-  --focus: oklch(0.48 0.11 45);
+  --focus: light-dark(oklch(0.48 0.11 45), oklch(0.8 0.11 60));
   /* The book object's own grounds and inks: a cover is an object surface,
    * not an action, and in dark mode its sepia must stay quieter than the one
    * primary button. `light-dark()` starts resolving when the theme sets
@@ -64,13 +65,13 @@
   --area-knowledge: light-dark(oklch(0.48 0.08 110), oklch(0.76 0.07 110));
   --area-chat: light-dark(oklch(0.48 0.06 235), oklch(0.76 0.05 235));
   --area-settings: light-dark(oklch(0.45 0.02 85), oklch(0.74 0.02 85));
-  --success: oklch(0.5 0.12 150);
+  --success: light-dark(oklch(0.5 0.12 150), oklch(0.68 0.13 150));
   /* Darkened from 0.6 for AA (P5 fix round, R19): warning text is
    * Notice's voice, and it must clear 4.5:1 on the surfaces a notice
    * rides — 0.54 measures 4.64:1 on the ground, 5.14:1 on the card.
    * Dark mode already cleared. */
-  --warning: oklch(0.54 0.13 75);
-  --danger: oklch(0.5 0.16 25);
+  --warning: light-dark(oklch(0.54 0.13 75), oklch(0.78 0.13 80));
+  --danger: light-dark(oklch(0.5 0.16 25), oklch(0.68 0.15 25));
   /* The overlay pair: what a surface floating above the page dims it with,
    * and the shadow such a raised surface casts. Theme-constant on purpose —
    * a black scrim reads on light and dark pages alike. The dialog is the
@@ -81,24 +82,16 @@
     0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --background: oklch(0.19 0.01 85);
-    --foreground: oklch(0.9 0.005 85);
-    --muted: oklch(0.62 0.01 85);
-    --card: oklch(0.24 0.01 85);
-    --panel: oklch(0.215 0.01 85);
-    --soft: oklch(0.28 0.012 85);
-    --border: oklch(0.32 0.01 85);
-    --rule: oklch(0.3 0.01 85);
-    --primary: oklch(0.72 0.1 60);
-    --primary-foreground: oklch(0.2 0.02 60);
-    --focus: oklch(0.8 0.11 60);
-    --success: oklch(0.68 0.13 150);
-    --warning: oklch(0.78 0.13 80);
-    --danger: oklch(0.68 0.15 25);
-  }
+/* The reader's choice, as the browser's own `color-scheme`: "system" leaves
+ * both open and `light-dark()` follows the OS (the media query the tokens
+ * used to duplicate); a stored value forces one side, native controls and all.
+ * The theme module is the only writer of `data-theme`. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* The page surface. Explicit rather than a utility on <body>: the shell is the

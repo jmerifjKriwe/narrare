@@ -140,3 +140,37 @@ def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stac
     ).to_have_attribute("aria-current", "page")
 
     assert_accessible(page)
+
+
+def test_a_chosen_theme_survives_a_reload(page: Page, stack: Stack) -> None:
+    """The reader's light is user data, not a browser preference: the row
+    holds it, and the first paint wears it after a reload."""
+    page.goto(f"{URL.rsplit('/knowledge', 1)[0]}/settings/appearance")
+    page.get_by_label("Farbschema").select_option("dark")
+    page.reload()
+    assert page.evaluate("document.documentElement.dataset.theme") == "dark"
+    dark = page.evaluate("getComputedStyle(document.body).backgroundColor")
+
+    page.get_by_label("Farbschema").select_option("light")
+    page.reload()
+    assert page.evaluate("document.documentElement.dataset.theme") == "light"
+    light = page.evaluate("getComputedStyle(document.body).backgroundColor")
+    assert dark != light
+
+    # Leave the row as the suite found it: the next test's system case must
+    # decide from the media query, not from this choice.
+    page.get_by_label("Farbschema").select_option("system")
+
+
+def test_an_unchosen_theme_follows_the_system(browser: Browser, stack: Stack) -> None:
+    """No stored choice, a dark system: `light-dark()` follows the media
+    query and no attribute is written."""
+    context = browser.new_context(color_scheme="dark", locale="de-DE")
+    try:
+        page = context.new_page()
+        page.goto(URL)
+        assert page.evaluate("document.documentElement.dataset.theme ?? null") is None
+        ground = page.evaluate("getComputedStyle(document.body).backgroundColor")
+        assert ground != "rgb(255, 255, 255)"
+    finally:
+        context.close()

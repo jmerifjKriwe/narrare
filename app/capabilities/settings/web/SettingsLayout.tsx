@@ -17,6 +17,12 @@ export const CLUSTERS = [
     descriptionKey: "settings.clusterLanguage.description",
   },
   {
+    id: "appearance",
+    path: "/settings/appearance",
+    titleKey: "settings.clusterAppearance",
+    descriptionKey: "settings.clusterAppearance.description",
+  },
+  {
     id: "provider",
     path: "/settings/provider",
     titleKey: "settings.clusterProvider",

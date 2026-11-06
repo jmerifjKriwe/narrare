@@ -93,6 +93,7 @@ describe("the settings area", () => {
       .map((link) => link.getAttribute("href"));
     expect(destinations).toEqual([
       "/settings/language",
+      "/settings/appearance",
       "/settings/provider",
       "/settings/prompts",
     ]);
