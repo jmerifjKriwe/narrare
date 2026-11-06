@@ -562,7 +562,7 @@ export function PromptsPage() {
 
   return (
     <section className="mt-8" aria-labelledby="settings-prompts-heading">
-      <h2 id="settings-prompts-heading" className="text-lg font-semibold">
+      <h2 id="settings-prompts-heading" className="text-emph font-semibold">
         {t("prompts.heading")}
       </h2>
 
