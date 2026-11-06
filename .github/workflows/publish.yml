@@ -51,7 +51,14 @@ jobs:
         run: |
           set -euo pipefail
           version="${TAG#v}"
-          commit=$(git rev-list -n1 "$TAG")
+          # CI built the release PR's head, and the release lands as a merge
+          # commit: its second parent is the tree the gates started. A tag
+          # without a second parent (an admin merge) is its own commit.
+          if tested=$(git rev-parse "$TAG^2" 2>/dev/null); then
+            commit="$tested"
+          else
+            commit=$(git rev-list -n1 "$TAG")
+          fi
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           major_minor="${version%.*}"
           {

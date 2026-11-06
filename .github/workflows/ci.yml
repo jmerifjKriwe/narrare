@@ -87,6 +87,10 @@ jobs:
           # nothing about who pushed it: the release-PR exception below also
           # requires the head to live in this repository.
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          # `GITHUB_HEAD_REF` is set for pull_request and pull_request_target
+          # only; on a pull_request_review it is empty, which made every
+          # approval look like a non-release PR.
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REPO: ${{ github.repository }}
         run: |
           if [ "$EVENT" = pull_request ] || [ "$EVENT" = pull_request_review ]; then
@@ -111,7 +115,7 @@ jobs:
           release_pr=""
           if { [ "$EVENT" = pull_request ] || [ "$EVENT" = pull_request_review ]; } \
             && [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
-            && [ "$GITHUB_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
+            && [ "$PR_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
             && [ -n "$(git diff --name-only origin/main...HEAD)" ]; then
             release_pr="--release-pr"
           fi
@@ -633,12 +637,16 @@ jobs:
             # A review that only comments runs no gate and must not report
             # green over a failing one, so it says so and stays red until an
             # approval re-runs the gates.
-            if [ "$REVIEW_STATE" != approved ]; then
+            # pull_request_review fires for every pull request, and an
+            # ordinary one owes no artefact gate: green here is the truth,
+            # not a skip. Only the release PR is judged — and there a comment
+            # review must not go green over a failed gate.
+            if [ "$RELEASE_PR" != true ]; then
+              echo "::notice::not the release PR; a review owes no artefact gate"
+              exit 0
+            elif [ "$REVIEW_STATE" != approved ]; then
               echo "::error::this run judged nothing: review state is '$REVIEW_STATE'; approve the release PR to run the artefact gates"
               note "review state=$REVIEW_STATE"
-            elif [ "$RELEASE_PR" != true ]; then
-              echo "::error::the artefact gates only run on the release PR"
-              note "not-the-release-pr"
             else
               for gate in "container=$CONTAINER" "container-e2e=$CONTAINER_E2E" "container-upgrade=$CONTAINER_UPGRADE" "container-external=$CONTAINER_EXTERNAL"; do
                 result=${gate#*=}
