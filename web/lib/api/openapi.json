@@ -1938,12 +1938,64 @@
               }
             ],
             "title": "Locale"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
           }
         },
         "required": [
-          "locale"
+          "locale",
+          "theme"
         ],
         "title": "SettingsRead",
+        "type": "object"
+      },
+      "SettingsThemeRead": {
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "SettingsThemeRead",
+        "type": "object"
+      },
+      "SettingsThemeUpdate": {
+        "properties": {
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "SettingsThemeUpdate",
         "type": "object"
       },
       "SettingsUpdate": {
@@ -4098,6 +4150,47 @@
           }
         },
         "summary": "List Tasks",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/theme": {
+      "patch": {
+        "operationId": "update_theme_api_settings_theme_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsThemeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsThemeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Theme",
         "tags": [
           "settings"
         ]

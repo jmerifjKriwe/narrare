@@ -32,15 +32,15 @@ async def test_a_user_who_never_chose_follows_the_browser() -> None:
         response = await client.get("/api/settings")
 
     assert response.status_code == 200
-    assert response.json() == {"locale": None}
+    assert response.json() == {"locale": None, "theme": None}
 
 
 async def test_a_chosen_locale_is_stored_on_the_user_row() -> None:
     async with _client() as client:
         written = await client.patch("/api/settings", json={"locale": "de"})
         assert written.status_code == 200
-        assert written.json() == {"locale": "de"}
-        assert (await client.get("/api/settings")).json() == {"locale": "de"}
+        assert written.json() == {"locale": "de", "theme": None}
+        assert (await client.get("/api/settings")).json() == {"locale": "de", "theme": None}
 
     async with Session() as session:
         user = await session.get(User, LOCAL_USER_ID)
@@ -53,7 +53,7 @@ async def test_an_unknown_locale_is_refused_and_changes_nothing() -> None:
         await client.patch("/api/settings", json={"locale": "de"})
         refused = await client.patch("/api/settings", json={"locale": "tlh"})
         assert refused.status_code == 422
-        assert (await client.get("/api/settings")).json() == {"locale": "de"}
+        assert (await client.get("/api/settings")).json() == {"locale": "de", "theme": None}
 
 
 async def test_an_omitted_locale_is_refused() -> None:
@@ -62,7 +62,7 @@ async def test_an_omitted_locale_is_refused() -> None:
         await client.patch("/api/settings", json={"locale": "fr"})
         refused = await client.patch("/api/settings", json={})
         assert refused.status_code == 422
-        assert (await client.get("/api/settings")).json() == {"locale": "fr"}
+        assert (await client.get("/api/settings")).json() == {"locale": "fr", "theme": None}
 
 
 async def test_null_returns_the_choice_to_the_browser() -> None:
@@ -71,8 +71,8 @@ async def test_null_returns_the_choice_to_the_browser() -> None:
         cleared = await client.patch("/api/settings", json={"locale": None})
 
         assert cleared.status_code == 200
-        assert cleared.json() == {"locale": None}
-        assert (await client.get("/api/settings")).json() == {"locale": None}
+        assert cleared.json() == {"locale": None, "theme": None}
+        assert (await client.get("/api/settings")).json() == {"locale": None, "theme": None}
 
     async with Session() as session:
         user = await session.get(User, LOCAL_USER_ID)
@@ -86,7 +86,7 @@ async def test_reading_a_fresh_instance_creates_nothing() -> None:
     await _forget_the_user()
 
     async with _client() as client:
-        assert (await client.get("/api/settings")).json() == {"locale": None}
+        assert (await client.get("/api/settings")).json() == {"locale": None, "theme": None}
 
     async with Session() as session:
         assert await session.get(User, LOCAL_USER_ID) is None
@@ -99,3 +99,62 @@ async def test_choosing_a_locale_before_setup_is_refused() -> None:
         response = await client.patch("/api/settings", json={"locale": "de"})
 
     assert response.status_code == 409
+
+
+async def test_a_user_who_never_chose_a_theme_follows_the_system() -> None:
+    async with _client() as client:
+        assert (await client.get("/api/settings")).json() == {"locale": None, "theme": None}
+
+
+async def test_a_chosen_theme_is_stored_on_the_user_row() -> None:
+    async with _client() as client:
+        written = await client.patch("/api/settings/theme", json={"theme": "dark"})
+        assert written.status_code == 200
+        assert written.json() == {"theme": "dark"}
+        assert (await client.get("/api/settings")).json() == {
+            "locale": None,
+            "theme": "dark",
+        }
+
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        assert user.theme == "dark"
+
+
+async def test_an_unknown_theme_is_refused_and_changes_nothing() -> None:
+    async with _client() as client:
+        await client.patch("/api/settings/theme", json={"theme": "dark"})
+        refused = await client.patch("/api/settings/theme", json={"theme": "sepia"})
+        assert refused.status_code == 422
+        assert (await client.get("/api/settings")).json()["theme"] == "dark"
+
+
+async def test_an_omitted_theme_is_refused() -> None:
+    # {} must not mean "clear": a broken client would silently reset the choice.
+    async with _client() as client:
+        await client.patch("/api/settings/theme", json={"theme": "dark"})
+        refused = await client.patch("/api/settings/theme", json={})
+        assert refused.status_code == 422
+        assert (await client.get("/api/settings")).json()["theme"] == "dark"
+
+
+async def test_null_returns_the_theme_to_the_system() -> None:
+    async with _client() as client:
+        await client.patch("/api/settings/theme", json={"theme": "light"})
+        cleared = await client.patch("/api/settings/theme", json={"theme": None})
+        assert cleared.status_code == 200
+        assert cleared.json() == {"theme": None}
+
+    async with Session() as session:
+        user = await session.get(User, LOCAL_USER_ID)
+        assert user is not None
+        assert user.theme is None
+
+
+async def test_a_theme_write_before_setup_is_refused() -> None:
+    await _forget_the_user()
+    async with _client() as client:
+        refused = await client.patch("/api/settings/theme", json={"theme": "dark"})
+        assert refused.status_code == 409
+        assert (await client.get("/api/settings")).json() == {"locale": None, "theme": None}
