@@ -107,9 +107,18 @@ export function EntityRelationsSection(
   }
   useEffect(() => () => onRowEditorChange?.(false), [onRowEditorChange]);
 
-  // The refusals are shared: the section names the failed change, and the
-  // next attempt clears the words.
-  const [failed, setFailed] = useState(false);
+  // The refusals are per form: the add row and the inline editor each
+  // name their own failed change inside the form that owns it, and
+  // opening or leaving one must not carry words across — neither the
+  // other form's, nor its own stale ones.
+  const [addFailed, setAddFailed] = useState(false);
+  // The duplicate is named apart from the outage: a 409 is a pair the
+  // tables already hold — the user's own input, not a service that died —
+  // so it answers in the duplicate's own words, and the next attempt
+  // clears it with the rest.
+  const [addDuplicate, setAddDuplicate] = useState(false);
+  const [editFailed, setEditFailed] = useState(false);
+  const [editDuplicate, setEditDuplicate] = useState(false);
 
   const target = others.find((row) => row.id === targetId) ?? null;
   const targetInvalid = triedAdd && (target === null || target.name !== targetText.trim());
@@ -121,8 +130,13 @@ export function EntityRelationsSection(
   /** Add the edge the add row describes; clear the row on success. */
   async function addEdge(event: FormEvent) {
     event.preventDefault();
+    // One submit is one request: a click the pending add already owns is
+    // no second ask — the double request is what would turn the 409 below
+    // into a second user error.
+    if (add.isPending) return;
     setTriedAdd(true);
-    setFailed(false);
+    setAddFailed(false);
+    setAddDuplicate(false);
     if (target === null || target.name !== targetText.trim() || addType === "") return;
     try {
       await add.mutateAsync({
@@ -134,8 +148,12 @@ export function EntityRelationsSection(
         // editor never sees a change where the writer typed none.
         note: note.trim() === "" ? null : note,
       });
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      // The refusal names itself in the add form: the 409's duplicate
+      // wording, the outage's words for everything else. The status rides
+      // the mutation's Error (see the hooks in `@shell/lib/query`).
+      if ((error as { status?: number }).status === 409) setAddDuplicate(true);
+      else setAddFailed(true);
       return;
     }
     announce(t("knowledge.relationAdded"));
@@ -144,6 +162,8 @@ export function EntityRelationsSection(
     setTypeText("");
     setNote("");
     setTriedAdd(false);
+    setAddFailed(false);
+    setAddDuplicate(false);
   }
 
   /** Open the row's inline editor, prefilled with the edge's own words. */
@@ -152,31 +172,54 @@ export function EntityRelationsSection(
     setEditTypeText(relationTypeLabel(t, relation.relation_type));
     setEditNote(relation.note ?? "");
     setTriedEdit(false);
-    setFailed(false);
+    setEditFailed(false);
+    setEditDuplicate(false);
+  }
+
+  /** Leave the inline editor: the words it owed — a failure named or a
+   *  duplicate standing — go with it, so a later editor opens clean. */
+  function closeEdit() {
+    setEditFailed(false);
+    setEditDuplicate(false);
+    changeEditingId(null);
   }
 
   /** Save the edit's changed fields; an untouched editor just closes. */
   async function saveEdit(relation: Relation, event: FormEvent) {
     event.preventDefault();
+    // One submit is one request, the add row's rule again.
+    if (update.isPending) return;
     setTriedEdit(true);
-    setFailed(false);
+    setEditFailed(false);
+    setEditDuplicate(false);
     if (editType === "") return;
     const changes: RelationChanges = {};
-    if (editType !== relation.relation_type) changes.relationType = editType;
+    // The type changes only when the box's text does. A stored free-text
+    // type can carry the same words a vocabulary label spells — the raw
+    // "ally of" beside the catalog's "ally_of" — and resolving the
+    // prefilled box would then silently retype the edge. What the editor
+    // was shown with is the edge's own answer; only a retype is one.
+    const originalLabel = relationTypeLabel(t, relation.relation_type).trim();
+    if (editTypeText.trim() !== originalLabel && editType !== relation.relation_type) {
+      changes.relationType = editType;
+    }
     const nextNote = editNote.trim() === "" ? null : editNote;
     if (nextNote !== relation.note) changes.note = nextNote;
     if (changes.relationType === undefined && changes.note === undefined) {
-      changeEditingId(null);
+      closeEdit();
       return;
     }
     try {
       await update.mutateAsync({ relationId: relation.id, ...changes });
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      // The add form's rule, the editor's own words: the 409's duplicate
+      // wording, the outage's words for everything else.
+      if ((error as { status?: number }).status === 409) setEditDuplicate(true);
+      else setEditFailed(true);
       return;
     }
     announce(t("knowledge.relationUpdated"));
-    changeEditingId(null);
+    closeEdit();
   }
 
   /** The delete asks first (R36): the row's control only names the edge,
@@ -189,6 +232,9 @@ export function EntityRelationsSection(
   async function destroyPending(close: () => void) {
     const relation = pendingDelete;
     if (relation === null) return;
+    // One confirm is one request: a second press of the open dialog's
+    // button waits for the first to settle.
+    if (remove.isPending) return;
     setDeleteFailed(false);
     try {
       await remove.mutateAsync({ relationId: relation.id });
@@ -198,7 +244,7 @@ export function EntityRelationsSection(
       setDeleteFailed(true);
       return;
     }
-    if (editingId === relation.id) changeEditingId(null);
+    if (editingId === relation.id) closeEdit();
     announce(t("knowledge.relationDeleted"));
     close();
     setPendingDelete(null);
@@ -263,7 +309,7 @@ export function EntityRelationsSection(
       }}
       className="mt-2 flex flex-col gap-2 border-t border-rule pt-2"
     >
-      <p className="text-label font-medium">{t("knowledge.relationEditHeading")}</p>
+      <h5 className="text-label font-medium">{t("knowledge.relationEditHeading")}</h5>
       <ComboBox
         label={t("knowledge.relationTypeLabel")}
         value={editTypeText}
@@ -282,11 +328,20 @@ export function EntityRelationsSection(
       <Field label={t("knowledge.relationNoteLabel")}>
         <Input value={editNote} onChange={(event) => setEditNote(event.target.value)} />
       </Field>
+      {editDuplicate ? (
+        <Notice tone="danger" live="alert">
+          {t("knowledge.relationExists")}
+        </Notice>
+      ) : editFailed ? (
+        <Notice tone="danger" live="alert">
+          {t("knowledge.entityFailed")}
+        </Notice>
+      ) : null}
       <div className="flex gap-2">
-        <Button variant="secondary" type="submit">
+        <Button variant="secondary" type="submit" disabled={update.isPending}>
           {t("knowledge.entitySave")}
         </Button>
-        <Button onClick={() => changeEditingId(null)}>{t("knowledge.entityCancel")}</Button>
+        <Button onClick={closeEdit}>{t("knowledge.entityCancel")}</Button>
       </div>
     </form>
   );
@@ -306,7 +361,7 @@ export function EntityRelationsSection(
 
   return (
     <section className="mt-1 flex flex-col gap-2">
-      <p className="text-label font-medium">{t("knowledge.relationsHeading")}</p>
+      <h3 className="text-label font-medium">{t("knowledge.relationsHeading")}</h3>
       {relations.isPending ? (
         // The ask is in flight: the section asks rather than claims — no
         // tables, and not the empty state either, since no answer is not
@@ -382,15 +437,19 @@ export function EntityRelationsSection(
         <Field label={t("knowledge.relationNoteLabel")}>
           <Input value={note} onChange={(event) => setNote(event.target.value)} />
         </Field>
-        <Button variant="secondary" type="submit">
+        {addDuplicate ? (
+          <Notice tone="danger" live="alert">
+            {t("knowledge.relationExists")}
+          </Notice>
+        ) : addFailed ? (
+          <Notice tone="danger" live="alert">
+            {t("knowledge.entityFailed")}
+          </Notice>
+        ) : null}
+        <Button variant="secondary" type="submit" disabled={add.isPending}>
           {t("knowledge.relationAdd")}
         </Button>
       </form>
-      {failed ? (
-        <Notice tone="danger" live="alert">
-          {t("knowledge.entityFailed")}
-        </Notice>
-      ) : null}
       {/* The confirm the row's delete owes its blast radius: the dialog
           names the edge it will take before it takes it — the entity
           delete's pattern (R36). Stacked over the edit dialog, which
@@ -419,7 +478,7 @@ export function EntityRelationsSection(
               </Notice>
             ) : null}
             <div className="flex gap-2">
-              <Button onClick={() => void destroyPending(close)}>
+              <Button onClick={() => void destroyPending(close)} disabled={remove.isPending}>
                 {t("knowledge.entityDeleteConfirm")}
               </Button>
               <Button onClick={close}>{t("knowledge.entityCancel")}</Button>

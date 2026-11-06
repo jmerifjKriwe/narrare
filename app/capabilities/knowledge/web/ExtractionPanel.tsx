@@ -169,17 +169,20 @@ export function ExtractionPanel() {
               void discard.mutateAsync(suggestion.id).catch(() => undefined);
             }}
           >
-            <p className="mt-2 text-body font-medium">
+            {/* The card's own name and its relations block read as
+                headings (#314): under ProposalCard's h3 title they step
+                h4 → h5, so heading navigation reaches them. */}
+            <h4 className="mt-2 text-body font-medium">
               {suggestion.name} · {entityTypeLabel(t, suggestion.type)}
-            </p>
+            </h4>
             {suggestion.relations.length > 0 ? (
               // The proposals ride the card (D9): the target's name and
               // the suggested type, the vocabulary's wording or the raw
               // proposal's own words.
               <div className="mt-2">
-                <p className="text-body font-medium">
+                <h5 className="text-body font-medium">
                   {t("knowledge.suggestionRelationsHeading")}
-                </p>
+                </h5>
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {suggestion.relations.map((relation) => (
                     <li

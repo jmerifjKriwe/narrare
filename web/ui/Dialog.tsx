@@ -29,8 +29,10 @@ function DialogSurface({
         {({ close }) => (
           <>
             {/* Slot "title" is what wires the dialog's aria-labelledby to
-                this heading; RAC reads it from context. */}
-            <Heading slot="title" className="text-lg font-semibold">
+                this heading; RAC reads it from context. `level={2}` keeps
+                the element a deterministic h2 (#314): the content beneath
+                it steps up from here, not from a library default. */}
+            <Heading slot="title" level={2} className="text-lg font-semibold">
               {title}
             </Heading>
             {children(close)}

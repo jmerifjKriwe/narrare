@@ -160,6 +160,7 @@
   "knowledge.relationTargetRequired": "Bitte wähle einen Eintrag aus.",
   "knowledge.relationTypeRequired": "Bitte gib eine Beziehungsart ein.",
   "knowledge.relationAdded": "Die Beziehung wurde hinzugefügt.",
+  "knowledge.relationExists": "Diese Beziehung besteht bereits.",
   "knowledge.relationUpdated": "Die Beziehung wurde gespeichert.",
   "knowledge.relationDeleted": "Die Beziehung wurde gelöscht.",
   "knowledge.chipRemove": "{value} entfernen",

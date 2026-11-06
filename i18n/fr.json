@@ -160,6 +160,7 @@
   "knowledge.relationTargetRequired": "Veuillez choisir une entrée.",
   "knowledge.relationTypeRequired": "Veuillez saisir un type de relation.",
   "knowledge.relationAdded": "La relation a été ajoutée.",
+  "knowledge.relationExists": "Cette relation existe déjà.",
   "knowledge.relationUpdated": "La relation a été enregistrée.",
   "knowledge.relationDeleted": "La relation a été supprimée.",
   "knowledge.chipRemove": "Supprimer {value}",

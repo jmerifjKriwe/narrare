@@ -10,18 +10,21 @@ the product's one answer everywhere: another user's row is a 404,
 indistinguishable from no row at all.
 """
 
+import asyncio
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from app.api.main import app
-from app.capabilities.knowledge.repository import RelationRepository
+from app.capabilities.knowledge.repository import EntityRepository, RelationRepository
+from app.capabilities.knowledge.service import KnowledgeService, NotFoundError
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Entity, EntityRelation, Novel
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+from app.kernel.embeddings import FakeEmbeddingProvider
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -472,3 +475,88 @@ async def test_another_users_relation_is_absent() -> None:
         row = await session.get(EntityRelation, edge.id)
     assert row is not None
     assert row.note is None  # the refusals wrote nothing
+
+
+async def test_a_merge_blocks_a_concurrent_edge_write_and_refuses_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A concurrent edge write naming the merged-away source waits for
+    the merge, then fails the foreign key.
+
+    The add's insert checks its foreign keys by taking ``FOR KEY SHARE``
+    on both entity ends; the merge holds ``FOR UPDATE`` on both ends and
+    the two modes conflict — so no insert can complete while the
+    merge's locks are held. Naming only the survivor, an insert lands
+    after the commit and stands (serialized, not cascaded); naming the
+    merged-away source, its edge waits here and is refused as the
+    scoped absence once the source row is gone: a concurrent add is
+    never an edge the merge cascades away unnoticed. Here the insert
+    arrives while the lock is held — one that lands before the merge's
+    ``FOR UPDATE`` never waits at all: the fold re-points it with the
+    source's edges, and it surfaces as a survivor edge, not a refusal.
+    The race is driven at the service seam, like the merge race tests:
+    the merge's second row lock is the window, and the add (a fresh
+    session, a second service) runs inside it.
+    """
+    _novel, [see, haus, x] = await _seed("See", "Haus", "X")
+    async with Session() as session_a, Session() as session_b:
+        service_a = KnowledgeService(session_a, LOCAL_USER_ID, FakeEmbeddingProvider())
+        service_b = KnowledgeService(session_b, LOCAL_USER_ID, FakeEmbeddingProvider())
+        task: asyncio.Task[EntityRelation] | None = None
+        original_locked = EntityRepository.locked
+        locks = [0]
+        insert_sent = asyncio.Event()
+        engine = session_b.get_bind()
+
+        def on_before_cursor_execute(
+            conn: object,
+            cursor: object,
+            statement: str,
+            parameters: object,
+            context: object,
+            executemany: bool,
+        ) -> None:
+            # The signal sits on the statement itself, not on the add's
+            # entry: reaching create still leaves the insert unflushed.
+            if statement.startswith("INSERT INTO entity_relations"):
+                insert_sent.set()
+
+        async def racing_locked(self: EntityRepository, entity_id: UUID) -> Entity | None:
+            nonlocal task
+            row = await original_locked(self, entity_id)
+            if self.session is not session_a:
+                return row
+            locks[0] += 1
+            if locks[0] != 2:
+                return row
+            # The merge holds both row locks: the add's insert is sent,
+            # and the insert must still be waiting there on the
+            # foreign-key check — not finished. The refusal after the
+            # merge is the causal proof: this observes the window.
+            task = asyncio.create_task(service_b.add_relation(see.id, x.id, "kennt", None))
+            await asyncio.wait_for(insert_sent.wait(), timeout=2)
+            await asyncio.sleep(0)
+            assert task is not None, "the merge never took the second lock"
+            assert not task.done(), "the add completed inside the merge's locks"
+            return row
+
+        event.listen(engine, "before_cursor_execute", on_before_cursor_execute)
+        try:
+            monkeypatch.setattr(EntityRepository, "locked", racing_locked)
+            await service_a.merge_entities(see.id, haus.id)
+            assert task is not None, "the merge never took the second lock"
+            with pytest.raises(NotFoundError):
+                await task
+        finally:
+            event.remove(engine, "before_cursor_execute", on_before_cursor_execute)
+
+    async with Session() as session:
+        survivor = await session.get(Entity, haus.id)
+        assert survivor is not None
+        # the fold's own outcome: the source's name rides as the
+        # survivor's alias
+        assert survivor.aliases == ["See"]
+        assert await session.get(Entity, see.id) is None
+        # no edge survived the refusal — in particular none of the
+        # concurrent add's
+        assert (await session.scalars(select(EntityRelation))).all() == []

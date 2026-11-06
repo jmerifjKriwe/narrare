@@ -185,6 +185,18 @@ class EntityRepository(ScopedRepository[Entity]):
         other, where two plain reads would both fold from the same
         pre-fold state and the later commit would overwrite the earlier
         fold, whose source is deleted and unrecoverable.
+
+        The same lock also answers a concurrent edge write on the
+        relation paths: the child insert checks its foreign keys by
+        taking ``FOR KEY SHARE`` on both entity ends, and that mode
+        conflicts with ``FOR UPDATE``. An insert naming the merged-away
+        source that lands before the lock is folded with the merge's
+        edge work; one that arrives while the lock is held waits for the
+        merge's commit, then sees the deleted source row and fails the
+        foreign key — the scoped absence's refusal; an insert naming
+        only the survivor waits on the same lock, lands after the
+        commit, and stands. So an edge can be neither accepted and then
+        cascaded away by the merge, nor slip past it unvisited.
         """
         return await self.session.scalar(
             self.query().where(Entity.id == entity_id).with_for_update()

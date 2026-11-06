@@ -323,7 +323,15 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
           },
         },
       );
-      if (!response.ok || !data) throw new Error(`add relation refused: ${response.status}`);
+      if (!response.ok || !data) {
+        // The refusal's status rides the throw (the accept path's carry):
+        // a 409 is a duplicate the dialog names in its own words, not an
+        // outage, so the machine-readable status must survive the mutation
+        // boundary. Every other refusal keeps its status-only Error.
+        throw Object.assign(new Error(`add relation refused: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
     },
     onSettled: () => {
@@ -343,7 +351,13 @@ export function useUpdateRelation(): UseMutationResult<
         params: { path: { relation_id: input.relationId } },
         body: { relation_type: input.relationType, note: input.note },
       });
-      if (!response.ok || !data) throw new Error(`relation update refused: ${response.status}`);
+      if (!response.ok || !data) {
+        // The add path's carry: the status rides the throw, so a 409 can
+        // be named as the duplicate it is, not as an outage.
+        throw Object.assign(new Error(`relation update refused: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
     },
     onSettled: () => {
