@@ -59,7 +59,27 @@ updates:
         update-types: ["major"]
 
   # Container images: a `devcontainers` entry returns only with a dev
-  # container, a `docker` entry at `/` only with a `Dockerfile`.
+  # container. The `docker` entry at `/` reads the `FROM` pins in the
+  # Dockerfile — a base image tag is a mutable ref, so every one of them is
+  # pinned by digest and this updater moves them.
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels: ["dependencies", "docker"]
+    groups:
+      minor-patch:
+        update-types: ["minor", "patch"]
+      major-updates:
+        update-types: ["major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

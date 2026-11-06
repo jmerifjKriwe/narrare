@@ -231,8 +231,52 @@ jobs:
   # unchanged-main skip is not (`proceed` empty or 'false' — nothing
   # below the gate ran, so there is nothing to report). A manual dispatch
   # reports to no one but its own run log; it never touches the issue.
+  # The artefact, every night main moved. No push: GHCR carries only what a
+  # release promoted, and the build cache keeps the release-time build short.
+  # This job exists because a Dockerfile is the one file whose mistakes no
+  # other job can see — a missing runtime dependency, a missing COPY, a base
+  # image that moved under its tag.
+  container:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - name: Build the image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          load: true
+          tags: narrare:nightly
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            REVISION=${{ github.sha }}
+      - name: The image is not bloated
+        run: |
+          set -euo pipefail
+          size=$(docker image inspect narrare:nightly --format '{{.Size}}')
+          echo "image bytes: $size"
+          # The ceiling from the release design. Composition: the Debian
+          # python-slim base ~200 MB, the Python environment ~105 MB, the
+          # PostgreSQL client ~76 MB (55 MB of it perl, which Debian's
+          # packaging of the client requires), the app and its bundle ~6 MB.
+          if [ "$size" -gt 450000000 ]; then
+            echo "::error::image is $size bytes, over the 450 MB ceiling"
+            exit 1
+          fi
+      - uses: ./.github/actions/container-smoke # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
+        with:
+          image: narrare:nightly
+
   nightly-result:
-    needs: [gate, audit, lint-types, tests, frontend, build, e2e-suites]
+    needs: [gate, audit, lint-types, tests, frontend, build, container, e2e-suites]
     if: always() && github.event_name == 'schedule' && (needs.gate.result != 'success' || needs.gate.outputs.proceed == 'true')
     runs-on: ubuntu-latest
     permissions:
@@ -251,6 +295,7 @@ jobs:
           TESTS_RESULT: ${{ needs.tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           BUILD_RESULT: ${{ needs.build.result }}
+          CONTAINER_RESULT: ${{ needs.container.result }}
           E2E_SUITES_RESULT: ${{ needs.e2e-suites.result }}
         run: |
           failed=""
@@ -267,6 +312,7 @@ jobs:
           note "tests" "$TESTS_RESULT"
           note "frontend" "$FRONTEND_RESULT"
           note "build" "$BUILD_RESULT"
+          note "container" "$CONTAINER_RESULT"
           note "e2e-suites" "$E2E_SUITES_RESULT"
           # `gh issue create --label` fails when the label does not exist, so
           # check for `ci/nightly` first and create it only when a real

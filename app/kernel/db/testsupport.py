@@ -17,7 +17,7 @@ import re
 import sys
 from contextlib import suppress
 from hashlib import blake2s
-from os import getpid, kill
+from os import environ, getpid, kill
 from pathlib import Path
 from secrets import token_hex
 from socket import gethostname
@@ -25,10 +25,37 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
+_ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
+
+# Attached to a running instance, exactly one database exists — the instance's
+# own — and that is what every test-database name resolves to. The name is
+# never recorded, so no session finish and no sweep can drop its data.
+if _ATTACH_URL and not environ.get("NARRE_DATABASE_URL"):
+    raise RuntimeError(
+        "NARRE_E2E_ATTACH needs NARRE_DATABASE_URL: the attached instance's"
+        " database is where the preconditions are seeded"
+    )
+
+_ATTACH = make_url(environ["NARRE_DATABASE_URL"]) if _ATTACH_URL else None
+
 SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+
+
+def admin_url(database: str) -> str:
+    """A connection to `database` on the server the run may administer.
+
+    Attached to a running instance, that is the instance's server: creating and
+    dropping databases is how the default path prepares too, and a hardcoded
+    localhost here sent every admin step to the wrong machine.
+    """
+    if _ATTACH is not None:
+        return _ATTACH.set(database=database).render_as_string(hide_password=False)
+    return f"{SERVER}/{database}"
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -63,6 +90,9 @@ _RUN_DATABASES: list[str] = []
 
 
 def url_for(database: str) -> str:
+    if _ATTACH is not None:
+        # Built from the URL, so a query option (`?ssl=require`) survives.
+        return _ATTACH.set(database=database).render_as_string(hide_password=False)
     return f"{SERVER}/{database}"
 
 
@@ -99,7 +129,13 @@ def test_database(prefix: str = "narrare_v2_test") -> str:
     else's name.
 
     ``ensure_database`` is the caller's next step: nothing is created here.
+
+    Attached to a running instance (``NARRE_E2E_ATTACH``), the answer is that
+    instance's database: there is exactly one, it holds the artefact's state,
+    and a run that only drives it neither sweeps nor drops it.
     """
+    if _ATTACH is not None:
+        return _ATTACH.database or ""
     if prefix in _NAMES:
         return _NAMES[prefix]
     if prefix not in _SWEPT:
@@ -134,7 +170,7 @@ def sweep(prefix: str = "narrare_v2_test") -> None:
 
 
 async def _sweep(prefix: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             rows = await connection.execute(
@@ -169,7 +205,7 @@ def drop_database(name: str) -> None:
 
 
 async def _drop(name: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
@@ -231,7 +267,7 @@ async def seed_user(user_id: UUID) -> None:
 
 
 async def _ensure(database: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             exists = await connection.scalar(

@@ -24,7 +24,7 @@ from fastapi.responses import FileResponse
 from app.generated.capabilities import CAPABILITIES as REGISTERED
 from app.kernel.configuration import validate_configuration
 from app.kernel.db.migrate import prepare_database
-from app.kernel.db.session import DATABASE_URL
+from app.kernel.db.session import CONFIG, DATABASE_URL
 from app.kernel.jobs.router import router as jobs_router
 from app.kernel.jobs.runtime import start_worker, stop_worker
 from app.kernel.version import __version__
@@ -82,6 +82,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     (a refused database, bad configuration, a handler collision) propagate;
     after a successful startup, exiting the context stops the worker.
     """
+    # Before the migration: when it fails, this line is how the operator learns
+    # which database the app tried — the default included.
+    getLogger("narrare").info("database %s", CONFIG.source)
     await prepare_database(DATABASE_URL)
     validate_configuration()
     await start_worker(app, _job_handlers())

@@ -1,0 +1,84 @@
+name: Container smoke
+description: >-
+  Start the image against a throwaway pgvector server and assert what a first
+  boot must produce: the shell, an asset, the notices file, migrations to head,
+  the three extensions and the startup line that names the connection. One
+  definition, so the nightly build and the release gate cannot drift.
+
+inputs:
+  image:
+    description: The image to start, already built or pulled.
+    required: true
+  port:
+    description: Host port the app answers on.
+    required: false
+    default: "8080"
+
+runs:
+  using: composite
+  steps:
+    - name: Start the image and its database
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        PORT: ${{ inputs.port }}
+      run: |
+        set -euo pipefail
+        docker network create narrare-smoke
+        docker run -d --name smoke-pg --network narrare-smoke \
+          -e POSTGRES_USER=narrare -e POSTGRES_PASSWORD=narrare -e POSTGRES_DB=narrare \
+          pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8
+        for _ in $(seq 1 60); do
+          docker exec smoke-pg pg_isready -U narrare -d narrare && break
+          sleep 1
+        done
+        # The image's own Python mints the key: the runner needs no toolchain,
+        # and the key is the one the container will actually use.
+        key=$(docker run --rm --entrypoint .venv/bin/python "$IMAGE" \
+          -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
+        docker run -d --name smoke-app --network narrare-smoke -p "$PORT:8000" \
+          -e NARRE_DB_HOST=smoke-pg -e NARRE_DB_NAME=narrare -e NARRE_DB_USER=narrare \
+          -e NARRE_DB_PASSWORD=narrare -e NARRE_SECRET_KEY="$key" \
+          "$IMAGE"
+        up=""
+        for _ in $(seq 1 90); do
+          if curl -sf -o /dev/null "http://127.0.0.1:$PORT/"; then up=1; break; fi
+          sleep 1
+        done
+        if [ -z "$up" ]; then
+          echo "::error::the image never answered on :$PORT"
+          docker logs smoke-app
+          exit 1
+        fi
+
+    - name: Assert the first boot
+      shell: bash
+      env:
+        PORT: ${{ inputs.port }}
+      run: |
+        set -euo pipefail
+        base="http://127.0.0.1:$PORT"
+        # The startup line names the connection the app resolved: a wrong
+        # NARRE_DB_* parsing is otherwise invisible on a green smoke.
+        docker logs smoke-app 2>&1 | grep -q 'database NARRE_DB_\* → narrare@smoke-pg:5432/narrare'
+        asset=$(curl -sf "$base/" | grep -o '/assets/[^"]*\.js' | head -1)
+        [ -n "$asset" ]
+        curl -sf -o /dev/null "$base$asset"
+        curl -sf -o /dev/null "$base/THIRD-PARTY-NOTICES.txt"
+        # A first boot on an empty database runs the whole history.
+        docker exec smoke-pg psql -U narrare -d narrare -tAc \
+          'select version_num from alembic_version' | grep -q .
+        docker exec smoke-pg psql -U narrare -d narrare -tAc \
+          "select count(*) from pg_extension where extname in ('vector','pg_trgm','unaccent')" | grep -qx 3
+
+    - name: Log the container's output when something failed
+      if: failure()
+      shell: bash
+      run: docker logs smoke-app 2>&1 | tail -60 || true
+
+    - name: Clean up
+      if: always()
+      shell: bash
+      run: |
+        docker rm -f smoke-app smoke-pg >/dev/null 2>&1 || true
+        docker network rm narrare-smoke >/dev/null 2>&1 || true
