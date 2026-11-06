@@ -2,6 +2,7 @@ import { Button } from "@shell/ui/Button";
 import { AREA_ICON } from "@shell/lib/area";
 import { Cover, coverTone } from "@shell/ui/Cover";
 import { Field, Select } from "@shell/ui/field";
+import { GridList } from "@shell/ui/GridList";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 import { Row } from "@shell/ui/Row";
@@ -32,6 +33,14 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  * live homes — planning as Canvas vs Dock (P1/P2), knowledge graph as
  * canvas vs dock lens (P12) — render side by side with the decision note;
  * everywhere else a single draft, never decoration.
+ *
+ * The "Specimens" section pins the landed dock and palette states on the
+ * real primitives — a conversation turn with its source chips, the
+ * consistency card, the wrapped entity row, the palette dialog's button
+ * row — inert specimens, never embeds: no handlers, no fetches, no modal
+ * shell. The subsection headings and source notes are documentation in
+ * the record's language (German, like the draft titles), the same in
+ * every locale; only the section heading itself comes from the catalog.
  */
 
 // The cover's three tones, pinned like Cover.test pins them: the tone is a
@@ -44,6 +53,15 @@ const INK_TITLE = "Der Sturm";
 // pin attributes — `Cover` takes no extra props — and names the tone the
 // title hashes to, so the pin and the tile cannot disagree.
 const LONG_TITLE = "A".repeat(120);
+// The wrapped row's pin: a name no dock column can grow for, beside a
+// short one — the row grows instead, wrapped, never truncated.
+const ENTITY_SPECIMENS = [
+  { id: "specimen-maya", name: "Maya Chen" },
+  {
+    id: "specimen-long",
+    name: "Die Hüterin des Leuchtturms am Ende der Welt, die jedes verschwundene Schiff in ihr Ledger einträgt",
+  },
+];
 const TONE_NAMES = ["pale", "sepia", "ink"] as const;
 
 const TYPE_STEPS = [
@@ -467,6 +485,126 @@ export function DesignGallery() {
               </Notice>
             </div>
           </Panel>
+        </div>
+      </section>
+
+      <section aria-labelledby="design-specimens-heading" className="mt-8">
+        <h2 id="design-specimens-heading" className="text-emph font-semibold">
+          {t("design.specimens")}
+        </h2>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">
+            Gesprächsrunde + Chips · Chat-Dock
+          </h3>
+          {/* The turn as ChatPanel renders it — question, answer, source
+              chips — with one chip open on its quoted passage. Inert: no
+              ask runs, no chip toggles; the expanded marks are the pin. */}
+          <ol className="mt-2 flex flex-col gap-6">
+            <li>
+              <p className="text-label font-semibold">Woher kommt das Signal?</p>
+              <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed">
+                Das Signal kommt aus Forschungsstation 7 in Nevada: die letzte
+                Nachricht von Mayas Schwester, Jahre nach dem Unfall, der sie
+                das Leben kostete.
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                <li>
+                  <Button variant="secondary" size="sm" aria-expanded="false">
+                    Stationsnotizen
+                  </Button>
+                </li>
+                <li>
+                  <Button variant="secondary" size="sm" aria-expanded="true">
+                    Zeitstrahl
+                  </Button>
+                  <p className="mt-1 whitespace-pre-wrap text-body leading-relaxed text-muted">
+                    Drei Jahre vor dem Signal starb Mayas Schwester in
+                    Forschungsstation 7; der Konzern nannte es einen Unfall.
+                  </p>
+                </li>
+              </ul>
+            </li>
+          </ol>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              ChatPanel: eine Runde aus Frage, Antwort und Quellen-Chips; ein
+              Chip steht offen auf seinem zitierten Beleg.
+            </Notice>
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">
+            Konsistenzkarte · Wissen-Dock
+          </h3>
+          {/* The finding as ChecksPanel renders it: the Panel holds the
+              finding as its heading and the evidence beneath, both decisions
+              on shell Buttons. Inert: nothing acknowledges, nothing
+              dismisses. */}
+          <section aria-label={t("knowledge.findingTitle")} className="mt-2">
+            <Panel>
+              <h4 className="text-emph font-semibold">
+                Forschungsstation: 7 gegen 9
+              </h4>
+              <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-muted">
+                Kapitel 1 nennt Forschungsstation 7, Kapitel 3 nennt
+                Forschungsstation 9: ein Name mit zwei Nummern.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button>{t("proposal.accept")}</Button>
+                <Button>{t("proposal.discard")}</Button>
+              </div>
+            </Panel>
+          </section>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              ChecksPanel: der Befund als Karte mit Titel, Beleg und beiden
+              Entscheidungen.
+            </Notice>
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">
+            Umbrochene Entitätszeile · Wissen-Dock
+          </h3>
+          {/* The entity rows as EntitiesPanel renders them: the shell's
+              selection list with the wrap the dock owns, so the long name
+              grows the row instead of ellipsizing. Inert: no selection. */}
+          <div className="mt-2">
+            <GridList
+              label={t("knowledge.entitiesHeading")}
+              flush
+              wrap
+              items={ENTITY_SPECIMENS}
+              getId={(entity) => entity.id}
+              textOf={(entity) => entity.name}
+              selectedId={null}
+              onSelect={() => {}}
+              render={(entity) => entity.name}
+            />
+          </div>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              EntitiesPanel: die Zeile bricht um, statt zu kürzen.
+            </Notice>
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">Dialogzeile · Palette</h3>
+          {/* The consistency dialog's resting state: the trigger beside its
+              cancel. The modal shell cannot stand inline in a gallery, so
+              the row stands for it — the same two Buttons the dialog wears.
+              Inert: no check enqueues, nothing closes. */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button variant="primary">{t("knowledge.checkNovel")}</Button>
+            <Button variant="secondary">{t("knowledge.entityCancel")}</Button>
+          </div>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              ConsistencyCheckDialog: die Paletten-Zeile
+              Ganzes-Buch-prüfen öffnet diesen Dialog; ruhend ist er
+              Auslöser neben Abbruch.
+            </Notice>
+          </div>
         </div>
       </section>
     </div>

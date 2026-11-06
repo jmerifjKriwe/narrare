@@ -35,6 +35,31 @@ describe("DesignGallery", () => {
     expect(screen.getAllByText(/ENTWURF/).length).toBe(13);
   });
 
+  it("pins the dock and palette specimens", () => {
+    cleanup();
+    render(<DesignGallery />);
+    expect(screen.getByRole("heading", { name: "Specimens" })).toBeTruthy();
+    for (const name of [
+      /Gesprächsrunde/,
+      /Konsistenzkarte/,
+      /Entitätszeile/,
+      /Dialogzeile/,
+    ]) {
+      expect(screen.getByRole("heading", { name })).toBeTruthy();
+    }
+    // The turn's chips wear their documents' titles; one stands open on
+    // its quoted passage.
+    expect(screen.getByRole("button", { name: "Zeitstrahl" })).toBeTruthy();
+    // The finding is the dock's own surface: a named region, not a bare card.
+    expect(screen.getByRole("region", { name: "Consistency finding" })).toBeTruthy();
+    // The wrapped row is the shell's selection list with the wrap the dock
+    // owns, named for its heading.
+    expect(screen.getByRole("grid", { name: "Entities" })).toBeTruthy();
+    // The palette's consistency row opens the dialog whose resting state is
+    // this trigger beside its cancel — the modal itself cannot stand inline.
+    expect(screen.getByRole("button", { name: "Check the whole book" })).toBeTruthy();
+  });
+
   it("clamps a 120-character cover title", () => {
     const { container } = render(<DesignGallery />);
     const tile = container.querySelector('[data-cover-tone][data-long-title]');

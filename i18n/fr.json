@@ -355,6 +355,7 @@
   "design.controls": "Controls",
   "design.surfaces": "Surfaces",
   "design.target": "État cible",
+  "design.specimens": "Spécimens",
   "jobs.truncated": "Seuls les 20 000 premiers caractères ont été lus.",
   "jobs.skippedChapters": "Ignorés, trop longs : {titles}",
   "prompts.heading": "Prompts",

@@ -355,6 +355,7 @@
   "design.controls": "Controls",
   "design.surfaces": "Surfaces",
   "design.target": "Zielzustand",
+  "design.specimens": "Belege",
   "jobs.truncated": "Nur die ersten 20.000 Zeichen wurden gelesen.",
   "jobs.skippedChapters": "Übersprungen, zu lang: {titles}",
   "prompts.heading": "Prompts",

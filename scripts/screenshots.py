@@ -290,7 +290,7 @@ def _capture(
     vendor.set_answer(CHAT_ANSWER)
     dock.get_by_label("Question").fill(QUESTION)
     dock.get_by_role("button", name="Ask").click()
-    expect(dock.get_by_role("region", name="Sources")).to_contain_text(
+    expect(dock.get_by_role("region", name="Answer")).to_contain_text(
         "Horizon Station — cast and places"
     )
     # The answer is offered to the editor as a variant; the offer is not what
@@ -351,8 +351,9 @@ def _capture(
     shot(SHOTS[6])
 
     # 8. The design gallery in the default light: every primitive and token
-    #    plus the Target drafts on one page, outside the settings hub's nav.
-    #    Full page — the claim is the five sections together, not one viewport
+    #    plus the Target drafts and the dock-and-palette specimens on one
+    #    page, outside the settings hub's nav.
+    #    Full page — the claim is the six sections together, not one viewport
     #    of them.
     api.patch("/api/settings/theme", json={"theme": None})
     page.goto(f"{WEB}/design")
