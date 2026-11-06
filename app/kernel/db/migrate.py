@@ -130,8 +130,9 @@ def missing_extensions(available: Collection[str]) -> list[str]:
 def extension_refusal(missing: Sequence[str]) -> str:
     """The one sentence an operator reads when the server cannot serve the schema."""
     names = ", ".join(f"'{name}'" for name in missing)
+    noun = "extension" if len(missing) == 1 else "extensions"
     return (
-        f"the database cannot provide the extension(s) Narrare's schema needs: {names}"
+        f"the database cannot provide the {noun} Narrare's schema needs: {names}"
         " — it must be able to CREATE EXTENSION; a plain PostgreSQL needs a"
         " pgvector-capable build (the pgvector/pgvector image) and the distribution's"
         " contrib package, and a hosted database has its platform create them"
