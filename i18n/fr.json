@@ -409,6 +409,7 @@
   "commands.openPrompts": "Ouvrir les prompts",
   "commands.openWissenDock": "Ouvrir le dock Savoir",
   "commands.newChapter": "Nouveau chapitre",
+  "commands.importNovel": "Importer le roman",
   "commands.exportNovel": "Exporter le roman",
   "palette.aria": "Palette de commandes",
   "palette.searchLabel": "Rechercher chapitres, entités, pages et commandes…",

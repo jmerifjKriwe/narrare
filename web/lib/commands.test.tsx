@@ -115,6 +115,7 @@ describe("the generated commands", () => {
   // so without one they are off.
   const enabledAt: Record<string, { novel: boolean; bare: boolean }> = {
     "new-chapter": { novel: true, bare: false },
+    "import-novel": { novel: true, bare: true },
     "export-novel": { novel: true, bare: false },
     "open-settings": { novel: true, bare: true },
     "open-prompts": { novel: true, bare: true },
@@ -146,6 +147,7 @@ describe("the generated commands", () => {
   // its dialog and moves no route).
   const destinations: Record<string, { novelId: string | null; path: string }> = {
     "new-chapter": { novelId: "7", path: "/novels/7" },
+    "import-novel": { novelId: null, path: "/" },
     "export-novel": { novelId: "7", path: "/" },
     "open-settings": { novelId: null, path: "/settings" },
     "open-prompts": { novelId: null, path: "/settings/prompts" },

@@ -409,6 +409,7 @@
   "commands.openPrompts": "Open prompts",
   "commands.openWissenDock": "Open Wissen dock",
   "commands.newChapter": "New chapter",
+  "commands.importNovel": "Import novel",
   "commands.exportNovel": "Export novel",
   "palette.aria": "Command palette",
   "palette.searchLabel": "Search chapters, entities, pages and commands…",

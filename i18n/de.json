@@ -409,6 +409,7 @@
   "commands.openPrompts": "Prompts öffnen",
   "commands.openWissenDock": "Wissen-Dock öffnen",
   "commands.newChapter": "Neues Kapitel",
+  "commands.importNovel": "Roman importieren",
   "commands.exportNovel": "Roman exportieren",
   "palette.aria": "Befehlspalette",
   "palette.searchLabel": "Kapitel, Entitäten, Seiten und Befehle suchen…",
