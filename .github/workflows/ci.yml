@@ -19,7 +19,7 @@ concurrency:
   # merge delivers its own report for its own SHA. The nightly, which has
   # its own question to answer, lives in its own workflow now (nightly.yml).
   group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
-  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
