@@ -9,4 +9,4 @@ package path, so this line is the release PR's write target beside
 written by the same release, so no copy can drift from the release.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
