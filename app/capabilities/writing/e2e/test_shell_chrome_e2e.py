@@ -221,10 +221,12 @@ def test_the_rail_tells_the_four_areas_apart(page: Page, stack: Stack) -> None:
 def test_tabbing_into_the_rail_opens_it(page: Page, stack: Stack) -> None:
     """A keyboard user gets the names too: focus-within opens the rail."""
     page.goto(f"{WEB}/")
-    for _ in range(8):
+    for _ in range(20):
         page.keyboard.press("Tab")
         if page.evaluate("document.activeElement?.closest('nav') !== null"):
             break
+    else:
+        raise AssertionError("the tab order never reached the rail")
     expect(page.locator(ICON_RAIL)).to_have_css("width", "168px")
 
 
