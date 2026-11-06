@@ -14,7 +14,7 @@ import {
 import { Button } from "@shell/ui/Button";
 import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
-import { ProposalCard } from "@shell/ui/ProposalCard";
+import { Panel } from "@shell/ui/Panel";
 
 /** The whole-novel consistency check and its review: the check runs as a
  *  durable job on the same lane the chapter-scoped extraction rides — the
@@ -106,9 +106,11 @@ export function ChecksPanel() {
       ) : null}
       {/* The findings queue outlives the job that filled it: a dock
           reopened later still owes the writer the decisions, so the cards
-          render from the query, not from the job's lifecycle. The card is
-          the review's own surface (P17's to restyle): consumed as it
-          stands, with the finding's decisions as its buttons. */}
+          render from the query, not from the job's lifecycle. A finding is
+          the dock's own surface (P17's to restyle): the Panel holds the
+          finding as its heading and the evidence beneath it, and the two
+          decisions stand on shell Buttons — the pair is two equals, neither
+          fills a primary (L1), and both stay always visible. */}
       {findings.isError ? (
         // The queue's own outage, named apart from the dock's other
         // failures: the findings, the suggestions and the entity list can
@@ -120,25 +122,39 @@ export function ChecksPanel() {
         </Notice>
       ) : (
         (findings.data ?? []).map((finding) => (
-          <ProposalCard
-            key={finding.id}
-            titleKey="knowledge.findingTitle"
-            body={finding.detail ?? ""}
-            onAccept={() => {
-              void acknowledge
-                .mutateAsync(finding.id)
-                .then(() => announce(t("knowledge.findingAcknowledged")))
-                .catch(() => undefined);
-            }}
-            onDiscard={() => {
-              void dismiss
-                .mutateAsync(finding.id)
-                .then(() => announce(t("knowledge.findingDismissed")))
-                .catch(() => undefined);
-            }}
-          >
-            <p className="mt-2 text-body font-medium">{finding.summary}</p>
-          </ProposalCard>
+          // The labelled section is the card's name for assistive tech:
+          // one "Consistency finding" region per contradiction, the way the
+          // proposal cards it replaces named themselves.
+          <section key={finding.id} aria-label={t("knowledge.findingTitle")} className="mt-4">
+            <Panel>
+              <h4 className="text-emph font-semibold">{finding.summary}</h4>
+              <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-muted">
+                {finding.detail ?? ""}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  onClick={() => {
+                    void acknowledge
+                      .mutateAsync(finding.id)
+                      .then(() => announce(t("knowledge.findingAcknowledged")))
+                      .catch(() => undefined);
+                  }}
+                >
+                  {t("proposal.accept")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    void dismiss
+                      .mutateAsync(finding.id)
+                      .then(() => announce(t("knowledge.findingDismissed")))
+                      .catch(() => undefined);
+                  }}
+                >
+                  {t("proposal.discard")}
+                </Button>
+              </div>
+            </Panel>
+          </section>
         ))
       )}
     </section>

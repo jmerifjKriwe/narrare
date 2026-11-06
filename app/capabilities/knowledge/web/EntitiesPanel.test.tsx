@@ -82,6 +82,33 @@ describe("EntitiesPanel filters", () => {
   });
 });
 
+describe("EntitiesPanel long names", () => {
+  it("wraps a 120-char entity name instead of truncating it", async () => {
+    // The dock's 352 px column cannot grow for the name, so the row does:
+    // the name span wraps (break-words, never truncate) and the row leaves
+    // its single-line control height behind (h-auto, min-h-7) — the chapter
+    // rail's precedent (NovelPage). jsdom pins the classes; pixels belong
+    // to the E2E's scrollWidth idiom.
+    const long = `Mira ${"am Leuchtturm ".repeat(9).trim()}`;
+    expect(long.length).toBeGreaterThanOrEqual(120);
+    api.GET.mockImplementation(async (path: string) => {
+      if (path.includes("relations")) return { data: [], response: { ok: true } };
+      return { data: [entity(long, "character")], response: { ok: true } };
+    });
+    api.POST.mockResolvedValue({ data: [], response: { ok: true } });
+    renderPanel();
+
+    const cell = await screen.findByRole("gridcell", { name: long });
+    const text = cell.querySelector("span");
+    expect(text).not.toBeNull();
+    expect(text!.className).toContain("break-words");
+    expect(text!.className).not.toContain("truncate");
+    const row = cell.closest('[role="row"]');
+    expect(row).not.toBeNull();
+    expect(row!.className).toContain("min-h-7");
+  });
+});
+
 describe("EntitiesPanel entity save", () => {
   it("keeps one PATCH per save while the request is pending", async () => {
     // The component-side pin (#313) that does not ride the E2E's route
