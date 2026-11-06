@@ -49,7 +49,8 @@ describe("the type scale's census", () => {
 describe("the area hues", () => {
   it("stay in the rail", () => {
     const offences = scanned
-      .filter((file) => !file.endsWith("components/IconRail.tsx"))
+      // lib/area.ts is the map's home, beside the tokens; the rail only wears it.
+      .filter((file) => !file.endsWith("components/IconRail.tsx") && !file.endsWith("lib/area.ts"))
       .flatMap((file) =>
         [...readFileSync(file, "utf8").matchAll(/\b(?:text|bg|border)-area-[a-z]+\b/g)].map(
           (match) => `${relative(REPO, file)}: ${match[0]}`,

@@ -658,6 +658,8 @@ export function NovelPage() {
                       aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
                       tabIndex={isTabStop ? 0 : -1}
                       onKeyDown={(event) => walkRail(event, index)}
+                      /* h-7 is the single-line control height: a wrapped title grows the row past it (the hits' `h-auto` precedent) instead of painting over the next row. */
+                      className="h-auto min-h-7"
                       onClick={() => {
                         // The chapter already open is no switch: a second
                         // history entry for the same address would only eat
@@ -675,7 +677,8 @@ export function NovelPage() {
                           and the count into one number. The count stays
                           foreground — muted on the selected row's wash is
                           below AA, the exact case the Row's own docs name. */}
-                      <span className="min-w-0 flex-1 truncate">
+                      {/* Wrap, never clamp: a 60-char title needs three lines in this rail, so a two-line clamp would still ellipsize exactly the titles this fixes. */}
+                      <span className="min-w-0 flex-1 break-words">
                         {title}{" "}
                       </span>
                       <span className="shrink-0 text-meta tabular-nums">

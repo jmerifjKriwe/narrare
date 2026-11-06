@@ -36,6 +36,9 @@ export const chatServer = {
   /** The SSE body the next ask is answered with; null answers as the empty
    *  JSON save. One shot: the first ask consumes it. */
   answerWith: null as string | null,
+  /** The failure status the next ask is refused with; null answers
+   *  normally. One shot: the first ask consumes it, like answerWith. */
+  failWith: null as number | null,
   /** Hold the answer open after writing its body: the stream stays
    *  mid-answer until the client aborts it or the test finishes it. */
   hold: false,
@@ -75,6 +78,8 @@ export async function startChatServer(): Promise<void> {
     request.on("end", () => {
       const sse = chatServer.answerWith;
       chatServer.answerWith = null;
+      const failWith = chatServer.failWith;
+      chatServer.failWith = null;
       const record: RecordedAsk = {
         url: request.url ?? "",
         body: Buffer.concat(chunks).toString("utf8"),
@@ -87,6 +92,12 @@ export async function startChatServer(): Promise<void> {
         },
       };
       chatServer.asks.push(record);
+      if (failWith !== null) {
+        // The refused ask: the panel names the failure, never the socket.
+        response.writeHead(failWith, { "content-type": "application/json" });
+        response.end(JSON.stringify({ detail: "the ask was refused" }));
+        return;
+      }
       if (sse === null) {
         response.writeHead(200, { "content-type": "application/json" });
         response.end("{}");

@@ -220,6 +220,9 @@ export function EntitiesPanel() {
           <GridList
             label={t("knowledge.entitiesHeading")}
             flush
+            // The dock's column cannot grow for a 120-char name, so the row
+            // grows instead: wrapped, never truncated (the rail's precedent).
+            wrap
             items={shown}
             getId={(entity) => entity.id}
             textOf={(entity) => entity.name}

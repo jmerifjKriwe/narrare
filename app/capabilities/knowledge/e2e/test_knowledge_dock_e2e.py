@@ -391,6 +391,74 @@ def test_the_wissen_dock_reviews_the_novels_findings(page: Page, stack: Stack) -
     assert_accessible(page)
 
 
+def test_the_finding_card_and_long_names_hold_the_dock_column(page: Page, stack: Stack) -> None:
+    """The finding card on primitives, long names wrapped, no overflow at 1280.
+
+    The finding card is the dock's own surface (Panel + shell Buttons): the
+    summary heads it, the evidence rides along, and both decisions stand
+    beside it. A 120-char entity name wraps inside its row instead of
+    clipping — the whole name stays in its own box — and the dock column
+    holds no horizontal overflow at 1280 px with the rail expanded over the
+    page.
+    """
+    novel_id = _seed_entities("Die lesbare Bucht")
+    long_name = (
+        "Die Hüterin des alten Leuchtturms am Horizont, die in jeder einzelnen Nacht "
+        "über die Bucht wachte und niemals schlief, solange das Licht brannte"
+    )
+    assert len(long_name) >= 120
+    with httpx.Client(base_url=API, timeout=30) as api:
+        listed = api.get(f"/api/knowledge/novels/{novel_id}/entities")
+        listed.raise_for_status()
+        leuchtturm = next(row["id"] for row in listed.json() if row["name"] == "Leuchtturm")
+        renamed = api.patch(f"/api/knowledge/entities/{leuchtturm}", json={"name": long_name})
+        renamed.raise_for_status()
+        # The check needs its contradictions: two chapters through the API,
+        # the faster driver the seeding helper already owns.
+        for body in CONTRADICTING_BODIES:
+            created = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": ""})
+            created.raise_for_status()
+            saved = api.put(f"/api/writing/chapters/{created.json()['id']}", json={"body": body})
+            saved.raise_for_status()
+
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die lesbare Bucht")).to_be_visible()
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    entities = dock.get_by_role("region", name="Entitäten")
+
+    # The long name wraps in its row: the whole name stays inside the name
+    # span's own box (the scrollWidth idiom, the chapter rail's pin).
+    cell = _row_named(entities, long_name)
+    expect(cell).to_be_visible()
+    name_span = cell.locator("span").first
+    assert name_span.evaluate("element => element.scrollWidth - element.clientWidth") <= 1
+
+    # The rail expanded over the page: the dock column still holds no
+    # horizontal overflow — the wrap keeps every row inside it.
+    page.get_by_role("navigation", name="Hauptnavigation").hover()
+    page.wait_for_timeout(400)
+    assert dock.evaluate("element => element.scrollWidth - element.clientWidth") <= 1
+
+    # The finding card states its evidence with both decisions on the
+    # dock's own primitives — Panel and shell Buttons, no proposal card.
+    checks = dock.get_by_role("region", name="Konsistenz")
+    checks.get_by_role("button", name="Ganzes Buch prüfen").click()
+    status = checks.locator("[data-job-status]")
+    expect(status).to_have_attribute("data-job-status", "done")
+    expect(status).to_contain_text("2 Widersprüche gefunden")
+    cards = dock.get_by_role("region", name="Widerspruch")
+    expect(cards).to_have_count(2)
+    mira = cards.filter(has_text="Mira")
+    expect(mira).to_contain_text('"Mira ist 34" vs. "Mira ist 37"')
+    expect(mira.get_by_role("button", name="Übernehmen", exact=True)).to_be_visible()
+    expect(mira.get_by_role("button", name="Verwerfen")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_the_wissen_dock_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
     """An outage in the dock reads as an outage, never as an empty list.
 

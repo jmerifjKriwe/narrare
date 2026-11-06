@@ -21,9 +21,15 @@ import { rowClass } from "./Row";
  * paint is the identical box-shadow, so the row shows one ring, keyboard
  * only, never two. The rows stack flush: each carries the `--rule`
  * separator, so a gap here would float a rule inside empty space. A
- * row's text truncates, never wraps (§6, the 360 px rule); React-Aria's
- * gridcell wrapper is `display: contents`, so the span below is the flex
- * child that shrinks and ellipsizes.
+ * row's text truncates, never wraps (§6, the 360 px rule) — unless the
+ * caller passes `wrap`: a name the column cannot grow for (a 120-char
+ * entity in the 352 px dock) needs the row to grow instead. The wrap is
+ * the chapter rail's precedent (NovelPage): the item leaves the
+ * single-line control height behind (`h-auto min-h-7`, appended after the
+ * matrix — the P3 precedence) and the span trades `truncate` for
+ * `break-words`. React-Aria's gridcell wrapper is `display: contents`, so
+ * the span below is the flex
+ * child that shrinks — and, wrapped, grows the row instead of ellipsizing.
  */
 export function GridList<T>({
   label,
@@ -34,6 +40,7 @@ export function GridList<T>({
   textOf,
   selectedId,
   onSelect,
+  wrap = false,
 }: {
   label: string;
   /** The surface around the list owns the gutter; rows add none. */
@@ -46,6 +53,9 @@ export function GridList<T>({
   textOf?: (item: T) => string;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** Wrapped rows for names the column cannot grow for; the default stays
+   *  the truncating single-line row (§6). */
+  wrap?: boolean;
 }) {
   return (
     <RacGridList
@@ -66,9 +76,11 @@ export function GridList<T>({
           key={getId(item)}
           id={getId(item)}
           textValue={textOf?.(item)}
-          className={`${rowClass(getId(item) === selectedId, flush)} data-focus-visible:ring-2 data-focus-visible:ring-focus`}
+          className={`${rowClass(getId(item) === selectedId, flush)}${wrap ? " h-auto min-h-7" : ""} data-focus-visible:ring-2 data-focus-visible:ring-focus`}
         >
-          <span className="min-w-0 flex-1 truncate">{render(item)}</span>
+          <span className={wrap ? "min-w-0 flex-1 break-words" : "min-w-0 flex-1 truncate"}>
+            {render(item)}
+          </span>
         </GridListItem>
       ))}
     </RacGridList>

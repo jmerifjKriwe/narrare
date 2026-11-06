@@ -30,6 +30,11 @@ const ProviderPage = lazy(async () => {
   return { default: page.ProviderPage };
 });
 
+const DesignGallery = lazy(async () => {
+  const page = await import("./DesignGallery");
+  return { default: page.DesignGallery };
+});
+
 // The area's frame: title, back door, cluster nav, and the outlet every
 // child renders into.
 const settingsLayoutRoute = createRoute({
@@ -63,6 +68,14 @@ const providerRoute = createRoute({
   component: ProviderPage,
 });
 
+// The living gallery: root-parented, outside the settings hub's clusters and
+// nav — reachable by URL for gates and reviewers, invisible in the product.
+const designRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/design",
+  component: DesignGallery,
+});
+
 // The settings host contract, named for the generator's scan: contributed
 // settings pages parent here, the way docks parent at the workspace route.
 export const settingsRoute = settingsLayoutRoute;
@@ -82,4 +95,5 @@ export const routes = [
   languageRoute,
   appearanceRoute,
   providerRoute,
+  designRoute,
 ] as const;

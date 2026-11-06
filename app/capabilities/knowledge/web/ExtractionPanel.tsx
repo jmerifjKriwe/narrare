@@ -1,11 +1,10 @@
 import { useParams, useSearch } from "@tanstack/react-router";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
 import {
   activeChapterFallback,
-  queryClient,
   useAcceptSuggestion,
   useChaptersQuery,
   useDiscardSuggestion,
@@ -20,6 +19,7 @@ import { ProposalCard } from "@shell/ui/ProposalCard";
 
 import { entityTypeLabel } from "./EntitiesPanel";
 import { relationTypeLabel } from "./relations";
+import { useSettleJob } from "./useSettleJob";
 
 /** Extraction and its review: the chapter the editor is showing, through
  *  the job lane, and the queue its result files — one proposal card per
@@ -46,34 +46,17 @@ export function ExtractionPanel() {
   const discard = useDiscardSuggestion(novelId);
   const headingId = useId();
 
-  // The settled job decides the queue: the row turning done or failed is
-  // the moment the suggestions exist (or provably will not), so that is
-  // when the pending queue refetches — the poll publishes its own finding.
-  const settled = job.data?.status === "done" || job.data?.status === "failed";
-  useEffect(() => {
-    if (!settled) return;
-    void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
-  }, [settled, novelId]);
-
-  // The poll can fail like any fetch: the service going down under an
-  // outstanding job leaves the row's answer missing. A missing answer is
-  // an error, not a promise of movement — the queued/running row promised
-  // progress, and an unanswered poll must not wear that promise.
-  const pollFailed = jobId !== null && job.isError;
-
-  // One extraction at a time: the trigger stays closed while its enqueue
-  // POST is in flight or the job it filed is still outstanding, because a
-  // second click would stack a duplicate job and a duplicate review queue
-  // behind the first. Three things hand the button back: a settled row
-  // (done or failed is an answer), a poll that met the dead service — an
-  // unanswered poll used to count as outstanding, so an unknown state
-  // locked the trigger for the whole outage; the locked button was the
-  // bug, and the reopened one is the retry — and a refused enqueue: the
-  // retry is the same button again, starting a fresh extraction (the
-  // outstanding job stays on the durable lane and will run when the
-  // service returns, so its suggestions surface in the queue like any
-  // run's).
-  const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
+  // The settle beat is the shared hook's: the settled row refetches the
+  // pending queue, the dead poll reopens the trigger — one extraction at
+  // a time, the same rule the check and the palette's dialogs keep.
+  const { busy, pollFailed } = useSettleJob({
+    jobId,
+    status: job.data?.status,
+    pollError: job.isError,
+    enqueuePending: enqueue.isPending,
+    novelId,
+    queue: "suggestions",
+  });
 
   /** Enqueue the active chapter for polling; no selection is a no-op and failures stay visible. */
   async function extract() {
