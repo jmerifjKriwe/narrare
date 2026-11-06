@@ -45,3 +45,23 @@ describe("the type scale's census", () => {
     expect(offences).toEqual([]);
   });
 });
+
+describe("the scale's steps", () => {
+  it("reads 12 / 13 / 14 / 15 / 20 / 28", () => {
+    const css = readFileSync(join(WEB, "globals.css"), "utf8");
+    const step = (name: string) =>
+      new RegExp(`--text-${name}: ([\\d.]+)rem;`).exec(css)?.[1] ?? null;
+    expect(
+      Object.fromEntries(
+        ["meta", "label", "body", "emph", "title", "hero"].map((name) => [name, step(name)]),
+      ),
+    ).toEqual({
+      meta: "0.75",
+      label: "0.8125",
+      body: "0.875",
+      emph: "0.9375",
+      title: "1.25",
+      hero: "1.75",
+    });
+  });
+});

@@ -75,6 +75,21 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
         })"""
     )
     assert sizes == {"hero": "28px", "card": "15px"}, sizes
+
+    # The text steps render at the scale, not just in the CSS: a token edit
+    # that never reaches a surface fails here as a pixel. `text-label` is not
+    # pinned here — its lines (genre, language) are conditional; the token pin
+    # in typeScale.test.ts covers that step.
+    steps = page.evaluate(
+        """() => {
+          const hero = document.querySelector('section[aria-labelledby="novels-continue"]');
+          return {
+            body: getComputedStyle(document.querySelector('header .truncate')).fontSize,
+            meta: getComputedStyle(hero.querySelector('p.text-meta')).fontSize,
+          };
+        }"""
+    )
+    assert steps == {"body": "14px", "meta": "12px"}, steps
     expect(hero.locator("div.bg-rule, div.bg-primary, div.bg-foreground").first).to_be_visible()
     door = hero.get_by_role("link", name="Weiterschreiben")
     expect(door).to_be_visible()
