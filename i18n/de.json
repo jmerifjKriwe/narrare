@@ -411,6 +411,8 @@
   "commands.newChapter": "Neues Kapitel",
   "commands.importNovel": "Roman importieren",
   "commands.exportNovel": "Roman exportieren",
+  "commands.runExtraction": "Entitäten aus Kapitel extrahieren",
+  "commands.checkConsistency": "Ganzes Buch prüfen",
   "palette.aria": "Befehlspalette",
   "palette.searchLabel": "Kapitel, Entitäten, Seiten und Befehle suchen…",
   "palette.chapters": "Kapitel",

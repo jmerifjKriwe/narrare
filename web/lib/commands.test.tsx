@@ -120,6 +120,8 @@ describe("the generated commands", () => {
     "open-settings": { novel: true, bare: true },
     "open-prompts": { novel: true, bare: true },
     "open-wissen-dock": { novel: true, bare: false },
+    "run-extraction": { novel: true, bare: false },
+    "run-consistency-check": { novel: true, bare: false },
   };
 
   it("are enabled exactly where the table says, at both novelId states", () => {
@@ -152,6 +154,8 @@ describe("the generated commands", () => {
     "open-settings": { novelId: null, path: "/settings" },
     "open-prompts": { novelId: null, path: "/settings/prompts" },
     "open-wissen-dock": { novelId: "7", path: "/novels/7/wissen" },
+    "run-extraction": { novelId: "7", path: "/" },
+    "run-consistency-check": { novelId: "7", path: "/" },
   };
 
   it("navigate to their destination through a real router", async () => {

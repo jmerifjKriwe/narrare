@@ -411,6 +411,8 @@
   "commands.newChapter": "New chapter",
   "commands.importNovel": "Import novel",
   "commands.exportNovel": "Export novel",
+  "commands.runExtraction": "Extract entities from chapter",
+  "commands.checkConsistency": "Check whole novel",
   "palette.aria": "Command palette",
   "palette.searchLabel": "Search chapters, entities, pages and commands…",
   "palette.chapters": "Chapters",

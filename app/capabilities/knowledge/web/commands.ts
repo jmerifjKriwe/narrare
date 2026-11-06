@@ -1,3 +1,5 @@
+import { createElement, useState } from "react";
+
 import type { Command } from "@shell/lib/commands";
 
 // The capability's palette rows: data only, no component imports — the
@@ -24,6 +26,57 @@ export const commands = [
         // state. `search: true` carries it, the way the palette's dock rows
         // and the workbench's own tabs do.
         search: true,
+      });
+    },
+    enabled: (ctx) => ctx.novelId !== null,
+  },
+  {
+    id: "run-extraction",
+    titleKey: "commands.runExtraction",
+    run: (ctx) => {
+      if (ctx.novelId === null) return;
+      const novelId = ctx.novelId;
+      ctx.openModal(async () => {
+        const m = await import("./JobDialogs");
+        return {
+          // The slot mounts a props-free component: the dialog reads the
+          // chapter list through Query (the workbench already asked for it)
+          // and mounts already open — the palette row was the press.
+          // Closing it unmounts the overlay; the slot's next open is a
+          // fresh mount.
+          default: function ExtractionJobFromPalette() {
+            const [open, setOpen] = useState(true);
+            return createElement(m.ExtractionJobDialog, {
+              novelId,
+              isOpen: open,
+              onOpenChange: setOpen,
+            });
+          },
+        };
+      });
+    },
+    enabled: (ctx) => ctx.novelId !== null,
+  },
+  {
+    id: "run-consistency-check",
+    titleKey: "commands.checkConsistency",
+    run: (ctx) => {
+      if (ctx.novelId === null) return;
+      const novelId = ctx.novelId;
+      ctx.openModal(async () => {
+        const m = await import("./JobDialogs");
+        return {
+          // Like the extraction row: the dialog mounts already open, and
+          // its close unmounts the overlay.
+          default: function ConsistencyCheckFromPalette() {
+            const [open, setOpen] = useState(true);
+            return createElement(m.ConsistencyCheckDialog, {
+              novelId,
+              isOpen: open,
+              onOpenChange: setOpen,
+            });
+          },
+        };
       });
     },
     enabled: (ctx) => ctx.novelId !== null,
