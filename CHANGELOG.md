@@ -20,6 +20,14 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
+## [0.3.1](https://github.com/jmerifjKriwe/narrare/compare/v0.3.0...v0.3.1) (2026-11-06)
+
+
+### 🐛 Bug Fixes
+
+* **container:** the shell stage installs pnpm instead of expecting corepack ([4e49f4d](https://github.com/jmerifjKriwe/narrare/commit/4e49f4d29dd598e2fd7ce10a0e042842d0fbe30f))
+* **container:** the shell stage installs pnpm instead of expecting corepack ([e16c400](https://github.com/jmerifjKriwe/narrare/commit/e16c400215eccf5447380d4324ed8041984d17a5))
+
 ## [0.3.0](https://github.com/jmerifjKriwe/narrare/compare/v0.2.0...v0.3.0) (2026-11-06)
 
 
