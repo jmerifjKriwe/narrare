@@ -215,13 +215,16 @@ platforms). Every icon-only control gets a catalog key in en/de/fr.
 ### 8.6 Covers
 
 Generated, deterministic, no files: a cover is a rounded 3:4 tile whose ground is
-one of three token-derived tones — sepia (`--primary`), ink (dark,
-foreground-derived), pale (`--rule`-derived) — chosen by a stable hash of the
-title; the title is set in the serif face on the tile, 3 lines, ellipsis (the
-clamp the shelf pins; an earlier draft said 2). Genre and
-language do not affect the tone. No fourth tone, no gradients beyond a single
-inner shade, no uploaded artwork. Three tones are enough for a shelf of ten books;
-a rainbow is not.
+one of three cover tokens — pale, sepia and ink — chosen by a stable hash of the
+title. The tokens are the cover's own (`--cover-*-ground` / `--cover-*-ink`,
+`light-dark()` pairs); a cover never borrows the action's fill, so in dark mode
+the sepia tile stays quieter than the one primary button (#590). The tone also
+chooses the composition: pale and sepia set the title at the foot with the
+book's genre (or its language) in the corner, sepia adds an inset hairline and a
+spine strip, ink centres its title. The title is set in the serif face, 3 lines,
+ellipsis (the clamp the shelf pins). Genre and language do not affect the tone.
+No fourth tone, no gradients beyond a single inner shade, no uploaded artwork.
+Three tones are enough for a shelf of ten books; a rainbow is not.
 
 ### 8.7 Surfaces
 
@@ -373,8 +376,8 @@ type/colour/spacing drift is not:
 
 - `text-sm` = 0 (the scale is `text-body` and friends; `text-sm` survives only
   inside `web/ui/`)
-- `bg-primary` = 0 outside `Button` and `Cover` (a cover's ground is an
-  object surface, §8.6)
+- `bg-primary` = 0 outside `Button` (a cover's ground is an object surface,
+  §8.6, and now has its own tokens)
 - `border-border` = 0 in capability folders (legal on `web/components` chrome, R42)
 - `rounded-md` / `rounded-lg` = 0 in capability folders (rounded-lg legal on `web/components` chrome, R42) (radii come from tokens)
 - `ml-*` / `mr-*` between siblings = 0

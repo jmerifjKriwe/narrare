@@ -1,35 +1,35 @@
 /**
  * The cover: a 3:4 tile that gives each book a face on the shelf. Which of
- * the three token tones a book wears is `hash(title) % 3` — a pure function
+ * the three cover tones a book wears is `hash(title) % 3` — a pure function
  * of the title, so a book keeps its cover across renders, reloads and
  * sessions without the database storing one, and two differently named
- * books can land on the same tone without anyone lying. The lettering is
- * the brand serif, the EB Garamond stack the prose surface reads in
- * (`.ProseMirror`'s `@font-face`); it clamps to three lines, and the clamp
- * carries the overflow so a long title paints inside the tile and nowhere
- * else.
+ * books can land on the same tone without anyone lying.
+ *
+ * A tone is more than a ground. Pale and sepia set the title at the foot and
+ * name the book's genre (or its language) in the corner; sepia adds an inset
+ * hairline and a spine strip, so the three tiles are three objects rather
+ * than three fills. Ink centres its title. All of it is CSS: no file, no
+ * uploaded art, nothing to export.
  *
  * The tile is `aria-hidden`: the card that holds it already names the book
  * (the card link's accessible name is the shelf's answer), and a second
  * copy of the title in the accessibility tree would make "open Der Sturm"
- * read twice. The one call this wave makes — shelf card and hero — both
- * name the book; a standalone cover that must speak would drop this
- * attribute at its own call site, with the reasoning above.
+ * read twice. The lettering is the brand serif, the EB Garamond stack the
+ * prose surface reads in; it clamps to three lines, and the clamp carries
+ * the overflow.
  */
 
-/** The tile's three looks, exactly the spec's trio (R32): pale (`--rule`-
- *  derived), sepia (the brand fill) and ink (dark, foreground-derived — it
- *  inverts with the theme the way every token surface does). No half-steps
- *  of a token: a cover's ground is an object surface, not an action. The
- *  ink pairs with each ground are the AA-checked ones — primary-foreground
- *  on sepia and ink, foreground on pale. */
-export const COVER_TONES = [
-  "bg-rule text-foreground",
-  "bg-primary text-primary-foreground",
-  "bg-foreground text-primary-foreground",
+/** The tile's three looks: ground, ink, and the composition each tone owns.
+ *  A cover's ground is an object surface, never an action token — dark mode
+ *  is where borrowing `--primary` made the tile read as a giant button
+ *  (#590). */
+const TONES = [
+  { name: "pale", ground: "bg-cover-pale", ink: "text-cover-pale-ink", frame: false, centered: false },
+  { name: "sepia", ground: "bg-cover-sepia", ink: "text-cover-sepia-ink", frame: true, centered: false },
+  { name: "ink", ground: "bg-cover-ink", ink: "text-cover-ink-ink", frame: false, centered: true },
 ] as const;
 
-/** A tone: an index into `COVER_TONES`. */
+/** A tone: an index into `TONES`. */
 export type CoverTone = 0 | 1 | 2;
 
 /** FNV-1a, 32 bit: tiny, order-sensitive, identical in every engine — a
@@ -51,15 +51,51 @@ const SIZES = {
 
 export type CoverSize = keyof typeof SIZES;
 
-export function Cover({ title, size = "md" }: { title: string; size?: CoverSize }) {
+export function Cover({
+  title,
+  size = "md",
+  genre = null,
+  language = null,
+}: {
+  title: string;
+  size?: CoverSize;
+  genre?: string | null;
+  language?: string | null;
+}) {
+  const look = TONES[coverTone(title)];
+  // The eyebrow is the book's one catalogued fact: a genre, or the language
+  // it is written in. No counts — the card already carries them.
+  const eyebrow = genre ?? language?.toUpperCase() ?? "";
   return (
     <div
       aria-hidden="true"
-      className={`flex shrink-0 ${SIZES[size]} aspect-[3/4] items-stretch rounded-[var(--radius)] border border-border p-1.5 ${
-        COVER_TONES[coverTone(title)]
-      }`}
+      data-cover-tone={look.name}
+      className={`relative flex shrink-0 ${SIZES[size]} aspect-[3/4] overflow-hidden rounded-[var(--radius)] border border-border p-1.5 ${
+        look.ground
+      } ${look.ink} ${look.centered ? "items-center justify-center" : "items-end"}`}
     >
-      <span className="line-clamp-3 w-full self-center overflow-hidden text-center [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif] text-label leading-tight">
+      {look.frame ? (
+        <>
+          <span
+            data-cover-frame
+            className="pointer-events-none absolute inset-[5px] rounded-[2px] border border-current opacity-35"
+          />
+          <span className="pointer-events-none absolute inset-y-0 left-0 w-[5px] bg-current opacity-20" />
+        </>
+      ) : null}
+      {eyebrow === "" ? null : (
+        <span
+          data-cover-eyebrow
+          className="absolute left-1.5 top-1.5 text-[8px] uppercase tracking-[0.08em] opacity-70"
+        >
+          {eyebrow}
+        </span>
+      )}
+      <span
+        className={`line-clamp-3 w-full overflow-hidden break-words text-label leading-tight [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif] ${
+          look.centered ? "text-center" : "text-left"
+        }`}
+      >
         {title}
       </span>
     </div>

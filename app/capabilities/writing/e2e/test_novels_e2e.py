@@ -90,7 +90,7 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
         }"""
     )
     assert steps == {"body": "14px", "meta": "12px"}, steps
-    expect(hero.locator("div.bg-rule, div.bg-primary, div.bg-foreground").first).to_be_visible()
+    expect(hero.locator("[data-cover-tone]").first).to_be_visible()
     door = hero.get_by_role("link", name="Weiterschreiben")
     expect(door).to_be_visible()
     expect(door).not_to_have_class(re.compile(r"bg-primary"))

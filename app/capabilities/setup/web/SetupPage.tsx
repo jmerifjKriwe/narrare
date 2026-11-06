@@ -136,7 +136,7 @@ export function SetupPage() {
                     the object grounds the choice the radio names. The tile
                     is aria-hidden; the radio's name already carries the
                     title, and a second copy of it would read twice. */}
-                <Cover title={entry.title} />
+                <Cover title={entry.title} language={entry.language} />
                 <span className="flex min-w-0 flex-col">
                   <span className="text-body font-medium group-has-checked:font-semibold">
                     {entry.title}
