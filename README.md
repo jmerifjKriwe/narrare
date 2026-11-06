@@ -41,6 +41,11 @@ the contradictions you left behind.
 </tr>
 </table>
 
+<img src="assets/screenshots/06-shelf-dark.png" alt="The same shelf in the reader's chosen dark theme: the covers keep their own inks, and the sepia tile stays quieter than the primary action" width="800">
+
+Light and dark are the reader's choice, stored with the account — the system
+decides only until they pick.
+
 The images come from the app itself, captured by `scripts/screenshots.py`; the prose
 in them is supplied by a stand-in model, so nothing here was written by one.
 
