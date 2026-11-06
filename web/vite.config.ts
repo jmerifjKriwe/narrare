@@ -10,6 +10,12 @@ import { defineConfig } from "vitest/config";
 // the shell, never another capability.
 const shell = fileURLToPath(new URL(".", import.meta.url));
 
+// The ports are configuration on both sides (#621): app/kernel/testing/stack.py
+// forwards its environment to `pnpm dev`, so the E2E stack and this dev server
+// share NARRE_E2E_API_PORT / NARRE_E2E_WEB_PORT. Unset means 3100/8000.
+const webPort = Number(process.env.NARRE_E2E_WEB_PORT ?? "3100");
+const apiPort = Number(process.env.NARRE_E2E_API_PORT ?? "8000");
+
 // One origin in the browser, as before: /api is forwarded to the FastAPI
 // process. In production FastAPI serves the built files itself, so this proxy
 // exists only while developing.
@@ -32,13 +38,14 @@ export default defineConfig({
   },
   server: {
     // Bind to IPv4 localhost explicitly: in CI (and on some hosts) `localhost`
-    // resolves to ::1 (IPv6) only, so the E2E stack's http://127.0.0.1:3100
+    // resolves to ::1 (IPv6) only, so the E2E stack's http://127.0.0.1 web
     // probe would never reach a server bound to `localhost`.
     host: "127.0.0.1",
-    // strictPort: a busy 3100 must fail loudly. Silently moving to 3101 would
-    // let the E2E suite test a different process than the one it started.
-    port: 3100,
+    // strictPort: a busy chosen port must still fail loudly. Silently moving
+    // to +1 would let the E2E suite test a different process than the one it
+    // started.
+    port: webPort,
     strictPort: true,
-    proxy: { "/api": "http://127.0.0.1:8000" },
+    proxy: { "/api": `http://127.0.0.1:${apiPort}` },
   },
 });

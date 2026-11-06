@@ -39,8 +39,10 @@ from playwright.sync_api import Locator, Page, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
 
 if TYPE_CHECKING:
@@ -52,8 +54,9 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(480)]
 # One flow carries the whole gate — the writer's day and the four-width sweep
 # in one test — so its budget is the viewport sweep's own, scaled to match.
 
-BASE = "http://127.0.0.1:3100"
-DATABASE = "narrare_v2_e2e"  # the stack's own database (e2e/conftest.py)
+BASE = WEB_URL
+# this run's stack database (e2e/conftest.py)
+DATABASE = testsupport.test_database("narrare_v2_e2e")
 
 APP = Path(__file__).resolve().parents[3]
 DEMO = APP / "kernel" / "interchange" / "demos" / "im-stillen-wald"

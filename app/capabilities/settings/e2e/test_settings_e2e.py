@@ -12,13 +12,14 @@ import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-URL = "http://127.0.0.1:3100/knowledge"
+URL = f"{WEB_URL}/knowledge"
 
 
 def test_a_chosen_language_survives_a_fresh_browser(
@@ -59,7 +60,7 @@ def test_a_chosen_language_survives_a_fresh_browser(
 
 
 def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     # The shell paints only after the settings query answers — the locale
     # gate — so the Tab below must wait for the bar to exist.
     expect(page.locator("header")).to_be_visible()
@@ -79,7 +80,7 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
 def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) -> None:
     """The settings frame's geometry: the cluster nav is a row list in its own
     200 px column, and the pages render beside it — never spilled into it."""
-    page.goto("http://127.0.0.1:3100/settings")
+    page.goto(f"{WEB_URL}/settings")
 
     # The area's one cluster navigation — distinct from the rail's
     # Hauptnavigation by its name.
@@ -123,17 +124,17 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
 def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stack: Stack) -> None:
     """The tab names the page showing (WCAG 2.4.2) on every settings page,
     and the active cluster row says so with ``aria-current``."""
-    page.goto("http://127.0.0.1:3100/settings")
+    page.goto(f"{WEB_URL}/settings")
     expect(page).to_have_title("Einstellungen — Narrare")
 
     # A sub-page owns its own name — the landing's, not the area's.
-    page.goto("http://127.0.0.1:3100/settings/language")
+    page.goto(f"{WEB_URL}/settings/language")
     expect(page).to_have_title("Sprache — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Sprache")
     ).to_have_attribute("aria-current", "page")
 
-    page.goto("http://127.0.0.1:3100/settings/provider")
+    page.goto(f"{WEB_URL}/settings/provider")
     expect(page).to_have_title("Anbieter — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Anbieter")
