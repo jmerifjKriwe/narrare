@@ -585,9 +585,9 @@ export function NovelPage() {
       {/* The workbench: the rail beside the editor, so writing never scrolls
           past the chapter list. The container is one width in both states
           (F25) — 1200, the shelf's own, so the bar, the shelf and this page
-          share one left edge: rail 224, dock 384, and the prose column that
-          remains carries the 544 measure with air on both sides (592 with
-          the dock open, 24 px each side). The frame stays while the book
+          share one left edge: rail 224, column 592, dock 352, so the card's
+          576 and the 16 px gap it leaves the ring fit with no slack to
+          spare. The frame stays while the book
           loads or fails — the toolbar and the docks are independent of the
           book's row, and a dock's own outage story must stay reachable.
           Below the desktop breakpoint the row is the overlays' containing
@@ -609,8 +609,9 @@ export function NovelPage() {
             /* Beside the editor at ≥1024 (the columns the desktop E2Es
                pin); below, a drawer over it. The 224 the rail takes are
                the desktop arithmetic's own — the gutter to the prose lives
-               inside the column (lg:pr-6), so rail + prose + dock sum to
-               the container with no gap to account for. The list bounds
+               inside the column (lg:pr-6), so rail + column + dock sum to
+               the container with no gap of their own; the column's 16 px
+               padding is the gap the card's ring needs. The list bounds
                its height and scrolls inside itself (Review Focus 2); below
                the breakpoint the whole drawer scrolls instead. The drawer
                paints one z-step above the dock's: opening it over a live
@@ -697,19 +698,17 @@ export function NovelPage() {
         ) : null}
 
         <section
-          className="flex min-w-0 flex-1 flex-col items-center"
+          className="flex min-w-0 flex-1 flex-col items-center lg:pr-4"
           inert={railOverlay || dockOverlay || undefined}
         >
-          {/* The editor's tone step (R49): a band painted around the
-              measured column — the 544 the prose reads at is never the
-              chrome's victim. The prose column keeps 592 with the dock open
-              (rail 224 + prose 592 + dock 384 = 1200), so the measure
-              centres with 24 px of air on each side instead of touching the
-              band's edge; the band takes its ground, its rules and its air
-              vertically, and the measure lives on the inner column
-              untouched. */}
-          <div className="w-full border-y border-rule bg-card py-6">
-            <div className="mx-auto w-full max-w-[544px]">
+          {/* The writing surface is the card (F18): ChapterEditor paints it,
+              the page only leaves it the column. The arithmetic is the
+              workspace's: rail 224 + column 592 + dock 352 = the container's
+              1168; the column is the card's 576 plus the 16 px gap the focus
+              ring needs, so the ring never lands on the dock's seam. The
+              measure stays 544 inside the card, wherever the dock is. */}
+          <div className="w-full py-6">
+            <div className="mx-auto w-full max-w-[576px]">
               {pending ? (
               // The page has asked and is waiting — a named state, not a blank
               // or empty-looking book. Quiet and polite: nothing is wrong.
@@ -799,8 +798,9 @@ export function NovelPage() {
           <aside
             /* Same contract as the rail, mirrored: a drawer from the
                right below 1024, the desktop's dock column at ≥1024. The
-               384 the dock takes are the arithmetic's own; its gutter to
-               the prose lives inside the column. The column is a flex
+               352 the dock takes are the arithmetic's own; the column's
+               16 px padding is the gap the card's ring needs. The column is
+               a flex
                stack so the title holds its place while the body under it
                takes the remaining height and scrolls alone. The rail's
                drawer sits a z-step above this one: a rail opened over a
@@ -808,7 +808,7 @@ export function NovelPage() {
                in-progress ask survives behind the drawer — and while it is
                covered the dock goes `inert`, so the keyboard cannot land on
                controls the drawer hides. */
-            className="flex w-96 shrink-0 flex-col rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:max-h-[calc(100dvh-16rem)] lg:pl-6"
+            className="flex w-88 shrink-0 flex-col rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:max-h-[calc(100dvh-16rem)] lg:pl-6"
             aria-label={t(openDock.titleKey)}
             inert={railOverlay || undefined}
           >

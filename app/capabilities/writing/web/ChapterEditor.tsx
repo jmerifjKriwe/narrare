@@ -235,27 +235,10 @@ export function ChapterEditor({
 
   return (
     <div>
-      {focusDepth < 2 ? (
-        <header className="flex items-baseline justify-between gap-4">
-          {chapterTitle !== undefined || bookTitle !== undefined ? (
-            /* A paragraph, not a heading: its accessible name carries the
-               book's title too, and a second heading that contains it turns
-               every "heading <book>" query into a coin toss — the runhead is
-               the page's label, not a node of its outline. The chapter's own
-               name still wears the 600 face. */
-            <p className="min-w-0 truncate text-body font-semibold">
-              {bookTitle !== undefined ? (
-                <span className="font-normal text-muted">{bookTitle} · </span>
-              ) : null}
-              {chapterTitle}
-            </p>
-          ) : (
-            <span aria-hidden="true" />
-          )}
-          <SaveIndicator status={status} />
-        </header>
-      ) : null}
-      <div className="mt-4 flex items-center gap-3">
+      {/* The action stands above the sheet, never inside it: the card's
+          focus ring must not enclose a control — the button is its own
+          focus target, and the ring means "the text has the caret". */}
+      <div className="mb-4 flex items-center gap-3">
         {/* The workspace's one filled primary (R46): through the primitive,
             so the fill, the ring and the disabled state ride buttonClass. */}
         <Button variant="primary" onClick={continueWriting} disabled={continuing}>
@@ -263,28 +246,63 @@ export function ChapterEditor({
         </Button>
       </div>
       {failed ? (
-        <Notice tone="danger" live="alert" className="mt-2">
+        <Notice tone="danger" live="alert" className="mb-4">
           {t("chapters.continueError")}
         </Notice>
       ) : null}
-      <MarkdownEditor
-        className="mt-6"
-        label={t("chapters.editorLabel")}
-        value={body}
-        onChange={scheduleAndCount}
-        extensions={extensions}
-        onReady={setEditor}
-      />
-      {focusDepth < 2 ? (
-        <footer className="mt-4 flex items-baseline justify-between gap-4 text-meta text-muted">
-          <span className="tabular-nums">{t("chapters.wordCount", { count: words })}</span>
-          {chapterTotal ? (
-            <span className="tabular-nums">
-              {t("chapters.position", { n: chapterNumber ?? 0, m: chapterTotal })}
-            </span>
-          ) : null}
-        </footer>
-      ) : null}
+      {/* The writing surface is a card (F18): the focus ring sits on its
+          edge, 16 px from the glyphs, instead of flush on them. The 1 px
+          edge plus the 15 px pad is that 16 px; a 16 px pad would eat 2 px
+          of the measure, which is fixed at 544. The card never grows past
+          576: a wider card would leave the 544 px measure flush left. Below
+          576 the column is narrower than the card, so the card cancels the
+          page's 16 px gutter and bleeds to the viewport (the 360 px visit
+          keeps the prose floor); the ring is inset there because an outside
+          ring would fall off the screen. */}
+      <div
+        data-editor-card
+        className="rounded-[var(--radius-lg)] border border-rule bg-card p-[15px] focus-within:ring-2 focus-within:ring-focus max-[36rem]:-mx-4 max-[36rem]:rounded-none max-[36rem]:border-x-0 max-[36rem]:focus-within:ring-inset"
+      >
+        {focusDepth < 2 ? (
+          <header className="flex items-baseline justify-between gap-4">
+            {chapterTitle !== undefined || bookTitle !== undefined ? (
+              /* A paragraph, not a heading: its accessible name carries the
+                 book's title too, and a second heading that contains it turns
+                 every "heading <book>" query into a coin toss — the runhead is
+                 the page's label, not a node of its outline. The chapter's own
+                 name still wears the 600 face. */
+              <p className="min-w-0 truncate text-body font-semibold">
+                {bookTitle !== undefined ? (
+                  <span className="font-normal text-muted">{bookTitle} · </span>
+                ) : null}
+                {chapterTitle}
+              </p>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            <SaveIndicator status={status} />
+          </header>
+        ) : null}
+        <MarkdownEditor
+          className="mt-4"
+          focusRing={false}
+          label={t("chapters.editorLabel")}
+          value={body}
+          onChange={scheduleAndCount}
+          extensions={extensions}
+          onReady={setEditor}
+        />
+        {focusDepth < 2 ? (
+          <footer className="mt-4 flex items-baseline justify-between gap-4 text-meta text-muted">
+            <span className="tabular-nums">{t("chapters.wordCount", { count: words })}</span>
+            {chapterTotal ? (
+              <span className="tabular-nums">
+                {t("chapters.position", { n: chapterNumber ?? 0, m: chapterTotal })}
+              </span>
+            ) : null}
+          </footer>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -715,3 +715,24 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(button.disabled).toBe(false)); // the finally ran
   });
 });
+
+describe("ChapterEditor's surface", () => {
+  it("paints the focus ring on the card, not on the prose", async () => {
+    // The ring is the surface's focus state (F18). On the ProseMirror it sat
+    // on the glyphs; on the card it sits on the sheet's edge, 16 px away.
+    render(<Harness body={"Ein Satz."} />);
+
+    const card = document.querySelector("[data-editor-card]");
+    expect(card).not.toBeNull();
+    expect(card!.className).toContain("focus-within:ring-2");
+    expect(card!.className).toContain("focus-within:ring-focus");
+
+    const proseWrapper = document.querySelector(".ProseMirror")!.parentElement!;
+    expect(proseWrapper.className).not.toContain("focus-within:ring-2");
+
+    // The ring never encloses a control: the continue action lives above
+    // the card, not inside it.
+    const action = screen.getByRole("button", { name: t("chapters.continue") });
+    expect(card!.contains(action)).toBe(false);
+  });
+});
