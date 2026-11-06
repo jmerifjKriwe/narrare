@@ -29,9 +29,10 @@ permissions: {}
 # action is forced onto a runtime its own CI never tested.
 
 jobs:
-  # Lint, typecheck and secrets scan — one definition for every workflow:
-  # `_lint.yml`. The job name stays `lint-types`, which `ci-required` and
-  # `e2e-suites` wait on; the check it reports is `lint-types / lint-types`.
+  # Lint, typecheck, generated-file freshness and secrets scan — one definition
+  # for every workflow: `_lint.yml`. The job name stays `lint-types`, which
+  # `ci-required` and `e2e-suites` wait on; the check it reports is
+  # `lint-types / lint-types`.
   #
   # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
   # pinned actionlint image (1.7.12) does not know it yet — the two gate
