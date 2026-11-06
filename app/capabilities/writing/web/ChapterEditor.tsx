@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { client } from "@shell/lib/api/client";
@@ -44,6 +45,7 @@ export function ChapterEditor({
   chapterNumber,
   chapterTotal,
   focusDepth = 0,
+  actions,
 }: {
   chapterId: string;
   body: string;
@@ -68,6 +70,11 @@ export function ChapterEditor({
   chapterTotal?: number;
   /** The workbench's focus depth: at 2 the frame yields to the text. */
   focusDepth?: 0 | 1 | 2;
+  /** The chapter's actions, rendered in the runhead's right side beside
+   *  the save state — the menu the page builds (rename, move, delete),
+   *  passed as a node because the actions are the page's story, not the
+   *  editor's. Yields with the frame at depth 2. */
+  actions?: ReactNode;
 }) {
   const t = useTranslation();
   const [continuing, setContinuing] = useState(false);
@@ -271,7 +278,13 @@ export function ChapterEditor({
               className="min-w-0 flex-1 basis-32 border-0 bg-transparent p-0 font-semibold text-inherit caret-current placeholder:font-normal placeholder:text-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             />
           </p>
-          <SaveIndicator status={status} />
+          {/* The runhead's right side: the save state and the chapter's
+              actions, one group — the frame's own words (book · title on
+              the left, the document's state and its deeds on the right). */}
+          <div className="flex shrink-0 items-center gap-2">
+            <SaveIndicator status={status} />
+            {actions}
+          </div>
         </header>
       ) : null}
       <div className="mt-4 flex items-center gap-3">

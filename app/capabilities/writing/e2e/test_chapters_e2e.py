@@ -705,6 +705,57 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     assert_accessible(page)
 
 
+def test_deleting_a_chapter_opens_its_neighbour(page: Page, stack: Stack) -> None:
+    """The runhead's menu deletes the open chapter: the pending body is
+    retired before the delete flies, the chapter that takes its place opens
+    (the next, else the previous — D7), the rail loses one row, and the
+    database renumbers contiguously."""
+    _create_book(page, "Der Riss")
+    for _ in range(3):
+        new_chapter(page)
+    for number, name in enumerate(["Erstes", "Zweites", "Drittes"], start=1):
+        page.get_by_role("button", name=re.compile(rf"^Kapitel {number}\b")).click()
+        page.get_by_label("Kapiteltitel").fill(name)
+        expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+
+    # Open the middle chapter and leave an unsaved body on it: the delete
+    # must retire it, never flush it at a chapter on its way out.
+    page.get_by_role("button", name="Zweites").click()
+    editor = page.locator(".ProseMirror")
+    editor.click()
+    page.keyboard.type("Weg damit.")
+
+    # The runhead's menu: delete the open chapter, confirm in the dialog.
+    page.get_by_role("button", name="Aktionen für Zweites").click()
+    page.get_by_role("menuitem", name="Löschen").click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_text(re.compile("Zweites"))).to_be_visible()
+    dialog.get_by_role("button", name="Löschen").click()
+    expect(dialog).to_have_count(0)
+
+    # The neighbour: Drittes takes Zweites' place — the runhead wears its
+    # name, the rail has one row fewer, the address names the neighbour,
+    # and no failed save was named for the deletion the user asked for.
+    expect(page.get_by_label("Kapiteltitel")).to_have_value("Drittes")
+    expect(page.get_by_text("Nicht gespeichert", exact=True)).to_have_count(0)
+    rows = page.get_by_role("complementary").get_by_role(
+        "button", name=re.compile(r"^(Erstes|Drittes)\b")
+    )
+    expect(rows).to_have_count(2)
+    expect(page).to_have_url(re.compile("chapter="))
+
+    # The database: the survivors hold contiguous 0..n-1.
+    match = re.search(r"/novels/([0-9a-f-]+)", page.url)
+    assert match is not None, f"the workspace never got an address: {page.url}"
+    positions = _rows(
+        "SELECT position FROM chapters WHERE novel_id = :id ORDER BY position",
+        {"id": match.group(1)},
+    )
+    assert positions == [(0,), (1,)]
+
+    assert_accessible(page)
+
+
 def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack: Stack) -> None:
     """The runhead's title is written where it is read: typing it saves, the
     rail answers to the new name, and the shelf learns of the write. The
@@ -733,8 +784,11 @@ def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack:
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
     # The rail answers to the new name — the placeholder row is gone.
-    expect(page.get_by_role("button", name=re.compile(r"Winternacht"))).to_be_visible()
-    expect(page.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_count(0)
+    # (Scoped to the rail: the runhead's action menu names the chapter in
+    # its trigger's label too, and a page-wide button search would find it.)
+    rail = page.get_by_role("complementary")
+    expect(rail.get_by_role("button", name=re.compile(r"^Winternacht\b"))).to_be_visible()
+    expect(rail.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_count(0)
 
     # The shelf learned of the write: the hero names the renamed book now,
     # and its card still opens it.

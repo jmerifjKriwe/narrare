@@ -201,6 +201,31 @@ export function useReorderChapters(
 }
 
 /**
+ * Deleting a chapter (spec §2): the surviving rows renumber `0..n-1` in
+ * the delete's own transaction, and the novel's row advances (D8 — the
+ * archive lost a chapter). Success alone invalidates, and the chapters key
+ * with the `["novels"]` prefix beside it: the delete is the one write that
+ * changes both lists' shapes at once, and the page's richer story around
+ * the ask — retiring the pending document, opening the neighbour — runs
+ * on the mutation's promise, not on these invalidations. A failed delete
+ * asks for nothing: the rows it would have changed did not change.
+ */
+export function useDeleteChapter(novelId: string): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (chapterId: string) => {
+      const { response } = await client.DELETE("/api/writing/chapters/{chapter_id}", {
+        params: { path: { chapter_id: chapterId } },
+      });
+      if (!response.ok) throw new Error(`delete refused: ${response.status}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/**
  * A durable job's row (spec §9 D10): the UI polls the state, never a
  * connection to the work. The poll lives here as the one place that knows a
  * queued or running row is still provisional — `refetchInterval` answers a

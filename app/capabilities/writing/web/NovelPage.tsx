@@ -19,6 +19,7 @@ import {
   activeChapterFallback,
   queryClient,
   useChaptersQuery,
+  useDeleteChapter,
   useNovelQuery,
   useReorderChapters,
 } from "@shell/lib/query";
@@ -26,11 +27,13 @@ import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save"
 import { countWords, formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
+import { ActionMenu } from "@shell/ui/Menu";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
 import { Row } from "@shell/ui/Row";
 
 import { ChapterEditor } from "./ChapterEditor";
+import { ChapterDeleteDialog, ChapterRenameDialog } from "./ChapterDialogs";
 import type { FocusStep } from "./routes";
 
 // The step machine as data: no arithmetic on the union, and the ends are
@@ -401,6 +404,10 @@ export function NovelPage() {
   );
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
+  // The open chapter's slot, for the runhead menu's move items: the ends
+  // of the rail are their own no-ops, and an offered deed that cannot run
+  // says so by its disabled state, not by a silent click.
+  const currentIndex = chapters.findIndex((chapter) => chapter.id === active);
 
   // The autosave is the page's, not the chapter's: the editor remounts on
   // every switch (its key is the chapter id), and a hook that lived inside
@@ -660,6 +667,84 @@ export function NovelPage() {
   // index; the state would be one event behind it).
   const dragId = useRef<string | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  // The runhead's menu (D3's narrowing): the open chapter's actions live
+  // in its runhead, and the two that need more than a keystroke — rename,
+  // delete — open the dialogs that own them. The rail keeps its plain
+  // rows; the menu is the touch path's way to every chapter deed.
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteChapter = useDeleteChapter(novelId);
+
+  /** Delete one chapter: the one orchestrated sequence the delete dialog's
+   *  confirm runs. Retire comes first and provably — when the chapter is
+   *  the open one, its pending document is dropped before the request
+   *  flies, so no PUT can arrive at a chapter the delete is about to kill
+   *  and no `save.failed` names a deletion the user asked for. The retire
+   *  is also what makes the navigation honest: the blocker below would
+   *  flush on any navigation, and a flush after this `discard()` finds an
+   *  empty slot (the generation bump retires any answer still in flight)
+   *  — the neighbour opens without a phantom write either way. A chapter
+   *  that is not the open one dies without a navigation: the editor and
+   *  the address keep what they hold (D7). */
+  async function confirmDeleteChapter(chapterId: string): Promise<boolean> {
+    const isOpen = chapterId === current?.id;
+    // The neighbour is named from the list the book has now, before
+    // anything flies: the chapter that takes this one's place — the next,
+    // else the previous (D7). Only the open chapter's death opens one.
+    const index = chapters.findIndex((row) => row.id === chapterId);
+    const neighbour = chapters[index + 1] ?? chapters[index - 1] ?? null;
+    if (isOpen) discard();
+    try {
+      await deleteChapter.mutateAsync(chapterId);
+    } catch {
+      // The refusal is the dialog's to name; nothing moved, and the
+      // neighbour this run computed is still only a computation.
+      return false;
+    }
+    // The 204 is the server's word, and the mutation's own invalidation is
+    // already carrying it: the refetch's answer — not a hand-patched list —
+    // is what removes the row, exactly the create path's contract with the
+    // cache. The selection below runs in this same tick, ahead of that
+    // answer (a navigation commits in a microtask; the refetch lands on a
+    // macrotask), which is what keeps the dead-param cleanup honest: by the
+    // time the rows no longer hold this chapter, the address no longer
+    // names it. A synchronous removal here would open exactly the window
+    // the cleanup exists to close.
+    if (!isOpen || neighbour === null) {
+      if (!isOpen) return true;
+      // The book's last chapter: the empty state, and the address loses
+      // its dead value by replace — a cleanup, not a selection, so the
+      // back button keeps no step for it.
+      void navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, chapter: undefined }),
+        replace: true,
+      });
+      return true;
+    }
+    // A push, the rail's own selection semantics: the back button walks
+    // back to the address the deleted chapter wore, and history keeps
+    // the delete as the step it was.
+    select(neighbour.id);
+    return true;
+  }
+
+  /** The rename dialog's answer: the runhead's input (and the page's held
+   *  draft) take the server's title at once, while the autosave's pending
+   *  slot keeps whatever fields it was holding — the title was never
+   *  dirtied by the dialog, so the pending flush carries the body only
+   *  and the rename survives it (Task 9's contract). */
+  const renamed = useCallback(
+    (title: string) => {
+      setHeld((previous) =>
+        previous.id === current?.id
+          ? { ...previous, draft: { ...previous.draft, title } }
+          : previous,
+      );
+    },
+    [current?.id],
+  );
 
   // F22's choice: below the workbench breakpoint the rail and the dock stay
   // overlays — the viewport floor pins covering, never squeezing — so they
@@ -987,6 +1072,46 @@ export function NovelPage() {
                     chapterNumber={current.position + 1}
                     chapterTotal={chapters.length}
                     focusDepth={focus}
+                    actions={
+                      <ActionMenu
+                        label={t("chapters.actions")}
+                        triggerAriaLabel={t("chapters.actionsFor", {
+                          title:
+                            current.title ||
+                            t("chapters.defaultTitle", { n: current.position + 1 }),
+                        })}
+                        items={[
+                          {
+                            id: "rename",
+                            label: t("chapters.rename"),
+                            onSelect: () => setRenameOpen(true),
+                          },
+                          {
+                            id: "moveUp",
+                            label: t("chapters.moveUp"),
+                            // The ends are their own no-ops, offered but
+                            // disabled: the shortcut the hint names is the
+                            // rail's own Alt+↑ (D6), discoverable exactly
+                            // where the action lives.
+                            shortcut: "Alt+↑",
+                            disabled: currentIndex <= 0,
+                            onSelect: () => void move(current.id, -1),
+                          },
+                          {
+                            id: "moveDown",
+                            label: t("chapters.moveDown"),
+                            shortcut: "Alt+↓",
+                            disabled: currentIndex >= chapters.length - 1,
+                            onSelect: () => void move(current.id, 1),
+                          },
+                          {
+                            id: "delete",
+                            label: t("chapters.delete"),
+                            onSelect: () => setDeleteOpen(true),
+                          },
+                        ]}
+                      />
+                    }
                   />
                 ) : null}
               </>
@@ -1039,6 +1164,29 @@ export function NovelPage() {
           </aside>
         ) : null}
       </div>
+
+      {/* The chapter's two deeds that need more than a keystroke (D3's
+          runhead menu): the rename dialog and the delete dialog, both
+          controlled — the menu was the press, the dialogs are the asks.
+          They stand only while a chapter is open: the runhead's menu is
+          their one trigger. */}
+      {current ? (
+        <>
+          <ChapterRenameDialog
+            chapter={current}
+            open={renameOpen}
+            onOpenChange={setRenameOpen}
+            onRenamed={renamed}
+          />
+          <ChapterDeleteDialog
+            novelId={novelId}
+            chapter={current}
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            onDelete={confirmDeleteChapter}
+          />
+        </>
+      ) : null}
 
       {/* The leave guard's ask (F21): the shell's dialog, not window.confirm
           — the question the gate owes, in the page's own clothes. Escape and

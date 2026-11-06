@@ -31,7 +31,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -865,6 +865,262 @@ describe("the rail's reorder", () => {
       ),
     );
     expect(railOrder()).toEqual([1, 0]);
+  });
+});
+
+describe("the runhead's action menu", () => {
+  /** Three named chapters as a book the writes mutate: a stateful list, so
+   *  a delete or rename is answered by the very next read the way the
+   *  server would answer it. */
+  function mockStateful(
+    initial: Array<typeof CHAPTERS[number]>,
+    novel: Record<string, unknown> = NOVEL,
+  ): { rows: Array<typeof CHAPTERS[number]> } {
+    const rows = initial.map((row) => ({ ...row }));
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") return { data: novel, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: rows.map((row) => ({ ...row })), response: ok() };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    api.PUT.mockImplementation(
+      async (
+        _path: string,
+        init: { params: { path: { chapter_id: string } }; body: Record<string, string> },
+      ) => {
+        const row = rows.find((each) => each.id === init.params.path.chapter_id);
+        if (!row) return { response: refused() };
+        Object.assign(row, init.body);
+        row.updated_at = new Date().toISOString();
+        return { data: { ...row }, response: ok() };
+      },
+    );
+    api.DELETE.mockImplementation(
+      async (_path: string, init: { params: { path: { chapter_id: string } } }) => {
+        const index = rows.findIndex((each) => each.id === init.params.path.chapter_id);
+        if (index < 0) return { response: new Response(null, { status: 404 }) };
+        rows.splice(index, 1);
+        rows.forEach((row, position) => {
+          row.position = position;
+        });
+        return { response: new Response(null, { status: 204 }) };
+      },
+    );
+    return { rows };
+  }
+
+  /** The runhead's menu trigger: named for the chapter it acts on. */
+  function menuTrigger(title: string): HTMLElement {
+    return screen.getByRole("button", { name: t("chapters.actionsFor", { title }) });
+  }
+
+  /** A rail row by its title — the reorder block's own finder, mirrored
+   *  for the named chapters these cases delete and rename. */
+  function titledRow(title: string): HTMLElement {
+    return screen.getByRole("button", { name: new RegExp(`^${title}\\b`) });
+  }
+
+  /** The runhead's title input, by its accessible name. */
+  function runheadTitle(): HTMLInputElement {
+    return screen.getByLabelText(t("chapters.titleLabel")) as HTMLInputElement;
+  }
+
+  /** Delete the open chapter the way a user does: the menu, the item, the
+   *  dialog's confirm. */
+  async function deleteThroughMenu(
+    user: ReturnType<typeof userEvent.setup>,
+    title: string,
+  ): Promise<void> {
+    await user.click(menuTrigger(title));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.delete") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  }
+
+  it("the_runhead_menu_offers_rename_delete_and_move", { timeout: 10_000 }, async () => {
+    mockStateful(THREE_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The rail is untouched by the menu's presence: three plain rows, no
+    // menu markup nested anywhere in them (UI-B's rows stay as they were).
+    expect(screen.getByRole("complementary").querySelectorAll("li > button").length).toBe(3);
+
+    // The book's last-touched chapter (Zweites, the middle one) is open;
+    // its menu offers the four actions, and the move items carry the
+    // shortcut the rail already answers to (D6: the hint is discoverable
+    // exactly where the action lives).
+    await user.click(menuTrigger("Zweites"));
+    expect(screen.getByRole("menuitem", { name: t("chapters.rename") })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: t("chapters.delete") })).toBeTruthy();
+    // The move items carry their shortcut in the name ("Move up Alt+↑"),
+    // so the finder matches the label as its own beginning.
+    const up = screen.getByRole("menuitem", {
+      name: new RegExp(`^${t("chapters.moveUp")}\\b`),
+    });
+    const down = screen.getByRole("menuitem", {
+      name: new RegExp(`^${t("chapters.moveDown")}\\b`),
+    });
+    expect(up.textContent).toContain("Alt+↑");
+    expect(down.textContent).toContain("Alt+↓");
+    // A middle chapter can move both ways: neither item is disabled.
+    expect(up.getAttribute("aria-disabled")).not.toBe("true");
+    expect(down.getAttribute("aria-disabled")).not.toBe("true");
+
+    // The menu's move is the rail's own move: one PUT of the whole rail,
+    // the arrangement the keyboard's Alt+↓ would have written — Zweites
+    // trades places with Drittes.
+    await user.click(down);
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        {
+          params: { path: { novel_id: NOVEL_ID } },
+          body: { chapter_ids: [CHAPTER_ID, THIRD_CHAPTER_ID, SECOND_CHAPTER_ID] },
+        },
+      ),
+    );
+  });
+
+  it("deleting_the_open_chapter_opens_its_neighbour", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(THREE_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The next chapter takes the deleted one's place: delete Erstes, the
+    // book's first, and Zweites opens.
+    await user.click(titledRow("Erstes"));
+    await deleteThroughMenu(user, "Erstes");
+    expect(api.DELETE).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: CHAPTER_ID } },
+    });
+    await waitFor(() =>
+      expect(titledRow("Zweites").getAttribute("aria-current")).toBe("true"),
+    );
+    expect(screen.getByLabelText(t("chapters.titleLabel"))).toBeTruthy();
+    expect(runheadTitle().value).toBe("Zweites");
+    expect(rows.map((row) => row.id)).toEqual([SECOND_CHAPTER_ID, THIRD_CHAPTER_ID]);
+
+    // The last chapter has no next: the previous one takes its place.
+    await user.click(titledRow("Drittes"));
+    await deleteThroughMenu(user, "Drittes");
+    await waitFor(() =>
+      expect(titledRow("Zweites").getAttribute("aria-current")).toBe("true"),
+    );
+
+    // The book's last remaining chapter: no neighbour, the empty state —
+    // and the row is gone from the list the server would answer with.
+    await deleteThroughMenu(user, "Zweites");
+    await waitFor(() => expect(screen.getByText(t("chapters.empty"))).toBeTruthy());
+    expect(document.querySelector(".ProseMirror")).toBeNull();
+    expect(rows).toEqual([]);
+  });
+
+  it("deleting_the_open_chapter_retires_the_pending_save", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(TWO_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    // A body edit pending on the open chapter (Zweites, the book's
+    // last-touched) — inside the debounce, nothing on the wire yet.
+    await user.keyboard("Bleibt nicht.");
+    expect(api.PUT).not.toHaveBeenCalled();
+
+    await deleteThroughMenu(user, "Zweites");
+
+    // The neighbour opened, the DELETE flew — and the pending body was
+    // retired before it: no PUT at a chapter on its way out.
+    await waitFor(() =>
+      expect(titledRow("Erstes").getAttribute("aria-current")).toBe("true"),
+    );
+    expect(api.DELETE).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+    });
+    // Past the debounce: the timer's flush finds the slot the delete
+    // emptied — and no failed status was ever named for a deletion the
+    // user asked for.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(screen.queryByText(t("save.failed"))).toBeNull();
+    expect(rows.map((row) => row.id)).toEqual([CHAPTER_ID]);
+  });
+
+  it("renaming_the_open_chapter_survives_the_next_debounce", { timeout: 10_000 }, async () => {
+    mockStateful(TWO_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    // A body edit pending on the open chapter (Zweites): the rename must
+    // not wait for it, and the flush that follows must not undo it.
+    await user.keyboard(" Ein Satz.");
+
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.rename") }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(t("chapters.renameLabel"));
+    await user.clear(input);
+    await user.type(input, "Winternacht");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.rename") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // The dialog's write carried the title alone…
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+        params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+        body: { title: "Winternacht" },
+      }),
+    );
+    // …the runhead wears the new name at once…
+    expect(runheadTitle().value).toBe("Winternacht");
+
+    // …and the next flush carries the body only — the title is not dirty,
+    // so the rename survives the debounce it met (Task 9's contract).
+    await waitFor(
+      () =>
+        expect(api.PUT).toHaveBeenLastCalledWith("/api/writing/chapters/{chapter_id}", {
+          params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+          body: { body: " Ein Satz." },
+        }),
+      { timeout: 4000 },
+    );
+    const chapterPuts = api.PUT.mock.calls.filter(
+      ([path]) => path === "/api/writing/chapters/{chapter_id}",
+    );
+    expect(chapterPuts).toHaveLength(2);
+    expect(Object.keys(chapterPuts[1]![1].body)).toEqual(["body"]);
+    // The new title stands: the rail answers to it, not to the name the
+    // flush's draft was holding when the rename landed.
+    await waitFor(() => expect(titledRow("Winternacht")).toBeTruthy());
+    expect(runheadTitle().value).toBe("Winternacht");
+  });
+
+  it("the_delete_dialog_names_the_chapter_and_the_export_age", { timeout: 10_000 }, async () => {
+    const exportedAt = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    mockStateful(THREE_NAMED_CHAPTERS, { ...NOVEL, last_exported_at: exportedAt });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The dialog names what dies — the chapter, by its own name — and the
+    // scoped export line: this chapter was last written before the export,
+    // so it reads as unchanged since (the fresh line, days and all).
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(t("chapters.deleteBody", { title: "Zweites" })),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(t("chapters.exportFresh", { count: 3 }))).toBeTruthy();
+
+    // A dismissed ask deletes nothing.
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(api.DELETE).not.toHaveBeenCalled();
   });
 });
 
