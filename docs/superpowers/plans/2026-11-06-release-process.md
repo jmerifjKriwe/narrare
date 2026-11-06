@@ -62,7 +62,7 @@ version-bump gate (Task 7) so a regression reddens a release PR instead of a mer
   `DRIVERNAME = "postgresql+asyncpg"`
 - Produces: `session.DATABASE_CONFIG: DatabaseConfig`, `session.DATABASE_URL: str` (rendered, password included).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_url_wins_over_parts():
@@ -102,12 +102,12 @@ def test_sslmode_becomes_the_asyncpg_query_parameter():
     assert cfg.url.query["ssl"] == "require"
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `just test-file app/kernel/db/tests/test_url.py`
 Expected: collection error — `app.kernel.db.url` does not exist.
 
-- [ ] **Step 3: Implement `resolve`**
+- [x] **Step 3: Implement `resolve`**
 
 Precedence: `NARRE_DATABASE_URL` → parts → dev default
 (`postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_v2_dev`, source
@@ -120,21 +120,21 @@ host=…, port=…, database=…, query=…)` — never by string concatenation.
 one human line: `"NARRE_DATABASE_URL"`, `"NARRE_DB_* → narrare@postgres:5432/narrare"`
 or the default marker; it must never contain the password.
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `just test-file app/kernel/db/tests/test_url.py`
 Expected: PASS (7 tests).
 
-- [ ] **Step 5: Wire it in and log the source**
+- [x] **Step 5: Wire it in and log the source**
 
 `session.py`: `DATABASE_CONFIG = resolve()`, `DATABASE_URL = DATABASE_CONFIG.url.render_as_string(hide_password=False)`. `main.py`'s lifespan logs `database: %s` with `DATABASE_CONFIG.source` **before** `prepare_database`.
 
-- [ ] **Step 6: Prove the wiring still installs and runs**
+- [x] **Step 6: Prove the wiring still installs and runs**
 
 Run: `just check` then `just test-file app/kernel/db/tests/test_migrations.py`
 Expected: both green; no test sets `NARRE_DB_*`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/kernel/db/url.py app/kernel/db/session.py app/api/main.py app/kernel/db/tests/test_url.py
@@ -155,7 +155,7 @@ git commit -m "feat(kernel): configure the database from NARRE_DB_* parts" --tra
   `def missing_extensions(available: Collection[str]) -> list[str]`
 - Consumes: `MigrationRefused` (exists).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_extension_refusal_names_every_missing_extension():
@@ -168,12 +168,12 @@ def test_missing_extensions_keeps_the_required_order():
     assert missing_extensions(set(REQUIRED_EXTENSIONS)) == []
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `just test-file app/kernel/db/tests/test_migrations.py`
 Expected: FAIL — names not defined.
 
-- [ ] **Step 3: Implement, and consult the catalog before creating**
+- [x] **Step 3: Implement, and consult the catalog before creating**
 
 `ensure_extensions` keeps one transaction and now begins with
 `SELECT name FROM pg_available_extensions WHERE name = ANY(:names)`; if
@@ -183,17 +183,17 @@ iterate `REQUIRED_EXTENSIONS` instead of literal names. The message names the mi
 extensions and says to use a pgvector-capable server or install the extension; it is
 one sentence, no traceback terms.
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `just test-file app/kernel/db/tests/test_migrations.py`
 Expected: PASS, including the existing upgrade/refusal gates.
 
-- [ ] **Step 5: Prove the real path still installs all three**
+- [x] **Step 5: Prove the real path still installs all three**
 
 Run: `just test-file app/kernel/db/tests/test_migrations.py -k extension`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/kernel/db/migrate.py app/kernel/db/tests/test_migrations.py
@@ -214,13 +214,13 @@ git commit -m "feat(kernel): name the extension a database cannot provide" --tra
   `python -m app.kernel.db.init`-free startup (the lifespan migrates), `pg_dump` 18 on
   `PATH`, `NARRE_KEYRING=off`, `NARRE_BACKUP_DIR=/backups`.
 
-- [ ] **Step 1: Write `.dockerignore`**
+- [x] **Step 1: Write `.dockerignore`**
 
 Exclude `.git`, `.venv`, `node_modules`, `web/node_modules`, `web/dist`, `docs`,
 `_scratch`, `backups`, `coverage.xml`, `.github`, `**/__pycache__`, `**/tests`,
 `**/e2e`. `web/dist` is excluded because the `web` stage produces it.
 
-- [ ] **Step 2: Write the `Dockerfile`**
+- [x] **Step 2: Write the `Dockerfile`**
 
 Stage `web` from `node:22-slim` (digest-pinned, trailing `# node:22-slim` comment):
 copy `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `web/package.json`, `web/`, then
@@ -243,12 +243,12 @@ run `uv sync --no-dev --frozen`, then copy `app/ i18n/ alembic/ alembic.ini`, th
 No `HEALTHCHECK`: there is no route that proves the database, and a check that passes
 without one is worse than none.
 
-- [ ] **Step 3: Build it and look at the size**
+- [x] **Step 3: Build it and look at the size**
 
 Run: `docker build -t narrare:local . && docker image inspect narrare:local --format '{{.Size}}'`
 Expected: under `450000000` bytes.
 
-- [ ] **Step 4: Start it against a throwaway pgvector server**
+- [x] **Step 4: Start it against a throwaway pgvector server**
 
 Run:
 ```bash
@@ -265,31 +265,31 @@ Expected: the log carries `database: NARRE_DB_* → narrare@pg:5432/narrare`, th
 migrations reach head, and `curl -sf http://127.0.0.1:8080/ | head -c 200` answers the
 shell HTML. `curl -sf` on `/assets/<file from index.html>` answers 200.
 
-- [ ] **Step 5: Prove the first boot really migrated**
+- [x] **Step 5: Prove the first boot really migrated**
 
 Run: `docker exec pg psql -U narrare -d narrare -c '\dt' | head` and
 `docker exec pg psql -U narrare -d narrare -c "select name from pg_available_extensions where name in ('vector','pg_trgm','unaccent')"`
 Expected: the tables exist, `alembic_version` is present, and all three extensions are listed.
 
-- [ ] **Step 6: Add the nightly job**
+- [x] **Step 6: Add the nightly job**
 
 In `nightly.yml`, job `container` (needs `gate`), same guards as the other jobs: build
 with `cache-from/to: type=gha` (no push), run the smoke of Step 4 against a Postgres
 service container, assert the shell and one asset, and fail when the size exceeds
 450 MB. Add `container` to `nightly-result`'s `needs` and to its result check.
 
-- [ ] **Step 7: Re-enable the Dependabot docker updater**
+- [x] **Step 7: Re-enable the Dependabot docker updater**
 
 `.github/dependabot.yml`: a `docker` entry at `/` with the established grouping and
 cooldown shape.
 
-- [ ] **Step 8: Verify the workflow files**
+- [x] **Step 8: Verify the workflow files**
 
 Run: `just lint` (actionlint and zizmor run in CI's `workflow-lint`; run the local
 probe the workflow does) and `docker build` once more after the change.
 Expected: no workflow lint error; the image still builds.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add Dockerfile .dockerignore .github/workflows/nightly.yml .github/dependabot.yml
@@ -308,7 +308,7 @@ git commit -m "feat(container): ship the app as one image, built and smoked nigh
 **Interfaces:**
 - Consumes: the image and variables from Tasks 1–3.
 
-- [ ] **Step 1: Write the compose file**
+- [x] **Step 1: Write the compose file**
 
 `app` (`image: ghcr.io/jmerifjKriwe/narrare:latest`) with
 `NARRE_DB_HOST=postgres`, `NARRE_DB_NAME/USER/PASSWORD` from `${…:?}` style
@@ -318,7 +318,7 @@ substitutions with the dev-compatible defaults, `NARRE_SECRET_KEY` from `${NARRE
 `postgres` from `pgvector/pgvector:pg17` (digest-pinned), volume `pgdata`,
 `healthcheck: pg_isready -U narrare -d narrare`.
 
-- [ ] **Step 2: Prove the default path end to end**
+- [x] **Step 2: Prove the default path end to end**
 
 Run:
 ```bash
@@ -328,14 +328,14 @@ curl -sf http://127.0.0.1:8000/ >/dev/null && echo shell-ok
 ```
 Expected: `shell-ok`; `docker compose ps` shows both services healthy.
 
-- [ ] **Step 3: Prove a restart keeps the data**
+- [x] **Step 3: Prove a restart keeps the data**
 
 Complete the setup flow through the API (read `app/capabilities/setup/router.py` for
 the route and body), create one chapter, then `docker compose restart app` and re-read
 the chapter.
 Expected: same content before and after the restart.
 
-- [ ] **Step 4: Prove the dump lands on the volume and survives a recreate**
+- [x] **Step 4: Prove the dump lands on the volume and survives a recreate**
 
 Run: `docker compose exec app pg_dump --version` (expect `pg_dump (PostgreSQL) 18`)
 and `docker compose down && docker compose up -d --wait`; the chapter from Step 3 is
@@ -343,7 +343,7 @@ still readable.
 Expected: data survives; `docker compose exec app ls -la /backups` is the host-mapped
 volume (write a file there from the host and see it in the container).
 
-- [ ] **Step 5: Write `docs/user/install.md`**
+- [x] **Step 5: Write `docs/user/install.md`**
 
 Three sections — compose (default), own Postgres (the `CREATE EXTENSION vector`
 prerequisite, the privilege it needs, the `NARRE_DB_*` variables, `NARRE_SECRET_KEY`
@@ -351,7 +351,7 @@ generated once and kept with the backups), Unraid (link to Task 5's section) —
 **upgrade** (`docker compose pull`, backup first, where the pre-migration dumps land)
 and **restore** (`pg_restore` into a fresh database).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docker-compose.release.yml docs/user/install.md docs/user/INDEX.md
@@ -370,7 +370,7 @@ git commit -m "feat(deploy): a compose stack a user without Postgres can run" --
 **Interfaces:**
 - Consumes: `REQUIRED_EXTENSIONS`-unrelated; the variable names from Task 1.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 TEMPLATE = Path(__file__).resolve().parents[4] / "deploy/unraid/narrare.xml"
@@ -387,12 +387,12 @@ def test_secrets_are_masked_and_backups_are_a_path():
     assert 'Name="NARRE_BACKUP_DIR"' in text and "/backups" in text
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `just test-file app/kernel/db/tests/test_unraid_template.py`
 Expected: FAIL — the template does not exist.
 
-- [ ] **Step 3: Write the template**
+- [x] **Step 3: Write the template**
 
 One `<Container>` with `<Name>Narrare</Name>`, `Repository` = the GHCR image,
 `Network` bridge, `Privileged` false, port `8000`, Path `/mnt/user/appdata/narrare/backups`
@@ -402,12 +402,12 @@ description states the prerequisite: the database must be able to
 `CREATE EXTENSION vector`; plain Postgres images cannot. Icon and Category per the
 Community Applications conventions.
 
-- [ ] **Step 4: Run to verify it passes, and lint the XML**
+- [x] **Step 4: Run to verify it passes, and lint the XML**
 
 Run: `just test-file app/kernel/db/tests/test_unraid_template.py && xmllint --noout deploy/unraid/narrare.xml`
 Expected: PASS; `xmllint` silent.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add deploy/unraid/narrare.xml app/kernel/db/tests/test_unraid_template.py docs/user/install.md
@@ -427,30 +427,30 @@ git commit -m "feat(deploy): an Unraid template with one container and an extern
   stack spawns nothing, resets nothing, and reports that URL as both the API and the
   web origin. `NARRE_DATABASE_URL` still names the database for SQL seeding.
 
-- [ ] **Step 1: Read the harness and write down the two assumptions to break**
+- [x] **Step 1: Read the harness and write down the two assumptions to break**
 
 Record, in the commit message: the stack spawns `uvicorn` (`_spawn_api`) and resets a
 per-run database (`_reset`); and it exposes two origins (API port, web port). Attach
 mode must keep the default path byte-identical.
 
-- [ ] **Step 2: Add the mode**
+- [x] **Step 2: Add the mode**
 
 `NARRE_E2E_ATTACH` short-circuits `_prepare`/`_reset`/`_spawn_api`: no `initdb`, no
 schema reset, no process. The API base and the web base both become the attach URL.
 Seeding that the fixtures do over SQL keeps working against `NARRE_DATABASE_URL`.
 
-- [ ] **Step 3: Prove the default path is untouched**
+- [x] **Step 3: Prove the default path is untouched**
 
 Run: `just test-e2e`
 Expected: every capability suite green, exactly as before (real Postgres on :5433, spawned server).
 
-- [ ] **Step 4: Prove the attach path against the image**
+- [x] **Step 4: Prove the attach path against the image**
 
 Start the stack of Task 3 Step 4 on port 8080, then run one suite with
 `NARRE_E2E_ATTACH=http://127.0.0.1:8080 NARRE_DATABASE_URL=postgresql+asyncpg://narrare:narrare@127.0.0.1:5432/narrare just test-file app/capabilities/chat/e2e/`.
 Expected: green, driven by the image's own shell and API on one origin.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/kernel/testing/stack.py
