@@ -22,14 +22,14 @@ from sqlalchemy.ext.asyncio import create_async_engine
 os.environ["NARRE_MIGRATION_BACKUP"] = "skip"
 
 from app.api.main import app
-from app.kernel.db.testsupport import url_for
+from app.kernel.db.testsupport import test_database, url_for
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Generator
 
     from anyio.from_thread import BlockingPortal
 
-DATABASE = "narrare_v2_test"
+DATABASE = test_database()
 
 
 @pytest.fixture(scope="session", autouse=True)

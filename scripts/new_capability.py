@@ -2,9 +2,10 @@
 """Create a capability folder with the two fixtures that are easy to get wrong.
 
 The folder itself is a mkdir. What a new capability reliably gets wrong is its
-test databases: the integration suite shares narrare_v2_test, the E2E suite gets
-a database of its own and a module-scoped stack so two suites never hold the
-same ports. Those two conftest files are what this writes; the code is yours.
+test databases: the integration suite names its own database for the run
+(worktree token plus process pid), the E2E suite gets a database of its own
+and a module-scoped stack so two suites never hold the same ports. Those two
+conftest files are what this writes; the code is yours.
 """
 
 import sys
@@ -14,7 +15,7 @@ CAPABILITIES = Path("app/capabilities")
 
 INTEGRATION_FIXTURE = '''"""Fixtures for the {name} suite.
 
-Shared test database, schema from the models.
+Per-run test database, schema from the models.
 """
 
 import os
@@ -23,17 +24,18 @@ from asyncio import run
 import pytest
 from sqlalchemy import text
 
-from app.kernel.db.testsupport import ensure_database, url_for
+from app.kernel.db.testsupport import ensure_database, test_database, url_for
 
-os.environ["NARRE_DATABASE_URL"] = url_for("narrare_v2_test")
-ensure_database("narrare_v2_test")
+DATABASE = test_database()
+ensure_database(DATABASE)
+os.environ["NARRE_DATABASE_URL"] = url_for(DATABASE)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def schema() -> None:
     from app.kernel.db.init import reset_schema
 
-    run(reset_schema(url_for("narrare_v2_test")))
+    run(reset_schema(url_for(DATABASE)))
 
 
 @pytest.fixture(autouse=True)
