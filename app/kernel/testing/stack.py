@@ -218,6 +218,30 @@ class Stack:
         _wait_for(f"{API_URL}/openapi.json")
 
 
+def _environment(database: str, env: dict[str, str] | None) -> dict[str, str]:
+    """The children's environment, with the stack's cache contract last.
+
+    A caller's extras choose a provider stand-in and are merged over the
+    pinned keys; the cache flag is not a provider boundary, so a caller cannot
+    switch it off (#634).
+    """
+    return {
+        **os.environ,
+        "NARRE_DATABASE_URL": url_for(database),
+        "NARRE_SECRET_KEY": E2E_SECRET_KEY,
+        "NARRE_KEYRING": "off",
+        **(env or {}),
+        # Vite otherwise answers transformed modules with no-cache, and each of
+        # the sweep's hard navigations revalidates the whole dev graph with
+        # 304s; Chromium drops cached module bodies after enough of them
+        # (net::ERR_INSUFFICIENT_RESOURCES) and the page never renders (#634).
+        # no-store keeps every E2E load a fresh 200; `just dev-web` keeps the
+        # default, so a developer's reloads still cache. Last, not before the
+        # extras: a caller cannot switch the stack's contract off.
+        "NARRE_E2E_NO_HTTP_CACHE": "1",
+    }
+
+
 @contextmanager
 def run_stack(
     *, database: str, seed_user: bool, env: dict[str, str] | None = None
@@ -230,25 +254,11 @@ def run_stack(
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 
-    # Extra environment reaches the API only: a stack may point a provider at a
-    # test-owned stand-in (the one boundary a fake may hold). The key store is
-    # pinned the same way, before the caller's extras: every stack runs the
-    # Fernet tier under this test key, deterministically, and no run ever
-    # touches a developer's real OS keychain (design, the keychain module).
-    environment = {
-        **os.environ,
-        "NARRE_DATABASE_URL": url_for(database),
-        "NARRE_SECRET_KEY": E2E_SECRET_KEY,
-        "NARRE_KEYRING": "off",
-        # Vite otherwise answers transformed modules with no-cache, and each of
-        # the sweep's hard navigations revalidates the whole dev graph with
-        # 304s; Chromium drops cached module bodies after enough of them
-        # (net::ERR_INSUFFICIENT_RESOURCES) and the page never renders (#634).
-        # no-store keeps every E2E load a fresh 200; `just dev-web` keeps the
-        # default, so a developer's reloads still cache.
-        "NARRE_E2E_NO_HTTP_CACHE": "1",
-        **(env or {}),
-    }
+    # A caller's extras point a provider at a test-owned stand-in, the one
+    # boundary a fake may hold. Everything else is the stack's own: the Fernet
+    # tier runs under this test key (never a developer's real OS keychain) and
+    # the cache flag stays on, so no capability can bring the 304s back.
+    environment = _environment(database, env)
     pnpm = shutil.which("pnpm")
     if pnpm is None:
         raise RuntimeError("pnpm is not on PATH")
