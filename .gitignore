@@ -27,6 +27,13 @@ htmlcov/
 .tox/
 *,cover
 
+# Fuzzing: Atheris writes a reproducer per finding and a grown corpus per
+# run (`just fuzz`); only the hand-written seeds in fuzz/corpus/ are tracked.
+fuzz/crash-*
+fuzz/leak-*
+fuzz/timeout-*
+fuzz/workdir/
+
 # Type checking
 .pyright/
 pyrightcache/

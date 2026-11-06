@@ -13,19 +13,19 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.stack import Stack, run_stack
 from app.kernel.testing.vendor import EmbeddingsVendor, embeddings_vendor
 
-DATABASE = "narrare_v2_knowledge_e2e"
+DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
 
 
 def _truncate() -> None:
     """Runs in a worker thread: pytest-asyncio keeps a session loop running."""
 
     async def run() -> None:
-        engine = create_async_engine(
-            f"postgresql+asyncpg://narrare:narrare@localhost:5433/{DATABASE}"
-        )
+        engine = create_async_engine(url_for(DATABASE))
         async with engine.begin() as connection:
             await connection.execute(text("TRUNCATE chunks, documents CASCADE"))
         await engine.dispose()

@@ -19,7 +19,7 @@ unit and integration tests exist to make failures cheap to find and fix.
 
 | Layer | Tool | Scope | Database |
 |---|---|---|---|
-| Backend unit/integration | pytest (async) | Repositories, services, providers, parsing | Real Postgres (`narrare_v2_test`) |
+| Backend unit/integration | pytest (async) | Repositories, services, providers, parsing | Real Postgres (per-run database) |
 | Frontend unit | vitest | Logic with state or parsing (stream parser, autosave, i18n pluralization, routing params, pub/sub seams) | None (API client mocked) |
 | End-to-end | pytest + Playwright | One spec per capability, real browser + API + DB | Real Postgres (per-suite database) |
 
@@ -63,6 +63,8 @@ Pure rendering and wiring do not require unit tests.
 - `just test` — backend integration suite.
 - `just test-frontend` — vitest unit suite.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
+- `just fuzz [seconds]` — a bounded Atheris run over the interchange parser
+  (advisory; weekly in CI via `fuzz.yml`, not part of `verify`).
 - `just verify` — check, test, test-frontend and the E2E, plus the production
   build, with the E2E narrowed the same way; it deliberately omits the CI-only
   `check-generated`.
@@ -77,8 +79,9 @@ tool is introduced by this document — it states expectations, not mechanisms.
 
 ## Data and fixtures
 
-- Backend tests use the real test database (`narrare_v2_test`), reset per
-  session. No in-memory substitutes.
+- Backend tests get the real test database named per run — worktree token plus
+  a per-run token, so two pytest runs never share tables — reset per session. No
+  in-memory substitutes.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases; see the capability conftests.
 

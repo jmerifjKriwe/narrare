@@ -22,16 +22,19 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
+from app.kernel.testing.stack import API_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-API = "http://127.0.0.1:8000"
+API = API_URL
 
-DATABASE = "narrare_v2_knowledge_e2e"  # the stack's own database (e2e/conftest.py)
+# this run's stack database (e2e/conftest.py)
+DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
 
 CHAPTER_BODY = (
     "Mira betrat das alte Haus am See. Der Leuchtturm schwieg, und Nebel zog über das Dorf."

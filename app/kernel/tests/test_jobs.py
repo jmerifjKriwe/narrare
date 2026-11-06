@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user, url_for
+from app.kernel.db.testsupport import test_database as this_run
 from app.kernel.jobs import Job, enqueue
 from app.kernel.jobs import runtime as jobs_runtime
 from app.kernel.jobs import worker as jobs_worker
@@ -252,7 +253,7 @@ async def test_a_restarted_process_completes_an_enqueued_job(a_user: None) -> No
 
     # A fresh engine and factory stand in for a restarted process: no shared
     # memory with the enqueuing one, only the row in the database.
-    engine = create_async_engine(url_for("narrare_v2_test"))
+    engine = create_async_engine(url_for(this_run()))
     try:
         factory = async_sessionmaker(engine, expire_on_commit=False)
         assert await Worker(factory, {"kind": handler}).run_once() is True

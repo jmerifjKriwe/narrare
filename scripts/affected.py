@@ -56,6 +56,7 @@ HARNESS: tuple[str, ...] = (".github/workflows/", ".github/actions/")
 
 # A change here cannot break a suite, so it owes none of them.
 INERT: tuple[str, ...] = (
+    ".bestpractices.json",
     "docs/",
     "README*",
     "CHANGELOG.md",

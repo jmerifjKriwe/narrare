@@ -1,8 +1,9 @@
-"""The migration gates' own database: ``narrare_v2_migrations``, always empty.
+"""The migration gates' own database: one per run named for ``narrare_v2_migrations``.
 
-``app/conftest.py`` binds the pytest process to ``narrare_v2_test`` for every
-other suite; the migration gates need a database nothing else touches, so
-``NARRE_DATABASE_URL`` is re-aimed per run by the tests' own helpers.
+``app/conftest.py`` binds the pytest process to its per-run test database for
+every other suite; the migration gates need a database nothing else touches
+under any prefix, so the gates name one per run of their own prefix and
+``NARRE_DATABASE_URL`` is re-aimed by the tests' own helpers.
 """
 
 from asyncio import run
@@ -11,12 +12,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.kernel.db.migrate import ensure_extensions
-from app.kernel.db.testsupport import drop_every_table, ensure_database, url_for
+from app.kernel.db.testsupport import drop_every_table, ensure_database, test_database, url_for
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-DATABASE = "narrare_v2_migrations"
+DATABASE = test_database("narrare_v2_migrations")
 
 
 @pytest.fixture(scope="module")

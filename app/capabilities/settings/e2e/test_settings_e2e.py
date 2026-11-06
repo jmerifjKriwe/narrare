@@ -13,15 +13,15 @@ import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-URL = "http://127.0.0.1:3100/knowledge"
-API = "http://127.0.0.1:8000"
-APPEARANCE = "http://127.0.0.1:3100/settings/appearance"
+URL = f"{WEB_URL}/knowledge"
+APPEARANCE = f"{WEB_URL}/settings/appearance"
 THEME_PATCH = "/api/settings/theme"
 
 
@@ -63,7 +63,7 @@ def test_a_chosen_language_survives_a_fresh_browser(
 
 
 def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     # The shell paints only after the settings query answers — the locale
     # gate — so the Tab below must wait for the bar to exist.
     expect(page.locator("header")).to_be_visible()
@@ -77,13 +77,19 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     page.keyboard.press("Enter")
     expect(page.locator("#main")).to_be_focused()
 
+    # The axe pass reads the settled page: main is scrollable, and while the
+    # shelf is still its aria-hidden skeleton it holds nothing focusable —
+    # a real transient, not the contract this test names. Wait for the
+    # page's own first focusable thing inside main.
+    expect(page.locator("#main").locator("a, button, input, select").first).to_be_visible()
+
     assert_accessible(page)
 
 
 def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) -> None:
     """The settings frame's geometry: the cluster nav is a row list in its own
     200 px column, and the pages render beside it — never spilled into it."""
-    page.goto("http://127.0.0.1:3100/settings")
+    page.goto(f"{WEB_URL}/settings")
 
     # The area's one cluster navigation — distinct from the rail's
     # Hauptnavigation by its name.
@@ -127,23 +133,23 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
 def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stack: Stack) -> None:
     """The tab names the page showing (WCAG 2.4.2) on every settings page,
     and the active cluster row says so with ``aria-current``."""
-    page.goto("http://127.0.0.1:3100/settings")
+    page.goto(f"{WEB_URL}/settings")
     expect(page).to_have_title("Einstellungen — Narrare")
 
     # A sub-page owns its own name — the landing's, not the area's.
-    page.goto("http://127.0.0.1:3100/settings/language")
+    page.goto(f"{WEB_URL}/settings/language")
     expect(page).to_have_title("Sprache — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Sprache")
     ).to_have_attribute("aria-current", "page")
 
-    page.goto("http://127.0.0.1:3100/settings/provider")
+    page.goto(f"{WEB_URL}/settings/provider")
     expect(page).to_have_title("Anbieter — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Anbieter")
     ).to_have_attribute("aria-current", "page")
 
-    page.goto("http://127.0.0.1:3100/settings/appearance")
+    page.goto(APPEARANCE)
     expect(page).to_have_title("Darstellung — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Darstellung")
@@ -155,7 +161,7 @@ def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stac
 def test_a_chosen_theme_survives_a_reload(page: Page, stack: Stack) -> None:
     """The reader's light is user data, not a browser preference: with the
     paint hint cleared, only the row can make the next reload wear it."""
-    page.request.patch(f"{API}{THEME_PATCH}", data={"theme": None})
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
     page.goto(APPEARANCE)
     expect(page.get_by_role("heading", name="Darstellung")).to_be_visible()
 
@@ -184,7 +190,7 @@ def test_a_chosen_theme_survives_a_reload(page: Page, stack: Stack) -> None:
 
     # Leave the row as the suite found it: the system case must decide from
     # the media query, not from this choice.
-    page.request.patch(f"{API}{THEME_PATCH}", data={"theme": None})
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
 
 
 def test_an_unchosen_theme_follows_the_system(browser: Browser, stack: Stack) -> None:
@@ -193,7 +199,7 @@ def test_an_unchosen_theme_follows_the_system(browser: Browser, stack: Stack) ->
     context = browser.new_context(color_scheme="light", locale="de-DE")
     try:
         page = context.new_page()
-        page.request.patch(f"{API}{THEME_PATCH}", data={"theme": None})
+        page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
         page.goto(URL)
         assert page.evaluate("document.documentElement.dataset.theme ?? null") is None
         light = page.evaluate("getComputedStyle(document.body).backgroundColor")
@@ -216,7 +222,7 @@ def test_an_unchosen_theme_follows_the_system(browser: Browser, stack: Stack) ->
 
 def test_a_forced_theme_ignores_the_system(page: Page, stack: Stack) -> None:
     """A stored value wins over the OS, in both directions."""
-    page.request.patch(f"{API}{THEME_PATCH}", data={"theme": "light"})
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": "light"})
     page.goto(APPEARANCE)
     expect(page.get_by_role("heading", name="Darstellung")).to_be_visible()
     light = page.evaluate("getComputedStyle(document.body).backgroundColor")
@@ -225,4 +231,4 @@ def test_a_forced_theme_ignores_the_system(page: Page, stack: Stack) -> None:
     assert page.evaluate("document.documentElement.dataset.theme") == "light"
     assert page.evaluate("getComputedStyle(document.body).backgroundColor") == light
 
-    page.request.patch(f"{API}{THEME_PATCH}", data={"theme": None})
+    page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})

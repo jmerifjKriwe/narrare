@@ -11,11 +11,17 @@ dev-services:
 dev-services-stop:
     docker compose -f docker-compose.dev.yml down
 
-# API with reload on :8000.
-dev-api:
-    uv run uvicorn app.api.main:app --reload --port 8000
+# The ports of both dev stacks are the E2E env pair, not literals: the same
+# NARRE_E2E_API_PORT / NARRE_E2E_WEB_PORT configures `just dev` and the E2E
+# stacks (stack.py forwards its environment to `pnpm dev`, which vite reads),
+# so two stacks on one machine are an env difference, not a code edit.
 
-# Web app on :3100.
+# API with reload on the configured port (default 8000).
+dev-api:
+    uv run uvicorn app.api.main:app --reload --port "${NARRE_E2E_API_PORT:-8000}"
+
+# Web app on the configured port (default 3100): vite reads
+# NARRE_E2E_WEB_PORT itself, no flag needed here.
 dev-web:
     pnpm --dir web dev
 
@@ -96,6 +102,13 @@ test-e2e scope="affected":
       exit 0
     fi
     uv run pytest $paths -v -m e2e --timeout=60
+
+# Bounded Atheris run over the interchange parser: just fuzz 60 (seconds).
+# Seeds are fuzz/corpus; new units and a finding land in the gitignored
+# fuzz/workdir/ and fuzz/crash-*.
+fuzz seconds="300":
+    mkdir -p fuzz/workdir
+    uv run --group fuzz python -m scripts.fuzz_archive fuzz/workdir fuzz/corpus -max_total_time={{seconds}} -artifact_prefix=fuzz/
 
 # Web unit tests.
 test-frontend:

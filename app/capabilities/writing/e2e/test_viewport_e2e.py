@@ -22,6 +22,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 from app.kernel.testing.viewport import assert_overlay, assert_page_fits
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-WEB = "http://127.0.0.1:3100"
+WEB = WEB_URL
 PROSE = ".ProseMirror"
 # The workbench's editor column: the min-w-0 flex item the panels must never
 # move. The overlay delta is measured here, not on the prose element — the
