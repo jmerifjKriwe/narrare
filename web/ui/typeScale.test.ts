@@ -46,6 +46,19 @@ describe("the type scale's census", () => {
   });
 });
 
+describe("the area hues", () => {
+  it("stay in the rail", () => {
+    const offences = scanned
+      .filter((file) => !file.endsWith("components/IconRail.tsx"))
+      .flatMap((file) =>
+        [...readFileSync(file, "utf8").matchAll(/\b(?:text|bg|border)-area-[a-z]+\b/g)].map(
+          (match) => `${relative(REPO, file)}: ${match[0]}`,
+        ),
+      );
+    expect(offences).toEqual([]);
+  });
+});
+
 describe("the scale's steps", () => {
   it("reads 12 / 13 / 14 / 15 / 20 / 28", () => {
     const css = readFileSync(join(WEB, "globals.css"), "utf8");

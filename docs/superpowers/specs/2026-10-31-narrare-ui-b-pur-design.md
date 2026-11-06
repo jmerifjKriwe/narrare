@@ -148,6 +148,11 @@ Token laws:
 - **L5** A card never sits inside a card; `--panel` never contains `--card` content
   except in overlays.
 
+Area hues (`--area-writing`, `--area-knowledge`, `--area-chat`,
+`--area-settings`) are **navigation identity marks**: the rail entry's icon and
+nothing else. They never fill a control, colour text, or land on a cover or a
+notice; each clears 3:1 against `--panel` in both themes.
+
 ### 8.2 Type scale (`@theme inline`, so `text-meta` … `text-hero` exist)
 
 | Token | Size / line | Use |

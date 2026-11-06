@@ -24,16 +24,30 @@ import { Icon, type IconName } from "../ui/icons";
 type RailTo = ComponentProps<typeof Link>["to"];
 type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 
+/** The rail's four areas and the one utility each may wear: an identity mark
+ *  on the icon, never a fill, a text colour, a cover or a notice. The hues
+ *  are measured ≥ 3:1 against `--panel` in both themes. */
+export const AREA_ICON = {
+  writing: "text-area-writing",
+  knowledge: "text-area-knowledge",
+  chat: "text-area-chat",
+  settings: "text-area-settings",
+} as const;
+
+export type RailArea = keyof typeof AREA_ICON;
+
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({
   to,
   label,
   icon,
+  area,
   activeOptions,
 }: {
   to: RailTo;
   label: string;
   icon: IconName;
+  area: RailArea;
   activeOptions?: RailActiveOptions;
 }) {
   return (
@@ -44,10 +58,13 @@ function RailLink({
       /* The L2 pair rides the attribute Link sets when the route matches:
        * a state variant outspecifies the variant paint (text-muted), a
        * plainly appended class would not — the cascade, not the class
-       * string's order, decides. */
+       * string's order, decides. The icon's own span carries the area hue,
+       * a direct declaration the link's inherited ink cannot override. */
       className={`${buttonClass("icon", "md")} aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
-      <Icon name={icon} />
+      <span className={AREA_ICON[area]}>
+        <Icon name={icon} />
+      </span>
     </Link>
   );
 }
@@ -93,6 +110,7 @@ export function IconRail() {
           to="/"
           label={t("shell.navHome")}
           icon="books"
+          area="writing"
           activeOptions={{ exact: true, includeSearch: false }}
         />
         {nav.map((entry) => (
@@ -101,6 +119,7 @@ export function IconRail() {
             to={entry.path}
             label={t(entry.titleKey)}
             icon={entry.id}
+            area={entry.id}
             activeOptions={{ exact: true, includeSearch: false }}
           />
         ))}
@@ -111,6 +130,7 @@ export function IconRail() {
         to="/settings"
         label={t("shell.settings")}
         icon="settings"
+        area="settings"
         activeOptions={{ includeSearch: false }}
       />
     </nav>
