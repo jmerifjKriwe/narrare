@@ -235,6 +235,10 @@ Three tones are enough for a shelf of ten books; a rainbow is not.
 
 The shell frame is global: the **icon rail** is shell chrome on every route, the
 **top bar** carries the place (breadcrumb), ⌘K, settings and the language control.
+The rail keeps its 48 px column in the layout and opens over the page on hover or
+focus — the names were always in the DOM, and a pointer's hover moves no page
+pixel. A coarse pointer has no hover, so there the rail stands open with its
+names. Each entry's icon wears its area's hue (§8.1), and nothing else does.
 Rail entries, top to bottom: a fixed Home (the shelf, `/`), then the generated
 `nav` (chat, knowledge), then Settings anchored at the bottom. `writing` stays
 `nav: false` — the shelf *is* home, not a destination — so no `capability.yaml`

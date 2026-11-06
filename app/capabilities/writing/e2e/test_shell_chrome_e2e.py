@@ -16,7 +16,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Browser, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
 
@@ -176,3 +176,46 @@ def test_the_palette_key_opens_it_by_pointer(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB}/")
     page.get_by_role("button", name="Befehlspalette öffnen").click()
     expect(page.get_by_role("dialog", name="Befehlspalette")).to_be_visible()
+
+
+def test_the_rail_names_itself_on_hover(page: Page, stack: Stack) -> None:
+    """The icon rail opens over the page on hover: the names were always in
+    the DOM, and the collapsed rail clips them at 48 px."""
+    page.goto(f"{WEB}/")
+    rail = page.locator(ICON_RAIL)
+    label = rail.get_by_text("Wissen")
+    expect(rail).to_have_css("width", "48px")
+    expect(label).to_have_css("opacity", "0")
+    rail.hover()
+    expect(rail).to_have_css("width", "168px")
+    expect(label).to_have_css("opacity", "1")
+
+
+def test_the_expanded_rail_moves_no_page_pixels(page: Page, stack: Stack) -> None:
+    """The expansion is an overlay in a fixed slot: the page axis stays put."""
+    page.goto(f"{WEB}/")
+    before = page.locator("main").bounding_box()
+    page.locator(ICON_RAIL).hover()
+    assert page.locator("main").bounding_box() == before
+
+
+def test_tabbing_into_the_rail_opens_it(page: Page, stack: Stack) -> None:
+    """A keyboard user gets the names too: focus-within opens the rail."""
+    page.goto(f"{WEB}/")
+    for _ in range(8):
+        page.keyboard.press("Tab")
+        if page.evaluate("document.activeElement?.closest('nav') !== null"):
+            break
+    expect(page.locator(ICON_RAIL)).to_have_css("width", "168px")
+
+
+def test_a_touch_pointer_gets_permanent_labels(browser: Browser, stack: Stack) -> None:
+    """No hover on a coarse pointer, so the names stand open there."""
+    context = browser.new_context(has_touch=True, viewport={"width": 1280, "height": 900})
+    try:
+        page = context.new_page()
+        page.goto(f"{WEB}/")
+        expect(page.locator(ICON_RAIL)).to_have_css("width", "168px")
+        expect(page.locator(ICON_RAIL).get_by_text("Wissen")).to_have_css("opacity", "1")
+    finally:
+        context.close()
