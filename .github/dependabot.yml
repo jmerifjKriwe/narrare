@@ -1,7 +1,10 @@
 version: 2
 
 # Code ecosystems run monthly with a 7-day cooldown held to 30 days for
-# majors. Actions run weekly with a 3-day default cooldown; the Actions
+# majors. Docker has no cooldown at all: its ecosystem documents no
+# `semver-major-days`, and one unsupported key makes Dependabot discard the
+# whole file — which stops every updater, not just this one. Actions run weekly
+# with a 3-day default cooldown; the Actions
 # updater supports only `default-days`, so majors there have no separate
 # hold. Grouping plus the cooldown keeps PRs
 # few and safe: minor/patch bumps sit for a week before they open, majors for
@@ -63,23 +66,19 @@ updates:
   # Dockerfile — a base image tag is a mutable ref, so every one of them is
   # pinned by digest and this updater moves them.
 
+  # Only the keys the docker ecosystem documents. The first attempt copied the
+  # uv entry's `cooldown.semver-major-days`, which Dependabot rejects for docker
+  # — and it rejects the whole file, so every ecosystem stopped updating. A base
+  # image bump is rare; the schedule and the commit shape are all it needs.
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "monthly"
-    cooldown:
-      default-days: 7
-      semver-major-days: 30
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
       include: "scope"
     labels: ["dependencies", "docker"]
-    groups:
-      minor-patch:
-        update-types: ["minor", "patch"]
-      major-updates:
-        update-types: ["major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
