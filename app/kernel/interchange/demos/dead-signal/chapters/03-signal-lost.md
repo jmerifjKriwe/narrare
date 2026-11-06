@@ -160,31 +160,3 @@ For now.
 *Not today. But someday.*
 
 *—END—*
-
-## volume
-
-1
-
-## status
-
-draft
-
-## word_count
-
-520
-
-## pov_character
-
-Maya
-
-## pov_type
-
-first-person
-
-## timeline_position
-
-Day 1, 2000 hours
-
-## location
-
-Horizon Station

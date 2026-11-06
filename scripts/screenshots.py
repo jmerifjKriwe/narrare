@@ -141,7 +141,10 @@ def _plant_contradiction(api: httpx.Client, chapter: dict[str, object]) -> None:
     The demo names Research Facility 7 in two chapters; one of them becomes 9.
     A name carrying two numbers is what the consistency contract reports.
     """
-    body = str(chapter["body"]).replace("Research Facility 7", "Research Facility 9", 1)
+    original = str(chapter["body"])
+    body = original.replace("Research Facility 7", "Research Facility 9", 1)
+    if body == original:
+        raise SystemExit("the demo no longer names Research Facility 7")
     updated = api.put(f"/api/writing/chapters/{chapter['id']}", json={"body": body})
     updated.raise_for_status()
 
@@ -230,8 +233,7 @@ def _capture(
     expect(editor).to_be_visible()
     # The suggestion lands at the caret, so the caret goes where a writer
     # stopped: the end of the chapter's opening paragraph. Placed through the
-    # DOM because End walks the visual line, not the paragraph, and the file's
-    # own tail carries a leaked metadata block that is not this frame's story.
+    # DOM because End walks the visual line, not the paragraph.
     page.evaluate(
         """() => {
             const paragraph = document.querySelector(".ProseMirror p");

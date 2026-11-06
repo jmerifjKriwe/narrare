@@ -86,35 +86,3 @@ She wasn't the only one watching.
 *First: She could never unknow the truth.*
 
 *Second: She needed to get into the Secret Archives before Morven realized she knew enough to be dangerous.*
-
-## volume
-
-1
-
-## part
-
-1
-
-## status
-
-draft
-
-## word_count
-
-465
-
-## pov_character
-
-Elara
-
-## pov_type
-
-third-limited
-
-## timeline_position
-
-Day 3
-
-## location
-
-Aethelgard (Capital City)
