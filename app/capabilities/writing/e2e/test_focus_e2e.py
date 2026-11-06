@@ -120,9 +120,13 @@ def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
     assert "focus=2" in page.url
     assert_accessible(page)
 
-    # The keyboard still reaches the page: Tab lands on something interactive
-    # (the editor or the one button left), never outside the document.
+    # The keyboard still reaches the page: the first Tab takes the page's own
+    # scroller — the shell keeps `main` in the tab order so a scroll container
+    # is reachable without a pointer (#638) — and the second one an interactive
+    # control, never the document's outside.
     page.evaluate("document.activeElement && document.activeElement.blur()")
+    page.keyboard.press("Tab")
+    assert page.evaluate("() => document.activeElement && document.activeElement.id") == "main"
     page.keyboard.press("Tab")
     assert page.evaluate(f"() => {_INTERACTIVE}")
 

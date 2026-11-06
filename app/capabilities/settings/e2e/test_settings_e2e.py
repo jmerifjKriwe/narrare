@@ -74,6 +74,11 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     page.keyboard.press("Enter")
     expect(page.locator("#main")).to_be_focused()
 
+    # And the landing is also a stop of its own: main is the page's scroller,
+    # so axe's scrollable-region-focusable only passes while the region is in
+    # the tab order (#638). -1 held the skip link's focus and failed the rule.
+    expect(page.locator("#main")).to_have_attribute("tabindex", "0")
+
     assert_accessible(page)
 
 
