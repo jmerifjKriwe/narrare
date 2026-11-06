@@ -18,8 +18,12 @@ concurrency:
   # would delete a coverage report only that run could produce — every
   # merge delivers its own report for its own SHA. The nightly, which has
   # its own question to answer, lives in its own workflow now (nightly.yml).
-  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Reviews get a group of their own. Both halves matter: a push must not kill
+  # a running suite (a `tests` job killed mid-run reports failed), and a
+  # withdrawn approval must kill the build it started — otherwise the image
+  # reaches GHCR after the approval it stood on is gone.
+  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}${{ github.event_name == 'pull_request_review' && '-review' || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_review' }}
 
 permissions: {}
 
