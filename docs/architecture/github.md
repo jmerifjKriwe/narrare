@@ -87,7 +87,7 @@ The classes:
 | `HARNESS` | `.github/workflows/`, `.github/actions/` | the smoke suite `settings` alone — proof the harness still works, measured on PR #594's CI: settings 1m33s (setup 1m54s, chat 1m58s, knowledge 4m6s, writing 7m48s, prompts 13m12s, so `settings` beat `setup`, the design's default). Fails open to every suite when no known capability carries that suite |
 | `SHARED` | `app/kernel/`, `app/api/`, `app/generated/`, `web/`, `i18n/`, `app/conftest.py`, `app/capabilities/conftest.py`, `justfile`, `pyproject.toml`, `uv.lock`, `pnpm-lock.yaml` | every suite |
 | `RELEASE` | `pyproject.toml`, `uv.lock`, `CHANGELOG.md`, `.release-please-manifest.json`, `package.json`, `web/package.json`, `app/kernel/version.py`, `web/lib/api/openapi.json` | nothing, but only when a change touches *only* release files (checked first, before the shared overlaps) |
-| `INERT` | `docs/`, `README*`, `CHANGELOG.md`, `LICENSE`, `AGENTS.md`, `CONTRIBUTING.md`, `TESTING.md`, `scripts/`, `docker-compose*.yml`, `.pre-commit-config.yaml`, `.release-please-manifest.json`, `.github/` | nothing |
+| `INERT` | `.bestpractices.json`, `docs/`, `README*`, `CHANGELOG.md`, `LICENSE`, `AGENTS.md`, `CONTRIBUTING.md`, `TESTING.md`, `scripts/`, `docker-compose*.yml`, `.pre-commit-config.yaml`, `.release-please-manifest.json`, `.github/` | nothing |
 | *(a path under `app/capabilities/<name>/`)* | | that capability's own e2e suite |
 | *(anything else)* | | every suite |
 

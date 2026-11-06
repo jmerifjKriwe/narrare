@@ -297,6 +297,7 @@ def test_every_suite_with_no_nameable_suite_reddens_the_gate(
 def test_docs_and_tooling_owe_nothing():
     r = resolve(
         [
+            ".bestpractices.json",
             "docs/x.md",
             "README.md",
             "scripts/affected.py",
