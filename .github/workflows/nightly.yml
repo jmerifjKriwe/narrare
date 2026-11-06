@@ -259,7 +259,7 @@ jobs:
           build-args: |
             VERSION=nightly
             REVISION=${{ github.sha }}
-      - name: The artefact starts, migrates and serves
+      - name: The image is not bloated
         run: |
           set -euo pipefail
           size=$(docker image inspect narrare:nightly --format '{{.Size}}')
@@ -272,47 +272,9 @@ jobs:
             echo "::error::image is $size bytes, over the 450 MB ceiling"
             exit 1
           fi
-
-          docker network create narrare-nightly
-          docker run -d --name pg --network narrare-nightly \
-            -e POSTGRES_USER=narrare -e POSTGRES_PASSWORD=narrare -e POSTGRES_DB=narrare \
-            pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8
-          for _ in $(seq 1 60); do
-            docker exec pg pg_isready -U narrare -d narrare && break
-            sleep 1
-          done
-
-          key=$(docker run --rm --entrypoint .venv/bin/python narrare:nightly \
-            -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
-          docker run -d --name app --network narrare-nightly -p 8080:8000 \
-            -e NARRE_DB_HOST=pg -e NARRE_DB_NAME=narrare -e NARRE_DB_USER=narrare \
-            -e NARRE_DB_PASSWORD=narrare -e NARRE_SECRET_KEY="$key" \
-            narrare:nightly
-
-          up=""
-          for _ in $(seq 1 90); do
-            if curl -sf -o /dev/null http://127.0.0.1:8080/; then up=1; break; fi
-            sleep 1
-          done
-          if [ -z "$up" ]; then
-            echo "::error::the image never answered"
-            docker logs app
-            exit 1
-          fi
-
-          # The startup line names the connection the app resolved; a wrong
-          # NARRE_DB_* parsing is otherwise invisible on a green smoke.
-          docker logs app 2>&1 | grep -q 'database NARRE_DB_\* → narrare@pg:5432/narrare'
-          asset=$(curl -sf http://127.0.0.1:8080/ | grep -o '/assets/[^"]*\.js' | head -1)
-          curl -sf -o /dev/null "http://127.0.0.1:8080$asset"
-          curl -sf -o /dev/null http://127.0.0.1:8080/THIRD-PARTY-NOTICES.txt
-          # The first boot ran the history, on a database that was empty.
-          docker exec pg psql -U narrare -d narrare -tAc 'select version_num from alembic_version'
-          docker exec pg psql -U narrare -d narrare -tAc \
-            "select count(*) from pg_extension where extname in ('vector','pg_trgm','unaccent')" | grep -qx 3
-      - name: Log the container's output when something failed
-        if: failure()
-        run: docker logs app 2>&1 | tail -40 || true
+      - uses: ./.github/actions/container-smoke # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
+        with:
+          image: narrare:nightly
 
   nightly-result:
     needs: [gate, audit, lint-types, tests, frontend, build, container, e2e-suites]
