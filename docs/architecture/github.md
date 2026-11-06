@@ -14,9 +14,10 @@ way it is lives in the design spec, not here.
 | `ci.yml` | `pull_request`, `push: main`, `workflow_dispatch` | `lint-types` (calls `_lint.yml`), `changes`, `tests` (calls `_test.yml`), `frontend`, `build`, `e2e-suites` (matrix, calls `_e2e.yml`), `dependency-review` (PR only), `workflow-lint`, `ci-required` | yes — `ci-required` is the ruleset's only required check |
 | `nightly.yml` | `schedule` (daily 03:17 UTC), `workflow_dispatch` | `gate`, `audit`, `lint-types`, `tests`, `frontend`, `build`, `e2e-suites` (every capability), `nightly-result` | no — a red run reports through the [`ci/nightly` issue](#the-nightly-and-its-audit) |
 | `release-please.yml` | `push: main`, `workflow_dispatch` | `release-please` | no |
-| `codeql.yml` | `pull_request` (code paths), `push: main` (code paths), `schedule` (weekly, Sunday 06:07 UTC), `workflow_dispatch` | `analyze` (matrix: `python`, `javascript-typescript`, `actions`) | no — advisory |
+| `codeql.yml` | `pull_request` (every PR), `push: main` (code paths), `schedule` (weekly, Sunday 06:07 UTC), `workflow_dispatch` | `analyze` (matrix: `python`, `javascript-typescript`, `actions`) | no — advisory |
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
 | `pins.yml` | `schedule` (monthly, 1st 08:23 UTC), `workflow_dispatch` | `check` | no — advisory; reports through the [`ci/tool-pins` issue](#dependabot) |
+| `fuzz.yml` | `schedule` (weekly, Sunday 05:17 UTC), `workflow_dispatch` | `fuzz` | no — advisory |
 | `publish.yml` | *(dormant)* | image build, attest, SBOM, release assets | no |
 
 `publish.yml` is dormant: **it does not exist on the tree** and nothing runs
@@ -155,12 +156,17 @@ item, never a blocked merge.
   `init` fails with "Query pack default cannot be found".)
   `security-and-quality` is deliberately deferred — raising the suite is its
   own decision, with its own review of the noise it brings.
-- Path-filtered: `app/**`, `web/**`, `scripts/**`,
+- Pull requests are analyzed **unfiltered**; the `push: main` trigger is
+  path-filtered to `app/**`, `web/**`, `scripts/**`,
   `.github/workflows/**`, `.github/actions/**`, excluding
-  `app/generated/**`, `web/lib/api/**`, `web/dist/**`, `assets/**`. The
-  weekly sweep re-analyzes the whole tree with no filter. Being advisory is
-  what makes the filters safe: a filtered-out pull request cannot register
-  a *missing required check* and pass silently.
+  `app/generated/**`, `web/lib/api/**`, `web/dist/**`, `assets/**`, and the
+  weekly sweep re-analyzes the whole tree with no filter. The PR trigger used
+  to be filtered too, and Scorecard's SAST check counts a merged PR's commits
+  as checked only when its head carries a completed CodeQL run — a PR
+  confined to `docker-compose.dev.yml` got no run at all and held the score
+  at 9 (alert #10) while it sat in the rolling window. A push re-analyzes the
+  merge tree whose PR just ran the analysis, so the filter costs nothing
+  there; a public repository pays nothing for the extra PR runs either.
 - **Fork caveat:** advanced setup cannot upload SARIF for `pull_request`
   events from forks (`security-events: write` is not granted there); pushes
   and same-repo PRs are unaffected. Default setup handled forks. Revisit
@@ -187,6 +193,23 @@ not on the edit itself. The trigger stays as the listener for classic
 protection settings; do not read its absence on a ruleset edit as silence
 meaning anything. Re-open the finding when GitHub adds a ruleset event, or
 when `main` moves back to classic protection.
+
+## Fuzzing
+
+`fuzz.yml`, advisory, weekly. Runs `scripts/fuzz_archive.py` — an Atheris
+target over the interchange parser, the one reader here that takes untrusted
+bytes (an imported archive) — for ten bounded minutes with the seeds in
+`fuzz/corpus/`. Two contracts from `format.py`'s docstring are asserted: a
+malformed file is refused as `ArchiveError` and nothing else, and parsing the
+files `serialize_archive` wrote re-exports them byte-identically. The first
+run found both a body's leading blank line being eaten on re-import and a
+`ValueError` escaping PyYAML's timestamp constructor as a 500; each has a
+regression test in `app/kernel/tests/test_interchange_format.py`.
+
+`just fuzz [seconds]` is the same target locally. A finding fails the run and
+uploads the reproducer as the `fuzz-crash` artifact; a green run means those
+seconds of mutation found nothing, not that the parser is proven. The seed
+corpus is checked in, so a fix that regresses a known shape is re-found.
 
 ## The nightly and its audit
 

@@ -1,24 +1,27 @@
 name: CodeQL
 
 # Advanced-setup CodeQL (spec §`codeql.yml`): the security signal the old
-# default setup carried, as an explicit, path-filtered workflow instead.
-# Advisory by design — it names no context in `ci-required` — a red here is
-# a finding to triage, not a blocked merge; the pull request's required
-# gates live in ci.yml.
+# default setup carried, as an explicit workflow. Advisory by design — it
+# names no context in `ci-required` — a red here is a finding to triage, not
+# a blocked merge; the pull request's required gates live in ci.yml.
 #
-# The path filters decide when CodeQL re-analyzes: a security analysis over
-# the whole tree costs many runner minutes, and a change confined to, say, a
-# generated file cannot affect a finding. The excludes are the generated
-# code: `app/generated/**` and `web/lib/api/**` are produced sources,
-# `web/dist/**` is a build output, and `assets/**` is data. `!` patterns keep
-# one filter list instead of `paths-ignore`'s complement semantics. The
-# filters are safe on this workflow's checks because it is advisory — it
-# names no context in `ci-required`, so a filtered-out pull request cannot
-# register a missing required check and pass silently.
+# A pull request is analyzed unfiltered. It used to be path-filtered, and
+# Scorecard's SAST check counts a merged PR's commits as checked only when
+# the PR head carries a completed CodeQL run: a PR confined to
+# `docker-compose.dev.yml` got no run at all and dropped the score to 9
+# (alert #10) for as long as it sat in the rolling window. A public
+# repository pays nothing for the extra runs, three advisory jobs in
+# parallel cost a couple of minutes, and a signal that says "unchecked" for
+# a docs-only PR is a signal that lies.
 #
-# The weekly sweep has no path filter on purpose: a schedule always asks
-# about the whole tree, and CodeQL's own incremental cache never fully
-# replaces re-analyzing everything.
+# A push to `main` keeps the filters: what it re-analyzes is the merge tree,
+# whose PR already ran the analysis moments earlier, so a docs-only merge
+# owes no second pass. The excludes are the generated code:
+# `app/generated/**` and `web/lib/api/**` are produced sources, `web/dist/**`
+# is a build output, and `assets/**` is data. `!` patterns keep one filter
+# list instead of `paths-ignore`'s complement semantics. The weekly sweep has
+# no path filter on purpose: a schedule always asks about the whole tree, and
+# CodeQL's own incremental cache never fully replaces re-analyzing everything.
 #
 # Accepted trade-off (spec: revisit trigger): advanced setup cannot upload
 # SARIF for pull_request events from forks — `security-events: write` is not
@@ -30,17 +33,9 @@ name: CodeQL
 # disabled before this file merged. The two land as one operation.
 
 on:
+  # Unfiltered on purpose: see the header. A path-filtered pull request left
+  # Scorecard's SAST check at 9 (alert #10) even when it changed no code.
   pull_request:
-    paths:
-      - "app/**"
-      - "web/**"
-      - "scripts/**"
-      - ".github/workflows/**"
-      - ".github/actions/**"
-      - "!app/generated/**"
-      - "!web/lib/api/**"
-      - "!web/dist/**"
-      - "!assets/**"
   push:
     branches: [main]
     paths:
