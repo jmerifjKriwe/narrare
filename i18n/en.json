@@ -284,6 +284,9 @@
   "settings.automatic": "Automatic",
   "settings.errorSave": "The language could not be saved.",
   "shell.settings": "Settings",
+  "shell.paletteOpen": "Open the command palette, {key}",
+  "shell.paletteKeyMac": "⌘K",
+  "shell.paletteKeyOther": "Ctrl K",
   "settings.heading": "Settings",
   "settings.back": "Back",
   "settings.clusterLanguage": "Language",
@@ -393,12 +396,12 @@
   "commands.newChapter": "New chapter",
   "commands.exportNovel": "Export novel",
   "palette.aria": "Command palette",
-  "palette.searchLabel": "Search chapters, entities, pages and commands",
+  "palette.searchLabel": "Search chapters, entities, pages and commands…",
   "palette.chapters": "Chapters",
   "palette.entities": "Entities",
   "palette.novels": "Novels",
   "palette.pages": "Docks & pages",
   "palette.commands": "Commands",
   "palette.noResults": "Nothing matches.",
-  "workspace.shortcutHints": "F9 focus · Esc step back or discard · ⌘K palette"
+  "workspace.shortcutHints": "F9 focus · Esc step back or discard · {key} palette"
 }

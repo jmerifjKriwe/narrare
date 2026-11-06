@@ -168,3 +168,11 @@ def test_the_workspace_shows_one_filled_primary_with_the_chat_dock_open(
     primaries = page.locator("button.bg-primary")
     expect(primaries).to_have_count(1)
     expect(primaries).to_contain_text("Weiterschreiben")
+
+
+def test_the_palette_key_opens_it_by_pointer(page: Page, stack: Stack) -> None:
+    """The bar's keycap is a door, not a decoration: a pointer user reaches
+    the palette without knowing the shortcut."""
+    page.goto(f"{WEB}/")
+    page.get_by_role("button", name="Befehlspalette öffnen").click()
+    expect(page.get_by_role("dialog", name="Befehlspalette")).to_be_visible()

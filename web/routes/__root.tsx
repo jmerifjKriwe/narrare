@@ -75,6 +75,18 @@ function Shell() {
   // workbench's own shortcuts make. ⌘K toggles, so the same press that
   // opened it closes it again.
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  /** A dialog owns the stage; the palette refuses to open over one. */
+  function paletteCanOpen(): boolean {
+    return document.querySelector('[role="dialog"]') === null;
+  }
+
+  /** The bar's chip opens what the key opens, under the same refusal. */
+  function openPalette(): void {
+    if (!paletteCanOpen()) return;
+    setPaletteOpen(true);
+  }
+
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
       if (event.repeat || event.isComposing) return;
@@ -91,7 +103,7 @@ function Shell() {
           // workaround; modality comes from aria-hidden outside), so the
           // check reads the role alone — and every modal in the app is a
           // React Aria dialog, wherever it was opened from.
-          if (!value && document.querySelector('[role="dialog"]') !== null) {
+          if (!value && !paletteCanOpen()) {
             return value;
           }
           return !value;
@@ -118,7 +130,7 @@ function Shell() {
           R29) — on the workspace it waits for 1280, on every other route
           it shows from 1024. */}
       <div className="flex h-dvh flex-col">
-        {chromeless ? null : <TopBar />}
+        {chromeless ? null : <TopBar onOpenPalette={openPalette} />}
         <div className="flex min-h-0 min-w-0 flex-1">
           {chromeless ? null : <IconRail />}
           {/* The shell owns the page's one main landmark; routes render content

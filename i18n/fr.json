@@ -284,6 +284,9 @@
   "settings.automatic": "Automatique",
   "settings.errorSave": "La langue n'a pas pu être enregistrée.",
   "shell.settings": "Paramètres",
+  "shell.paletteOpen": "Ouvrir la palette de commandes, {key}",
+  "shell.paletteKeyMac": "⌘K",
+  "shell.paletteKeyOther": "Ctrl K",
   "settings.heading": "Paramètres",
   "settings.back": "Retour",
   "settings.clusterLanguage": "Langue",
@@ -393,12 +396,12 @@
   "commands.newChapter": "Nouveau chapitre",
   "commands.exportNovel": "Exporter le roman",
   "palette.aria": "Palette de commandes",
-  "palette.searchLabel": "Rechercher chapitres, entités, pages et commandes",
+  "palette.searchLabel": "Rechercher chapitres, entités, pages et commandes…",
   "palette.chapters": "Chapitres",
   "palette.entities": "Entités",
   "palette.novels": "Romans",
   "palette.pages": "Docks et pages",
   "palette.commands": "Commandes",
   "palette.noResults": "Aucun résultat.",
-  "workspace.shortcutHints": "F9 focus · Esc reculer ou annuler · ⌘K palette"
+  "workspace.shortcutHints": "F9 focus · Esc reculer ou annuler · {key} palette"
 }
