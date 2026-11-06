@@ -17,6 +17,9 @@ on:
         type: string
         required: true
 
+# Deny by default: the job below grants the one scope it uses.
+permissions: {}
+
 # Actions are pinned by commit SHA and name their release in a trailing
 # comment, like every other workflow here (see ci.yml's header comment).
 

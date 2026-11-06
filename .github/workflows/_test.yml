@@ -21,6 +21,9 @@ on:
           explicitly by the caller, never through inherit-all-secrets.
         required: false
 
+# Deny by default: the job below grants the one scope it uses.
+permissions: {}
+
 # Actions are pinned by commit SHA and name their release in a trailing
 # comment, like every other workflow here (see ci.yml's header comment).
 
