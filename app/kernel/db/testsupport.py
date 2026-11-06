@@ -17,7 +17,7 @@ import re
 import sys
 from contextlib import suppress
 from hashlib import blake2s
-from os import getpid, kill
+from os import environ, getpid, kill
 from pathlib import Path
 from secrets import token_hex
 from socket import gethostname
@@ -28,7 +28,16 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
-SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+_ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
+
+# Attached to a running instance, exactly one database exists — the instance's
+# own — and that is what every test-database name resolves to. The name is
+# never recorded, so no session finish and no sweep can drop its data.
+SERVER = (
+    environ["NARRE_DATABASE_URL"].rsplit("/", 1)[0]
+    if _ATTACH_URL
+    else "postgresql+asyncpg://narrare:narrare@localhost:5433"
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -99,7 +108,13 @@ def test_database(prefix: str = "narrare_v2_test") -> str:
     else's name.
 
     ``ensure_database`` is the caller's next step: nothing is created here.
+
+    Attached to a running instance (``NARRE_E2E_ATTACH``), the answer is that
+    instance's database: there is exactly one, it holds the artefact's state,
+    and a run that only drives it neither sweeps nor drops it.
     """
+    if _ATTACH_URL:
+        return environ["NARRE_DATABASE_URL"].rsplit("/", 1)[-1]
     if prefix in _NAMES:
         return _NAMES[prefix]
     if prefix not in _SWEPT:

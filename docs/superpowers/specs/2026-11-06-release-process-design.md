@@ -172,9 +172,12 @@ the image, because the artefact question is narrower: does the UI served from
 `web/dist`, the API and the first-boot migration work inside the container? The other
 seven re-test the application, which `main` already proved.
 
-The chosen suite is `writing`: the editor, autosave, the streaming continuation and the
-manuscript persistence are the product's core path and the one most likely to break on
-a packaging mistake.
+The chosen suite is `chat`: it drives the shell from `web/dist`, the API, the database,
+an embedding-backed retrieval and a streamed answer, all on one origin, and it has no
+outage test. That last point decides it — `writing` and `knowledge` stop and restart the
+API process to simulate an unreachable backend, which a container cannot offer a test
+process; attached, eighteen `writing` tests fail for that reason alone, and a gate that
+skips them is not the gate this design promised.
 
 The harness needs one new mode (`app/kernel/testing/stack.py`): **attach** — do not
 spawn uvicorn, do not reset the database, take both origins from the environment.
@@ -207,7 +210,7 @@ then upgrade (backup, pull, restart, where the pre-migration dumps land) and res
 | `GET /` and one `/assets/*.js` | the shell is served from the image, 200 not 404 | the release |
 | seed via API, restart, seed still readable | the bundled-Postgres topology works | the release |
 | image against a separately provisioned pgvector server whose app role cannot create extensions, plus the incomplete-`NARRE_DB_*` refusal | the hosting and Unraid topology, the only new runtime code | the release |
-| the `writing` suite's Playwright run against the container | the UI, the API and the migrations inside the artefact, on one origin | the release |
+| the `chat` suite's Playwright run against the container | the UI, the API and the migrations inside the artefact, on one origin | the release |
 | previous version + seeded book → new version → same chapter text | upgrade path with dump | the release (from the second image on; the first image has no predecessor to pull) |
 | digest recorded in the release notes | what you pull is what was tested | approval |
 

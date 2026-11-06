@@ -447,7 +447,7 @@ Expected: every capability suite green, exactly as before (real Postgres on :543
 - [ ] **Step 4: Prove the attach path against the image**
 
 Start the stack of Task 3 Step 4 on port 8080, then run one suite with
-`NARRE_E2E_ATTACH=http://127.0.0.1:8080 NARRE_DATABASE_URL=postgresql+asyncpg://narrare:narrare@127.0.0.1:5432/narrare just test-file app/capabilities/writing/e2e/`.
+`NARRE_E2E_ATTACH=http://127.0.0.1:8080 NARRE_DATABASE_URL=postgresql+asyncpg://narrare:narrare@127.0.0.1:5432/narrare just test-file app/capabilities/chat/e2e/`.
 Expected: green, driven by the image's own shell and API on one origin.
 
 - [ ] **Step 5: Commit**
@@ -503,7 +503,7 @@ naming them as legitimate skips.
 `ci.yml` gains `pull_request_review: types: [submitted]`; every existing job gets
 `if: github.event_name != 'pull_request_review'`; the aggregator gets a second mode
 (review + `state == approved` + release branch) where only the four artefact jobs are
-owed. `container` builds the image and runs the smoke; `container-e2e` runs `writing`
+owed. `container` builds the image and runs the smoke; `container-e2e` runs `chat`
 via `NARRE_E2E_ATTACH`; `container-upgrade` starts the previous release's image,
 seeds a book, then the new image, and compares the chapter text; `container-external`
 runs the image against a Postgres service whose app role cannot create extensions and
