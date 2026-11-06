@@ -233,7 +233,17 @@ def test_tabbing_into_the_rail_opens_it(page: Page, stack: Stack) -> None:
 
 def test_a_touch_pointer_gets_permanent_labels(browser: Browser, stack: Stack) -> None:
     """No hover on a coarse pointer, so the names stand open there."""
-    context = browser.new_context(has_touch=True, viewport={"width": 1280, "height": 900})
+    # The suite's `de-DE` lives in `browser_context_args`
+    # (app/capabilities/conftest.py) and reaches only the `page` fixture. A
+    # hand-made context inherits the host's locale — German here, en-US on the
+    # runner — and with the seeded user holding no locale the app follows it:
+    # the rail would answer "Main navigation" and the German selector below
+    # would miss. Repeat the pin, as the settings suite does.
+    context = browser.new_context(
+        has_touch=True,
+        viewport={"width": 1280, "height": 900},
+        locale="de-DE",
+    )
     try:
         page = context.new_page()
         page.goto(f"{WEB}/")
