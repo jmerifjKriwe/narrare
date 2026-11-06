@@ -37,17 +37,20 @@ from playwright.sync_api import Locator, Page, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-BASE = "http://127.0.0.1:3100"
-API = "http://127.0.0.1:8000"
-DATABASE = "narrare_v2_e2e"  # the stack's own database (e2e/conftest.py)
+BASE = WEB_URL
+API = API_URL
+# this run's stack database (e2e/conftest.py)
+DATABASE = testsupport.test_database("narrare_v2_e2e")
 
 APP = Path(__file__).resolve().parents[3]
 DEMO = APP / "kernel" / "interchange" / "demos" / "im-stillen-wald"

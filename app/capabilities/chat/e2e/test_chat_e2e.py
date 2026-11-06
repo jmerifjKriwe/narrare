@@ -36,6 +36,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -54,7 +55,7 @@ PROBE_PASSAGE = "Der Carolinum-Garten hinter der alten Mauer blüht seit dem Fr�
 def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: Path) -> None:
     _upload(page, tmp_path, "Notizen")
 
-    page.goto("http://127.0.0.1:3100/chat")
+    page.goto(f"{WEB_URL}/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
     page.get_by_role("button", name="Fragen").click()
 
@@ -83,7 +84,7 @@ def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: P
     source = tmp_path / "quellnotizen.txt"
     source.write_text(PROBE_PASSAGE, encoding="utf-8")
 
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     page.get_by_role("button", name="+ Dokument").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Dokument").set_input_files(str(source))
@@ -92,7 +93,7 @@ def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: P
     expect(page.get_by_role("dialog")).to_have_count(0)
     expect(page.get_by_text("Quellnotizen", exact=True)).to_be_visible()
 
-    page.goto("http://127.0.0.1:3100/chat")
+    page.goto(f"{WEB_URL}/chat")
     page.get_by_label("Frage").fill("Wo blüht der Garten?")
     page.get_by_role("button", name="Fragen").click()
     region = page.get_by_role("region", name="Quellen")
@@ -126,7 +127,7 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     _upload(page, tmp_path, "Stylistik")
     _upload(page, tmp_path, "Randnotiz")
 
-    page.goto("http://127.0.0.1:3100/chat")
+    page.goto(f"{WEB_URL}/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
     page.get_by_role("button", name="Fragen").click()
 
@@ -186,7 +187,7 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
 def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_path: Path) -> None:
     _upload(page, tmp_path, "Sprachwechsel")
 
-    page.goto("http://127.0.0.1:3100/chat")
+    page.goto(f"{WEB_URL}/chat")
     page.get_by_label("Frage").fill("Wo war der Leuchtturm?")
     page.get_by_role("button", name="Fragen").click()
 
@@ -220,7 +221,7 @@ def _upload(page: Page, tmp_path: Path, title: str) -> None:
     source = tmp_path / "notizen.txt"
     source.write_text(PASSAGE, encoding="utf-8")
 
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     page.get_by_role("button", name="+ Dokument").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Dokument").set_input_files(str(source))
@@ -237,7 +238,7 @@ def _open_workspace(page: Page, title: str) -> None:
 
     The module's database is shared, so every test owns a title no other uses.
     """
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen").click()
@@ -399,7 +400,7 @@ def _ask_in_dock(page: Page, tmp_path: Path, title: str, passage: str, question:
     """
     source = tmp_path / "notizen.txt"
     source.write_text(passage, encoding="utf-8")
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     page.get_by_role("button", name="+ Dokument").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Dokument").set_input_files(str(source))

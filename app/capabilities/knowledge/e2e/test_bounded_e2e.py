@@ -13,6 +13,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -24,7 +25,7 @@ LONG_BODY = "x" * 20_001
 
 def _create_book(page: Page, title: str) -> None:
     """Create a novel the only way a user can, then open its workspace."""
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen").click()

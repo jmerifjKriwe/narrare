@@ -68,8 +68,10 @@ from playwright.sync_api import Locator, Page, Route, expect
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -79,9 +81,10 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 # The API the stack runs, for seeding a passage-search corpus the way the
 # standalone search test's upload does — through the real service, its real
 # ingestion and the E2E stack's real embedding stand-in.
-API = "http://127.0.0.1:8000"
+API = API_URL
 
-DATABASE = "narrare_v2_knowledge_e2e"  # the stack's own database (e2e/conftest.py)
+# this run's stack database (e2e/conftest.py)
+DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
 
 # Capitalized words steer the fake provider's extraction (it derives names
 # from them): Mira, Haus, See, Draußen and Leuchtturm become the five
@@ -116,7 +119,7 @@ def _open_workspace_with_validated_title(page: Page, title: str) -> None:
     The refusal is the Titel-validation carry: the failed submit names the
     empty field instead of silently doing nothing.
     """
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_role("button", name="Anlegen").click()
     expect(page.get_by_text("Bitte gib einen Titel ein.")).to_be_visible()
@@ -907,7 +910,7 @@ def test_the_detail_view_corrects_entities_by_hand(page: Page, stack: Stack) -> 
     announced, so the change is heard as well as seen.
     """
     _seed_entities("Die korrigierte Bucht")
-    page.goto("http://127.0.0.1:3100/")
+    page.goto(f"{WEB_URL}/")
     page.get_by_role("link", name="Die korrigierte Bucht").click()
     expect(page.get_by_role("heading", name="Die korrigierte Bucht")).to_be_visible()
 
@@ -980,7 +983,7 @@ def test_an_entity_can_be_renamed_by_keyboard_alone(page: Page, stack: Stack) ->
     own tab order and selected with Enter. No click anywhere in the flow.
     """
     novel_id = _seed_entities("Die Tastatur der Korrektur")
-    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
     expect(page.get_by_role("heading", name="Die Tastatur der Korrektur")).to_be_visible()
 
     tab = page.get_by_role("button", name="Wissen", exact=True)
@@ -1058,7 +1061,7 @@ def test_the_entity_list_filters_by_type_tag_and_searches_the_server(
             "See": {"tags": ["Natur"]},
         },
     )
-    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
     expect(page.get_by_role("heading", name="Die gefilterte Bucht")).to_be_visible()
     page.get_by_role("button", name="Wissen", exact=True).click()
     dock = page.get_by_role("complementary", name="Wissen")
@@ -1123,7 +1126,7 @@ def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, st
     shows the saved document as the editor renders it.
     """
     novel_id = _seed_entities("Die bearbeitete Bucht")
-    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
     expect(page.get_by_role("heading", name="Die bearbeitete Bucht")).to_be_visible()
     page.get_by_role("button", name="Wissen", exact=True).click()
     dock = page.get_by_role("complementary", name="Wissen")
@@ -1233,7 +1236,7 @@ def test_the_relations_are_maintained_in_the_dialog(page: Page, stack: Stack) ->
         )
         looped.raise_for_status()
 
-    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
     expect(page.get_by_role("heading", name="Die verbundene Bucht")).to_be_visible()
     page.get_by_role("button", name="Wissen", exact=True).click()
     dock = page.get_by_role("complementary", name="Wissen")
@@ -1375,7 +1378,7 @@ def test_a_duplicate_relation_is_named_and_the_add_guards_a_double_submit(
     dirty add form leaks into it.
     """
     novel_id = _seed_entities("Die doppelte Beziehung")
-    page.goto(f"http://127.0.0.1:3100/novels/{novel_id}")
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
     expect(page.get_by_role("heading", name="Die doppelte Beziehung")).to_be_visible()
     page.get_by_role("button", name="Wissen", exact=True).click()
     dock = page.get_by_role("complementary", name="Wissen")
@@ -1462,7 +1465,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     novel_id = _seed_entities("Die adressierte Bucht")
     leuchtturm = _entity_id(novel_id, "Leuchtturm")
     mira = _entity_id(novel_id, "Mira")
-    base = f"http://127.0.0.1:3100/novels/{novel_id}"
+    base = f"{WEB_URL}/novels/{novel_id}"
 
     # The dock opens straight onto the named entity's card.
     page.goto(f"{base}/wissen?entity={leuchtturm}")
@@ -1537,7 +1540,7 @@ def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack)
         second.raise_for_status()
         second_chapter = second.json()["id"]
 
-    base = f"http://127.0.0.1:3100/novels/{novel_id}"
+    base = f"{WEB_URL}/novels/{novel_id}"
     page.goto(f"{base}/wissen?entity={leuchtturm}&chapter={first_chapter}")
     dock = page.get_by_role("complementary", name="Wissen")
     expect(dock).to_be_visible()

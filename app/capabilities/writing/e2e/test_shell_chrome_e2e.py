@@ -19,13 +19,14 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-WEB = "http://127.0.0.1:3100"
+WEB = WEB_URL
 PROSE = ".ProseMirror"
 # The global rail announces itself to every reader; the label is what a
 # test can trust. (The workbench's chapter aside has its own file.)

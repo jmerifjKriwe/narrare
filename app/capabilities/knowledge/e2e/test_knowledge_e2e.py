@@ -17,6 +17,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -51,7 +52,7 @@ def test_the_documents_area_is_one_panel_with_one_upload_control(
     must not carry a second way to upload, and the list must carry its
     heading so the area is nameable.
     """
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     expect(page.get_by_role("heading", name="Dokumente")).to_be_visible()
     expect(page.get_by_role("button", name="+ Dokument")).to_have_count(1)
 
@@ -67,7 +68,7 @@ def test_uploaded_passage_is_returned_by_search(page: Page, stack: Stack, tmp_pa
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")
 
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     _upload(page, source, "Notizen")
     expect(page.get_by_text("Notizen")).to_be_visible()
 
@@ -84,7 +85,7 @@ def test_a_model_change_is_refused_and_reembedding_restores_search(
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")
 
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     _upload(page, source, None)
     expect(page.get_by_text("notizen.txt")).to_be_visible()
 
@@ -117,7 +118,7 @@ def test_a_refused_reembed_names_itself_and_the_retry_heals(
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")
 
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     _upload(page, source, None)
     expect(page.get_by_text("notizen.txt")).to_be_visible()
 
@@ -160,7 +161,7 @@ def test_an_upload_against_a_dead_service_names_itself(
     source = tmp_path / "notizen.txt"
     source.write_text(TEXT, encoding="utf-8")
 
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     stack.stop_api()
     try:
         page.get_by_role("button", name="+ Dokument").click()
@@ -188,7 +189,7 @@ def test_a_dead_service_on_load_names_the_outage(page: Page, stack: Stack) -> No
     state worn as a mask over a missing answer. The outage is an alert with
     a working retry; the empty claim must stay silent.
     """
-    page.goto("http://127.0.0.1:3100/knowledge")
+    page.goto(f"{WEB_URL}/knowledge")
     expect(page.get_by_text("Noch keine Dokumente")).to_be_visible()
 
     stack.stop_api()

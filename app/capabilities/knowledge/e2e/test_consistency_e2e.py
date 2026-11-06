@@ -14,12 +14,14 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 
+from app.kernel.testing.stack import API_URL
+
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-API = "http://127.0.0.1:8000"
+API = API_URL
 
 # Two chapters that disagree about Mira's age; the texts steer the fake
 # provider's contradiction derivation, the way extraction's text steers names.

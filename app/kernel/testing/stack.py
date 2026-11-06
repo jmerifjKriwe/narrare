@@ -6,7 +6,8 @@ boundary.
 
 Each capability's ``e2e/conftest.py`` wraps :func:`run_stack` in a module-scoped
 fixture. Module scope matters: a session-scoped stack would outlive the module
-and keep ports 8000 and 3100 bound while the next capability starts its own.
+and keep the stack's configured ports bound while the next capability starts
+its own.
 """
 
 import asyncio
@@ -49,6 +50,8 @@ restored row stays decryptable across runs), never so that it hides anything.
 # this machine, must not need a code edit. The defaults are the ones the docs use.
 API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000"))
 WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100"))
+API_URL = f"http://127.0.0.1:{API_PORT}"
+WEB_URL = f"http://127.0.0.1:{WEB_PORT}"
 SHUTDOWN_TIMEOUT = float(environ.get("NARRE_E2E_SHUTDOWN_TIMEOUT", "15"))
 
 
@@ -212,7 +215,7 @@ class Stack:
 
     def start_api(self) -> None:
         self.api = _spawn_api(self.environment)
-        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json")
+        _wait_for(f"{API_URL}/openapi.json")
 
 
 @contextmanager
@@ -256,8 +259,8 @@ def run_stack(
     web_process._log_file = web_log  # type: ignore[attr-defined]
     stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
-        _wait_for(f"http://127.0.0.1:{API_PORT}/openapi.json", process=api_process)
-        _wait_for(f"http://127.0.0.1:{WEB_PORT}", process=web_process)
+        _wait_for(f"{API_URL}/openapi.json", process=api_process)
+        _wait_for(WEB_URL, process=web_process)
         yield stack
     finally:
         # pnpm runs its server in a child process; kill the whole group or the
