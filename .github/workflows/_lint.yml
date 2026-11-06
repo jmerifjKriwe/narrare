@@ -1,8 +1,8 @@
-# Reusable lint/typecheck gate: the single definition of `just lint` +
-# `just typecheck` + gitleaks. Called as `./.github/workflows/_lint.yml`
-# from ci.yml and nightly.yml, which were two copies of the same job.
-# The leading underscore keeps this file triggerless: it does nothing on
-# its own, only when called.
+# Reusable lint/typecheck/generated gate: the single definition of `just lint` +
+# `just typecheck` + `just check-generated` + gitleaks. Called as
+# `./.github/workflows/_lint.yml` from ci.yml and nightly.yml, which were two
+# copies of the same job. The leading underscore keeps this file triggerless:
+# it does nothing on its own, only when called.
 
 on:
   workflow_call:
@@ -64,6 +64,8 @@ jobs:
           just-version: ${{ inputs.just-version }}
       - run: just lint
       - run: just typecheck
+      - name: Generated files are current
+        run: just check-generated
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
