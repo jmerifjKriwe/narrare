@@ -16,6 +16,14 @@ const shell = fileURLToPath(new URL(".", import.meta.url));
 const webPort = Number(process.env.NARRE_E2E_WEB_PORT ?? "3100");
 const apiPort = Number(process.env.NARRE_E2E_API_PORT ?? "8000");
 
+// Vite answers transformed modules with Cache-Control: no-cache, so a hard
+// navigation revalidates the whole unbundled graph with 304s. Chromium loses
+// cached module bodies once enough of those accumulate — the writer's-day E2E
+// sweep, 24 hard navigations in one context, was exactly that shape — and the
+// page never renders (#634). The E2E stack sets this flag so its browser never
+// revalidates; `just dev-web` leaves it unset and keeps Vite's fast reloads.
+const e2eNoHttpCache = process.env.NARRE_E2E_NO_HTTP_CACHE === "1";
+
 // One origin in the browser, as before: /api is forwarded to the FastAPI
 // process. In production FastAPI serves the built files itself, so this proxy
 // exists only while developing.
@@ -47,5 +55,8 @@ export default defineConfig({
     port: webPort,
     strictPort: true,
     proxy: { "/api": `http://127.0.0.1:${apiPort}` },
+    // No-store while the E2E stack runs: the browser must never revalidate the
+    // dev graph (see the flag's comment above).
+    ...(e2eNoHttpCache ? { headers: { "Cache-Control": "no-store" } } : {}),
   },
 });
