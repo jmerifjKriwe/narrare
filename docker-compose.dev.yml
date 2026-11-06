@@ -15,18 +15,22 @@ services:
       timeout: 5s
       retries: 10
 
+  # The test server holds no database of its own: a pytest run creates the one
+  # it names (app/kernel/db/testsupport.py, #630), and the E2E suites create
+  # theirs. A POSTGRES_DB here would recreate a name nothing reads on every
+  # fresh `just dev-services` — the dead `narrare_v2_test` (#631). CI's service
+  # container is the same shape: the user's own database is the one that exists.
   postgres_test:
     image: pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8 # pg17 — a tag is a mutable ref; the digest is the contract
     environment:
       POSTGRES_USER: narrare
       POSTGRES_PASSWORD: narrare
-      POSTGRES_DB: narrare_v2_test
     ports:
       - "5433:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U narrare -d narrare_v2_test"]
+      test: ["CMD-SHELL", "pg_isready -U narrare"]
       interval: 5s
       timeout: 5s
       retries: 10
