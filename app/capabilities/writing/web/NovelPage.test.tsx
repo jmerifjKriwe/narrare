@@ -868,6 +868,201 @@ describe("the rail's reorder", () => {
   });
 });
 
+describe("the rail's filter", () => {
+  /** A book of many chapters: positions 0..n-1, unique ids, timestamps that
+   *  run with the position so the last row is the book's last-touched —
+   *  unless `touched` names another row as the one the fallback opens. */
+  function manyChapters(
+    count: number,
+    titled: Record<number, string> = {},
+    touched = count - 1,
+  ): Array<Chapter> {
+    const rows = Array.from({ length: count }, (_, position) => ({
+      id: `00000000-0000-4000-8000-${String(position).padStart(12, "0")}`,
+      novel_id: NOVEL_ID,
+      title: titled[position] ?? "",
+      body: "",
+      position,
+      created_at: "2026-10-30T09:00:00Z",
+      updated_at: `2026-10-30T10:${String(position % 60).padStart(2, "0")}:00Z`,
+    }));
+    rows[touched] = { ...rows[touched], updated_at: "2026-10-30T23:00:00Z" };
+    return rows;
+  }
+
+  /** The loaded answers with a long book in the rail's list. */
+  function mockManyChapters(
+    count: number,
+    titled: Record<number, string> = {},
+    touched = count - 1,
+  ): void {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: manyChapters(count, titled, touched), response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+  }
+
+  /** The runhead's menu trigger: named for the chapter it acts on. */
+  function menuTrigger(title: string): HTMLElement {
+    return screen.getByRole("button", { name: t("chapters.actionsFor", { title }) });
+  }
+
+  it("the_filter_appears_only_above_twenty_chapters", { timeout: 10_000 }, async () => {
+    // Twenty chapters: the rail stays as it was — the field is the long
+    // rail's own, not the book's.
+    mockManyChapters(20);
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+
+    // Twenty-one: the band above the rail gains the field.
+    cleanup();
+    queryClient.clear();
+    mockManyChapters(21);
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    expect(screen.getByRole("searchbox")).toBeTruthy();
+  });
+
+  it("the_filter_matches_an_untitled_chapters_rendered_label", { timeout: 10_000 }, async () => {
+    mockManyChapters(21);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // An untitled chapter is named by what its row says — the localized
+    // number — so that is what the filter answers to: the rendered label
+    // in the active locale, not the row's stored (empty) title.
+    await user.type(screen.getByRole("searchbox"), t("chapters.defaultTitle", { n: 7 }));
+
+    const rail = screen.getByRole("complementary");
+    expect(rail.querySelectorAll("li > button").length).toBe(1);
+    expect(chapterRow(7)).toBeTruthy();
+  });
+
+  it("the_filter_matches_diacritics_insensitively", { timeout: 10_000 }, async () => {
+    mockManyChapters(21, { 0: "Fürstenwald", 1: "Furth" });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // A bare "fur" finds the umlauted title, and the umlauted needle finds
+    // the bare one: neither side's diacritics decide a match.
+    await user.type(screen.getByRole("searchbox"), "fur");
+    const rail = screen.getByRole("complementary");
+    expect(rail.querySelectorAll("li > button").length).toBe(2);
+    expect(screen.getByRole("button", { name: /^Fürstenwald\b/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Furth\b/ })).toBeTruthy();
+
+    await user.clear(screen.getByRole("searchbox"));
+    await user.type(screen.getByRole("searchbox"), "für");
+    expect(rail.querySelectorAll("li > button").length).toBe(2);
+    expect(screen.getByRole("button", { name: /^Fürstenwald\b/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Furth\b/ })).toBeTruthy();
+  });
+
+  it("creating_a_chapter_clears_the_filter", { timeout: 10_000 }, async () => {
+    // A stateful list: the create's POST grows the book the next GET
+    // answers with — the same refetch the invalidation triggers.
+    const rows = manyChapters(21);
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: rows.map((row) => ({ ...row })), response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+    api.POST.mockImplementation(async () => {
+      const created = {
+        id: `00000000-0000-4000-8000-${String(rows.length).padStart(12, "0")}`,
+        novel_id: NOVEL_ID,
+        title: "",
+        body: "",
+        position: rows.length,
+        created_at: "2026-10-30T11:00:00Z",
+        updated_at: "2026-10-30T11:00:00Z",
+      };
+      rows.push(created);
+      return { data: { ...created }, response: ok() };
+    });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // A filter that hides every row the book has.
+    await user.type(screen.getByRole("searchbox"), "Niemals");
+    expect(screen.getByRole("complementary").querySelectorAll("li > button").length).toBe(0);
+
+    // The create clears it — the new chapter must land in the visible
+    // list, and it does: the field is empty and the new row is current.
+    await user.click(screen.getByRole("button", { name: t("chapters.new") }));
+    const filter = screen.getByRole("searchbox") as HTMLInputElement;
+    await waitFor(() => expect(filter.value).toBe(""));
+    await waitFor(() =>
+      expect(chapterRow(22).getAttribute("aria-current")).toBe("true"),
+    );
+    expect(screen.getByRole("complementary").querySelectorAll("li > button").length).toBe(22);
+  });
+
+  it("the_move_menu_items_are_disabled_while_the_filter_is_active", { timeout: 10_000 }, async () => {
+    // The tenth chapter is the book's last-touched (the fallback opens it):
+    // a middle row, so the filter — not the book's ends — is the only
+    // thing that can disable the move items.
+    mockManyChapters(21, {}, 9);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    const openTitle = t("chapters.defaultTitle", { n: 10 });
+    expect(chapterRow(10).getAttribute("aria-current")).toBe("true");
+
+    // Without a filter the items are offered enabled (Task 10's contract).
+    await user.click(menuTrigger(openTitle));
+    expect(
+      screen.getByRole("menuitem", { name: t("chapters.moveUp") }).getAttribute("aria-disabled"),
+    ).not.toBe("true");
+    await user.keyboard("{Escape}");
+
+    // With a filter they disable and say why: the label itself carries the
+    // reason, not a tooltip beside it. The needle keeps the open chapter
+    // visible (its rendered label contains the first chapter's).
+    await user.type(screen.getByRole("searchbox"), t("chapters.defaultTitle", { n: 1 }));
+    await user.click(menuTrigger(openTitle));
+    expect(
+      screen.getByRole("menuitem", { name: t("chapters.moveUpFiltered") }).getAttribute(
+        "aria-disabled",
+      ),
+    ).toBe("true");
+    expect(
+      screen.getByRole("menuitem", { name: t("chapters.moveDownFiltered") }).getAttribute(
+        "aria-disabled",
+      ),
+    ).toBe("true");
+    expect(screen.queryByRole("menuitem", { name: t("chapters.moveUp") })).toBeNull();
+    await user.keyboard("{Escape}");
+
+    // The keyboard's move and the drag are the menu's equals: Alt+↓ on a
+    // visible row moves nothing while the filter stands, and no row
+    // offers a grab.
+    expect((chapterRow(10) as HTMLElement).draggable).toBe(false);
+    chapterRow(10).focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    expect(api.PUT).not.toHaveBeenCalled();
+
+    // A filter that hides the OPEN chapter leaves the keyboard a way in:
+    // the open chapter's row is gone from the list, and the first visible
+    // row takes the tab stop — the list is never all tabindex=-1.
+    await user.clear(screen.getByRole("searchbox"));
+    await user.type(screen.getByRole("searchbox"), t("chapters.defaultTitle", { n: 21 }));
+    expect(
+      screen.queryByRole("button", {
+        name: new RegExp(`^${t("chapters.defaultTitle", { n: 10 })}\\b`),
+      }),
+    ).toBeNull();
+    expect(chapterRow(21).getAttribute("tabindex")).toBe("0");
+  });
+});
+
 describe("the runhead's action menu", () => {
   /** Three named chapters as a book the writes mutate: a stateful list, so
    *  a delete or rename is answered by the very next read the way the

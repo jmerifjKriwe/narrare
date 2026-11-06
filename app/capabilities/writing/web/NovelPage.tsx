@@ -23,10 +23,12 @@ import {
   useNovelQuery,
   useReorderChapters,
 } from "@shell/lib/query";
+import { normalize } from "@shell/lib/search";
 import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save";
 import { countWords, formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
+import { Field, Input } from "@shell/ui/field";
 import { ActionMenu } from "@shell/ui/Menu";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
@@ -351,6 +353,10 @@ export function NovelPage() {
     // An explicit empty title: the placeholder is a display concern, and
     // storing a title would freeze one locale's wording into the database.
     // The server treats an empty title exactly like an omitted one.
+    // The filter clears with the ask — the new chapter must land in the
+    // visible list, and the rail's own button is the one create path that
+    // runs here (the palette's command arrives through the length effect).
+    setRailFilter(null);
     setCreateFailed(false);
     try {
       const { data: chapter } = await client.POST(
@@ -580,11 +586,50 @@ export function NovelPage() {
   // repeat — two arrangements in flight at once can commit inverted, the
   // server holding the earlier permutation while the rail shows the last.
   const writes = useRef<Promise<unknown>>(Promise.resolve());
-  // The rail's filter is Task 12's; until it exists no filter can be
-  // active. The seam is here already — `null` is "no filter", the one
-  // state in which a reorder is unambiguous — so Task 12 replaces the
-  // state's source, not the guard.
-  const [railFilter] = useState<string | null>(null);
+  // The rail's filter (Task 12): `null` is "no filter", the one state in
+  // which a reorder is unambiguous — the guard Task 11 left behind. The
+  // field's value arrives whole; a blank (trimmed-empty) answer is no
+  // question at all and stores as `null`, so a cleared field and an
+  // untouched one mean the same thing to every guard that reads this.
+  const [railFilter, setRailFilter] = useState<string | null>(null);
+
+  // The rail shows the question's answers: the rows whose rendered label —
+  // the title, or the localized number an untitled row wears — contains the
+  // needle, under the same normalization the palette searches by (one
+  // definition, `lib/search.ts`). A filter is a view, never the book: the
+  // cache and the editor keep every row, and the walk below indexes into
+  // this list because this list is what rendered.
+  const visibleChapters = useMemo(() => {
+    if (railFilter === null) return chapters;
+    const needle = normalize(railFilter.trim());
+    return chapters.filter((chapter) =>
+      normalize(
+        chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 }),
+      ).includes(needle),
+    );
+  }, [chapters, railFilter, t]);
+
+  // The open chapter's slot in that visible list: -1 when no chapter is
+  // open, or when the filter hides the one that is — either way the rail's
+  // first visible row takes the tab stop, so the list is never unreachable
+  // by keyboard while a filter stands.
+  const activeVisibleIndex = visibleChapters.findIndex((chapter) => chapter.id === active);
+
+  // The filter dies where the book it filtered ends. Another book's rows —
+  // the palette's jump keeps this page mounted, and one book's question
+  // must not hide the next book's chapters — and a book whose length
+  // changed, which is every create (the rail's own button clears above;
+  // the palette's command lands here, through its invalidation) and every
+  // delete: both end in a chapter the rail must show, and the row the
+  // address names is never hidden by a stale question.
+  const filteredBook = useRef(novelId);
+  const bookLength = useRef(chapters.length);
+  useEffect(() => {
+    if (novelId === filteredBook.current && chapters.length === bookLength.current) return;
+    filteredBook.current = novelId;
+    bookLength.current = chapters.length;
+    setRailFilter(null);
+  }, [novelId, chapters.length]);
 
   /** Move one chapter one step: the keyboard's Alt+↑/↓ path, and the
    *  address Task 10's menu items call. The ends are no-ops — nothing
@@ -842,6 +887,26 @@ export function NovelPage() {
               />
             ))}
           </div>
+          {/* The rail's filter (Task 12): the long rail's own field, in the
+              band that already holds the rail's collapse control. It stands
+              only above twenty chapters and only while the rail itself is
+              on screen — a field for a hidden list would be a promise with
+              no subject. The input's accessible name is the fuller phrase
+              that carries the visible label inside it, so the name a reader
+              hears says what the field matches. */}
+          {focus === 0 && showRail && !pending && !failed && chapters.length > 20 ? (
+            <Field label={t("chapters.railFilter")} className="ml-auto w-40">
+              <Input
+                type="search"
+                value={railFilter ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setRailFilter(value.trim() === "" ? null : value);
+                }}
+                aria-label={t("chapters.railFilterAria")}
+              />
+            </Field>
+          ) : null}
         </div>
       ) : null}
 
@@ -878,8 +943,14 @@ export function NovelPage() {
                the breakpoint the whole drawer scrolls instead. The drawer
                paints one z-step above the dock's: opening it over a live
                dock covers the dock without unmounting it, so the dock's
-               own draft survives behind it. */
-            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+               own draft survives behind it. At ≥1024 the column is also
+               sticky: a long manuscript scrolls the page under the
+               editor, and the rail — capped a viewport tall minus its
+               own chrome — holds its place beside the writing instead of
+               being carried out of sight with the page's top; `top-4`
+               and the 16rem max-height budget keep the box inside the
+               viewport at any height it takes. */
+            className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
             aria-label={t("chapters.heading")}
           >
             <h2 className="text-emph font-semibold tracking-tight">{t("chapters.heading")}</h2>
@@ -889,22 +960,29 @@ export function NovelPage() {
             {/* The list scrolls itself in the desktop columns only (its
                 bounded height is a column fact); below 1024 the drawer
                 scrolls whole, so the list must neither clip nor shrink
-                there. */}
+                there. The desktop column is sticky (the rail holds its
+                place beside the editor while a long manuscript scrolls
+                the page), and the rows it shows are the filtered list —
+                the walk below indexes into what rendered. */}
             <ul
               ref={railListRef}
               className="mt-3 flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
             >
-              {chapters.map((chapter, index) => {
+              {visibleChapters.map((chapter, index) => {
                 const isCurrent = chapter.id === active;
                 const title = chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
                 // The count is spoken as the sentence the footer prints
                 // ("… 2.107 Wörter") and shown as its number alone — the
                 // localized grouping, so the row and the footer read alike.
                 const words = chapterCounts.get(chapter.id) ?? 0;
+                // One tab stop in the list, whatever the filter did to it:
+                // the open chapter's row — or, when the filter hides that
+                // row (or the book has no open chapter yet), the first
+                // visible one, so the keyboard always has a way in.
                 const isTabStop =
                   walkedIndex !== null
                     ? walkedIndex === index
-                    : isCurrent || (active === null && index === 0);
+                    : isCurrent || (activeVisibleIndex < 0 && index === 0);
                 return (
                   <li
                     key={chapter.id}
@@ -946,8 +1024,7 @@ export function NovelPage() {
                       /* The desktop drag: the row is the grab, the slot
                          above is the landing. Wired only while no filter
                          is active — a filtered list has no unambiguous
-                         drop index (Task 12's rule, its seam already
-                         here). */
+                         drop index (Task 12's rule). */
                       draggable={railFilter === null}
                       onDragStart={
                         railFilter === null
@@ -1113,20 +1190,31 @@ export function NovelPage() {
                           },
                           {
                             id: "moveUp",
-                            label: t("chapters.moveUp"),
                             // The ends are their own no-ops, offered but
                             // disabled: the shortcut the hint names is the
                             // rail's own Alt+↑ (D6), discoverable exactly
-                            // where the action lives.
+                            // where the action lives. A filter disables
+                            // the move wherever the row sits — a filtered
+                            // list has no unambiguous neighbour — and the
+                            // label itself says why, so the reason travels
+                            // with the item to readers and screens alike.
+                            label:
+                              railFilter === null
+                                ? t("chapters.moveUp")
+                                : t("chapters.moveUpFiltered"),
                             shortcut: "Alt+↑",
-                            disabled: currentIndex <= 0,
+                            disabled: railFilter !== null || currentIndex <= 0,
                             onSelect: () => void move(current.id, -1),
                           },
                           {
                             id: "moveDown",
-                            label: t("chapters.moveDown"),
+                            label:
+                              railFilter === null
+                                ? t("chapters.moveDown")
+                                : t("chapters.moveDownFiltered"),
                             shortcut: "Alt+↓",
-                            disabled: currentIndex >= chapters.length - 1,
+                            disabled:
+                              railFilter !== null || currentIndex >= chapters.length - 1,
                             onSelect: () => void move(current.id, 1),
                           },
                           {

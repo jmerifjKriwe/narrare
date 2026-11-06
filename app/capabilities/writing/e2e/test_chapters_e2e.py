@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.viewport import assert_page_fits
 from app.kernel.testing.workbench import new_chapter
 
 if TYPE_CHECKING:
@@ -115,6 +116,84 @@ def test_rail_sits_beside_the_editor_without_scrolling(page: Page, stack: Stack)
         assert box["x"] >= 0 and box["x"] + box["width"] <= viewport["width"]
         assert box["y"] >= 0 and box["y"] + box["height"] <= viewport["height"]
 
+    assert_accessible(page)
+
+
+def test_a_sixty_chapter_rail_stays_inside_the_viewport(page: Page, stack: Stack) -> None:
+    """A long book never takes its rail out of sight.
+
+    Sixty chapters seeded through the API, the open chapter's body long
+    enough to scroll the page under the editor: the rail keeps its box
+    inside the viewport at 1280 while it scrolls, its list scrolls inside
+    itself, and the filter — the long rail's own, above twenty chapters —
+    stands in the toolbar band."""
+    page.set_viewport_size({"width": 1280, "height": 720})
+    _create_book(page, "Der lange Atem")
+    match = re.search(r"/novels/([0-9a-f-]+)", page.url)
+    assert match is not None, f"the workspace never got an address: {page.url}"
+    novel_id = match.group(1)
+
+    # Sixty chapters through the API; the last one — the book's
+    # last-touched, so the bare address opens it — then carries a body
+    # long enough to make the page scroll (the create endpoint takes a
+    # title only; the body is the editor's own PUT).
+    seeded: object = page.evaluate(
+        """async ([id]) => {
+          let lastId = null;
+          for (let n = 0; n < 60; n += 1) {
+            const answer = await fetch(`/api/writing/novels/${id}/chapters`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ title: "" }),
+            });
+            if (!answer.ok) return null;
+            lastId = (await answer.json()).id;
+          }
+          const body = Array.from({length: 150}, (_, i) =>
+            `Zeile ${i + 1}. Der Nebel kam von See und blieb über Nacht liegen.`).join("\\n");
+          const put = await fetch(`/api/writing/chapters/${lastId}`, {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ body }),
+          });
+          return put.ok ? lastId : null;
+        }""",
+        [novel_id],
+    )
+    assert isinstance(seeded, str)
+
+    page.reload()
+    rail = page.get_by_role("complementary")
+    editor = page.locator(".ProseMirror")
+    expect(rail).to_be_visible()
+    expect(editor).to_contain_text("Zeile 1.")
+
+    # The filter is the long rail's own: visible above twenty chapters.
+    expect(page.get_by_label("Kapitel filtern")).to_be_visible()
+
+    # The list is its own scroll container: sixty rows scroll inside the
+    # rail, never the page through it.
+    expect(rail.get_by_role("list")).to_have_css("overflow-y", "auto")
+    expect(rail.get_by_role("button", name=re.compile(r"^Kapitel 60\b"))).to_be_attached()
+
+    def rail_inside_viewport() -> None:
+        box = rail.bounding_box()
+        viewport = page.viewport_size
+        assert box is not None and viewport is not None
+        assert box["x"] >= 0 and box["x"] + box["width"] <= viewport["width"]
+        assert box["y"] >= 0 and box["y"] + box["height"] <= viewport["height"]
+
+    # The rail fits before the page scrolls…
+    rail_inside_viewport()
+
+    # …and stays inside the viewport while the editor's page scrolls under
+    # it — the scroll is real, proven on the scrollport's own offset.
+    page.evaluate("document.getElementById('main').scrollTo({top: 1600})")
+    scrolled: object = page.evaluate("document.getElementById('main').scrollTop")
+    assert isinstance(scrolled, (int, float)) and scrolled > 0
+    rail_inside_viewport()
+
+    assert_page_fits(page, prose_selector=".ProseMirror")
     assert_accessible(page)
 
 
