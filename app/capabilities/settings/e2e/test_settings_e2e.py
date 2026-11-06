@@ -258,3 +258,10 @@ def test_the_design_gallery_serves_its_four_sections(page: Page, stack: Stack) -
     expect(page.get_by_role("heading", name="Design-Galerie")).to_be_visible()
     for name in ["Tokens", "Type", "Controls", "Surfaces"]:
         expect(page.get_by_role("heading", name=name)).to_be_visible()
+
+
+def test_the_design_gallery_serves_the_target_section(page: Page, stack: Stack) -> None:
+    page.goto(f"{WEB_URL}/design")
+    expect(page.get_by_role("heading", name="Zielzustand")).to_be_visible()
+    for name in ["Timeline-Landing", "Szenen-Outline", "Graph-Linse", "Paletten-Zeile"]:
+        expect(page.get_by_role("heading", name=name)).to_be_visible()

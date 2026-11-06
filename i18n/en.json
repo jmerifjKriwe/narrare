@@ -354,6 +354,7 @@
   "design.type": "Type",
   "design.controls": "Controls",
   "design.surfaces": "Surfaces",
+  "design.target": "Target",
   "jobs.truncated": "Only the first 20,000 characters were read.",
   "jobs.skippedChapters": "Skipped, too long: {titles}",
   "prompts.heading": "Prompts",

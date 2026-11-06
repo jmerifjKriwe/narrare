@@ -17,9 +17,21 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  * The gallery shows only the real primitives (`Button`, `Field`+`Select`,
  * `Notice`, `Cover`, `Row`, `Panel`) and the shell's token utilities: no new
  * CSS, no new token, no new component. The words a control needs come from
- * the catalog (the five `design.*` keys for the page's own headings, already
+ * the catalog (the six `design.*` keys for the page's own headings, already
  * landed keys for the specimens); the specimen labels themselves — token and
  * tone names — are documentation, the same in every language.
+ *
+ * The "Target" section pins the visual master every later slice builds
+ * toward (atlas: spec §5.7, slot per family, fork decisions P1–P15). One
+ * skeleton frame per slot family, each stamped ENTWURF and inert — `Row`
+ * renders as `div` (no keyboard contract, no click), `Button` carries no
+ * handler — so no frame pretends to work. The frame titles and their
+ * P-notes are draft documentation in the record's language (German, like
+ * §5.7's own fork reasons), the same in every locale; only the section
+ * heading itself comes from the catalog. Fork pairs the atlas keeps as two
+ * live homes — planning as Canvas vs Dock (P1/P2), knowledge graph as
+ * canvas vs dock lens (P12) — render side by side with the decision note;
+ * everywhere else a single draft, never decoration.
  */
 
 // The cover's three tones, pinned like Cover.test pins them: the tone is a
@@ -174,6 +186,287 @@ export function DesignGallery() {
           >
             <Cover title={LONG_TITLE} />
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="design-target-heading" className="mt-8">
+        <h2 id="design-target-heading" className="text-emph font-semibold">
+          {t("design.target")}
+        </h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <Panel title="Planen-Canvas · Timeline-Landing (P1) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Kapitel 3 — Szene 12 · Ankommen
+            </Row>
+            <Row as="div" selected flush>
+              Kapitel 3 — Szene 13 · Lücke
+            </Row>
+            <Row as="div" flush>
+              Struktur — Akt II · Wendepunkt
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P1: Timeline statt Storyboard als Landing — die Zeitachse trägt
+                Szene, Gap, Struktur und Arc; Storyboard bleibt Sibling-Canvas.
+              </Notice>
+            </div>
+          </Panel>
+          <Panel title="Planen-Dock · Szenen-Outline (P2) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" selected flush>
+              Szene 12 — Ankommen
+            </Row>
+            <Row as="div" flush>
+              Szene 13 — Lücke
+            </Row>
+            <Row as="div" flush>
+              Arc — Maya: Zweifel
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P2: Dock statt Canvas — die Outline wird gegen den Text
+                geschrieben; der Editor bleibt sichtbar.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Analysieren-Hub · Beta-Reader-Landing (P4) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" selected flush>
+              Beta-Reader — Gesamtlesung
+            </Row>
+            <Row as="div" flush>
+              Sentiment — Befund
+            </Row>
+            <Row as="div" flush>
+              Readability — Score
+            </Row>
+            <Row as="div" flush>
+              Literarische Suite — in der Canvas öffnen
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P4: Beta-Reader statt Metrik als Landing — einziger
+                Autoren-Bericht, menschliches Gesicht des Hubs.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Analyse-Dock · geteilter Tab mit Switcher (P5) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Sentiment
+            </Row>
+            <Row as="div" flush>
+              Readability
+            </Row>
+            <Row as="div" flush>
+              POV-Brüche
+            </Row>
+            <Row as="div" selected flush>
+              Plot-Befunde
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P5 + Kapazitätsregel: ein Tab „Analyse“, Befunde im Switcher —
+                kein eigener Tab pro Bericht.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Analysieren-Canvas · Literarische Suite (P6) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Stil-Profil — Dichte und Rhythmus
+            </Row>
+            <Row as="div" selected flush>
+              Motiv-Netz — wiederkehrende Bilder
+            </Row>
+            <Row as="div" flush>
+              Stimmen-Vergleich — Erzähler gegen Figur
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P6: Canvas statt geteiltem Dock-Tab — mehrdimensionaler
+                Bericht sprengt 352 px; einziger ANAL-Canvas neben dem Hub.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Schreiben-Dock · Multi-Draft-Sitzung (P7) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" selected flush>
+              Variante A — gegen den Text
+            </Row>
+            <Row as="div" flush>
+              Variante B
+            </Row>
+            <Row as="div" flush>
+              Variante C — höchstens drei
+            </Row>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button variant="primary">Übernehmen</Button>
+              <Button variant="secondary">Verwerfen</Button>
+            </div>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P7: Dock statt Canvas — gewählt wird gegen den Text;
+                „nebeneinander“ heißt Editor-Spalte + Dock, max. 3 Varianten.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Schreiben-Canvas · Serien-Verwaltung (P10) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" selected flush>
+              Band-Verwaltung — Bände und Reihenfolge
+            </Row>
+            <Row as="div" flush>
+              Serien-Bogen — übergreifende Handlung
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P10: Canvas statt neuer Nav-Area — bandübergreifende
+                Verwaltung ist Shelf-nah; Einstieg via Shelf-Card, zu selten
+                für eigenen Rail-Eintrag.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Schreiben-Canvas · Auswertung + Kosten-Reiter (P11) · ENTWURF" titleAs="h3" dense>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm">
+                Leistung
+              </Button>
+              <Button variant="secondary" size="sm">
+                Kosten
+              </Button>
+            </div>
+            <div className="mt-2">
+              <Row as="div" selected flush>
+                Wortleistung — Verlauf 30 Tage
+              </Row>
+              <Row as="div" flush>
+                Kosten — Tokens pro Lauf
+              </Row>
+            </div>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P11: Kosten als Reiter der Stats-Canvas — gelesen neben der
+                Leistung; Keys und Quotas bleiben in Settings, kein
+                Doppel-Heim.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <Panel title="Wissens-Canvas · Knowledge-Graph (KB-008) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Maya Chen — Figur
+            </Row>
+            <Row as="div" flush>
+              Horizon Station — Ort
+            </Row>
+            <Row as="div" flush>
+              ARIA — Figur
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P12: der Vollgraph lebt hier; die Dock-Linse linkt per
+                Cross-Link hierher.
+              </Notice>
+            </div>
+          </Panel>
+          <Panel title="Wissen-Dock · Graph-Linse (P12) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Nachbarschaft — Szene 12
+            </Row>
+            <Row as="div" selected flush>
+              Maya ↔ ARIA
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P12: Dock statt zweiter Canvas — lokale Linse neben der
+                Selektion; „Im Graphen öffnen“ linkt zur Canvas.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Command-only · Paletten-Zeile + JobStatus · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Umschreiben — Auswahl als Variante
+            </Row>
+            <Row as="div" flush>
+              Ganzbuch-Check — Mehrschritt-Lauf
+            </Row>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                Workflows, Inline-Vorschläge, Rewrite, Prompt-History:
+                Command-Sequenz, Status via JobStatus (§5.5) — keine
+                persistente Fläche.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Settings-Cluster · Regeln + Sync (P14/P15) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Konsistenz-Regel — Titel gegen Kapitel
+            </Row>
+            <Row as="div" flush>
+              Extern-Sync — Zeitplan und Zugang
+            </Row>
+            <div className="mt-2">
+              <Button variant="secondary">Jetzt synchronisieren</Button>
+            </div>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                P14: Regel-CRUD ist Konfiguration — der CONS-001-Checker
+                behält sein Dock. P15: Sync braucht Heim; der Button lebt auf
+                dieser Seite, kein zweiter Slot.
+              </Notice>
+            </div>
+          </Panel>
+        </div>
+        <div className="mt-3">
+          <Panel title="Rail + Dock · erweiterte Zustände (6/7) · ENTWURF" titleAs="h3" dense>
+            <Row as="div" flush>
+              Home
+            </Row>
+            <Row as="div" flush>
+              Planen
+            </Row>
+            <Row as="div" current flush>
+              Analysieren
+            </Row>
+            <Row as="div" flush>
+              Einstellungen
+            </Row>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm">
+                Chat
+              </Button>
+              <Button variant="secondary" size="sm">
+                Planen
+              </Button>
+              <Button variant="secondary" size="sm">
+                Wissen
+              </Button>
+              <Button variant="secondary" size="sm">
+                Analyse
+              </Button>
+              <Button variant="secondary" size="sm">
+                Schreiben
+              </Button>
+            </div>
+            <div className="mt-2">
+              <Notice tone="quiet">
+                Kapazitätsregel §5.7.2: Rail 6/7 — eine Reserve; Dock max. 6
+                Tabs, der 7. Dock wird Switcher, nie zweite Reihe.
+              </Notice>
+            </div>
+          </Panel>
         </div>
       </section>
     </div>

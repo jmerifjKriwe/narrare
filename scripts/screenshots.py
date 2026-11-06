@@ -351,8 +351,9 @@ def _capture(
     shot(SHOTS[6])
 
     # 8. The design gallery in the default light: every primitive and token
-    #    on one page, outside the settings hub's nav. Full page — the claim
-    #    is the four sections together, not one viewport of them.
+    #    plus the Target drafts on one page, outside the settings hub's nav.
+    #    Full page — the claim is the five sections together, not one viewport
+    #    of them.
     api.patch("/api/settings/theme", json={"theme": None})
     page.goto(f"{WEB}/design")
     expect(page.get_by_role("heading", name="Design gallery")).to_be_visible()
