@@ -1,5 +1,5 @@
 import { Button } from "@shell/ui/Button";
-import { AREA_ICON } from "@shell/components/IconRail";
+import { AREA_ICON } from "@shell/lib/area";
 import { Cover, coverTone } from "@shell/ui/Cover";
 import { Field, Select } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
@@ -82,7 +82,7 @@ export function DesignGallery() {
         {/* Rail-icon-sized swatches: the cover grounds and the area hues live
             on objects and nav icons, never as fills or text elsewhere, so the
             gallery shows them only at that small size. The hues come from the
-            rail's own AREA_ICON map — the one definition — which also keeps
+            AREA_ICON map in lib/area — the one definition — which also keeps
             the type-scale census (area hues stay in the rail) green. */}
         <div className="mt-3 flex items-center gap-2">
           <span aria-hidden="true" className="inline-block size-4 bg-cover-pale" />

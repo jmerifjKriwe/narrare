@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AREA_ICON } from "./IconRail";
+import { AREA_ICON } from "@shell/lib/area";
 
 describe("the rail's area hues", () => {
   it("maps the four areas to four distinct utilities", () => {

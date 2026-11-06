@@ -2,6 +2,7 @@ import type { ComponentProps } from "react";
 import { Link, useMatches } from "@tanstack/react-router";
 
 import { useTranslation } from "../lib/i18n";
+import { AREA_ICON } from "@shell/lib/area";
 import { nav } from "../lib/generated/capabilities";
 import { buttonClass } from "../ui/Button";
 import { Icon, type IconName } from "../ui/icons";
@@ -24,16 +25,7 @@ import { Icon, type IconName } from "../ui/icons";
 type RailTo = ComponentProps<typeof Link>["to"];
 type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 
-/** The rail's four areas and the one utility each may wear: an identity mark
- *  on the icon, never a fill, a text colour, a cover or a notice. The hues
- *  are measured ≥ 3:1 against `--panel` in both themes. */
-export const AREA_ICON = {
-  writing: "text-area-writing",
-  knowledge: "text-area-knowledge",
-  chat: "text-area-chat",
-  settings: "text-area-settings",
-} as const;
-
+/** The rail's destinations wear the areas named by the map in `lib/area`. */
 type RailArea = keyof typeof AREA_ICON;
 
 /** One destination: an icon link in the button's icon-variant paint. */
