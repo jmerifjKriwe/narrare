@@ -75,9 +75,34 @@ jobs:
           restore-keys: ${{ runner.os }}-playwright-
       # The directory the cache step saves. A hit on the exact key skips
       # the chromium download; a restore-key hit may still fetch the browser
-      # the lock names. `--with-deps` runs the apt system-dependency install
-      # every run — the browser is cached, the system packages are not.
-      - run: uv run playwright install --with-deps chromium
+      # the lock names.
+      #
+      # No `--with-deps`. The image already carries 26 of the 35 packages
+      # Playwright lists for it, and the 9 it lacks are font packages
+      # (fonts-*, xfonts-*) that nothing here can observe: the brand serif
+      # is self-hosted (web/public/fonts), no test compares pixels, and no
+      # assertion measures a glyph — the only non-Latin-1 characters in the
+      # suites are the em dash, the ellipsis, the arrow and `⌘`.
+      # Fetching those 9 put one runner job in nine into `apt-get` for 7–16
+      # minutes on a throttled mirror, and the slowest suite is the whole
+      # run's wall clock (run 1250: 17.3 MB in 15min 28s at 18.7 kB/s).
+      #
+      # The probe below replaces what `--with-deps` guaranteed: if the image
+      # ever stops shipping a library the browser needs, this step fails by
+      # name instead of the suite timing out on a browser that cannot start.
+      # It is not a `just` recipe because it asserts about this image, not
+      # about the app.
+      - run: uv run playwright install chromium
+      - name: Verify the browser starts
+        run: |
+          uv run python - <<'PY'
+          from playwright.sync_api import sync_playwright
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              browser.new_page().goto("data:text/html,ok")
+              browser.close()
+          PY
       # The matrix runs the same recipe the local gate runs.
       - name: E2E
         env:
