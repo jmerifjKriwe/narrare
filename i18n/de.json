@@ -26,6 +26,7 @@
   "save.leaveTitle": "Ungespeicherter Text",
   "save.leaveStay": "Bleiben",
   "save.leaveGo": "Trotzdem wechseln",
+  "dirty.confirmLeave": "Dieses Formular hat ungespeicherte Änderungen. Trotzdem wechseln?",
   "nav.back": "Alle Romane",
   "chapters.defaultTitle": "Kapitel {n}",
   "setup.welcome": "Willkommen bei Narrare",

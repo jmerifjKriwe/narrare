@@ -1,10 +1,14 @@
-import { Fragment, useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
+
+import { useRouter } from "@tanstack/react-router";
 
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
+import { LeaveBlocker } from "@shell/components/LeaveBlocker";
 import { Button } from "@shell/ui/Button";
+import { Dialog } from "@shell/ui/Dialog";
 import { Field, Select, Textarea } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
@@ -151,13 +155,26 @@ function PromptEditor(props: {
   novelTitle: string | null;
   onClose: () => void;
   onSaved: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = useTranslation();
-  const { promptKey, keyLabel, scope, novelId, novelTitle, onClose, onSaved } = props;
+  const {
+    promptKey,
+    keyLabel,
+    scope,
+    novelId,
+    novelTitle,
+    onClose,
+    onSaved,
+    onDirtyChange,
+  } = props;
   const headingId = useId();
   const [detail, setDetail] = useState<PromptDetail | null>(null);
   const [detailFailed, setDetailFailed] = useState(false);
   const [content, setContent] = useState("");
+  // The words the server last handed this editor: anything else is dirty and
+  // asks before it is thrown away.
+  const [snapshot, setSnapshot] = useState("");
   const [refusal, setRefusal] = useState<{ reason: string; detail: string } | null>(null);
   const [actionFailed, setActionFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -180,6 +197,7 @@ function PromptEditor(props: {
     setActionFailed(false);
     setDiff(null);
     setContent("");
+    setSnapshot("");
     client
       .GET("/api/prompts/{key}", {
         params: {
@@ -192,6 +210,7 @@ function PromptEditor(props: {
         if (response.ok && data !== undefined) {
           setDetail(data);
           setContent(data.effective_content);
+          setSnapshot(data.effective_content);
         } else {
           setDetailFailed(true);
         }
@@ -203,6 +222,12 @@ function PromptEditor(props: {
       cancelled = true;
     };
   }, [promptKey, scope, novelId, attempt]);
+
+  // The page owns the guard; this editor only reports whether it holds words
+  // the server does not.
+  useEffect(() => {
+    onDirtyChange(detail !== null && content !== snapshot);
+  }, [detail, content, snapshot, onDirtyChange]);
 
   async function save(): Promise<void> {
     setBusy(true);
@@ -429,9 +454,10 @@ function PromptCard(props: {
   onEdit: (scope: PromptScope) => void;
   onClose: () => void;
   onSaved: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = useTranslation();
-  const { summary, novelSelected, editor, onEdit, onClose, onSaved } = props;
+  const { summary, novelSelected, editor, onEdit, onClose, onSaved, onDirtyChange } = props;
   const label = keyLabelOf(summary.key, t);
   return (
     <li className="border-b border-rule py-3 first:pt-0 last:border-b-0 last:pb-0">
@@ -491,6 +517,7 @@ function PromptCard(props: {
           novelTitle={editor.novelTitle}
           onClose={onClose}
           onSaved={onSaved}
+          onDirtyChange={onDirtyChange}
         />
       )}
     </li>
@@ -528,6 +555,44 @@ export function PromptsPage() {
   // Bumped when a save or reset lands, and by the page-level retry: the list
   // refetches through the effect instead of a handler patching rows by hand.
   const [refresh, setRefresh] = useState(0);
+  // The open editor's words, reported up: re-targeting or leaving the page
+  // must ask before they are thrown away. One ask stands at a time.
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [guardOpen, setGuardOpen] = useState(false);
+  const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
+
+  /** Resolve the standing ask; a dismissed dialog means "stay". */
+  function settle(leave: boolean): void {
+    const answer = guardAnswer.current;
+    guardAnswer.current = null;
+    setGuardOpen(false);
+    answer?.(leave);
+  }
+
+  /** Ask before typed words are discarded; a second ask while one stands is a no. */
+  function askToLeave(): Promise<boolean> {
+    if (guardAnswer.current !== null) return Promise.resolve(false);
+    setGuardOpen(true);
+    return new Promise<boolean>((resolve) => {
+      guardAnswer.current = resolve;
+    });
+  }
+
+  async function closeEditor(): Promise<void> {
+    if (editorDirty && !(await askToLeave())) return;
+    setEditor(null);
+    setEditorDirty(false);
+  }
+
+  async function openEditor(key: string, scope: PromptScope): Promise<void> {
+    if (editor !== null && editorDirty && !(await askToLeave())) return;
+    setEditor({ key, scope, novelId });
+    setEditorDirty(false);
+  }
+
+  // The third door: a route change with a dirty editor asks too. The blocker
+  // mounts only where a router exists, so the page stays renderable alone.
+  const router = useRouter({ warn: false });
 
   useEffect(() => {
     // Both reads fail independently: a lost novels list must not also hide
@@ -627,10 +692,12 @@ export function PromptsPage() {
                       }
                     : null
                 }
-                onEdit={(scope) => setEditor({ key: summary.key, scope, novelId })}
-                onClose={() => setEditor(null)}
+                onEdit={(scope) => void openEditor(summary.key, scope)}
+                onClose={() => void closeEditor()}
+                onDirtyChange={setEditorDirty}
                 onSaved={() => {
                   setEditor(null);
+                  setEditorDirty(false);
                   setRefresh((current) => current + 1);
                 }}
               />
@@ -638,6 +705,42 @@ export function PromptsPage() {
           </ul>
         </Panel>
       )}
+
+      {router ? <LeaveBlocker dirty={editorDirty} ask={askToLeave} /> : null}
+
+      <Dialog
+        title={t("save.leaveTitle")}
+        isOpen={guardOpen}
+        onOpenChange={(open) => {
+          if (!open) settle(false);
+        }}
+      >
+        {(close) => (
+          <>
+            <p className="mt-2 text-body text-muted">{t("dirty.confirmLeave")}</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  settle(false);
+                  close();
+                }}
+              >
+                {t("save.leaveStay")}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  settle(true);
+                  close();
+                }}
+              >
+                {t("save.leaveGo")}
+              </Button>
+            </div>
+          </>
+        )}
+      </Dialog>
     </section>
   );
 }

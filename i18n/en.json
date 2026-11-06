@@ -26,6 +26,7 @@
   "save.leaveTitle": "Unsaved text",
   "save.leaveStay": "Stay",
   "save.leaveGo": "Leave anyway",
+  "dirty.confirmLeave": "This form has changes that were not saved. Leave anyway?",
   "nav.back": "All novels",
   "chapters.defaultTitle": "Chapter {n}",
   "setup.welcome": "Welcome to Narrare",

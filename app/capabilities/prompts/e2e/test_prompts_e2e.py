@@ -477,3 +477,34 @@ def test_an_export_carries_the_closed_surface_and_no_override(
     assert len(_entities_of(source_id)) == DEMO_ENTITIES
     assert _override_count(source_id) == 1
     assert _override_count(copy_id) == 0
+
+
+def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> None:
+    """Typed words the server does not hold are not thrown away by a click:
+    the editor's cancel asks, and an untouched editor never does."""
+    page.goto(f"{BASE}/settings/prompts")
+    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    template = page.get_by_label("Vorlage")
+    expect(template).to_be_visible()
+
+    # Pristine: the same close, no question.
+    page.get_by_role("button", name="Abbrechen").click()
+    expect(page.get_by_role("dialog", name="Ungespeicherter Text")).to_have_count(0)
+
+    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    template = page.get_by_label("Vorlage")
+    expect(template).to_be_visible()
+    template.fill(template.input_value() + " ")
+
+    # Dirty: stay leaves the words; leave closes the editor.
+    page.get_by_role("button", name="Abbrechen").click()
+    dialog = page.get_by_role("dialog", name="Ungespeicherter Text")
+    expect(dialog).to_be_visible()
+    dialog.get_by_role("button", name="Bleiben").click()
+    expect(template).to_be_visible()
+
+    page.get_by_role("button", name="Abbrechen").click()
+    page.get_by_role("dialog", name="Ungespeicherter Text").get_by_role(
+        "button", name="Trotzdem wechseln"
+    ).click()
+    expect(template).to_have_count(0)

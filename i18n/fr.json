@@ -26,6 +26,7 @@
   "save.leaveTitle": "Texte non enregistré",
   "save.leaveStay": "Rester",
   "save.leaveGo": "Quitter quand même",
+  "dirty.confirmLeave": "Ce formulaire contient des modifications non enregistrées. Quitter quand même ?",
   "nav.back": "Tous les romans",
   "chapters.defaultTitle": "Chapitre {n}",
   "setup.welcome": "Bienvenue dans Narrare",
