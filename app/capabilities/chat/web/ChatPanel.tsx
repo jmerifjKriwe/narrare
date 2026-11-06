@@ -109,7 +109,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
     <>
       {/* The ask on one row (§8.7's chat row, the one surface row that
           says so): the field grows, the button holds its label's width and
-          sits on the input's line — down to the dock's 384 px and a 360 px
+          sits on the input's line — down to the dock's 352 px and a 360 px
           viewport, where `min-w-0` lets the field shrink first. The fill
           follows the surface (L1, R46): on the standalone page the ask is
           its screen's one filled primary; in the workspace dock it defers
