@@ -11,8 +11,8 @@ way it is lives in the design spec, not here.
 
 | File | Triggers | Jobs | Blocks merge |
 | --- | --- | --- | --- |
-| `ci.yml` | `pull_request`, `push: main`, `workflow_dispatch` | `lint-types` (calls `_lint.yml`), `changes`, `tests` (calls `_test.yml`), `frontend`, `build`, `e2e-suites` (matrix, calls `_e2e.yml`), `dependency-review` (PR only), `workflow-lint`, `ci-required` | yes — `ci-required` is the ruleset's only required check |
-| `nightly.yml` | `schedule` (daily 03:17 UTC), `workflow_dispatch` | `gate`, `audit`, `lint-types`, `tests`, `frontend`, `build`, `e2e-suites` (every capability), `nightly-result` | no — a red run reports through the [`ci/nightly` issue](#the-nightly-and-its-audit) |
+| `ci.yml` | `pull_request`, `pull_request_review: [submitted]`, `push: main`, `workflow_dispatch` | `lint-types` (calls `_lint.yml`), `changes`, `version-bump` (release PR only), `tests` (calls `_test.yml`), `frontend`, `build`, `e2e-suites` (matrix, calls `_e2e.yml`), `dependency-review` (PR only), `workflow-lint`, `container`, `container-e2e`, `container-upgrade`, `container-external` (approved release PR only), `ci-required` | yes — `ci-required` is the ruleset's only required check |
+| `nightly.yml` | `schedule` (daily 03:17 UTC), `workflow_dispatch` | `gate`, `audit`, `lint-types`, `tests`, `frontend`, `build`, `container` (build + smoke, no push), `e2e-suites` (every capability), `nightly-result` | no — a red run reports through the [`ci/nightly` issue](#the-nightly-and-its-audit) |
 | `release-please.yml` | `push: main`, `workflow_dispatch` | `release-please` | no |
 | `codeql.yml` | `pull_request` (every PR), `push: main` (code paths), `schedule` (weekly, Sunday 06:07 UTC), `workflow_dispatch` | `analyze` (matrix: `python`, `javascript-typescript`, `actions`) | no — advisory |
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
@@ -65,7 +65,10 @@ Two named, deliberate shapes a reader should not "fix":
 ## `ci-required` — the required-check aggregator
 
 The ruleset requires `ci-required` and nothing else, so a job split never
-edits the ruleset. The job runs `if: always()` (a skipped required check
+edits the ruleset. It judges three modes: an ordinary PR, a release PR (heavy jobs are skips by
+design, `version-bump` must pass), and an approved review of the release PR
+(the four `container*` jobs must pass; any other review owes nothing and is
+green). The job runs `if: always()` (a skipped required check
 passes — the hole this closes) and judges each result explicitly against the
 `needs` list it carries.
 

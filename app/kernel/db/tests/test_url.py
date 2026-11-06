@@ -72,6 +72,20 @@ def test_an_incomplete_set_is_refused_by_name() -> None:
     assert "NARRE_DB_USER" in str(refused.value)
 
 
+def test_every_missing_variable_is_named() -> None:
+    """A refusal that names the first one sends the operator round the loop twice."""
+    with pytest.raises(DatabaseConfigurationError) as refused:
+        resolve({"NARRE_DB_HOST": "postgres"})
+    assert "NARRE_DB_NAME" in str(refused.value)
+    assert "NARRE_DB_USER" in str(refused.value)
+
+
+def test_a_port_outside_the_range_is_refused() -> None:
+    with pytest.raises(DatabaseConfigurationError) as refused:
+        resolve({**PARTS, "NARRE_DB_PORT": "70000"})
+    assert "NARRE_DB_PORT" in str(refused.value)
+
+
 def test_an_empty_value_counts_as_unset() -> None:
     """A template that renders an unset field as an empty string must not become a host."""
     with pytest.raises(DatabaseConfigurationError) as refused:

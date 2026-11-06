@@ -37,6 +37,11 @@ NARRE_SECRET_KEY=<the key you generated above>
 docker compose -f docker-compose.release.yml up -d
 ```
 
+`NARRE_IMAGE` in `.env` pins the image; leave it out and it follows
+`ghcr.io/jmerifjKriwe/narrare:latest`. To pin an exact build, pull it by digest
+(`docker pull ghcr.io/jmerifjKriwe/narrare@sha256:…`, printed in every release's
+notes) and set `NARRE_IMAGE` to that digest.
+
 Open <http://localhost:8000>. Two volumes are created: `pgdata` holds the
 database, `backups` holds the dump taken before every schema upgrade. Both
 belong to you — a copy of them is a complete backup.

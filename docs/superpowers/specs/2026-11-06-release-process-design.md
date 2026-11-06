@@ -72,8 +72,8 @@ Decided: discrete parts are the source, `NARRE_DATABASE_URL` stays an override.
   (passwords containing `@`, `:`, `#`; IPv6 hosts in brackets).
 - Resolution lives in exactly one place (`session.py`); `init.py`, `prepare_database`
   and `alembic/env.py` keep receiving a finished URL.
-- One startup log line names the source: `database: NARRE_DB_HOST=postgres db=narrare
-  user=narrare` or `database: default (localhost dev)`.
+- One startup log line names the source: `database NARRE_DB_* → narrare@postgres:5432/narrare`
+  or `database default (localhost dev)` — the connection, never the password.
 - Incomplete parts refuse at startup, naming the missing variables. Empty string is
   treated as unset.
 - `PG*` (libpq) names were rejected: they collide with a developer machine's settings

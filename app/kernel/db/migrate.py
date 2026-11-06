@@ -133,9 +133,8 @@ def extension_refusal(missing: Sequence[str]) -> str:
     noun = "extension" if len(missing) == 1 else "extensions"
     return (
         f"the database cannot provide the {noun} Narrare's schema needs: {names}"
-        " — it must be able to CREATE EXTENSION; a plain PostgreSQL needs a"
-        " pgvector-capable build (the pgvector/pgvector image) and the distribution's"
-        " contrib package, and a hosted database has its platform create them"
+        " — use a server that ships it (the pgvector/pgvector image, or the"
+        " distribution's contrib package), or have the platform create it"
     )
 
 

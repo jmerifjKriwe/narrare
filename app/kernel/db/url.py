@@ -75,12 +75,11 @@ def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
 
     parts = {name: _value(source, name) for name in (*_REQUIRED, *_OPTIONAL)}
     password = source.get("NARRE_DB_PASSWORD") or ""
-    if not password.strip():
-        parts["password"] = ""
-    else:
-        # Verbatim: a password may contain spaces, and stripping it would hide
-        # the difference between a typo and the real secret.
-        parts["password"] = password
+    # Whitespace-only reads as unset, like every other part: a template that
+    # renders an unused field as spaces must not become a password. Anything
+    # else is taken verbatim — a password may contain spaces, and trimming one
+    # would hide the difference between a typo and the real secret.
+    parts["password"] = password if password.strip() else ""
 
     if not any(parts.values()):
         return DatabaseConfig(url=make_url(DEFAULT_URL), source=DEFAULT_SOURCE)

@@ -25,6 +25,7 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -33,11 +34,15 @@ _ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
 # Attached to a running instance, exactly one database exists — the instance's
 # own — and that is what every test-database name resolves to. The name is
 # never recorded, so no session finish and no sweep can drop its data.
-SERVER = (
-    environ["NARRE_DATABASE_URL"].rsplit("/", 1)[0]
-    if _ATTACH_URL
-    else "postgresql+asyncpg://narrare:narrare@localhost:5433"
-)
+if _ATTACH_URL and not environ.get("NARRE_DATABASE_URL"):
+    raise RuntimeError(
+        "NARRE_E2E_ATTACH needs NARRE_DATABASE_URL: the attached instance's"
+        " database is where the preconditions are seeded"
+    )
+
+_ATTACH = make_url(environ["NARRE_DATABASE_URL"]) if _ATTACH_URL else None
+
+SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -72,6 +77,9 @@ _RUN_DATABASES: list[str] = []
 
 
 def url_for(database: str) -> str:
+    if _ATTACH is not None:
+        # Built from the URL, so a query option (`?ssl=require`) survives.
+        return _ATTACH.set(database=database).render_as_string(hide_password=False)
     return f"{SERVER}/{database}"
 
 
@@ -113,8 +121,8 @@ def test_database(prefix: str = "narrare_v2_test") -> str:
     instance's database: there is exactly one, it holds the artefact's state,
     and a run that only drives it neither sweeps nor drops it.
     """
-    if _ATTACH_URL:
-        return environ["NARRE_DATABASE_URL"].rsplit("/", 1)[-1]
+    if _ATTACH is not None:
+        return _ATTACH.database or ""
     if prefix in _NAMES:
         return _NAMES[prefix]
     if prefix not in _SWEPT:
