@@ -1,0 +1,133 @@
+name: Publish
+
+# The release is public before this runs: GitHub starts no workflow for a draft
+# release, so a release-triggered job is necessarily after the fact. What this
+# step must never do is build. The image it publishes was built and gated on the
+# release pull request (`ci.yml`, jobs `container*`) and lives in GHCR as
+# `:sha-<commit>`; this job re-tags that digest, signs nothing it did not test,
+# and fails — loudly, and with a warning in the release body — when the digest
+# is gone rather than shipping a second build that no gate started.
+#
+# `:latest` moves only here, and only on success, so a release page briefly
+# naming an image that does not exist yet is the whole cost of the window.
+#
+# Not yet in this file, and named rather than silently missing: SBOM,
+# build-provenance attestation and keyless Cosign signing from the GitHub
+# platform design (`2026-11-05-github-platform-design.md`). They need pinned
+# action SHAs and a release to verify against; they belong here, after the
+# promotion, and they must attest the digest — never a rebuilt image.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to publish (for example v0.3.0).
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Required reviewers: a promotion is an approval, like the artefact gates.
+    environment: release
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve the release, its commit and the tested image
+        id: resolve
+        env:
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          commit=$(git rev-list -n1 "$TAG")
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          major_minor="${version%.*}"
+          {
+            echo "tag=$TAG"
+            echo "version=$version"
+            echo "commit=$commit"
+            echo "image=$image"
+            echo "major_minor=$major_minor"
+            echo "source=$image:sha-$commit"
+          } >> "$GITHUB_OUTPUT"
+          echo "publishing $image:sha-$commit as $version"
+
+      - name: The image the gates tested must still exist
+        id: tested
+        env:
+          SOURCE: ${{ steps.resolve.outputs.source }}
+        run: |
+          set -euo pipefail
+          if docker buildx imagetools inspect "$SOURCE" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::error::$SOURCE does not exist; the gates never pushed it, so there is nothing to publish and nothing is rebuilt"
+          fi
+
+      - name: Log in to GHCR
+        if: steps.tested.outputs.found == 'true'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+
+      - name: Promote the tested digest to the version tags
+        if: steps.tested.outputs.found == 'true'
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          SOURCE: ${{ steps.resolve.outputs.source }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          MAJOR_MINOR: ${{ steps.resolve.outputs.major_minor }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --tag "$IMAGE:$VERSION" \
+            --tag "$IMAGE:$MAJOR_MINOR" \
+            --tag "$IMAGE:latest" \
+            "$SOURCE"
+
+      - name: Record the digest and the size in the release
+        if: steps.tested.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          digest=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{.Manifest.Digest}}')
+          body=$(cat <<EOF
+
+          ---
+          **Image:** \`$IMAGE:$VERSION\` · digest \`$digest\` · pull by digest for production.
+          The published image is the one the release pull request's gates started, not a second build.
+          EOF
+          )
+          gh release edit "$TAG" --notes-file <(gh release view "$TAG" --json body --jq .body; printf '%s\n' "$body")
+
+      - name: Say so when there was nothing to promote
+        if: steps.tested.outputs.found != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          IMAGE: ${{ steps.resolve.outputs.image }}
+        run: |
+          set -euo pipefail
+          body=$(printf '\n---\n**⚠ No image was published.** %s carries no tested image tag; nothing was rebuilt. See the Publish workflow run for the failing step.\n' "$IMAGE")
+          gh release edit "$TAG" --notes-file <(gh release view "$TAG" --json body --jq .body; printf '%s\n' "$body") || true
+          exit 1

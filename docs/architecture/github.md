@@ -18,13 +18,13 @@ way it is lives in the design spec, not here.
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
 | `pins.yml` | `schedule` (monthly, 1st 08:23 UTC), `workflow_dispatch` | `check` | no — advisory; reports through the [`ci/tool-pins` issue](#dependabot) |
 | `fuzz.yml` | `schedule` (weekly, Sunday 05:17 UTC), `workflow_dispatch` | `fuzz` | no — advisory |
-| `publish.yml` | *(dormant)* | image build, attest, SBOM, release assets | no |
+| `publish.yml` | `release: published`, `workflow_dispatch` | `publish` (promote the digest the release PR's gates tested, record it in the release) | no — a failed promotion marks the release and fails |
 
-`publish.yml` is dormant: **it does not exist on the tree** and nothing runs
-until a `Dockerfile` does. When created, its trigger is `release: published`
-plus `workflow_dispatch` — an image build keyed to a release, not to every
-push. (Shape and its permissions are specified in the design spec,
-"`publish.yml` (dormant)".)
+`publish.yml` publishes the image the release pull request's gates built and
+started: it re-tags that digest, carried in GHCR as `:sha-<commit>`, as the
+version, the minor line and `latest`, and writes the digest into the release.
+It builds nothing. SBOM, provenance attestation and signing are named in the
+workflow's own header as still missing, not silently absent.
 
 `_lint.yml`, `_test.yml` and `_e2e.yml` declare no trigger of their own
 (`on: workflow_call` only): each defines one job (`lint-types`, `tests`,
