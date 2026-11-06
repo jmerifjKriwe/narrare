@@ -123,8 +123,11 @@ change ships as two files in **one commit** — the model change and its revisio
 ## Before You PR
 
 Git hooks are installed by `just dev-setup`: format, lint, the typecheck of the
-changed files and the secret scan run on every commit; the full typecheck and
-the test suite run on every push. Bypassing a hook (`--no-verify`) is forbidden.
+changed files, the secret scan, the commit-message check and the web tests the
+change reaches run on every commit; the full typecheck and the Python suite run
+on every push, the full web suite on a push that touches web. Bypassing a hook
+(`--no-verify`) is forbidden. A new hook type reaches an existing clone through
+`pre-commit install --install-hooks` once.
 
 Before opening a PR, run the full gate locally:
 
@@ -142,11 +145,13 @@ loads the bundled demo novel and writes the five frames under `assets/screenshot
 Run it when a surface they show has changed: the images are the one part of the
 README no test reads.
 
-**Was bei jedem Commit läuft:** Der Secret-Scan (Gitleaks,
-`scripts/check_secrets.py`) scannt das gesamte Repo inklusive History und
-blockt den Commit. Einige dokumentierte Example-Keys alter v1-Docs (nur noch in
-der git history vorhanden) sind in `.gitleaks.toml` allowlisted; die Allowlist
-muss bleiben, solange der Scan die History sieht.
+**Was bei jedem Commit läuft:** Der Secret-Scan (`scripts/check_secrets.py
+--staged`) prüft die gestagten Blobs gegen `.gitleaks.toml` und blockt den
+Commit. CI scannt den Push- und PR-Bereich (`gitleaks-action` in `_lint.yml`),
+`python3 scripts/check_secrets.py` die ganze History. Einige dokumentierte
+Example-Keys alter v1-Docs (nur noch in der git history vorhanden) sind in
+`.gitleaks.toml` allowlisted; die Allowlist muss bleiben, solange ein Scan die
+History liest.
 
 ## PR Process
 

@@ -1,9 +1,24 @@
-# Six hooks, and each names a failure that has happened: unformatted code,
-# lint findings, type errors that only show up across files, a leaked secret,
-# and the two gates a developer should not push past.
+# Each hook names a failure that has happened: unformatted code, lint
+# findings, type errors that only show up across files, a leaked secret, a
+# commit subject release-please cannot parse, a lockfile that no longer
+# matches pyproject, and the gates a developer should not push past.
+#
+# A commit checks the staged files; a push checks the pushed tree. The web
+# suite follows that split: the commit runs only the tests the change reaches,
+# a push that touches web runs all of them.
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
+
 repos:
   - repo: local
     hooks:
+      - id: secrets
+        name: Secrets (gitleaks)
+        entry: python3 scripts/check_secrets.py --staged
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: ruff-format
         name: Ruff format
         entry: uv run ruff format --check
@@ -25,31 +40,50 @@ repos:
         types: [python]
         stages: [pre-commit]
 
-      - id: secrets
-        name: Secrets (gitleaks)
-        entry: python3 scripts/check_secrets.py --staged
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
+      # `app/capabilities/.*/web/`, not `app/capabilities/`: a backend-only
+      # capability commit owes neither tsc nor vitest (issue #446). The cost of
+      # a missed generated-input change is the gap tracked separately; no web
+      # check reads generated inputs for staleness anyway.
       - id: web-typecheck
         name: Web typecheck (tsc)
         entry: pnpm --dir web typecheck
         language: system
         pass_filenames: false
-        always_run: false
-        files: (^web/|app/capabilities/|^i18n/)
+        files: (^web/|^app/capabilities/.*/web/|^i18n/)
         stages: [pre-commit]
 
+      # The tests the working tree's change reaches, not all of them: the full
+      # suite runs on a web-touching push and in CI's `frontend` job, which no
+      # path filter can skip.
       - id: web-tests
-        name: Web tests (vitest)
-        entry: pnpm --dir web test
+        name: Web tests (changed)
+        entry: pnpm --dir web exec vitest run --changed HEAD
         language: system
         pass_filenames: false
-        always_run: false
-        files: (^web/|app/capabilities/|^i18n/)
+        files: (^web/|^app/capabilities/.*/web/|^i18n/)
         stages: [pre-commit]
+
+      # Only the subject grammar: release-please reads the type, and a subject
+      # it cannot parse is lost from the changelog. Whether a `User-visible:`
+      # line is real stays review's call (CONTRIBUTING).
+      - id: commit-message
+        name: Commit message
+        entry: python3 scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]
+
+      # The lockfile check is first at push: a stale lock costs nothing to
+      # find and two minutes to wait for behind the suites. A push hook runs
+      # against the index (pre-commit stashes unstaged changes), so the guard
+      # refuses a lock update that is staged but not committed; `uv lock
+      # --check` then reads the pair the push actually carries.
+      - id: uv-lock
+        name: Lockfile (uv)
+        entry: bash -c 'git diff --quiet HEAD -- pyproject.toml uv.lock || { echo "uncommitted dependency change — commit or revert it before pushing"; exit 1; }; uv lock --check'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
 
       - id: pyright-full
         name: Pyright (whole project)
@@ -68,4 +102,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+        stages: [pre-push]
+
+      - id: web-tests-full
+        name: Web tests (all)
+        entry: pnpm --dir web test
+        language: system
+        pass_filenames: false
+        files: (^web/|^app/capabilities/.*/web/|^i18n/)
         stages: [pre-push]
