@@ -8,8 +8,8 @@ symptom stays quiet — the suite passes while truncating the developer's own da
 — until a model change reaches the test database and not the development one.
 
 This file is collected before every test module under ``app/``, so the decision
-is made once, in one place. The name is per run — worktree token plus this
-process's pid (``test_database``) — so a second pytest run, in a second
+is made once, in one place. The name is per run — worktree token plus a
+per-run token (``test_database``) — so a second pytest run, in a second
 worktree or a second process, creates, truncates and drops a database of its
 own and cannot reach this one mid-suite (#611). ``pytest_sessionfinish`` then
 drops the names this run recorded; databases left behind by a run that died

@@ -3,7 +3,7 @@
 
 The folder itself is a mkdir. What a new capability reliably gets wrong is its
 test databases: the integration suite names its own database for the run
-(worktree token plus process pid), the E2E suite gets a database of its own
+(worktree token plus a per-run token), the E2E suite gets a database of its own
 and a module-scoped stack so two suites never hold the same ports. Those two
 conftest files are what this writes; the code is yours.
 """

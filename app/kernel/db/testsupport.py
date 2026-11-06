@@ -1,10 +1,15 @@
 """Throwaway databases for tests that run against a real Postgres.
 
-Each run gets its own database: the name carries the worktree and the process,
-it is created and dropped per run, and a database left behind by a run that
-died mid-suite the next run's sweep reclaims. One shared name would carry one
-suite's rows into the next and let two concurrent runs truncate each other's
-tables mid-test (#611).
+Each run gets its own database: the name carries the worktree and a per-run
+token minted once per process, and the database itself carries a marker on
+the server — host, boot id, pid — that a sweep requires before it drops
+anything. A run that died mid-suite leaves its database behind; the next
+run's sweep reclaims it, but only when the marker names this host and either
+names another boot or a pid that is no longer alive. A name without a marker,
+or from another
+host, is never ours to drop. One shared name would carry one suite's rows
+into the next and let two concurrent runs truncate each other's tables
+mid-test (#611).
 """
 
 import asyncio
@@ -14,6 +19,8 @@ from contextlib import suppress
 from hashlib import blake2s
 from os import getpid, kill
 from pathlib import Path
+from secrets import token_hex
+from socket import gethostname
 from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import text
@@ -25,11 +32,33 @@ SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+# The per-run token: eight hex characters minted once per process. The same
+# process, the same prefix — the same name, always; two runs differ even when
+# their pids would be reused across the runs.
+_RUN_TOKEN = token_hex(4)
 # ``test_database``'s suffix — which the sweep matches on: the worktree token
-# plus the owning pid, 16 lowercase hex characters in total.
-_RUN_TOKEN = re.compile(r"[0-9a-f]{16}")
+# plus the run token, 16 lowercase hex characters in total.
+_RUN_SUFFIX = re.compile(r"[0-9a-f]{16}")
+
+# The marker ``_ensure`` writes and the sweep reads. A drop needs it to name
+# this host — a database owned by a run on another box, even against a shared
+# server, is never this run's to drop (which leaves a pid-namespace run safe).
+_OWNER = re.compile(r"narrare-run host=(\S*) boot=(\S*) pid=(\d+)")
+
+_HOSTNAME = gethostname()
+
+
+def _boot_id() -> str:
+    """This boot's id, or an empty string outside Linux."""
+    with suppress(OSError):
+        return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    return ""
+
+
+_BOOT = _boot_id()
 
 _SWEPT: set[str] = set()
+_NAMES: dict[str, str] = {}
 _RUN_DATABASES: list[str] = []
 
 
@@ -37,36 +66,69 @@ def url_for(database: str) -> str:
     return f"{SERVER}/{database}"
 
 
-def test_database(prefix: str = "narrare_v2_test", *, pid: int | None = None) -> str:
-    """This run's database name: ``prefix_`` + worktree token + process pid.
+def _alive(pid: int) -> bool:
+    """Whether a pid on this host's current boot may still be running.
+
+    ``PermissionError`` is an alive process owned by another user,
+    ``ProcessLookupError`` a dead one; a pid this platform cannot signal at
+    all does not read as alive.
+    """
+    try:
+        kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OverflowError, ValueError, OSError:
+        return False
+    return True
+
+
+def test_database(prefix: str = "narrare_v2_test") -> str:
+    """This run's database name: ``prefix_`` + worktree token + run token.
 
     Same process, same prefix — same name, always; a second pytest run, in a
     second worktree or a second process, names a database of its own (#611).
-    The first call under a prefix per process also runs ``sweep``, so a run
-    crashed mid-test does not leave its database behind on the server.
+    The run token is minted once per process, so a name never carries the pid:
+    a reused pid can never make a run adopt another run's rows. The first
+    call under a prefix per process also runs ``sweep``, so a run crashed
+    mid-test does not leave its database behind on the server.
+
+    Names are capped at PostgreSQL's 63-byte identifier limit; a longer one
+    raises ``ValueError`` rather than truncating at the server into somebody
+    else's name.
 
     ``ensure_database`` is the caller's next step: nothing is created here.
     """
+    if prefix in _NAMES:
+        return _NAMES[prefix]
     if prefix not in _SWEPT:
         sweep(prefix)
         _SWEPT.add(prefix)
-    owner = getpid() if pid is None else pid
-    name = f"{prefix}_{blake2s(str(REPO_ROOT).encode(), digest_size=4).hexdigest()}{owner:08x}"
-    if name not in _RUN_DATABASES:
-        _RUN_DATABASES.append(name)
+    name = f"{prefix}_{blake2s(str(REPO_ROOT).encode(), digest_size=4).hexdigest()}{_RUN_TOKEN}"
+    if len(name.encode("utf-8")) > 63:
+        raise ValueError(
+            f"test database name for prefix {prefix!r} is {len(name.encode('utf-8'))} bytes; "
+            f"PostgreSQL limits identifiers to 63 — shorten the prefix"
+        )
+    _NAMES[prefix] = name
+    _RUN_DATABASES.append(name)
     return name
 
 
 def sweep(prefix: str = "narrare_v2_test") -> None:
-    """Drop the prefix's per-run databases whose owner process is gone.
+    """Drop the prefix's per-run databases whose owner is gone, proven gone.
 
-    A database belongs to this prefix only when its name is exactly
-    ``prefix_`` plus 16 lowercase hex characters — the shape and only the
-    shape ``test_database`` produces. Everything else stays untouched: the
-    legacy ``narrare_v2_test``, the ``narrare_v2_*_e2e`` names, the developer
-    databases. The last 8 hex characters read as a pid; a dead pid's database
-    is dropped, a live one's kept — ``PermissionError`` counts as alive
-    (another user's process), ``ProcessLookupError`` as dead.
+    A database belongs to this prefix only when its name starts with
+    ``prefix_`` followed by 16 lowercase hex characters — the shape and only
+    the shape ``test_database`` produces. And a drop needs the owner marker on the
+    database itself: it must parse as ``narrare-run host=… boot=… pid=…``, name
+    this hostname, and name another boot (crashed machine's leftovers) or a
+    pid that is no longer alive — ``PermissionError`` counts as alive. A name
+    without a marker (a hand-made database in the namespace), from another
+    host, or whose marker does not parse, is skipped: dropping another test's
+    server or another box's run would be this run reaching where it has no
+    right (finding 1 in the #611 review).
     """
     asyncio.run(_sweep(prefix))
 
@@ -75,27 +137,27 @@ async def _sweep(prefix: str) -> None:
     engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
-            names = [
-                str(row[0])
-                for row in (await connection.execute(text("SELECT datname FROM pg_database")))
-            ]
-            for name in names:
-                if not name.startswith(f"{prefix}_"):
+            rows = await connection.execute(
+                text(
+                    "SELECT datname, shobj_description(oid, 'pg_database')"
+                    " FROM pg_database WHERE datname LIKE :pattern"
+                ),
+                {"pattern": f"{prefix}\\_%"},
+            )
+            for name, marker in rows.fetchall():
+                if not str(name).startswith(f"{prefix}_"):
+                    continue  # the prefix's own underscores matched as wildcards
+                suffix = str(name)[len(prefix) + 1 :]
+                if _RUN_SUFFIX.fullmatch(suffix) is None:
                     continue
-                suffix = name[len(prefix) + 1 :]
-                if _RUN_TOKEN.fullmatch(suffix) is None:
-                    continue
-                try:
-                    owner = int(suffix[8:], 16)
-                    kill(owner, 0)
-                except ProcessLookupError:
-                    pass  # dead: its database is litter this run reclaims
-                except PermissionError:
-                    continue  # alive, owned by another user
-                except OverflowError, ValueError:
-                    continue  # not a pid this platform can signal: not ours to drop
-                else:
-                    continue  # alive
+                owner = _OWNER.fullmatch(str(marker)) if marker is not None else None
+                if owner is None:
+                    continue  # no marker to own it by: not this run's to drop
+                host, boot, pid = owner.group(1), owner.group(2), int(owner.group(3))
+                if host != _HOSTNAME:
+                    continue  # another machine's run, against a shared server
+                if boot == _BOOT and _alive(pid):
+                    continue  # live on this boot
                 await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
     finally:
         await engine.dispose()
@@ -170,15 +232,27 @@ async def seed_user(user_id: UUID) -> None:
 
 async def _ensure(database: str) -> None:
     engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
-    async with engine.connect() as connection:
-        exists = await connection.scalar(
-            text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": database}
-        )
-        if not exists:
-            # A parallel pytest worker may create it between the check and here.
-            with suppress(Exception):
-                await connection.execute(text(f'CREATE DATABASE "{database}"'))
-    await engine.dispose()
+    try:
+        async with engine.connect() as connection:
+            exists = await connection.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": database}
+            )
+            if not exists:
+                # A parallel pytest worker may create it between the check and here.
+                with suppress(Exception):
+                    await connection.execute(text(f'CREATE DATABASE "{database}"'))
+            # Only a name this process minted is marked. The comment sits
+            # outside the CREATE's own suppression: a database created but
+            # left unmarked would survive every sweep after its owner is gone.
+            if database in _NAMES.values():
+                await connection.execute(
+                    text(
+                        f'COMMENT ON DATABASE "{database}" IS'
+                        f" 'narrare-run host={_HOSTNAME} boot={_BOOT} pid={getpid()}'"
+                    )
+                )
+    finally:
+        await engine.dispose()
 
 
 def ensure_database(database: str) -> None:

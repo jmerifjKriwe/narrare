@@ -78,7 +78,7 @@ tool is introduced by this document — it states expectations, not mechanisms.
 ## Data and fixtures
 
 - Backend tests get the real test database named per run — worktree token plus
-  process pid, so two pytest runs never share tables — reset per session. No
+  a per-run token, so two pytest runs never share tables — reset per session. No
   in-memory substitutes.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases; see the capability conftests.
