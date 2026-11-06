@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<!--
+  Unraid Community Applications template: one container, no database.
+
+  Narrare needs a PostgreSQL with the pgvector extension, and this template
+  deliberately does not provide one: the point of it is to sit beside the
+  database a user already runs. The Configuration section therefore asks for
+  the four values that address that database, and the Overview says what the
+  database must be able to do. Both containers have to share a Docker network
+  for the container name to resolve; the host's address works as well.
+-->
+<Container version="2">
+  <Name>Narrare</Name>
+  <Repository>ghcr.io/jmerifjKriwe/narrare:latest</Repository>
+  <Registry>https://github.com/jmerifjKriwe/narrare/pkgs/container/narrare</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/jmerifjKriwe/narrare/issues</Support>
+  <Project>https://github.com/jmerifjKriwe/narrare</Project>
+  <Overview>Local-first, AI-assisted creative writing. Bring your own model, cloud or local. REQUIRES an existing PostgreSQL that can CREATE EXTENSION vector (pgvector); this template starts no database of its own. Set NARRE_DB_* to reach yours, and keep NARRE_SECRET_KEY with your backups.</Overview>
+  <Category>Productivity: Tools:Other</Category>
+  <WebUI>http://[IP]:[PORT:8000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/jmerifjKriwe/narrare/main/deploy/unraid/narrare.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/jmerifjKriwe/narrare/main/assets/logo/icon.svg</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+
+  <Config Name="WebUI port" Target="8000" Default="8000" Mode="tcp"
+          Description="The interface and the API, on one origin."
+          Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+
+  <Config Name="NARRE_DB_HOST" Target="NARRE_DB_HOST" Default="" Mode=""
+          Description="Hostname or IP of your PostgreSQL, as seen from this container. A Postgres container on the same Docker network answers to its container name."
+          Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="NARRE_DB_NAME" Target="NARRE_DB_NAME" Default="narrare" Mode=""
+          Description="An existing, empty database. Narrare creates its own tables and the extensions its schema needs."
+          Type="Variable" Display="always" Required="true" Mask="false">narrare</Config>
+  <Config Name="NARRE_DB_USER" Target="NARRE_DB_USER" Default="" Mode=""
+          Description="A user that may create tables and extensions in that database."
+          Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="NARRE_DB_PASSWORD" Target="NARRE_DB_PASSWORD" Default="" Mode=""
+          Description="Leave empty for a server that trusts its local connections."
+          Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="NARRE_DB_PORT" Target="NARRE_DB_PORT" Default="5432" Mode=""
+          Description="PostgreSQL's port on the host above."
+          Type="Variable" Display="advanced" Required="false" Mask="false">5432</Config>
+  <Config Name="NARRE_DB_SSLMODE" Target="NARRE_DB_SSLMODE" Default="" Mode=""
+          Description="Optional: disable, allow, prefer, require, verify-ca or verify-full. Empty means the driver's default."
+          Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <Config Name="NARRE_SECRET_KEY" Target="NARRE_SECRET_KEY" Default="" Mode=""
+          Description="Generate once: docker run --rm --entrypoint /app/.venv/bin/python ghcr.io/jmerifjKriwe/narrare:latest -c &quot;from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())&quot;. It encrypts the provider keys you store in the app; a new one makes the old keys unreadable, so keep it with your backups."
+          Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="Backups" Target="/backups" Default="/mnt/user/appdata/narrare/backups" Mode="rw"
+          Description="Where the dump taken before every schema upgrade lands. It must outlive the container."
+          Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/narrare/backups</Config>
+</Container>
