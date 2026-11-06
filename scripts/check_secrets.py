@@ -4,9 +4,8 @@
 A single entry point serves two scan modes:
 
 * **Full mode** (default) — ``gitleaks detect --source <root>`` scans the whole
-  repository INCLUDING git history. Used by CI
-  (``.github/workflows/ci.yml``) and ``just check-secrets`` for the
-  comprehensive repo-wide audit.
+  repository INCLUDING git history. The local comprehensive audit:
+  ``python3 scripts/check_secrets.py``; CI runs ``gitleaks-action`` instead.
 
 * **Staged mode** (``--staged``) — scans ONLY the currently git-staged file
   contents (added/copied/modified/renamed), with NO git history. Used by the
@@ -79,7 +78,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Scan modes:\n"
-            "  default      Full repo incl. git history (CI / `just check-secrets`)\n"
+            "  default      Full repo incl. git history (local audit)\n"
             "  --staged     Only git-staged file contents, no history (pre-commit)\n\n"
             "Exit codes:\n"
             "  0    No secrets found\n"
@@ -155,14 +154,19 @@ def build_staged_gitleaks_command(binary: str, source: Path, config: Path) -> li
     ]
 
 
-def _missing_binary_message(binary: str) -> str:
+def _missing_binary_message(binary: str, *, staged: bool) -> str:
     """Return actionable local installation guidance for a missing binary."""
+    rerun = (
+        "python3 scripts/check_secrets.py --staged"
+        if staged
+        else "python3 scripts/check_secrets.py"
+    )
     return (
         f"Gitleaks binary not found: {binary}\n"
         "Install Gitleaks before running the secret-scanning gate.\n"
         "Linux example: download the latest release from "
         "https://github.com/gitleaks/gitleaks/releases and place `gitleaks` on PATH.\n"
-        "Then re-run: just check-secrets"
+        f"Then re-run: {rerun}"
     )
 
 
@@ -314,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
 
     binary = shutil.which(binary_name)
     if binary is None:
-        print(_missing_binary_message(binary_name), file=sys.stderr)
+        print(_missing_binary_message(binary_name, staged=bool(args.staged)), file=sys.stderr)
         return 127  # POSIX "command not found" convention (documented in --help)
 
     config = Path(config_arg).expanduser().resolve()

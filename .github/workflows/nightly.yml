@@ -158,10 +158,9 @@ jobs:
     with:
       coverage: false
 
-  # The web unit suite — six files (four in `web/`, two in capability `web/`
-  # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
-  # has that hook, a drive-by contributor does not, so their frontend could
-  # reach `main` with `vitest` red.
+  # The web unit suite lived only in the pre-commit hook: a fresh clone has
+  # that hook, a drive-by contributor does not, so their frontend could reach
+  # `main` with `vitest` red. It runs here as it does in ci.yml, unfiltered.
   frontend:
     needs: gate
     if: needs.gate.outputs.proceed == 'true'

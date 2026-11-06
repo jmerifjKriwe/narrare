@@ -319,10 +319,10 @@ jobs:
             echo "::notice::no capability owed a browser suite; e2e-suites skipped because nothing was owed"
           fi
 
-  # The web unit suite — six files (four in `web/`, two in capability `web/`
-  # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
-  # has that hook, a drive-by contributor does not, so their frontend could
-  # reach `main` with `vitest` red.
+  # The web unit suite lived only in the pre-commit hook: a fresh clone has
+  # that hook, a drive-by contributor does not, so their frontend could reach
+  # `main` with `vitest` red. No path filter: `ci-required` treats a skipped
+  # `frontend` as a broken graph, not as a decision.
   frontend:
     runs-on: ubuntu-latest
     permissions:
