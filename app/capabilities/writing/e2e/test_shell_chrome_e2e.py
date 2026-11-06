@@ -206,8 +206,11 @@ def test_the_rail_tells_the_four_areas_apart(page: Page, stack: Stack) -> None:
     """Each entry's icon wrapper carries its area's token; four areas, four
     colours, none of them the link's muted ink."""
     page.goto(f"{WEB}/")
+    # The shell paints after its settings query answers: wait for it, or the
+    # lookup races an empty document.
+    expect(page.locator(ICON_RAIL)).to_be_visible()
     colours = page.evaluate(
-        """() => ["Regal", "Wissen", "Chat", "Einstellungen"].map((name) => {
+        """() => ["Startseite", "Wissen", "Chat", "Einstellungen"].map((name) => {
           const link = document.querySelector(`nav a[aria-label="${name}"]`);
           return getComputedStyle(link.querySelector("span")).color;
         })"""

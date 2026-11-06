@@ -184,7 +184,8 @@ def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
         assert abs(box["width"] / box["height"] - 0.75) <= 0.02
         # The demo entries have no genre, so the eyebrow falls back to the
         # language — the first screen a user ever sees names the book's.
-        expect(tile.locator("[data-cover-tone]")).to_have_count(1)
+        tone = tile.get_attribute("data-cover-tone")
+        assert tone in {"pale", "sepia", "ink"}, tone
         expect(tile.locator("[data-cover-eyebrow]")).to_have_text(language)
 
     assert_accessible(page)
