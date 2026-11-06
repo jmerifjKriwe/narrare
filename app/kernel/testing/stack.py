@@ -240,6 +240,13 @@ def run_stack(
         "NARRE_DATABASE_URL": url_for(database),
         "NARRE_SECRET_KEY": E2E_SECRET_KEY,
         "NARRE_KEYRING": "off",
+        # Vite otherwise answers transformed modules with no-cache, and each of
+        # the sweep's hard navigations revalidates the whole dev graph with
+        # 304s; Chromium drops cached module bodies after enough of them
+        # (net::ERR_INSUFFICIENT_RESOURCES) and the page never renders (#634).
+        # no-store keeps every E2E load a fresh 200; `just dev-web` keeps the
+        # default, so a developer's reloads still cache.
+        "NARRE_E2E_NO_HTTP_CACHE": "1",
         **(env or {}),
     }
     pnpm = shutil.which("pnpm")
