@@ -896,6 +896,10 @@ def test_extension_refusal_names_every_missing_extension() -> None:
     assert "'vector'" in sentence and "'unaccent'" in sentence
     assert "pg_trgm" not in sentence  # only what is missing, not the whole list
     assert "pgvector" in sentence  # and what to do about it
+    # One missing extension is an "it", several a "them"; the sentence is read
+    # by an operator, and the pronoun is the only part that knows the count.
+    assert "create them" in sentence
+    assert "create it" in migrate_module.extension_refusal(["vector"])
 
 
 def test_missing_extensions_keeps_the_required_order() -> None:

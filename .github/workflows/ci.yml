@@ -463,9 +463,25 @@ jobs:
           # — and on the first container release the tag is legitimately
           # absent. A canary on :latest cannot serve: nothing pushes it before
           # the first release, so it would redden exactly that release.
-          if [ -z "$tag" ] || ! docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
-            echo "::notice::no published image to upgrade from; this is the first container release"
+          if [ -z "$tag" ]; then
+            echo "::notice::no published release yet; this is the first container release"
             exit 0
+          fi
+          # Only an unknown manifest means "no image for that tag". Any other
+          # inspect failure — an outage in the gap, a parse error — is a
+          # registry problem, and skipping the upgrade test over it would be
+          # the same green the failed-pull rule closed.
+          if ! reason=$(docker buildx imagetools inspect "$image" 2>&1 >/dev/null); then
+            case "$reason" in
+              *"not found"*|*"manifest unknown"*|*"NAME_UNKNOWN"*)
+                echo "::notice::no image for $tag; this is the first container release"
+                exit 0
+                ;;
+              *)
+                echo "::error::could not read $image: $reason"
+                exit 1
+                ;;
+            esac
           fi
           docker pull "$image"
           echo "image=$image" >> "$GITHUB_OUTPUT"
