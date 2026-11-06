@@ -70,3 +70,19 @@ describe("MarkdownEditor", () => {
     expect(box.getAttribute("aria-multiline")).toBe("true");
   });
 });
+
+describe("MarkdownEditor's focus ring", () => {
+  it("can hand the ring to its host", async () => {
+    // The chapter's card carries the ring; the shared editor must be able
+    // to stop painting its own, or the surface shows two.
+    render(<MarkdownEditor label="Text" value="" onChange={() => {}} focusRing={false} />);
+    const box = await screen.findByRole("textbox", { name: "Text" });
+    expect(box.parentElement?.className).not.toContain("focus-within:ring-2");
+  });
+
+  it("rings itself by default, as the entity dialog expects", async () => {
+    render(<MarkdownEditor label="Text" value="" onChange={() => {}} />);
+    const box = await screen.findByRole("textbox", { name: "Text" });
+    expect(box.parentElement?.className).toContain("focus-within:ring-2");
+  });
+});

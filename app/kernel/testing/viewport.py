@@ -25,7 +25,8 @@ if TYPE_CHECKING:
 
 # The prose floor: the narrowest column long-form text stays readable in.
 # The workbench's own padding (px-4, twice) is what yields it on a 360 px
-# phone — the page spends 32 px on margins and keeps 328 px for the words.
+# phone — the page spends 32 px on margins, and the editor card cancels them
+# again (its 1 px edge and 15 px pad leave 330 px for the words).
 MIN_PROSE_WIDTH = 320
 
 # Both halves of the content-box definition, read in the browser at the same

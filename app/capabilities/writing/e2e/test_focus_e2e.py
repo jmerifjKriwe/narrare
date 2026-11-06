@@ -48,15 +48,15 @@ def _open_workbench(page: Page, title: str) -> None:
 
 
 def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) -> None:
-    """F18: the caret's ring lives on the wrapper, not the prose. Inside,
+    """F18: the caret's ring lives on the editor card, not the prose. Inside,
     the box-shadow is there; out, it is gone — and the measure is
     untouched either way (max-width 34rem, the same value both states)."""
     _open_workbench(page, "Der Karettring")
     editor = page.locator(".ProseMirror")
-    wrapper = editor.locator("xpath=..")
+    card = page.locator("[data-editor-card]")
 
     shadow = """getComputedStyle(
-      document.querySelector('.ProseMirror').parentElement
+      document.querySelector('[data-editor-card]')
     ).boxShadow"""
     width = """document.querySelector('.ProseMirror').getBoundingClientRect().width"""
 
@@ -88,7 +88,7 @@ def test_the_editor_rings_while_the_caret_is_inside(page: Page, stack: Stack) ->
     # The rendered width, not the constant: a layout regression moves the
     # real box, where the max-width string would sit still.
     assert page.evaluate(width) == inside, "the measure moved with the ring"
-    expect(wrapper).to_be_visible()
+    expect(card).to_be_visible()
 
 
 def test_keyboard_only_focus_cycle(page: Page, stack: Stack) -> None:
