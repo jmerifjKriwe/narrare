@@ -471,7 +471,7 @@ git commit -m "test(harness): attach the E2E stack to a running container"
   `ci-required`.
 - Consumes: Tasks 3 and 6.
 
-- [ ] **Step 1: Make the heavy jobs skip on the release branch**
+- [x] **Step 1: Make the heavy jobs skip on the release branch**
 
 `lint-types`, `tests`, `frontend`, `build`, `e2e-suites` gain a condition: not a
 release PR (`pull_request.head.ref == 'release-please--branches--main--components--narrare'`
@@ -479,7 +479,7 @@ and head repo == base repo, the same test `ci.yml` already makes for `--release-
 `ci-required` learns that on a release PR those four skips are legitimate **and** that
 `version-bump` must have succeeded.
 
-- [ ] **Step 2: Add the version-bump job**
+- [x] **Step 2: Add the version-bump job**
 
 Cheap job, release branch only: `uv sync --locked`, `pnpm install --frozen-lockfile`
 and `just check-generated`. It exists because those are the only things a version bump
@@ -498,7 +498,7 @@ in a scratch clone (or dispatch the workflow against it).
 Expected: `version-bump` green; the four heavy jobs skipped; `ci-required` green and
 naming them as legitimate skips.
 
-- [ ] **Step 5: Add the approval trigger and the four artefact jobs**
+- [x] **Step 5: Add the approval trigger and the four artefact jobs**
 
 `ci.yml` gains `pull_request_review: types: [submitted]`; every existing job gets
 `if: github.event_name != 'pull_request_review'`; the aggregator gets a second mode
@@ -516,7 +516,7 @@ Expected: exactly the four artefact jobs run; `ci-required` is green only when a
 are; a deliberately broken `Dockerfile` on the same branch turns `container` red and
 `ci-required` red.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -535,7 +535,7 @@ git commit -m "ci(release): artefact gates run on approval, not on every merge" 
 **Interfaces:**
 - Consumes: the `:sha-<head>` image from Task 7 Step 5.
 
-- [ ] **Step 1: Write `publish.yml`**
+- [x] **Step 1: Write `publish.yml`**
 
 `on: release: published` + `workflow_dispatch` (inputs: `tag`). `environment: release`
 with required reviewers, permissions `contents: write`, `packages: write`,
@@ -546,7 +546,7 @@ digest; SBOM from the registry image (syft, CycloneDX); `actions/attest-build-pr
 on the digest; keyless Cosign sign; upload the SBOM and a bundle README as release
 assets; append the digest and size to the release body.
 
-- [ ] **Step 2: Make the failure path say so**
+- [x] **Step 2: Make the failure path say so**
 
 Any failure after the release exists edits the release body with a warning block
 naming the step and the missing tags. No step rebuilds the app image.
@@ -563,13 +563,13 @@ Cut a release from a scratch tag whose `:sha-<head>` image exists.
 Expected: `:<version>`, `:<major.minor>`, `:latest` all resolve to the same digest as
 `:sha-<head>` (`imagetools inspect` on all four); the release body names the digest.
 
-- [ ] **Step 5: Delete the dead job and update the map**
+- [x] **Step 5: Delete the dead job and update the map**
 
 Remove the `if: false` `publish` job from `release-please.yml` (it is what the platform
 design scheduled for deletion), and update the `publish.yml` row in
 `docs/architecture/github.md` from *(dormant)* to its trigger and jobs.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .github/workflows/publish.yml .github/workflows/release-please.yml docs/architecture/github.md
