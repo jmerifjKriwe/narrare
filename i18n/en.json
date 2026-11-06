@@ -89,7 +89,7 @@
   "chapters.moveUp": "Move up",
   "chapters.moveDown": "Move down",
   "chapters.exportNever": "This book has never been exported.",
-  "chapters.exportFresh": "Exported {count, plural, =0 {today} one {# day} other {# days}} ago — unchanged since.",
+  "chapters.exportFresh": "{count, plural, =0 {Exported today} one {Exported # day ago} other {Exported # days ago}} — unchanged since.",
   "chapters.exportStale": "Changed since the last export.",
   "chapters.errorDelete": "The chapter could not be deleted. Is the local service running?",
   "chapters.errorRename": "The chapter could not be renamed. Is the local service running?",

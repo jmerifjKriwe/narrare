@@ -1,11 +1,12 @@
-import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
+import { Button, Keyboard, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 
 import { buttonClass } from "./Button";
 import { Icon } from "./icons";
 
 /** One offered action: what it says, the key that chooses it, and what it
  *  does. `shortcut` is a hint beside the label — visible for discovery,
- *  never part of the accessible name that names the action. */
+ *  and carried in `aria-keyshortcuts` for assistive tech; it is never
+ *  part of the accessible name that names the action. */
 export type ActionItem = {
   id: string;
   label: string;
@@ -30,6 +31,15 @@ export type ActionItem = {
  * focus attribute, the house ring only where the focus was drawn by a
  * keyboard (`data-focus-visible`, the GridList row's own convention), so
  * an item can never show two rings.
+ *
+ * The shortcut's two channels never touch the name: the hint renders in
+ * RAC's `Keyboard` — a `<kbd>` whose id React-Aria wires into the item's
+ * `aria-describedby`, so a reader hears it with the action — and the same
+ * string is set as `aria-keyshortcuts` on the item (React-Aria's prop
+ * filter drops arbitrary aria attributes, so the attribute is written on
+ * the node the ref hands back). The name is the label alone, said
+ * outright: flex children render no whitespace between them, and a
+ * content-built name would stitch "Nach obenAlt" into one word.
  */
 export function ActionMenu({
   label,
@@ -60,21 +70,17 @@ export function ActionMenu({
               key={item.id}
               onAction={() => item.onSelect()}
               isDisabled={item.disabled}
-              /* The name is composed, not stitched: flex children render no
-                 whitespace between them, and the accname an engine builds
-                 from content would read "Nach obenAlt" as one word. The
-                 label and its shortcut join with the space a reader needs,
-                 the rail row's own composed-label rule. */
-              aria-label={
-                item.shortcut !== undefined
-                  ? `${item.label} ${item.shortcut}`
-                  : item.label
-              }
+              aria-label={item.label}
+              ref={(element) => {
+                if (element !== null && item.shortcut !== undefined) {
+                  element.setAttribute("aria-keyshortcuts", item.shortcut);
+                }
+              }}
               className="flex items-center justify-between gap-4 rounded-[var(--radius)] px-2 py-1 text-body outline-hidden data-[focused]:bg-soft data-focus-visible:ring-2 data-focus-visible:ring-focus"
             >
               <span>{item.label}</span>
               {item.shortcut !== undefined ? (
-                <span className="text-meta text-muted">{item.shortcut}</span>
+                <Keyboard className="text-meta text-muted">{item.shortcut}</Keyboard>
               ) : null}
             </MenuItem>
           ))}

@@ -118,10 +118,12 @@ describe("ActionMenu", () => {
       />,
     );
     await user().click(screen.getByRole("button", { name: "Aktionen für Erstes" }));
-    // The hint sits beside the label — visible for discovery (D6), and a
-    // reader hears it with the action it names, the way platform menus
-    // speak their shortcuts.
-    const item = screen.getByRole("menuitem", { name: /^Nach oben\b/ });
+    // The hint is visible beside the label for discovery (D6), and the
+    // accessible name is the label alone: the keystroke travels in
+    // `aria-keyshortcuts`, where assistive tech expects to find it, not
+    // stitched into the name a reader hears.
+    const item = screen.getByRole("menuitem", { name: "Nach oben" });
     expect(item.textContent).toContain("Alt+↑");
+    expect(item.getAttribute("aria-keyshortcuts")).toBe("Alt+↑");
   });
 });

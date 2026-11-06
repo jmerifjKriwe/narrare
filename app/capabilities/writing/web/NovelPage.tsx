@@ -144,7 +144,12 @@ export function NovelPage() {
   // brings a newer updated_at; a re-derived fallback would flip the editor
   // to the new row outside the gate and drop the unsaved body with it. An
   // empty list is no answer of this kind: the latch waits, and the first
-  // chapter's refetch fills it.) The latch is the
+  // chapter's refetch fills it.) The one thing that does invalidate the
+  // latch is its own row dying — a delete is the gated navigation that
+  // opened the neighbour, and the latched id must not outlive its row, or
+  // the bare address would resolve to a chapter that renders no editor.
+  // A live row, whatever the refetch brought, keeps the latch where it
+  // is. The latch is the
   // book's, not the page's: a palette jump to another novel keeps this route
   // mounted and changes only the param, and the old book's row must not
   // survive as the new book's answer — the latch resets, and the new book's
@@ -156,11 +161,14 @@ export function NovelPage() {
     chapter: string | null;
   } | null>(null);
   useEffect(() => {
-    if (chaptersQuery.data === undefined) return;
+    const rows = chaptersQuery.data;
+    if (rows === undefined) return;
     setFallback((previous) =>
-      previous?.novel === novelId && previous.chapter !== null
+      previous?.novel === novelId &&
+      previous.chapter !== null &&
+      rows.some((chapter) => chapter.id === previous.chapter)
         ? previous
-        : { novel: novelId, chapter: activeChapterFallback(chaptersQuery.data) },
+        : { novel: novelId, chapter: activeChapterFallback(rows) },
     );
   }, [chaptersQuery.data, novelId]);
   const active =
@@ -698,6 +706,14 @@ export function NovelPage() {
     try {
       await deleteChapter.mutateAsync(chapterId);
     } catch {
+      // A refused delete must not eat the body the retire dropped: the
+      // held draft goes back on the autosave — both fields dirty, the
+      // status pending — so the leave guards protect the words again and
+      // the next debounce carries them to a chapter that still lives.
+      if (isOpen) {
+        schedule(held.draft, "title");
+        schedule(held.draft, "body");
+      }
       // The refusal is the dialog's to name; nothing moved, and the
       // neighbour this run computed is still only a computation.
       return false;
@@ -1075,9 +1091,13 @@ export function NovelPage() {
                     actions={
                       <ActionMenu
                         label={t("chapters.actions")}
+                        // The trigger names the chapter as the page holds
+                        // it — the draft, not the cache row — so a typed
+                        // title reaches the button's name before the save
+                        // lands (the row catches up on the refetch).
                         triggerAriaLabel={t("chapters.actionsFor", {
                           title:
-                            current.title ||
+                            draft.title ||
                             t("chapters.defaultTitle", { n: current.position + 1 }),
                         })}
                         items={[
