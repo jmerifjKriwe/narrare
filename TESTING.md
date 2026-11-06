@@ -19,7 +19,7 @@ unit and integration tests exist to make failures cheap to find and fix.
 
 | Layer | Tool | Scope | Database |
 |---|---|---|---|
-| Backend unit/integration | pytest (async) | Repositories, services, providers, parsing | Real Postgres (`narrare_v2_test`) |
+| Backend unit/integration | pytest (async) | Repositories, services, providers, parsing | Real Postgres (per-run database) |
 | Frontend unit | vitest | Logic with state or parsing (stream parser, autosave, i18n pluralization, routing params, pub/sub seams) | None (API client mocked) |
 | End-to-end | pytest + Playwright | One spec per capability, real browser + API + DB | Real Postgres (per-suite database) |
 
@@ -77,8 +77,9 @@ tool is introduced by this document — it states expectations, not mechanisms.
 
 ## Data and fixtures
 
-- Backend tests use the real test database (`narrare_v2_test`), reset per
-  session. No in-memory substitutes.
+- Backend tests get the real test database named per run — worktree token plus
+  a per-run token, so two pytest runs never share tables — reset per session. No
+  in-memory substitutes.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases; see the capability conftests.
 

@@ -11,9 +11,9 @@ from asyncio import run
 import pytest
 from sqlalchemy import text
 
-from app.kernel.db.testsupport import url_for
+from app.kernel.db.testsupport import test_database, url_for
 
-DATABASE = "narrare_v2_test"
+DATABASE = test_database()
 
 
 @pytest.fixture(scope="session")

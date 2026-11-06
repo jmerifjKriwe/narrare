@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db import backup as backup_module
 from app.kernel.db import migrate as migrate_module
+from app.kernel.db import testsupport
 from app.kernel.db.backup import BackupFailed, backup_command, dump_database
 from app.kernel.db.init import reset_schema
 from app.kernel.db.migrate import (
@@ -968,15 +969,18 @@ async def test_dump_and_restore_round_trip(url: str, tmp_path: Path) -> None:
     # The round trip: a fresh scratch database on the same server, restored
     # from the dump, holds the seeded novel — title byte-identical, umlauts
     # and all. pg_restore speaks plain postgresql://; the engines keep the
-    # +asyncpg URL they were given.
+    # +asyncpg URL they were given. The scratch name is per run: a shared one
+    # would let two concurrent runs drop each other's restore mid-test, and
+    # ensure_database marks it so a run that died mid-restore leaves litter
+    # the next run's sweep reclaims — not a permanent name on the server.
     server_sync = url.replace("+asyncpg", "").rsplit("/", 1)[0]
     server = url.rsplit("/", 1)[0]
-    scratch = "narrare_v2_migrations_roundtrip"
+    # The name and its marker come from the sync helpers; this is an async
+    # test, so they run where no loop is already running.
+    scratch = await asyncio.to_thread(testsupport.test_database, "narrare_v2_migrations_roundtrip")
+    await asyncio.to_thread(testsupport.ensure_database, scratch)
     admin = create_async_engine(f"{server}/postgres", isolation_level="AUTOCOMMIT")
     try:
-        async with admin.connect() as connection:
-            await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
-            await connection.execute(text(f"CREATE DATABASE {scratch}"))
         try:
             # The toolchain under test, fixed argv.
             restore = await asyncio.to_thread(

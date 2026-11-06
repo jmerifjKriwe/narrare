@@ -5,11 +5,11 @@ from asyncio import run
 import pytest
 from sqlalchemy import text
 
-from app.kernel.db.testsupport import url_for
+from app.kernel.db.testsupport import test_database, url_for
 
 # app/conftest.py names the database and the app binds it; this file says what
 # to rebuild and what a test starts from.
-DATABASE = "narrare_v2_test"
+DATABASE = test_database()
 
 
 @pytest.fixture(scope="session", autouse=True)
