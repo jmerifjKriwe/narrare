@@ -124,8 +124,16 @@ function Shell() {
           {/* The shell owns the page's one main landmark; routes render content
               inside it, and the skip link lands here. tabIndex makes the landing
               hold focus — fragment navigation focuses a target only if it can —
-              and -1 keeps it out of the tab order. */}
-          <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto">
+              and 0 rather than -1 because main is the page's scroller: a scroll
+              container outside the tab order is unreachable without a pointer,
+              and axe's scrollable-region-focusable fails on exactly that once
+              the content is tall enough to overflow (#638). The ring is the
+              focus indicator a keyboard user needs to see the stop. */}
+          <main
+            id="main"
+            tabIndex={0}
+            className="min-w-0 flex-1 overflow-y-auto focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
+          >
             {/* Capability pages load lazily, each as its own bundle chunk; the
                 one boundary lives in the shell so no capability needs one. The
                 fallback is null on purpose — the shell's own pre-paint gate is

@@ -12,7 +12,7 @@ import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -60,7 +60,20 @@ def test_a_chosen_language_survives_a_fresh_browser(
 
 
 def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
+    # A short window with books on the shelf, so the page really scrolls: the
+    # shell is one viewport tall and #main owns the page scroll, so the rule
+    # under test — a scroll container must be reachable by keyboard — is only
+    # exercised while the content overflows (#638). The assertion below proves
+    # that state instead of trusting the viewport; a taller shelf would
+    # otherwise pass this test for the wrong reason.
+    page.set_viewport_size({"width": 1280, "height": 320})
+    for index in range(6):
+        created = page.request.post(
+            f"{API_URL}/api/writing/novels", data={"title": f"Regal {index}"}
+        )
+        assert created.ok, created.text()
     page.goto(f"{WEB_URL}/")
+    expect(page.get_by_role("link", name="Regal 0")).to_be_visible()
     # The shell paints only after the settings query answers — the locale
     # gate — so the Tab below must wait for the bar to exist.
     expect(page.locator("header")).to_be_visible()
@@ -74,7 +87,19 @@ def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     page.keyboard.press("Enter")
     expect(page.locator("#main")).to_be_focused()
 
+    # The state the rule is about: the region scrolls, and it is in the tab
+    # order. -1 held the skip link's landing and left the scroller unreachable
+    # by keyboard; 0 is the stop the rule asks for.
+    measured = page.evaluate(
+        "() => { const main = document.getElementById('main');"
+        " return main === null ? null : [main.scrollHeight, main.clientHeight]; }"
+    )
+    assert measured is not None and measured[0] > measured[1], (
+        f"the page does not scroll, so the rule is not exercised: {measured}"
+    )
     assert_accessible(page)
+
+    expect(page.locator("#main")).to_have_attribute("tabindex", "0")
 
 
 def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) -> None:
