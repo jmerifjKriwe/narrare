@@ -117,10 +117,24 @@ Two things to know:
 ## Restoring
 
 ```bash
-# into a fresh, empty database of the same name
-pg_restore --clean --no-owner --dbname=narrare /backups/narrare-2026-11-06T18-03-00.dump
+# What is there: one custom-format archive per upgrade that had work to do.
+ls /srv/narrare/backups        # narrare-20261106T180300123456.dump
 ```
 
-The dumps are `pg_dump` custom-format archives. `pg_restore` must be as new as
-the server — the image carries version 18, which restores everything from 16
-upwards.
+`pg_restore` needs to reach the database, and the image carries version 18 of
+it (new enough for every server from 16 up). Run it from the image, on the
+network your database is on, with the backups mounted read-only:
+
+```bash
+docker run --rm --network narrare_default \
+  -v /srv/narrare/backups:/backups:ro \
+  --entrypoint pg_restore ghcr.io/jmerifjKriwe/narrare:latest \
+  --clean --no-owner \
+  --dbname='postgresql://narrare:PASSWORD@postgres:5432/narrare' \
+  /backups/narrare-20261106T180300123456.dump
+```
+
+`--clean` replaces what the dump contains, so restore into the database you
+mean to overwrite. `narrare_default` is the compose project's network; for a
+single container, use the network your PostgreSQL is on and its container name
+or host.

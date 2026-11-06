@@ -77,13 +77,15 @@ ENV NARRE_KEYRING=off \
 RUN install -d -o 99 -g 100 /backups
 VOLUME /backups
 
-ARG VERSION=dev
+# No version label: the release promotes this digest by re-tagging it, and a
+# label baked while the release PR was still open would outlive the version it
+# guessed. The registry tag and the release notes carry the version; the
+# revision is the one true fact the build knows.
 ARG REVISION=
 LABEL org.opencontainers.image.title="Narrare" \
       org.opencontainers.image.description="Local-first, AI-assisted creative writing." \
       org.opencontainers.image.source="https://github.com/jmerifjKriwe/narrare" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}"
 
 # Unraid's convention, and harmless everywhere else: the app only writes below

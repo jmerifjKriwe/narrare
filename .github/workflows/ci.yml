@@ -325,7 +325,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=candidate
             REVISION=${{ github.event.pull_request.head.sha }}
       - name: The image is not bloated
         run: |
@@ -354,7 +353,7 @@ jobs:
           docker push "$image:sha-$SHA"
 
   container-e2e:
-    needs: changes
+    needs: [changes, container]
     if: >-
       github.event_name == 'pull_request_review'
       && github.event.review.state == 'approved'
@@ -362,20 +361,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
-      - name: Build the image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
-        with:
-          context: .
-          load: true
-          tags: narrare:candidate
-          cache-from: type=gha
+      # The bytes under test are the bytes the smoke passed, not a second
+      # build: this job pulls the digest `container` pushed, so every gate
+      # starts the same image the release will promote.
+      - name: Pull the image the smoke passed
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:sha-$SHA"
+          echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          docker pull "$image"
+          docker tag "$image" narrare:candidate
       - run: uv run playwright install --with-deps chromium
       - name: Start the image and its database
         run: |
@@ -415,7 +421,7 @@ jobs:
           docker network rm e2e >/dev/null 2>&1 || true
 
   container-upgrade:
-    needs: changes
+    needs: [changes, container]
     if: >-
       github.event_name == 'pull_request_review'
       && github.event.review.state == 'approved'
@@ -429,14 +435,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
-      - name: Build the image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
-        with:
-          context: .
-          load: true
-          tags: narrare:candidate
-          cache-from: type=gha
+      # The bytes under test are the bytes the smoke passed, not a second
+      # build: this job pulls the digest `container` pushed, so every gate
+      # starts the same image the release will promote.
+      - name: Pull the image the smoke passed
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:sha-$SHA"
+          echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          docker pull "$image"
+          docker tag "$image" narrare:candidate
       - name: Find the previous release's image
         id: previous
         env:
@@ -446,10 +458,14 @@ jobs:
           set -euo pipefail
           tag=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')
           image="ghcr.io/${GITHUB_REPOSITORY,,}:${tag#v}"
-          if [ -z "$tag" ] || ! docker pull "$image"; then
+          if [ -z "$tag" ] || ! docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
+            # Only an absent tag means "no previous image". A tag that exists
+            # and will not pull is a broken registry or token, and the upgrade
+            # gate must not read that as "nothing to upgrade from".
             echo "::notice::no published image to upgrade from; this is the first container release"
             exit 0
           fi
+          docker pull "$image"
           echo "image=$image" >> "$GITHUB_OUTPUT"
       - name: Seed a book on the previous version, then upgrade it
         if: steps.previous.outputs.image != ''
@@ -502,7 +518,7 @@ jobs:
           docker network rm upgrade >/dev/null 2>&1 || true
 
   container-external:
-    needs: changes
+    needs: [changes, container]
     if: >-
       github.event_name == 'pull_request_review'
       && github.event.review.state == 'approved'
@@ -510,19 +526,26 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
-      - name: Build the image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
-        with:
-          context: .
-          load: true
-          tags: narrare:candidate
-          cache-from: type=gha
+      # The bytes under test are the bytes the smoke passed, not a second
+      # build: this job pulls the digest `container` pushed, so every gate
+      # starts the same image the release will promote.
+      - name: Pull the image the smoke passed
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:sha-$SHA"
+          echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          docker pull "$image"
+          docker tag "$image" narrare:candidate
       - name: A plain PostgreSQL is refused by name
         run: |
           set -euo pipefail
@@ -724,7 +747,7 @@ jobs:
   # `main` with `vitest` red. No path filter: `ci-required` treats a skipped
   # `frontend` as a broken graph, not as a decision.
   frontend:
-    needs: changes
+    needs: [changes, container]
     if: >-
       github.event_name != 'pull_request_review'
       && needs.changes.outputs.release_pr != 'true'
@@ -743,7 +766,7 @@ jobs:
       - run: just test-frontend
 
   build:
-    needs: changes
+    needs: [changes, container]
     if: >-
       github.event_name != 'pull_request_review'
       && needs.changes.outputs.release_pr != 'true'
@@ -769,7 +792,7 @@ jobs:
   # together cost seconds. The job is blocking: `ci-required` gates on it,
   # so a red probe here reddens the required check and blocks the merge.
   workflow-lint:
-    needs: changes
+    needs: [changes, container]
     if: >-
       github.event_name != 'pull_request_review'
       && needs.changes.outputs.release_pr != 'true'

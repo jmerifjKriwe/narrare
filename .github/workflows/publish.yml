@@ -126,8 +126,11 @@ jobs:
           )
           gh release edit "$TAG" --notes-file <(gh release view "$TAG" --json body --jq .body; printf '%s\n' "$body")
 
-      - name: Say so when there was nothing to promote
-        if: steps.tested.outputs.found != 'true'
+      - name: Say so when the promotion did not happen
+        # Any failure after the release is public — a missing digest, a refused
+        # login, a registry error — leaves the page naming an image that is not
+        # there. It says which, instead of staying silent.
+        if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
