@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Image content size ≤ **350 MB**; platform **`linux/amd64`** only.
+- Image content size ≤ **450 MB** (measured: base ~200, environment ~105, PostgreSQL client ~76, app ~6); platform **`linux/amd64`** only.
 - Container runs as **UID/GID 99:100**; the only writable path is `/backups`.
 - `postgresql-client` **18** from PGDG in the image; gates against server **17** (bundled compose) and **18** (external).
 - Database variables: `NARRE_DB_HOST`, `NARRE_DB_PORT` (default 5432), `NARRE_DB_NAME`, `NARRE_DB_USER`, `NARRE_DB_PASSWORD` (optional), `NARRE_DB_SSLMODE` (optional). `NARRE_DATABASE_URL` wins over all of them.
@@ -246,7 +246,7 @@ without one is worse than none.
 - [ ] **Step 3: Build it and look at the size**
 
 Run: `docker build -t narrare:local . && docker image inspect narrare:local --format '{{.Size}}'`
-Expected: under `350000000` bytes.
+Expected: under `450000000` bytes.
 
 - [ ] **Step 4: Start it against a throwaway pgvector server**
 
@@ -276,7 +276,7 @@ Expected: the tables exist, `alembic_version` is present, and all three extensio
 In `nightly.yml`, job `container` (needs `gate`), same guards as the other jobs: build
 with `cache-from/to: type=gha` (no push), run the smoke of Step 4 against a Postgres
 service container, assert the shell and one asset, and fail when the size exceeds
-350 MB. Add `container` to `nightly-result`'s `needs` and to its result check.
+450 MB. Add `container` to `nightly-result`'s `needs` and to its result check.
 
 - [ ] **Step 7: Re-enable the Dependabot docker updater**
 

@@ -99,7 +99,10 @@ Multi-stage `Dockerfile`:
 - `CMD` runs `uvicorn` from the synced environment (`uv run --no-sync`), not
   `uv run`, which would re-resolve at start.
 - OCI labels: `version`, `revision`, `source`.
-- Size gate: content size ≤ 350 MB.
+- Size gate: content size ≤ 450 MB. Measured composition of the first real
+  build: the Debian `python:3.14-slim` base ~200 MB, the Python environment
+  ~105 MB, the PostgreSQL client ~76 MB (55 MB of it perl, which Debian's
+  packaging of the client requires), the app and its bundle ~6 MB.
 
 ### 3. `docker-compose.release.yml`
 
@@ -199,7 +202,7 @@ then upgrade (backup, pull, restart, where the pre-migration dumps land) and res
 
 | Gate | Proves | Blocks |
 |---|---|---|
-| image content size ≤ 350 MB | no dev tooling shipped | the release |
+| image content size ≤ 450 MB | no dev tooling shipped | the release |
 | container starts on an empty database | entrypoint, migrations, extension preflight | the release |
 | `GET /` and one `/assets/*.js` | the shell is served from the image, 200 not 404 | the release |
 | seed via API, restart, seed still readable | the bundled-Postgres topology works | the release |
