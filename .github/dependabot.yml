@@ -63,24 +63,19 @@ updates:
   # Dockerfile — a base image tag is a mutable ref, so every one of them is
   # pinned by digest and this updater moves them.
 
+  # Only the keys the docker ecosystem documents. The first attempt copied the
+  # uv entry's `cooldown.semver-major-days`, which Dependabot rejects for docker
+  # — and it rejects the whole file, so every ecosystem stopped updating. A base
+  # image bump is rare; the schedule and the commit shape are all it needs.
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "monthly"
-    # `semver-major-days` is not a docker setting; Dependabot rejects the whole
-    # file over it, which is what the release PR's check said.
-    cooldown:
-      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
       include: "scope"
     labels: ["dependencies", "docker"]
-    groups:
-      minor-patch:
-        update-types: ["minor", "patch"]
-      major-updates:
-        update-types: ["major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
