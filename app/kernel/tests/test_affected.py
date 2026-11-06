@@ -23,19 +23,22 @@ from scripts.affected import changed, default_base, known_capabilities, resolve
 # test where the real directories, not the fixture's, are the subject.
 REPO_ROOT = Path(affected.__file__).resolve().parent.parent
 
-FIXTURE_CAPABILITIES = ("chat", "writing")
+# The fixture's capability set: the suites the resolver's mapping tests run
+# against. `settings` is here because it is the harness smoke suite — the
+# workflow tests below resolve a harness change to it.
+FIXTURE_CAPABILITIES = ("chat", "settings", "writing")
 
 
 @pytest.fixture(autouse=True)
 def _capability_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pin the capability set to the fixture's two suites.
+    """Pin the capability set to the fixture's three suites.
 
     The tests stand in tmp_path, where a miniature app/capabilities tree
-    holds exactly chat and writing as suites, plus notes — a capability
-    directory with tests but no e2e/, so discovery must skip it — so the
-    mapping tests pass whether or not Narrare itself is present; the real
-    checkout's directories are never the subject. The git-backed fixtures
-    chdir further, into their repo.
+    holds exactly chat, settings and writing as suites, plus notes — a
+    capability directory with tests but no e2e/, so discovery must skip it
+    — so the mapping tests pass whether or not Narrare itself is present;
+    the real checkout's directories are never the subject. The git-backed
+    fixtures chdir further, into their repo.
     """
     for name in FIXTURE_CAPABILITIES:
         (tmp_path / "app" / "capabilities" / name / "e2e").mkdir(parents=True)
@@ -65,10 +68,11 @@ def _git(repo: Path, *args: str) -> None:
 
 
 def _make_repo(tmp_path: Path, *, remote: bool, ahead: bool) -> Path:
-    """A miniature Narrare: two capability suites, one commit past the base."""
+    """A miniature Narrare: three capability suites, one commit past the base."""
     repo = tmp_path / "narrare"
     for directory in (
         "app/capabilities/chat/e2e",
+        "app/capabilities/settings/e2e",
         "app/capabilities/writing/e2e",
         "app/kernel",
         "i18n",
@@ -76,6 +80,7 @@ def _make_repo(tmp_path: Path, *, remote: bool, ahead: bool) -> Path:
     ):
         (repo / directory).mkdir(parents=True)
     (repo / "app/capabilities/chat/e2e/test_chat.py").write_text("", encoding="utf-8")
+    (repo / "app/capabilities/settings/e2e/test_settings.py").write_text("", encoding="utf-8")
     (repo / "app/capabilities/writing/e2e/test_writing.py").write_text("", encoding="utf-8")
     (repo / "justfile").write_text("check:\n    echo ok\n", encoding="utf-8")
     _git(repo, "init", "-b", "main")
@@ -165,9 +170,62 @@ def test_a_shared_surface_owes_every_suite():
         "app/generated/client.ts",
         "pyproject.toml",
         "pnpm-lock.yaml",
-        ".github/workflows/ci.yml",
     ):
         assert resolve([path]).capabilities is None, path
+
+
+def test_a_workflow_change_owes_only_the_smoke_suite():
+    """A harness change proves the CI itself works — one fast real suite is
+    the smoke, not every suite. The workflows take the place `ci.yml` held
+    in SHARED; the actions one composite action can break too. The bare
+    directory paths count too — a direct caller may pass the directory
+    itself, and the inert `.github/` entry would swallow it into owing
+    nothing (`changed()` decides CI's inputs, and always lists files).
+    The reason line is pinned too: it is how the stderr trace names the
+    harness class, and what separates this None-adjacent answer from the
+    fail-open one below."""
+    for path in (
+        ".github/workflows/ci.yml",
+        ".github/workflows/nightly.yml",
+        ".github/workflows/_e2e.yml",
+        ".github/actions/setup/action.yml",
+        ".github/workflows",
+        ".github/actions",
+    ):
+        resolution = resolve([path])
+        assert resolution.capabilities == ["settings"], path
+        assert resolution.reason == "harness change: smoke suite only", path
+
+
+def test_a_harness_change_without_a_known_smoke_suite_fails_open():
+    """Both halves are pinned, so this went red against the old SHARED
+    table too: there the workflow path returned None under the
+    `is a shared surface` reason, not the harness one."""
+    resolution = resolve([".github/workflows/ci.yml"], known={"chat"})
+    assert resolution.capabilities is None
+    assert resolution.reason == "harness change: smoke suite not found — all suites"
+
+
+def test_an_inert_path_beside_a_harness_change_does_not_win():
+    """Inert paths owe nothing and say nothing — they do not turn a harness
+    change into the no-suites answer. The reason names the harness class
+    the smoke comes from."""
+    resolution = resolve([".github/workflows/ci.yml", "docs/x.md"])
+    assert resolution.capabilities == ["settings"]
+    assert "harness" in resolution.reason
+
+
+def test_a_harness_change_beside_anything_else_lets_the_product_win():
+    """Regression pin of the mixing rule — fail toward more suites, never
+    fewer. It went green on its first run; this test exists so a later
+    reordering in resolve cannot quietly reverse it (recorded as a pin,
+    not RED evidence). A shared path, a capability path, an unknown path —
+    each decides beside a harness path:"""
+    assert resolve([".github/workflows/nightly.yml", "app/kernel/stack.py"]).capabilities is None
+    assert resolve(
+        [".github/actions/setup/action.yml", "app/capabilities/chat/x.py"]
+    ).capabilities == ["chat"]
+    assert resolve([".github/workflows/ci.yml", "newdir/thing.txt"]).capabilities is None
 
 
 def test_the_root_conftest_owes_every_suite():

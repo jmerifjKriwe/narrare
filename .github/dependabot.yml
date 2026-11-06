@@ -1,7 +1,12 @@
 version: 2
 
-# Monthly cadence keeps Actions minutes down; security advisories still fire
-# immediately and independently of this schedule. Rebases are manual.
+# Code ecosystems run monthly with a 7-day cooldown held to 30 days for
+# majors. Actions run weekly with a 3-day default cooldown; the Actions
+# updater supports only `default-days`, so majors there have no separate
+# hold. Grouping plus the cooldown keeps PRs
+# few and safe: minor/patch bumps sit for a week before they open, majors for
+# 30 days. Security advisories still fire immediately and independently of
+# this schedule. Rebases follow the default `auto` strategy.
 #
 # Every entry uses the `chore` prefix with a scope: Dependabot's default
 # `build(deps)` is not a conventional-commit type this repo allows, and the
@@ -16,8 +21,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -37,8 +44,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -49,24 +58,45 @@ updates:
       major-updates:
         update-types: ["major"]
 
-  - package-ecosystem: "docker"
-    directory: "/.devcontainer"
-    schedule:
-      interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels: ["dependencies", "docker"]
+  # Container images: a `devcontainers` entry returns only with a dev
+  # container, a `docker` entry at `/` only with a `Dockerfile`.
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    rebase-strategy: disabled
-    open-pull-requests-limit: 3
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
       include: "scope"
     labels: ["dependencies", "github-actions"]
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
+      actions-major:
+        update-types: ["major"]
+
+  # The composite action's own `uses:` pins. The updater reads
+  # `.github/workflows/**` only, so a `directory: "/"` entry never sees
+  # `.github/actions/setup/action.yml` (dependabot-core#6949); the `directories`
+  # glob names the action tree explicitly. Same cooldown, grouping and commit
+  # shape as the workflow entry above.
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/.github/actions/*"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels: ["dependencies", "github-actions"]
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
+      actions-major:
+        update-types: ["major"]

@@ -4,118 +4,71 @@ on:
   pull_request:
   push:
     branches: [main]
-  schedule:
-    # Nightly: every capability, every suite — but only when main moved since
-    # the last successful nightly (the guard job decides). 03:17 UTC.
-    - cron: "17 3 * * *"
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # A narrow change on top of a wide one supersedes it, so a new push cancels
-  # the run of the commit it stands on: two pushes in a row used to run two
-  # full suites side by side, for two trees where the newer one contains the
-  # older. The nightly is exempt, because a push at 03:18 must not cancel the
-  # one run the nightly-guard reads back tomorrow.
-  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+  # A narrow change on top of a wide one supersedes it, so a pull request
+  # cancels the run of the commit it stands on. A push to main keeps its
+  # own run per SHA (cancel off, group per SHA): the same group with
+  # cancellation off would serialize runs, and cancelling a main push
+  # would delete a coverage report only that run could produce — every
+  # merge delivers its own report for its own SHA. The nightly, which has
+  # its own question to answer, lives in its own workflow now (nightly.yml).
+  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
+permissions: {}
 
 # Actions are pinned by commit SHA and name their release in a trailing comment;
 # release-please.yml, which carries write tokens, has always done it this way.
 # A major tag is a mutable ref: its owners can move `v7` to any commit, and that
 # commit then runs with this workflow's token — no diff here, no review.
-# Dependabot's monthly `github-actions` update keeps the pins current.
+# Dependabot's weekly `github-actions` update keeps the pins current.
 #
 # The pin also fixes the runtime: every action below runs on Node 24, so no
 # action is forced onto a runtime its own CI never tested.
 
 jobs:
-  # One cheap job every other job waits for. On a nightly it answers the
-  # only question that matters first: is main still where the last
-  # successful nightly left it? Then nothing below runs, because the same
-  # commit has already been tested — no runner minutes, no credits, and
-  # every job below reports skipped. On PRs and pushes it always proceeds.
-  nightly-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-    outputs:
-      proceed: ${{ steps.guard.outputs.proceed }}
-    steps:
-      - id: guard
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" != schedule ]; then
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # gh api prefixes nothing: a relative path without repos/<owner>/<repo>
-          # resolves to api.github.com/actions/... and answers 404.
-          last=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?event=schedule&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
-          echo "last successful nightly tested: ${last:-none}"
-          if [ -n "$last" ] && [ "$last" = "$GITHUB_SHA" ]; then
-            echo "proceed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Nightly skipped: main is unchanged since the last successful nightly."
-          else
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-          fi
-
+  # Lint, typecheck and secrets scan — one definition for every workflow:
+  # `_lint.yml`. The job name stays `lint-types`, which `ci-required` and
+  # `e2e-suites` wait on; the check it reports is `lint-types / lint-types`.
+  #
+  # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
+  # pinned actionlint image (1.7.12) does not know it yet — the two gate
+  # probes must pass together. Flip to `$/` when the actionlint pin is
+  # bumped past the version that understands `$/`, or when
+  # `sha_pinning_required` rejects the `./` reference.
   lint-types:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      # Full history: gitleaks scans the push range base^..head, which needs
-      # the base commit that a shallow (depth-1) checkout does not have.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.14"
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          version: 11.5.2
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: 22
-          cache: pnpm
-      # --locked, not a plain sync: uv otherwise rewrites a stale lock inside
-      # the throwaway checkout and reports success. That is how 0.2.0 reached
-      # main with uv.lock still at 0.1.0.
-      - run: uv sync --locked
-      - run: pnpm install --frozen-lockfile
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-        with:
-          just-version: "1.58.0"
-      - run: just lint
-      - run: just typecheck
-      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: ./.github/workflows/_lint.yml # zizmor: ignore[self-repository]
+    permissions:
+      contents: read
+    with:
+      python-version: "3.14"
+      node-version: "22"
+      pnpm-version: "11.5.2"
+      just-version: "1.58.0"
 
   # Which E2E suites a change owes, resolved by scripts/affected.py — one
   # resolver, not a second copy of the mapping here (spec §6 "affected
   # capabilities": the capabilities a change touches, or all of them when a
   # shared surface moved). This job only picks the resolver's mode per event:
-  # a pull request is measured against where it branched, a push to main owes
-  # nothing (why at the push branch below), and a nightly takes everything.
+  # a pull request is measured against where it branched, and a push to main
+  # owes nothing (why at the push branch below). A nightly takes everything,
+  # and does it in nightly.yml's own gate — this workflow no longer runs on
+  # a schedule.
   changes:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
     outputs:
       capabilities: ${{ steps.suites.outputs.capabilities }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
       - id: suites
         env:
           # What kind of event this is: the resolver's mode differs per event.
@@ -137,7 +90,7 @@ jobs:
             # workflow decides the mode, so no range is read.
             mode="--none"
           else
-            # A nightly has no range to read: every suite.
+            # A manual dispatch asks for a sweep: every suite.
             mode="--all"
           fi
           # No single condition below is trustable alone: a fork may take the
@@ -161,6 +114,9 @@ jobs:
           # precedes the exit.
           reason_file=$(mktemp)
           status=0
+          # Splitting is deliberate: $mode expands to two arguments (`--base`
+          # and `origin/main`), so quoting it would break the resolver's usage.
+          # shellcheck disable=SC2086
           capabilities=$(python3 scripts/affected.py $mode $release_pr --json 2>"$reason_file") || status=$?
           echo "::notice::$(cat "$reason_file")"
           rm -f "$reason_file"
@@ -171,210 +127,275 @@ jobs:
           echo "capabilities=$capabilities"
           echo "capabilities=$capabilities" >> "$GITHUB_OUTPUT"
 
+  # The Python suite — one definition for every workflow: `_test.yml`.
+  # Same job name, so `ci-required` still names `tests`; the check it
+  # reports is `tests / tests`. Coverage is a main-push concern — the
+  # Codecov dashboard keys on those runs — and `CODECOV_TOKEN` is passed
+  # explicitly, never via `secrets: inherit` (spec: reusable workflows).
+  #
+  # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
+  # actionlint image (1.7.12) does not know the self-repository syntax
+  # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
+  # the version that understands `$/`, or when `sha_pinning_required`
+  # rejects the `./` reference.
   tests:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: narrare
-          POSTGRES_PASSWORD: narrare
-          POSTGRES_DB: narrare
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U narrare"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.14"
-      - run: uv sync --locked
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-        with:
-          just-version: "1.58.0"
-      # The round-trip gate needs a pg_dump matching the service's major
-      # version; noble's archive ships client 16 only, so the PGDG repo is
-      # added first (this also survives ubuntu-latest moving to 26.04).
-      - run: |
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-17
-      # One suite, run once. `main` is where coverage is measured, and a second
-      # job used to measure it by running the same suite a second time; the
-      # covered invocation replaces the plain one on a main push instead. A PR
-      # keeps `just test`, so nothing instruments a PR.
-      - run: just test
-        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
-      - name: Tests with coverage
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
-      # `!cancelled()` on both uploads: a report is worth uploading even when a
-      # test failed, and a report that stays away is worse than a red one. A
-      # bare `if:` carries `success()`, so the coverage upload skipped itself on
-      # every failing `main` push: 0a468e49 reached Codecov as a commit with no
-      # report at all (`state: pending`, `totals: null`), and the dashboard kept
-      # showing the previous merge — the failing run is exactly the one whose
-      # coverage matters. `always()` would be wrong in the other direction: it
-      # also uploads from a run `concurrency` cancelled mid-suite, which is
-      # partial by construction. A hard crash that leaves no `coverage.xml`
-      # still fails the upload step, and should: on a green run that is a real
-      # defect.
-      #
-      # `version` pins the CLI the action downloads, which is unchecked by
-      # default: without it every run pulls `cli.codecov.io/latest` — v11.3.2
-      # when this line was written — so an upstream release would land in this
-      # job unreviewed. Dependabot follows the action's SHA and cannot see this
-      # input: the bump is manual.
-      #
-      # `fail_ci_if_error` on the coverage upload only. The report is what the
-      # dashboard reads, so a run that could not deliver it says so instead of
-      # going green with nothing to show — that silence is what left the
-      # dashboard on an older merge. It cannot gate anything: both uploads run
-      # only on a `main` push, so `tests` blocks a merge on a red suite and
-      # never on Codecov. The junit upload keeps the default, because test
-      # analytics failing should not red an otherwise green suite.
-      - name: Upload coverage reports to Codecov
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.xml
-          version: v11.3.2
-          fail_ci_if_error: true
-      # A second run of the same action with `report_type`, not Codecov's
-      # separate test-results-action: that one is deprecated in favor of this
-      # (it says so on every run) and would be the only Node-20 action left in
-      # this file.
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: junit.xml
-          version: v11.3.2
-          report_type: test_results
+    uses: ./.github/workflows/_test.yml # zizmor: ignore[self-repository]
+    permissions:
+      contents: read
+    with:
+      coverage: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # The suites the changes job named, one runner per capability, side by
   # side — writing is the slowest and becomes the wall clock. `fail-fast:
   # false`: a red writing suite must not hide whether knowledge is red too.
   # The matrix passes ONE capability name per entry, so the resolver maps it
   # to that capability's own e2e directory — no name is ever expanded into a
-  # path by string surgery on the JSON list.
+  # path by string surgery on the JSON list. One definition for every
+  # workflow: `_e2e.yml` — same job name, so `ci-required` still names
+  # `e2e-suites`; the check each runner reports is `e2e-suites / e2e
+  # (<capability>)`.
+  #
+  # `./`, not `$/`: same trade as `_lint.yml`'s comment — the pinned
+  # actionlint image (1.7.12) does not know the self-repository syntax
+  # zizmor prefers. Flip to `$/` when the actionlint pin is bumped past
+  # the version that understands `$/`, or when `sha_pinning_required`
+  # rejects the `./` reference.
   e2e-suites:
     needs: [lint-types, changes]
     if: needs.changes.outputs.capabilities != '[]'
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         capability: ${{ fromJSON(needs.changes.outputs.capabilities) }}
-    name: e2e (${{ matrix.capability }})
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: narrare
-          POSTGRES_PASSWORD: narrare
-          POSTGRES_DB: narrare
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U narrare"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.14"
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          version: 11.5.2
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: uv sync --locked
-      - run: uv run playwright install --with-deps chromium
-      - run: pnpm install --frozen-lockfile
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-        with:
-          just-version: "1.58.0"
-      # The matrix runs the same recipe the local gate runs.
-      - name: E2E
-        run: just test-e2e ${{ matrix.capability }}
+    uses: ./.github/workflows/_e2e.yml # zizmor: ignore[self-repository]
+    permissions:
+      contents: read
+    with:
+      capability: ${{ matrix.capability }}
 
-  # The required check is the context `e2e`, and the name must not move while
-  # the suites behind it multiply. `always()` because the hole this closes is
-  # a skipped job: a failed `changes` used to leave the whole e2e leg skipped,
-  # and a skipped required check passes. The semantics:
-  #   red   — `changes` did not succeed, or handed over no capabilities at all
+  # Repository scorecards live elsewhere (scorecard.yml); this job answers
+  # the only question the diff can answer before merge: what does this pull
+  # request add to the dependency graph? GitHub's dependency review compares
+  # the PR's base with its head through GitHub's dependency graph API —
+  # no checkout, no working tree — and reddens the run when a change arrives
+  # with a `high` vulnerability or a license on the deny list — the licenses
+  # this project treats as viral (spec: "Security"). Push builds skip it: a
+  # push to main lands exactly what the PR's run already judged, and a
+  # merge without a PR is judged by the nightly sweep. The summary stays in
+  # the job log (`comment-summary-in-pr: never`), so the action never needs
+  # a write token.
+  #
+  # Two ways this gate can redden that are not a verdict, and neither is
+  # fixed from here: the repository's Dependency graph must stay enabled
+  # (the action fails closed without it), and a dependency whose license is
+  # not valid SPDX fails as unresolved rather than denied — so a red here
+  # can mean unreadable, and the log, not the severity alone, says which.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    timeout-minutes: 10
+    steps:
+      - name: dependency-review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # List inputs are comma-separated; the action splits them.
+          fail-on-severity: high
+          # `runtime` is the default; `development` is added here because a
+          # change to a dev dependency is judged before it lands — the
+          # nightly's whole-lockfile audit is the after-merge net, not a
+          # reason to wait for one.
+          fail-on-scopes: runtime, development
+          deny-licenses: AGPL-1.0, AGPL-3.0, GPL-2.0, GPL-3.0
+          # A PR comment needs `pull-requests: write` — a token this
+          # workflow does not hold. The log carries the summary instead.
+          comment-summary-in-pr: never
+          # On by default; every mark is an outbound call to
+          # scorecards.dev/deps.dev, and a network failure must not be
+          # able to redden a gate that blocks every merge.
+          show-openssf-scorecard: false
+
+  # The one required check: the ruleset names `ci-required` and nothing
+  # else, so a job split never edits the ruleset again. It carries every
+  # gate this workflow runs and judges each result explicitly — the
+  # semantics the old `e2e` aggregator carried, widened to all gates:
+  #   red   — `changes` did not succeed (its outputs are then gone; the
+  #           empty-handoff check below answers only a succeeded `changes`),
+  #   red   — `changes` succeeded but handed over no capabilities at all
   #           (a successful run prints at least `[]`; an empty string is a
   #           broken handoff, never "legitimately none"),
   #   green — `changes` succeeded with `[]` and the matrix was skipped:
   #           nothing owed, nothing run — the notice says so,
-  #   red   — the matrix ran and ended anything but success.
-  # On a nightly the guard may skip the whole run (main unchanged since the
-  # last successful one); then this job skips with the rest. `always()` alone
-  # would run it against a `changes` that never meant to run and turn every
-  # quiet night red. A PR or push never takes that branch: the guard proceeds
-  # on every non-schedule event, so `always()` governs there unchanged.
-  e2e:
-    name: e2e
-    needs: [nightly-guard, changes, e2e-suites]
-    if: always() && (github.event_name != 'schedule' || needs.nightly-guard.outputs.proceed == 'true')
+  #   red   — capabilities `[]` but the matrix ended anything but skipped:
+  #           nothing was owed, so it must be skipped,
+  #   red   — capabilities non-empty and the matrix ended anything but
+  #           success,
+  #   red   — any of `lint-types`, `tests`, `frontend`, `build`,
+  #           `workflow-lint` ended anything but `success`. None of them
+  #           has a legitimate skip: a `skipped` result here is a broken
+  #           graph, not a decision, and a skipped required check passes.
+  #   red   — `dependency-review` on a pull request ended anything but
+  #           `success`; on any other event, anything but `skipped` or
+  #           `success`. Its skip on a push or dispatch is the second
+  #           owed skip, beside e2e-suites' skip when nothing was owed.
+  # `always()`: the hole this closes is a skipped job — a failed `needs`
+  # dependency used to leave everything downstream skipped, and a skipped
+  # required check passes. No permissions: this job only reads results.
+  # The old `e2e` aggregator is retired: the ruleset names `ci-required`
+  # alone, so this job is the only required context.
+  ci-required:
+    name: ci-required
+    needs: [changes, lint-types, tests, frontend, build, workflow-lint, dependency-review, e2e-suites]
+    if: always()
     runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 5
     steps:
-      - name: Every owed suite passed, or none was owed
+      - name: Every gate passed, or only owed skips
         env:
           CHANGES: ${{ needs.changes.result }}
-          SUITES: ${{ needs.e2e-suites.result }}
           CAPABILITIES: ${{ needs.changes.outputs.capabilities }}
+          SUITES: ${{ needs.e2e-suites.result }}
+          LINT_TYPES: ${{ needs.lint-types.result }}
+          TESTS: ${{ needs.tests.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          BUILD: ${{ needs.build.result }}
+          WORKFLOW_LINT: ${{ needs.workflow-lint.result }}
+          # The dependency review is a pull-request duty: the event decides
+          # whether its result is owed or legitimately skipped.
+          EVENT: ${{ github.event_name }}
+          DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
         run: |
-          if [ "$CHANGES" != success ]; then
-            echo "::error::the changes job did not succeed; a change owes suites it cannot name"; exit 1; fi
-          if [ -z "$CAPABILITIES" ]; then
-            echo "::error::the changes job succeeded but handed over no capabilities; broken, not none"; exit 1; fi
-          if [ "$CAPABILITIES" = '[]' ]; then
-            echo "::notice::no capability owed a browser suite"; exit 0; fi
-          if [ "$SUITES" != success ]; then
-            echo "::error::e2e suites ended $SUITES"; exit 1; fi
+          red=""
+          note() { red="${red:+$red; }$1"; return 0; }
 
-  build:
-    needs: nightly-guard
-    if: needs.nightly-guard.outputs.proceed == 'true'
+          if [ "$CHANGES" != success ]; then
+            echo "::error::changes ended $CHANGES; a change owes suites it cannot name"
+            note "changes=$CHANGES"
+          elif [ -z "$CAPABILITIES" ]; then
+            echo "::error::changes succeeded but handed over no capabilities; broken, not none"
+            note "changes.capabilities=(empty)"
+          fi
+          if [ "$CAPABILITIES" = '[]' ]; then
+            if [ "$SUITES" != skipped ]; then
+              echo "::error::e2e suites ended $SUITES; nothing was owed, so the matrix must be skipped"
+              note "e2e-suites=$SUITES (nothing was owed, so it must be skipped)"
+            fi
+          elif [ "$SUITES" != success ]; then
+            echo "::error::e2e suites ended $SUITES"
+            note "e2e-suites=$SUITES"
+          fi
+          for gate in "lint-types=$LINT_TYPES" "tests=$TESTS" "frontend=$FRONTEND" "build=$BUILD" "workflow-lint=$WORKFLOW_LINT"; do
+            result=${gate#*=}
+            if [ "$result" != success ]; then
+              if [ "$result" = skipped ]; then
+                note "$gate (skipped is a failure: none of these jobs has a legitimate skip)"
+              else
+                note "$gate"
+              fi
+            fi
+          done
+          # The dependency review is owed by a pull request only: on one it
+          # must have succeeded, on a push or dispatch its skip is
+          # legitimate — the second owed skip — and red is anything else.
+          if [ "$EVENT" = pull_request ]; then
+            if [ "$DEPENDENCY_REVIEW" != success ]; then
+              echo "::error::dependency-review ended $DEPENDENCY_REVIEW; a pull request owes the review"
+              note "dependency-review=$DEPENDENCY_REVIEW (a pull request owes the review)"
+            fi
+          elif [ "$DEPENDENCY_REVIEW" != success ] && [ "$DEPENDENCY_REVIEW" != skipped ]; then
+            echo "::error::dependency-review ended $DEPENDENCY_REVIEW; only a pull request runs it, so only success or skipped is legitimate"
+            note "dependency-review=$DEPENDENCY_REVIEW"
+          fi
+          if [ -n "$red" ]; then
+            echo "::error::ci-required red; not at success: $red"
+            exit 1
+          fi
+          if [ "$CAPABILITIES" = '[]' ]; then
+            echo "::notice::no capability owed a browser suite; e2e-suites skipped because nothing was owed"
+          fi
+
+  # The web unit suite lived only in the pre-commit hook: a fresh clone has
+  # that hook, a drive-by contributor does not, so their frontend could reach
+  # `main` with `vitest` red. No path filter: `ci-required` treats a skipped
+  # `frontend` as a broken graph, not as a decision.
+  frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
-          version: 11.5.2
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Install just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
-        with:
-          just-version: "1.58.0"
-      # The web unit suite — six files (four in `web/`, two in capability `web/`
-      # folders) and 39 tests — lived only in the pre-commit hook: a fresh clone
-      # has that hook, a drive-by contributor does not, so their frontend could
-      # reach `main` with `vitest` red. It runs before the build because it is
-      # the cheaper step.
+          python: "false"
       - run: just test-frontend
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository] — actionlint 1.7.12 rejects `$/`
+        with:
+          python: "false"
       - run: just build
 
+  # Static checks for the workflow surface itself: structure (actionlint)
+  # and GitHub Actions supply chain (zizmor). It runs on every event with
+  # no path filter: a path-filtered required workflow is the pending-check
+  # trap — touching a workflow but not its parent directory leaves the
+  # check missing, and a missing required check passes. The two probes
+  # together cost seconds. The job is blocking: `ci-required` gates on it,
+  # so a red probe here reddens the required check and blocks the merge.
+  workflow-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      # A tag is a mutable ref, so the image is pinned by digest — the tag is
+      # only a comment naming what it resolves to. Dependabot does not follow
+      # a digest; the monthly `Tool pins` check (`pins.yml`) reports a newer
+      # release and a moved digest, so the bump is visible instead of
+      # remembered. The digest still answers "can this image silently change
+      # under this workflow?" with no.
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color # rhysd/actionlint:1.7.12
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          # What the baseline audited, plus the composite setup action:
+          # both trees are audited, so no finding can hide behind an
+          # unlisted input.
+          inputs: .github/workflows .github/actions
+          # The baseline ran with v1.30.1; `latest` is a mutable ref and an
+          # upstream zizmor release would change what this gate enforces
+          # without a review. Dependabot does not see this input; the
+          # monthly `Tool pins` check reports a newer release.
+          version: 1.32.0
+          # `online-audits: false` matches the baseline: no API-backed
+          # audits either, so a stalled api.github.com cannot red this job.
+          online-audits: false
+          # False by default; true legal because `advanced-security: false`
+          # (the two are mutually exclusive). Findings go to annotations,
+          # nothing uploaded to code scanning: no `security-events: write`
+          # is granted for this.
+          annotations: true
+          advanced-security: false

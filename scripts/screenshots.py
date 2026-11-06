@@ -273,10 +273,17 @@ def _capture(
     # entity one is not this frame's subject: wait for the finding itself. The
     # frame claims a pair of readings, not their order, so both are accepted.
     expect(knowledge.get_by_text(re.compile(r"Facility: (?:7 vs\. 9|9 vs\. 7)"))).to_be_visible()
-    # The dock scrolls alone, and its own scrollbar is the only way to the
-    # entity controls below the finding.
-    knowledge.hover()
-    page.mouse.wheel(0, 120)
+    # The dock's content area is half the viewport and the extraction panel
+    # sits above the check: the frame opens on the check button it names,
+    # whole, with the finding and the entities under it. The dock scrolls
+    # alone — `scrollIntoView` would take the workbench with it.
+    knowledge.get_by_role("button", name="Check the whole book").evaluate(
+        """button => {
+            const area = button.closest("div.overflow-y-auto");
+            const shift = button.getBoundingClientRect().top - area.getBoundingClientRect().top;
+            area.scrollTop += shift;
+        }"""
+    )
     shot(SHOTS[2])
 
     # 4. The knowledge page: the notes on file, and a search that finds them.
@@ -284,9 +291,10 @@ def _capture(
     expect(page.get_by_text("Horizon Station — cast and places")).to_be_visible()
     page.get_by_label("Search term").fill("facility built the device")
     page.get_by_role("button", name="Search").click()
-    expect(
-        page.get_by_role("listitem").filter(has_text="the device was moved off the site")
-    ).to_be_visible()
+    # A hit is a row in the Hits panel, not a list item: the row renders as a
+    # plain element (the panel groups it), so the frame waits for the passage.
+    expect(page.get_by_role("heading", name="Hits")).to_be_visible()
+    expect(page.get_by_text("the device was moved off the site")).to_be_visible()
     shot(SHOTS[3])
 
     # 5. The shelf: the books, and the door out of the app.

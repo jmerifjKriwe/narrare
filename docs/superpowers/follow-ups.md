@@ -27,6 +27,7 @@ still resolve; a closed id is in the table the Archive section points to.
 | Schema migrations | #487 |
 | UI vocabulary purge (2026-10-31 plan) | #526 |
 | Prose typography and UI surfaces (2026-11) | #587 |
+| GitHub platform (2026-11-05) | #607 |
 
 A new wave opens its index and adds a row here. A fix closes its issue from the
 commit that lands it: `Closes #<n>`. Nothing is dropped for being minor:
