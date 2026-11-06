@@ -67,9 +67,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # `semver-major-days` is not a docker setting; Dependabot rejects the whole
+    # file over it, which is what the release PR's check said.
     cooldown:
       default-days: 7
-      semver-major-days: 30
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
