@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { applyTheme, THEME_HINT } from "./theme";
+import { applyTheme, adoptServerTheme, THEME_HINT } from "./theme";
 
 afterEach(() => {
   document.documentElement.removeAttribute("data-theme");
@@ -19,5 +19,14 @@ describe("applyTheme", () => {
     applyTheme(null);
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
     expect(localStorage.getItem(THEME_HINT)).toBeNull();
+  });
+});
+
+describe("adoptServerTheme", () => {
+  it("takes the two stored values and treats anything else as the system", () => {
+    adoptServerTheme("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    adoptServerTheme("sepia");
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 });

@@ -191,12 +191,28 @@ def test_the_rail_names_itself_on_hover(page: Page, stack: Stack) -> None:
     expect(label).to_have_css("opacity", "1")
 
 
-def test_the_expanded_rail_moves_no_page_pixels(page: Page, stack: Stack) -> None:
-    """The expansion is an overlay in a fixed slot: the page axis stays put."""
+@pytest.mark.parametrize("width", [1024, 1280])
+def test_the_expanded_rail_moves_no_page_pixels(page: Page, stack: Stack, width: int) -> None:
+    """The expansion is an overlay in a fixed slot: the page axis stays put
+    at both breakpoints that show the rail."""
+    page.set_viewport_size({"width": width, "height": 900})
     page.goto(f"{WEB}/")
     before = page.locator("main").bounding_box()
     page.locator(ICON_RAIL).hover()
     assert page.locator("main").bounding_box() == before
+
+
+def test_the_rail_tells_the_four_areas_apart(page: Page, stack: Stack) -> None:
+    """Each entry's icon wrapper carries its area's token; four areas, four
+    colours, none of them the link's muted ink."""
+    page.goto(f"{WEB}/")
+    colours = page.evaluate(
+        """() => ["Regal", "Wissen", "Chat", "Einstellungen"].map((name) => {
+          const link = document.querySelector(`nav a[aria-label="${name}"]`);
+          return getComputedStyle(link.querySelector("span")).color;
+        })"""
+    )
+    assert len(set(colours)) == 4, colours
 
 
 def test_tabbing_into_the_rail_opens_it(page: Page, stack: Stack) -> None:

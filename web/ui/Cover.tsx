@@ -64,8 +64,9 @@ export function Cover({
 }) {
   const look = TONES[coverTone(title)];
   // The eyebrow is the book's one catalogued fact: a genre, or the language
-  // it is written in. No counts — the card already carries them.
-  const eyebrow = genre ?? language?.toUpperCase() ?? "";
+  // it is written in. No counts — the card already carries them. An empty
+  // genre is no genre: the language answers instead.
+  const eyebrow = genre?.trim() ? genre : (language?.toUpperCase() ?? "");
   return (
     <div
       aria-hidden="true"
@@ -86,7 +87,11 @@ export function Cover({
       {eyebrow === "" ? null : (
         <span
           data-cover-eyebrow
-          className="absolute left-1.5 top-1.5 text-[8px] uppercase tracking-[0.08em] opacity-70"
+          /* 8 px is deliberately off the UI scale: this is a spine caption on
+           * an object, not UI text, and the census only sees the named scale
+           * steps. 0.8, not 0.7: at 0.7 the dark sepia pair measured 4.30:1,
+           * under AA; 0.8 measures 5.12:1. */
+          className="absolute left-1.5 top-1.5 text-[8px] uppercase tracking-[0.08em] opacity-80"
         >
           {eyebrow}
         </span>

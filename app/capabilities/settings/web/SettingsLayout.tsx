@@ -32,7 +32,7 @@ export const CLUSTERS = [
 
 /**
  * The settings area's frame: the title, the way back, the cluster nav — its
- * own two clusters plus every page the registry contributes — and the outlet
+ * own clusters plus every page the registry contributes — and the outlet
  * the hub and the sub-pages render into. The frame is what makes /settings
  * an area: every page of it shows the same doors.
  *

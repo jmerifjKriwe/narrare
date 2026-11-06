@@ -487,9 +487,10 @@ def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> N
     template = page.get_by_label("Vorlage")
     expect(template).to_be_visible()
 
-    # Pristine: the same close, no question.
+    # Pristine: the same close, no question — and the editor really closes.
     page.get_by_role("button", name="Abbrechen").click()
     expect(page.get_by_role("dialog", name="Ungespeicherter Text")).to_have_count(0)
+    expect(template).to_have_count(0)
 
     page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
     template = page.get_by_label("Vorlage")
@@ -508,3 +509,26 @@ def test_closing_a_dirty_prompt_editor_asks_first(page: Page, stack: Stack) -> N
         "button", name="Trotzdem wechseln"
     ).click()
     expect(template).to_have_count(0)
+
+
+def test_leaving_the_page_with_a_dirty_editor_asks_first(page: Page, stack: Stack) -> None:
+    """The third door: a route change with typed words asks too; Stay keeps
+    the editor, Leave follows the link."""
+    page.goto(f"{BASE}/settings/prompts")
+    page.get_by_role("button", name="Überschreibung bearbeiten").first.click()
+    template = page.get_by_label("Vorlage")
+    expect(template).to_be_visible()
+    template.fill(template.input_value() + " ")
+
+    nav = page.get_by_role("navigation", name="Einstellungen")
+    nav.get_by_role("link", name="Sprache").click()
+    dialog = page.get_by_role("dialog", name="Ungespeicherter Text")
+    expect(dialog).to_be_visible()
+    dialog.get_by_role("button", name="Bleiben").click()
+    expect(page.get_by_label("Vorlage")).to_be_visible()
+
+    nav.get_by_role("link", name="Sprache").click()
+    page.get_by_role("dialog", name="Ungespeicherter Text").get_by_role(
+        "button", name="Trotzdem wechseln"
+    ).click()
+    expect(page).to_have_title("Sprache — Narrare")

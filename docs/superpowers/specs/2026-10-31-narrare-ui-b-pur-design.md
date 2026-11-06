@@ -157,9 +157,9 @@ notice; each clears 3:1 against `--panel` in both themes.
 
 | Token | Size / line | Use |
 |---|---|---|
-| `text-meta` | 11 px / 1.45 | counts, keyboard hints, timestamps, table headers |
-| `text-label` | 12 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
-| `text-body` | 13 px / 1.55 | all UI text, table cells, list rows |
+| `text-meta` | 12 px / 1.45 | counts, keyboard hints, timestamps, table headers |
+| `text-label` | 13 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
+| `text-body` | 14 px / 1.55 | all UI text, table cells, list rows |
 | `text-emph` | 15 px / 1.5, 600 | card titles, section titles |
 | `text-title` | 20 px / 1.3, 600 | the page title, one per page |
 | `text-hero` | 28 px / 1.1, 600 | the continue-hero's book title and numerals only |
@@ -294,9 +294,12 @@ One vocabulary, four honesty levels, unchanged in meaning:
 
 ### 8.10 Dark mode
 
-Same roles, system-following. `--card` sits one step above `--background`;
-`--soft` is a step above `--card`; `--rule` is dimmer than `--border`. No second
-palette, no toggle.
+Same roles, one `light-dark()` table resolved by `color-scheme`. The reader's
+choice is user data (`users.theme`, null = the system); a stored value forces one
+side, and the OS decides only when nobody chose. A small `localStorage` mirror
+paints the choice before the settings query answers — a cache, never a source.
+`--card` sits one step above `--background`; `--soft` is a step above `--card`;
+`--rule` is dimmer than `--border`. No second palette.
 
 ## 9. Findings
 

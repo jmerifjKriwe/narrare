@@ -11,7 +11,7 @@
  * what the panel says, and the requests are verified by the backend and E2E
  * suites against the real stack.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -163,6 +163,57 @@ describe("the form's inputs", () => {
     expect(key.getAttribute("type")).toBe("password");
     expect(key.getAttribute("autocomplete")).toBe("new-password");
     expect(key.getAttribute("spellcheck")).toBe("false");
+  });
+});
+
+describe("the dirty form", () => {
+  /** Open the first profile's form and return its name input. */
+  async function openFirst(): Promise<HTMLInputElement> {
+    await renderPanel();
+    await userEvent.click(screen.getAllByRole("button", { name: t("settings.profiles.edit") })[0]);
+    return screen.getByLabelText(t("settings.profiles.nameLabel")) as HTMLInputElement;
+  }
+
+  it("asks before Cancel throws typed values away, and Stay keeps them", async () => {
+    const name = await openFirst();
+    await userEvent.clear(name);
+    await userEvent.type(name, "Renamed");
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.cancel") }));
+    const dialog = screen.getByRole("dialog", { name: t("save.leaveTitle") });
+    expect(dialog).toBeTruthy();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: t("save.leaveStay") }));
+    expect(
+      (screen.getByLabelText(t("settings.profiles.nameLabel")) as HTMLInputElement).value,
+    ).toBe("Renamed");
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.cancel") }));
+    await userEvent.click(
+      within(screen.getByRole("dialog", { name: t("save.leaveTitle") })).getByRole("button", {
+        name: t("save.leaveGo"),
+      }),
+    );
+    // The guarded close resets the form: the next Edit opens another profile.
+    expect(
+      (screen.getByLabelText(t("settings.profiles.nameLabel")) as HTMLInputElement).value,
+    ).toBe("");
+  });
+
+  it("asks before another row re-targets the form", async () => {
+    const name = await openFirst();
+    await userEvent.type(name, "Renamed");
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: t("settings.profiles.edit") })[1],
+    );
+    expect(screen.getByRole("dialog", { name: t("save.leaveTitle") })).toBeTruthy();
+  });
+
+  it("asks nothing when the form is pristine", async () => {
+    await openFirst();
+    await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.cancel") }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

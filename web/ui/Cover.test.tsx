@@ -88,6 +88,11 @@ describe("Cover", () => {
     expect(bare.container.querySelector("[data-cover-eyebrow]")).toBeNull();
   });
 
+  it("treats an empty genre as no genre", () => {
+    const { getByText } = render(<Cover title="Der Sturm" genre="  " language="de" />);
+    expect(getByText("DE")).toBeTruthy();
+  });
+
   it("draws its frame only on the sepia tone", () => {
     const titles = Array.from({ length: 20 }, (_, index) => `Buch ${index}`);
     const byTone = (tone: number) => titles.find((title) => coverTone(title) === tone)!;

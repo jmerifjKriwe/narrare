@@ -34,7 +34,7 @@ export const AREA_ICON = {
   settings: "text-area-settings",
 } as const;
 
-export type RailArea = keyof typeof AREA_ICON;
+type RailArea = keyof typeof AREA_ICON;
 
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({
@@ -104,7 +104,7 @@ export function IconRail() {
      * pixel. A coarse pointer has no hover to open it with, so there the
      * slot and the rail are widened for good — the names are the point. */
     <div
-      className={`relative hidden w-12 shrink-0 pointer-coarse:w-[168px] ${
+      className={`relative hidden w-[var(--rail-width)] shrink-0 ${
         onWorkspace ? "xl:block" : "lg:block"
       }`}
     >
@@ -117,39 +117,39 @@ export function IconRail() {
            viewport-tall rail there would start 53 px down and end 53 px under
            the fold, hiding the anchored Settings and scrolling the page that
            does not otherwise scroll (main owns that). */
-        className="group absolute inset-y-0 left-0 z-20 flex w-12 flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] hover:shadow-overlay focus-within:shadow-overlay motion-reduce:transition-none pointer-coarse:w-[168px] pointer-coarse:shadow-none pointer-coarse:transition-none"
+        className="group absolute inset-y-0 left-0 z-20 flex w-[var(--rail-width)] flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] hover:shadow-overlay focus-within:shadow-overlay motion-reduce:transition-none pointer-coarse:shadow-none pointer-coarse:transition-none"
       >
-      <div className="flex w-full flex-col items-stretch gap-1">
-        {/* Home is a shell constant, not a generated row: the shelf is
-            where the app opens, exact — a prefix match would light it on
-            every route. */}
-        <RailLink
-          to="/"
-          label={t("shell.navHome")}
-          icon="books"
-          area="writing"
-          activeOptions={{ exact: true, includeSearch: false }}
-        />
-        {nav.map((entry) => (
+        <div className="flex w-full flex-col items-stretch gap-1">
+          {/* Home is a shell constant, not a generated row: the shelf is
+              where the app opens, exact — a prefix match would light it on
+              every route. */}
           <RailLink
-            key={entry.id}
-            to={entry.path}
-            label={t(entry.titleKey)}
-            icon={entry.id}
-            area={entry.id}
+            to="/"
+            label={t("shell.navHome")}
+            icon="books"
+            area="writing"
             activeOptions={{ exact: true, includeSearch: false }}
           />
-        ))}
-      </div>
-      {/* Settings is area-wide — the anchor stays lit on the settings
-          cluster's sub-pages, which are settings too. */}
-      <RailLink
-        to="/settings"
-        label={t("shell.settings")}
-        icon="settings"
-        area="settings"
-        activeOptions={{ includeSearch: false }}
-      />
+          {nav.map((entry) => (
+            <RailLink
+              key={entry.id}
+              to={entry.path}
+              label={t(entry.titleKey)}
+              icon={entry.id}
+              area={entry.id}
+              activeOptions={{ exact: true, includeSearch: false }}
+            />
+          ))}
+        </div>
+        {/* Settings is area-wide — the anchor stays lit on the settings
+            cluster's sub-pages, which are settings too. */}
+        <RailLink
+          to="/settings"
+          label={t("shell.settings")}
+          icon="settings"
+          area="settings"
+          activeOptions={{ includeSearch: false }}
+        />
       </nav>
     </div>
   );

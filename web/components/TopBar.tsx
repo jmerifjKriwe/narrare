@@ -35,7 +35,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
 
   return (
     <header
-      className={`border-b border-border bg-panel ${onWorkspace ? "xl:pl-12" : "lg:pl-12"}`}
+      className={`border-b border-border bg-panel ${onWorkspace ? "xl:pl-[var(--rail-width)]" : "lg:pl-[var(--rail-width)]"}`}
     >
       {/* Hidden from sight until focused, and first in the bar so the first
           Tab finds it. Transform and opacity, not sr-only: the reveal then

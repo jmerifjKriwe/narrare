@@ -11,11 +11,15 @@
 /*
  * One design surface, owned by the shell: the tokens. Pages and components
  * consume them through utilities; capabilities never carry their own palette.
- * Dark mode follows the system (prefers-color-scheme) — night writing needs
- * no toggle to be dark.
+ * Every colour is a `light-dark()` pair resolved by `color-scheme`: the OS
+ * decides until the reader stores a choice (users.theme, §8.10).
  */
 
 :root {
+  /* The rail's rendered width, as the shell's one chrome offset: 48 px on a
+   * fine pointer, the open rail's 168 px where there is no hover to open it
+   * with. The top bar reads it so its container stays on the page's axis. */
+  --rail-width: 48px;
   /* The tokens follow the reader's choice; `light-dark()` resolves against
    * `color-scheme`, which makes the browser's own surfaces follow too:
    * scrollbars, native select popups and form controls are painted light on a
@@ -92,6 +96,14 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+}
+
+/* A coarse pointer has no hover to open the rail with, so the rail stands
+ * open and the shell's offset follows it. */
+@media (pointer: coarse) {
+  :root {
+    --rail-width: 168px;
+  }
 }
 
 /* The page surface. Explicit rather than a utility on <body>: the shell is the

@@ -167,7 +167,11 @@ def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
 
     expect(page).to_have_title("Willkommen — Narrare")
 
-    for title in ("Im Stillen Wald", "Dead Signal", "Echoes of the Thornwall"):
+    for title, language in (
+        ("Im Stillen Wald", "DE"),
+        ("Dead Signal", "EN"),
+        ("Echoes of the Thornwall", "EN"),
+    ):
         tile = (
             page.get_by_role("radio", name=title)
             .locator("xpath=ancestor::label[1]")
@@ -178,6 +182,10 @@ def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
         assert box is not None
         # The cover's 3:4 tile: an object on the row, not a text block.
         assert abs(box["width"] / box["height"] - 0.75) <= 0.02
+        # The demo entries have no genre, so the eyebrow falls back to the
+        # language — the first screen a user ever sees names the book's.
+        expect(tile.locator("[data-cover-tone]")).to_have_count(1)
+        expect(tile.locator("[data-cover-eyebrow]")).to_have_text(language)
 
     assert_accessible(page)
 

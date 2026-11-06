@@ -510,6 +510,22 @@ describe("the diff view", () => {
   });
 });
 
+describe("the dirty editor", () => {
+  it("asks before another key re-targets the open editor", async () => {
+    await renderPage();
+
+    const first = cardOf(t("settings.task.writing.continuation"));
+    await userEvent.click(within(first).getByRole("button", { name: t("prompts.edit") }));
+    const box = await screen.findByRole("textbox", { name: t("prompts.editor.contentLabel") });
+    await userEvent.type(box, "x");
+
+    const other = cardOf(t("settings.task.chat.ask"));
+    await userEvent.click(within(other).getByRole("button", { name: t("prompts.edit") }));
+
+    expect(screen.getByRole("dialog", { name: t("save.leaveTitle") })).toBeTruthy();
+  });
+});
+
 describe("the page's words", () => {
   it("renders no raw catalog key", async () => {
     await renderPage();
