@@ -63,6 +63,8 @@ Pure rendering and wiring do not require unit tests.
 - `just test` — backend integration suite.
 - `just test-frontend` — vitest unit suite.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
+- `just fuzz [seconds]` — a bounded Atheris run over the interchange parser
+  (advisory; weekly in CI via `fuzz.yml`, not part of `verify`).
 - `just verify` — check, test, test-frontend and the E2E, plus the production
   build, with the E2E narrowed the same way; it deliberately omits the CI-only
   `check-generated`.

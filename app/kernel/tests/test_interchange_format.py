@@ -399,6 +399,48 @@ def test_empty_chapter_title_still_round_trips() -> None:
     assert serialize_archive(again) == first
 
 
+def test_leading_blank_line_in_the_body_survives_the_round_trip() -> None:
+    """A bare file may open with blank lines — prose drops them by accident.
+
+    The export writes exactly one separator line after the frontmatter, and
+    the parser must remove exactly that one: stripping every leading line
+    ending ate the body's own blank lines, so importing what an export wrote
+    lost a line the archive had already carried. Found by the Atheris target
+    (`scripts/fuzz_archive.py`), input `\\r\\n`.
+    """
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "chapters/01-blank.md": b"\r\n\r\nA blank line, then prose.\n",
+    }
+
+    parsed = parse_archive(open_zip(zip_bytes(files)))
+    assert parsed.chapters[0].body == "\r\n\r\nA blank line, then prose.\n"
+
+    first = serialize_archive(parsed)
+    again = parse_archive(open_zip(zip_bytes(first)))
+    assert serialize_archive(again) == first
+
+
+def test_impossible_yaml_timestamp_is_refused_by_name() -> None:
+    """A timestamp no `datetime` can hold is the archive's fault, not the server's.
+
+    PyYAML's implicit timestamp resolver builds a `datetime` while loading, and
+    a month of 0 raises `ValueError` — not `YAMLError`. It escaped the parse,
+    so the upload reached the request as a 500 instead of a named 422. Found by
+    the Atheris target (`scripts/fuzz_archive.py`).
+    """
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "chapters/01-bad.md": (b"---\ntitle: T\nupdated: 2026-00-31T12:00:00+00:00\n---\nbody\n"),
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "chapters/01-bad.md"
+    assert "month must be in 1..12" in raised.value.reason
+
+
 def test_serialize_is_deterministic() -> None:
     """Twice the same archive, twice the same bytes; slug and padding pinned."""
     first = serialize_archive(_archive())

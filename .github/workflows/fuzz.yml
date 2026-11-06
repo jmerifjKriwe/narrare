@@ -1,0 +1,60 @@
+# Weekly Atheris run over the interchange parser — the one reader that takes
+# untrusted bytes (an imported archive) and the only hand-written YAML/JSON
+# frontmatter surface. Advisory like CodeQL and Scorecard: it names no context
+# in `ci-required`, so a crash is a finding to triage, never a blocked merge.
+# `just fuzz 60` runs the same target locally in under a minute.
+#
+# The slot is off every other timed job (nightly 03:17, CodeQL 06:07,
+# Scorecard 07:11, tool pins 08:23 on the first): timed work should never
+# bunch up on the same runner-hour.
+#
+# The run is bounded by `-max_total_time`, not by a corpus milestone, and it
+# fails on the first finding with the reproducer uploaded — a weekly green
+# run means "600 seconds of mutation found nothing", which is what it says.
+
+name: Fuzz
+
+on:
+  schedule:
+    - cron: "17 5 * * 0"
+  workflow_dispatch:
+    # Manual dispatch never skips: whoever ran it asked for the run.
+
+permissions: {}
+
+# Actions are pinned by commit SHA and name their release in a trailing
+# comment, like every other workflow here (see ci.yml's header comment).
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing below pushes; the token has no work to persist.
+          persist-credentials: false
+      # Python, uv and just only: the target imports nothing from the web tree.
+      #
+      # `./`, not `$/`: zizmor prefers the self-repository syntax, but the
+      # pinned actionlint image (1.7.12) does not know it yet — the two gate
+      # probes must pass together. Flip to `$/` when the actionlint pin is
+      # bumped past the version that understands `$/`.
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
+        with:
+          node: "false"
+      # `--group fuzz` installs atheris into the job's environment; the
+      # default sync stays free of it, and the recipe is the local one.
+      - name: Fuzz the interchange parser
+        run: just fuzz 600
+      # The reproducer is the whole value of a red run: without it the finding
+      # is one log line in a week-old run.
+      - name: Upload the crash reproducer
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-crash
+          path: fuzz/crash-*
+          if-no-files-found: ignore

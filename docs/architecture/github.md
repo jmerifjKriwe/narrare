@@ -17,6 +17,7 @@ way it is lives in the design spec, not here.
 | `codeql.yml` | `pull_request` (code paths), `push: main` (code paths), `schedule` (weekly, Sunday 06:07 UTC), `workflow_dispatch` | `analyze` (matrix: `python`, `javascript-typescript`, `actions`) | no — advisory |
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
 | `pins.yml` | `schedule` (monthly, 1st 08:23 UTC), `workflow_dispatch` | `check` | no — advisory; reports through the [`ci/tool-pins` issue](#dependabot) |
+| `fuzz.yml` | `schedule` (weekly, Sunday 05:17 UTC), `workflow_dispatch` | `fuzz` | no — advisory |
 | `publish.yml` | *(dormant)* | image build, attest, SBOM, release assets | no |
 
 `publish.yml` is dormant: **it does not exist on the tree** and nothing runs
@@ -187,6 +188,23 @@ not on the edit itself. The trigger stays as the listener for classic
 protection settings; do not read its absence on a ruleset edit as silence
 meaning anything. Re-open the finding when GitHub adds a ruleset event, or
 when `main` moves back to classic protection.
+
+## Fuzzing
+
+`fuzz.yml`, advisory, weekly. Runs `scripts/fuzz_archive.py` — an Atheris
+target over the interchange parser, the one reader here that takes untrusted
+bytes (an imported archive) — for ten bounded minutes with the seeds in
+`fuzz/corpus/`. Two contracts from `format.py`'s docstring are asserted: a
+malformed file is refused as `ArchiveError` and nothing else, and parsing the
+files `serialize_archive` wrote re-exports them byte-identically. The first
+run found both a body's leading blank line being eaten on re-import and a
+`ValueError` escaping PyYAML's timestamp constructor as a 500; each has a
+regression test in `app/kernel/tests/test_interchange_format.py`.
+
+`just fuzz [seconds]` is the same target locally. A finding fails the run and
+uploads the reproducer as the `fuzz-crash` artifact; a green run means those
+seconds of mutation found nothing, not that the parser is proven. The seed
+corpus is checked in, so a fix that regresses a known shape is re-found.
 
 ## The nightly and its audit
 

@@ -230,6 +230,12 @@ def _split_frontmatter(text: str, relpath: str) -> tuple[dict[str, Any], str]:
         document = yaml.safe_load("".join(lines[1:closing]))
     except yaml.YAMLError as error:
         raise ArchiveError(relpath, f"invalid frontmatter YAML: {error}") from error
+    except ValueError as error:
+        # PyYAML's implicit timestamp resolver builds the `datetime` itself and
+        # raises ValueError for one no datetime can hold (`2026-00-31T…`): not
+        # a YAMLError, so without this it reached the request as a 500 instead
+        # of a named refusal.
+        raise ArchiveError(relpath, f"invalid frontmatter value: {error}") from error
     mapping: dict[str, Any]
     if document is None:
         mapping = {}
@@ -237,7 +243,16 @@ def _split_frontmatter(text: str, relpath: str) -> tuple[dict[str, Any], str]:
         mapping = cast("dict[str, Any]", document)
     else:
         raise ArchiveError(relpath, "frontmatter is not a mapping")
-    return mapping, "".join(lines[closing + 1 :]).lstrip("\r\n")
+    body = "".join(lines[closing + 1 :])
+    # The export writes exactly one blank line between the closing `---` and
+    # the body, so the separator is exactly one line ending. `lstrip("\r\n")`
+    # removed every one of them, and with them the blank lines a body of its
+    # own may start with: importing an export lost a line the archive carried.
+    if body.startswith("\r\n"):
+        return mapping, body[2:]
+    if body.startswith(("\n", "\r")):
+        return mapping, body[1:]
+    return mapping, body
 
 
 def _dump_frontmatter(mapping: dict[str, Any]) -> str:

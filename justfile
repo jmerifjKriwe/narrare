@@ -97,6 +97,13 @@ test-e2e scope="affected":
     fi
     uv run pytest $paths -v -m e2e --timeout=60
 
+# Bounded Atheris run over the interchange parser: just fuzz 60 (seconds).
+# Seeds are fuzz/corpus; new units and a finding land in the gitignored
+# fuzz/workdir/ and fuzz/crash-*.
+fuzz seconds="300":
+    mkdir -p fuzz/workdir
+    uv run --group fuzz python -m scripts.fuzz_archive fuzz/workdir fuzz/corpus -max_total_time={{seconds}} -artifact_prefix=fuzz/
+
 # Web unit tests.
 test-frontend:
     pnpm --dir web test
