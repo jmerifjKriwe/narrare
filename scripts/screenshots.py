@@ -93,6 +93,8 @@ SHOTS = (
     "03-knowledge-dock.png",
     "04-knowledge-search.png",
     "05-shelf.png",
+    "06-shelf-dark.png",
+    "07-workspace-dark.png",
 )
 
 
@@ -204,8 +206,9 @@ def _capture(
     novel_id: str,
     chapters: list[dict[str, object]],
     vendor: ChatVendor,
+    api: httpx.Client,
 ) -> list[Path]:
-    """Shoot the five frames in the order the page tells them."""
+    """Shoot the frames in the order the page tells them."""
     written: list[Path] = []
     first = chapters[0]
 
@@ -302,11 +305,26 @@ def _capture(
     expect(page.get_by_role("heading", name="Novels")).to_be_visible()
     shot(SHOTS[4], height=700)
 
+    # 6. The chosen dark: the reader's setting, proven against a light OS.
+    #    Shot with the setting, not `color_scheme="dark"` — the claim is that
+    #    the stored choice beats the system.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/")
+    expect(page.get_by_role("heading", name="Novels")).to_be_visible()
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    shot(SHOTS[5], height=700)
+
+    # 7. The workbench in the same light: the prose surface is the object.
+    page.goto(f"{WEB}/novels/{novel_id}")
+    expect(page.locator(".ProseMirror")).to_be_visible()
+    shot(SHOTS[6])
+
+    api.patch("/api/settings/theme", json={"theme": None})
     return written
 
 
 def capture(out: Path) -> list[Path]:
-    """Boot the stack, seed a writer's novel, and write the five frames."""
+    """Boot the stack, seed a writer's novel, and write every frame."""
     out.mkdir(parents=True, exist_ok=True)
     with (
         chat_vendor() as vendor,
@@ -332,12 +350,12 @@ def capture(out: Path) -> list[Path]:
 
         page = context.new_page()
         vendor.set_answer(CHAT_ANSWER)
-        written = _capture(page, out, novel_id, chapters, vendor)
+        written = _capture(page, out, novel_id, chapters, vendor, api)
     return written
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Write the README's images; exit non-zero when fewer than five were written."""
+    """Write the README's images; exit non-zero when fewer than SHOTS were."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--out",
