@@ -257,7 +257,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=nightly
             REVISION=${{ github.sha }}
       - name: The image is not bloated
         run: |

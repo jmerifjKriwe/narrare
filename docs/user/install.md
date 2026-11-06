@@ -121,8 +121,14 @@ Two things to know:
 
 ## Restoring
 
+The compose install keeps the dumps in a named volume, the single container in
+the directory you mounted. Either way the file is a `pg_dump` custom archive:
+
 ```bash
-# What is there: one custom-format archive per upgrade that had work to do.
+# compose: narrare_backups is the volume the file declares
+docker run --rm -v narrare_backups:/backups:ro --entrypoint ls \
+  ghcr.io/jmerifjKriwe/narrare:latest -l /backups
+# single container: the path you passed to -v
 ls /srv/narrare/backups        # narrare-20261106T180300123456.dump
 ```
 
@@ -132,7 +138,7 @@ network your database is on, with the backups mounted read-only:
 
 ```bash
 docker run --rm --network narrare_default \
-  -v /srv/narrare/backups:/backups:ro \
+  -v narrare_backups:/backups:ro \
   --entrypoint pg_restore ghcr.io/jmerifjKriwe/narrare:latest \
   --clean --no-owner \
   --dbname='postgresql://narrare:PASSWORD@postgres:5432/narrare' \

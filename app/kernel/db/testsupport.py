@@ -44,6 +44,19 @@ _ATTACH = make_url(environ["NARRE_DATABASE_URL"]) if _ATTACH_URL else None
 
 SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
 
+
+def admin_url(database: str) -> str:
+    """A connection to `database` on the server the run may administer.
+
+    Attached to a running instance, that is the instance's server: creating and
+    dropping databases is how the default path prepares too, and a hardcoded
+    localhost here sent every admin step to the wrong machine.
+    """
+    if _ATTACH is not None:
+        return _ATTACH.set(database=database).render_as_string(hide_password=False)
+    return f"{SERVER}/{database}"
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # The per-run token: eight hex characters minted once per process. The same
@@ -157,7 +170,7 @@ def sweep(prefix: str = "narrare_v2_test") -> None:
 
 
 async def _sweep(prefix: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             rows = await connection.execute(
@@ -192,7 +205,7 @@ def drop_database(name: str) -> None:
 
 
 async def _drop(name: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
@@ -254,7 +267,7 @@ async def seed_user(user_id: UUID) -> None:
 
 
 async def _ensure(database: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             exists = await connection.scalar(

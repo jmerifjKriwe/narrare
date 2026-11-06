@@ -93,6 +93,8 @@ LABEL org.opencontainers.image.title="Narrare" \
 USER 99:100
 EXPOSE 8000
 
-# No HEALTHCHECK: no route proves the database, and a check that passes while
-# the database is unreachable is worse than no check. The gates prove liveness.
+# No HEALTHCHECK in the image: no route proves the database, and a check that
+# passes while the database is unreachable is worse than none. The compose file
+# adds one anyway, and that is a different question — there it tells the operator
+# when the process is up, not whether the product works.
 CMD [".venv/bin/python", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

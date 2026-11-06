@@ -133,8 +133,9 @@ def extension_refusal(missing: Sequence[str]) -> str:
     noun = "extension" if len(missing) == 1 else "extensions"
     return (
         f"the database cannot provide the {noun} Narrare's schema needs: {names}"
-        " — use a server that ships it (the pgvector/pgvector image, or the"
-        " distribution's contrib package), or have the platform create it"
+        " — use a server that ships"
+        f" {'it' if noun == 'extension' else 'them'} (the pgvector/pgvector image,"
+        " or the distribution's contrib package), or have the platform create it"
     )
 
 
