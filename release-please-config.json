@@ -8,25 +8,66 @@
       "release-type": "python",
       "package-name": "narrare",
       "changelog-sections": [
-        {"type": "feat", "section": "✨ Features"},
-        {"type": "fix", "section": "🐛 Bug Fixes"},
-        {"type": "perf", "section": "⚡ Performance"},
-        {"type": "refactor", "section": "♻️ Refactoring", "hidden": true},
-        {"type": "docs", "section": "📚 Documentation"},
-        {"type": "chore", "section": "🔧 Maintenance", "hidden": true},
-        {"type": "test", "section": "🧪 Tests", "hidden": true},
-        {"type": "ci", "section": "👷 CI/CD", "hidden": true}
+        {
+          "type": "feat",
+          "section": "\u2728 Features"
+        },
+        {
+          "type": "fix",
+          "section": "\ud83d\udc1b Bug Fixes"
+        },
+        {
+          "type": "perf",
+          "section": "\u26a1 Performance"
+        },
+        {
+          "type": "refactor",
+          "section": "\u267b\ufe0f Refactoring",
+          "hidden": true
+        },
+        {
+          "type": "docs",
+          "section": "\ud83d\udcda Documentation"
+        },
+        {
+          "type": "chore",
+          "section": "\ud83d\udd27 Maintenance",
+          "hidden": true
+        },
+        {
+          "type": "test",
+          "section": "\ud83e\uddea Tests",
+          "hidden": true
+        },
+        {
+          "type": "ci",
+          "section": "\ud83d\udc77 CI/CD",
+          "hidden": true
+        }
       ],
       "extra-files": [
-        {"type": "json", "path": "package.json", "jsonpath": "$.version"},
-        {"type": "json", "path": "web/package.json", "jsonpath": "$.version"},
-        {"type": "json", "path": "web/lib/api/openapi.json", "jsonpath": "$.info.version"},
+        {
+          "type": "json",
+          "path": "package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "web/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "web/lib/api/openapi.json",
+          "jsonpath": "$.info.version"
+        },
         {
           "type": "toml",
           "path": "uv.lock",
           "jsonpath": "$.package[?(@.name.value=='narrare')].version"
         }
-      ]
+      ],
+      "changelog-type": "github"
     }
   },
   "pull-request-title-pattern": "chore: release ${version}",
