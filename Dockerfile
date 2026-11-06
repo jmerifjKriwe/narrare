@@ -8,7 +8,7 @@
 # ── the shell ───────────────────────────────────────────────────────────────
 # Node exists only here. The workspace metadata is copied first so that a
 # source change does not re-run the install.
-FROM node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS web
+FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370 AS web
 
 WORKDIR /src
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
