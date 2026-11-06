@@ -120,10 +120,11 @@ describe("ActionMenu", () => {
     await user().click(screen.getByRole("button", { name: "Aktionen für Erstes" }));
     // The hint is visible beside the label for discovery (D6), and the
     // accessible name is the label alone: the keystroke travels in
-    // `aria-keyshortcuts`, where assistive tech expects to find it, not
-    // stitched into the name a reader hears.
+    // `aria-keyshortcuts` — in UI Events key values, the form WAI-ARIA
+    // expects, not the glyph the screen shows — and the glyph stays the
+    // visible `<kbd>`'s own text.
     const item = screen.getByRole("menuitem", { name: "Nach oben" });
     expect(item.textContent).toContain("Alt+↑");
-    expect(item.getAttribute("aria-keyshortcuts")).toBe("Alt+↑");
+    expect(item.getAttribute("aria-keyshortcuts")).toBe("Alt+ArrowUp");
   });
 });

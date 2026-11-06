@@ -15,6 +15,22 @@ export type ActionItem = {
   disabled?: boolean;
 };
 
+/** The glyph → UI Events key value map: WAI-ARIA expects `aria-keyshortcuts`
+ *  in the key values the UI Events spec names (`Alt+ArrowUp`), while the
+ *  hint the screen shows is the glyph a keyboard's arrow key wears (`↑`). */
+const KEY_VALUES: Record<string, string> = {
+  "↑": "ArrowUp",
+  "↓": "ArrowDown",
+  "←": "ArrowLeft",
+  "→": "ArrowRight",
+};
+
+/** One hint as `aria-keyshortcuts` wants it: each arrow glyph swapped for
+ *  its key value, everything else carried as written. */
+function keyShortcutOf(hint: string): string {
+  return hint.replace(/[↑↓←→]/g, (glyph) => KEY_VALUES[glyph] ?? glyph);
+}
+
 /**
  * The shell's action menu: a labelled trigger in the button matrix, a
  * tokened popover, React-Aria's whole menu contract — the arrows, the
@@ -73,7 +89,7 @@ export function ActionMenu({
               aria-label={item.label}
               ref={(element) => {
                 if (element !== null && item.shortcut !== undefined) {
-                  element.setAttribute("aria-keyshortcuts", item.shortcut);
+                  element.setAttribute("aria-keyshortcuts", keyShortcutOf(item.shortcut));
                 }
               }}
               className="flex items-center justify-between gap-4 rounded-[var(--radius)] px-2 py-1 text-body outline-hidden data-[focused]:bg-soft data-focus-visible:ring-2 data-focus-visible:ring-focus"

@@ -697,6 +697,11 @@ export function NovelPage() {
    *  the address keep what they hold (D7). */
   async function confirmDeleteChapter(chapterId: string): Promise<boolean> {
     const isOpen = chapterId === current?.id;
+    // What the guards would protect, asked before the retire can empty
+    // it: a clean chapter — idle or saved, nothing typed, nothing failed
+    // — has no words to hand back, and inventing them would be a phantom
+    // save ("Gespeichert" for text nobody edited) or a phantom failure.
+    const hadUnsaved = unsavedStatus(status);
     // The neighbour is named from the list the book has now, before
     // anything flies: the chapter that takes this one's place — the next,
     // else the previous (D7). Only the open chapter's death opens one.
@@ -706,11 +711,11 @@ export function NovelPage() {
     try {
       await deleteChapter.mutateAsync(chapterId);
     } catch {
-      // A refused delete must not eat the body the retire dropped: the
-      // held draft goes back on the autosave — both fields dirty, the
-      // status pending — so the leave guards protect the words again and
-      // the next debounce carries them to a chapter that still lives.
-      if (isOpen) {
+      // A refused delete hands the retired words back — only the words
+      // that were pending: both fields dirty again, the status pending,
+      // so the leave guards protect them and the next debounce carries
+      // them to a chapter that still lives. A clean chapter stays clean.
+      if (isOpen && hadUnsaved) {
         schedule(held.draft, "title");
         schedule(held.draft, "body");
       }

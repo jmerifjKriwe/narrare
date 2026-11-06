@@ -1200,25 +1200,80 @@ describe("the runhead's action menu", () => {
     await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    // The body the delete retired was handed back: only a restored slot
-    // can put its words on the wire, and the guards read that state —
-    // the debounce flushes the typed text, the editor keeps it, and the
-    // chapter survives the refused delete.
+    // The body the delete retired was handed back whole: only a restored
+    // slot can put its words on the wire, and the guards read that state —
+    // the debounce flush carries BOTH fields (the title's dirt is part of
+    // what the guards protect; a body-only restore would leave the
+    // document half-saved), the editor keeps it, and the chapter survives
+    // the refused delete.
     await waitFor(
       () =>
         expect(api.PUT).toHaveBeenCalledWith(
           "/api/writing/chapters/{chapter_id}",
           {
             params: { path: { chapter_id: SECOND_CHAPTER_ID } },
-            body: expect.objectContaining({
-              body: expect.stringContaining("Bleibt doch."),
-            }),
+            body: {
+              title: "Zweites",
+              body: "Bleibt doch.",
+            },
           },
         ),
       { timeout: 4000 },
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt doch.");
     expect(rows.length).toBe(2);
+  });
+
+  it("a_refused_delete_leaves_a_clean_chapter_clean", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(TWO_NAMED_CHAPTERS);
+    api.DELETE.mockResolvedValue({ response: new Response(null, { status: 500 }) });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // A clean chapter — nothing typed, nothing pending, nothing failed.
+    // The delete is refused and the ask dismissed: no phantom work may be
+    // invented on the way back. The restore belongs to the words that
+    // were pending, and there were none.
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.delete") }));
+    await waitFor(() =>
+      expect(within(dialog).getByText(t("chapters.errorDelete"))).toBeTruthy(),
+    );
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Past the debounce: no PUT flew — the document is identical to the
+    // server's, and an identical document is not unsaved work — and no
+    // status was ever named, not a save and not a failure.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+    expect(screen.queryByText(t("save.failed"))).toBeNull();
+    expect(rows.length).toBe(2);
+  });
+
+  it("the_trigger_names_the_chapter_the_draft_holds", { timeout: 10_000 }, async () => {
+    mockStateful(TWO_NAMED_CHAPTERS);
+    // The save never lands: the row keeps the old name, so the trigger's
+    // name can only come from the page's held draft.
+    api.PUT.mockImplementation(() => new Promise(() => {}));
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The runhead's title keystroke is in the draft and nowhere else yet:
+    // the menu's trigger wears it at once, before any save could carry it
+    // to the row the cache holds.
+    await user.type(screen.getByLabelText(t("chapters.titleLabel")), "Winter");
+    expect(
+      screen.getByRole("button", { name: t("chapters.actionsFor", { title: "ZweitesWinter" }) }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: t("chapters.actionsFor", { title: "Zweites" }) }),
+    ).toBeNull();
   });
 
   it("deleting_the_latched_chapter_rederives_the_fallback", { timeout: 10_000 }, async () => {
