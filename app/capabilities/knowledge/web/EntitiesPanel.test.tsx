@@ -209,3 +209,84 @@ describe("EntitiesPanel relation edit refusals", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
+
+describe("EntitiesPanel relation edit note-only save", () => {
+  it("keeps the edge's stored type when only the note changes", async () => {
+    // The edge's stored type is raw free text whose words spell a
+    // vocabulary label's — "ally of" beside the catalog's "ally_of". The
+    // prefilled box resolves those words, and a save comparing resolved
+    // ids alone would send the id the text maps to, replacing the old
+    // edge's own answer. The editor's text is what decides: a note-only
+    // save carries the note and nothing else, and a real retype still
+    // sends the id.
+    const aster = entity("Aster", "character");
+    const harbor = entity("Harbor", "location");
+    const edge = {
+      id: "edge-raw",
+      from_entity_id: aster.id,
+      to_entity_id: harbor.id,
+      relation_type: "ally of",
+      note: null,
+      created_at: "2026-01-01T00:00:00Z",
+    };
+    api.GET.mockImplementation(async (path: string) => {
+      if (path.includes("relations")) return { data: [edge], response: { ok: true } };
+      return { data: [aster, harbor], response: { ok: true } };
+    });
+    api.PATCH.mockResolvedValue({
+      data: { ...edge, note: "since the harbor days" },
+      response: { ok: true },
+    });
+    renderPanel();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    // Select Aster, open the edit dialog, open the row's editor.
+    await user.click(await screen.findByRole("gridcell", { name: "Aster" }));
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await screen.findByRole("dialog");
+    const row = await screen.findByRole("row", { name: /ally of/ });
+    await user.click(within(row).getByRole("button", { name: "Edit relation" }));
+    const editForm = await screen.findByRole("form", { name: "Edit the relation" });
+    expect(within(editForm).getByLabelText("Relation type")).toHaveProperty("value", "ally of");
+
+    // Type only a note — the box stays exactly what the editor opened with.
+    await user.type(within(editForm).getByLabelText("Note (optional)"), "since the harbor days");
+    await user.click(within(editForm).getByRole("button", { name: "Save" }));
+
+    // The body carries the note alone: the pin is `relation_type` being
+    // undefined — `toEqual` treats an added `undefined` key as equal, so
+    // the shape assertion only round-trips the note the send carried.
+    const body = (api.PATCH.mock.calls[0]?.[1] as { body: Record<string, unknown> }).body;
+    expect(body.relation_type).toBeUndefined();
+    expect(body).toEqual({ note: "since the harbor days" });
+
+    // The save settles: the editor closes and the row survives the
+    // refetch. The static GET fixture would read "ally of" either way —
+    // the body assertion above is what proves the type stayed nowhere.
+    await waitFor(() =>
+      expect(screen.queryByRole("form", { name: "Edit the relation" })).toBeNull(),
+    );
+    expect(screen.queryByText("ally of")).not.toBeNull();
+    expect(api.PATCH).toHaveBeenCalledTimes(1);
+
+    // A real retype still sends the id: open the editor again, pick the
+    // catalog's enemy label, and the body names the type.
+    const again = screen.getByRole("row", { name: /ally of/ });
+    await user.click(within(again).getByRole("button", { name: "Edit relation" }));
+    const retypeForm = await screen.findByRole("form", { name: "Edit the relation" });
+    const typeBox = within(retypeForm).getByLabelText("Relation type");
+    await user.clear(typeBox);
+    await user.type(typeBox, "Enemy");
+    await user.click(await screen.findByRole("option", { name: "Enemy of" }));
+    await user.click(within(retypeForm).getByRole("button", { name: "Save" }));
+    const retypeBody = (api.PATCH.mock.calls[1]?.[1] as { body: Record<string, unknown> }).body;
+    expect(retypeBody.relation_type).toBe("enemy_of");
+
+    // Clean up: leave the editor and the dialog.
+    await waitFor(() =>
+      expect(screen.queryByRole("form", { name: "Edit the relation" })).toBeNull(),
+    );
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});

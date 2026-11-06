@@ -1398,29 +1398,45 @@ def test_a_duplicate_relation_is_named_and_the_add_guards_a_double_submit(
         kind.press("Enter")
         expect(kind).to_have_value("Verbündet mit")
 
-    # One click is one request (#313): the relations POST is held for a
-    # moment, the button stands down while it is in flight, and exactly one
-    # request goes out for the click.
-    held = {"posts": 0}
+    # One click is one request (#313): the relations POST is paused under
+    # the test's hand — not held on a clock — the button stands down while
+    # it is in flight, and exactly one request goes out for the click.
+    posts_held: list[Route] = []
 
     def hold_relations_post(route: Route) -> None:
         if route.request.method != "POST":
             route.continue_()
             return
-        held["posts"] += 1
-        sleep(1)
-        route.continue_()
+        posts_held.append(route)
+        # No continue_() here: the request stays paused until the test
+        # releases it, so the turn that probes the add form's guard runs
+        # inside the flight, not after it has settled.
 
     fill_add_row()
     page.route("**/api/knowledge/entities/*/relations", hold_relations_post)
     add_button = dialog.get_by_role("button", name="Beziehung hinzufügen")
     add_button.click()
     expect(add_button).to_be_disabled()
+    # A second press while the first owns the flight bypasses the
+    # button's stand-down: dispatched straight on the form, submitting
+    # never touches the button — only the handler's own pending guard can
+    # turn it away. One click is one request, not one enabled button.
+    # The event must bubble (React's own listener sits at the root, and a
+    # default non-bubbling dispatch would simply never reach it). The
+    # submit runs while the request is genuinely paused — the counter
+    # proves its answer, not the button's.
+    add_form = add_button.locator("xpath=ancestor::form[1]")
+    page.evaluate(
+        "form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))",
+        add_form.element_handle(),
+    )
+    assert len(posts_held) == 1
+    posts_held[0].continue_()
     table = dialog.get_by_role("table", name="Verweist auf")
     row = table.get_by_role("row").filter(has_text="Haus")
     expect(row).to_contain_text("Verbündet mit")
     page.unroute("**/api/knowledge/entities/*/relations", hold_relations_post)
-    assert held["posts"] == 1
+    assert len(posts_held) == 1
 
     # The identical pair again: the 409 names the duplicate (#309), the
     # outage copy stays out of it, and the table still holds one Haus row.

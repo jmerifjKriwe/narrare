@@ -194,7 +194,15 @@ export function EntityRelationsSection(
     setEditDuplicate(false);
     if (editType === "") return;
     const changes: RelationChanges = {};
-    if (editType !== relation.relation_type) changes.relationType = editType;
+    // The type changes only when the box's text does. A stored free-text
+    // type can carry the same words a vocabulary label spells — the raw
+    // "ally of" beside the catalog's "ally_of" — and resolving the
+    // prefilled box would then silently retype the edge. What the editor
+    // was shown with is the edge's own answer; only a retype is one.
+    const originalLabel = relationTypeLabel(t, relation.relation_type).trim();
+    if (editTypeText.trim() !== originalLabel && editType !== relation.relation_type) {
+      changes.relationType = editType;
+    }
     const nextNote = editNote.trim() === "" ? null : editNote;
     if (nextNote !== relation.note) changes.note = nextNote;
     if (changes.relationType === undefined && changes.note === undefined) {
