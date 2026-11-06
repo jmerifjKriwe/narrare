@@ -118,8 +118,9 @@ jobs:
         # and an advisory against one of its packages is still news.
         run: pnpm audit --audit-level high
 
-  # Lint, typecheck and secrets scan — one definition for every workflow:
-  # `_lint.yml`. Same job name as ci.yml's caller, same inputs.
+  # Lint, typecheck, generated-file freshness and secrets scan — one definition
+  # for every workflow: `_lint.yml`. Same job name as ci.yml's caller, same
+  # inputs.
   #
   # `./`, not `$/`: same trade as ci.yml's comment — the pinned actionlint
   # image (1.7.12) does not know the self-repository syntax zizmor prefers.

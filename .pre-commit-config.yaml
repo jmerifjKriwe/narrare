@@ -41,9 +41,10 @@ repos:
         stages: [pre-commit]
 
       # `app/capabilities/.*/web/`, not `app/capabilities/`: a backend-only
-      # capability commit owes neither tsc nor vitest (issue #446). The cost of
-      # a missed generated-input change is the gap tracked separately; no web
-      # check reads generated inputs for staleness anyway.
+      # capability commit owes neither tsc nor vitest (issue #446). A missed
+      # generated-input change is caught in CI by `just check-generated`; the
+      # hook stays out of it because `pnpm dlx` needs the network and the run is
+      # not sub-second (issue #622).
       - id: web-typecheck
         name: Web typecheck (tsc)
         entry: pnpm --dir web typecheck

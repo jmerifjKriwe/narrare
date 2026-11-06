@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 24 public recipes; private helpers start with `_`.
+# 25 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -136,6 +136,22 @@ generate:
     uv run python -m scripts.export_openapi
     uv run python -m scripts.generate_capabilities
     pnpm --dir web generate
+
+# Compares only the generated paths, so unrelated dirt in the working tree does
+# not matter. CI runs it on every PR and every nightly.
+# Regenerate and fail when the committed generated files differ.
+check-generated:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just generate
+    changed=$(git status --porcelain --untracked-files=all -- \
+        app/generated web/lib/generated \
+        web/lib/api/openapi.json web/lib/api/schema.d.ts docs/user/INDEX.md)
+    if [ -n "$changed" ]; then
+        printf '%s\n' "$changed" >&2
+        echo "committed generated files are stale: commit the regenerated files, or revert the input change" >&2
+        exit 1
+    fi
 
 # Scaffold a capability folder: just new-capability notes
 new-capability name:
