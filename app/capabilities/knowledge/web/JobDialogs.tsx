@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useTranslation } from "@shell/lib/i18n";
 import {
   activeChapterFallback,
-  queryClient,
   useChaptersQuery,
   useEnqueueCheck,
   useEnqueueExtraction,
@@ -13,6 +12,8 @@ import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
+
+import { useSettleJob } from "./useSettleJob";
 
 /**
  * The extraction behind the palette's row: the chapter the editor is
@@ -73,25 +74,16 @@ function ExtractionForm({ novelId, close }: { novelId: string; close: () => void
   const job = useJobQuery(jobId);
   const enqueue = useEnqueueExtraction(novelId);
 
-  // The settled job decides the queue: the row turning done or failed is
-  // the moment the pending suggestions exist (or provably will not) — the
-  // same beat the dock panel refetches on.
-  const settled = job.data?.status === "done" || job.data?.status === "failed";
-  useEffect(() => {
-    if (!settled) return;
-    void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
-  }, [settled, novelId]);
-
-  // The poll can fail like any fetch: an unanswered poll is an error, not
-  // a promise of movement — the same reading the dock panel keeps.
-  const pollFailed = jobId !== null && job.isError;
-
-  // One extraction at a time: the trigger stays closed while its enqueue
-  // POST is in flight or the job it filed is still outstanding — the
-  // panel's single-shot rule, unchanged. The same three things hand the
-  // button back: a settled row, a poll that met the dead service, a
-  // refused enqueue.
-  const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
+  // The settle beat is the shared hook's: the settled row refetches the
+  // pending suggestions — the same beat the dock panel refetches on.
+  const { busy, pollFailed } = useSettleJob({
+    jobId,
+    status: job.data?.status,
+    pollError: job.isError,
+    enqueuePending: enqueue.isPending,
+    novelId,
+    queue: "suggestions",
+  });
 
   /** Enqueue the active chapter for polling; no selection is a no-op and failures stay visible. */
   async function extract() {
@@ -146,23 +138,16 @@ function ConsistencyCheckForm({ novelId, close }: { novelId: string; close: () =
   const job = useJobQuery(jobId);
   const enqueue = useEnqueueCheck(novelId);
 
-  // The settled job decides the queue: the row turning done or failed is
-  // the moment the findings exist (or provably will not) — the same beat
-  // the dock panel refetches on.
-  const settled = job.data?.status === "done" || job.data?.status === "failed";
-  useEffect(() => {
-    if (!settled) return;
-    void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
-  }, [settled, novelId]);
-
-  // The poll can fail like any fetch: an unanswered poll is an error, not
-  // a promise of movement — the same reading the dock panel keeps.
-  const pollFailed = jobId !== null && job.isError;
-
-  // One check at a time: the trigger stays closed while its enqueue POST
-  // is in flight or the job it filed is still outstanding — the panel's
-  // single-shot rule, unchanged.
-  const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
+  // The settle beat is the shared hook's: the settled row refetches the
+  // pending findings — the same beat the dock panel refetches on.
+  const { busy, pollFailed } = useSettleJob({
+    jobId,
+    status: job.data?.status,
+    pollError: job.isError,
+    enqueuePending: enqueue.isPending,
+    novelId,
+    queue: "findings",
+  });
 
   /** Enqueue a check and select its job for polling, or expose the enqueue failure. */
   async function check() {

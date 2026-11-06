@@ -1,10 +1,9 @@
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
 import {
-  queryClient,
   useAcknowledgeFinding,
   useDismissFinding,
   useEnqueueCheck,
@@ -15,6 +14,8 @@ import { Button } from "@shell/ui/Button";
 import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
+
+import { useSettleJob } from "./useSettleJob";
 
 /** The whole-novel consistency check and its review: the check runs as a
  *  durable job on the same lane the chapter-scoped extraction rides — the
@@ -33,28 +34,17 @@ export function ChecksPanel() {
   const dismiss = useDismissFinding(novelId);
   const headingId = useId();
 
-  // The settled job decides the queue: the row turning done or failed is
-  // the moment the findings exist (or provably will not), so that is when
-  // the pending queue refetches — the poll publishes its own finding.
-  const settled = job.data?.status === "done" || job.data?.status === "failed";
-  useEffect(() => {
-    if (!settled) return;
-    void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
-  }, [settled, novelId]);
-
-  // The poll can fail like any fetch: the service going down under an
-  // outstanding job leaves the row's answer missing. A missing answer is
-  // an error, not a promise of movement — the queued/running row promised
-  // progress, and an unanswered poll must not wear that promise.
-  const pollFailed = jobId !== null && job.isError;
-
-  // One check at a time: the trigger stays closed while its enqueue POST
-  // is in flight or the job it filed is still outstanding, because a
-  // second click would stack a duplicate job and a duplicate review queue
-  // behind the first — the extraction's single-shot rule, unchanged. The
-  // same three things hand the button back: a settled row, a poll that
-  // met the dead service, a refused enqueue.
-  const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
+  // The settle beat is the shared hook's: the settled row refetches the
+  // pending findings, the dead poll reopens the trigger — the extraction's
+  // single-shot rule, unchanged.
+  const { busy, pollFailed } = useSettleJob({
+    jobId,
+    status: job.data?.status,
+    pollError: job.isError,
+    enqueuePending: enqueue.isPending,
+    novelId,
+    queue: "findings",
+  });
 
   /** Enqueue a check and select its job for polling, or expose the enqueue failure. */
   async function check() {
@@ -123,9 +113,14 @@ export function ChecksPanel() {
       ) : (
         (findings.data ?? []).map((finding) => (
           // The labelled section is the card's name for assistive tech:
-          // one "Consistency finding" region per contradiction, the way the
-          // proposal cards it replaces named themselves.
-          <section key={finding.id} aria-label={t("knowledge.findingTitle")} className="mt-4">
+          // "Consistency finding: <summary>" — one named region per
+          // contradiction, so sibling findings tell apart in a region
+          // list the bare title could never separate.
+          <section
+            key={finding.id}
+            aria-label={`${t("knowledge.findingTitle")}: ${finding.summary}`}
+            className="mt-4"
+          >
             <Panel>
               <h4 className="text-emph font-semibold">{finding.summary}</h4>
               <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-muted">

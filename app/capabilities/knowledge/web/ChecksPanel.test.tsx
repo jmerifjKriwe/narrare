@@ -5,6 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "@shell/lib/api/client";
+import { t } from "@shell/lib/i18n";
 import { rootRoute } from "@shell/routes/__root";
 import { ChecksPanel } from "./ChecksPanel";
 
@@ -52,7 +53,20 @@ describe("ChecksPanel finding card", () => {
 
     expect(await screen.findByRole("heading", { name: finding.summary })).toBeTruthy();
     expect(screen.getByText(finding.detail)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Accept" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: t("proposal.accept") })).toBeTruthy();
+    expect(screen.getByRole("button", { name: t("proposal.discard") })).toBeTruthy();
+  });
+
+  it("names each finding region with the finding's own summary", async () => {
+    // Sibling findings share one title key — the region name carries the
+    // summary, so a region list tells the contradictions apart.
+    api.GET.mockResolvedValue({ data: [finding], response: { ok: true } });
+    renderPanel();
+
+    expect(
+      await screen.findByRole("region", {
+        name: `${t("knowledge.findingTitle")}: ${finding.summary}`,
+      }),
+    ).toBeTruthy();
   });
 });
