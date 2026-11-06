@@ -458,10 +458,16 @@ jobs:
           set -euo pipefail
           tag=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')
           image="ghcr.io/${GITHUB_REPOSITORY,,}:${tag#v}"
+          # "No previous image" is a claim about the registry, so it needs a
+          # reachable registry to stand on: if even :latest cannot be read, this
+          # is a broken token or an outage, not a first release.
+          buildx_ok=true
+          docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY,,}:latest" >/dev/null 2>&1 || buildx_ok=false
+          if [ "$buildx_ok" = false ]; then
+            echo "::error::the registry could not be read; the upgrade gate cannot tell whether a previous image exists"
+            exit 1
+          fi
           if [ -z "$tag" ] || ! docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
-            # Only an absent tag means "no previous image". A tag that exists
-            # and will not pull is a broken registry or token, and the upgrade
-            # gate must not read that as "nothing to upgrade from".
             echo "::notice::no published image to upgrade from; this is the first container release"
             exit 0
           fi

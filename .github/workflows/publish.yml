@@ -92,6 +92,7 @@ jobs:
         run: echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
 
       - name: Promote the tested digest to the version tags
+        id: promote
         if: steps.tested.outputs.found == 'true'
         env:
           IMAGE: ${{ steps.resolve.outputs.image }}
@@ -136,8 +137,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ steps.resolve.outputs.tag }}
           IMAGE: ${{ steps.resolve.outputs.image }}
+          PROMOTED: ${{ steps.promote.outcome }}
         run: |
           set -euo pipefail
-          body=$(printf '\n---\n**⚠ No image was published.** %s carries no tested image tag; nothing was rebuilt. See the Publish workflow run for the failing step.\n' "$IMAGE")
+          if [ "$PROMOTED" = success ]; then
+            # The tags moved; what failed was recording them.
+            body=$(printf '\n---\n**⚠ The image was published, but this page could not record its digest.** See the Publish workflow run.\n')
+          else
+            body=$(printf '\n---\n**⚠ No image was published.** %s carries no tested image tag; nothing was rebuilt. See the Publish workflow run for the failing step.\n' "$IMAGE")
+          fi
           gh release edit "$TAG" --notes-file <(gh release view "$TAG" --json body --jq .body; printf '%s\n' "$body") || true
           exit 1
