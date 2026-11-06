@@ -135,7 +135,8 @@ def extension_refusal(missing: Sequence[str]) -> str:
         f"the database cannot provide the {noun} Narrare's schema needs: {names}"
         " — use a server that ships"
         f" {'it' if noun == 'extension' else 'them'} (the pgvector/pgvector image,"
-        " or the distribution's contrib package), or have the platform create it"
+        f" or the distribution's contrib package), or have the platform create"
+        f" {'it' if noun == 'extension' else 'them'}"
     )
 
 

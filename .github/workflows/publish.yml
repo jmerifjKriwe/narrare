@@ -82,6 +82,9 @@ jobs:
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
             echo "::error::$SOURCE does not exist; the gates never pushed it, so there is nothing to publish and nothing is rebuilt"
+            # Fail the job: the warning step runs on failure, and a green run
+            # would leave the release page naming an image that is not there.
+            exit 1
           fi
 
       - name: Log in to GHCR
