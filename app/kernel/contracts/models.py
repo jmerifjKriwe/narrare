@@ -42,6 +42,9 @@ class User(Base):
     # and the client decides from navigator.languages. A tag the catalog does
     # not carry is refused at the API, not stored.
     locale: Mapped[str | None] = mapped_column(String(8))
+    # NULL means "follow the system": the browser's `prefers-color-scheme`
+    # decides. A stored value is the reader's own answer and wins over it.
+    theme: Mapped[str | None] = mapped_column(String(8))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

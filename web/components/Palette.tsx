@@ -9,6 +9,7 @@ import { nav } from "../lib/generated/capabilities";
 import { commands } from "../lib/generated/commands";
 import { docks } from "../lib/generated/docks";
 import { useTranslation } from "../lib/i18n";
+import { isMac } from "../lib/platform";
 import { useChaptersQuery, useEntitiesQuery, useNovelsQuery } from "../lib/query";
 import { Row } from "../ui/Row";
 
@@ -302,6 +303,8 @@ export function Palette({
 }) {
   const t = useTranslation();
   const navigate = useNavigate();
+  // The keycap is the platform's own name for the key that opens this.
+  const paletteKey = t(isMac() ? "shell.paletteKeyMac" : "shell.paletteKeyOther");
   // The novel the active route carries, read tolerantly: outside a
   // workspace this is undefined, and Novels takes the first two groups'
   // places.
@@ -516,7 +519,7 @@ export function Palette({
             {/* §11's row: the focus shortcuts are named here and nowhere
                 else — the palette is the one place the keyboard's map lives. */}
             <p className="border-t border-border px-4 py-2 text-meta text-muted">
-              {t("workspace.shortcutHints")}
+              {t("workspace.shortcutHints", { key: paletteKey })}
             </p>
           </RacDialog>
         </Modal>

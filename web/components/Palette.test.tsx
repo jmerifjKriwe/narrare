@@ -221,8 +221,10 @@ describe("the palette's keyboard contract", () => {
 
     await openPalette();
     const dialog = screen.getByRole("dialog");
-    // The shortcuts are named here, in one place — the §11 row.
-    expect(dialog.textContent).toContain(t("workspace.shortcutHints"));
+    // The shortcuts are named here, in one place — the §11 row. The keycap
+    // is the platform's own name, so the row is read as its parts.
+    expect(dialog.textContent).toContain("palette");
+    expect(dialog.textContent).toMatch(/⌘K|Ctrl K|Strg K/);
 
     // Ctrl+K is the same key on the other platforms, and it closes again —
     // every close returns the focus, so the next press is captured from the
@@ -268,7 +270,7 @@ describe("the palette wears the system's rows", () => {
     expect(label.className).toContain("uppercase");
     expect(label.className).toContain("tracking-[0.1em]");
     // The keyboard hints are the scale's meta voice, not the label's.
-    const hints = screen.getByText(t("workspace.shortcutHints"));
+    const hints = screen.getByText(/F9/);
     expect(hints.className).toContain("text-meta");
 
     // The palette names itself for what it is, not for what it offers.

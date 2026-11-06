@@ -668,6 +668,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Theme */
+        patch: operations["update_theme_api_settings_theme_patch"];
+        trace?: never;
+    };
     "/api/setup": {
         parameters: {
             query?: never;
@@ -1692,6 +1709,18 @@ export interface components {
         SettingsRead: {
             /** Locale */
             locale: string | null;
+            /** Theme */
+            theme: string | null;
+        };
+        /** SettingsThemeRead */
+        SettingsThemeRead: {
+            /** Theme */
+            theme: string | null;
+        };
+        /** SettingsThemeUpdate */
+        SettingsThemeUpdate: {
+            /** Theme */
+            theme: string | null;
         };
         /** SettingsUpdate */
         SettingsUpdate: {
@@ -3042,6 +3071,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskEffectiveRead"][];
+                };
+            };
+        };
+    };
+    update_theme_api_settings_theme_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsThemeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsThemeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

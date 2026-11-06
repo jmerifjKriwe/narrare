@@ -148,13 +148,18 @@ Token laws:
 - **L5** A card never sits inside a card; `--panel` never contains `--card` content
   except in overlays.
 
+Area hues (`--area-writing`, `--area-knowledge`, `--area-chat`,
+`--area-settings`) are **navigation identity marks**: the rail entry's icon and
+nothing else. They never fill a control, colour text, or land on a cover or a
+notice; each clears 3:1 against `--panel` in both themes.
+
 ### 8.2 Type scale (`@theme inline`, so `text-meta` … `text-hero` exist)
 
 | Token | Size / line | Use |
 |---|---|---|
-| `text-meta` | 11 px / 1.45 | counts, keyboard hints, timestamps, table headers |
-| `text-label` | 12 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
-| `text-body` | 13 px / 1.55 | all UI text, table cells, list rows |
+| `text-meta` | 12 px / 1.45 | counts, keyboard hints, timestamps, table headers |
+| `text-label` | 13 px / 1.45 | field labels, group eyebrows and panel headers (uppercase + 0.1em tracking) |
+| `text-body` | 14 px / 1.55 | all UI text, table cells, list rows |
 | `text-emph` | 15 px / 1.5, 600 | card titles, section titles |
 | `text-title` | 20 px / 1.3, 600 | the page title, one per page |
 | `text-hero` | 28 px / 1.1, 600 | the continue-hero's book title and numerals only |
@@ -215,18 +220,25 @@ platforms). Every icon-only control gets a catalog key in en/de/fr.
 ### 8.6 Covers
 
 Generated, deterministic, no files: a cover is a rounded 3:4 tile whose ground is
-one of three token-derived tones — sepia (`--primary`), ink (dark,
-foreground-derived), pale (`--rule`-derived) — chosen by a stable hash of the
-title; the title is set in the serif face on the tile, 3 lines, ellipsis (the
-clamp the shelf pins; an earlier draft said 2). Genre and
-language do not affect the tone. No fourth tone, no gradients beyond a single
-inner shade, no uploaded artwork. Three tones are enough for a shelf of ten books;
-a rainbow is not.
+one of three cover tokens — pale, sepia and ink — chosen by a stable hash of the
+title. The tokens are the cover's own (`--cover-*-ground` / `--cover-*-ink`,
+`light-dark()` pairs); a cover never borrows the action's fill, so in dark mode
+the sepia tile stays quieter than the one primary button (#590). The tone also
+chooses the composition: pale and sepia set the title at the foot with the
+book's genre (or its language) in the corner, sepia adds an inset hairline and a
+spine strip, ink centres its title. The title is set in the serif face, 3 lines,
+ellipsis (the clamp the shelf pins). Genre and language do not affect the tone.
+No fourth tone, no gradients beyond a single inner shade, no uploaded artwork.
+Three tones are enough for a shelf of ten books; a rainbow is not.
 
 ### 8.7 Surfaces
 
 The shell frame is global: the **icon rail** is shell chrome on every route, the
 **top bar** carries the place (breadcrumb), ⌘K, settings and the language control.
+The rail keeps its 48 px column in the layout and opens over the page on hover or
+focus — the names were always in the DOM, and a pointer's hover moves no page
+pixel. A coarse pointer has no hover, so there the rail stands open with its
+names. Each entry's icon wears its area's hue (§8.1), and nothing else does.
 Rail entries, top to bottom: a fixed Home (the shelf, `/`), then the generated
 `nav` (chat, knowledge), then Settings anchored at the bottom. `writing` stays
 `nav: false` — the shelf *is* home, not a destination — so no `capability.yaml`
@@ -282,9 +294,12 @@ One vocabulary, four honesty levels, unchanged in meaning:
 
 ### 8.10 Dark mode
 
-Same roles, system-following. `--card` sits one step above `--background`;
-`--soft` is a step above `--card`; `--rule` is dimmer than `--border`. No second
-palette, no toggle.
+Same roles, one `light-dark()` table resolved by `color-scheme`. The reader's
+choice is user data (`users.theme`, null = the system); a stored value forces one
+side, and the OS decides only when nobody chose. A small `localStorage` mirror
+paints the choice before the settings query answers — a cache, never a source.
+`--card` sits one step above `--background`; `--soft` is a step above `--card`;
+`--rule` is dimmer than `--border`. No second palette.
 
 ## 9. Findings
 
@@ -373,12 +388,19 @@ type/colour/spacing drift is not:
 
 - `text-sm` = 0 (the scale is `text-body` and friends; `text-sm` survives only
   inside `web/ui/`)
-- `bg-primary` = 0 outside `Button` and `Cover` (a cover's ground is an
-  object surface, §8.6)
+- `bg-primary` = 0 outside `Button` (a cover's ground is an object surface,
+  §8.6, and now has its own tokens)
 - `border-border` = 0 in capability folders (legal on `web/components` chrome, R42)
 - `rounded-md` / `rounded-lg` = 0 in capability folders (rounded-lg legal on `web/components` chrome, R42) (radii come from tokens)
 - `ml-*` / `mr-*` between siblings = 0
-- `text-danger` = 0 outside `Notice`
+- `text-danger` = 0 outside `Notice` **in the folders this census scans**
+  (`app/capabilities/*/web/`, `web/components/`). Three status lines outside
+  those folders carry it deliberately — the field's own error line
+  (`web/ui/field.tsx`), a failed job row (`web/ui/JobStatus.tsx`) and the save
+  indicator (`web/lib/save.tsx`) — each `role="alert"`/`role="status"`, none a
+  notice surface. The prompts diff view is the fourth named surface: an added
+  line is `border-success`, a removed one `border-danger`; `--primary` keeps one
+  meaning, the action.
 
 Plus the standing gates: `just check`, `just test`, `just test-frontend`,
 `just build`, `just test-e2e <capability>` per task, `just verify all` at the end,

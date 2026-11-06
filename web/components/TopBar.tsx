@@ -2,6 +2,7 @@ import { Link, useMatches } from "@tanstack/react-router";
 
 import { useTranslation } from "../lib/i18n";
 import { usePageTitleValue } from "../lib/pageTitle";
+import { isMac } from "../lib/platform";
 import { buttonClass } from "../ui/Button";
 import { Icon } from "../ui/icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -14,8 +15,12 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
  * focusable element; `data-focus="2"` gates the whole bar in `__root.tsx`
  * (one subscription, one decision — the bar carries no copy of it).
  */
-export function TopBar() {
+export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const t = useTranslation();
+  // The keycap is the platform's own name for the palette's key: a Mac shows
+  // ⌘K, everywhere else the control key. The chip is the palette's pointer
+  // door, so it says what it opens and refuses while a dialog holds the stage.
+  const paletteKey = t(isMac() ? "shell.paletteKeyMac" : "shell.paletteKeyOther");
   // The page's published name (the page-title stack's top, P8): the tab
   // wears `<page> — Narrare`, the bar wears the page's half. A page that
   // has not named itself leaves the place empty — an unnamed page is not
@@ -30,7 +35,7 @@ export function TopBar() {
 
   return (
     <header
-      className={`border-b border-border bg-panel ${onWorkspace ? "xl:pl-12" : "lg:pl-12"}`}
+      className={`border-b border-border bg-panel ${onWorkspace ? "xl:pl-[var(--rail-width)]" : "lg:pl-[var(--rail-width)]"}`}
     >
       {/* Hidden from sight until focused, and first in the bar so the first
           Tab finds it. Transform and opacity, not sr-only: the reveal then
@@ -59,15 +64,18 @@ export function TopBar() {
         </div>
         <div className="ml-auto flex items-center gap-4">
           {/* The palette's key, named where the keyboard's map is looked
-              for. Decorative: the shell owns the ⌘K listener, the chip owns
-              nothing, and a keycap is the same glyph in every language —
-              the palette footer names the shortcuts it unlocks. */}
-          <span
-            aria-hidden="true"
-            className="rounded-[var(--radius)] border border-border bg-card px-1.5 py-0.5 font-mono text-meta leading-none text-muted"
+              for, and the palette's door for a pointer: a keycap is the same
+              glyph in every language, and the catalog names what it opens.
+              The shell owns the ⌘K listener; this control asks the same
+              refusal before it opens what the key opens. */}
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            aria-label={t("shell.paletteOpen", { key: paletteKey })}
+            className="rounded-[var(--radius)] border border-border bg-card px-1.5 py-0.5 font-mono text-meta leading-none text-muted hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
           >
-            ⌘K
-          </span>
+            {paletteKey}
+          </button>
           {/* The gear: settings is a control, not a browsing destination.
               A link wearing the icon button's paint through `buttonClass`
               (Button.tsx sanctions exactly this for non-button controls —

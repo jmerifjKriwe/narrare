@@ -31,3 +31,17 @@ class SettingsService:
         user.locale = locale
         await self.session.commit()
         return user.locale
+
+    async def read_theme(self) -> str | None:
+        user = await self.session.get(User, self.user_id)
+        # No row yet: an uninstalled instance has no preference, and the
+        # system decides.
+        return None if user is None else user.theme
+
+    async def write_theme(self, theme: str | None) -> str | None:
+        user = await self.session.get(User, self.user_id)
+        if user is None:
+            raise SetupRequiredError
+        user.theme = theme
+        await self.session.commit()
+        return user.theme

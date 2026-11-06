@@ -32,7 +32,7 @@ function DialogSurface({
                 this heading; RAC reads it from context. `level={2}` keeps
                 the element a deterministic h2 (#314): the content beneath
                 it steps up from here, not from a library default. */}
-            <Heading slot="title" level={2} className="text-lg font-semibold">
+            <Heading slot="title" level={2} className="text-emph font-semibold">
               {title}
             </Heading>
             {children(close)}

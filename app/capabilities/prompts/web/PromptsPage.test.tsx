@@ -90,6 +90,9 @@ const OVERRIDE = "Continue the story in the voice of a sea captain.";
 const NOVEL_OVERRIDE = "Continue the story in this novel's own voice.";
 const CONSISTENCY_BUNDLED = "Check the findings against the chapters.";
 
+/** The diff the mock answers. A test widens it to force added/removed rows. */
+let diffContent = { bundled_content: BUNDLED, override_content: OVERRIDE };
+
 /** The detail the editor loads, per key and per requested tier. The reads are
  *  scope-aware, so a test wired to the wrong tier reads the wrong words: the
  *  consistency check's global read shows the bundled template, its novel read
@@ -151,7 +154,7 @@ function mockApi(): void {
         };
       case "/api/prompts/{key}/diff":
         return {
-          data: { bundled_content: BUNDLED, override_content: OVERRIDE },
+          data: diffContent,
           response: ok(),
         };
       default:
@@ -180,6 +183,7 @@ function cardOf(label: string): HTMLElement {
 }
 
 beforeEach(() => {
+  diffContent = { bundled_content: BUNDLED, override_content: OVERRIDE };
   mockApi();
 });
 
@@ -484,6 +488,41 @@ describe("the diff view", () => {
     expect(right.parentElement).toBe(left.parentElement);
     expect(screen.getByText(t("prompts.diff.bundled"))).toBeTruthy();
     expect(screen.getByText(t("prompts.diff.override"))).toBeTruthy();
+  });
+
+  it("marks an added line with the state voice, never with the action's colour", async () => {
+    diffContent = { bundled_content: "eins\nzwei", override_content: "eins\nzwei\ndrei" };
+    await renderPage();
+
+    const card = cardOf(t("settings.task.writing.continuation"));
+    await userEvent.click(within(card).getByRole("button", { name: t("prompts.edit") }));
+    await screen.findByRole("textbox", { name: t("prompts.editor.contentLabel") });
+    await userEvent.click(screen.getByRole("button", { name: t("prompts.editor.diff") }));
+    await screen.findByText("drei");
+
+    const marked = [...document.querySelectorAll("pre")].filter((cell) =>
+      cell.className.includes("border-l-2"),
+    );
+    // The added line wears --success; the removed one --danger; --primary is
+    // the action's colour and means exactly one thing (L1).
+    expect(marked.some((cell) => cell.className.includes("border-success"))).toBe(true);
+    expect(marked.every((cell) => !cell.className.includes("border-primary"))).toBe(true);
+  });
+});
+
+describe("the dirty editor", () => {
+  it("asks before another key re-targets the open editor", async () => {
+    await renderPage();
+
+    const first = cardOf(t("settings.task.writing.continuation"));
+    await userEvent.click(within(first).getByRole("button", { name: t("prompts.edit") }));
+    const box = await screen.findByRole("textbox", { name: t("prompts.editor.contentLabel") });
+    await userEvent.type(box, "x");
+
+    const other = cardOf(t("settings.task.chat.ask"));
+    await userEvent.click(within(other).getByRole("button", { name: t("prompts.edit") }));
+
+    expect(screen.getByRole("dialog", { name: t("save.leaveTitle") })).toBeTruthy();
   });
 });
 

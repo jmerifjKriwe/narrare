@@ -1,9 +1,14 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+
+import { useRouter } from "@tanstack/react-router";
 
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
+import { dirtyFields } from "@shell/lib/dirty";
 import { useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { LeaveBlocker } from "@shell/components/LeaveBlocker";
 import { Button } from "@shell/ui/Button";
+import { Dialog } from "@shell/ui/Dialog";
 import { Field, Input, Select } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
@@ -124,6 +129,34 @@ export function ProvidersPanel() {
   const [tasks, setTasks] = useState<TaskEffective[]>([]);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // The values the form was opened with: anything else is dirty and asks
+  // before it is thrown away.
+  const [snapshot, setSnapshot] = useState<FormState>(EMPTY_FORM);
+  const [guardOpen, setGuardOpen] = useState(false);
+  const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
+
+  const dirty = dirtyFields(form, snapshot).length > 0;
+
+  /** Resolve the standing ask; a dismissed dialog means "stay". */
+  function settle(leave: boolean): void {
+    const answer = guardAnswer.current;
+    guardAnswer.current = null;
+    setGuardOpen(false);
+    answer?.(leave);
+  }
+
+  /** Ask before typed values are discarded; a second ask while one stands is a no. */
+  function askToLeave(): Promise<boolean> {
+    if (guardAnswer.current !== null) return Promise.resolve(false);
+    setGuardOpen(true);
+    return new Promise<boolean>((resolve) => {
+      guardAnswer.current = resolve;
+    });
+  }
+
+  // The third door: a route change with a dirty form asks too. The blocker
+  // mounts only where a router exists, so the panel stays renderable alone.
+  const router = useRouter({ warn: false });
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [failure, setFailure] = useState<MessageKey | null>(null);
@@ -184,15 +217,28 @@ export function ProvidersPanel() {
   }
 
   function startEditing(profile: Profile): void {
-    setEditing(profile);
-    setForm(formOf(profile));
+    void (async () => {
+      if (dirty && !(await askToLeave())) return;
+      setEditing(profile);
+      setForm(formOf(profile));
+      setSnapshot(formOf(profile));
+      setSaveFailed(false);
+    })();
+  }
+
+  /** Close the form without a question — after a save it holds nothing new. */
+  function resetForm(): void {
+    setEditing(null);
+    setForm({ ...EMPTY_FORM, kind: "fake" });
+    setSnapshot({ ...EMPTY_FORM, kind: "fake" });
     setSaveFailed(false);
   }
 
   function stopEditing(): void {
-    setEditing(null);
-    setForm({ ...EMPTY_FORM, kind: "fake" });
-    setSaveFailed(false);
+    void (async () => {
+      if (dirty && !(await askToLeave())) return;
+      resetForm();
+    })();
   }
 
   async function submit(event: React.FormEvent): Promise<void> {
@@ -230,7 +276,7 @@ export function ProvidersPanel() {
       // The one response that carries the full key becomes the one box that
       // shows it; dismissed, it never exists again anywhere.
       if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
-      stopEditing();
+      resetForm();
       await reload();
       return;
     }
@@ -255,7 +301,7 @@ export function ProvidersPanel() {
       setSaveFailed(true);
       return;
     }
-    stopEditing();
+    resetForm();
     await reload();
   }
 
@@ -479,6 +525,8 @@ export function ProvidersPanel() {
             <Input
               value={form.name}
               onChange={(event) => set("name", event.target.value)}
+              spellCheck={false}
+              autoComplete="off"
             />
           </Field>
           <Field label={t("settings.profiles.kindLabel")} className={LABEL_ROW}>
@@ -498,12 +546,16 @@ export function ProvidersPanel() {
             <Input
               value={form.baseUrl}
               onChange={(event) => set("baseUrl", event.target.value)}
+              spellCheck={false}
+              autoComplete="off"
             />
           </Field>
           <Field label={t("settings.profiles.modelLabel")} className={LABEL_ROW}>
             <Input
               value={form.model}
               onChange={(event) => set("model", event.target.value)}
+              spellCheck={false}
+              autoComplete="off"
             />
           </Field>
           <Field label={t("settings.profiles.apiKeyLabel")} className={LABEL_ROW}>
@@ -512,6 +564,8 @@ export function ProvidersPanel() {
               value={form.apiKey}
               onChange={(event) => set("apiKey", event.target.value)}
               aria-describedby={apiKeyHintId}
+              spellCheck={false}
+              autoComplete="new-password"
             />
             {editing !== null && editing.api_key_mask !== null ? (
               <p id={apiKeyHintId} className="col-start-2 text-label text-muted">
@@ -636,6 +690,42 @@ export function ProvidersPanel() {
           })}
         </div>
       </section>
+
+      {router ? <LeaveBlocker dirty={dirty} ask={askToLeave} /> : null}
+
+      <Dialog
+        title={t("save.leaveTitle")}
+        isOpen={guardOpen}
+        onOpenChange={(open) => {
+          if (!open) settle(false);
+        }}
+      >
+        {(close) => (
+          <>
+            <p className="mt-2 text-body text-muted">{t("dirty.confirmLeave")}</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  settle(false);
+                  close();
+                }}
+              >
+                {t("save.leaveStay")}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  settle(true);
+                  close();
+                }}
+              >
+                {t("save.leaveGo")}
+              </Button>
+            </div>
+          </>
+        )}
+      </Dialog>
     </>
   );
 }

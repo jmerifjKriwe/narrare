@@ -24,16 +24,30 @@ import { Icon, type IconName } from "../ui/icons";
 type RailTo = ComponentProps<typeof Link>["to"];
 type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 
+/** The rail's four areas and the one utility each may wear: an identity mark
+ *  on the icon, never a fill, a text colour, a cover or a notice. The hues
+ *  are measured ≥ 3:1 against `--panel` in both themes. */
+export const AREA_ICON = {
+  writing: "text-area-writing",
+  knowledge: "text-area-knowledge",
+  chat: "text-area-chat",
+  settings: "text-area-settings",
+} as const;
+
+type RailArea = keyof typeof AREA_ICON;
+
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({
   to,
   label,
   icon,
+  area,
   activeOptions,
 }: {
   to: RailTo;
   label: string;
   icon: IconName;
+  area: RailArea;
   activeOptions?: RailActiveOptions;
 }) {
   return (
@@ -44,10 +58,20 @@ function RailLink({
       /* The L2 pair rides the attribute Link sets when the route matches:
        * a state variant outspecifies the variant paint (text-muted), a
        * plainly appended class would not — the cascade, not the class
-       * string's order, decides. */
-      className={`${buttonClass("icon", "md")} aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
+       * string's order, decides. The icon's own span carries the area hue,
+       * a direct declaration the link's inherited ink cannot override. */
+      className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
-      <Icon name={icon} />
+      <span className={AREA_ICON[area]}>
+        <Icon name={icon} />
+      </span>
+      {/* The name, always in the DOM and clipped by the collapsed rail: a
+          hover or a focused entry opens the rail, and a coarse pointer gets
+          the names permanently. The link's own ink carries the state, so an
+          active entry's label reads foreground like its glyph's cell. */}
+      <span className="min-w-0 justify-self-start whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100">
+        {label}
+      </span>
     </Link>
   );
 }
@@ -73,46 +97,60 @@ export function IconRail() {
     /* The show-leg is the route's answer (the ternary above): from 1280 on
      * the workspace, where the prose floor owns 1024–1279; from 1024 on
      * every other route. `hidden` is shared, so there is one rail and one
-     * element — the cascade never sees two. */
-    <nav
-      aria-label={t("shell.navAria")}
-      /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
-         icon variant's px-2.5), and 48 − 2×6 = 36 exactly — the pill sits
-         inside the rail's rhythm instead of overhanging the padding. */
-      /* h-full, not h-screen: the rail fills the row beneath the bar — a
-         viewport-tall rail there would start 53 px down and end 53 px under
-         the fold, hiding the anchored Settings and scrolling the page that
-         does not otherwise scroll (main owns that). */
-      className={`hidden h-full w-12 shrink-0 flex-col items-center justify-between border-r border-border bg-panel p-1.5 ${onWorkspace ? "xl:flex" : "lg:flex"}`}
+     * element — the cascade never sees two.
+     *
+     * The slot keeps the 48 px column in the layout; the rail inside it
+     * grows over the page on hover and focus, so opening it moves no page
+     * pixel. A coarse pointer has no hover to open it with, so there the
+     * slot and the rail are widened for good — the names are the point. */
+    <div
+      className={`relative hidden w-[var(--rail-width)] shrink-0 ${
+        onWorkspace ? "xl:block" : "lg:block"
+      }`}
     >
-      <div className="flex flex-col items-center gap-1">
-        {/* Home is a shell constant, not a generated row: the shelf is
-            where the app opens, exact — a prefix match would light it on
-            every route. */}
-        <RailLink
-          to="/"
-          label={t("shell.navHome")}
-          icon="books"
-          activeOptions={{ exact: true, includeSearch: false }}
-        />
-        {nav.map((entry) => (
+      <nav
+        aria-label={t("shell.navAria")}
+        /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
+           icon variant's px-2.5), and 48 − 2×6 = 36 exactly — the pill sits
+           inside the rail's rhythm instead of overhanging the padding. */
+        /* inset-y-0, not h-screen: the rail fills the row beneath the bar — a
+           viewport-tall rail there would start 53 px down and end 53 px under
+           the fold, hiding the anchored Settings and scrolling the page that
+           does not otherwise scroll (main owns that). */
+        className="group absolute inset-y-0 left-0 z-20 flex w-[var(--rail-width)] flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] hover:shadow-overlay focus-within:shadow-overlay motion-reduce:transition-none pointer-coarse:shadow-none pointer-coarse:transition-none"
+      >
+        <div className="flex w-full flex-col items-stretch gap-1">
+          {/* Home is a shell constant, not a generated row: the shelf is
+              where the app opens, exact — a prefix match would light it on
+              every route. */}
           <RailLink
-            key={entry.id}
-            to={entry.path}
-            label={t(entry.titleKey)}
-            icon={entry.id}
+            to="/"
+            label={t("shell.navHome")}
+            icon="books"
+            area="writing"
             activeOptions={{ exact: true, includeSearch: false }}
           />
-        ))}
-      </div>
-      {/* Settings is area-wide — the anchor stays lit on the settings
-          cluster's sub-pages, which are settings too. */}
-      <RailLink
-        to="/settings"
-        label={t("shell.settings")}
-        icon="settings"
-        activeOptions={{ includeSearch: false }}
-      />
-    </nav>
+          {nav.map((entry) => (
+            <RailLink
+              key={entry.id}
+              to={entry.path}
+              label={t(entry.titleKey)}
+              icon={entry.id}
+              area={entry.id}
+              activeOptions={{ exact: true, includeSearch: false }}
+            />
+          ))}
+        </div>
+        {/* Settings is area-wide — the anchor stays lit on the settings
+            cluster's sub-pages, which are settings too. */}
+        <RailLink
+          to="/settings"
+          label={t("shell.settings")}
+          icon="settings"
+          area="settings"
+          activeOptions={{ includeSearch: false }}
+        />
+      </nav>
+    </div>
   );
 }
