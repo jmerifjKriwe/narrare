@@ -1,39 +1,73 @@
 import { useEffect, useRef, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
-import { client, isModelChange } from "@shell/lib/api/client";
+import { client, isModelChange, type Job } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { offerProposal } from "@shell/lib/proposal";
 import { readFrames, type Source } from "@shell/lib/stream";
 import { Button } from "@shell/ui/Button";
 import { Field, Input } from "@shell/ui/field";
+import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
-import { Row } from "@shell/ui/Row";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
-/** One question, one streamed answer, the sources it cites — the flow both
- * surfaces share: the standalone page and the workspace dock. */
+/** One turn of the conversation: the question as asked, the answer as it
+ *  streamed, the sources it cited — or the refusal with its way back. A
+ *  later ask never rewrites an earlier turn: the list only grows, so the
+ *  reader keeps what they already read. */
+type Turn = {
+  id: number;
+  question: string;
+  answer: string;
+  sources: Source[] | null;
+  asking: boolean;
+  failed: boolean;
+  modelChanged: boolean;
+  // The offer card is spent once its answer was offered or dropped; a new
+  // question brings a fresh card with its fresh answer.
+  offerSpent: boolean;
+  /** The cited passage on screen: one chip open at a time. */
+  openChunk: string | null;
+};
+
+/** The in-flight ask has no polled job behind it — the stream IS the work —
+ *  so the progress it shows is a running job with nothing reported yet:
+ *  the "Läuft…" line, no bar. The shape is a whole JobRead, not a cast. */
+function askingJob(id: number): Job {
+  return {
+    id: `chat-ask-${id}`,
+    kind: "chat-ask",
+    status: "running",
+    progress: null,
+    error: null,
+    result: null,
+  };
+}
+
+/** The dock (and the page) as a conversation: every ask appends a turn —
+ *  the question, the progress while it streams, the answer with its source
+ *  chips — and a refused turn carries its retry. The same ask endpoint and
+ *  the same streaming path as the form before it; only the reading changed. */
 export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
   const t = useTranslation();
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [sources, setSources] = useState<Source[] | null>(null);
-  const [asking, setAsking] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [modelChanged, setModelChanged] = useState(false);
-  // The offer card is spent once its answer was offered or dropped; a new
-  // question brings a fresh card with its fresh answer.
-  const [offerSpent, setOfferSpent] = useState(false);
+  const [turns, setTurns] = useState<Turn[]>([]);
+  // The turn counter lives beside the abort line: both outlive any one ask.
+  const nextId = useRef(0);
   // The abort line of the in-flight ask. Closing the dock — or leaving the
   // page, same unmount — stops the answer at the fetch instead of streaming
   // it into a panel that is gone.
   const askAbort = useRef<AbortController | null>(null);
   useEffect(() => () => askAbort.current?.abort(), []);
 
+  function patchTurn(id: number, patch: Partial<Turn>) {
+    setTurns((current) =>
+      current.map((turn) => (turn.id === id ? { ...turn, ...patch } : turn)),
+    );
+  }
+
   /** Replace the previous answer with a streamed reply; show failures unless unmount aborted it. */
-  async function ask(event: React.FormEvent) {
-    event.preventDefault();
-    if (question.trim() === "") return;
+  async function runAsk(id: number, asked: string) {
     // A second ask while one streams supersedes it: abort the in-flight
     // fetch so its late deltas can never write into this ask's fresh
     // answer — and a superseded ask never announces, its loop returning
@@ -41,42 +75,61 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
     askAbort.current?.abort();
     const controller = new AbortController();
     askAbort.current = controller;
-    setAsking(true);
-    setAnswer("");
-    setSources(null);
-    setFailed(false);
-    setModelChanged(false);
-    setOfferSpent(false);
+    // The new turn opens asking with a clean slate; a still-asking older
+    // turn settles here — superseded, not failed: it keeps the partial
+    // answer it streamed, silently.
+    setTurns((current) =>
+      current.map((turn) =>
+        turn.id === id
+          ? {
+              ...turn,
+              asking: true,
+              answer: "",
+              sources: null,
+              failed: false,
+              modelChanged: false,
+              offerSpent: false,
+              openChunk: null,
+            }
+          : turn.asking
+            ? { ...turn, asking: false }
+            : turn,
+      ),
+    );
     // Whether this ask actually wrote words: an empty-but-clean stream has
-    // no answer to call ready, so it stays silent with its empty region.
+    // no answer to call ready, so it stays silent with its empty turn.
     let sawDelta = false;
     try {
       // parseAs "stream": the answer arrives as frames while it is written.
       const limit = 5; // the server's own default, pinned here by the request type
       const { error, response } = await client.POST("/api/chat/ask", {
-        body: { question, limit },
+        body: { question: asked, limit },
         parseAs: "stream",
         signal: controller.signal,
       });
       if (!response.ok) {
         // The mismatch refusal names its fix; every other failure stays generic.
-        setModelChanged(isModelChange(error));
-        setFailed(true);
+        patchTurn(id, { modelChanged: isModelChange(error), failed: true });
         return;
       }
       for await (const frame of readFrames(response)) {
         // The panel went away with this ask's answer still streaming: write
         // nothing more into it.
         if (controller.signal.aborted) return;
-        if (frame.sources) setSources(frame.sources);
+        if (frame.sources) patchTurn(id, { sources: frame.sources });
         if (frame.delta) {
           sawDelta = true;
-          setAnswer((current) => current + frame.delta);
+          const delta = frame.delta;
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.id === id ? { ...turn, answer: turn.answer + delta } : turn,
+            ),
+          );
         }
         // An error frame replaces the done frame: the provider died, and a
         // silent end would look like a complete answer.
         if (frame.error) {
-          setFailed(true);
+          patchTurn(id, { failed: true });
           return;
         }
       }
@@ -93,17 +146,50 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       // the fetch rejects with it, and there is no panel left to tell.
       // Everything else is the wire dying mid-answer: a rethrow would leave
       // a half answer looking finished beside an unhandled rejection. The
-      // failure belongs on the panel, exactly like a refusal does.
-      if (!controller.signal.aborted) setFailed(true);
+      // failure belongs on the turn, exactly like a refusal does.
+      if (!controller.signal.aborted) patchTurn(id, { failed: true });
     } finally {
       // The cleanup owns only its own ask: a later ask that began while
       // this one settles has replaced the ref, and nulling it now would
       // take the unmount abort away from the ask still streaming — the
       // very zombie the ref exists to prevent.
       if (askAbort.current === controller) askAbort.current = null;
-      if (!controller.signal.aborted) setAsking(false);
+      if (!controller.signal.aborted) patchTurn(id, { asking: false });
     }
   }
+
+  async function ask(event: React.FormEvent) {
+    event.preventDefault();
+    if (question.trim() === "") return;
+    const id = nextId.current;
+    nextId.current += 1;
+    const asked = question;
+    setTurns((current) => [
+      ...current,
+      {
+        id,
+        question: asked,
+        answer: "",
+        sources: null,
+        asking: false,
+        failed: false,
+        modelChanged: false,
+        offerSpent: false,
+        openChunk: null,
+      },
+    ]);
+    await runAsk(id, asked);
+  }
+
+  /** The refusal's way back: the same ask, on the same turn — the list
+   *  grows only for new questions, never for another attempt. */
+  function retryTurn(id: number, asked: string) {
+    void runAsk(id, asked);
+  }
+
+  // The one turn still streaming, for the ask button's disabled state: the
+  // button stays the panel's one primary while an answer is on its way.
+  const asking = turns.some((turn) => turn.asking);
 
   return (
     <>
@@ -129,63 +215,97 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           {t("chat.ask")}
         </Button>
       </form>
-      <section aria-label={t("chat.answerLabel")} className="mt-6">
-        <p className="whitespace-pre-wrap text-body leading-relaxed">{answer}</p>
-        {failed ? (
-          <Notice tone="danger" live="alert" className="mt-2">
-            {modelChanged ? t("chat.modelChanged") : t("chat.error")}
-          </Notice>
-        ) : null}
-        {/* The dock's own follow-through: a complete answer can be handed
-            to the editor beside it — as a ghost there, never as text
-            without the writer's keypress. The standalone page has no
-            editor to offer into, so it never shows the card. */}
-        {canOffer && !asking && !failed && answer !== "" && !offerSpent ? (
-          <ProposalCard
-            titleKey="chat.offerAsVariant"
-            body={answer}
-            onAccept={() => {
-              setOfferSpent(true);
-              offerProposal(answer);
-            }}
-            onDiscard={() => setOfferSpent(true)}
-          />
-        ) : null}
-      </section>
-      {sources === null ? null : (
-        <section aria-label={t("chat.sources")} className="mt-6">
-          {sources.length === 0 ? (
-            <Notice tone="quiet">{t("chat.noSources")}</Notice>
-          ) : (
-            // The sources are a real list (assistive tech announces the
-            // count); each entry is a row on the rule — the document's
-            // title, the quoted passage under it. The last row yields its
-            // rule through an index-pinned inline style: a class-level
-            // `:last-child` is useless here — every Row is its li's only
-            // child, so it matches all of them — and an inline declaration
-            // beats the utilities the row already wears, reliably.
-            <ul className="flex flex-col">
-              {sources.map((source, index) => (
-                <li key={source.chunk_id}>
-                  <Row
-                    as="div"
-                    flush
-                    className="h-auto flex-col items-stretch py-2"
-                    style={
-                      index === sources.length - 1
-                        ? { borderBottomWidth: 0 }
-                        : undefined
+      {turns.length === 0 ? null : (
+        <section aria-label={t("chat.answerLabel")} className="mt-6">
+          {/* The conversation, oldest first: the question, the progress
+              while its answer streams, the answer with its source chips.
+              One list, never rewritten — a superseded turn keeps the half
+              answer it managed, below it the new turn starts. */}
+          <ol className="flex flex-col gap-6">
+            {turns.map((turn) => (
+              <li key={turn.id} data-turn={turn.id}>
+                <p className="text-label font-semibold">{turn.question}</p>
+                {turn.asking ? (
+                  <div className="mt-2">
+                    <JobStatus job={askingJob(turn.id)} />
+                  </div>
+                ) : null}
+                {turn.answer === "" ? null : (
+                  <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed">
+                    {turn.answer}
+                  </p>
+                )}
+                {turn.failed ? (
+                  <Notice
+                    tone="danger"
+                    live="alert"
+                    className="mt-2"
+                    action={
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => retryTurn(turn.id, turn.question)}
+                      >
+                        {t("settings.retry")}
+                      </Button>
                     }
                   >
-                    <span className="text-label font-semibold">{source.document_title}</span>
-                    <span className="text-body leading-relaxed text-muted group-hover:text-foreground">
-                      {source.text}
-                    </span>
-                  </Row>
-                </li>
-              ))}
-            </ul>
-          )}
+                    {turn.modelChanged ? t("chat.modelChanged") : t("chat.error")}
+                  </Notice>
+                ) : null}
+                {turn.sources === null ? null : turn.sources.length === 0 ? (
+                  <Notice tone="quiet" className="mt-2">
+                    {t("chat.noSources")}
+                  </Notice>
+                ) : (
+                  // The citations are chips, not rows: each chip wears the
+                  // cited document's title — the citation target, never a
+                  // bare URL — and opens its quoted passage underneath. One chip
+                  // open at a time; the answer above already quotes the
+                  // passage, so nothing hides behind a closed chip.
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {turn.sources.map((source) => (
+                      <li key={source.chunk_id}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          aria-expanded={turn.openChunk === source.chunk_id}
+                          onClick={() =>
+                            patchTurn(turn.id, {
+                              openChunk:
+                                turn.openChunk === source.chunk_id ? null : source.chunk_id,
+                            })
+                          }
+                        >
+                          {source.document_title}
+                        </Button>
+                        {turn.openChunk === source.chunk_id ? (
+                          <p className="mt-1 whitespace-pre-wrap text-body leading-relaxed text-muted">
+                            {source.text}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* The dock's own follow-through: a complete answer can be handed
+                    to the editor beside it — as a ghost there, never as text
+                    without the writer's keypress. The standalone page has no
+                    editor to offer into, so it never shows the card. */}
+                {canOffer && !turn.asking && !turn.failed && turn.answer !== "" && !turn.offerSpent ? (
+                  <ProposalCard
+                    titleKey="chat.offerAsVariant"
+                    body={turn.answer}
+                    onAccept={() => {
+                      patchTurn(turn.id, { offerSpent: true });
+                      offerProposal(turn.answer);
+                    }}
+                    onDiscard={() => patchTurn(turn.id, { offerSpent: true })}
+                  />
+                ) : null}
+              </li>
+            ))}
+          </ol>
         </section>
       )}
     </>
