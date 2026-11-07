@@ -77,9 +77,12 @@ review is green. A commit made through an agent ends with the trailer
 committer stay the human.
 
 A branch lands as a merge commit: its commits reach `main` unchanged and are the
-changelog entries release-please reads. A PR title is none of them; it is the sentence
-reviewers read, and it follows the same `type(scope): effect` grammar. Title and
-subject name the change, not the work package: no `Phase 0`, `Wave 1`, `P1`, `T17`, no
-programme name; the plan and `spec §3.5` belong in the body as references. Work no
+changelog entries release-please reads. A PR title is none of them, and it is deliberately
+**not** conventional: GitHub writes the title into the merge commit's body, and a title
+that reads like a commit makes release-please parse it as a second change — the duplicate
+lines in `v0.3.0` and `v0.3.1` are exactly that. The title is the sentence reviewers read:
+plain language, naming the change, not the work package: no `Phase 0`, `Wave 1`, `P1`,
+`T17`, no programme name; the plan and `spec §3.5` belong in the body as references. The
+commit subjects carry the grammar, and the local commit-message hook is what checks it. Work no
 user can observe states its effect — a build that can no longer go red — and never
 claims a benefit it lacks. A commit whose content is the plan may name the phase.
