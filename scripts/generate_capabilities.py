@@ -2,17 +2,19 @@
 """Write every generated view of the capability facts and the language list.
 
 Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §4) —
-and ``i18n/*.json``, whose *filenames* are the set of languages. Nothing declares
-a language twice. Nine views, none hand-edited, all committed:
+``i18n/*.json`` for the shared text, whose *filenames* are the set of languages,
+and ``app/capabilities/*/web/i18n/*.json`` for each capability's own text. Nothing
+declares a language twice. Nine views, none hand-edited, all committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
 * ``web/lib/generated/capabilities.ts`` — the nav entries the home page renders,
-  with title keys the TypeScript compiler checks against the i18n catalog;
+  with title keys the TypeScript compiler checks against the merged catalog;
 * ``app/generated/locales.py`` — the languages, for anything server-side that
   validates one;
 * ``web/lib/generated/catalogs.ts`` — the imports, the ``Locale`` union and the
-  catalog map, so a new ``i18n/<code>.json`` needs no TypeScript edit;
+  merged catalog map, so a new ``i18n/<code>.json`` or a new capability
+  catalog needs no TypeScript edit;
 * ``web/lib/generated/routes.ts`` — the capability route table the router
   mounts, one import per capability that owns ``web/routes.tsx``, and the
   composition points of two conventions: dockRoutes factories are called with
@@ -31,15 +33,17 @@ a language twice. Nine views, none hand-edited, all committed:
 * ``docs/user/INDEX.md`` — one row per capability per locale, with the table's
   own words read from the catalogs.
 
-Adding a language is therefore one file plus ``just generate``. A field no view
-reads is deleted from the Facts schema; a view no consumer reads is deleted with
-it. ``just generate`` runs this after the facts change.
+Adding a language is therefore one central file plus one file per capability
+that owns text, then ``just generate``. A field no view reads is deleted from
+the Facts schema; a view no consumer reads is deleted with it. ``just generate``
+runs this after the facts change.
 """
 
 import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -98,15 +102,73 @@ def locales(root: Path) -> tuple[str, ...]:
     return tuple([SOURCE_LOCALE] + [locale for locale in found if locale != SOURCE_LOCALE])
 
 
+def catalog_sources(root: Path, known: tuple[str, ...]) -> dict[str, tuple[Path, ...]]:
+    """Every file one locale's catalog is merged from.
+
+    The central ``i18n/<locale>.json`` leads — it is the language registry and
+    the shared text — and each capability's ``web/i18n/<locale>.json`` follows,
+    sorted by capability id. A capability that carries an ``i18n`` directory
+    must carry every locale: a half-translated capability would render one
+    language from its file and another from nowhere.
+    """
+    central = root / "i18n"
+    capabilities = root / "app" / "capabilities"
+    sources: dict[str, list[Path]] = {locale: [central / f"{locale}.json"] for locale in known}
+    if capabilities.is_dir():
+        for folder in sorted(capabilities.iterdir()):
+            i18n = folder / "web" / "i18n"
+            if not i18n.is_dir():
+                continue
+            for locale in known:
+                source = i18n / f"{locale}.json"
+                if not source.is_file():
+                    raise SystemExit(
+                        f"{source} is missing: {folder.name} carries an i18n"
+                        f" directory, so it must carry every catalog locale"
+                        f" ({', '.join(known)})"
+                    )
+                sources[locale].append(source)
+    return {locale: tuple(paths) for locale, paths in sources.items()}
+
+
+def load_catalog(source: Path) -> dict[str, str]:
+    """One catalog file, checked for the shape and order the merge relies on."""
+    loaded = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise SystemExit(f"{source}: a catalog is a JSON object")
+    catalog: dict[str, str] = {}
+    for key, value in cast("dict[object, object]", loaded).items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise SystemExit(f"{source}: every key and value is a string")
+        catalog[key] = value
+    keys = list(catalog)
+    if keys != sorted(keys):
+        raise SystemExit(
+            f"{source}: keys are not sorted; one stable order keeps a new key"
+            " where it belongs instead of at the end"
+        )
+    return catalog
+
+
 def catalogs(root: Path, known: tuple[str, ...]) -> dict[str, dict[str, str]]:
-    """Load every catalog and check the keys the generated views use."""
+    """Merge every source per locale, refusing a key with two owners."""
+    sources = catalog_sources(root, known)
     loaded: dict[str, dict[str, str]] = {}
     for locale in known:
-        source = root / "i18n" / f"{locale}.json"
-        loaded[locale] = json.loads(source.read_text(encoding="utf-8"))
-        missing = [key for key in REQUIRED_DOC_KEYS if key not in loaded[locale]]
+        merged: dict[str, str] = {}
+        owner: dict[str, Path] = {}
+        for source in sources[locale]:
+            for key, value in load_catalog(source).items():
+                if key in merged:
+                    raise SystemExit(
+                        f"{key!r} is defined in both {owner[key]} and {source}; a key has one owner"
+                    )
+                merged[key] = value
+                owner[key] = source
+        missing = [key for key in REQUIRED_DOC_KEYS if key not in merged]
         if missing:
-            raise SystemExit(f"{source}: missing keys {missing}")
+            raise SystemExit(f"{root / 'i18n' / f'{locale}.json'}: missing keys {missing}")
+        loaded[locale] = merged
     return loaded
 
 
@@ -162,23 +224,52 @@ def python_locales(known: tuple[str, ...]) -> str:
     )
 
 
-def typescript_catalogs(known: tuple[str, ...]) -> str:
-    """The web-side view: imports, the locale union and the catalog map."""
-    imports = "".join(f'import {locale} from "../../../i18n/{locale}.json";\n' for locale in known)
+def _identifier(value: str) -> str:
+    """A locale code or capability id as a TypeScript identifier fragment."""
+    return re.sub(r"[^0-9A-Za-z_]", "_", value)
+
+
+def typescript_catalogs(root: Path, known: tuple[str, ...]) -> str:
+    """The web-side view: one merged object per locale, typed from the source."""
+    sources = catalog_sources(root, known)
+    imports: list[str] = []
+    merged: list[str] = []
+    mapping: list[str] = []
+    for locale in known:
+        loc = _identifier(locale)
+        aliases: list[str] = []
+        for source in sources[locale]:
+            if source == root / "i18n" / f"{locale}.json":
+                alias = f"{loc}_central"
+            else:
+                capability = source.parents[2].name
+                alias = f"{loc}_{_identifier(capability)}"
+            imports.append(
+                f'import {alias} from "../../../{source.relative_to(root).as_posix()}";\n'
+            )
+            aliases.append(alias)
+        merged.append(
+            f"const {loc}_merged = {{\n" + "".join(f"  ...{alias},\n" for alias in aliases) + "};\n"
+        )
+        mapping.append(f'  "{locale}": {loc}_merged,\n')
     union = ", ".join(f'"{locale}"' for locale in known)
-    mapping = ", ".join(known)
+    source_merged = f"{_identifier(SOURCE_LOCALE)}_merged"
     return (
-        "// Generated by scripts/generate_capabilities.py from i18n/*.json — DO NOT EDIT.\n"
-        "// Adding a language is i18n/<code>.json plus `just generate`: the union and\n"
-        "// the map below are written from the files that exist.\n"
-        f"{imports}"
+        "// Generated by scripts/generate_capabilities.py from i18n/*.json and\n"
+        "// app/capabilities/*/web/i18n/*.json — DO NOT EDIT.\n"
+        "// A capability's text is merged over the shared catalog; a new capability\n"
+        "// file appears on the next `just generate`.\n"
+        f"{''.join(imports)}"
         "\n"
         f"export const locales = [{union}] as const;\n"
         "export type Locale = (typeof locales)[number];\n"
         "\n"
+        f"{''.join(merged)}"
+        "\n"
         "// Typed against the source catalog: a key missing in any locale is a build\n"
         "// error at this assignment, not a blank label at runtime.\n"
-        f"export const catalogs: Record<Locale, typeof {SOURCE_LOCALE}> = {{ {mapping} }};\n"
+        f"export const catalogs: Record<Locale, typeof {source_merged}> = {{\n"
+        f"{''.join(mapping)}}};\n"
     )
 
 
@@ -238,15 +329,15 @@ def typescript_nav(entries: tuple[Facts, ...]) -> str:
         "// Generated by scripts/generate_capabilities.py from"
         " app/capabilities/*/capability.yaml — DO NOT EDIT.\n"
         "// The web-side view of the capability facts: the home page navigation. The\n"
-        "// title keys are checked against the English catalog by the compiler, so a\n"
-        "// missing i18n key fails the build.\n"
-        'import en from "../../../i18n/en.json";\n'
+        "// title keys are checked against the merged English catalog by the compiler,\n"
+        "// so a missing i18n key fails the build.\n"
+        'import { catalogs } from "./catalogs";\n'
         "\n"
         "export const nav = [\n"
         f"{rows}] as const satisfies ReadonlyArray<{{\n"
         "  id: string;\n"
         "  path: string;\n"
-        "  titleKey: keyof typeof en;\n"
+        "  titleKey: keyof typeof catalogs.en;\n"
         "}>;\n"
     )
 
@@ -595,13 +686,13 @@ def typescript_docks(root: Path) -> str:
         "//\n"
         "// as const, no annotation: the literal path carries each row's route\n"
         "// into the tab's `to=` (a drifted row is a build error), and the\n"
-        "// title keys are checked against the English catalog by the compiler.\n"
-        'import en from "../../../i18n/en.json";\n'
+        "// title keys are checked against the merged English catalog by the compiler.\n"
+        'import { catalogs } from "./catalogs";\n'
         "\n"
         f"{table} satisfies ReadonlyArray<{{\n"
         "  id: string;\n"
         "  path: string;\n"
-        "  titleKey: keyof typeof en;\n"
+        "  titleKey: keyof typeof catalogs.en;\n"
         "}>;\n"
     )
 
@@ -629,13 +720,13 @@ def typescript_settings_pages(root: Path) -> str:
         "//\n"
         "// as const, no annotation: the literal path carries each row's route\n"
         "// into the cluster's `to=` (a drifted row is a build error), and the\n"
-        "// title keys are checked against the English catalog by the compiler.\n"
-        'import en from "../../../i18n/en.json";\n'
+        "// title keys are checked against the merged English catalog by the compiler.\n"
+        'import { catalogs } from "./catalogs";\n'
         "\n"
         f"{table} satisfies ReadonlyArray<{{\n"
         "  id: string;\n"
         "  path: string;\n"
-        "  titleKey: keyof typeof en;\n"
+        "  titleKey: keyof typeof catalogs.en;\n"
         "}>;\n"
     )
 
@@ -766,7 +857,7 @@ def main() -> None:
         "app/generated/capabilities.py": python_registry(loaded_facts),
         "app/generated/locales.py": python_locales(known),
         "web/lib/generated/capabilities.ts": typescript_nav(loaded_facts),
-        "web/lib/generated/catalogs.ts": typescript_catalogs(known),
+        "web/lib/generated/catalogs.ts": typescript_catalogs(root, known),
         "web/lib/generated/routes.ts": typescript_routes(root),
         "web/lib/generated/docks.ts": typescript_docks(root),
         "web/lib/generated/settingsPages.ts": typescript_settings_pages(root),

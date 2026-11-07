@@ -73,6 +73,37 @@ user can observe — including internal production code — goes under
 `chore(<scope>): …`. The `User-visible:` rule and the scope convention live in
 [`AGENTS.md`](AGENTS.md) and are checked in review.
 
+## Internationalization (i18n)
+
+User-visible text lives in the catalogs, never in a component. The shell's and
+shared text lives in `i18n/<code>.json`; a capability's own text lives in
+`app/capabilities/<id>/web/i18n/<code>.json`. The generator merges both into
+`web/lib/generated/catalogs.ts`; a missing key in any catalog is a build error.
+
+- **Prefix keys with their feature namespace**, not the capability id:
+  `novels.heading`, `settings.language`, `knowledge.type.character`. The file
+  path carries capability ownership; the key keeps the feature readable.
+- **Sort keys alphabetically** in every catalog file. The generator refuses an
+  unsorted file, so a new key lands where it belongs instead of at the end.
+- **Cover every plural category.** For a message with `{count, plural, …}`,
+  check `Intl.PluralRules("<code>").resolvedOptions().pluralCategories` and
+  write a branch for each. The parser test proves syntax, not grammar.
+- **Watch ICU quoting.** A lone `'` starts a quoted literal: `'{name}'` prints
+  the braces, not the value. Use typographic quotes in prose or escape them.
+- **Name languages in their own words** via `locale.name` (Deutsch, Français,
+  English); the switcher shows the endonym whatever the app currently speaks.
+- **Never hardcode a locale list.** The set of languages is discovered from
+  `i18n/*.json`; a new catalog appears in the union and the switcher on the
+  next `just generate`.
+- **Format through `web/lib/format.ts`.** `formatDate`, `formatNumber` and
+  `formattingLocale` keep the chosen language and take the browser's regional
+  variant when it agrees (`de` + `de-AT` → `de-AT`). Do not call
+  `toLocaleString` with a hand-written locale.
+
+Adding a language means one central catalog plus one file per capability that
+owns keys, then `just generate`. Translating all keys is the work; registering
+the language is not.
+
 ## Changing the Schema
 
 The models — `app/kernel/contracts/models.py`, `app/kernel/jobs/models.py`,

@@ -10,7 +10,6 @@ drift test guards — so forgetting `just generate` must be a red suite, not a
 wrong UI.
 """
 
-import json
 from pathlib import Path
 
 import pytest
@@ -72,9 +71,9 @@ def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
     # The map and the Locale union are generated from i18n/*.json: a language
     # added without `just generate` would exist on disk and not in the build.
     known, _, _ = _views()
-    assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(known), (
-        "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
-    )
+    assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(
+        ROOT, known
+    ), "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
 
 
 def test_committed_typescript_routes_match_the_route_sources() -> None:
@@ -121,11 +120,10 @@ def test_every_facts_title_key_exists_in_every_catalog() -> None:
     # facts() raises on a missing key; this test names the rule for the reader:
     # a capability's label is user-visible text, and user-visible text exists
     # in en, de and fr or nowhere.
-    known, _, loaded_facts = _views()
+    known, loaded, loaded_facts = _views()
     for locale in known:
-        catalog = json.loads((ROOT / "i18n" / f"{locale}.json").read_text(encoding="utf-8"))
         for capability in loaded_facts:
-            assert capability.title in catalog
+            assert capability.title in loaded[locale]
 
 
 def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:
@@ -277,7 +275,7 @@ def test_settings_pages_table_renders_the_rows_like_the_dock_registry(
     )
     assert "export const settingsPages = [\n" in pages
     assert "] as const satisfies ReadonlyArray<{" in pages
-    assert "titleKey: keyof typeof en;" in pages
+    assert "titleKey: keyof typeof catalogs.en;" in pages
 
 
 def test_routes_table_wires_settings_factories_after_the_settings_route(

@@ -6,8 +6,8 @@
 //
 // as const, no annotation: the literal path carries each row's route
 // into the tab's `to=` (a drifted row is a build error), and the
-// title keys are checked against the English catalog by the compiler.
-import en from "../../../i18n/en.json";
+// title keys are checked against the merged English catalog by the compiler.
+import { catalogs } from "./catalogs";
 
 export const docks = [
   { id: "chat", path: "/novels/$id/chat", titleKey: "chat.dockTitle" },
@@ -15,5 +15,5 @@ export const docks = [
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;
-  titleKey: keyof typeof en;
+  titleKey: keyof typeof catalogs.en;
 }>;

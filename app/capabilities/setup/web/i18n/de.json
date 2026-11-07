@@ -1,0 +1,15 @@
+{
+  "setup.demo.blank": "Leer beginnen",
+  "setup.demo.blankHint": "Ein leerer Roman, bereit für dein erstes Kapitel.",
+  "setup.demo.chapters": "{count, plural, one {# Kapitel} other {# Kapitel}}",
+  "setup.demo.entities": "{count, plural, one {# Wissenseintrag} other {# Wissenseinträge}}",
+  "setup.demo.heading": "Mit einem Demo-Roman beginnen",
+  "setup.demo.language": "{language, select, de {Deutsch} en {Englisch} other {{language}}}",
+  "setup.demo.titleReplaces": "Ein Demo-Roman bringt seinen eigenen Titel mit — dieser Roman wird „{title}“ heißen.",
+  "setup.failed": "Die Einrichtung ist fehlgeschlagen.",
+  "setup.intro": "Lege deinen ersten Roman an.",
+  "setup.submit": "Los geht's",
+  "setup.tabTitle": "Willkommen",
+  "setup.titleLabel": "Titel des Romans",
+  "setup.welcome": "Willkommen bei Narrare"
+}
