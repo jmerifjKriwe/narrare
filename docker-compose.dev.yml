@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: narrare
       POSTGRES_DB: narrare_v2_dev
     ports:
-      - "${NARRE_DEV_DB_PORT:-5432}:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
       POSTGRES_USER: narrare
       POSTGRES_PASSWORD: narrare
     ports:
-      - "${NARRE_TEST_DB_PORT:-5433}:5432"
+      - "5433:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:

@@ -306,37 +306,12 @@ def test_the_server_honours_the_environment_override() -> None:
 
 
 def test_the_server_defaults_to_the_compose_address() -> None:
-    carried_url = environ.get("NARRE_TEST_DATABASE_URL")
-    carried_port = environ.get("NARRE_TEST_DB_PORT")
+    carried = environ.get("NARRE_TEST_DATABASE_URL")
     environ.pop("NARRE_TEST_DATABASE_URL", None)
-    environ.pop("NARRE_TEST_DB_PORT", None)
     try:
         assert reload(testsupport).SERVER == DEFAULT
     finally:
-        _restore(carried_url)
-        if carried_port is None:
-            environ.pop("NARRE_TEST_DB_PORT", None)
-        else:
-            environ["NARRE_TEST_DB_PORT"] = carried_port
-        reload(testsupport)
-
-
-def test_the_server_honours_the_port_override() -> None:
-    carried_url = environ.get("NARRE_TEST_DATABASE_URL")
-    carried_port = environ.get("NARRE_TEST_DB_PORT")
-    environ.pop("NARRE_TEST_DATABASE_URL", None)
-    environ["NARRE_TEST_DB_PORT"] = "5434"
-    try:
-        module = reload(testsupport)
-        assert module.SERVER == OVERRIDE
-        assert module.url_for("narrare_v2_test").startswith(OVERRIDE)
-    finally:
-        _restore(carried_url)
-        if carried_port is None:
-            environ.pop("NARRE_TEST_DB_PORT", None)
-        else:
-            environ["NARRE_TEST_DB_PORT"] = carried_port
-        reload(testsupport)
+        _restore(carried)
 
 
 def test_a_reload_keeps_this_runs_names() -> None:

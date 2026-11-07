@@ -22,11 +22,6 @@ just dev-setup
 just dev          # API on :8000, web on :3100
 ```
 
-Two checkouts on one machine: copy `.env.example` to `.env` in each, then set
-`NARRE_DEV_DB_PORT` / `NARRE_TEST_DB_PORT` (and `NARRE_E2E_API_PORT` /
-`NARRE_E2E_WEB_PORT`) to disjoint values so the compose stacks and the test
-server do not collide. See `.env.example` (Dev database ports).
-
 Open <http://localhost:3100> — a fresh database lands on `/setup`. There is no
 other setup variant: the schema comes from the models, brought to the migration
 history's head by `just db-init`. A schema change ships as a revision
