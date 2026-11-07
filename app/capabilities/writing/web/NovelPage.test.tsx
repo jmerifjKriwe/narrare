@@ -726,6 +726,30 @@ describe("the rail's reorder", () => {
     invalidate.mockRestore();
   });
 
+  it("a_refused_move_from_the_runhead_is_named_with_the_rail_hidden", { timeout: 10_000 }, async () => {
+    mockTwoNamedChapters();
+    // A second tab rearranged the book first: the PUT answers 409.
+    api.PUT.mockResolvedValue({ response: new Response(null, { status: 409 }) });
+    // The rail collapsed: the runhead's move items are still offered —
+    // and the refusal must be named on a surface that is on screen.
+    // (`?rail=false`, the toggle's own encoding: this router carries no
+    // validateSearch, and the raw parser hands booleans, not the 0 the
+    // page's own route would normalize.)
+    renderAt(`/novels/${NOVEL_ID}?rail=false`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    expect(screen.queryByRole("complementary")).toBeNull();
+
+    // The last-touched chapter is the open one; its menu offers the move.
+    const openTitle = "Zweites";
+    await user.click(screen.getByRole("button", { name: t("chapters.actionsFor", { title: openTitle }) }));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.moveUp") }));
+
+    // The refusal is named in the editor column, the surface that stayed.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+  });
+
   it("a_successful_move_invalidates_the_shelf", { timeout: 10_000 }, async () => {
     const user = await renderTwoChapters(false);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");

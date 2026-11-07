@@ -1189,6 +1189,19 @@ export function NovelPage() {
                     {t("chapters.refreshFailed")}
                   </Notice>
                 ) : null}
+                {orderFailed && !showRail ? (
+                  // The same refusal the rail's aside names, for the
+                  // states that have no rail to name it: the runhead's
+                  // move items render at a focus depth that hides the
+                  // rail and with the column collapsed, and a 409 there
+                  // would revert silently. One of the two notices is
+                  // mounted at any time — `showRail` partitions them —
+                  // so the alert is announced once, from the surface
+                  // that is on screen.
+                  <Notice tone="danger" live="alert" className="mt-6">
+                    {t("chapters.orderFailed")}
+                  </Notice>
+                ) : null}
                 {current ? (
                   <ChapterEditor
                     key={current.id}
