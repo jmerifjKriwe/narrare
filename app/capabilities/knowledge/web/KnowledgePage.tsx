@@ -6,7 +6,9 @@ import { Dialog } from "@shell/ui/Dialog";
 import { Field, FileInput, Input } from "@shell/ui/field";
 import { client, isModelChange, type Hit, type KnowledgeDocument } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
+import { useDeleteDocument } from "@shell/lib/query";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 import { Row } from "@shell/ui/Row";
@@ -44,6 +46,36 @@ async function askDocuments(): Promise<Load> {
   } catch {
     return { kind: "failed" };
   }
+}
+
+/**
+ * A byte count in human reading, on the decimal ladder the 1 MB upload
+ * limit itself speaks, one decimal past the unit — the limit's own edge
+ * reads "1.0 MB", not "1000 kB". `null` is a size the row predates: the
+ * size is unknown, and unknown is not a guessed "0 B", so the caller
+ * renders no size slot at all. Exported for the unit test.
+ */
+export function formatBytes(bytes: number | null): string | null {
+  if (bytes === null) return null;
+  const units = ["B", "kB", "MB"] as const;
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${units[unit]}`;
+}
+
+/**
+ * An upload's calendar date in the reader's own words — "7. Nov. 2026",
+ * "Nov 7, 2026" — chosen by Intl in the active locale, the platform's
+ * wording so no catalog carries it (`formatRelative`'s precedent).
+ */
+function formatUploadedDate(timestamp: string): string {
+  return new Intl.DateTimeFormat(activeLocale(), { dateStyle: "medium" }).format(
+    Date.parse(timestamp),
+  );
 }
 
 /**
@@ -129,6 +161,115 @@ function UploadForm({
         {t("knowledge.upload")}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Delete a document: the warning says the two things a writer needs
+ * before confirming — this is final, and final only here: the original
+ * file on disk stays where it was uploaded from (WP3 D2). The confirm is
+ * the book delete's shape: a refusal stays open and is named where the
+ * retry — the same button — sits; the 204 closes the dialog and
+ * refreshes the one read that shows the list.
+ */
+function DeleteForm({
+  document,
+  close,
+  onDeleted,
+}: {
+  document: KnowledgeDocument;
+  close: () => void;
+  onDeleted: () => Promise<void>;
+}) {
+  const t = useTranslation();
+  const deleteDocument = useDeleteDocument();
+  const [busy, setBusy] = useState(false);
+  const [refusal, setRefusal] = useState(false);
+
+  /** Confirm the delete: the 204 closes after the list has re-read; a refusal stays and is named. */
+  async function confirm() {
+    setBusy(true);
+    setRefusal(false);
+    try {
+      await deleteDocument.mutateAsync(document.id);
+    } catch {
+      setRefusal(true);
+      return;
+    } finally {
+      setBusy(false);
+    }
+    await onDeleted();
+    close();
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      <p className="text-body text-muted">
+        {t("knowledge.deleteBody", { title: document.title })}
+      </p>
+      {refusal ? (
+        <Notice tone="danger" live="alert">
+          {t("knowledge.errorDelete")}
+        </Notice>
+      ) : null}
+      <div className="mt-2 flex justify-end gap-3">
+        <Button onClick={close}>{t("knowledge.cancel")}</Button>
+        <Button variant="primary" disabled={busy} onClick={() => void confirm()}>
+          {t("knowledge.delete")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One document in the list: its name, and the three facts the row's own
+ * read already holds — what was stored (the size; a row from before the
+ * column knows no size, and the row says nothing rather than guess a
+ * "0 B"), what it answers search with (its passages), and when it came
+ * in. The delete rides at the row's end behind its confirm, named for
+ * the document it deletes — a list of "Löschen" triggers must stay
+ * tellable apart for a keyboard and a screen reader alike.
+ */
+function DocumentRow({
+  document,
+  onDeleted,
+}: {
+  document: KnowledgeDocument;
+  onDeleted: () => Promise<void>;
+}) {
+  const t = useTranslation();
+  // The size joins only when it exists: unknown is absent, never zero —
+  // the same honesty the row's other two facts carry.
+  const size = formatBytes(document.byte_size);
+  const facts = [
+    ...(size === null ? [] : [size]),
+    t("knowledge.chunkCount", { count: document.chunk_count }),
+    t("knowledge.uploadedOn", { date: formatUploadedDate(document.created_at) }),
+  ].join(" · ");
+  return (
+    <Row
+      as="div"
+      flush
+      trailing={
+        <>
+          <span className="ml-auto shrink-0 text-label text-muted group-hover:text-foreground">
+            {facts}
+          </span>
+          <Dialog
+            title={t("knowledge.deleteTitle")}
+            triggerLabel={t("knowledge.delete")}
+            triggerAriaLabel={t("knowledge.deleteFor", { title: document.title })}
+          >
+            {(close) => (
+              <DeleteForm document={document} close={close} onDeleted={onDeleted} />
+            )}
+          </Dialog>
+        </>
+      }
+    >
+      <span className="min-w-0 truncate">{document.title}</span>
+    </Row>
   );
 }
 
@@ -343,9 +484,7 @@ export function KnowledgePage() {
         ) : (
           <div>
             {load.documents.map((document) => (
-              <Row as="div" key={document.id} flush>
-                {document.title}
-              </Row>
+              <DocumentRow key={document.id} document={document} onDeleted={reload} />
             ))}
           </div>
         )}

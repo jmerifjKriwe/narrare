@@ -583,6 +583,28 @@ export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
   });
 }
 
+/**
+ * Deleting a document: its chunks' foreign key cascades, so the passages
+ * leave the corpus with the row. Success invalidates the documents list
+ * key and nothing else — documents are the library's, never canon (D8),
+ * so no novel key may go stale on their account. The knowledge page's
+ * own list reads through its own seam, not this cache; its delete dialog
+ * refreshes that read itself, the upload's precedent.
+ */
+export function useDeleteDocument(): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (documentId: string) => {
+      const { response } = await client.DELETE("/api/knowledge/documents/{document_id}", {
+        params: { path: { document_id: documentId } },
+      });
+      if (!response.ok) throw new Error(`document delete refused: ${response.status}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
+    },
+  });
+}
+
 /** Enqueue extraction for a chapter: 202 and the job id to poll. The write
  *  invalidates the job key so every cached job row is asked for again —
  *  a new job makes the old answers history. */

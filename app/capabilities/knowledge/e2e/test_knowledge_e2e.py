@@ -7,17 +7,26 @@ this module carries: the documents area is one panel behind one "+ Dokument"
 control; an uploaded passage comes back from search; a model change refuses
 search until the documents are re-embedded; a refused re-embed names itself
 and its retry heals; a dead local service — on load, or under an upload —
-reads as an outage, never as an empty library or a silent dialog.
+reads as an outage, never as an empty library or a silent dialog. The
+documents list states what it holds — size, passages, date — and a wrong
+upload can be deleted for good, passages and all.
 """
 
+import asyncio
+import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -208,5 +217,117 @@ def test_a_dead_service_on_load_names_the_outage(page: Page, stack: Stack) -> No
     page.get_by_role("button", name="Erneut versuchen").click()
     expect(page.get_by_text("Noch keine Dokumente")).to_be_visible()
     expect(page.get_by_role("alert")).to_have_count(0)
+
+    assert_accessible(page)
+
+
+def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
+    """Rows from the stack's database as plain tuples, in a worker thread.
+
+    The novels suite's own reader, copied local — a shared helper across
+    the capability suites is parked as a follow-up, and this copy keeps
+    its place until then. The worker thread because pytest-asyncio keeps
+    a session loop running and asyncio.run refuses a second one in the
+    same thread.
+    """
+    database = testsupport.test_database("narrare_v2_knowledge_e2e")
+
+    async def run() -> list[tuple[object, ...]]:
+        engine = create_async_engine(url_for(database))
+        try:
+            async with engine.connect() as connection:
+                return [
+                    tuple(each) for each in await connection.execute(text(statement), params or {})
+                ]
+        finally:
+            await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, run()).result()
+
+
+def _document_id(page: Page, title: str) -> str:
+    """The uploaded document's id, read through the API the way a second device would."""
+    response = page.request.get(f"{API_URL}/api/knowledge/documents")
+    assert response.ok, response.text()
+    matches = [str(row["id"]) for row in response.json() if row["title"] == title]
+    assert len(matches) == 1, matches
+    return matches[0]
+
+
+def test_the_empty_state_names_text_files_up_to_one_megabyte(page: Page, stack: Stack) -> None:
+    """The empty state is the library's own invitation, and it names the shelf.
+
+    What the server holds is text files up to 1 MB — the endpoint weighs
+    bytes, not names, so the invitation promises no extension and the
+    writer does not learn a rule the server never had.
+    """
+    page.goto(f"{WEB_URL}/knowledge")
+    empty = page.get_by_text("Noch keine Dokumente")
+    expect(empty).to_be_visible()
+    expect(empty).to_contain_text("Textdateien bis 1 MB")
+
+    assert_accessible(page)
+
+
+def test_deleting_a_document_removes_its_passages_from_search(
+    page: Page, stack: Stack, tmp_path: Path
+) -> None:
+    """The confirmed delete is final exactly where it says it is.
+
+    The passages answered search before anything died — their later
+    absence is the delete's doing, not a corpus that never held them.
+    The row's own control opens a warning that says the one thing a
+    writer needs before confirming: this is final, and the original file
+    on disk stays. After the confirm the same words find nothing, the
+    row leaves the list, and the database holds no chunk of the document
+    — the cascade is proven, not presumed.
+    """
+    source = tmp_path / "notizen.txt"
+    source.write_text(TEXT, encoding="utf-8")
+
+    page.goto(f"{WEB_URL}/knowledge")
+    _upload(page, source, "Notizen")
+    expect(page.get_by_text("Notizen")).to_be_visible()
+
+    # The row states what it holds — the stored size (plain bytes under a
+    # thousand), the passages it answers search with, the day it came in —
+    # before any of it is asked to die.
+    row = page.get_by_role("button", name="Notizen löschen").locator("..")
+    expect(row).to_contain_text(re.compile(r"\d+ B"))
+    expect(row).to_contain_text(re.compile(r"Passagen?"))
+    expect(row).to_contain_text("Hochgeladen am")
+
+    # The corpus answers BEFORE the delete: the passage is findable, and
+    # the document owns its chunks in the database.
+    page.get_by_label("Suchbegriff").fill("Leuchtturm")
+    page.get_by_role("button", name="Suchen").click()
+    expect(page.get_by_text("Der Leuchtturm am Horizont war seit Jahren dunkel.")).to_be_visible()
+    document_id = _document_id(page, "Notizen")
+    # The document owned passages before anything died: the zero the test
+    # asserts after the delete is about rows that existed.
+    assert _rows("SELECT count(*) FROM chunks WHERE document_id = :id", {"id": document_id}) != [
+        (0,)
+    ]
+
+    # The row's own control opens the warning; the open dialog is on the
+    # accessibility floor too, because focus containment and the warning's
+    # name are exactly what a closed page cannot show.
+    page.get_by_role("button", name="Notizen löschen").click()
+    dialog = page.get_by_role("dialog", name="Dokument löschen")
+    expect(dialog).to_contain_text("Originaldatei bleibt")
+    assert_accessible(page)
+
+    # The confirm is one press and final: the dialog closes, the same
+    # words find nothing, the list has lost the row, and not one chunk of
+    # the document lives in the database.
+    dialog.get_by_role("button", name="Löschen", exact=True).click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    page.get_by_role("button", name="Suchen").click()
+    expect(page.get_by_text("Keine Treffer")).to_be_visible()
+    expect(page.get_by_text("Notizen")).to_have_count(0)
+    assert _rows("SELECT count(*) FROM chunks WHERE document_id = :id", {"id": document_id}) == [
+        (0,)
+    ]
 
     assert_accessible(page)
