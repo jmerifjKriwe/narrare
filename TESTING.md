@@ -68,6 +68,8 @@ Pure rendering and wiring do not require unit tests.
 - `just verify` — check, test, test-frontend and the E2E, plus the production
   build, with the E2E narrowed the same way; it deliberately omits the CI-only
   `check-generated`.
+- `just test-frontend-changed` — only the web tests the working tree touches;
+  the inner loop for frontend work. Full suite via `test-frontend`.
 
 CI runs `just check`, `just check-generated`, `just test` and `just test-frontend`
 on every PR, plus the production build; the E2E narrows to the capabilities a
