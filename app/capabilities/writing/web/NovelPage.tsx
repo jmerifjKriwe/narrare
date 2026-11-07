@@ -17,6 +17,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { subscribeProposal } from "@shell/lib/proposal";
 import {
   activeChapterFallback,
+  noteNovelDeletedElsewhere,
   queryClient,
   useChaptersQuery,
   useDeleteChapter,
@@ -120,6 +121,21 @@ export function NovelPage() {
   // something to show); the novel row rides along (the heading's title).
   const novelLoaded = novelQuery.data !== undefined;
   const chaptersLoaded = chaptersQuery.data !== undefined;
+  // The book deleted elsewhere (Task 13): a 404 from the novel's row is
+  // not an outage — the service answered, and the answer is that the book
+  // is gone. The degrade is a navigation to the shelf with the note that
+  // names what happened, and it outranks both failure voices below: an
+  // outage page would claim the book could not be loaded, when the truth
+  // is that there is no book to load. It fires whatever the screen holds —
+  // a first load that never arrived, or a refresh that found the row gone
+  // under open work; the leave guard still asks about unsaved words, and
+  // only the navigation that survives it lands here.
+  useEffect(() => {
+    if (!novelQuery.isError) return;
+    if ((novelQuery.error as { status?: number }).status !== 404) return;
+    noteNovelDeletedElsewhere();
+    void navigate({ to: "/" });
+  }, [novelQuery.isError, novelQuery.error, navigate]);
   // The rail's own create failure: a chapter the user asked for that never
   // arrived must say so beside the button, not vanish into a silent click.
   const [createFailed, setCreateFailed] = useState(false);

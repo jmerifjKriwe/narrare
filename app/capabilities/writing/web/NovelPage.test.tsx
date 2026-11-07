@@ -617,6 +617,35 @@ describe("the palette's novel jump", () => {
   });
 });
 
+describe("a book deleted elsewhere", () => {
+  it("a_novel_deleted_elsewhere_degrades_to_the_shelf", { timeout: 10_000 }, async () => {
+    // The real 404 the API answers for a deleted book — not a component
+    // error: the novel's row is gone, whatever the workspace still holds.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/writing/novels") return { data: [NOVEL], response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") {
+        return { data: undefined, response: new Response(null, { status: 404 }) };
+      }
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: CHAPTERS, response: ok() };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    renderAt(`/novels/${NOVEL_ID}`);
+
+    // The shelf takes the address over — no outage page for a book that
+    // was never missing, only deleted — and the quiet notice names what
+    // happened: status speech, not an alert, because nothing here asks the
+    // user to fix anything.
+    expect(await screen.findByRole("heading", { name: t("novels.heading") })).toBeTruthy();
+    const notice = await screen.findByText(t("novels.deleteElsewhere"));
+    expect(notice.getAttribute("role")).toBe("status");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
 describe("the rail's reorder", () => {
   /** A rail row by its title: named rows are identity-stable across a
    *  reorder, where position-derived labels move with the swap. */

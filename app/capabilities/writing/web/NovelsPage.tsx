@@ -1,16 +1,28 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { Button, buttonClass } from "@shell/ui/Button";
 import { Cover } from "@shell/ui/Cover";
 import { client, type Novel, type NovelCreate } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
-import { useCreateNovel, useNovelsQuery } from "@shell/lib/query";
+import { dirtyFields } from "@shell/lib/dirty";
+import { exportAge } from "@shell/lib/exportAge";
+import {
+  useCreateNovel,
+  useDeleteNovel,
+  useEntitiesQuery,
+  useNovelQuery,
+  useUpdateNovel,
+  useNovelsQuery,
+  takeNovelDeletedElsewhere,
+  type NovelChanges,
+} from "@shell/lib/query";
 import { formatRelative } from "@shell/lib/time";
 import { Dialog } from "@shell/ui/Dialog";
 import { Field, Input, Textarea } from "@shell/ui/field";
 import { Icon } from "@shell/ui/icons";
+import { ActionMenu } from "@shell/ui/Menu";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 
@@ -92,6 +104,293 @@ function NewBookForm({ close }: { close: () => void }) {
   );
 }
 
+/** The language field's own contract, the server's shape seen from the
+ *  typing side: the server folds the primary subtag's case (`DE` is `de`),
+ *  so both cases pass here and the server owns the folding. */
+const LANGUAGE_CODE = /^[a-zA-Z]{2}(-[A-Za-z]{2,})?$/;
+
+/**
+ * The book's five metadata fields (D5), in the new-book form's own
+ * field/refusal style: the empty Titel is refused by name, the language is
+ * validated text — `de`, `en-GB`, anything BCP-47-ish an import can carry —
+ * refused on its field before the wire and again by the server's 422 naming
+ * it. Controlled by the card's menu, mounted fresh on every open: the
+ * fields, the refusals and the failure all live and die with one opening.
+ *
+ * The save sends only the fields the user changed — the client's mirror of
+ * the endpoint's `model_fields_set` contract, so a correction never
+ * rewrites the fields nobody touched. An unchanged form closes without a
+ * request: nothing to ask, nothing to write.
+ */
+export function NovelDetailsDialog({
+  novel,
+  open,
+  onOpenChange,
+}: {
+  novel: Novel;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslation();
+  return (
+    <Dialog title={t("novels.detailsTitle")} isOpen={open} onOpenChange={onOpenChange}>
+      {(close) => <DetailsForm novel={novel} close={close} />}
+    </Dialog>
+  );
+}
+
+function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
+  const t = useTranslation();
+  const updateNovel = useUpdateNovel();
+  const [title, setTitle] = useState(novel.title);
+  const [author, setAuthor] = useState(novel.author ?? "");
+  const [genre, setGenre] = useState(novel.genre ?? "");
+  const [language, setLanguage] = useState(novel.language ?? "");
+  const [blurb, setBlurb] = useState(novel.blurb ?? "");
+  const [triedEmptyTitle, setTriedEmptyTitle] = useState(false);
+  const [triedBadLanguage, setTriedBadLanguage] = useState(false);
+  // The server's own refusal naming the language: shown whatever the
+  // pattern says — the wire refused this value, and the field is where the
+  // refusal is answered. Typing lifts it, like the derived marks.
+  const [languageRefused, setLanguageRefused] = useState(false);
+  const [updateFailed, setUpdateFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // Derived, not stored, so typing lifts the mark: a refusal the field can
+  // answer never outlives the answer.
+  const titleInvalid = triedEmptyTitle && title.trim() === "";
+  const languageInvalid = triedBadLanguage && !LANGUAGE_CODE.test(language.trim());
+
+  /** Save the changed fields; close on success and retain the form on
+   *  failure — the typed values are the user's work. */
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (title.trim() === "") {
+      setTriedEmptyTitle(true);
+      return;
+    }
+    // Empty is the cleared state, not a bad code: only a non-empty value
+    // that is not BCP-47-ish is refused.
+    if (language.trim() !== "" && !LANGUAGE_CODE.test(language.trim())) {
+      setTriedBadLanguage(true);
+      return;
+    }
+    setUpdateFailed(false);
+    // Only what differs from the row the form loaded: the candidate is the
+    // value the wire would carry (trimmed, empty as the cleared `null`),
+    // compared against the stored field — a field typed and reverted is no
+    // change, and an untouched form is no request at all.
+    const written: NovelChanges = {
+      title: title.trim(),
+      author: author.trim() === "" ? null : author.trim(),
+      genre: genre.trim() === "" ? null : genre.trim(),
+      language: language.trim() === "" ? null : language.trim(),
+      blurb: blurb.trim() === "" ? null : blurb.trim(),
+    };
+    const dirty = dirtyFields(written, {
+      title: novel.title,
+      author: novel.author,
+      genre: novel.genre,
+      language: novel.language,
+      blurb: novel.blurb,
+    });
+    if (dirty.length === 0) {
+      close();
+      return;
+    }
+    const changes = Object.fromEntries(
+      dirty.map((field) => [field, written[field]]),
+    ) as NovelChanges;
+    setBusy(true);
+    try {
+      // The list and the row refresh through the ["novels"] invalidation,
+      // not through a reload here: the mutation owns that side.
+      await updateNovel.mutateAsync({ novelId: novel.id, changes });
+    } catch (error) {
+      // The one refusal the form can answer on its field: the server named
+      // the language. Every other refusal — the service is not answering,
+      // a row that vanished under the dialog — is the dialog's own
+      // sentence, named where the retry is one press away.
+      if ((error as { detail?: unknown }).detail === "invalid language") {
+        setLanguageRefused(true);
+        return;
+      }
+      setUpdateFailed(true);
+      return;
+    } finally {
+      setBusy(false);
+    }
+    close();
+  }
+
+  return (
+    // noValidate: the named refusals are the catalog's voice in every
+    // browser — the pattern the language field carries is the rule's
+    // semantics, not a second message beside the first.
+    <form onSubmit={(event) => void save(event)} noValidate className="mt-4 flex flex-col gap-3">
+      <Field
+        label={t("novels.titleLabel")}
+        error={titleInvalid ? t("novels.titleRequired") : undefined}
+      >
+        <Input
+          value={title}
+          maxLength={200}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </Field>
+      <Field label={t("novels.author")}>
+        <Input
+          value={author}
+          maxLength={200}
+          onChange={(event) => setAuthor(event.target.value)}
+        />
+      </Field>
+      <Field label={t("novels.genre")}>
+        <Input
+          value={genre}
+          maxLength={80}
+          onChange={(event) => setGenre(event.target.value)}
+        />
+      </Field>
+      <Field
+        label={t("novels.language")}
+        error={
+          languageInvalid || languageRefused ? t("novels.languageInvalid") : undefined
+        }
+      >
+        <Input
+          value={language}
+          maxLength={16}
+          pattern="[a-zA-Z]{2}(-[A-Za-z]{2,})?"
+          onChange={(event) => {
+            setLanguageRefused(false);
+            setLanguage(event.target.value);
+          }}
+        />
+      </Field>
+      <Field label={t("novels.blurb")}>
+        <Textarea
+          value={blurb}
+          onChange={(event) => setBlurb(event.target.value)}
+          rows={3}
+        />
+      </Field>
+      {updateFailed ? (
+        <Notice tone="danger" live="alert">
+          {t("novels.errorUpdate")}
+        </Notice>
+      ) : null}
+      <Button type="submit" variant="primary" className="self-start" disabled={busy}>
+        {t("novels.save")}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * Delete a book: the sentence names what dies — chapters from the row the
+ * card already holds, knowledge entries from the list the dialog opens
+ * with (no shelf read pays for a count only this warning needs) — says the
+ * documents stay, and carries the export line from `exportAge` over the
+ * row the dialog reads through Query. "Export now" sits beside the line
+ * (the path mode's dialog, stacked over this one): a landed export
+ * invalidates the row, and the line recomputes from the refetch — the
+ * warning and its way out in one place. Nothing is deleted on the first
+ * click; the confirm is final and the refusal is named where it happened.
+ */
+export function NovelDeleteDialog({
+  novel,
+  open,
+  onOpenChange,
+}: {
+  novel: Novel;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslation();
+  return (
+    <Dialog title={t("novels.deleteTitle")} isOpen={open} onOpenChange={onOpenChange}>
+      {(close) => <DeleteForm novel={novel} close={close} />}
+    </Dialog>
+  );
+}
+
+function DeleteForm({ novel, close }: { novel: Novel; close: () => void }) {
+  const t = useTranslation();
+  const deleteNovel = useDeleteNovel();
+  // The row through the cache, not the card's prop: the export the dialog
+  // itself offers invalidates the row on success, and the line recomputes
+  // from the answer — the prop is the fallback while the ask stands.
+  const novelQuery = useNovelQuery(novel.id);
+  const row = novelQuery.data ?? novel;
+  // The knowledge count opens with the dialog: the content mounts only
+  // while it stands, so the shelf never pays for a number only this
+  // warning reads.
+  const entities = useEntitiesQuery(novel.id);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [refusal, setRefusal] = useState(false);
+  const age = exportAge(row.last_exported_at, row.updated_at, new Date());
+  const line =
+    age.kind === "never"
+      ? t("novels.exportNever")
+      : age.kind === "fresh"
+        ? t("novels.exportFresh")
+        : t("novels.exportStale", { count: age.days });
+
+  /** Confirm the delete: the 204 closes, a refusal stays and is named. */
+  async function confirm() {
+    setBusy(true);
+    setRefusal(false);
+    try {
+      await deleteNovel.mutateAsync(novel.id);
+    } catch {
+      setRefusal(true);
+      return;
+    } finally {
+      setBusy(false);
+    }
+    close();
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      <p className="text-body text-muted">
+        {t("novels.deleteBody", { title: row.title })}
+      </p>
+      {entities.data !== undefined ? (
+        <p className="text-body text-muted">
+          {t("novels.deleteCounts", {
+            chapters: row.chapter_count,
+            entities: entities.data.length,
+          })}
+        </p>
+      ) : null}
+      <p className="text-body text-muted">{t("novels.deleteDocuments")}</p>
+      <p className="text-meta text-muted">{line}</p>
+      <Button
+        variant="secondary"
+        icon={<Icon name="export" />}
+        className="self-start"
+        onClick={() => setExportOpen(true)}
+      >
+        {t("novels.exportNow")}
+      </Button>
+      {refusal ? (
+        <Notice tone="danger" live="alert">
+          {t("novels.errorDelete")}
+        </Notice>
+      ) : null}
+      <div className="mt-2 flex justify-end gap-3">
+        <Button onClick={close}>{t("novels.cancel")}</Button>
+        <Button variant="primary" disabled={busy} onClick={() => void confirm()}>
+          {t("novels.delete")}
+        </Button>
+      </div>
+      <ExportNovelDialog novel={row} isOpen={exportOpen} onOpenChange={setExportOpen} />
+    </div>
+  );
+}
+
 /** The shelf card: the book's face and its facts in one press target. The
  *  whole card is the link — a second identically-named link inside it would
  *  make "open the book" ambiguous for a keyboard and a screen reader alike —
@@ -101,13 +400,21 @@ function NewBookForm({ close }: { close: () => void }) {
  *  clamps, it breaks the one word that cannot wrap, and the slot is three
  *  lines tall whether the title fills it or not — measured on the span,
  *  because the grid would stretch the cards to equality either way. The
- *  title row keeps a fixed gutter under the export button (`pr-7`), so a
- *  long first line runs under nothing. The hover wears the `--soft` wash,
- *  and the wash restores foreground to the muted facts (the parked AA
- *  rule: no text-muted on a `--soft` fill) — the same contract the ghost
- *  button carries. */
+ *  title's box stops short of the card's corner (`max-w-[calc(100%-10rem)]`,
+ *  not padding: padding would ride inside the row's min-content and make a
+ *  long word overflow a narrow card), so a long first line runs under
+ *  nothing — the corner holds the action menu beside the export button,
+ *  both outside the link. The hover wears the `--soft` wash, and the wash
+ *  restores foreground to the muted facts (the parked AA rule: no
+ *  text-muted on a `--soft` fill) — the same contract the ghost button
+ *  carries. */
 function ShelfCard({ novel }: { novel: Novel }) {
   const t = useTranslation();
+  // The card's two deeds open their own dialogs; the dialogs live here, at
+  // the card's own scope, so each book's dialog holds its book and no
+  // other surface can open one book's dialog over another's card.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   return (
     <li className="relative flex">
       <Link
@@ -115,11 +422,11 @@ function ShelfCard({ novel }: { novel: Novel }) {
         params={{ id: novel.id }}
         className="group flex flex-1 flex-col rounded-[var(--radius-lg)] border border-rule bg-card p-3 no-underline hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
       >
-        <div className="flex items-start gap-3 pr-7">
+        <div className="flex items-start gap-3">
           <Cover title={novel.title} genre={novel.genre} language={novel.language} />
           <span
             data-shelf-title
-            className="line-clamp-3 min-h-[3.9em] min-w-0 flex-1 break-words text-emph font-semibold leading-[1.3] underline-offset-4 group-hover:underline"
+            className="line-clamp-3 min-h-[3.9em] min-w-0 max-w-[calc(100%-10rem)] flex-1 break-words text-emph font-semibold leading-[1.3] underline-offset-4 group-hover:underline"
           >
             {novel.title}
           </span>
@@ -143,9 +450,30 @@ function ShelfCard({ novel }: { novel: Novel }) {
           {t("novels.lastTouched", { time: formatRelative(novel.updated_at) })}
         </span>
       </Link>
-      <div className="absolute right-1.5 top-1.5">
+      {/* The card's corner, outside the link: the action menu beside the
+          export button — the shelf stays a grid of faces, and the two
+          things that are not "open the book" sit together at its edge. */}
+      <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+        <ActionMenu
+          label={t("novels.actions")}
+          triggerAriaLabel={t("novels.actionsFor", { title: novel.title })}
+          items={[
+            {
+              id: "details",
+              label: t("novels.details"),
+              onSelect: () => setDetailsOpen(true),
+            },
+            {
+              id: "delete",
+              label: t("novels.delete"),
+              onSelect: () => setDeleteOpen(true),
+            },
+          ]}
+        />
         <ExportNovelDialog novel={novel} />
       </div>
+      <NovelDetailsDialog novel={novel} open={detailsOpen} onOpenChange={setDetailsOpen} />
+      <NovelDeleteDialog novel={novel} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </li>
   );
 }
@@ -161,6 +489,11 @@ export function NovelsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  // The one-shot note from the workspace's 404 degrade: the book this
+  // shelf's card opened was deleted elsewhere, and the shelf says so once,
+  // on the mount the degrade lands on — the note dies with the showing, so
+  // it can never outlive the event it names.
+  const [deletedElsewhere] = useState(takeNovelDeletedElsewhere);
 
   // The setup gate decides whether there is a library to list at all. Only
   // the novels themselves go through the query cache; this check cannot,
@@ -307,6 +640,15 @@ export function NovelsPage() {
           </div>
         )}
       </div>
+      {deletedElsewhere ? (
+        // The quiet voice, the degrade's own words: nothing here asks the
+        // user to fix anything, so the note is status speech — the shelf
+        // stands, the book that left is named, and the next press is
+        // wherever the user was going.
+        <Notice tone="quiet" live="status" className="mt-6">
+          {t("novels.deleteElsewhere")}
+        </Notice>
+      ) : null}
       {outage ? (
         // The outage is named where the way back is: one alert, one press.
         <Notice tone="danger" live="alert" className="mt-6" action={retryButton}>

@@ -591,15 +591,20 @@ def test_the_outage_stays_reachable_at_a_narrow_window(page: Page, stack: Stack)
 
 
 def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack) -> None:
-    """A 404 is the same honesty: the error copy, not an empty chapter rail."""
+    """A 404 is the shelf's to answer: the quiet note, not an empty rail.
+
+    The book the address names is gone or was never there — the two are one
+    answer, the API's own rule — so the workbench degrades to the shelf and
+    the quiet note names what happened: no outage page claims a load the
+    service answered, and no empty rail claims a book.
+    """
     page.goto(f"{WEB_URL}/novels/00000000-0000-4000-8000-000000000000")
-    expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+    expect(page.get_by_role("status").filter(has_text="woanders gelöscht")).to_be_visible()
+    expect(page.get_by_role("heading", name="Romane")).to_be_visible()
     # The empty-rail copy is a loaded book's truth, not a missing one's.
     expect(page.get_by_text("Noch kein Kapitel")).not_to_be_visible()
-
-    # The retry says the same thing: the book is still not there.
-    page.get_by_role("button", name="Erneut versuchen").click()
-    expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+    # No outage voice: the service answered; the book is what is missing.
+    expect(page.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)
 

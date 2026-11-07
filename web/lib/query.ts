@@ -115,8 +115,102 @@ export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
       const { data, response } = await client.GET("/api/writing/novels/{novel_id}", {
         params: { path: { novel_id: novelId } },
       });
-      if (!response.ok || !data) throw new Error(`novel unavailable: ${response.status}`);
+      if (!response.ok || !data) {
+        // The status rides the throw (the accept-suggestion precedent): a
+        // 404 is the one failure the workbench answers with a navigation —
+        // the book was deleted elsewhere — so the machine-readable fact
+        // must survive the query boundary.
+        throw Object.assign(new Error(`novel unavailable: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
+    },
+  });
+}
+
+/**
+ * The one-shot note that the workspace's book was deleted elsewhere: set
+ * by the workbench's 404 degrade, taken by the shelf's next mount. Module
+ * state beside the cache it belongs to — the note is the 404's UI
+ * translation, owned by the same layer that owns the `["novels"]` keys,
+ * and both pages already import this module (no chunk changes hands).
+ */
+let novelDeletedElsewhere = false;
+
+/** Record that the book the workspace tried to open answered 404; the
+ *  shelf's next mount shows the note once. */
+export function noteNovelDeletedElsewhere(): void {
+  novelDeletedElsewhere = true;
+}
+
+/** Take the note if one stands: the shelf's mount reads it once, and the
+ *  note cannot outlive the shelf that shows it. */
+export function takeNovelDeletedElsewhere(): boolean {
+  const was = novelDeletedElsewhere;
+  novelDeletedElsewhere = false;
+  return was;
+}
+
+/** The fields a details edit may carry: only these reach the PATCH body.
+ *  `null` is the cleared state for the four optional fields; the title is
+ *  never clearable and never `null` when sent. */
+export type NovelChanges = Partial<
+  Pick<Novel, "title" | "genre" | "blurb" | "author" | "language">
+>;
+
+/**
+ * Correcting a novel's five metadata fields (§2): only the fields the body
+ * carries are the change, so the caller sends only what the user dirtied —
+ * the client's mirror of the server's `model_fields_set` contract. The
+ * row's `onupdate` advances `updated_at` (D8: the archive's metadata
+ * changed), so the whole `["novels"]` prefix is invalidated — the shelf's
+ * list and the row this dialog's own read uses refresh together. A refusal
+ * carries status and detail: a 422 names the field, and the dialog shows
+ * that name on the field it refused.
+ */
+export function useUpdateNovel(): UseMutationResult<
+  Novel,
+  Error,
+  { novelId: string; changes: NovelChanges }
+> {
+  return useMutation({
+    mutationFn: async (input: { novelId: string; changes: NovelChanges }) => {
+      const { data, error, response } = await client.PATCH(
+        "/api/writing/novels/{novel_id}",
+        { params: { path: { novel_id: input.novelId } }, body: input.changes },
+      );
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`novel update refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/**
+ * Deleting a novel: the row and everything novel-scoped cascade in the
+ * database — chapters, entities, relations, suggestions, findings — and
+ * the documents are the library's and stay. Success invalidates the
+ * `["novels"]` prefix (the row and the list both held a book that no
+ * longer exists); a failed delete asks for nothing.
+ */
+export function useDeleteNovel(): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (novelId: string) => {
+      const { response } = await client.DELETE("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok) throw new Error(`novel delete refused: ${response.status}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
     },
   });
 }
