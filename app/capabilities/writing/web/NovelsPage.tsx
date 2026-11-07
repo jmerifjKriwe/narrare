@@ -156,9 +156,12 @@ function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
   const [updateFailed, setUpdateFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   // Derived, not stored, so typing lifts the mark: a refusal the field can
-  // answer never outlives the answer.
+  // answer never outlives the answer. The language's rule is the guard's
+  // own — a non-empty value that is not BCP-47-ish — so the mark and the
+  // refusal can never disagree about what a cleared field is: a clear.
   const titleInvalid = triedEmptyTitle && title.trim() === "";
-  const languageInvalid = triedBadLanguage && !LANGUAGE_CODE.test(language.trim());
+  const badLanguage = language.trim() !== "" && !LANGUAGE_CODE.test(language.trim());
+  const languageInvalid = triedBadLanguage && badLanguage;
 
   /** Save the changed fields; close on success and retain the form on
    *  failure — the typed values are the user's work. */
@@ -169,8 +172,9 @@ function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
       return;
     }
     // Empty is the cleared state, not a bad code: only a non-empty value
-    // that is not BCP-47-ish is refused.
-    if (language.trim() !== "" && !LANGUAGE_CODE.test(language.trim())) {
+    // that is not BCP-47-ish is refused — the same predicate the field's
+    // mark reads, so the guard and the mark cannot disagree.
+    if (badLanguage) {
       setTriedBadLanguage(true);
       return;
     }
@@ -324,7 +328,8 @@ function DeleteForm({ novel, close }: { novel: Novel; close: () => void }) {
   const row = novelQuery.data ?? novel;
   // The knowledge count opens with the dialog: the content mounts only
   // while it stands, so the shelf never pays for a number only this
-  // warning reads.
+  // warning reads — and the chapters never wait behind it: that count is
+  // the row's own fact, already on the card that opened this dialog.
   const entities = useEntitiesQuery(novel.id);
   const [exportOpen, setExportOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -357,14 +362,19 @@ function DeleteForm({ novel, close }: { novel: Novel; close: () => void }) {
       <p className="text-body text-muted">
         {t("novels.deleteBody", { title: row.title })}
       </p>
-      {entities.data !== undefined ? (
-        <p className="text-body text-muted">
-          {t("novels.deleteCounts", {
-            chapters: row.chapter_count,
-            entities: entities.data.length,
-          })}
-        </p>
-      ) : null}
+      {/* What dies, said as soon as it is known: the chapters are the
+          row's own fact and never wait behind the entities ask — the
+          entity half joins when its read lands, and is absent (never a
+          guessed zero) until then. */}
+      <p className="text-body text-muted">
+        {t("novels.deleteChapters", { chapters: row.chapter_count })}
+        {entities.data !== undefined ? (
+          <>
+            {" "}
+            <span>{t("novels.deleteEntities", { entities: entities.data.length })}</span>
+          </>
+        ) : null}
+      </p>
       <p className="text-body text-muted">{t("novels.deleteDocuments")}</p>
       <p className="text-meta text-muted">{line}</p>
       <Button

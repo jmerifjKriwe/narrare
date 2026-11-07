@@ -23,7 +23,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -78,13 +78,17 @@ function ok(): Response {
 
 /** The shelf's answers: the gate and the locale beside the list, the row
  *  under its own key (the delete dialog reads it through Query), and the
- *  knowledge list it opens with. */
+ *  knowledge list it opens with. The row answers with a COPY on every
+ *  read — the way the server would — so a mutation of the fixture reaches
+ *  the cache only through a refetch, never by reference. */
 function mockShelf(novel: Novel, entities: unknown[] = []): void {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/settings") return { data: { locale: null }, response: ok() };
     if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
     if (path === "/api/writing/novels") return { data: [novel], response: ok() };
-    if (path === "/api/writing/novels/{novel_id}") return { data: novel, response: ok() };
+    if (path === "/api/writing/novels/{novel_id}") {
+      return { data: { ...novel }, response: ok() };
+    }
     if (path === "/api/knowledge/novels/{novel_id}/entities") {
       return { data: entities, response: ok() };
     }
@@ -253,7 +257,7 @@ describe("the shelf's card actions", () => {
   });
 
   it("an_invalid_language_is_refused_on_the_field", { timeout: 10_000 }, async () => {
-    const novel = shelfNovel();
+    const novel = shelfNovel({ language: "de" });
     mockShelf(novel);
     mockUpdate(novel);
     renderShelf();
@@ -262,19 +266,23 @@ describe("the shelf's card actions", () => {
     await user.click(await cardMenu(novel.title));
     await user.click(screen.getByRole("menuitem", { name: t("novels.details") }));
     const dialog = await screen.findByRole("dialog");
+    const field = () => within(dialog).getByLabelText(t("novels.language"));
 
     // A word, not a code: the field's own pattern refuses it by name —
-    // before the wire, so no request carries it.
-    await user.type(within(dialog).getByLabelText(t("novels.language")), "deutsch");
+    // before the wire, so no request carries it. The refusal is the
+    // field's state: the mark and `aria-invalid` both name it.
+    await user.type(field(), "deutsch");
     await user.click(within(dialog).getByRole("button", { name: t("novels.save") }));
     expect(within(dialog).getByText(t("novels.languageInvalid"))).toBeTruthy();
+    expect(field().getAttribute("aria-invalid")).toBe("true");
     expect(api.PATCH).not.toHaveBeenCalled();
 
     // The server's own refusal lands on the same field: a 422 naming the
     // language ("invalid language", the router's detail) is the field's
-    // error, not the dialog's outage sentence.
-    await user.clear(within(dialog).getByLabelText(t("novels.language")));
-    await user.type(within(dialog).getByLabelText(t("novels.language")), "de");
+    // error, not the dialog's outage sentence. The value is pattern-valid
+    // — only the wire refuses it.
+    await user.clear(field());
+    await user.type(field(), "en");
     api.PATCH.mockResolvedValueOnce({
       data: undefined,
       error: { detail: "invalid language" },
@@ -285,14 +293,43 @@ describe("the shelf's card actions", () => {
       expect(within(dialog).getByText(t("novels.languageInvalid"))).toBeTruthy(),
     );
     expect(within(dialog).queryByText(t("novels.errorUpdate"))).toBeNull();
+
+    // A cleared field is a clear, not a refusal: both marks lift at once
+    // (the visible error and `aria-invalid` — an error the save would
+    // contradict is a lie), and the save carries exactly the cleared
+    // state, `language: null`.
+    await user.clear(field());
+    expect(within(dialog).queryByText(t("novels.languageInvalid"))).toBeNull();
+    expect(field().getAttribute("aria-invalid")).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: t("novels.save") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(api.PATCH).toHaveBeenLastCalledWith("/api/writing/novels/{novel_id}", {
+      params: { path: { novel_id: NOVEL_ID } },
+      body: { language: null },
+    });
   });
 
   it("the_delete_dialog_names_chapters_entities_and_that_documents_survive", {
     timeout: 10_000,
   }, async () => {
     const novel = shelfNovel({ chapter_count: 3 });
-    const entities = [{ id: "e1" }, { id: "e2" }];
-    mockShelf(novel, entities);
+    // The entities read is the dialog's own ask, and it opens gated: the
+    // chapter count is the row's own fact and must not wait behind it.
+    let answerEntities: (rows: unknown[]) => void = () => {};
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/writing/novels") return { data: [novel], response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") {
+        return { data: { ...novel }, response: ok() };
+      }
+      if (path === "/api/knowledge/novels/{novel_id}/entities") {
+        return new Promise((resolve) => {
+          answerEntities = (rows) => resolve({ data: rows, response: ok() });
+        });
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
     renderShelf();
     const user = userEvent.setup({ pointerEventsCheck: 0 });
 
@@ -300,14 +337,31 @@ describe("the shelf's card actions", () => {
     await user.click(screen.getByRole("menuitem", { name: t("novels.delete") }));
     const dialog = await screen.findByRole("dialog");
 
-    // What dies, by both counts, and what stays: the documents are the
-    // library's, not the book's — the delete says so before it asks.
+    // What dies is named at once from the row — the entities ask still on
+    // the wire — and what stays with it: the documents are the library's,
+    // not the book's. The entity half is absent, not guessed, while it
+    // loads: a number the dialog does not have is not a zero.
     expect(
-      within(dialog).getByText(
-        t("novels.deleteCounts", { chapters: 3, entities: 2 }),
-      ),
+      within(dialog).getByText(t("novels.deleteChapters", { chapters: 3 })),
     ).toBeTruthy();
     expect(within(dialog).getByText(t("novels.deleteDocuments"))).toBeTruthy();
+    expect(
+      within(dialog).queryByText(t("novels.deleteEntities", { entities: 2 })),
+    ).toBeNull();
+
+    // The ask lands: the second half joins the first, both counts the
+    // truth now.
+    await act(async () => {
+      answerEntities([{ id: "e1" }, { id: "e2" }]);
+    });
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText(t("novels.deleteEntities", { entities: 2 })),
+      ).toBeTruthy(),
+    );
+    expect(
+      within(dialog).getByText(t("novels.deleteChapters", { chapters: 3 })),
+    ).toBeTruthy();
 
     // A dismissed ask deletes nothing.
     await user.click(within(dialog).getByRole("button", { name: t("novels.cancel") }));
@@ -428,10 +482,17 @@ describe("the shelf's card actions", () => {
 
     // Back under it, the delete dialog's line has recomputed from the
     // refetched row: the never-exported warning is gone, the fresh truth
-    // stands in its place.
+    // stands in its place. The row's GET ran twice — the dialog's own
+    // first read, then the export's success invalidation — and only that
+    // second read could carry the stamp (every read answers with a copy,
+    // so the mutation alone reaches nothing the cache holds).
     await waitFor(() =>
       expect(within(dialog).getByText(t("novels.exportFresh"))).toBeTruthy(),
     );
     expect(within(dialog).queryByText(t("novels.exportNever"))).toBeNull();
+    const rowReads = api.GET.mock.calls.filter(
+      ([path]) => path === "/api/writing/novels/{novel_id}",
+    ).length;
+    expect(rowReads).toBe(2);
   });
 });
