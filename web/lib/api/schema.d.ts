@@ -88,6 +88,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Document
+         * @description Delete a document. Its chunks' foreign key cascades: the passages go
+         *     with the row, and search cannot find its text again.
+         *
+         *     Raise HTTP 404 for an absent or unowned document.
+         */
+        delete: operations["delete_document_api_knowledge_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/entities/{entity_id}": {
         parameters: {
             query?: never;
@@ -737,7 +760,16 @@ export interface paths {
          */
         put: operations["update_chapter_api_writing_chapters__chapter_id__put"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete Chapter
+         * @description Delete an owned chapter; the survivors close the gap, renumbered
+         *     contiguously in the same transaction, and the novel's timestamp
+         *     advances. The chapter's pending suggestions go with it; the novel's
+         *     findings stay.
+         *
+         *     Raise HTTP 404 for an absent or unowned chapter.
+         */
+        delete: operations["delete_chapter_api_writing_chapters__chapter_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -827,6 +859,50 @@ export interface paths {
          */
         get: operations["get_novel_api_writing_novels__novel_id__get"];
         put?: never;
+        post?: never;
+        /**
+         * Delete Novel
+         * @description Delete an owned novel. The novel-scoped foreign keys cascade: its
+         *     chapters, entities, relations, suggestions and findings go with the
+         *     row; the library's documents are not the novel's and stay.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel.
+         */
+        delete: operations["delete_novel_api_writing_novels__novel_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Novel
+         * @description Correct a novel by hand: only the fields the body carries change.
+         *
+         *     Return the novel with its derived counts; raise HTTP 404 for an absent
+         *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
+         *     title, an over-long genre or author, or a language that is over-long
+         *     or not a BCP-47-ish code.
+         */
+        patch: operations["update_novel_api_writing_novels__novel_id__patch"];
+        trace?: never;
+    };
+    "/api/writing/novels/{novel_id}/chapter-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Chapters
+         * @description Rewrite an owned novel's chapter order as one whole.
+         *
+         *     The body carries every chapter of the novel in its new order. Respond
+         *     with HTTP 204, HTTP 404 for an absent or unowned novel, or HTTP 409
+         *     when the body is not the book's current whole — a chapter added or
+         *     deleted in a second tab, or an id repeated — with
+         *     ``detail.chapter_ids`` holding the stored ids in their position order:
+         *     the arrangement the client reverts to.
+         */
+        put: operations["reorder_chapters_api_writing_novels__novel_id__chapter_order_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -953,6 +1029,20 @@ export interface components {
              */
             title: string;
         };
+        /**
+         * ChapterOrderUpdate
+         * @description The PUT chapter-order body: the whole rail, in its new order.
+         *
+         *     Every chapter of the novel and nothing else — an arrangement is a
+         *     permutation of the ids the book holds this moment, so the service
+         *     compares the body against the stored set as one whole and refuses a
+         *     stale one (a second tab's add, delete or repeat) with the current
+         *     order, rather than reshape what the writer no longer sees.
+         */
+        ChapterOrderUpdate: {
+            /** Chapter Ids */
+            chapter_ids: string[];
+        };
         /** ChapterRead */
         ChapterRead: {
             /** Body */
@@ -1033,6 +1123,13 @@ export interface components {
         };
         /** DocumentRead */
         DocumentRead: {
+            /** Byte Size */
+            byte_size: number | null;
+            /**
+             * Chunk Count
+             * @default 0
+             */
+            chunk_count: number;
             /**
              * Created At
              * Format: date-time
@@ -1332,6 +1429,8 @@ export interface components {
             id: string;
             /** Language */
             language: string | null;
+            /** Last Exported At */
+            last_exported_at: string | null;
             /** Title */
             title: string;
             /**
@@ -1344,6 +1443,30 @@ export interface components {
              * @default 0
              */
             word_count: number;
+        };
+        /**
+         * NovelUpdate
+         * @description The PATCH body: only the fields present are the change.
+         *
+         *     ``None`` is ambiguous by shape alone — an absent field and a cleared
+         *     author both look like None — so the service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one. The
+         *     values are checked there, against the novel contract's trims and
+         *     limits: this schema carries the fields, the contract decides what a
+         *     value may be. A carried ``null`` clears author, genre, blurb or
+         *     language; the title is never clearable.
+         */
+        NovelUpdate: {
+            /** Author */
+            author?: string | null;
+            /** Blurb */
+            blurb?: string | null;
+            /** Genre */
+            genre?: string | null;
+            /** Language */
+            language?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /**
          * ProfileCreate
@@ -2015,6 +2138,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_knowledge_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3245,6 +3397,44 @@ export interface operations {
             };
         };
     };
+    delete_chapter_api_writing_chapters__chapter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     continue_chapter_api_writing_chapters__chapter_id__continue_post: {
         parameters: {
             query?: never;
@@ -3433,6 +3623,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_novel_api_writing_novels__novel_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_novel_api_writing_novels__novel_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovelRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description An invalid field, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+        };
+    };
+    reorder_chapters_api_writing_novels__novel_id__chapter_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChapterOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description The body is not the book's current whole of chapter ids */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": {
+                     *         "chapter_ids": [
+                     *           "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
+                     *           "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1"
+                     *         ],
+                     *         "code": "order_mismatch"
+                     *       }
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

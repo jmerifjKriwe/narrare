@@ -37,6 +37,29 @@ class NovelRead(BaseModel):
     word_count: int = 0
     created_at: datetime
     updated_at: datetime
+    # The export's trace: set by every successful export and by nothing
+    # else, so a metadata edit leaves it honestly stale — None until the
+    # first export reads it.
+    last_exported_at: datetime | None
+
+
+class NovelUpdate(BaseModel):
+    """The PATCH body: only the fields present are the change.
+
+    ``None`` is ambiguous by shape alone — an absent field and a cleared
+    author both look like None — so the service reads
+    ``model_fields_set`` to tell a carried change from a missing one. The
+    values are checked there, against the novel contract's trims and
+    limits: this schema carries the fields, the contract decides what a
+    value may be. A carried ``null`` clears author, genre, blurb or
+    language; the title is never clearable.
+    """
+
+    title: str | None = None
+    genre: str | None = None
+    blurb: str | None = None
+    author: str | None = None
+    language: str | None = None
 
 
 class ChapterCreate(BaseModel):
@@ -46,8 +69,24 @@ class ChapterCreate(BaseModel):
 
 
 class ChapterUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
+    # `None` means unchanged (`exclude_none` keeps that); `""` after the
+    # service's trim is the honest unnamed — the chapter list's placeholder
+    # is a rendering, not a value. The length is the schema's one refusal.
+    title: str | None = Field(default=None, max_length=200)
     body: str | None = None
+
+
+class ChapterOrderUpdate(BaseModel):
+    """The PUT chapter-order body: the whole rail, in its new order.
+
+    Every chapter of the novel and nothing else — an arrangement is a
+    permutation of the ids the book holds this moment, so the service
+    compares the body against the stored set as one whole and refuses a
+    stale one (a second tab's add, delete or repeat) with the current
+    order, rather than reshape what the writer no longer sees.
+    """
+
+    chapter_ids: list[UUID]
 
 
 class ChapterRead(BaseModel):

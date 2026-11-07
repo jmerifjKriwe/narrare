@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { client, type Chapter } from "@shell/lib/api/client";
+import { announce } from "@shell/lib/announce";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { activeLocale } from "@shell/lib/locale";
@@ -16,25 +17,37 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { subscribeProposal } from "@shell/lib/proposal";
 import {
   activeChapterFallback,
+  noteNovelDeletedElsewhere,
   queryClient,
   useChaptersQuery,
+  useDeleteChapter,
   useNovelQuery,
+  useReorderChapters,
 } from "@shell/lib/query";
-import { useAutosave, unsavedStatus } from "@shell/lib/save";
+import { normalize } from "@shell/lib/search";
+import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save";
 import { countWords, formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
+import { Field, Input } from "@shell/ui/field";
+import { ActionMenu } from "@shell/ui/Menu";
 import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
 import { Row } from "@shell/ui/Row";
 
 import { ChapterEditor } from "./ChapterEditor";
+import { ChapterDeleteDialog, ChapterRenameDialog } from "./ChapterDialogs";
 import type { FocusStep } from "./routes";
 
 // The step machine as data: no arithmetic on the union, and the ends are
 // their own neighbours so a stray call cannot walk off the scale.
 const DEEPEN: Record<FocusStep, FocusStep> = { 0: 1, 1: 2, 2: 2 };
 const RELEASE: Record<FocusStep, FocusStep> = { 0: 0, 1: 0, 2: 1 };
+
+// The drag's drop marker: a 2 px primary edge at the slot's top — the row
+// a drop would land at. Its look is the spec's "left to the builder"; it
+// lives on the slot so the Row's own classes stay untouched.
+const DROP_HINT = "shadow-[inset_0_2px_0_var(--primary)]";
 
 // One row of the generated dock registry. The workspace knows no dock by
 // name — its tabs, matching and labels all come from this table, and a new
@@ -108,6 +121,21 @@ export function NovelPage() {
   // something to show); the novel row rides along (the heading's title).
   const novelLoaded = novelQuery.data !== undefined;
   const chaptersLoaded = chaptersQuery.data !== undefined;
+  // The book deleted elsewhere (Task 13): a 404 from the novel's row is
+  // not an outage — the service answered, and the answer is that the book
+  // is gone. The degrade is a navigation to the shelf with the note that
+  // names what happened, and it outranks both failure voices below: an
+  // outage page would claim the book could not be loaded, when the truth
+  // is that there is no book to load. It fires whatever the screen holds —
+  // a first load that never arrived, or a refresh that found the row gone
+  // under open work; the leave guard still asks about unsaved words, and
+  // only the navigation that survives it lands here.
+  useEffect(() => {
+    if (!novelQuery.isError) return;
+    if ((novelQuery.error as { status?: number }).status !== 404) return;
+    noteNovelDeletedElsewhere();
+    void navigate({ to: "/" });
+  }, [novelQuery.isError, novelQuery.error, navigate]);
   // The rail's own create failure: a chapter the user asked for that never
   // arrived must say so beside the button, not vanish into a silent click.
   const [createFailed, setCreateFailed] = useState(false);
@@ -134,7 +162,12 @@ export function NovelPage() {
   // brings a newer updated_at; a re-derived fallback would flip the editor
   // to the new row outside the gate and drop the unsaved body with it. An
   // empty list is no answer of this kind: the latch waits, and the first
-  // chapter's refetch fills it.) The latch is the
+  // chapter's refetch fills it.) The one thing that does invalidate the
+  // latch is its own row dying — a delete is the gated navigation that
+  // opened the neighbour, and the latched id must not outlive its row, or
+  // the bare address would resolve to a chapter that renders no editor.
+  // A live row, whatever the refetch brought, keeps the latch where it
+  // is. The latch is the
   // book's, not the page's: a palette jump to another novel keeps this route
   // mounted and changes only the param, and the old book's row must not
   // survive as the new book's answer — the latch resets, and the new book's
@@ -146,11 +179,14 @@ export function NovelPage() {
     chapter: string | null;
   } | null>(null);
   useEffect(() => {
-    if (chaptersQuery.data === undefined) return;
+    const rows = chaptersQuery.data;
+    if (rows === undefined) return;
     setFallback((previous) =>
-      previous?.novel === novelId && previous.chapter !== null
+      previous?.novel === novelId &&
+      previous.chapter !== null &&
+      rows.some((chapter) => chapter.id === previous.chapter)
         ? previous
-        : { novel: novelId, chapter: activeChapterFallback(chaptersQuery.data) },
+        : { novel: novelId, chapter: activeChapterFallback(rows) },
     );
   }, [chaptersQuery.data, novelId]);
   const active =
@@ -333,6 +369,10 @@ export function NovelPage() {
     // An explicit empty title: the placeholder is a display concern, and
     // storing a title would freeze one locale's wording into the database.
     // The server treats an empty title exactly like an omitted one.
+    // The filter clears with the ask — the new chapter must land in the
+    // visible list, and the rail's own button is the one create path that
+    // runs here (the palette's command arrives through the length effect).
+    setRailFilter(null);
     setCreateFailed(false);
     try {
       const { data: chapter } = await client.POST(
@@ -369,17 +409,17 @@ export function NovelPage() {
   }
 
   const remember = useCallback(
-    (chapterId: string, body: string) => {
-      // The saved body reaches the cache before the ask: the patch makes
-      // the settled text the key's own answer — the words and the freshness
-      // their updated_at stands for — so a refetch that never answers (or
-      // answers refused) cannot remount the pre-save row over them on a
-      // later switch. The refetch stays the truth; the patch only holds
-      // the page's ground until it lands.
+    (chapterId: string, draft: DocumentDraft) => {
+      // The saved draft reaches the cache before the ask: the patch makes
+      // the settled document — title and body both — the key's own answer,
+      // so the words, the row's name and the freshness their updated_at
+      // stands for cannot be remounted over by a refetch that never
+      // answers (or answers refused) on a later switch. The refetch stays
+      // the truth; the patch only holds the page's ground until it lands.
       queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
         rows?.map((row) =>
           row.id === chapterId
-            ? { ...row, body, updated_at: new Date().toISOString() }
+            ? { ...row, ...draft, updated_at: new Date().toISOString() }
             : row,
         ),
       );
@@ -394,6 +434,10 @@ export function NovelPage() {
   );
 
   const current = chapters.find((chapter) => chapter.id === active) ?? null;
+  // The open chapter's slot, for the runhead menu's move items: the ends
+  // of the rail are their own no-ops, and an offered deed that cannot run
+  // says so by its disabled state, not by a silent click.
+  const currentIndex = chapters.findIndex((chapter) => chapter.id === active);
 
   // The autosave is the page's, not the chapter's: the editor remounts on
   // every switch (its key is the chapter id), and a hook that lived inside
@@ -402,6 +446,43 @@ export function NovelPage() {
   // editor shows `status` beside the text and feeds `schedule` on update;
   // `flush` is the page's own handle on what has not reached the server.
   const { status, schedule, flush, discard } = useAutosave(current?.id ?? null, remember);
+
+  // The document the writer holds: title beside body, one draft — the
+  // autosave's unit of work. It belongs to the open chapter, and the
+  // selection's change is its reset, done in render (the state-adjust
+  // pattern) so the new chapter's first paint already carries its own
+  // name: an effect would paint the old book's title over the new chapter
+  // for a frame. Every schedule — the editor's body, the runhead's title —
+  // passes through one wrapper, so the state and the pending save can
+  // never disagree: `remember` patches the row from the whole draft, and a
+  // stale half would patch a regression.
+  const [held, setHeld] = useState<{ id: string | null; draft: DocumentDraft }>({
+    id: null,
+    draft: { title: "", body: "" },
+  });
+  const currentId = current?.id ?? null;
+  if (held.id !== currentId) {
+    setHeld({
+      id: currentId,
+      draft: { title: current?.title ?? "", body: current?.body ?? "" },
+    });
+  }
+  const draft = held.draft;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const scheduleDraft = useCallback(
+    (next: DocumentDraft, changed: keyof DocumentDraft) => {
+      setHeld((previous) => ({ ...previous, draft: next }));
+      schedule(next, changed);
+    },
+    [schedule],
+  );
+  /** The runhead's title keystrokes: the draft's body is whatever the page
+   *  last held, so the rename rides beside — never over — the text. */
+  const changeTitle = useCallback(
+    (value: string) => scheduleDraft({ ...draftRef.current, title: value }, "title"),
+    [scheduleDraft],
+  );
 
   // The page's one opinion about unsaved text, shared by every guard: a body
   // waiting for its debounce, one on the wire, or one that did not land.
@@ -504,6 +585,258 @@ export function NovelPage() {
     rows[next]?.focus();
   }, []);
 
+  // The rail's reorder (WP6): Alt+↑/↓ on the focused row and a desktop
+  // drag both end in one PUT of the whole rail. The arrangement is
+  // written into the cache optimistically — the rail is the new order at
+  // once, each row keeping its own updated_at (an arrangement is not a
+  // write) — and any failure restores the list the ask replaced beside a
+  // named notice. A 409 alone also refetches the key: the book's whole
+  // changed in another tab, and the server's arrangement is the truth the
+  // cache lacks. The shelf is asked for only on success, through the
+  // mutation's own `onSuccess`.
+  const reorder = useReorderChapters(novelId);
+  const [orderFailed, setOrderFailed] = useState(false);
+  // The tail of the reorder queue, the autosave's own pattern: never
+  // rejects, so one failed ask cannot eat the moves queued behind it.
+  // Serialization is the promise "survives a reload" keeps under key
+  // repeat — two arrangements in flight at once can commit inverted, the
+  // server holding the earlier permutation while the rail shows the last.
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
+  // The rail's filter (Task 12): `null` is "no filter", the one state in
+  // which a reorder is unambiguous — the guard Task 11 left behind. The
+  // field's value arrives whole; a blank (trimmed-empty) answer is no
+  // question at all and stores as `null`, so a cleared field and an
+  // untouched one mean the same thing to every guard that reads this.
+  const [railFilter, setRailFilter] = useState<string | null>(null);
+
+  // The rail shows the question's answers: the rows whose rendered label —
+  // the title, or the localized number an untitled row wears — contains the
+  // needle, under the same normalization the palette searches by (one
+  // definition, `lib/search.ts`). A filter is a view, never the book: the
+  // cache and the editor keep every row, and the walk below indexes into
+  // this list because this list is what rendered. The locale is a
+  // dependency in its own right: `t` is a plain function whose identity
+  // never changes, and the label it renders changes with the language — a
+  // standing question is re-asked when the rows change their words, not
+  // replayed against the previous language's answers.
+  const locale = activeLocale();
+  const visibleChapters = useMemo(() => {
+    if (railFilter === null) return chapters;
+    const needle = normalize(railFilter.trim());
+    return chapters.filter((chapter) =>
+      normalize(
+        chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 }),
+      ).includes(needle),
+    );
+  }, [chapters, railFilter, locale]);
+
+  // The open chapter's slot in that visible list: -1 when no chapter is
+  // open, or when the filter hides the one that is — either way the rail's
+  // first visible row takes the tab stop, so the list is never unreachable
+  // by keyboard while a filter stands.
+  const activeVisibleIndex = visibleChapters.findIndex((chapter) => chapter.id === active);
+
+  // The filter dies where the book it filtered ends. Another book's rows —
+  // the palette's jump keeps this page mounted, and one book's question
+  // must not hide the next book's chapters — and a book whose length
+  // changed, which is every create (the rail's own button clears above;
+  // the palette's command lands here, through its invalidation) and every
+  // delete: both end in a chapter the rail must show, and the row the
+  // address names is never hidden by a stale question.
+  const filteredBook = useRef(novelId);
+  const bookLength = useRef(chapters.length);
+  useEffect(() => {
+    if (novelId === filteredBook.current && chapters.length === bookLength.current) return;
+    filteredBook.current = novelId;
+    bookLength.current = chapters.length;
+    // The walk ends with the question: whatever row it stood on belongs to
+    // a list that no longer exists, and a stale index would leave the
+    // shortened rail without a tab stop.
+    setWalkedIndex(null);
+    setRailFilter(null);
+  }, [novelId, chapters.length]);
+
+  /** Move one chapter one step: the keyboard's Alt+↑/↓ path, and the
+   *  address Task 10's menu items call. The ends are no-ops — nothing
+   *  moves, nothing is asked. */
+  async function move(chapterId: string, delta: -1 | 1): Promise<void> {
+    if (railFilter !== null) return;
+    const rows = queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]);
+    if (!rows) return;
+    const from = rows.findIndex((chapter) => chapter.id === chapterId);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= rows.length) return;
+    await moveTo(chapterId, to);
+  }
+
+  /** Move one chapter to an index: the drag path's landing, and move's
+   *  engine. Both reads are the cache's, not the render's list — two
+   *  moves before a re-render must not compute the second from the
+   *  first's before — and the first read doubles as the snapshot a
+   *  failure restores. */
+  async function moveTo(chapterId: string, index: number): Promise<void> {
+    if (railFilter !== null) return;
+    const previous = queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]);
+    if (!previous) return;
+    const from = previous.findIndex((chapter) => chapter.id === chapterId);
+    if (from < 0 || from === index || index < 0 || index >= previous.length) return;
+    const moved = previous[from];
+    const without = previous.filter((chapter) => chapter.id !== chapterId);
+    const next = [...without.slice(0, index), moved, ...without.slice(index)].map(
+      (chapter, position) => ({ ...chapter, position }),
+    );
+    // A plain list tells AT nothing about a reordering: every move is
+    // announced with the row's name — the one it wore as the move began,
+    // the name the keystroke or the grab was aimed at — and the position
+    // it holds now, out of the book's total.
+    announce(
+      t("chapters.moved", {
+        title: moved.title || t("chapters.defaultTitle", { n: moved.position + 1 }),
+        n: index + 1,
+        m: next.length,
+      }),
+    );
+    // The optimistic write: the rail and the cache agree at once, the
+    // numbering rewritten to the arrangement the rows now stand in.
+    // `setQueryData` runs the value through structural sharing and
+    // answers with the object the cache actually stored — never the
+    // `next` we passed — so the identity guard below compares against
+    // the RETURN: the one reference a later read can still find there.
+    const written = queryClient.setQueryData<Array<Chapter>>(
+      ["chapters", novelId],
+      next,
+    );
+    setOrderFailed(false);
+    // The ask waits its turn: one arrangement on the wire at a time,
+    // chained on the queue's tail. This move's promise (`ask`) can
+    // reject into its own handler; the tail cannot, or a later keystroke
+    // would queue behind a failure and never fly.
+    const ask = writes.current.then(() =>
+      reorder.mutateAsync(next.map((chapter) => chapter.id)),
+    );
+    writes.current = ask.catch(() => undefined);
+    try {
+      await ask;
+    } catch (failure) {
+      // Restore only what is still this move's to restore: the cache
+      // must hold the very object this move's write stored, or a later
+      // move's optimistic order — newer than this snapshot — would be
+      // clobbered by an earlier failure. The notice still names the
+      // refusal either way. A 409 asks the key to refetch, the server's
+      // order arriving through the same door every list does; a
+      // transport failure asks for nothing — the service is not
+      // answering, and a second ask would only name a refresh failure
+      // beside work that stays.
+      if (queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]) === written) {
+        queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], previous);
+      }
+      setOrderFailed(true);
+      if ((failure as { status?: number }).status === 409) {
+        void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+      }
+    }
+  }
+
+  // The desktop drag's state. The dragged id rides component state, not
+  // `dataTransfer`: the DOM test drives the events alone, and no drop
+  // reads data some other surface would have to write. `dropIndex` is
+  // the marker's truth — which slot the drop would land at — read by the
+  // render, not by the drop itself (the slot's own handler knows its
+  // index; the state would be one event behind it).
+  const dragId = useRef<string | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  // The runhead's menu (D3's narrowing): the open chapter's actions live
+  // in its runhead, and the two that need more than a keystroke — rename,
+  // delete — open the dialogs that own them. The rail keeps its plain
+  // rows; the menu is the touch path's way to every chapter deed.
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteChapter = useDeleteChapter(novelId);
+
+  /** Delete one chapter: the one orchestrated sequence the delete dialog's
+   *  confirm runs. Retire comes first and provably — when the chapter is
+   *  the open one, its pending document is dropped before the request
+   *  flies, so no PUT can arrive at a chapter the delete is about to kill
+   *  and no `save.failed` names a deletion the user asked for. The retire
+   *  is also what makes the navigation honest: the blocker below would
+   *  flush on any navigation, and a flush after this `discard()` finds an
+   *  empty slot (the generation bump retires any answer still in flight)
+   *  — the neighbour opens without a phantom write either way. A chapter
+   *  that is not the open one dies without a navigation: the editor and
+   *  the address keep what they hold (D7). */
+  async function confirmDeleteChapter(chapterId: string): Promise<boolean> {
+    const isOpen = chapterId === current?.id;
+    // What the guards would protect, asked before the retire can empty
+    // it: a clean chapter — idle or saved, nothing typed, nothing failed
+    // — has no words to hand back, and inventing them would be a phantom
+    // save ("Gespeichert" for text nobody edited) or a phantom failure.
+    const hadUnsaved = unsavedStatus(status);
+    // The neighbour is named from the list the book has now, before
+    // anything flies: the chapter that takes this one's place — the next,
+    // else the previous (D7). Only the open chapter's death opens one.
+    const index = chapters.findIndex((row) => row.id === chapterId);
+    const neighbour = chapters[index + 1] ?? chapters[index - 1] ?? null;
+    if (isOpen) discard();
+    try {
+      await deleteChapter.mutateAsync(chapterId);
+    } catch {
+      // A refused delete hands the retired words back — only the words
+      // that were pending: both fields dirty again, the status pending,
+      // so the leave guards protect them and the next debounce carries
+      // them to a chapter that still lives. A clean chapter stays clean.
+      if (isOpen && hadUnsaved) {
+        schedule(held.draft, "title");
+        schedule(held.draft, "body");
+      }
+      // The refusal is the dialog's to name; nothing moved, and the
+      // neighbour this run computed is still only a computation.
+      return false;
+    }
+    // The 204 is the server's word, and the mutation's own invalidation is
+    // already carrying it: the refetch's answer — not a hand-patched list —
+    // is what removes the row, exactly the create path's contract with the
+    // cache. The selection below runs in this same tick, ahead of that
+    // answer (a navigation commits in a microtask; the refetch lands on a
+    // macrotask), which is what keeps the dead-param cleanup honest: by the
+    // time the rows no longer hold this chapter, the address no longer
+    // names it. A synchronous removal here would open exactly the window
+    // the cleanup exists to close.
+    if (!isOpen || neighbour === null) {
+      if (!isOpen) return true;
+      // The book's last chapter: the empty state, and the address loses
+      // its dead value by replace — a cleanup, not a selection, so the
+      // back button keeps no step for it.
+      void navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, chapter: undefined }),
+        replace: true,
+      });
+      return true;
+    }
+    // A push, the rail's own selection semantics: the back button walks
+    // back to the address the deleted chapter wore, and history keeps
+    // the delete as the step it was.
+    select(neighbour.id);
+    return true;
+  }
+
+  /** The rename dialog's answer: the runhead's input (and the page's held
+   *  draft) take the server's title at once, while the autosave's pending
+   *  slot keeps whatever fields it was holding — the title was never
+   *  dirtied by the dialog, so the pending flush carries the body only
+   *  and the rename survives it (Task 9's contract). */
+  const renamed = useCallback(
+    (title: string) => {
+      setHeld((previous) =>
+        previous.id === current?.id
+          ? { ...previous, draft: { ...previous.draft, title } }
+          : previous,
+      );
+    },
+    [current?.id],
+  );
+
   // F22's choice: below the workbench breakpoint the rail and the dock stay
   // overlays — the viewport floor pins covering, never squeezing — so they
   // get what an overlay owes the page behind it: a scrim that takes the
@@ -550,7 +883,12 @@ export function NovelPage() {
           state (they toggle); the group's name is the one dock control the
           toolbar carries — no separate dock toggle beside the tabs. */}
       {focus < 2 ? (
-        <div className="mt-6 flex items-center gap-2">
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          {/* The band wraps before it overflows: a phone's 328 px content
+              box cannot hold four icon buttons and an input's automatic
+              minimum on one line, and the field is `min-w-0` so it shrinks
+              into the space the buttons leave (or takes a line of its own)
+              instead of pushing the page's gutter aside. */}
           <Button
             variant="icon"
             icon={<Icon name="focus" />}
@@ -579,6 +917,31 @@ export function NovelPage() {
               />
             ))}
           </div>
+          {/* The rail's filter (Task 12): the long rail's own field, in the
+              band that already holds the rail's collapse control. It stands
+              only above twenty chapters and only while the rail itself is
+              on screen — a field for a hidden list would be a promise with
+              no subject. The input's accessible name is the fuller phrase
+              that carries the visible label inside it, so the name a reader
+              hears says what the field matches. */}
+          {focus === 0 && showRail && !pending && !failed && chapters.length > 20 ? (
+            <Field label={t("chapters.railFilter")} className="ml-auto w-40 min-w-0">
+              <Input
+                type="search"
+                value={railFilter ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  // The walk ends with the question: its row may no longer
+                  // be in the list the next answer renders, and a stale
+                  // index would leave that list without a tab stop.
+                  setWalkedIndex(null);
+                  setRailFilter(value.trim() === "" ? null : value);
+                }}
+                aria-label={t("chapters.railFilterAria")}
+                className="min-w-0"
+              />
+            </Field>
+          ) : null}
         </div>
       ) : null}
 
@@ -616,8 +979,14 @@ export function NovelPage() {
                the breakpoint the whole drawer scrolls instead. The drawer
                paints one z-step above the dock's: opening it over a live
                dock covers the dock without unmounting it, so the dock's
-               own draft survives behind it. */
-            className="flex w-56 shrink-0 flex-col lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+               own draft survives behind it. At ≥1024 the column is also
+               sticky: a long manuscript scrolls the page under the
+               editor, and the rail — capped a viewport tall minus its
+               own chrome — holds its place beside the writing instead of
+               being carried out of sight with the page's top; `top-4`
+               and the 16rem max-height budget keep the box inside the
+               viewport at any height it takes. */
+            className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
             aria-label={t("chapters.heading")}
           >
             <h2 className="text-emph font-semibold tracking-tight">{t("chapters.heading")}</h2>
@@ -627,24 +996,55 @@ export function NovelPage() {
             {/* The list scrolls itself in the desktop columns only (its
                 bounded height is a column fact); below 1024 the drawer
                 scrolls whole, so the list must neither clip nor shrink
-                there. */}
+                there. The desktop column is sticky (the rail holds its
+                place beside the editor while a long manuscript scrolls
+                the page), and the rows it shows are the filtered list —
+                the walk below indexes into what rendered. */}
             <ul
               ref={railListRef}
               className="mt-3 flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
             >
-              {chapters.map((chapter, index) => {
+              {visibleChapters.map((chapter, index) => {
                 const isCurrent = chapter.id === active;
                 const title = chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
                 // The count is spoken as the sentence the footer prints
                 // ("… 2.107 Wörter") and shown as its number alone — the
                 // localized grouping, so the row and the footer read alike.
                 const words = chapterCounts.get(chapter.id) ?? 0;
+                // One tab stop in the list, whatever the filter did to it:
+                // the open chapter's row — or, when the filter hides that
+                // row (or the book has no open chapter yet), the first
+                // visible one, so the keyboard always has a way in.
                 const isTabStop =
                   walkedIndex !== null
                     ? walkedIndex === index
-                    : isCurrent || (active === null && index === 0);
+                    : isCurrent || (activeVisibleIndex < 0 && index === 0);
                 return (
-                  <li key={chapter.id}>
+                  <li
+                    key={chapter.id}
+                    /* The slot is the drop target, and the marker is the
+                       slot's own top edge — the row the drop would land
+                       at — so the Row's classes stay untouched (spec §7:
+                       no markup or role change). `onDragOver` must
+                       preventDefault for the drop to be allowed at all,
+                       and only while a drag of ours is in flight. */
+                    onDragOver={(event) => {
+                      if (dragId.current === null) return;
+                      event.preventDefault();
+                      setDropIndex(index);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const source = dragId.current;
+                      dragId.current = null;
+                      setDropIndex(null);
+                      if (source === null) return;
+                      void moveTo(source, index);
+                    }}
+                    className={
+                      dropIndex === index && dragId.current !== null ? DROP_HINT : undefined
+                    }
+                  >
                     <Row
                       current={isCurrent}
                       selected={isCurrent}
@@ -657,7 +1057,37 @@ export function NovelPage() {
                          separator made explicit. */
                       aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
                       tabIndex={isTabStop ? 0 : -1}
-                      onKeyDown={(event) => walkRail(event, index)}
+                      /* The desktop drag: the row is the grab, the slot
+                         above is the landing. Wired only while no filter
+                         is active — a filtered list has no unambiguous
+                         drop index (Task 12's rule). */
+                      draggable={railFilter === null}
+                      onDragStart={
+                        railFilter === null
+                          ? () => {
+                              dragId.current = chapter.id;
+                            }
+                          : undefined
+                      }
+                      onDragEnd={() => {
+                        dragId.current = null;
+                        setDropIndex(null);
+                      }}
+                      onKeyDown={(event) => {
+                        // Alt+↑/↓ moves the focused row one step; the
+                        // plain arrows keep the walk. The handler is the
+                        // row's own, so the editor's Alt+arrows never
+                        // reach it — there they keep the OS meaning.
+                        if (
+                          event.altKey &&
+                          (event.key === "ArrowDown" || event.key === "ArrowUp")
+                        ) {
+                          event.preventDefault();
+                          void move(chapter.id, event.key === "ArrowDown" ? 1 : -1);
+                          return;
+                        }
+                        walkRail(event, index);
+                      }}
                       onClick={() => {
                         // The chapter already open is no switch: a second
                         // history entry for the same address would only eat
@@ -689,6 +1119,11 @@ export function NovelPage() {
             <Button onClick={() => void createChapter()} className="mt-3 w-full">
               {t("chapters.new")}
             </Button>
+            {orderFailed ? (
+              <Notice tone="danger" live="alert" className="mt-2">
+                {t("chapters.orderFailed")}
+              </Notice>
+            ) : null}
             {createFailed ? (
               <Notice tone="danger" live="alert" className="mt-2">
                 {t("chapters.errorCreate")}
@@ -754,22 +1189,89 @@ export function NovelPage() {
                     {t("chapters.refreshFailed")}
                   </Notice>
                 ) : null}
+                {orderFailed && !showRail ? (
+                  // The same refusal the rail's aside names, for the
+                  // states that have no rail to name it: the runhead's
+                  // move items render at a focus depth that hides the
+                  // rail and with the column collapsed, and a 409 there
+                  // would revert silently. One of the two notices is
+                  // mounted at any time — `showRail` partitions them —
+                  // so the alert is announced once, from the surface
+                  // that is on screen.
+                  <Notice tone="danger" live="alert" className="mt-6">
+                    {t("chapters.orderFailed")}
+                  </Notice>
+                ) : null}
                 {current ? (
                   <ChapterEditor
                     key={current.id}
                     chapterId={current.id}
                     body={current.body}
+                    title={draft.title}
+                    onTitleChange={changeTitle}
                     status={status}
-                    schedule={schedule}
+                    schedule={scheduleDraft}
                     proposal={offer ?? undefined}
                     onProposalResolve={resolveOffer}
                     bookTitle={novelQuery.data?.title}
-                    chapterTitle={
-                      current.title || t("chapters.defaultTitle", { n: current.position + 1 })
-                    }
                     chapterNumber={current.position + 1}
                     chapterTotal={chapters.length}
                     focusDepth={focus}
+                    actions={
+                      <ActionMenu
+                        label={t("chapters.actions")}
+                        // The trigger names the chapter as the page holds
+                        // it — the draft, not the cache row — so a typed
+                        // title reaches the button's name before the save
+                        // lands (the row catches up on the refetch).
+                        triggerAriaLabel={t("chapters.actionsFor", {
+                          title:
+                            draft.title ||
+                            t("chapters.defaultTitle", { n: current.position + 1 }),
+                        })}
+                        items={[
+                          {
+                            id: "rename",
+                            label: t("chapters.rename"),
+                            onSelect: () => setRenameOpen(true),
+                          },
+                          {
+                            id: "moveUp",
+                            // The ends are their own no-ops, offered but
+                            // disabled: the shortcut the hint names is the
+                            // rail's own Alt+↑ (D6), discoverable exactly
+                            // where the action lives. A filter disables
+                            // the move wherever the row sits — a filtered
+                            // list has no unambiguous neighbour — and the
+                            // label itself says why, so the reason travels
+                            // with the item to readers and screens alike.
+                            label:
+                              railFilter === null
+                                ? t("chapters.moveUp")
+                                : t("chapters.moveUpFiltered"),
+                            shortcut: "Alt+↑",
+                            disabled: railFilter !== null || currentIndex <= 0,
+                            onSelect: () => void move(current.id, -1),
+                          },
+                          {
+                            id: "moveDown",
+                            label:
+                              railFilter === null
+                                ? t("chapters.moveDown")
+                                : t("chapters.moveDownFiltered"),
+                            shortcut: "Alt+↓",
+                            disabled:
+                              railFilter !== null || currentIndex >= chapters.length - 1,
+                            onSelect: () => void move(current.id, 1),
+                          },
+                          {
+                            id: "delete",
+                            label: t("chapters.delete"),
+                            onSelect: () => setDeleteOpen(true),
+                          },
+                        ]}
+                      />
+                    }
                   />
                 ) : null}
               </>
@@ -823,6 +1325,29 @@ export function NovelPage() {
           </aside>
         ) : null}
       </div>
+
+      {/* The chapter's two deeds that need more than a keystroke (D3's
+          runhead menu): the rename dialog and the delete dialog, both
+          controlled — the menu was the press, the dialogs are the asks.
+          They stand only while a chapter is open: the runhead's menu is
+          their one trigger. */}
+      {current ? (
+        <>
+          <ChapterRenameDialog
+            chapter={current}
+            open={renameOpen}
+            onOpenChange={setRenameOpen}
+            onRenamed={renamed}
+          />
+          <ChapterDeleteDialog
+            novelId={novelId}
+            chapter={current}
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            onDelete={confirmDeleteChapter}
+          />
+        </>
+      ) : null}
 
       {/* The leave guard's ask (F21): the shell's dialog, not window.confirm
           — the question the gate owes, in the page's own clothes. Escape and

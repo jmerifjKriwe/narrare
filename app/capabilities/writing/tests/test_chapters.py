@@ -86,6 +86,78 @@ async def test_chapter_writes_advance_the_novels_updated_at() -> None:
         )
 
 
+async def test_a_chapter_can_return_to_untitled() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client)
+        chapter = (
+            await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
+        ).json()
+
+        cleared = await client.put(f"/api/writing/chapters/{chapter['id']}", json={"title": ""})
+        assert cleared.status_code == 200
+
+        reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
+        assert reloaded.json()["title"] == ""
+
+
+async def test_a_title_is_trimmed() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client)
+        chapter = (
+            await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": ""})
+        ).json()
+
+        saved = await client.put(
+            f"/api/writing/chapters/{chapter['id']}", json={"title": "  Wald  "}
+        )
+        assert saved.status_code == 200
+
+        reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
+        assert reloaded.json()["title"] == "Wald"
+
+
+async def test_a_created_title_is_trimmed() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client)
+        created = await client.post(
+            f"/api/writing/novels/{novel_id}/chapters", json={"title": "  Wald  "}
+        )
+        assert created.status_code == 201
+        assert created.json()["title"] == "Wald"
+
+
+async def test_a_whitespace_title_is_untitled() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client)
+        chapter = (
+            await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Wald"})
+        ).json()
+
+        saved = await client.put(f"/api/writing/chapters/{chapter['id']}", json={"title": "   "})
+        assert saved.status_code == 200
+
+        reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
+        assert reloaded.json()["title"] == ""
+
+
+async def test_a_title_only_update_leaves_the_body_alone() -> None:
+    async with _client() as client:
+        novel_id = await _create_novel(client)
+        chapter = (
+            await client.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": ""})
+        ).json()
+        await client.put(
+            f"/api/writing/chapters/{chapter['id']}", json={"body": "Der Nebel kam von See."}
+        )
+
+        renamed = await client.put(f"/api/writing/chapters/{chapter['id']}", json={"title": "Wald"})
+        assert renamed.status_code == 200
+
+        reloaded = await client.get(f"/api/writing/chapters/{chapter['id']}")
+        assert reloaded.json()["title"] == "Wald"
+        assert reloaded.json()["body"] == "Der Nebel kam von See."
+
+
 async def test_a_chapter_cannot_be_added_to_another_users_novel() -> None:
     await seed_user(OTHER_USER)
     async with Session() as session:

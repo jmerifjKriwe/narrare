@@ -77,6 +77,7 @@ const NOVEL: Novel = {
   genre: null,
   language: null,
   updated_at: "2026-10-28T10:00:00Z",
+  last_exported_at: null,
 };
 
 const TARGET: Novel = {

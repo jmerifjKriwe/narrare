@@ -115,8 +115,102 @@ export function useNovelQuery(novelId: string): UseQueryResult<Novel> {
       const { data, response } = await client.GET("/api/writing/novels/{novel_id}", {
         params: { path: { novel_id: novelId } },
       });
-      if (!response.ok || !data) throw new Error(`novel unavailable: ${response.status}`);
+      if (!response.ok || !data) {
+        // The status rides the throw (the accept-suggestion precedent): a
+        // 404 is the one failure the workbench answers with a navigation —
+        // the book was deleted elsewhere — so the machine-readable fact
+        // must survive the query boundary.
+        throw Object.assign(new Error(`novel unavailable: ${response.status}`), {
+          status: response.status,
+        });
+      }
       return data;
+    },
+  });
+}
+
+/**
+ * The one-shot note that the workspace's book was deleted elsewhere: set
+ * by the workbench's 404 degrade, taken by the shelf's next mount. Module
+ * state beside the cache it belongs to — the note is the 404's UI
+ * translation, owned by the same layer that owns the `["novels"]` keys,
+ * and both pages already import this module (no chunk changes hands).
+ */
+let novelDeletedElsewhere = false;
+
+/** Record that the book the workspace tried to open answered 404; the
+ *  shelf's next mount shows the note once. */
+export function noteNovelDeletedElsewhere(): void {
+  novelDeletedElsewhere = true;
+}
+
+/** Take the note if one stands: the shelf's mount reads it once, and the
+ *  note cannot outlive the shelf that shows it. */
+export function takeNovelDeletedElsewhere(): boolean {
+  const was = novelDeletedElsewhere;
+  novelDeletedElsewhere = false;
+  return was;
+}
+
+/** The fields a details edit may carry: only these reach the PATCH body.
+ *  `null` is the cleared state for the four optional fields; the title is
+ *  never clearable and never `null` when sent. */
+export type NovelChanges = Partial<
+  Pick<Novel, "title" | "genre" | "blurb" | "author" | "language">
+>;
+
+/**
+ * Correcting a novel's five metadata fields (§2): only the fields the body
+ * carries are the change, so the caller sends only what the user dirtied —
+ * the client's mirror of the server's `model_fields_set` contract. The
+ * row's `onupdate` advances `updated_at` (D8: the archive's metadata
+ * changed), so the whole `["novels"]` prefix is invalidated — the shelf's
+ * list and the row this dialog's own read uses refresh together. A refusal
+ * carries status and detail: a 422 names the field, and the dialog shows
+ * that name on the field it refused.
+ */
+export function useUpdateNovel(): UseMutationResult<
+  Novel,
+  Error,
+  { novelId: string; changes: NovelChanges }
+> {
+  return useMutation({
+    mutationFn: async (input: { novelId: string; changes: NovelChanges }) => {
+      const { data, error, response } = await client.PATCH(
+        "/api/writing/novels/{novel_id}",
+        { params: { path: { novel_id: input.novelId } }, body: input.changes },
+      );
+      if (!response.ok || !data) {
+        throw Object.assign(new Error(`novel update refused: ${response.status}`), {
+          status: response.status,
+          detail: (error as { detail?: unknown } | null | undefined)?.detail,
+        });
+      }
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
+    },
+  });
+}
+
+/**
+ * Deleting a novel: the row and everything novel-scoped cascade in the
+ * database — chapters, entities, relations, suggestions, findings — and
+ * the documents are the library's and stay. Success invalidates the
+ * `["novels"]` prefix (the row and the list both held a book that no
+ * longer exists); a failed delete asks for nothing.
+ */
+export function useDeleteNovel(): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (novelId: string) => {
+      const { response } = await client.DELETE("/api/writing/novels/{novel_id}", {
+        params: { path: { novel_id: novelId } },
+      });
+      if (!response.ok) throw new Error(`novel delete refused: ${response.status}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["novels"] });
     },
   });
 }
@@ -163,6 +257,69 @@ export function activeChapterFallback(chapters: Chapter[]): string | null {
       null,
     )?.id ?? null
   );
+}
+
+/**
+ * Reordering the rail: the PUT chapter-order write. The body is the whole
+ * rail — every chapter id in its new order — and the caller has already
+ * written that arrangement into the cache optimistically; the mutation is
+ * the ask behind it. Success invalidates the novels prefix only (Task 8's
+ * shelf rule: an arrangement advanced the novel's `updated_at`, D8) and
+ * never the chapters key — the optimistic order is what the 204
+ * acknowledged, and a chapters refetch mid-unsaved-body is exactly the
+ * state the save-side rule guards against. A failure invalidates nothing
+ * here, on `onSuccess` and not `onSettled` for that reason: the page
+ * restores the previous list itself and, on a 409 alone, asks the
+ * chapters key to refetch — the one failure whose truth the cache lacks.
+ */
+export function useReorderChapters(
+  novelId: string,
+): UseMutationResult<void, Error, string[]> {
+  return useMutation({
+    mutationFn: async (chapterIds: string[]) => {
+      const { response } = await client.PUT(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        { params: { path: { novel_id: novelId } }, body: { chapter_ids: chapterIds } },
+      );
+      if (!response.ok) {
+        // The status rides the throw, the accept-suggestion precedent: a
+        // 409 is the one refusal the page answers with a chapters
+        // refetch, so the machine-readable fact must survive the
+        // mutation boundary. Every other refusal keeps its error as is.
+        throw Object.assign(new Error(`reorder refused: ${response.status}`), {
+          status: response.status,
+        });
+      }
+    },
+    onSuccess: () => {
+      void invalidateNovelShelf();
+    },
+  });
+}
+
+/**
+ * Deleting a chapter (spec §2): the surviving rows renumber `0..n-1` in
+ * the delete's own transaction, and the novel's row advances (D8 — the
+ * archive lost a chapter). Success alone invalidates, and the chapters key
+ * with the `["novels"]` prefix beside it: the delete is the one write that
+ * changes both lists' shapes at once, and the page's richer story around
+ * the ask — retiring the pending document, opening the neighbour — runs
+ * on the mutation's promise, not on these invalidations. A failed delete
+ * asks for nothing: the rows it would have changed did not change.
+ */
+export function useDeleteChapter(novelId: string): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (chapterId: string) => {
+      const { response } = await client.DELETE("/api/writing/chapters/{chapter_id}", {
+        params: { path: { chapter_id: chapterId } },
+      });
+      if (!response.ok) throw new Error(`delete refused: ${response.status}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
+      void invalidateNovelShelf();
+    },
+  });
 }
 
 /**
@@ -339,6 +496,7 @@ export function useAddRelation(): UseMutationResult<Relation, Error, RelationInp
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -365,6 +523,7 @@ export function useUpdateRelation(): UseMutationResult<
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -379,6 +538,7 @@ export function useDeleteRelation(): UseMutationResult<void, Error, { relationId
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -419,6 +579,28 @@ export function usePassageSearch(query: string): UseQueryResult<Hit[]> {
       });
       if (!response.ok) throw new Error(`search unavailable: ${response.status}`);
       return data ?? [];
+    },
+  });
+}
+
+/**
+ * Deleting a document: its chunks' foreign key cascades, so the passages
+ * leave the corpus with the row. Success invalidates the documents list
+ * key and nothing else — documents are the library's, never canon (D8),
+ * so no novel key may go stale on their account. The knowledge page's
+ * own list reads through its own seam, not this cache; its delete dialog
+ * refreshes that read itself, the upload's precedent.
+ */
+export function useDeleteDocument(): UseMutationResult<void, Error, string> {
+  return useMutation({
+    mutationFn: async (documentId: string) => {
+      const { response } = await client.DELETE("/api/knowledge/documents/{document_id}", {
+        params: { path: { document_id: documentId } },
+      });
+      if (!response.ok) throw new Error(`document delete refused: ${response.status}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["knowledge", "documents"] });
     },
   });
 }
@@ -551,6 +733,7 @@ export function useAcceptSuggestion(
     },
     onSettled: () => {
       void invalidateKnowledge(novelId);
+      void invalidateNovelShelf();
     },
   });
 }
@@ -598,6 +781,7 @@ export function useUpdateEntity(
     },
     onSettled: () => {
       void invalidateEntities(novelId);
+      void invalidateNovelShelf();
     },
   });
 }
@@ -616,6 +800,7 @@ export function useDeleteEntity(novelId: string): UseMutationResult<void, Error,
       // The deleted row's edges cascade: every card that showed one of
       // them must ask again, whoever's end it stood on.
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -638,6 +823,7 @@ export function useMergeEntities(
       // The merge re-points the source's edges to the target: cards on
       // either end of a moved edge must ask again.
       void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+      void invalidateNovelShelf();
     },
   });
 }
@@ -655,4 +841,16 @@ function invalidateKnowledge(novelId: string): void {
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "entities", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "suggestions", novelId] });
   void queryClient.invalidateQueries({ queryKey: ["knowledge", "relations"] });
+}
+
+/** D8's canon rule, seen from the shelf: every knowledge write that
+ *  changes what the export archive carries advances the novel's
+ *  `updated_at` on the server, and the shelf's last-touched hero and the
+ *  export warning read that column — through this cache's 30 s
+ *  staleTime unless the canon-writing mutations invalidate the key
+ *  themselves, which would leave the rule unobservable for half a
+ *  minute. The `["novels"]` prefix also covers `["novels", id]`, so the
+ *  workbench's own novel row refreshes with the shelf. */
+function invalidateNovelShelf(): void {
+  void queryClient.invalidateQueries({ queryKey: ["novels"] });
 }

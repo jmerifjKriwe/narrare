@@ -8,16 +8,24 @@ reach the service must keep the dialog (and the typed Titel) where they are
 and name the failure inside, not drop the user back onto a dead page.
 """
 
+import asyncio
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
@@ -505,5 +513,102 @@ def test_header_controls_keep_their_content_inside_the_control(page: Page, stack
     for row in rows:
         assert row["found"], row
         assert row["content"] <= row["height"], row
+
+    assert_accessible(page)
+
+
+def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
+    """Rows from the stack's database as plain tuples, in a worker thread.
+
+    The interchange suite's own reader: pytest-asyncio keeps a session loop
+    running, and asyncio.run refuses to start a second one in the same thread.
+    """
+    database = testsupport.test_database("narrare_v2_e2e")
+
+    async def run() -> list[tuple[object, ...]]:
+        engine = create_async_engine(url_for(database))
+        try:
+            async with engine.connect() as connection:
+                return [
+                    tuple(each) for each in await connection.execute(text(statement), params or {})
+                ]
+        finally:
+            await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, run()).result()
+
+
+def test_export_then_delete_a_novel(page: Page, stack: Stack, tmp_path: Path) -> None:
+    """The book's whole arc on the shelf: correct it, warn, export, delete.
+
+    The details dialog renames the book through the card's menu; the delete
+    dialog names what dies (chapters and knowledge entries), says documents
+    survive, and carries the export line — "never exported" first, the
+    fresh truth after the export the dialog itself offered. The confirmed
+    delete leaves zero rows in every novel-scoped table of the stack's own
+    database, and the shelf without the card.
+    """
+    novel = _seed_novel(page, "Der letzte Wurf")
+    novel_id = str(novel["id"])
+    _seed_chapter(page, novel_id, "Kapitel 1", "Ein letzter Satz. ")
+
+    page.goto(f"{WEB_URL}/")
+    row = page.get_by_role("listitem").filter(has_text="Der letzte Wurf")
+    expect(row).to_be_visible()
+
+    # The details dialog: the card's menu opens it, and the rename lands on
+    # the row the next shelf read answers with.
+    row.get_by_role("button", name="Aktionen für Der letzte Wurf").click()
+    page.get_by_role("menuitem", name="Details").click()
+    details = page.get_by_role("dialog", name="Details zum Roman")
+    details.get_by_label("Titel").fill("Der allerletzte Wurf")
+    details.get_by_role("button", name="Speichern").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    renamed = page.get_by_role("list").get_by_role("link", name="Der allerletzte Wurf")
+    expect(renamed).to_be_visible()
+
+    # The delete dialog warns before it asks: the counts, the documents, and
+    # the never-exported line with the export one press away. The delete and
+    # export dialogs are named — the export opens stacked over the delete —
+    # so every query names the dialog it means.
+    row = page.get_by_role("listitem").filter(has_text="Der allerletzte Wurf")
+    row.get_by_role("button", name="Aktionen für Der allerletzte Wurf").click()
+    page.get_by_role("menuitem", name="Löschen").click()
+    dialog = page.get_by_role("dialog", name="Roman löschen")
+    expect(dialog).to_contain_text("1 Kapitel")
+    expect(dialog).to_contain_text("0 Wissenseinträge")
+    expect(dialog).to_contain_text("Dokumente")
+    expect(dialog).to_contain_text("noch nie exportiert")
+    assert_accessible(page)
+
+    # The export the dialog offers lands in a folder of this run, and its
+    # success flips the line the delete was about to judge.
+    dialog.get_by_role("button", name="Jetzt exportieren").click()
+    export = page.get_by_role("dialog", name=re.compile("exportieren$"))
+    export.get_by_label("Zielordner").fill(str(tmp_path / "export"))
+    export.get_by_role("button", name="Jetzt exportieren").click()
+    expect(export).to_contain_text("Export abgeschlossen")
+    export.get_by_role("button", name="Schließen").click()
+    expect(export).to_have_count(0)
+    expect(dialog).to_contain_text("Seit dem letzten Export unverändert")
+
+    # The confirm is final: the card leaves the shelf and the database
+    # holds none of the book's rows — chapters, entities, relations,
+    # suggestions, findings all zero, the documents' library untouched.
+    dialog.get_by_role("button", name="Löschen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_role("link", name="Der allerletzte Wurf")).to_have_count(0)
+
+    for statement in (
+        "SELECT 1 FROM chapters WHERE novel_id = :id",
+        "SELECT 1 FROM entities WHERE novel_id = :id",
+        "SELECT 1 FROM entity_relations edge JOIN entities e ON e.id = edge.from_entity_id"
+        " WHERE e.novel_id = :id",
+        "SELECT 1 FROM entity_suggestions WHERE novel_id = :id",
+        "SELECT 1 FROM consistency_findings WHERE novel_id = :id",
+        "SELECT 1 FROM novels WHERE id = :id",
+    ):
+        assert _rows(statement, {"id": novel_id}) == [], statement
 
     assert_accessible(page)

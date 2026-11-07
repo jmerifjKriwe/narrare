@@ -6,10 +6,16 @@ the server — host, boot id, pid — that a sweep requires before it drops
 anything. A run that died mid-suite leaves its database behind; the next
 run's sweep reclaims it, but only when the marker names this host and either
 names another boot or a pid that is no longer alive. A name without a marker,
-or from another
-host, is never ours to drop. One shared name would carry one suite's rows
-into the next and let two concurrent runs truncate each other's tables
-mid-test (#611).
+or from another host, is never ours to drop. One shared name would carry one
+suite's rows into the next and let two concurrent runs truncate each other's
+tables mid-test (#611).
+
+The server itself is the compose default unless the environment says
+otherwise: two checkouts share one machine, and ``NARRE_TEST_DATABASE_URL``
+is how the second one aims its suites — and its E2E stacks — at its own
+Postgres instead of waiting for the port's first holder. The name a run
+mints on that server is still its own; the env var chooses the door, never
+the room behind it.
 """
 
 import asyncio
@@ -42,7 +48,13 @@ if _ATTACH_URL and not environ.get("NARRE_DATABASE_URL"):
 
 _ATTACH = make_url(environ["NARRE_DATABASE_URL"]) if _ATTACH_URL else None
 
-SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+# The one SERVER definition: the compose address unless the environment
+# re-aims it (``NARRE_TEST_DATABASE_URL``) — the door a second checkout on
+# one machine uses to run against its own Postgres. Attached runs never
+# read it: their database is the instance's own, wherever it lives.
+SERVER = environ.get(
+    "NARRE_TEST_DATABASE_URL", "postgresql+asyncpg://narrare:narrare@localhost:5433"
+)
 
 
 def admin_url(database: str) -> str:
@@ -62,7 +74,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # The per-run token: eight hex characters minted once per process. The same
 # process, the same prefix — the same name, always; two runs differ even when
 # their pids would be reused across the runs.
-_RUN_TOKEN = token_hex(4)
+#
+# The ``or`` is reload safety: ``importlib.reload`` re-executes the module in
+# this same dict (the SERVER tests do), and a token re-minted mid-run hands
+# every later ``test_database`` caller a name nobody ensured — or a sweep
+# inside a running loop. Carried, not re-minted; the caches below agree.
+_RUN_TOKEN: str = globals().get("_RUN_TOKEN") or token_hex(4)
 # ``test_database``'s suffix — which the sweep matches on: the worktree token
 # plus the run token, 16 lowercase hex characters in total.
 _RUN_SUFFIX = re.compile(r"[0-9a-f]{16}")
@@ -84,9 +101,11 @@ def _boot_id() -> str:
 
 _BOOT = _boot_id()
 
-_SWEPT: set[str] = set()
-_NAMES: dict[str, str] = {}
-_RUN_DATABASES: list[str] = []
+# Carried across a reload (see ``_RUN_TOKEN``): the run's sweeps and names
+# are this process's, not this import's.
+_SWEPT: set[str] = globals().get("_SWEPT") or set()
+_NAMES: dict[str, str] = globals().get("_NAMES") or {}
+_RUN_DATABASES: list[str] = globals().get("_RUN_DATABASES") or []
 
 
 def url_for(database: str) -> str:

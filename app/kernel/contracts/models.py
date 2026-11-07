@@ -69,14 +69,21 @@ class Novel(UserOwned):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+    # The export's trace: set by every successful export (WP6 D1) and by
+    # nothing else — no ``onupdate`` — so an edit makes it honestly stale.
+    last_exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Chapter(UserOwned):
     __tablename__ = "chapters"
     # One number per chapter in a book: positions are allocated under the
     # parent's lock, and this is what makes the invariant the table's rather
-    # than the caller's (#521).
-    __table_args__ = (UniqueConstraint("novel_id", "position"),)
+    # than the caller's (#521). Deferrable, because a renumber (WP6: a
+    # reorder, a delete's close-up) passes through states the plain form
+    # refuses — the check belongs at commit, where the set is consistent.
+    __table_args__ = (
+        UniqueConstraint("novel_id", "position", deferrable=True, initially="DEFERRED"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     novel_id: Mapped[UUID] = mapped_column(ForeignKey("novels.id", ondelete="CASCADE"))
@@ -237,6 +244,10 @@ class Document(UserOwned):
     # user's documents share it — the corpus guard refuses a mix — because
     # vectors from two models are not comparable.
     embedding_width: Mapped[int]
+    # The upload's size in bytes: the same count the 1 MB limit already
+    # computes, kept so the list can state what was stored. Set once at
+    # ingest; documents uploaded before the column existed carry NULL.
+    byte_size: Mapped[int | None]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
