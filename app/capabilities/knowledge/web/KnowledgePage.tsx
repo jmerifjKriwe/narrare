@@ -259,13 +259,14 @@ function DocumentRow({
     <Row
       as="div"
       flush
-      // The row grows past the 28 px control height when the window is
+      // The row may grow past the 28 px control height when the window is
       // narrow: the facts and the trigger are content, not chrome, so
       // they wrap under the title (the hits rows' own shape) instead of
       // manufacturing a sideways scroll inside the shell's box. Where
-      // the line fits — any desk — the paint is the one the panel
-      // shipped: title left, facts and trigger right.
-      className="h-auto flex-wrap gap-x-2 gap-y-1 py-2"
+      // the line fits — a one-line row on any desk — the row is exactly
+      // the paint the panel shipped: title left, facts and trigger
+      // right, 28 px tall, the size the loading skeleton already paints.
+      className="h-auto flex-wrap gap-x-2 gap-y-1"
       trailing={
         <>
           <span className="ml-auto shrink-0 text-label text-muted group-hover:text-foreground">

@@ -334,12 +334,16 @@ def test_deleting_a_document_removes_its_passages_from_search(
     assert_accessible(page)
 
 
-def test_one_documents_row_fits_a_phone(page: Page, stack: Stack, tmp_path: Path) -> None:
-    """A document's row states its facts without demanding a wider window.
+def test_one_documents_row_keeps_its_height_and_fits_a_phone(
+    page: Page, stack: Stack, tmp_path: Path
+) -> None:
+    """A document's row states its facts without demanding height or width.
 
-    The row's facts and its delete trigger are content, not chrome: at a
-    phone's 360 px the row grows to hold them under the title instead of
-    manufacturing a sideways scroll inside the shell's own box — the fit
+    On a desk the row is one line at the 28 px control height — the size
+    the loading skeleton already paints, so the answer's arrival moves
+    nothing. At a phone's 360 px the facts and the trigger are content,
+    not chrome: the row wraps them under the title instead of
+    manufacturing a sideways scroll inside the shell's box — the fit
     floor measures the box, not a screenshot.
     """
     source = tmp_path / "notizen.txt"
@@ -348,6 +352,11 @@ def test_one_documents_row_fits_a_phone(page: Page, stack: Stack, tmp_path: Path
     page.goto(f"{WEB_URL}/knowledge")
     _upload(page, source, "Notizen")
     expect(page.get_by_text("Notizen")).to_be_visible()
+
+    # One line, one control's height: the row the skeleton promised.
+    row = page.get_by_role("button", name="Notizen löschen").locator("..")
+    page.set_viewport_size({"width": 1280, "height": 720})
+    assert row.evaluate("element => element.clientHeight") == 28
 
     page.set_viewport_size({"width": 360, "height": 720})
     assert_page_fits(page)
