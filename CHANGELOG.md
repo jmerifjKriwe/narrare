@@ -20,6 +20,13 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
+## [0.3.2](https://github.com/jmerifjKriwe/narrare/compare/v0.3.1...v0.3.2) (2026-11-07)
+
+
+### 📚 Documentation
+
+* the pull request title is plain language ([af80285](https://github.com/jmerifjKriwe/narrare/commit/af80285177de06b17905eb7ddd6c7006863eede9))
+
 ## [0.3.1](https://github.com/jmerifjKriwe/narrare/compare/v0.3.0...v0.3.1) (2026-11-06)
 
 
