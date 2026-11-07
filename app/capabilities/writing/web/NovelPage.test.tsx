@@ -648,9 +648,13 @@ describe("a book deleted elsewhere", () => {
 
 describe("the rail's reorder", () => {
   /** A rail row by its title: named rows are identity-stable across a
-   *  reorder, where position-derived labels move with the swap. */
+   *  reorder, where position-derived labels move with the swap. The row's
+   *  name is the title followed by its word count, so the predicate takes
+   *  the whole leading title — "Kapitel 1" never matches "Kapitel 10". */
   function titledRow(title: string): HTMLElement {
-    return screen.getByRole("button", { name: new RegExp(`^${title}\\b`) });
+    return screen.getByRole("button", {
+      name: (name: string) => name === title || name.startsWith(`${title} `),
+    });
   }
 
   /** Two chapters in the rail, a workbench around them, and the keyboard
@@ -1113,9 +1117,10 @@ describe("the rail's filter", () => {
     expect(chapterRow(12).getAttribute("tabindex")).toBe("0");
     await user.clear(search);
     await user.type(search, t("chapters.defaultTitle", { n: 21 }));
+    const hiddenTitle = t("chapters.defaultTitle", { n: 10 });
     expect(
       screen.queryByRole("button", {
-        name: new RegExp(`^${t("chapters.defaultTitle", { n: 10 })}\\b`),
+        name: (name: string) => name === hiddenTitle || name.startsWith(`${hiddenTitle} `),
       }),
     ).toBeNull();
     expect(chapterRow(21).getAttribute("tabindex")).toBe("0");

@@ -144,9 +144,13 @@ describe("the shelf's card actions", () => {
   }
 
   /** The card's link by its title: the card's whole text is its accessible
-   *  name, so the title is the leading edge, not the whole of it. */
+   *  name, so the title is the leading edge, not the whole of it. The
+   *  predicate still takes the whole title, so "Das" never matches "Das
+   *  Zählwerk". */
   function cardLink(title: string): Promise<HTMLElement> {
-    return screen.findByRole("link", { name: new RegExp(`^${title}\\b`) });
+    return screen.findByRole("link", {
+      name: (name: string) => name === title || name.startsWith(`${title} `),
+    });
   }
 
   it("the_card_menu_offers_details_and_delete", { timeout: 10_000 }, async () => {
