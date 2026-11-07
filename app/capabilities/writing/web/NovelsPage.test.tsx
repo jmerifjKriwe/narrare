@@ -367,6 +367,20 @@ describe("the shelf's card actions", () => {
     await user.click(within(dialog).getByRole("button", { name: t("novels.cancel") }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(api.DELETE).not.toHaveBeenCalled();
+
+    // One chapter is still a sentence: the verb lives inside the plural's
+    // branches, so the singular agrees ("1 chapter is", never "1 chapter
+    // are"). The shelf re-renders at a one-chapter book to read it.
+    cleanup();
+    queryClient.clear();
+    mockShelf(shelfNovel({ chapter_count: 1 }));
+    renderShelf();
+    await user.click(await cardMenu(novel.title));
+    await user.click(screen.getByRole("menuitem", { name: t("novels.delete") }));
+    const singular = await screen.findByRole("dialog");
+    expect(
+      within(singular).getByText((content) => content.includes("1 chapter is")),
+    ).toBeTruthy();
   });
 
   it("confirming_the_delete_removes_the_card", { timeout: 10_000 }, async () => {

@@ -245,7 +245,7 @@
   "novels.delete": "Delete",
   "novels.deleteTitle": "Delete book",
   "novels.deleteBody": "Delete {title}? This cannot be undone.",
-  "novels.deleteChapters": "{chapters, plural, one {# chapter} other {# chapters}} are deleted with it.",
+  "novels.deleteChapters": "{chapters, plural, one {# chapter is deleted with it} other {# chapters are deleted with it}}.",
   "novels.deleteEntities": "{entities, plural, one {# knowledge entry} other {# knowledge entries}} too.",
   "novels.deleteDocuments": "Your documents stay — they belong to the library, not the book.",
   "novels.errorDelete": "The book could not be deleted. Is the local service running?",

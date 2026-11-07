@@ -245,7 +245,7 @@
   "novels.delete": "Löschen",
   "novels.deleteTitle": "Roman löschen",
   "novels.deleteBody": "{title} löschen? Das kann nicht widerrufen werden.",
-  "novels.deleteChapters": "{chapters, plural, one {# Kapitel} other {# Kapitel}} werden mitgelöscht.",
+  "novels.deleteChapters": "{chapters, plural, one {# Kapitel wird mitgelöscht} other {# Kapitel werden mitgelöscht}}.",
   "novels.deleteEntities": "{entities, plural, one {# Wissenseintrag} other {# Wissenseinträge}} ebenfalls.",
   "novels.deleteDocuments": "Deine Dokumente bleiben — sie gehören zur Bibliothek, nicht zum Buch.",
   "novels.errorDelete": "Das Buch konnte nicht gelöscht werden. Läuft der lokale Dienst?",
