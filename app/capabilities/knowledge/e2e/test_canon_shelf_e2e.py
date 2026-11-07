@@ -20,14 +20,15 @@ import pytest
 from playwright.sync_api import Locator, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
-API = "http://127.0.0.1:8000"
-WEB = "http://127.0.0.1:3100"
+API = API_URL
+WEB = WEB_URL
 
 # The module's database is shared and its order shuffled, so this test
 # owns titles no other test uses.
