@@ -105,12 +105,11 @@ Rejected for now; Phase 6 records the revisit triggers.
 | Point | Decision | Reason |
 | --- | --- | --- |
 | CodeQL | advanced `codeql.yml`; default setup disabled | path filters, generated-code exclusion, SHA-pinned action, advisory status; caveats below |
-| Admin bypass | stays, repository-admin role | GitHub forbids self-approval; without the bypass the solo owner could not merge their own PRs. Documented as owner escape hatch, not a general gate. Superseded for the owner's own PRs by the owner-only auto-approve below. |
-| Owner-only auto-approve | new `auto-approve.yml` | The bypass habit is the risk it replaces. A dedicated App approves only the owner's same-repo PR into the default branch, on the exact commit the green `CI` run tested; foreign, fork and bot PRs keep human review, and `GITHUB_TOKEN` approval stays off. Remove when a second maintainer joins. |
+| Admin bypass | stays, repository-admin role | GitHub forbids self-approval; without the bypass the solo owner could not merge their own PRs. Documented as owner escape hatch, not a general gate. |
 | Dependabot integration bypass | removed | a ruleset bypass lets automated content merge without a human; Dependabot needs no bypass to author, rebase or close its PRs, and the owner merges them like any other PR. Pure hardening, no workflow change. |
 | `allowed_actions` | `selected` | GitHub-owned + verified creators + explicit third-party allowlist |
 | `rebase-strategy` | `auto` (remove `disabled`) | `disabled` + `strict_required_status_checks_policy` lets Dependabot PRs rot; #513/#514 closed unmerged |
-| `require_last_push_approval` | stays `true` | re-approval after a Dependabot rebase on foreign PRs is accepted; for the owner's own PRs the auto-approve App re-approves the last push after green CI |
+| `require_last_push_approval` | stays `true` | re-approval after a Dependabot rebase on foreign PRs is accepted; owner bypass covers the solo case |
 | Sourcery approval | off | bot approval would satisfy the 1-approval rule for foreign PRs too; raising to 2 weakens it instead |
 | Sourcery review check | advisory, not required | it is an AI review, not a deterministic gate; security findings surface through CodeQL/dependency review |
 | HARNESS smoke | one suite, `settings` | proves the harness works without six browser suites; measured on PR #594's CI, `settings` is the fastest (1m33s against `setup` 1m54s) — `setup` was the design's default and was corrected by the measurement |
@@ -131,7 +130,6 @@ Rejected for now; Phase 6 records the revisit triggers.
 | `ci.yml` | `pull_request`, `push: main`, `workflow_dispatch` | `changes`, `lint-types` (uses `_lint`), `tests` (uses `_test`), `frontend`, `build`, `workflow-lint`, `dependency-review` (PR), `e2e-suites` (matrix, uses `_e2e`), `ci-required` | yes, via `ci-required` |
 | `nightly.yml` | `schedule` 03:17 UTC, `workflow_dispatch` | `gate`, `lint-types` (uses `_lint`), `tests` (uses `_test`), `frontend`, `build`, `e2e-suites` (all capabilities, uses `_e2e`), `audit`, `nightly-result` | no |
 | `release-please.yml` | `push: main`, `workflow_dispatch` | `release-please` | no |
-| `auto-approve.yml` | `workflow_run` on `CI` completed | `approve` | no (provides the owner PR's approval) |
 | `publish.yml` | `release: published`, `workflow_dispatch` | image build, attest, SBOM, release assets | no |
 | `codeql.yml` | `pull_request` (code paths), `push: main` (code paths), `schedule` weekly | `analyze` matrix: `python`, `javascript-typescript`, `actions` | no |
 | `scorecard.yml` | `schedule` weekly, `push: main`, `branch_protection_rule` | `analysis` | no |
