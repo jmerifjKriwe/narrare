@@ -201,6 +201,37 @@ def test_a_sixty_chapter_rail_stays_inside_the_viewport(page: Page, stack: Stack
     assert_page_fits(page, prose_selector=".ProseMirror")
     assert_accessible(page)
 
+    # The phone's own face: at 360 the rail is a drawer over the editor,
+    # and the filter — in the toolbar band with the rail's toggles — must
+    # stay both reachable and inside the band. The drawer opens the rail;
+    # the field shows with it, the band's children fit its content box (a
+    # field wider than the remaining line would push the page's gutter
+    # aside — measured, since jsdom lays out nothing), and the page must
+    # not grow a horizontal scrollbar to hold the two of them.
+    page.set_viewport_size({"width": 360, "height": 720})
+    page.get_by_role("button", name="Kapitelleiste").click()
+    drawer = page.get_by_role("complementary")
+    expect(drawer).to_be_visible()
+    expect(page.get_by_label("Kapitel filtern")).to_be_visible()
+    band: object = page.evaluate(
+        """() => {
+          const band = document.querySelector('div.mt-6.flex');
+          return band === null ? null
+            : { scroll: band.scrollWidth, client: band.clientWidth };
+        }"""
+    )
+    if not isinstance(band, dict):
+        pytest.fail(f"the toolbar band was not measured on {page.url}")
+    measured = cast("dict[str, object]", band)
+    scroll, client = measured.get("scroll"), measured.get("client")
+    if not isinstance(scroll, (int, float)) or not isinstance(client, (int, float)):
+        pytest.fail(f"the toolbar band measurement came back malformed: {band!r}")
+    assert float(scroll) <= float(client) + 1, (
+        f"the toolbar band overflows its content box at 360: {scroll}px > {client}px"
+    )
+    assert_page_fits(page, prose_selector=".ProseMirror")
+    assert_accessible(page)
+
 
 def test_rail_zero_url_renders_collapsed(page: Page, stack: Stack) -> None:
     _create_book(page, "Das Wrack")

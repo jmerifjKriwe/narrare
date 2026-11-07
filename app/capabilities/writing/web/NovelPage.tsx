@@ -598,7 +598,12 @@ export function NovelPage() {
   // needle, under the same normalization the palette searches by (one
   // definition, `lib/search.ts`). A filter is a view, never the book: the
   // cache and the editor keep every row, and the walk below indexes into
-  // this list because this list is what rendered.
+  // this list because this list is what rendered. The locale is a
+  // dependency in its own right: `t` is a plain function whose identity
+  // never changes, and the label it renders changes with the language — a
+  // standing question is re-asked when the rows change their words, not
+  // replayed against the previous language's answers.
+  const locale = activeLocale();
   const visibleChapters = useMemo(() => {
     if (railFilter === null) return chapters;
     const needle = normalize(railFilter.trim());
@@ -607,7 +612,7 @@ export function NovelPage() {
         chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 }),
       ).includes(needle),
     );
-  }, [chapters, railFilter, t]);
+  }, [chapters, railFilter, locale]);
 
   // The open chapter's slot in that visible list: -1 when no chapter is
   // open, or when the filter hides the one that is — either way the rail's
@@ -628,6 +633,10 @@ export function NovelPage() {
     if (novelId === filteredBook.current && chapters.length === bookLength.current) return;
     filteredBook.current = novelId;
     bookLength.current = chapters.length;
+    // The walk ends with the question: whatever row it stood on belongs to
+    // a list that no longer exists, and a stale index would leave the
+    // shortened rail without a tab stop.
+    setWalkedIndex(null);
     setRailFilter(null);
   }, [novelId, chapters.length]);
 
@@ -858,7 +867,12 @@ export function NovelPage() {
           state (they toggle); the group's name is the one dock control the
           toolbar carries — no separate dock toggle beside the tabs. */}
       {focus < 2 ? (
-        <div className="mt-6 flex items-center gap-2">
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          {/* The band wraps before it overflows: a phone's 328 px content
+              box cannot hold four icon buttons and an input's automatic
+              minimum on one line, and the field is `min-w-0` so it shrinks
+              into the space the buttons leave (or takes a line of its own)
+              instead of pushing the page's gutter aside. */}
           <Button
             variant="icon"
             icon={<Icon name="focus" />}
@@ -895,15 +909,20 @@ export function NovelPage() {
               that carries the visible label inside it, so the name a reader
               hears says what the field matches. */}
           {focus === 0 && showRail && !pending && !failed && chapters.length > 20 ? (
-            <Field label={t("chapters.railFilter")} className="ml-auto w-40">
+            <Field label={t("chapters.railFilter")} className="ml-auto w-40 min-w-0">
               <Input
                 type="search"
                 value={railFilter ?? ""}
                 onChange={(event) => {
                   const value = event.target.value;
+                  // The walk ends with the question: its row may no longer
+                  // be in the list the next answer renders, and a stale
+                  // index would leave that list without a tab stop.
+                  setWalkedIndex(null);
                   setRailFilter(value.trim() === "" ? null : value);
                 }}
                 aria-label={t("chapters.railFilterAria")}
+                className="min-w-0"
               />
             </Field>
           ) : null}

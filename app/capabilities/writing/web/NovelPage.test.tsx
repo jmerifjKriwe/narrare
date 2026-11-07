@@ -37,6 +37,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
+import { activeLocale, applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 
@@ -1049,17 +1050,55 @@ describe("the rail's filter", () => {
     await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
     expect(api.PUT).not.toHaveBeenCalled();
 
-    // A filter that hides the OPEN chapter leaves the keyboard a way in:
-    // the open chapter's row is gone from the list, and the first visible
-    // row takes the tab stop — the list is never all tabindex=-1.
-    await user.clear(screen.getByRole("searchbox"));
-    await user.type(screen.getByRole("searchbox"), t("chapters.defaultTitle", { n: 21 }));
+    // A filter that hides the OPEN chapter leaves the keyboard a way in —
+    // and so does a walk the filter cut short. The walk is over when the
+    // question changes: its row may be gone, and the first visible row
+    // takes the stop either way.
+    const search = screen.getByRole("searchbox");
+    chapterRow(11).focus();
+    await user.keyboard("{ArrowDown}"); // the walk: chapter 11 → 12
+    expect(chapterRow(12).getAttribute("tabindex")).toBe("0");
+    await user.clear(search);
+    await user.type(search, t("chapters.defaultTitle", { n: 21 }));
     expect(
       screen.queryByRole("button", {
         name: new RegExp(`^${t("chapters.defaultTitle", { n: 10 })}\\b`),
       }),
     ).toBeNull();
     expect(chapterRow(21).getAttribute("tabindex")).toBe("0");
+  });
+
+  it("a_standing_filter_rematches_after_a_locale_switch", { timeout: 10_000 }, async () => {
+    // One titled row is the control: its label never changes with the
+    // language. Everything else on screen is the localized number, and a
+    // question asked in one language must be re-asked — not replayed —
+    // when the rows change their words.
+    const was = activeLocale();
+    mockManyChapters(21, { 0: "Waldlauf" });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    const rail = screen.getByRole("complementary");
+
+    try {
+      applyLocale("en");
+      await user.clear(screen.getByRole("searchbox"));
+      await user.type(screen.getByRole("searchbox"), "Chapter");
+      expect(rail.querySelectorAll("li > button").length).toBe(20);
+      expect(
+        screen.queryByRole("button", { name: /^Waldlauf\b/ }),
+      ).toBeNull();
+
+      // German rows say "Kapitel n": the standing English question no
+      // longer describes any of them, and the filter re-matches instead of
+      // replaying the English answer.
+      applyLocale("de");
+      await waitFor(() =>
+        expect(rail.querySelectorAll("li > button").length).toBe(0),
+      );
+    } finally {
+      applyLocale(was);
+    }
   });
 });
 
