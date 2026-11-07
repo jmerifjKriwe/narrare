@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -97,8 +98,27 @@ def main() -> int:
         return 1
 
     if args.generated:
-        print("merge_json: generated files require manual resolution", file=sys.stderr)
-        return 1
+        try:
+            root_output = subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print(f"merge_json: cannot find repository root: {exc}", file=sys.stderr)
+            return 1
+        root = Path(root_output.stdout.strip())
+        try:
+            subprocess.run(
+                ["just", "generate"],  # noqa: S607
+                cwd=root,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print(f"merge_json: regeneration failed: {exc}", file=sys.stderr)
+            return 1
+        return 0
 
     try:
         merged = deep_merge(cast("object", base), cast("object", ours), cast("object", theirs))

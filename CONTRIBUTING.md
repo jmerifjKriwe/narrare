@@ -178,6 +178,18 @@ History liest.
    measured on `main`. There is no bypass.
 5. Address review feedback with new commits.
 
+## Git merge drivers
+
+This repository ships merge drivers for JSON catalogs and generated files.
+Configure them once per clone:
+
+```bash
+git config merge.narrare-json.name "Narrare JSON merge"
+git config merge.narrare-json.driver "python scripts/merge_json.py --base %O --ours %A --theirs %B"
+git config merge.narrare-generated.name "Narrare generated merge"
+git config merge.narrare-generated.driver "python scripts/merge_json.py --generated --base %O --ours %A --theirs %B"
+```
+
 ## Code of Conduct
 
 This project follows the
