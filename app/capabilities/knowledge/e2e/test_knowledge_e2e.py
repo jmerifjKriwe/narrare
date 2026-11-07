@@ -27,6 +27,7 @@ from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.stack import API_URL, WEB_URL
+from app.kernel.testing.viewport import assert_page_fits
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -329,5 +330,26 @@ def test_deleting_a_document_removes_its_passages_from_search(
     assert _rows("SELECT count(*) FROM chunks WHERE document_id = :id", {"id": document_id}) == [
         (0,)
     ]
+
+    assert_accessible(page)
+
+
+def test_one_documents_row_fits_a_phone(page: Page, stack: Stack, tmp_path: Path) -> None:
+    """A document's row states its facts without demanding a wider window.
+
+    The row's facts and its delete trigger are content, not chrome: at a
+    phone's 360 px the row grows to hold them under the title instead of
+    manufacturing a sideways scroll inside the shell's own box — the fit
+    floor measures the box, not a screenshot.
+    """
+    source = tmp_path / "notizen.txt"
+    source.write_text(TEXT, encoding="utf-8")
+
+    page.goto(f"{WEB_URL}/knowledge")
+    _upload(page, source, "Notizen")
+    expect(page.get_by_text("Notizen")).to_be_visible()
+
+    page.set_viewport_size({"width": 360, "height": 720})
+    assert_page_fits(page)
 
     assert_accessible(page)

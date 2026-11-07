@@ -51,7 +51,10 @@ async function askDocuments(): Promise<Load> {
 /**
  * A byte count in human reading, on the decimal ladder the 1 MB upload
  * limit itself speaks, one decimal past the unit — the limit's own edge
- * reads "1.0 MB", not "1000 kB". `null` is a size the row predates: the
+ * reads "1.0 MB", not "1000 kB". The ladder steps AFTER rounding: 999 999
+ * bytes are "1000.0 kB" before the step, and a unit the ladder itself
+ * says does not exist is not an answer — the value crosses into the
+ * megabyte it already rounds to. `null` is a size the row predates: the
  * size is unknown, and unknown is not a guessed "0 B", so the caller
  * renders no size slot at all. Exported for the unit test.
  */
@@ -60,7 +63,11 @@ export function formatBytes(bytes: number | null): string | null {
   const units = ["B", "kB", "MB"] as const;
   let value = bytes;
   let unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
+  while (unit < units.length - 1) {
+    // The value as it would be written at this rung: only a value that
+    // still reads under a thousand after rounding stays put.
+    const shown = Math.round(value * 10) / 10;
+    if (shown < 1000) break;
     value /= 1000;
     unit += 1;
   }
@@ -68,8 +75,9 @@ export function formatBytes(bytes: number | null): string | null {
 }
 
 /**
- * An upload's calendar date in the reader's own words — "7. Nov. 2026",
- * "Nov 7, 2026" — chosen by Intl in the active locale, the platform's
+ * An upload's calendar date in the reader's own words — "07.11.2026" in
+ * German, "Nov 7, 2026" in English — chosen by Intl in the active locale
+ * (German's medium style is numeric, no month name), the platform's
  * wording so no catalog carries it (`formatRelative`'s precedent).
  */
 function formatUploadedDate(timestamp: string): string {
@@ -251,6 +259,13 @@ function DocumentRow({
     <Row
       as="div"
       flush
+      // The row grows past the 28 px control height when the window is
+      // narrow: the facts and the trigger are content, not chrome, so
+      // they wrap under the title (the hits rows' own shape) instead of
+      // manufacturing a sideways scroll inside the shell's box. Where
+      // the line fits — any desk — the paint is the one the panel
+      // shipped: title left, facts and trigger right.
+      className="h-auto flex-wrap gap-x-2 gap-y-1 py-2"
       trailing={
         <>
           <span className="ml-auto shrink-0 text-label text-muted group-hover:text-foreground">

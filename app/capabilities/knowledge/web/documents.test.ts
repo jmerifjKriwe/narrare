@@ -52,6 +52,10 @@ describe("formatBytes", () => {
     expect(formatBytes(1_536)).toBe("1.5 kB");
   });
 
+  it("rounds 999,999 bytes into the megabyte it already rounds to", () => {
+    expect(formatBytes(999_999)).toBe("1.0 MB");
+  });
+
   it("reads the 1 MB upload limit as its own edge: 1.0 MB", () => {
     expect(formatBytes(1_000_000)).toBe("1.0 MB");
   });
