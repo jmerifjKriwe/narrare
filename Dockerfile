@@ -8,12 +8,14 @@
 # ── the shell ───────────────────────────────────────────────────────────────
 # Node exists only here. The workspace metadata is copied first so that a
 # source change does not re-run the install.
-FROM node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS web
+FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370 AS web
 
 WORKDIR /src
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY web/package.json web/
-RUN corepack enable && pnpm install --frozen-lockfile
+# Node 25 ships no corepack (`command -v corepack` is empty in node:25-slim),
+# so the package manager comes from npm at the version package.json names.
+RUN npm install -g pnpm@11.5.2 && pnpm install --frozen-lockfile
 # The generated registries in web/lib/generated import capability views as
 # ../../../app/capabilities/<name>/web/…; the build reads them, so the context
 # needs them beside web/, not only web/.
