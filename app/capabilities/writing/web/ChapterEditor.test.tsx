@@ -24,26 +24,54 @@ import "./editorApiServer";
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
-import { useAutosave, unsavedStatus, type FlushOutcome } from "@shell/lib/save";
+import {
+  useAutosave,
+  unsavedStatus,
+  type DocumentDraft,
+  type FlushOutcome,
+} from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
 
-/** The editor as the page mounts it: the autosave hook above, `status` and
- *  `schedule` handed down — saving is not the editor's. The flush button
+/** The editor as the page mounts it: the autosave hook above, `status`,
+ *  `schedule` and the runhead's `title`/`onTitleChange` handed down —
+ *  saving is not the editor's, and the draft is the page's, held here the
+ *  way NovelPage holds it: every schedule passes through one wrapper, so
+ *  the field state and the pending save cannot disagree. The flush button
  *  stands where the page's leave paths call `save.flush()`. */
-function Harness(props: { chapterId?: string; body?: string; proposal?: string | null;
+function Harness(props: { chapterId?: string; body?: string; title?: string; proposal?: string | null;
   onProposalResolve?: (accepted: boolean) => void;
-  onSaved?: (id: string, body: string) => void;
+  onSaved?: (id: string, draft: DocumentDraft) => void;
   onFlushed?: (outcome: FlushOutcome) => void }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
+  // The document as one draft — title beside body — reset from the props
+  // the editor initializes from; the editor owns the caret, the page owns
+  // the document.
+  const [draft, setDraft] = useState<DocumentDraft>({
+    title: props.title ?? "",
+    body: props.body ?? "",
+  });
+  const latest = useRef(draft);
+  latest.current = draft;
+  const schedule = useCallback(
+    (next: DocumentDraft, changed: keyof DocumentDraft) => {
+      setDraft(next);
+      save.schedule(next, changed);
+    },
+    [save.schedule],
+  );
+  const onTitleChange = useCallback(
+    (value: string) => schedule({ ...latest.current, title: value }, "title"),
+    [schedule],
+  );
   // NovelPage hands this predicate to the router blocker; jsdom has no
   // router, so the same function answers a dispatched event here — the
   // predicate itself is shared, not copied, so it cannot drift.
@@ -62,8 +90,10 @@ function Harness(props: { chapterId?: string; body?: string; proposal?: string |
       <ChapterEditor
         chapterId={props.chapterId ?? CHAPTER}
         body={props.body ?? ""}
+        title={draft.title}
+        onTitleChange={onTitleChange}
         status={save.status}
-        schedule={save.schedule}
+        schedule={schedule}
         proposal={props.proposal}
         onProposalResolve={props.onProposalResolve}
       />
@@ -378,7 +408,7 @@ describe("ChapterEditor's ghost text", () => {
       <Harness
         chapterId={CHAPTER}
         body="Anfang."
-        onSaved={(id, body) => saved.push([id, body])}
+        onSaved={(id, draft) => saved.push([id, draft.body])}
       />,
     );
     const user = await focusEditor();
@@ -413,7 +443,7 @@ describe("ChapterEditor's ghost text", () => {
     // and finds nothing, so only the status line can tell this from a save.
     const saved: [string, string][] = [];
     editorServer.refuseSaveEmpty = true;
-    render(<Harness body="" onSaved={(id, body) => saved.push([id, body])} />);
+    render(<Harness body="" onSaved={(id, draft) => saved.push([id, draft.body])} />);
     const user = await focusEditor();
     await user.keyboard("Niemand hat das gespeichert.");
     await waitFor(
@@ -494,7 +524,7 @@ describe("ChapterEditor's ghost text", () => {
   it("does not report a save that answers after the body was discarded", { timeout: 10_000 }, async () => {
     const saved: [string, string][] = [];
     editorServer.holdNext = 1;
-    render(<Harness body="" onSaved={(id, body) => saved.push([id, body])} />);
+    render(<Harness body="" onSaved={(id, draft) => saved.push([id, draft.body])} />);
     const user = await focusEditor();
     await user.keyboard("Zu spät.");
     await waitFor(() => expect(editorServer.requests).toHaveLength(1));
@@ -713,6 +743,40 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     const button = screen.getByRole("button", { name: t("chapters.continue") }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false)); // the finally ran
+  });
+});
+
+describe("ChapterEditor's runhead title", () => {
+  it("the_runhead_renders_the_title_as_an_editable_field", async () => {
+    render(<Harness title="Waldlauf" body="Anfang." />);
+
+    // The runhead's chapter line is the input: labelled by its own name,
+    // carrying the chapter's title as its value, and empty is legal — no
+    // required, and the server's 200-character ceiling held client-side.
+    const field = screen.getByRole("textbox", { name: t("chapters.titleLabel") });
+    expect((field as HTMLInputElement).value).toBe("Waldlauf");
+    expect((field as HTMLInputElement).maxLength).toBe(200);
+    expect((field as HTMLInputElement).required).toBe(false);
+  });
+
+  it("typing_a_title_leaves_the_save_pending", { timeout: 10_000 }, async () => {
+    render(<Harness title="" body="" />);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await user.type(screen.getByRole("textbox", { name: t("chapters.titleLabel") }), "Winternacht");
+
+    // Inside the debounce nothing is on the wire and nothing is claimed
+    // saved: a title is text like the body, pending until it lands.
+    expect(editorServer.requests).toEqual([]);
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+
+    // The debounce lands as one PUT, and it carries the title only — the
+    // chapter's untouched body never rides a rename.
+    await waitFor(() => expect(editorServer.requests).toHaveLength(1), { timeout: 4_000 });
+    expect(JSON.parse(editorServer.requests[0].body)).toStrictEqual({ title: "Winternacht" });
+    await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
+      timeout: 5000,
+    });
   });
 });
 

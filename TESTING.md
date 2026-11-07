@@ -82,6 +82,10 @@ tool is introduced by this document — it states expectations, not mechanisms.
 - Backend tests get the real test database named per run — worktree token plus
   a per-run token, so two pytest runs never share tables — reset per session. No
   in-memory substitutes.
+- The test server defaults to the compose stack (`localhost:5433`); when
+  another checkout holds that port, `NARRE_TEST_DATABASE_URL` re-aims every
+  suite and every E2E stack at its own Postgres; the per-run names are minted
+  on whichever server that door opens.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases; see the capability conftests.
 

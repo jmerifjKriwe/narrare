@@ -4,6 +4,7 @@ import type { NavigateFn } from "@tanstack/react-router";
 
 import { catalogs } from "./generated/catalogs";
 import type { MessageKey } from "./i18n";
+import { normalize } from "./search";
 
 /**
  * The contract a capability's `web/commands.ts(x)` speaks: rows the palette
@@ -44,21 +45,14 @@ export type Command = {
 };
 
 /**
- * NFD, strip combining marks, lowercase: what the palette's search compares,
- * so "öffnen" answers to "offnen" and case never decides a match.
- */
-function normalize(text: string): string {
-  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-}
-
-/**
  * Whether `query` matches the row's title in any catalog's rendering. The
  * display shows the active locale, but the index reads all of them — a
  * German word finds the row from an English UI, and a mid-session language
  * switch rebuilds nothing. The catalogs are already in the bundle
  * (`web/lib/generated/catalogs.ts`). The query is trimmed here: the palette
  * hands the field's value through whole, and whitespace must not become
- * part of the needle.
+ * part of the needle. The normalization itself is `lib/search.ts`'s — the
+ * one definition the rail's filter shares.
  */
 export function matchesAllLocales(titleKey: MessageKey, query: string): boolean {
   const needle = normalize(query.trim());
