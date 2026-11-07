@@ -237,10 +237,13 @@ async function editorElement(): Promise<HTMLElement> {
 }
 
 /** Click a rail row by its chapter number: the accessible name is the
- *  title plus the count the shared rule reports for its body. */
+ *  title plus the count the shared rule reports for its body, so the
+ *  predicate takes the whole leading title — chapter 1 never matches
+ *  chapter 10. */
 function chapterRow(n: number): HTMLElement {
+  const title = t("chapters.defaultTitle", { n });
   return screen.getByRole("button", {
-    name: new RegExp(`^${t("chapters.defaultTitle", { n })}\\b`),
+    name: (name: string) => name === title || name.startsWith(`${title} `),
   });
 }
 
@@ -1209,9 +1212,13 @@ describe("the runhead's action menu", () => {
   }
 
   /** A rail row by its title — the reorder block's own finder, mirrored
-   *  for the named chapters these cases delete and rename. */
+   *  for the named chapters these cases delete and rename. The row's name
+   *  is the title followed by its word count, so the predicate takes the
+   *  whole leading title — "Kapitel 1" never matches "Kapitel 10". */
   function titledRow(title: string): HTMLElement {
-    return screen.getByRole("button", { name: new RegExp(`^${title}\\b`) });
+    return screen.getByRole("button", {
+      name: (name: string) => name === title || name.startsWith(`${title} `),
+    });
   }
 
   /** The runhead's title input, by its accessible name. */
