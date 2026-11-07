@@ -24,9 +24,11 @@ name: Release Please
 # two reasons. Resources created with `GITHUB_TOKEN` trigger no workflow runs, so
 # `ci-required`, the ruleset's single required status check, would never appear
 # on the release PR and it could only be merged with an admin bypass. And this
-# repository keeps "Allow GitHub
-# Actions to create and approve pull requests" off, so automation can never
-# satisfy the required approval itself: the App authors the PR, a human approves.
+# repository keeps "Allow GitHub Actions to create and approve pull requests"
+# off, so `GITHUB_TOKEN` can never approve: this App authors the release PR and
+# a human approves it. The owner's own PRs are the one exception — the
+# dedicated, owner-only App in `auto-approve.yml` approves those — but this
+# release App never approves anything.
 
 on:
   push:
