@@ -486,6 +486,15 @@ def typescript_routes(root: Path) -> str:
     settings = tuple(page.id for page in settings_found.rows)
     settings_hosts = [settings_found.host] if settings_found.host is not None else []
 
+    workspace_route_id: str | None = None
+    if scan.host is not None:
+        host_source = sources[scan.host]
+        match = re.search(r'export const workspaceRouteId = "([^"]+)"', host_source)
+        if match is not None:
+            workspace_route_id = match.group(1)
+        else:
+            workspace_route_id = _workspace_path(host_source, scan.host)
+
     def import_names(capability: str) -> str:
         """Name the route exports this capability contributes to the composed table."""
         names = f"routes as {capability}"
@@ -572,6 +581,11 @@ def typescript_routes(root: Path) -> str:
         f"{dock_block}{settings_block}"
         "export const capabilityRoutes = [\n"
         f"{spread}{dock_note}{dock_spread}{settings_note}{settings_spread}] as const;\n"
+        + (
+            f'\nexport const workspaceRouteId = "{workspace_route_id}";\n'
+            if workspace_route_id is not None
+            else ""
+        )
     )
 
 

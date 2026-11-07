@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { Link, useMatches } from "@tanstack/react-router";
+import { workspaceRouteId } from "../lib/generated/routes";
 
 import { useTranslation } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
@@ -83,7 +84,7 @@ export function IconRail() {
   // content while the narrower reading pages never notice (their cap binds
   // first). The router's matches, not a pathname sniff: one rail, one
   // breakpoint that reads which route is showing.
-  const onWorkspace = useMatches().some((match) => match.routeId === "/novels/$id");
+  const onWorkspace = useMatches().some((match) => match.routeId === workspaceRouteId);
   return (
     /* The show-leg is the route's answer (the ternary above): from 1280 on
      * the workspace, where the prose floor owns 1024–1279; from 1024 on
