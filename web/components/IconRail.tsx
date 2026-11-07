@@ -27,15 +27,6 @@ type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 /** The rail's four areas and the one utility each may wear: an identity mark
  *  on the icon, never a fill, a text colour, a cover or a notice. The hues
  *  are measured ≥ 3:1 against `--panel` in both themes. */
-export const AREA_ICON = {
-  writing: "text-area-writing",
-  knowledge: "text-area-knowledge",
-  chat: "text-area-chat",
-  settings: "text-area-settings",
-} as const;
-
-type RailArea = keyof typeof AREA_ICON;
-
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({
   to,
@@ -47,7 +38,7 @@ function RailLink({
   to: RailTo;
   label: string;
   icon: IconName;
-  area: RailArea;
+  area: string;
   activeOptions?: RailActiveOptions;
 }) {
   return (
@@ -62,7 +53,7 @@ function RailLink({
        * a direct declaration the link's inherited ink cannot override. */
       className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
-      <span className={AREA_ICON[area]}>
+      <span className={`text-area-${area}`}>
         <Icon name={icon} />
       </span>
       {/* The name, always in the DOM and clipped by the collapsed rail: a
