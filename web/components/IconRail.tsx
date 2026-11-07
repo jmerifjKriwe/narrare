@@ -54,7 +54,7 @@ function RailLink({
        * a direct declaration the link's inherited ink cannot override. */
       className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
-      <span className={`text-area-${area}`}>
+      <span style={{ color: `var(--area-${area}, var(--foreground))` }}>
         <Icon name={icon} />
       </span>
       {/* The name, always in the DOM and clipped by the collapsed rail: a
