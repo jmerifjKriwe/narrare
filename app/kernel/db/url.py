@@ -66,12 +66,33 @@ def _value(env: Mapping[str, str], name: str) -> str:
 
 
 def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
-    """The effective connection: URL, else the parts, else the development default."""
+    """The effective connection: URL, else the parts, else the development default.
+
+    ``NARRE_DEV_DB_PORT`` is a dev-only convenience for parallel checkouts: it
+    overrides the port in every branch below (full URL wins, since a URL carries
+    its own port), so a single knob moves the application connection together
+    with the compose mapping.
+    """
     source = environ if env is None else env
 
     given = (source.get("NARRE_DATABASE_URL") or "").strip()
     if given:
         return DatabaseConfig(url=make_url(given), source="NARRE_DATABASE_URL")
+
+    # Dev-only port override for parallel checkouts; validated below.
+    dev_port_raw = (source.get("NARRE_DEV_DB_PORT") or "").strip()
+    dev_port: int | None = None
+    if dev_port_raw:
+        try:
+            dev_port = int(dev_port_raw)
+        except ValueError:
+            raise DatabaseConfigurationError(
+                f"NARRE_DEV_DB_PORT is not a port number: {dev_port_raw!r}"
+            ) from None
+        if not 1 <= dev_port <= 65535:
+            raise DatabaseConfigurationError(
+                f"NARRE_DEV_DB_PORT must be between 1 and 65535, not {dev_port}"
+            )
 
     parts = {name: _value(source, name) for name in (*_REQUIRED, *_OPTIONAL)}
     password = source.get("NARRE_DB_PASSWORD") or ""
@@ -81,8 +102,20 @@ def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
     # would hide the difference between a typo and the real secret.
     parts["password"] = password if password.strip() else ""
 
+    # Fall back to the dev port when NARRE_DB_PORT is unset, so the single knob
+    # keeps the application in step with the compose mapping. Only when another
+    # part is present, so a lone NARRE_DEV_DB_PORT still lands on the default
+    # branch below instead of being treated as an incomplete parts set.
+    required_present = any(parts[name] for name in _REQUIRED)
+    if not parts["port"] and dev_port_raw and required_present:
+        parts["port"] = str(dev_port)
+
     if not any(parts.values()):
-        return DatabaseConfig(url=make_url(DEFAULT_URL), source=DEFAULT_SOURCE)
+        # Nothing configured: development default, honouring NARRE_DEV_DB_PORT.
+        base = make_url(DEFAULT_URL)
+        if dev_port is not None:
+            base = base.set(port=dev_port)
+        return DatabaseConfig(url=base, source=DEFAULT_SOURCE)
 
     missing = [_variable(name) for name in _REQUIRED if not parts[name]]
     if missing:

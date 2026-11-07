@@ -114,6 +114,11 @@ fuzz seconds="300":
 test-frontend:
     pnpm --dir web test
 
+# Only the web tests the working tree's change reaches — the inner loop for
+# frontend work, mirroring the pre-commit hook. Full suite via test-frontend.
+test-frontend-changed:
+    pnpm --dir web exec vitest run --changed HEAD
+
 # Production build of the web app.
 build:
     pnpm --dir web build
