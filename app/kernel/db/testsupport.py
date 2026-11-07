@@ -74,7 +74,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # The per-run token: eight hex characters minted once per process. The same
 # process, the same prefix — the same name, always; two runs differ even when
 # their pids would be reused across the runs.
-_RUN_TOKEN = token_hex(4)
+#
+# The ``or`` is reload safety: ``importlib.reload`` re-executes the module in
+# this same dict (the SERVER tests do), and a token re-minted mid-run hands
+# every later ``test_database`` caller a name nobody ensured — or a sweep
+# inside a running loop. Carried, not re-minted; the caches below agree.
+_RUN_TOKEN: str = globals().get("_RUN_TOKEN") or token_hex(4)
 # ``test_database``'s suffix — which the sweep matches on: the worktree token
 # plus the run token, 16 lowercase hex characters in total.
 _RUN_SUFFIX = re.compile(r"[0-9a-f]{16}")
@@ -96,9 +101,11 @@ def _boot_id() -> str:
 
 _BOOT = _boot_id()
 
-_SWEPT: set[str] = set()
-_NAMES: dict[str, str] = {}
-_RUN_DATABASES: list[str] = []
+# Carried across a reload (see ``_RUN_TOKEN``): the run's sweeps and names
+# are this process's, not this import's.
+_SWEPT: set[str] = globals().get("_SWEPT") or set()
+_NAMES: dict[str, str] = globals().get("_NAMES") or {}
+_RUN_DATABASES: list[str] = globals().get("_RUN_DATABASES") or []
 
 
 def url_for(database: str) -> str:

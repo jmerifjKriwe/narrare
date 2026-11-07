@@ -277,9 +277,9 @@ def test_the_sweep_leaves_the_legacy_name_and_an_unshaped_probe_alone() -> None:
 # container answers on 5434 while another checkout's holds 5433): the
 # override and its default are the door the naming above runs behind. The
 # reloads rebind the module for every later importer in this process — the
-# restore puts the real address back before the suite moves on, and each
-# reload re-mints the run token, so these two cases run last, after every
-# case above has minted and dropped the names it made.
+# restore puts the real address back before the suite moves on, and the run
+# token and the caches carry across a reload, so nothing here can re-mint or
+# forget a name the rest of the run is using (the pin below holds that).
 OVERRIDE = "postgresql+asyncpg://narrare:narrare@localhost:5434"
 DEFAULT = "postgresql+asyncpg://narrare:narrare@localhost:5433"
 
@@ -312,3 +312,30 @@ def test_the_server_defaults_to_the_compose_address() -> None:
         assert reload(testsupport).SERVER == DEFAULT
     finally:
         _restore(carried)
+
+
+def test_a_reload_keeps_this_runs_names() -> None:
+    """A mid-run reload cannot hand the run a name nobody made.
+
+    ``importlib.reload`` re-executes the module in its own dict: with the
+    caches rebound to fresh empties, every by-value importer of
+    ``test_database`` — ``app/conftest.py``, the kernel conftest,
+    ``test_jobs``'s ``this_run`` — answers a new name no ``ensure_database``
+    created (``InvalidCatalogNameError`` at the next connect), or sweeps
+    from inside a running loop. Both shapes failed the WP6 gate run on
+    2026-11-07: pytest-randomly had moved these reloads ahead of
+    ``test_jobs``, and the leaked ``_sweep`` coroutine failed an unrelated
+    knowledge test at garbage collection.
+    """
+    before = testsupport.test_database()
+    carried = environ.get("NARRE_TEST_DATABASE_URL")
+    try:
+        environ["NARRE_TEST_DATABASE_URL"] = OVERRIDE
+        reload(testsupport)
+    finally:
+        _restore(carried)
+
+    assert testsupport.test_database() == before
+    # The sessionfinish drop reads this list: a reset here strands the run's
+    # database on the server for the next run's sweep to reclaim.
+    assert before in testsupport._RUN_DATABASES  # pyright: ignore[reportPrivateUsage]  the drop list is the unit under test
