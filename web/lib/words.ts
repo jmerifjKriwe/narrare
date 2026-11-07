@@ -28,11 +28,13 @@ export function countWords(markdown: string): number {
   return trimmed === "" ? 0 : trimmed.split(WORD_GAP).length;
 }
 
+import { formatNumber } from "./format";
+
 /**
  * The count as the locale groups it — exactly the number the ICU `#` in
- * `chapters.wordCount` prints (both go through `Intl.NumberFormat`), alone,
- * for the places that show the figure without the word.
+ * `chapters.wordCount` prints (both go through the active formatting locale),
+ * alone, for the places that show the figure without the word.
  */
-export function formatWordCount(count: number, locale: string): string {
-  return new Intl.NumberFormat(locale).format(count);
+export function formatWordCount(count: number): string {
+  return formatNumber(count);
 }

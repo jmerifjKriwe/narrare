@@ -1,6 +1,7 @@
 import IntlMessageFormat from "intl-messageformat";
 import { useSyncExternalStore } from "react";
 
+import { formattingLocale } from "./format";
 import { catalogs } from "./generated/catalogs";
 import { activeLocale, subscribeLocale, type Locale } from "./locale";
 
@@ -24,10 +25,11 @@ export function t(key: MessageKey, params?: Record<string, string | number>): st
   // No parameters: the message is its own rendering, no parser involved.
   if (params === undefined) return message;
 
-  const cached = `${locale}\u0000${key}`;
+  const formatLocale = formattingLocale();
+  const cached = `${formatLocale}\u0000${key}`;
   let formatter = formatters.get(cached);
   if (formatter === undefined) {
-    formatter = new IntlMessageFormat(message, locale);
+    formatter = new IntlMessageFormat(message, formatLocale);
     formatters.set(cached, formatter);
   }
   return String(formatter.format(params));

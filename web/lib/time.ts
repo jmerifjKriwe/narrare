@@ -1,4 +1,4 @@
-import { activeLocale } from "./locale";
+import { formattingLocale } from "./format";
 
 /**
  * A last-touched stamp in the reader's own words — "gestern", "yesterday",
@@ -8,7 +8,7 @@ import { activeLocale } from "./locale";
  * `timestamp` must be parseable by Date.parse; an invalid timestamp raises RangeError.
  */
 export function formatRelative(timestamp: string): string {
-  const formatter = new Intl.RelativeTimeFormat(activeLocale(), { numeric: "auto" });
+  const formatter = new Intl.RelativeTimeFormat(formattingLocale(), { numeric: "auto" });
   // Each step covers one unit's span and divides into the next coarser one,
   // so a book touched 90 minutes ago still reads in minutes and drifts into
   // hours only once an hour has actually passed.
