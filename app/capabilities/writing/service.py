@@ -316,9 +316,16 @@ class WritingService:
         list's placeholder a rendering of it. Over-long stays the schema's
         422; nothing else is refused.
 
+        The book's row is locked before the chapter's: the save's flush
+        takes the chapter row, and a delete or reorder holding the book's
+        row rewrites chapter rows under it — the same two rows, so the one
+        order (book first, the delete's and the reorder's) is what keeps
+        the pair from waiting on each other's row (Postgres 40P01).
+
         Return the chapter; raise NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
+        await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
         if changes.title is not None:
             changes.title = changes.title.strip()
         chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))

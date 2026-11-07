@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from app.api.main import app
 from app.capabilities.writing.repository import ChapterRepository
+from app.capabilities.writing.schemas import ChapterUpdate
 from app.capabilities.writing.service import WritingService
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.contracts.models import Chapter, ConsistencyFinding, EntitySuggestion
@@ -229,6 +230,91 @@ async def test_a_delete_holds_the_books_lock_against_an_append(
     # the survivors committed at 0 and 1, so the next number is 2 — not 3,
     # the hole a racing append would have taken from the stale max
     assert position == 2
+
+
+async def test_a_save_and_a_delete_cannot_deadlock_over_one_book(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A save and a delete of one book must take its rows in one order.
+
+    The inversion the lock forbids: a save dirties its chapter, the touch's
+    read autoflushes the UPDATE — the save holds the chapter row — and only
+    then asks for the book's row; a delete holds the book's row and
+    rewrites the chapter rows under it. Overlap and each waits for the
+    other's row: Postgres answers 40P01 and the writing loop sees a raw
+    500. The book's row first, always — the delete's and the reorder's
+    order — and the two writers queue on the one lock instead.
+
+    The save is the service's own method, gated open at its touch — after
+    the flush that takes the chapter row, the moment the inverted order
+    would be holding it without the book's — and the delete of ANOTHER
+    chapter of the same book runs beside it on its own session. Both
+    must finish, in either order the lock permits, and neither may die.
+    """
+    async with _client() as client:
+        novel_id, chapters = await _three_chapters(client)
+    saved_id, doomed = UUID(chapters[0]["id"]), UUID(chapters[2]["id"])
+
+    reached = asyncio.Event()
+    release = asyncio.Event()
+    original_touch = ChapterRepository.touch_novel
+
+    async def touch_novel_gated(repository: ChapterRepository, novel_id: UUID) -> None:
+        await original_touch(repository, novel_id)
+        # Mid-transaction: the save's UPDATE has autoflushed — the chapter
+        # row is held — and (the fixed order) the book's row before it.
+        reached.set()
+        await release.wait()
+
+    monkeypatch.setattr(ChapterRepository, "touch_novel", touch_novel_gated)
+
+    async with Session() as a:
+        save = asyncio.create_task(
+            WritingService(a, LOCAL_USER_ID).update_chapter(
+                saved_id, ChapterUpdate(body="Der Nebel hob sich.")
+            )
+        )
+        await asyncio.wait_for(reached.wait(), timeout=5)
+
+        try:
+            async with Session() as b:
+                delete = asyncio.create_task(
+                    WritingService(b, LOCAL_USER_ID).delete_chapter(doomed)
+                )
+                # The delete waits — on the book's lock, the one order —
+                # never on the save's chapter row while the save waits on
+                # the book's (the cycle the inversion built).
+                _, pending = await asyncio.wait({delete}, timeout=0.5)
+                assert delete in pending
+                release.set()
+                # Once the save commits, the delete takes its turn and
+                # finishes; a deadlock would die here or in the save.
+                await asyncio.wait_for(delete, timeout=10)
+        finally:
+            release.set()
+            await save
+
+    # Both writes landed: the survivors closed the gap, and the gated
+    # save's body is on the row it meant.
+    async with _client() as client:
+        listed = (await client.get(f"/api/writing/novels/{novel_id}/chapters")).json()
+    assert [chapter["position"] for chapter in listed] == [0, 1]
+    assert listed[0]["body"] == "Der Nebel hob sich."
+
+    # The save still bumps the book's row — the lock must not cost the
+    # touch: one more save, alone, advances the timestamp it reads.
+    async with _client() as client:
+        before = datetime.fromisoformat(
+            (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
+        )
+        again = await client.put(
+            f"/api/writing/chapters/{chapters[1]['id']}", json={"body": "Der Mond stieg."}
+        )
+        assert again.status_code == 200
+        after = datetime.fromisoformat(
+            (await client.get(f"/api/writing/novels/{novel_id}")).json()["updated_at"]
+        )
+    assert after > before
 
 
 async def test_delete_chapter_answers_404_for_a_foreign_chapter() -> None:
