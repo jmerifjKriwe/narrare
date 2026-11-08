@@ -179,6 +179,21 @@ def catalogs(root: Path, known: tuple[str, ...]) -> dict[str, dict[str, str]]:
         if missing:
             raise SystemExit(f"{root / 'i18n' / f'{locale}.json'}: missing keys {missing}")
         loaded[locale] = merged
+    # Every locale carries the source catalog's keys: a missing key would fall
+    # through to a blank label, an extra one would be dead copy. The generated
+    # TypeScript assignment catches this too, but the generator can name the
+    # locale and the keys before the build does.
+    source_keys = set(loaded[SOURCE_LOCALE])
+    for locale in known:
+        if locale == SOURCE_LOCALE:
+            continue
+        keys = set(loaded[locale])
+        missing = sorted(source_keys - keys)
+        extra = sorted(keys - source_keys)
+        if missing or extra:
+            raise SystemExit(
+                f"{locale} catalog does not match {SOURCE_LOCALE}: missing {missing}, extra {extra}"
+            )
     return loaded
 
 

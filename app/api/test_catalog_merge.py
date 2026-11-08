@@ -57,6 +57,19 @@ def test_catalogs_merge_the_central_and_capability_files(tmp_path: Path) -> None
     assert merged["en"]["locale.name"] == "English"
 
 
+def test_every_locale_carries_the_same_keys(tmp_path: Path) -> None:
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(tmp_path / "i18n/de.json", {"app.extra": "Extra"})
+
+    with pytest.raises(SystemExit) as raised:
+        catalogs(tmp_path, ("en", "de"))
+
+    message = str(raised.value)
+    assert "de" in message
+    assert "app.title" in message
+    assert "app.extra" in message
+
+
 def test_an_unsorted_catalog_is_refused_naming_the_file(tmp_path: Path) -> None:
     source = tmp_path / "i18n/en.json"
     source.parent.mkdir()
