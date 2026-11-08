@@ -185,9 +185,9 @@ Configure them once per clone:
 
 ```bash
 git config merge.narrare-json.name "Narrare JSON merge"
-git config merge.narrare-json.driver "python scripts/merge_json.py --base %O --ours %A --theirs %B"
+git config merge.narrare-json.driver "uv run python scripts/merge_json.py --base %O --ours %A --theirs %B"
 git config merge.narrare-generated.name "Narrare generated merge"
-git config merge.narrare-generated.driver "python scripts/merge_json.py --generated --base %O --ours %A --theirs %B"
+git config merge.narrare-generated.driver "uv run python scripts/merge_json.py --generated --path %P --base %O --ours %A --theirs %B"
 ```
 
 ## Code of Conduct

@@ -493,7 +493,12 @@ def typescript_routes(root: Path) -> str:
         if match is not None:
             workspace_route_id = match.group(1)
         else:
-            workspace_route_id = _workspace_path(host_source, scan.host)
+            raise SystemExit(
+                f"app/capabilities/{scan.host}/web/routes.tsx: the workspace"
+                " route must export `workspaceRouteId` beside `workspaceRoute`"
+                " — the shell's breakpoint reads the route id, and a path"
+                " literal is not the same fact"
+            )
 
     def import_names(capability: str) -> str:
         """Name the route exports this capability contributes to the composed table."""
