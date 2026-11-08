@@ -56,7 +56,7 @@ Pure rendering and wiring do not require unit tests.
 
 ## Gates and CI
 
-- `just check` — lint and types (ruff, pyright, tsc).
+- `just check` — lint and types (ruff, Biome, pyright, tsc).
 - `just check-generated` — regenerates the capability views, the OpenAPI document,
   the typed client and the docs index; fails if the committed files change (CI
   only: `pnpm dlx` needs the network).

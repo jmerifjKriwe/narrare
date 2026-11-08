@@ -189,6 +189,7 @@ function PromptEditor(props: {
   // not write into an unmounted editor; the flag is the smallest guard. The
   // novel id in the dependencies is the captured one, so a filter change on
   // the page cannot re-run this load under the editor.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry counter — `attempt` is the deliberate re-run key the retry button bumps (comment above); the load must not read it.
   useEffect(() => {
     let cancelled = false;
     setDetail(null);
@@ -594,6 +595,7 @@ export function PromptsPage() {
   // mounts only where a router exists, so the page stays renderable alone.
   const router = useRouter({ warn: false });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run key — `refresh` is bumped by the page's retry and after a save or reset (comment above) to refetch; the load must not read it.
   useEffect(() => {
     // Both reads fail independently: a lost novels list must not also hide
     // the summaries that did arrive. A navigation away during the fetches

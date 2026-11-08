@@ -536,6 +536,7 @@ export function NovelPage() {
   // Reset the save story only after the chapter selection actually changes.
   // Creation can fail after a confirmed leave; until it succeeds, the old
   // chapter's failed body must still be protected by every leave guard.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: semantic key — `current?.id` is the deliberate re-run key (a chapter change drops the old draft); `discard` is stable and cannot carry the key alone.
   useEffect(() => {
     discard();
   }, [current?.id, discard]);
@@ -620,6 +621,7 @@ export function NovelPage() {
   // standing question is re-asked when the rows change their words, not
   // replayed against the previous language's answers.
   const locale = activeLocale();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: semantic key — `t` is a stable function whose output changes with the language, so `locale` stands in as the re-run key (see the comment above).
   const visibleChapters = useMemo(() => {
     if (railFilter === null) return chapters;
     const needle = normalize(railFilter.trim());

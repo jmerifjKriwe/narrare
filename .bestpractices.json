@@ -131,10 +131,10 @@
   "vulnerability_report_process_status": "Met",
   "vulnerability_report_response_justification": "No vulnerability report received in the last 6 months",
   "vulnerability_report_response_status": "N/A",
-  "warnings_fixed_justification": "Both gates are green in CI; findings are fixed, not muted",
+  "warnings_fixed_justification": "Ruff, pyright and Biome run green in CI; findings are fixed. Deliberate Biome useExhaustiveDependencies exemptions are recorded inline with a reason (semantic dependency keys, retry counters), not silently muted",
   "warnings_fixed_status": "Met",
-  "warnings_justification": "ruff (E,F,I,N,W,UP,B,C4,SIM,TCH,RUF,S) and pyright in strict mode",
+  "warnings_justification": "ruff (E,F,I,N,W,UP,B,C4,SIM,TCH,RUF,S), pyright in strict mode, and Biome (noUnusedImports, noUnusedVariables, useHookAtTopLevel, useExhaustiveDependencies, noFloatingPromises, noMisusedPromises) over the web TypeScript",
   "warnings_status": "Met",
-  "warnings_strict_justification": "pyright typeCheckingMode = strict; the ruff ruleset above",
+  "warnings_strict_justification": "pyright typeCheckingMode = strict; the ruff ruleset above; Biome with preset none and six error-level rules",
   "warnings_strict_status": "Met"
 }

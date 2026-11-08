@@ -36,9 +36,13 @@ function useChromeless(): boolean {
   return chromeless;
 }
 
+/** A dialog owns the stage; the palette refuses to open over one. */
+function paletteCanOpen(): boolean {
+  return document.querySelector('[role="dialog"]') === null;
+}
+
 /** The one shell: every route renders inside it. */
 function Shell() {
-  const t = useTranslation();
   // The language is user data on the server, so the first paint waits for it.
   // Rendering first and switching after would flash the wrong language on
   // every load, which is the one visible artefact this gate prevents. The
@@ -58,11 +62,12 @@ function Shell() {
     setReady(true);
   }, [settings.data, settings.isSuccess]);
 
-  // The language the catalog renders in, as reactive state: `t` is a stable
-  // module function, so an effect keyed on it would never re-run — the
-  // locale is what changes, and the title effect below keys on it.
+  // The language the catalog renders in, as reactive state: the title effect
+  // below must re-run when the language changes, and the locale is what
+  // changes.
   const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locale is the deliberate re-run key, not a value the body reads — a language change must recompose the tab title.
   useEffect(() => {
     // The tab's floor: the app's own name until a page names itself, and a
     // recomposition — not a clobber — once one has, so a language change
@@ -77,11 +82,6 @@ function Shell() {
   // workbench's own shortcuts make. ⌘K toggles, so the same press that
   // opened it closes it again.
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  /** A dialog owns the stage; the palette refuses to open over one. */
-  function paletteCanOpen(): boolean {
-    return document.querySelector('[role="dialog"]') === null;
-  }
 
   /** The bar's chip opens what the key opens, under the same refusal. */
   function openPalette(): void {
