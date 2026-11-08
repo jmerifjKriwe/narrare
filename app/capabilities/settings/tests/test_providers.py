@@ -336,8 +336,12 @@ async def test_a_local_anthropic_endpoint_still_needs_no_key(client: AsyncClient
     assert response.status_code == 201, response.text
 
 
-async def test_an_anthropic_provider_has_no_openai_shaped_discovery(client: AsyncClient) -> None:
-    """Discovery asks the OpenAI shape; an anthropic row is refused, not probed."""
+async def test_discovery_refuses_an_anthropic_provider_for_now(client: AsyncClient) -> None:
+    """Interim pin: discovery speaks the OpenAI shape only, so a 409 names the kind.
+
+    Task 7 replaces this refusal with discovery on the provider's own wire;
+    until then the row is refused, not probed with the wrong protocol.
+    """
     provider = await client.post(
         "/api/settings/providers",
         json={

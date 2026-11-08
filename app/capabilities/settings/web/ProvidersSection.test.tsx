@@ -86,6 +86,20 @@ describe("the provider form's inputs", () => {
   });
 });
 
+describe("the kind select", () => {
+  it("offers the server's three kinds, anthropic under its catalog label", () => {
+    renderSection();
+
+    const kind = screen.getByLabelText(t("settings.providers.kindLabel")) as HTMLSelectElement;
+    const options = Array.from(kind.options).map((option) => option.textContent);
+    expect(options).toEqual([
+      t("settings.providers.kind.fake"),
+      t("settings.providers.kind.openai-chat"),
+      t("settings.providers.kind.anthropic"),
+    ]);
+  });
+});
+
 describe("the key's round-trip", () => {
   it("shows the full key exactly once, on the create", async () => {
     api.POST.mockResolvedValue({

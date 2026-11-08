@@ -54,16 +54,20 @@ def _error_detail(body: str) -> str:
     """The vendor's own message from an error body, or the raw body itself.
 
     The wire's envelope is ``{"type": "error", "error": {"type": …,
-    "message": …}}``; a proxy may hand back any bytes, and those travel
-    verbatim rather than being swallowed.
+    "message": …}}`` — but a proxy may hand back any JSON value, or any
+    bytes at all, and those travel verbatim rather than being swallowed or
+    crashing the parser. The status, not the body, decides the failure.
     """
     try:
-        payload: dict[str, Any] = json.loads(body)
+        payload: Any = json.loads(body)
     except ValueError:
         return body
-    error = cast("dict[str, Any] | None", payload.get("error"))
+    if not isinstance(payload, dict):
+        return body
+    envelope = cast("dict[str, Any]", payload)
+    error = envelope.get("error")
     if isinstance(error, dict):
-        message = error.get("message")
+        message = cast("dict[str, Any]", error).get("message")
         if isinstance(message, str):
             return message
     return body
@@ -89,10 +93,11 @@ def _stream_error(model: str, payload: dict[str, Any]) -> RuntimeError:
     """The typed failure an in-stream ``error`` event maps to, or the plain one.
 
     A refusal can arrive after the headers: the status was 200 and the error
-    travels as the stream's own event. The same two types map as above.
+    travels as the stream's own event. The same two types map as above, and
+    a body that is not the wire's object stays unclassified the same way.
     """
-    error = cast("dict[str, Any] | None", payload.get("error"))
-    kind = error.get("type") if error is not None else None
+    error = payload.get("error")
+    kind = cast("dict[str, Any]", error).get("type") if isinstance(error, dict) else None
     if kind == "not_found_error":
         return ModelNotFoundError(model)
     if kind == "authentication_error":

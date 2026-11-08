@@ -202,10 +202,10 @@ class TaskEffectiveRead(BaseModel):
 
     ``profile_id`` and ``profile_name`` are ``None`` exactly when no model
     serves — the environment tier answers. ``kind`` names the serving adapter
-    either way (``fake`` or ``openai-chat``), so the page can say what answers
-    without claiming the cascade's stored choice. An audit-only key has no
-    serving tier: ``kind`` is ``audit``, the model fields are ``None``, and
-    ``assignable`` is ``False``.
+    either way (``fake``, ``openai-chat`` or ``anthropic``), so the page can
+    say what answers without claiming the cascade's stored choice. An
+    audit-only key has no serving tier: ``kind`` is ``audit``, the model
+    fields are ``None``, and ``assignable`` is ``False``.
     """
 
     task_key: str

@@ -194,11 +194,12 @@ class ProviderService:
         if provider.kind == "fake":
             raise NoEndpointError("a fake provider has no endpoint to discover models on")
         if provider.kind != "openai-chat":
-            # An endpoint of another wire (anthropic): the SDK's model list
-            # would speak the wrong shape under the wrong auth header. The
-            # row has no discovery until its own adapter teaches it one.
+            # Interim refusal, until Task 7 gives discovery a wire per kind:
+            # today only the OpenAI shape has a model list, so another kind's
+            # endpoint would be probed with the wrong protocol and auth.
             raise NoEndpointError(
-                f"a {provider.kind} provider has no OpenAI-shaped endpoint to discover models on"
+                "no OpenAI-shaped endpoint to discover models on"
+                f" for a provider of kind {provider.kind!r}"
             )
         endpoint = provider.base_url
         if not endpoint:

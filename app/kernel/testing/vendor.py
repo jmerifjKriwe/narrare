@@ -336,7 +336,7 @@ MESSAGES_USAGE = (4, 2)
 ``(input_tokens, output_tokens)``."""
 
 
-def _messages_frames(*, error_type: str | None) -> str:
+def _messages_frames(*, stop_frame: bool, error_type: str | None) -> str:
     """The Messages SSE answer: a start, the deltas, one delta frame, the stop.
 
     The framing is the real API's — ``event:`` and ``data:`` lines, blank line
@@ -372,7 +372,7 @@ def _messages_frames(*, error_type: str | None) -> str:
         + "\n\n"
         for piece in MESSAGES_DELTAS
     )
-    stop = (
+    delta_frame = (
         "event: message_delta\n"
         "data: "
         + json.dumps(
@@ -383,9 +383,8 @@ def _messages_frames(*, error_type: str | None) -> str:
             }
         )
         + "\n\n"
-        "event: message_stop\n"
-        'data: {"type":"message_stop"}\n\n'
     )
+    stop = delta_frame + ('data: {"type":"message_stop"}\n\n' if stop_frame else "")
     error = (
         "event: error\n"
         "data: "
@@ -418,12 +417,13 @@ class MessagesVendor:
         """The most recent request the vendor saw."""
         return self._server.received[-1]
 
-    def refuse_requests(self, status: int = 401, payload: dict[str, Any] | None = None) -> None:
+    def refuse_requests(self, status: int = 401, payload: Any = None) -> None:
         """Answer every message request with ``status`` from now on.
 
-        The payload is the wire's own error envelope — ``{"type": "error",
-        "error": {"type": …}}`` — so the adapter's mapping is pinned against
-        the shape a real refusal carries, not a bare status alone.
+        The payload is whatever JSON the body should carry — normally the
+        wire's own error envelope, but the tests also send non-object bodies
+        (``[]``, ``null``) to pin that the adapter names the status instead
+        of crashing on them.
         """
         self._server.refuse = True
         self._server.refuse_status = status
@@ -436,6 +436,14 @@ class MessagesVendor:
         the headers are sent, and the error travels as an event of its own.
         """
         self._server.fail_stream = error_type
+
+    def omit_stop_frame(self) -> None:
+        """End the SSE answer without the wire's ``message_stop``, the proxy's way.
+
+        The usage frame stays; only the stop event is dropped, so the stream
+        simply ends — what the one-DONE-on-EOF claim has to survive.
+        """
+        self._server.stop_frame = False
 
     def close(self) -> None:
         self._server.shutdown()
@@ -463,7 +471,7 @@ class _MessagesHandler(_JsonHandler):
         self._reply(
             200,
             "text/event-stream",
-            _messages_frames(error_type=server.fail_stream).encode(),
+            _messages_frames(stop_frame=server.stop_frame, error_type=server.fail_stream).encode(),
         )
 
 
@@ -475,6 +483,7 @@ def messages_vendor() -> Generator[MessagesVendor]:
     server.refuse_status = 401
     server.refuse_payload = None
     server.fail_stream = None
+    server.stop_frame = True
     server.received = []
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
