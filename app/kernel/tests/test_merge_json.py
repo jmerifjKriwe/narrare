@@ -1,80 +1,63 @@
 from __future__ import annotations
 
 import json
-import os
-import subprocess  # nosec B404
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+import pytest
+
+from scripts import merge_json
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def run_merge(
-    tmp_path: Path,
-    base: dict[str, Any],
-    ours: dict[str, Any],
-    theirs: dict[str, Any],
-) -> subprocess.CompletedProcess[str]:
-    base_path = tmp_path / "base.json"
-    ours_path = tmp_path / "ours.json"
-    theirs_path = tmp_path / "theirs.json"
-    base_path.write_text(json.dumps(base), encoding="utf-8")
-    ours_path.write_text(json.dumps(ours), encoding="utf-8")
-    theirs_path.write_text(json.dumps(theirs), encoding="utf-8")
-    return subprocess.run(  # noqa: S603  # nosec B603
-        [
-            sys.executable,
-            "scripts/merge_json.py",
-            "--base",
-            str(base_path),
-            "--ours",
-            str(ours_path),
-            "--theirs",
-            str(theirs_path),
-        ],
-        capture_output=True,
-        text=True,
-    )
-
-
-def test_merge_non_overlapping_keys(tmp_path: Path) -> None:
-    result = run_merge(tmp_path, {"x": 1}, {"x": 1, "a": 2}, {"x": 1, "b": 3})
-    assert result.returncode == 0, result.stderr
-    merged: dict[str, Any] = json.loads((tmp_path / "ours.json").read_text(encoding="utf-8"))
+def test_merge_non_overlapping_keys() -> None:
+    merged = merge_json.deep_merge({"x": 1}, {"x": 1, "a": 2}, {"x": 1, "b": 3})
     assert merged == {"x": 1, "a": 2, "b": 3}
 
 
-def test_merge_conflicting_key_exits_1(tmp_path: Path) -> None:
-    result = run_merge(tmp_path, {"x": 1}, {"x": 2}, {"x": 3})
-    assert result.returncode == 1
-    assert "x" in (result.stdout + result.stderr)
+def test_merge_conflicting_key_raises() -> None:
+    with pytest.raises(merge_json.MergeConflictError, match="x"):
+        merge_json.deep_merge({"x": 1}, {"x": 2}, {"x": 3})
 
 
-def test_delete_vs_modify_conflicts(tmp_path: Path) -> None:
-    result = run_merge(tmp_path, {"b": 2}, {}, {"b": 3})
-    assert result.returncode == 1
-    assert "b" in (result.stdout + result.stderr)
+def test_delete_vs_modify_conflicts() -> None:
+    with pytest.raises(merge_json.MergeConflictError, match="b"):
+        merge_json.deep_merge({"b": 2}, {}, {"b": 3})
 
 
-def test_delete_vs_unchanged_keeps_the_deletion(tmp_path: Path) -> None:
-    result = run_merge(tmp_path, {"b": 2}, {}, {"b": 2})
-    assert result.returncode == 0, result.stderr
-    merged: dict[str, Any] = json.loads((tmp_path / "ours.json").read_text(encoding="utf-8"))
-    assert merged == {}
+def test_delete_vs_unchanged_keeps_the_deletion() -> None:
+    assert merge_json.deep_merge({"b": 2}, {}, {"b": 2}) == {}
 
 
-def test_invalid_json_exits_1(tmp_path: Path) -> None:
+def test_deep_merge_nested_keys() -> None:
+    merged = merge_json.deep_merge(
+        {"n": {"a": 1}},
+        {"n": {"a": 1, "b": 2}},
+        {"n": {"a": 1, "c": 3}},
+    )
+    assert merged == {"n": {"a": 1, "b": 2, "c": 3}}
+
+
+def test_arrays_are_replaced_not_concatenated() -> None:
+    with pytest.raises(merge_json.MergeConflictError):
+        merge_json.deep_merge({"a": [1]}, {"a": [1, 2]}, {"a": [1, 3]})
+    assert merge_json.deep_merge({"a": [1]}, {"a": [2]}, {"a": [1]}) == {"a": [2]}
+
+
+def test_invalid_json_exits_1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     base_path = tmp_path / "base.json"
     ours_path = tmp_path / "ours.json"
     theirs_path = tmp_path / "theirs.json"
     base_path.write_text("{", encoding="utf-8")
     ours_path.write_text("{}", encoding="utf-8")
     theirs_path.write_text("{}", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603  # nosec B603
+    monkeypatch.setattr(
+        sys,
+        "argv",
         [
-            sys.executable,
-            "scripts/merge_json.py",
+            "merge_json.py",
             "--base",
             str(base_path),
             "--ours",
@@ -82,59 +65,28 @@ def test_invalid_json_exits_1(tmp_path: Path) -> None:
             "--theirs",
             str(theirs_path),
         ],
-        capture_output=True,
-        text=True,
     )
-    assert result.returncode == 1
+    assert merge_json.main() == 1
 
 
-def test_deep_merge_nested_keys(tmp_path: Path) -> None:
-    result = run_merge(
-        tmp_path,
-        {"n": {"a": 1}},
-        {"n": {"a": 1, "b": 2}},
-        {"n": {"a": 1, "c": 3}},
-    )
-    assert result.returncode == 0, result.stderr
-    merged: dict[str, Any] = json.loads((tmp_path / "ours.json").read_text(encoding="utf-8"))
-    assert merged == {"n": {"a": 1, "b": 2, "c": 3}}
-
-
-def test_arrays_are_replaced_not_concatenated(tmp_path: Path) -> None:
-    result = run_merge(tmp_path, {"a": [1]}, {"a": [1, 2]}, {"a": [1, 3]})
-    assert result.returncode == 1
-    result2 = run_merge(tmp_path, {"a": [1]}, {"a": [2]}, {"a": [1]})
-    assert result2.returncode == 0
-    merged: dict[str, Any] = json.loads((tmp_path / "ours.json").read_text(encoding="utf-8"))
-    assert merged == {"a": [2]}
-
-
-def test_generated_mode_writes_regenerated_content_to_ours(tmp_path: Path) -> None:
-    generated = tmp_path / "web" / "lib" / "generated"
-    generated.mkdir(parents=True)
-    source = generated / "routes.ts"
-    source.write_text("stale\n", encoding="utf-8")
-
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    just = bin_dir / "just"
-    just.write_text(
-        '#!/bin/sh\nprintf "regenerated\\n" > web/lib/generated/routes.ts\n',
-        encoding="utf-8",
-    )
-    just.chmod(0o755)
-
+def test_generated_mode_writes_regenerated_content_to_ours(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ours = tmp_path / "ours.ts"
-    ours.write_text("ours\n", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603  # nosec B603
+    ours.write_text("stale\n", encoding="utf-8")
+
+    def fake_regenerate(root: Path, path: str, target: Path) -> None:
+        target.write_text("regenerated\n", encoding="utf-8")
+
+    monkeypatch.setattr(merge_json, "_regenerate", fake_regenerate)
+    monkeypatch.setattr(
+        sys,
+        "argv",
         [
-            sys.executable,
-            "scripts/merge_json.py",
+            "merge_json.py",
             "--generated",
             "--path",
             "web/lib/generated/routes.ts",
-            "--root",
-            str(tmp_path),
             "--base",
             str(ours),
             "--ours",
@@ -142,40 +94,29 @@ def test_generated_mode_writes_regenerated_content_to_ours(tmp_path: Path) -> No
             "--theirs",
             str(ours),
         ],
-        capture_output=True,
-        text=True,
-        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
     )
-
-    assert result.returncode == 0, result.stderr
+    assert merge_json.main() == 0
     assert ours.read_text(encoding="utf-8") == "regenerated\n"
 
 
-def test_generated_mode_does_not_require_json_inputs(tmp_path: Path) -> None:
-    generated = tmp_path / "web" / "lib" / "generated"
-    generated.mkdir(parents=True)
-    (generated / "routes.ts").write_text("stale\n", encoding="utf-8")
-
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    just = bin_dir / "just"
-    just.write_text(
-        '#!/bin/sh\nprintf "regenerated\\n" > web/lib/generated/routes.ts\n',
-        encoding="utf-8",
-    )
-    just.chmod(0o755)
-
+def test_generated_mode_does_not_require_json_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ours = tmp_path / "ours.ts"
-    ours.write_text("ours\n", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603  # nosec B603
+    ours.write_text("stale\n", encoding="utf-8")
+
+    def fake_regenerate(root: Path, path: str, target: Path) -> None:
+        target.write_text("regenerated\n", encoding="utf-8")
+
+    monkeypatch.setattr(merge_json, "_regenerate", fake_regenerate)
+    monkeypatch.setattr(
+        sys,
+        "argv",
         [
-            sys.executable,
-            "scripts/merge_json.py",
+            "merge_json.py",
             "--generated",
             "--path",
             "web/lib/generated/routes.ts",
-            "--root",
-            str(tmp_path),
             "--base",
             "/does/not/exist",
             "--ours",
@@ -183,10 +124,34 @@ def test_generated_mode_does_not_require_json_inputs(tmp_path: Path) -> None:
             "--theirs",
             "/does/not/exist",
         ],
-        capture_output=True,
-        text=True,
-        env={**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"},
     )
-
-    assert result.returncode == 0, result.stderr
+    assert merge_json.main() == 0
     assert ours.read_text(encoding="utf-8") == "regenerated\n"
+
+
+def test_json_output_keeps_utf8_and_existing_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = tmp_path / "base.json"
+    ours = tmp_path / "ours.json"
+    theirs = tmp_path / "theirs.json"
+    base.write_text(json.dumps({"b": 1, "a": 1}), encoding="utf-8")
+    ours.write_text(json.dumps({"b": 1, "a": 1}), encoding="utf-8")
+    theirs.write_text(json.dumps({"b": 1, "a": 1, "c": "ä"}), encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "merge_json.py",
+            "--base",
+            str(base),
+            "--ours",
+            str(ours),
+            "--theirs",
+            str(theirs),
+        ],
+    )
+    assert merge_json.main() == 0
+    text = ours.read_text(encoding="utf-8")
+    assert '"ä"' in text
+    assert text.index('"b"') < text.index('"a"') < text.index('"c"')

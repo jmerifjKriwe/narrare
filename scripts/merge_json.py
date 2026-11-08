@@ -12,9 +12,9 @@ or unreadable input.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import shutil
-import subprocess  # nosec B404
 import sys
 from pathlib import Path
 from typing import cast
@@ -109,24 +109,28 @@ def _executable(name: str) -> str:
     return resolved
 
 
+async def _run(argv: list[str], cwd: Path | None = None) -> str:
+    process = await asyncio.create_subprocess_exec(
+        *argv,
+        cwd=cwd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+    if process.returncode != 0:
+        detail = stderr.decode().strip() or f"{argv[0]} exited {process.returncode}"
+        raise RuntimeError(detail)
+    return stdout.decode()
+
+
 def _repository_root() -> Path:
     git = _executable("git")
-    completed = subprocess.run(  # noqa: S603  # nosec B603
-        [git, "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return Path(completed.stdout.strip())
+    return Path(asyncio.run(_run([git, "rev-parse", "--show-toplevel"])).strip())
 
 
 def _regenerate(root: Path, path: str, ours: Path) -> None:
     just = _executable("just")
-    subprocess.run(  # noqa: S603  # nosec B603
-        [just, "generate"],
-        cwd=root,
-        check=True,
-    )
+    asyncio.run(_run([just, "generate"], cwd=root))
     source = root / path
     if not source.is_file():
         raise FileNotFoundError(f"generator did not write {path}")
@@ -152,7 +156,7 @@ def main() -> int:
         try:
             root = Path(args.root) if args.root else _repository_root()
             _regenerate(root, args.path, Path(args.ours))
-        except (OSError, subprocess.CalledProcessError) as exc:
+        except (OSError, RuntimeError) as exc:
             print(f"merge_json: regeneration failed: {exc}", file=sys.stderr)
             return 1
         return 0
