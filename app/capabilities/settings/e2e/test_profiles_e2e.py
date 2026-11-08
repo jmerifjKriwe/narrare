@@ -28,6 +28,7 @@ from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.stack import WEB_URL
 from app.kernel.testing.vendor import chat_vendor
+from app.kernel.testing.viewport import assert_page_fits
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -65,6 +66,26 @@ def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         return pool.submit(asyncio.run, run()).result()
+
+
+def _run(statement: str, params: dict[str, object] | None = None) -> None:
+    """One write against the stack's own database, no rows asked back.
+
+    The read twin `_rows` iterates its result, which a DELETE's cursor
+    refuses; a write needs only the execute. Same worker thread, same why.
+    """
+
+    async def run() -> None:
+        engine = create_async_engine(url_for(DATABASE))
+        try:
+            async with engine.connect() as connection:
+                await connection.execute(text(statement), params or {})
+                await connection.commit()
+        finally:
+            await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(asyncio.run, run()).result()
 
 
 def _model_id(name: str) -> str:
@@ -373,3 +394,28 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_the_rows_hold_long_facts_at_the_narrowest_page(page: Page, stack: Stack) -> None:
+    """The rows' fact lines wrap at 360 px — a long string widens nothing.
+
+    A provider's base_url, a model's provider·model line and the task rows'
+    "served by" caption are the page's longest unbreakable strings; without
+    the wrap utilities they pushed main sideways at the narrowest viewport.
+    ``assert_page_fits`` measures both scroll faces — a row that overflows
+    the panel column fails here at the pixel, not by eye.
+    """
+    page.set_viewport_size({"width": 360, "height": 800})
+    page.goto(BASE + "/settings/provider")
+    long_url = "https://vendor.example.invalid/v1/" + "segment/" * 24 + "ende"
+    long_model = "ein-sehr-langes-modellkennzeichen-" + "x" * 80
+    _create_provider(page, "Lang", base_url=long_url)
+    _create_model(page, "Lang", "Lang", long_model)
+    assert_accessible(page)
+    assert_page_fits(page)
+    # The module's stack is one user for every test in the file: what this
+    # page drove is removed again, so the flow test's fresh-stack assumption
+    # ("the first model becomes the default on its own") stays true in
+    # either run order.
+    _run("DELETE FROM provider_profiles WHERE name = :name", {"name": "Lang"})
+    _run("DELETE FROM llm_providers WHERE name = :name", {"name": "Lang"})

@@ -298,21 +298,27 @@ def _run_new_chapter(page: Page) -> None:
 
 
 def _create_fake_profile(page: Page) -> None:
-    """The one provider the day needs, through the form; it is the default.
+    """The one provider and its model the day needs, through the forms.
 
-    A fresh stack holds no profiles, so the first fake becomes the default on
+    Since the provider split, the page asks twice: the endpoint goes into
+    the Anbieter region's form, the model under it into the Modelle one.
+    A fresh stack holds neither, so the first model becomes the default on
     its own — and the continuation later must name exactly this row.
     """
-    page.get_by_label("Name", exact=True).fill(PROFILE_NAME)
-    # Scoped to main: the label wraps its select, so its text runs "Art
-    # Fake (deterministisch, …)" — a substring match, which the rail's
-    # Startseite link (outside main) would also answer.
-    page.get_by_role("main").get_by_label("Art").select_option(
-        label="Fake (deterministisch, ohne Netzwerk)"
-    )
-    page.get_by_label("Modell").fill(PROFILE_MODEL)
-    page.get_by_role("button", name="Profil hinzufügen").click()
-    row = page.get_by_role("listitem").filter(has_text=PROFILE_NAME)
+    providers = page.get_by_role("region", name="Anbieter", exact=True)
+    providers.get_by_label("Name", exact=True).fill(PROFILE_NAME)
+    # A select's label wraps it, so its text runs "Art <selected option>" —
+    # a substring match, which an exact one would never answer.
+    providers.get_by_label("Art").select_option(label="Fake (deterministisch, ohne Netzwerk)")
+    providers.get_by_role("button", name="Anbieter hinzufügen").click()
+    expect(providers.get_by_role("listitem").filter(has_text=PROFILE_NAME)).to_be_visible()
+
+    models = page.get_by_role("region", name="Modelle", exact=True)
+    models.get_by_label("Name", exact=True).fill(PROFILE_NAME)
+    models.get_by_label("Anbieter").select_option(label=PROFILE_NAME)
+    models.get_by_label("Modell", exact=True).fill(PROFILE_MODEL)
+    models.get_by_role("button", name="Modell hinzufügen").click()
+    row = models.get_by_role("listitem").filter(has_text=PROFILE_NAME)
     expect(row).to_be_visible()
     expect(row.get_by_text("Standard", exact=True)).to_have_count(1)
 

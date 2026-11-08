@@ -223,28 +223,37 @@ def _open_settings(page: Page) -> None:
 
 
 def _create_profile_and_assign(page: Page, name: str, context_window: str) -> None:
-    """Create one fake profile through the form, then hand it the task.
+    """Create one fake provider and its model through the forms, hand it the task.
 
+    Since the provider split, the page asks twice: the endpoint goes into
+    the Anbieter region's form, the model under it into the Modelle one.
     The window is the field's whole point here; the output cap stays empty,
     so the kernel default 1024 applies (D7: every unset limit falls back on
-    its own). The assignment is the select's label option, waited out until
-    the PUT's refetch moves the control — the same wait the settings flow
-    uses before it leaves the page.
+    its own). The assignment is the select's composed option — the pair a
+    task points at, "{provider} · {model}" — waited out until the PUT's
+    refetch moves the control, the same wait the settings flow uses before
+    it leaves the page.
     """
+    model = f"modell-{name.split()[-1].lower()}"
     _open_settings(page)
-    page.get_by_label("Name", exact=True).fill(name)
-    # Scoped to main: the label wraps its select, so its text runs "Art
-    # Fake (deterministisch, …)" — a substring match, which the rail's
-    # Startseite link (outside main) would also answer.
-    page.get_by_role("main").get_by_label("Art").select_option(
-        label="Fake (deterministisch, ohne Netzwerk)"
-    )
-    page.get_by_label("Modell").fill(f"modell-{name.split()[-1].lower()}")
-    page.get_by_label("Kontextfenster (Tokens)").fill(context_window)
-    page.get_by_role("button", name="Profil hinzufügen").click()
-    expect(page.get_by_role("listitem").filter(has_text=name)).to_be_visible()
+    providers = page.get_by_role("region", name="Anbieter", exact=True)
+    providers.get_by_label("Name", exact=True).fill(name)
+    # A select's label wraps it, so its text runs "Art <selected option>" —
+    # a substring match, which an exact one would never answer.
+    providers.get_by_label("Art").select_option(label="Fake (deterministisch, ohne Netzwerk)")
+    providers.get_by_role("button", name="Anbieter hinzufügen").click()
+    expect(providers.get_by_role("listitem").filter(has_text=name)).to_be_visible()
+
+    models = page.get_by_role("region", name="Modelle", exact=True)
+    models.get_by_label("Name", exact=True).fill(name)
+    models.get_by_label("Anbieter").select_option(label=name)
+    models.get_by_label("Modell", exact=True).fill(model)
+    models.get_by_label("Kontextfenster (Tokens)").fill(context_window)
+    models.get_by_role("button", name="Modell hinzufügen").click()
+    expect(models.get_by_role("listitem").filter(has_text=name)).to_be_visible()
+
     continuation = page.get_by_label("Weiterschreiben")
-    continuation.select_option(label=name)
+    continuation.select_option(label=f"{name} · {model}")
     expect(continuation).not_to_have_value("")
 
 
