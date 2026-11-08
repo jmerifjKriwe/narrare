@@ -156,7 +156,13 @@ def _write_chapters(page: Page, bodies: tuple[str, ...]) -> None:
         page.get_by_role("button", name="Neues Kapitel").click()
         editor = page.locator(".ProseMirror")
         expect(editor).to_be_visible()
+        # The editor element survives the chapter switch: waiting only for
+        # visibility can type into the previous chapter before the new one
+        # arrives. The new chapter is empty, so an empty editor is the switch
+        # having landed; the focus assertion keeps the keystrokes in it.
+        expect(editor).to_have_text("")
         editor.click()
+        expect(editor).to_be_focused()
         page.keyboard.type(body)
         expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=15_000)
 
