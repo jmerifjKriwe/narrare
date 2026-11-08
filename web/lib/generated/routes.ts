@@ -49,5 +49,3 @@ export const capabilityRoutes = [
   // must be in the table before the settings routes parented at it.
   ...promptsSettingsRoutes,
 ] as const;
-
-export const workspaceRouteId = "/novels/$id";

@@ -1,6 +1,6 @@
 import type { ComponentProps, CSSProperties } from "react";
 import { Link, useMatches } from "@tanstack/react-router";
-import { workspaceRouteId } from "../lib/generated/routes";
+import { workspaceRouteId } from "../lib/generated/workspace";
 
 import { useTranslation } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
