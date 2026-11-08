@@ -146,6 +146,7 @@ export function ChapterEditor({
   // owner while a ghost is pending is a supersede.
   const owner = useRef<string | number | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `proposal` reaches this effect through `ghost`, a dependency; the owner identity must be the proposal that painted that same text, not a possibly newer render's.
   useEffect(() => {
     if (!editor) return;
     const text = ghost === "" ? null : ghost;

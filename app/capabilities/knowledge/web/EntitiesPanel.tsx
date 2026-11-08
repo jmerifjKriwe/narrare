@@ -107,6 +107,7 @@ export function EntitiesPanel() {
 
   // A refresh can remove the last entity carrying a selected filter. Clear
   // that stale value so the select and the results agree on the live list.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: semantic key — the options' `join("\0")` serialization, not the array identity, decides the re-run; the arrays themselves are rebuilt every render.
   useEffect(() => {
     if (typeFilter && !typeOptions.includes(typeFilter)) setTypeFilter("");
     if (tagFilter && !tagOptions.includes(tagFilter)) setTagFilter("");

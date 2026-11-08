@@ -58,10 +58,11 @@ verify scope="affected":
     just build
     just test-e2e {{scope}}
 
-# Ruff: check and format check.
+# Ruff and Biome: check only.
 lint:
     uv run ruff check app scripts
     uv run ruff format --check app scripts
+    pnpm exec biome lint --error-on-warnings
 
 # Pyright for the backend, tsc for the web app.
 typecheck:
