@@ -127,13 +127,14 @@ export function ProvidersPanel() {
   const onProviderDirty = useCallback((value: boolean) => markDirty("providers", value), [markDirty]);
   const onModelDirty = useCallback((value: boolean) => markDirty("models", value), [markDirty]);
 
-  // The preset-created provider's suggested model, on its way to the model
-  // form: one emission per created provider, numbered so the seed cannot
-  // re-apply after the user has changed or cleared it, and carrying the
-  // created row's id so the model form can point at it.
+  // The model form's suggestion, on its way from the providers section:
+  // one emission per suggestion — a preset-created provider naming its
+  // preset's model, a discovered id the user picked — numbered so the seed
+  // cannot re-apply after the user has changed or cleared it, and carrying
+  // the provider's id so the model form can point at it.
   const seedToken = useRef(0);
   const [modelSeed, setModelSeed] = useState<ModelSeed | null>(null);
-  const onPresetCreated = useCallback((providerId: string, model: string) => {
+  const onModelSeed = useCallback((providerId: string, model: string) => {
     seedToken.current += 1;
     setModelSeed({ providerId, model, token: seedToken.current });
   }, []);
@@ -179,7 +180,7 @@ export function ProvidersPanel() {
         reload={reload}
         guard={guard}
         onDirty={onProviderDirty}
-        onPresetCreated={onPresetCreated}
+        onModelSeed={onModelSeed}
       />
       <ModelsSection
         providers={providers}

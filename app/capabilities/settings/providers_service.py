@@ -7,8 +7,9 @@ which could never answer, the masked-key rules — the plaintext reaches
 exactly one response (the create's), the column holds what
 :mod:`app.kernel.secrets` returned, the hint holds the last four characters —
 and the delete guard that names the models still pointed at the provider
-instead of a count. Discovery runs the SDK's model list against the
-provider's own endpoint.
+instead of a count. Discovery asks the provider's own list URL over plain
+httpx — the wire headers its kind speaks, the key held to the endpoint's
+own host.
 
 No side effect beyond the request's own transaction: each method commits once.
 """
@@ -17,12 +18,13 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003  the service's parameter annotations name it
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.settings.schemas import PresetRead
+from app.kernel.llm.anthropic_messages import ANTHROPIC_VERSION
 from app.kernel.llm.catalog import snapshot_date, vendor_models
 from app.kernel.llm.models import LLMProvider  # noqa: TC001
-from app.kernel.llm.openai_chat import client_for, keyless_headers
 from app.kernel.llm.presets import PRESETS
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.secrets import NoKeyStoreError, erase_key, load_key, save_key
@@ -229,40 +231,50 @@ class ProviderService:
         await self.session.commit()
 
     async def discover(self, provider_id: UUID) -> list[str]:
-        """The model ids the provider's endpoint offers, sorted.
+        """The model ids the provider's endpoint offers, sorted and deduplicated.
 
-        A fake provider has no endpoint to ask. Any transport or endpoint
-        failure propagates for the router to name; a key its tier can no
-        longer produce refuses by name before any request runs.
+        The request goes to the provider's own list URL — ``models_url`` when
+        the row names one, ``{base_url}/models`` otherwise — with the wire
+        headers its kind speaks: a bearer credential for ``openai-chat``,
+        ``x-api-key`` and the version header for ``anthropic``. The key
+        travels only when the list URL shares the base URL's host; a list
+        served from another host is asked anonymously, and a keyless local
+        endpoint carries no credential at all. A fake provider has no
+        endpoint to ask. Any transport or endpoint failure propagates for
+        the router to name (502); a key its tier can no longer produce
+        refuses by name before any request runs.
         """
         provider = await self._providers().get(provider_id)
         if provider is None:
             raise ProviderNotFoundError(f"no provider {provider_id}")
         if provider.kind == "fake":
             raise NoEndpointError("a fake provider has no endpoint to discover models on")
-        if provider.kind != "openai-chat":
-            # Interim refusal, until Task 7 gives discovery a wire per kind:
-            # today only the OpenAI shape has a model list, so another kind's
-            # endpoint would be probed with the wrong protocol and auth.
-            raise NoEndpointError(
-                "no OpenAI-shaped endpoint to discover models on"
-                f" for a provider of kind {provider.kind!r}"
-            )
         endpoint = provider.base_url
         if not endpoint:
             raise NoEndpointError("the provider has no endpoint to discover models on")
+        url = provider.models_url or f"{endpoint}/models"
         api_key = (
             load_key(provider.id, provider.api_key)
             if provider.api_key or provider.api_key_hint is not None or needs_api_key(endpoint)
             else ""
         )
-        client = client_for(endpoint, api_key, timeout=DISCOVERY_TIMEOUT)
-        try:
-            page = await client.models.list(extra_headers=keyless_headers(api_key))
-            ids = [model.id async for model in page]
-            return sorted(ids)
-        finally:
-            await client.close()
+        headers: dict[str, str] = {}
+        if provider.kind == "anthropic":
+            # The wire's protocol header rides every request; only the
+            # credential below is gated on the host (and on existing at all).
+            headers["anthropic-version"] = ANTHROPIC_VERSION
+        if api_key and httpx.URL(url).host == httpx.URL(endpoint).host:
+            # The credential follows its host: a list served from another
+            # host — a gateway's URL beside the chat endpoint — never sees
+            # the key, whatever the endpoint it belongs to would accept.
+            if provider.kind == "anthropic":
+                headers["x-api-key"] = api_key
+            else:
+                headers["Authorization"] = f"Bearer {api_key}"
+        async with httpx.AsyncClient(timeout=DISCOVERY_TIMEOUT) as client:
+            response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        return sorted({str(entry["id"]) for entry in response.json()["data"]})
 
     def _gate(self, *, kind: str, base_url: str | None, has_key: bool) -> None:
         """Refuse a configuration that could never answer, naming the fields.

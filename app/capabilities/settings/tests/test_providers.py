@@ -27,7 +27,7 @@ from app.kernel.llm.models import LLMProvider, ProviderProfile
 from app.kernel.llm.presets import PRESETS
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.secrets import load_key
-from app.kernel.testing.vendor import chat_vendor
+from app.kernel.testing.vendor import chat_vendor, list_vendor, messages_vendor
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -338,27 +338,6 @@ async def test_a_local_anthropic_endpoint_still_needs_no_key(client: AsyncClient
     assert response.status_code == 201, response.text
 
 
-async def test_discovery_refuses_an_anthropic_provider_for_now(client: AsyncClient) -> None:
-    """Interim pin: discovery speaks the OpenAI shape only, so a 409 names the kind.
-
-    Task 7 replaces this refusal with discovery on the provider's own wire;
-    until then the row is refused, not probed with the wrong protocol.
-    """
-    provider = await client.post(
-        "/api/settings/providers",
-        json={
-            "name": "Anthropic",
-            "kind": "anthropic",
-            "base_url": "https://api.anthropic.com/v1",
-            "api_key": SECRET,
-        },
-    )
-    assert provider.status_code == 201
-    listed = await client.get(f"/api/settings/providers/{provider.json()['id']}/models")
-    assert listed.status_code == 409
-    assert "anthropic" in listed.json()["detail"]
-
-
 async def test_a_remote_http_endpoint_carrying_a_key_is_refused(client: AsyncClient) -> None:
     """A key would cross the network in cleartext: the gate refuses the URL."""
     clear = await client.post(
@@ -454,6 +433,116 @@ async def test_discovery_lists_the_vendors_models(client: AsyncClient) -> None:
     [request] = vendor.received
     assert request["path"] == "/v1/models"
     assert request["headers"]["authorization"] == f"Bearer {SECRET}"
+
+
+async def test_discovery_asks_the_providers_own_list_url(client: AsyncClient) -> None:
+    """``models_url`` is where the list lives: asked directly, base/models never.
+
+    The OpenCode presets keep their list on a path of its own, off the chat
+    base URL — discovery must ask the URL the row names, not the endpoint's
+    conventional ``/models`` beside it.
+    """
+    with chat_vendor() as vendor:
+        vendor.serve_models_at("/vendor-list/models")
+        provider = await _create(
+            client,
+            base_url=vendor.base_url,
+            models_url=f"{vendor.origin}/vendor-list/models",
+        )
+        listed = await client.get(f"/api/settings/providers/{provider['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert "vendor-mini" in listed.json()
+    # The own list path was asked once, with the credential (the hosts are
+    # the same); the ``/models`` path on the base URL was never asked.
+    assert vendor.list_requests == 1
+    assert vendor.last["path"] == "/vendor-list/models"
+    assert vendor.last["headers"]["authorization"] == f"Bearer {SECRET}"
+    assert all(entry["path"] != "/v1/models" for entry in vendor.received)
+
+
+async def test_discovery_keeps_the_key_on_the_endpoint_host(client: AsyncClient) -> None:
+    """A list on another host is asked anonymously: the key never arrives there.
+
+    The chat vendor answers under ``127.0.0.1``, the list stand-in under
+    ``localhost`` — a different host on the same machine — so a models URL
+    pointed there proves the rule: the port routes the request, the host
+    name keeps the credential away. The stand-in's catalog arrives unsorted
+    and with one duplicate, so the parse's sort and dedupe are pinned too.
+    """
+    with chat_vendor() as vendor, list_vendor() as other:
+        provider = await _create(
+            client, base_url=vendor.base_url, models_url=f"{other.base_url}/models"
+        )
+        listed = await client.get(f"/api/settings/providers/{provider['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json() == ["vendor-max", "vendor-mini"]
+    # The endpoint's own host was never asked either: only the list URL.
+    assert vendor.received == []
+    assert other.authorization is None
+    assert "x-api-key" not in other.last["headers"]
+
+
+async def test_discovery_asks_an_anthropic_provider_for_its_models(
+    client: AsyncClient,
+) -> None:
+    """The anthropic wire: its own list route, ``x-api-key`` and the version header."""
+    with messages_vendor() as vendor:
+        provider = await client.post(
+            "/api/settings/providers",
+            json={
+                "name": "Anthropic",
+                "kind": "anthropic",
+                "base_url": vendor.base_url,
+                "api_key": SECRET,
+            },
+        )
+        assert provider.status_code == 201, provider.text
+        listed = await client.get(f"/api/settings/providers/{provider.json()['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json() == ["vendor-large", "vendor-small"]
+    [request] = vendor.received
+    assert request["path"] == "/v1/models"
+    assert request["headers"]["x-api-key"] == SECRET
+    assert request["headers"]["anthropic-version"] == "2023-06-01"
+    # The bearer scheme is the other wire's: none of it here.
+    assert "authorization" not in request["headers"]
+
+
+async def test_a_keyless_local_endpoint_is_asked_without_a_credential(
+    client: AsyncClient,
+) -> None:
+    """No key stored, loopback endpoint: the discovery request carries none."""
+    with chat_vendor() as vendor:
+        provider = await client.post(
+            "/api/settings/providers",
+            json={"name": "Lokal", "kind": "openai-chat", "base_url": vendor.base_url},
+        )
+        assert provider.status_code == 201, provider.text
+        listed = await client.get(f"/api/settings/providers/{provider.json()['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json() == ["vendor-max", "vendor-mini"]
+    assert "authorization" not in vendor.last["headers"]
+
+
+async def test_an_unreachable_endpoint_fails_discovery_as_a_502(client: AsyncClient) -> None:
+    """A transport failure is the router's 502, not a traceback or an empty list."""
+    provider = await _create(client, base_url=LOCAL)
+    response = await client.get(f"/api/settings/providers/{provider['id']}/models")
+    assert response.status_code == 502
+
+
+async def test_a_refusing_endpoint_fails_discovery_as_a_502(client: AsyncClient) -> None:
+    """An endpoint that answers 401 to the list request maps to the same 502."""
+    with chat_vendor() as vendor:
+        provider = await _create(client, base_url=vendor.base_url)
+        vendor.refuse_requests()
+        response = await client.get(f"/api/settings/providers/{provider['id']}/models")
+
+    assert response.status_code == 502
 
 
 async def test_a_provider_whose_key_is_lost_fails_discovery_by_name(

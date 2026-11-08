@@ -14,10 +14,12 @@ export type Provider = components["schemas"]["ProviderRead"];
 export type Preset = components["schemas"]["PresetRead"];
 
 /**
- * The model a preset-created provider suggests to the model form: the
- * seed's token makes it one-shot — a second save of the model form, or an
- * edit, never re-seeds from the same emission — and its provider id points
- * the model form's provider select at the row just stored.
+ * The model the providers section suggests to the model form: the token
+ * makes it one-shot — a second save of the model form, or an edit, never
+ * re-seeds from the same emission — and its provider id points the model
+ * form's provider select at the row the suggestion came from. A
+ * preset-created provider emits its preset's model; a discovered id emits
+ * when the user picks it.
  */
 export type ModelSeed = { providerId: string; model: string; token: number };
 
@@ -93,6 +95,10 @@ function formOf(provider: Provider): FormState {
  * blank form — is the default. The select speaks only while creating: an
  * edit is what the provider already is.
  *
+ * "Load models" asks the provider's own list URL and shows the ids it
+ * answered with; picking one hands it to the model form, the same ear the
+ * preset-created provider speaks into.
+ *
  * The section's one filled primary is the form's save (L1); every other
  * control is a bordered equal. The states speak through `Notice`: the empty
  * list, the save and delete refusals, and the row's own model discovery.
@@ -103,15 +109,15 @@ export function ProvidersSection({
   reload,
   guard,
   onDirty,
-  onPresetCreated,
+  onModelSeed,
 }: {
   providers: Provider[] | null;
   presets: Preset[] | null;
   reload: () => Promise<void>;
   guard: Guard;
   onDirty: (dirty: boolean) => void;
-  /** The panel's ear: a preset-created provider names itself and its model. */
-  onPresetCreated: (providerId: string, model: string) => void;
+  /** The panel's ear: the model form is pointed at a provider and a model. */
+  onModelSeed: (providerId: string, model: string) => void;
 }) {
   const t = useTranslation();
   const [editing, setEditing] = useState<Provider | null>(null);
@@ -234,7 +240,7 @@ export function ProvidersSection({
       // The created provider is the model form's next subject: it names
       // itself so the form can point at it, with the preset's model as the
       // suggestion. A failed save emits nothing — nothing was stored.
-      if (presetModel !== null) onPresetCreated(data.id, presetModel);
+      if (presetModel !== null) onModelSeed(data.id, presetModel);
       resetForm();
       await reload();
       return;
@@ -282,15 +288,21 @@ export function ProvidersSection({
   }
 
   async function discoverModels(provider: Provider): Promise<void> {
-    const { data, response } = await client.GET("/api/settings/providers/{provider_id}/models", {
-      params: { path: { provider_id: provider.id } },
-    });
-    // The outcome is data on the row either way: the ids, or the failure
-    // the page can name while the endpoint cannot be asked.
-    setModels((current) => ({
-      ...current,
-      [provider.id]: response.ok ? (data ?? []) : "failed",
-    }));
+    try {
+      const { data, response } = await client.GET("/api/settings/providers/{provider_id}/models", {
+        params: { path: { provider_id: provider.id } },
+      });
+      // The outcome is data on the row either way: the ids, or the failure
+      // the page can name while the endpoint cannot be asked.
+      setModels((current) => ({
+        ...current,
+        [provider.id]: response.ok ? (data ?? []) : "failed",
+      }));
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
+      setModels((current) => ({ ...current, [provider.id]: "failed" }));
+    }
   }
 
   return (
@@ -356,24 +368,39 @@ export function ProvidersSection({
                     <Button variant="secondary" onClick={() => startEditing(provider)}>
                       {t("settings.providers.edit")}
                     </Button>
-                    {provider.kind === "openai-chat" ? (
+                    {provider.kind === "fake" ? null : (
                       <Button variant="secondary" onClick={() => void discoverModels(provider)}>
                         {t("settings.providers.discover")}
                       </Button>
-                    ) : null}
+                    )}
                     <Button variant="secondary" onClick={() => void remove(provider)}>
                       {t("settings.providers.delete")}
                     </Button>
                   </div>
-                  {discovered === undefined ? null : (
-                    <Notice
-                      tone={discovered === "failed" ? "warning" : "quiet"}
-                      live="status"
-                      className="mt-2"
-                    >
-                      {discovered === "failed"
-                        ? t("settings.providers.errorModels")
-                        : t("settings.providers.models", { models: discovered.join(", ") })}
+                  {discovered === undefined ? null : discovered === "failed" ? (
+                    <Notice tone="warning" live="status" className="mt-2">
+                      {t("settings.providers.errorModels")}
+                    </Notice>
+                  ) : (
+                    // The ids, each one a pick: pressing it hands the id to
+                    // the model form, pointed at this provider.
+                    <Notice tone="quiet" live="status" className="mt-2">
+                      <span className="block text-label text-muted">
+                        {t("settings.providers.models")}
+                      </span>
+                      <ul className="mt-1 flex flex-wrap gap-1.5">
+                        {discovered.map((id) => (
+                          <li key={id}>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => onModelSeed(provider.id, id)}
+                            >
+                              {id}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
                     </Notice>
                   )}
                 </li>

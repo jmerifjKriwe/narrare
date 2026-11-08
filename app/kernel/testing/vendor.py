@@ -9,15 +9,25 @@ runs for real.
 
 The chat vendor speaks the OpenAI ``/chat/completions`` SSE shape (deltas in
 order, one usage frame, the ``[DONE]`` line) plus ``GET /models`` for
-discovery, so the settings surface's test and discovery endpoints run against
-the same kind of socket a real endpoint is. It records every request it
-receives and can refuse them: the adapter's raise-once semantics need a vendor
-that says no.
+discovery — served at the conventional path and, on demand, at a second path
+of the caller's choosing, so a provider whose list lives on its own URL can
+be pinned against a real socket. It records every request it receives and can
+refuse them: the adapter's raise-once semantics need a vendor that says no.
 
 The messages vendor speaks the Anthropic ``/messages`` SSE shape (a start
 frame carrying the input tokens, ``text_delta`` pieces, one delta frame with
 the output tokens, one stop) under the same contract: it records, and it can
-refuse — the anthropic adapter is pinned against the same kind of socket.
+refuse — the anthropic adapter is pinned against the same kind of socket. Its
+``GET /v1/models`` answers discovery the way the real wire does: it demands
+``x-api-key`` and the version header before it names any model.
+
+The list vendor is the second host: a tiny OpenAI-shaped list endpoint under
+``localhost`` — the chat vendor answers under ``127.0.0.1``, so the two are
+different hosts on the same machine. Discovery that must keep its credential
+off a list served elsewhere points its ``models_url`` here and asserts on
+what arrived (nothing), while the catalog it answers with arrives unsorted
+and with one duplicate, pinning the parse's sort and dedupe against what
+actually went out.
 """
 
 import hashlib
@@ -30,6 +40,8 @@ from collections.abc import Generator  # noqa: TC003
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+
+from app.kernel.llm.anthropic_messages import ANTHROPIC_VERSION
 
 
 class EmbeddingsVendor:
@@ -118,6 +130,20 @@ CHAT_USAGE = (12, 7)
 
 CHAT_MODELS = ("vendor-max", "vendor-mini")
 """The discovery endpoint's catalog, in the sorted order the API returns."""
+
+
+def _models_body() -> bytes:
+    """The OpenAI list payload the chat vendor's served paths answer with."""
+    return json.dumps(
+        {
+            "object": "list",
+            "data": [
+                {"id": model, "object": "model", "created": 0, "owned_by": "vendor"}
+                for model in CHAT_MODELS
+            ],
+        }
+    ).encode()
+
 
 DONE_LINE = "data: [DONE]\n\n"
 """The wire's own terminal line; local servers omit it, so tests can too."""
@@ -223,6 +249,26 @@ class ChatVendor:
         """
         self._server.delay = seconds
 
+    @property
+    def origin(self) -> str:
+        """The scheme and host:port, for pointing a second path or host here."""
+        return f"http://127.0.0.1:{self._server.server_port}"
+
+    def serve_models_at(self, path: str) -> None:
+        """Answer ``GET path`` with the model list too, beside ``/v1/models``.
+
+        A provider whose list lives on a URL of its own — the OpenCode
+        presets' ``models_url`` — is discovered by asking that URL; the
+        second served path is how the tests prove the conventional
+        ``{base_url}/models`` stayed untouched.
+        """
+        self._server.model_paths.add(path)
+
+    @property
+    def list_requests(self) -> int:
+        """How many requests arrived at any served models path."""
+        return sum(1 for entry in self.received if entry["path"] in self._server.model_paths)
+
     def close(self) -> None:
         self._server.shutdown()
         self._server.server_close()
@@ -287,21 +333,18 @@ class _ChatHandler(_JsonHandler):
         server.completions += 1
 
     def do_GET(self) -> None:
-        if self.path != "/v1/models":
-            self._record(None)
+        server: Any = self.server
+        self._record(None)
+        if self.path not in server.model_paths:
             self._reply(404, "application/json", b"{}")
             return
-        self._record(None)
-        payload = json.dumps(
-            {
-                "object": "list",
-                "data": [
-                    {"id": model, "object": "model", "created": 0, "owned_by": "vendor"}
-                    for model in CHAT_MODELS
-                ],
-            }
-        ).encode()
-        self._reply(200, "application/json", payload)
+        if server.refuse:
+            payload = json.dumps(
+                server.refuse_payload or {"error": {"message": "Incorrect API key provided"}}
+            ).encode()
+            self._reply(server.refuse_status, "application/json", payload)
+            return
+        self._reply(200, "application/json", _models_body())
 
 
 @contextmanager
@@ -316,6 +359,7 @@ def chat_vendor() -> Generator[ChatVendor]:
     server.delay = 0.0
     server.received = []
     server.completions = 0
+    server.model_paths = {"/v1/models"}
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
@@ -334,6 +378,9 @@ MESSAGES_DELTAS = ("Hel", "lo")
 MESSAGES_USAGE = (4, 2)
 """The stream's token counts, as the start and delta frames report them:
 ``(input_tokens, output_tokens)``."""
+
+MESSAGES_MODELS = ("vendor-large", "vendor-small")
+"""The messages vendor's discovery catalog, in the sorted order the API returns."""
 
 
 def _messages_frames(*, stop_frame: bool, error_type: str | None) -> str:
@@ -482,6 +529,33 @@ class _MessagesHandler(_JsonHandler):
             _messages_frames(stop_frame=server.stop_frame, error_type=server.fail_stream).encode(),
         )
 
+    def do_GET(self) -> None:
+        # The discovery route, as the real wire behaves: it names no model to
+        # a request that skips the anthropic headers — the version on every
+        # request, the key for the credential.
+        self._record(None)
+        if self.path != "/v1/models":
+            self._reply(404, "application/json", b"{}")
+            return
+        if self.headers.get("anthropic-version") != ANTHROPIC_VERSION or not self.headers.get(
+            "x-api-key"
+        ):
+            payload = json.dumps(
+                {
+                    "type": "error",
+                    "error": {
+                        "type": "authentication_error",
+                        "message": "the anthropic headers are missing",
+                    },
+                }
+            ).encode()
+            self._reply(401, "application/json", payload)
+            return
+        payload = json.dumps(
+            {"data": [{"id": model, "type": "model"} for model in MESSAGES_MODELS]}
+        ).encode()
+        self._reply(200, "application/json", payload)
+
 
 @contextmanager
 def messages_vendor() -> Generator[MessagesVendor]:
@@ -498,6 +572,76 @@ def messages_vendor() -> Generator[MessagesVendor]:
     try:
         yield MessagesVendor(
             base_url=f"http://127.0.0.1:{server.server_port}/v1", server=server, thread=thread
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+LIST_MODELS = ("vendor-mini", "vendor-max", "vendor-mini")
+"""The second host's catalog: unsorted, with one duplicate, so a client's
+parse is pinned against what actually went out — its answer is the sorted,
+deduplicated ids, or the client never parsed it at all."""
+
+
+class ListVendor:
+    """The second-host stand-in's address, and whether a key arrived there."""
+
+    def __init__(self, base_url: str, server: Any, thread: threading.Thread) -> None:
+        self.base_url = base_url
+        self._server = server
+        self._thread = thread
+
+    @property
+    def received(self) -> list[dict[str, Any]]:
+        """Every request the vendor saw, in arrival order."""
+        return self._server.received
+
+    @property
+    def last(self) -> dict[str, Any]:
+        """The most recent request the vendor saw."""
+        return self._server.received[-1]
+
+    @property
+    def authorization(self) -> str | None:
+        """The Authorization header the last request carried, ``None`` without one."""
+        return self.last["headers"].get("authorization")
+
+    def close(self) -> None:
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join(timeout=5)
+
+
+class _ListHandler(_JsonHandler):
+    """Answers any GET with the OpenAI list shape, on whatever path it is asked."""
+
+    def do_GET(self) -> None:
+        self._record(None)
+        payload = json.dumps(
+            {"object": "list", "data": [{"id": model, "object": "model"} for model in LIST_MODELS]}
+        ).encode()
+        self._reply(200, "application/json", payload)
+
+
+@contextmanager
+def list_vendor() -> Generator[ListVendor]:
+    """A real HTTP server under ``localhost`` — a host of its own, on this machine.
+
+    The discovery rule holds the credential to the endpoint's own host; the
+    chat vendor answers under ``127.0.0.1``, this one under ``localhost``,
+    so a provider whose ``models_url`` points here can prove an anonymous
+    request: the port routes it to this server, the host name keeps the key
+    away. Every path answers the list, so the test needs no URL arithmetic.
+    """
+    server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _ListHandler)
+    server.received = []
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield ListVendor(
+            base_url=f"http://localhost:{server.server_port}", server=server, thread=thread
         )
     finally:
         server.shutdown()

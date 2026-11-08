@@ -226,7 +226,7 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
         vendor_model = _region(page, MODELS).get_by_role("listitem").filter(has_text="Vendor Test")
         vendor_model.get_by_role("button", name="Verbindung testen").click()
         expect(vendor_model.get_by_text(re.compile("Die Verbindung funktioniert"))).to_be_visible()
-        vendor_row.get_by_role("button", name="Modelle anzeigen").click()
+        vendor_row.get_by_role("button", name="Modelle laden").click()
         expect(vendor_row).to_contain_text("vendor-max")
         expect(vendor_row).to_contain_text("vendor-mini")
 

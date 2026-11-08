@@ -97,7 +97,7 @@ function renderSection(presets: typeof PRESETS | null = PRESETS): void {
       reload={async () => {}}
       guard={NO_GUARD}
       onDirty={() => {}}
-      onPresetCreated={() => {}}
+      onModelSeed={() => {}}
     />,
   );
 }
@@ -313,7 +313,7 @@ describe("the preset select", () => {
   });
 
   it("hands the chosen preset's model to the panel once, only on a stored create", async () => {
-    const onPresetCreated = vi.fn();
+    const onModelSeed = vi.fn();
     api.POST.mockResolvedValue({
       data: { ...PROVIDER, id: "22222222-2222-2222-2222-222222222222" },
       response: new Response(null, { status: 201 }),
@@ -325,7 +325,7 @@ describe("the preset select", () => {
         reload={async () => {}}
         guard={NO_GUARD}
         onDirty={() => {}}
-        onPresetCreated={onPresetCreated}
+        onModelSeed={onModelSeed}
       />,
     );
 
@@ -334,11 +334,11 @@ describe("the preset select", () => {
       screen.getByLabelText(t("settings.providers.presetLabel")),
       "opencode-go",
     );
-    expect(onPresetCreated).not.toHaveBeenCalled();
+    expect(onModelSeed).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
-    expect(onPresetCreated).toHaveBeenCalledTimes(1);
-    expect(onPresetCreated).toHaveBeenCalledWith(
+    expect(onModelSeed).toHaveBeenCalledTimes(1);
+    expect(onModelSeed).toHaveBeenCalledWith(
       "22222222-2222-2222-2222-222222222222",
       "glm-5.3-flash",
     );
@@ -346,7 +346,7 @@ describe("the preset select", () => {
     // A FAILED create from a preset emits nothing either: the preset is
     // chosen again after the reset form, so this attempt really is a
     // preset create — and its refusal stores nothing to seed from.
-    onPresetCreated.mockClear();
+    onModelSeed.mockClear();
     api.POST.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
     await userEvent.selectOptions(
       screen.getByLabelText(t("settings.providers.presetLabel")),
@@ -357,7 +357,7 @@ describe("the preset select", () => {
     ).toBe("OpenCode Go"); // the attempt below really rides the preset
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
     expect(await screen.findByText(t("settings.providers.errorSave"))).toBeTruthy();
-    expect(onPresetCreated).not.toHaveBeenCalled();
+    expect(onModelSeed).not.toHaveBeenCalled();
   });
 
   it("returns to the blank form when the custom choice is picked again", async () => {
@@ -439,15 +439,59 @@ describe("a provider the server refuses to delete", () => {
 });
 
 describe("model discovery on the row", () => {
-  it("lists the endpoint's models where they can be seen again", async () => {
+  it("lists the ids, and a picked one is handed to the model form", async () => {
+    const onModelSeed = vi.fn();
     api.GET.mockResolvedValue({ data: ["vendor-max", "vendor-mini"], response: ok() });
-    renderSection();
+    render(
+      <ProvidersSection
+        providers={[PROVIDER]}
+        presets={PRESETS}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        onModelSeed={onModelSeed}
+      />,
+    );
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
+    expect(await screen.findByText(t("settings.providers.models"))).toBeTruthy();
+
+    // The picked id travels with its provider: the model form is pointed at
+    // both, the way the panel's seed lands there.
+    await userEvent.click(screen.getByRole("button", { name: "vendor-mini" }));
+    expect(onModelSeed).toHaveBeenCalledWith(PROVIDER.id, "vendor-mini");
+  });
+
+  it("offers discovery on the anthropic kind too — its wire answers a list", () => {
+    render(
+      <ProvidersSection
+        providers={[{ ...PROVIDER, kind: "anthropic" }]}
+        presets={PRESETS}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        onModelSeed={() => {}}
+      />,
+    );
 
     expect(
-      await screen.findByText(t("settings.providers.models", { models: "vendor-max, vendor-mini" })),
+      screen.getByRole("button", { name: t("settings.providers.discover") }),
     ).toBeTruthy();
+  });
+
+  it("offers no discovery on a fake — there is no endpoint to ask", () => {
+    render(
+      <ProvidersSection
+        providers={[{ ...PROVIDER, kind: "fake", base_url: null }]}
+        presets={PRESETS}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        onModelSeed={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: t("settings.providers.discover") })).toBeNull();
   });
 
   it("names the failure while the endpoint cannot be asked", async () => {
@@ -455,6 +499,16 @@ describe("model discovery on the row", () => {
       error: { detail: "model discovery failed" },
       response: new Response(null, { status: 502 }),
     });
+    renderSection();
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
+
+    const notice = await screen.findByRole("status");
+    expect(notice.textContent).toContain(t("settings.providers.errorModels"));
+  });
+
+  it("names a discovery that never reaches the service", async () => {
+    api.GET.mockRejectedValue(new TypeError("Failed to fetch"));
     renderSection();
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
@@ -474,7 +528,7 @@ describe("the dirty form", () => {
         reload={async () => {}}
         guard={{ dirty: true, ask }}
         onDirty={() => {}}
-        onPresetCreated={() => {}}
+        onModelSeed={() => {}}
       />,
     );
 
