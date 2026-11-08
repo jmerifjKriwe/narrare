@@ -68,10 +68,11 @@ Behaviour:
 - Nothing runs in the background: the snapshot is refreshed by the repository
   action (`python -m app.kernel.llm.data.refresh`), the live list by the user
   pressing a button. No network call happens on a page load or a request path.
-- The picker names the catalog's date, so its age is visible. **Finding:** the
-  shipped `models.json` carries no `snapshot_date` although `refresh.py` writes
-  one — the loader will return it when present, and a follow-up regenerates the
-  snapshot (an 80 000-line diff does not belong in this wave).
+- The picker names the catalog's date, so its age is visible. The snapshot
+  carries its `snapshot_date` (sorted keys put it at the file's end — a
+  first-bytes look reads "absent" wrongly); the loader returns it when present
+  and stays silent when it is not. Regenerating the snapshot stays a repository
+  action; a dated regeneration is its own change when wanted.
 - A retired model fails loudly on its next call: the adapter classifies it, the
   audit records the reason as a code, and the surface names it (see *A model
   that is gone*). No silent fallback to another model — that would hide the
