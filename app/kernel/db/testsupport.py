@@ -48,13 +48,21 @@ if _ATTACH_URL and not environ.get("NARRE_DATABASE_URL"):
 
 _ATTACH = make_url(environ["NARRE_DATABASE_URL"]) if _ATTACH_URL else None
 
-# The one SERVER definition: the compose address unless the environment
-# re-aims it (``NARRE_TEST_DATABASE_URL``) — the door a second checkout on
-# one machine uses to run against its own Postgres. Attached runs never
-# read it: their database is the instance's own, wherever it lives.
-SERVER = environ.get(
-    "NARRE_TEST_DATABASE_URL", "postgresql+asyncpg://narrare:narrare@localhost:5433"
-)
+# The test Postgres server. Two doors for a second checkout on one machine:
+#   - NARRE_TEST_DATABASE_URL: full URL override (wins, e.g. for an attached
+#     or remote server).
+#   - NARRE_TEST_DB_PORT: port-only override (host, user, password stay the
+#     compose defaults) — the convenient knob for parallel worktrees.
+# Attached runs never read it: their database is the instance's own.
+_test_db_url_override = (environ.get("NARRE_TEST_DATABASE_URL") or "").strip()
+_test_db_port_override = (environ.get("NARRE_TEST_DB_PORT") or "").strip()
+if _test_db_url_override:
+    _server = _test_db_url_override
+elif _test_db_port_override:
+    _server = f"postgresql+asyncpg://narrare:narrare@localhost:{int(_test_db_port_override)}"
+else:
+    _server = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+SERVER = _server
 
 
 def admin_url(database: str) -> str:

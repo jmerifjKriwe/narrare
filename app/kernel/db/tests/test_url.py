@@ -99,6 +99,22 @@ def test_nothing_configured_falls_back_to_the_development_database() -> None:
     assert config.source == "default (localhost dev)"
 
 
+def test_a_dev_db_port_moves_the_default_connection() -> None:
+    config = resolve({"NARRE_DEV_DB_PORT": "5442"})
+    assert config.url.port == 5442
+    assert config.url.database == "narrare_v2_dev"
+
+
+def test_the_dev_db_port_falls_back_when_db_port_is_unset() -> None:
+    config = resolve({**PARTS, "NARRE_DEV_DB_PORT": "5442"})
+    assert config.url.port == 5442
+
+
+def test_narre_db_port_wins_over_the_dev_db_port() -> None:
+    config = resolve({**PARTS, "NARRE_DB_PORT": "5499", "NARRE_DEV_DB_PORT": "5442"})
+    assert config.url.port == 5499
+
+
 def test_a_port_that_is_not_a_number_is_refused_by_name() -> None:
     with pytest.raises(DatabaseConfigurationError) as refused:
         resolve({**PARTS, "NARRE_DB_PORT": "5432x"})
