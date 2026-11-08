@@ -83,7 +83,7 @@ op.execute("""
 op.execute("UPDATE provider_profiles SET provider_id = id")
 ```
 
-The profile's own id becomes the provider's id — a 1:1 mapping with nothing to guess. `downgrade()` drops the column and the table.
+The profile's own id becomes the provider's id — a 1:1 mapping with nothing to guess. `downgrade()` raises like every revision in this history (ADR-103: restore is from the pre-upgrade dump, never a downgrade script).
 
 - [x] **Step 5: Write the backfill test**
 
@@ -251,7 +251,7 @@ async def test_models_live_at_their_own_path(client) -> None:
 - [ ] **Step 2: Draft and hand-write the revision**
 
 Run: `just db-revision "drop the provider columns the model no longer owns"`
-The revision sets `provider_id` NOT NULL, then drops `kind`, `base_url`, `api_key`, `api_key_hint` from `provider_profiles`. `downgrade()` re-adds the nullable columns.
+The revision sets `provider_id` NOT NULL, then drops `kind`, `base_url`, `api_key`, `api_key_hint` from `provider_profiles`. `downgrade()` raises (ADR-103).
 
 - [ ] **Step 3: Drop the columns from the model and rename the routes**
 
@@ -583,7 +583,7 @@ The case drives the real UI, the real API and the real database; it presses neit
 
 - [ ] **Step 4: Record the cut**
 
-ADR-102 gains a dated *Amendment* section: a provider is now a row with endpoint, key and vendor; models hang off it; the reason and a pointer to the spec. `docs/superpowers/follow-ups.md` gains this wave's row when the index issue opens (none yet).
+ADR-102 gains a dated *Amendment* section: a provider is now a row with endpoint, key and vendor; models hang off it; the reason and a pointer to the spec. The same amendment updates the ADR's layout sentence that still names `app/kernel/llm/profiles.py` (now `repositories.py`), and `docs/_shared/CONSTRAINTS.md`'s "A provider is a profile row" line moves with the same change. `docs/superpowers/follow-ups.md` gains this wave's row when the index issue opens (none yet).
 
 - [ ] **Step 5: Run the whole gate**
 
