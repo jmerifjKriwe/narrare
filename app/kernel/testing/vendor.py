@@ -384,7 +384,9 @@ def _messages_frames(*, stop_frame: bool, error_type: str | None) -> str:
         )
         + "\n\n"
     )
-    stop = delta_frame + ('data: {"type":"message_stop"}\n\n' if stop_frame else "")
+    stop = delta_frame + (
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n' if stop_frame else ""
+    )
     error = (
         "event: error\n"
         "data: "
@@ -420,10 +422,11 @@ class MessagesVendor:
     def refuse_requests(self, status: int = 401, payload: Any = None) -> None:
         """Answer every message request with ``status`` from now on.
 
-        The payload is whatever JSON the body should carry — normally the
-        wire's own error envelope, but the tests also send non-object bodies
-        (``[]``, ``null``) to pin that the adapter names the status instead
-        of crashing on them.
+        The payload is whatever JSON the body should carry: normally the
+        wire's own error envelope, but a non-object (``[]``) travels
+        verbatim — that is how the adapter's body guards are pinned against
+        a proxy that answers the wrong shape. ``None`` means the empty
+        object: ``{}`` is what goes on the wire.
         """
         self._server.refuse = True
         self._server.refuse_status = status
@@ -465,7 +468,12 @@ class _MessagesHandler(_JsonHandler):
             return
         self._record(body)
         if server.refuse:
-            payload = json.dumps(server.refuse_payload or {}).encode()
+            # `is not None`, not truthiness: the whole point of a `[]` payload
+            # is that it travels verbatim, and `[] or {}` would coerce it to
+            # `{}` before the socket ever saw it.
+            payload = json.dumps(
+                server.refuse_payload if server.refuse_payload is not None else {}
+            ).encode()
             self._reply(server.refuse_status, "application/json", payload)
             return
         self._reply(

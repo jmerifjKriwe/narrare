@@ -10,7 +10,11 @@ which vendor refused.
 
 import pytest
 
-from app.kernel.llm.anthropic_messages import DEFAULT_MAX_TOKENS, AnthropicMessagesProvider
+from app.kernel.llm.anthropic_messages import (
+    DEFAULT_MAX_TOKENS,
+    AnthropicMessagesProvider,
+    _stream_error,  # pyright: ignore[reportPrivateUsage]  the body guard is the unit under claim
+)
 from app.kernel.llm.contract import (
     DONE,
     CompletionRequest,
@@ -179,6 +183,20 @@ async def test_a_non_object_refusal_body_still_names_the_status() -> None:
                 async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
             ]
     assert raised.value.model == "vendor-mini"
+
+
+def test_an_in_stream_error_with_a_non_object_field_stays_unclassified() -> None:
+    """``_stream_error`` on a non-dict ``error`` field is the plain raise, not a crash.
+
+    The stand-in always emits the wire's envelope, so this branch has no
+    socket path to drive; the function is the unit under claim, and the
+    claim is that a proxy's malformed event cannot crash the parser — it
+    classifies nothing and says so.
+    """
+    failure = _stream_error("vendor-mini", {"type": "error", "error": ["not", "an", "object"]})
+    assert isinstance(failure, RuntimeError)
+    assert not isinstance(failure, ModelNotFoundError | ProviderAuthError)
+    assert "error event" in str(failure)
 
 
 async def test_unset_optionals_are_absent_and_max_tokens_gets_the_default() -> None:
