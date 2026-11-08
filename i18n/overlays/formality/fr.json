@@ -1,0 +1,4 @@
+{
+  "knowledge.relationDeleteText": "Voulez-vous vraiment supprimer la relation vers {name} ? Elle ne peut pas être annulée.",
+  "prompts.pickNovel": "Choisissez un roman ci-dessus pour voir et modifier ce périmètre."
+}

@@ -1,7 +1,9 @@
 import IntlMessageFormat from "intl-messageformat";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { applyFormality } from "./formality";
 import { catalogs, locales } from "./generated/catalogs";
+import { overlays } from "./generated/overlays";
 import { t } from "./i18n";
 import { activeLocale, adoptServerLocale, applyLocale } from "./locale";
 
@@ -101,6 +103,50 @@ describe("ICU message format", () => {
     const english = "{count, plural, one {# chapter} other {# chapters}}";
     expect(new IntlMessageFormat(english, "en").format({ count: 1 })).toBe("1 chapter");
     expect(new IntlMessageFormat(english, "en").format({ count: 0 })).toBe("0 chapters");
+  });
+});
+
+describe("the formal register", () => {
+  afterEach(() => {
+    applyFormality("informal");
+    applyLocale("en");
+  });
+
+  it("serves the formal overlay in German", () => {
+    applyLocale("de");
+    applyFormality("informal");
+    expect(t("settings.appearance.hint")).toBe("System folgt deinem Gerät.");
+
+    applyFormality("formal");
+    expect(t("settings.appearance.hint")).toBe("System folgt Ihrem Gerät.");
+  });
+
+  it("falls through to the base where the overlay is silent", () => {
+    applyLocale("de");
+    applyFormality("formal");
+
+    expect(t("settings.heading")).toBe("Einstellungen");
+  });
+
+  it("leaves English unchanged", () => {
+    applyLocale("en");
+    applyFormality("formal");
+
+    expect(t("settings.appearance.hint")).toBe(
+      catalogs.en["settings.appearance.hint"],
+    );
+  });
+
+  it("parses every overlay message", () => {
+    for (const [locale, overlay] of Object.entries(overlays)) {
+      if (overlay === undefined) continue;
+      for (const [key, message] of Object.entries(overlay)) {
+        expect(
+          () => new IntlMessageFormat(message, locale),
+          `${locale}/${key}`,
+        ).not.toThrow();
+      }
+    }
   });
 });
 

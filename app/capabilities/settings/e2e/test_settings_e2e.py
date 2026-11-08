@@ -32,7 +32,7 @@ def test_a_chosen_language_survives_a_fresh_browser(
 
     # Nobody has chosen: the browser's language (de-DE, pinned in conftest) wins.
     expect(page.get_by_role("heading", name="Wissen")).to_be_visible()
-    switcher = page.get_by_role("combobox")
+    switcher = page.get_by_role("banner").locator('select[name="locale"]')
     expect(switcher).to_have_value("auto")
     expect(page.locator("html")).to_have_attribute("lang", "de")
 
@@ -53,7 +53,7 @@ def test_a_chosen_language_survives_a_fresh_browser(
         expect(other.locator("html")).to_have_attribute("lang", "en")
 
         # Back to automatic, and the browser decides again.
-        other.get_by_role("combobox").select_option("auto")
+        other.get_by_role("banner").locator('select[name="locale"]').select_option("auto")
         expect(other.get_by_role("heading", name="Wissen")).to_be_visible()
         expect(other.locator("html")).to_have_attribute("lang", "de")
     finally:

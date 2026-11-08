@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "../lib/api/client";
+import { applyFormality } from "../lib/formality";
 import { t } from "../lib/i18n";
 import { applyLocale, chosenLocale } from "../lib/locale";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -22,8 +23,9 @@ const patch = client.PATCH as unknown as ReturnType<typeof vi.fn>;
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  // The locale is global state; the test must not leak it.
+  // The locale and the register are global state; the test must not leak them.
   applyLocale(null);
+  applyFormality("informal");
 });
 
 describe("LanguageSwitcher's refused write", () => {
@@ -32,14 +34,16 @@ describe("LanguageSwitcher's refused write", () => {
     patch.mockRejectedValue(new Error("the service is down"));
     render(<LanguageSwitcher />);
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "en" } });
+    const language = screen.getByRole("combobox", {
+      name: t("settings.language"),
+    });
+    fireEvent.change(language, { target: { value: "en" } });
     await screen.findByRole("alert");
 
     // The write did not happen, so neither the store nor the control
     // pretends it did.
     expect(chosenLocale()).toBe("de");
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
-    expect(select.value).toBe("de");
+    expect((language as HTMLSelectElement).value).toBe("de");
 
     // The failure speaks below the row: its parent is the stacked root,
     // not the inline label-and-control row.

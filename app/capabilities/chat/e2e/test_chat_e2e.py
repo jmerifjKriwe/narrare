@@ -198,7 +198,7 @@ def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_pat
         # region names prove the switch landed; the passage still in them
         # proves the lazy capability page was re-rendered, not remounted —
         # a remount would drop the answer the user is reading.
-        page.get_by_role("combobox").select_option("en")
+        page.get_by_role("banner").locator('select[name="locale"]').select_option("en")
         expect(page.get_by_role("region", name="Answer")).to_contain_text(PASSAGE)
         expect(page.get_by_role("region", name="Sources")).to_contain_text("Sprachwechsel")
 
@@ -209,7 +209,7 @@ def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_pat
         # their German-label setup would wait forever. Restore the
         # nobody-chosen state whatever order pytest-randomly picks.
         with suppress(Exception):
-            page.get_by_role("combobox").select_option("auto")
+            page.get_by_role("banner").locator('select[name="locale"]').select_option("auto")
 
 
 def _upload(page: Page, tmp_path: Path, title: str) -> None:

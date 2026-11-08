@@ -99,6 +99,10 @@ shared text lives in `i18n/<code>.json`; a capability's own text lives in
   `formattingLocale` keep the chosen language and take the browser's regional
   variant when it agrees (`de` + `de-AT` → `de-AT`). Do not call
   `toLocaleString` with a hand-written locale.
+- **Formal variants are sparse.** A string whose formal wording differs lives
+  in `i18n/overlays/formality/<code>.json`; a key absent there falls through
+  to the base catalog. English has no overlay, and there is no de/fr key
+  parity: French already speaks the neutral register in its base.
 
 Adding a language means one central catalog plus one file per capability that
 owns keys, then `just generate`. Translating all keys is the work; registering

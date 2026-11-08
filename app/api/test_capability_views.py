@@ -1,10 +1,11 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes nine views: the Python registry `app/api/main.py`
+`just generate` writes ten views: the Python registry `app/api/main.py`
 cross-checks at startup, the locale list the server validates against, the
-TypeScript nav data, the TypeScript catalog map, the TypeScript route table,
-the TypeScript dock registry, the TypeScript settings registry, the
-TypeScript command registry and the user-docs index. A stale view means the
+TypeScript nav data, the TypeScript catalog map, the TypeScript overlay map,
+the TypeScript route table, the TypeScript dock registry, the TypeScript
+settings registry, the TypeScript command registry and the user-docs index.
+A stale view means the
 UI or the startup check runs on old facts — the same failure mode the OpenAPI
 drift test guards — so forgetting `just generate` must be a red suite, not a
 wrong UI.
@@ -20,6 +21,7 @@ from scripts.generate_capabilities import (
     docs_index,
     facts,
     locales,
+    overlay_sources,
     python_locales,
     python_registry,
     scan_commands,
@@ -29,6 +31,7 @@ from scripts.generate_capabilities import (
     typescript_commands,
     typescript_docks,
     typescript_nav,
+    typescript_overlays,
     typescript_routes,
     typescript_settings_pages,
 )
@@ -74,6 +77,14 @@ def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
     assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(
         ROOT, known
     ), "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+
+
+def test_committed_typescript_overlays_match_the_overlay_files() -> None:
+    known, loaded, _ = _views()
+    overlays = overlay_sources(ROOT, known, loaded)
+    assert _committed("web", "lib", "generated", "overlays.ts") == typescript_overlays(
+        known, overlays
+    ), "web/lib/generated/overlays.ts is stale: run `just generate` and commit the result"
 
 
 def test_committed_typescript_routes_match_the_route_sources() -> None:

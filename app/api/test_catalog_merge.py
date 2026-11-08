@@ -14,7 +14,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from scripts.generate_capabilities import catalog_sources, catalogs, typescript_catalogs
+from scripts.generate_capabilities import (
+    catalog_sources,
+    catalogs,
+    overlay_sources,
+    typescript_catalogs,
+    typescript_overlays,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -106,3 +112,57 @@ def test_a_hyphenated_locale_becomes_a_valid_identifier(tmp_path: Path) -> None:
     assert 'import pt_BR_central from "../../../i18n/pt-BR.json";' in generated
     assert "const pt_BR_merged = {\n  ...pt_BR_central,\n  ...pt_BR_demo,\n};" in generated
     assert '  "pt-BR": pt_BR_merged,' in generated
+
+
+def test_an_overlay_key_must_exist_in_the_catalog(tmp_path: Path) -> None:
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(tmp_path / "i18n/de.json", {"app.title": "App"})
+    write_catalog(
+        tmp_path / "i18n/overlays/formality/de.json",
+        {"unknown.key": "Nicht im Katalog"},
+        required=False,
+    )
+
+    with pytest.raises(SystemExit, match=re.escape("unknown.key")):
+        overlay_sources(tmp_path, ("en", "de"), catalogs(tmp_path, ("en", "de")))
+
+
+def test_an_english_overlay_is_refused(tmp_path: Path) -> None:
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(
+        tmp_path / "i18n/overlays/formality/en.json",
+        {"app.title": "App"},
+        required=False,
+    )
+
+    with pytest.raises(SystemExit, match="source locale"):
+        overlay_sources(tmp_path, ("en",), catalogs(tmp_path, ("en",)))
+
+
+def test_an_overlay_for_an_unknown_language_is_refused(tmp_path: Path) -> None:
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(
+        tmp_path / "i18n/overlays/formality/es.json",
+        {"app.title": "App"},
+        required=False,
+    )
+
+    with pytest.raises(SystemExit, match="es"):
+        overlay_sources(tmp_path, ("en",), catalogs(tmp_path, ("en",)))
+
+
+def test_the_overlay_generator_emits_a_sparse_map(tmp_path: Path) -> None:
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(tmp_path / "i18n/de.json", {"app.title": "App"})
+    write_catalog(
+        tmp_path / "i18n/overlays/formality/de.json",
+        {"app.title": "Anwendung"},
+        required=False,
+    )
+    overlays = overlay_sources(tmp_path, ("en", "de"), catalogs(tmp_path, ("en", "de")))
+
+    generated = typescript_overlays(("en", "de"), overlays)
+
+    assert 'import de_overlay from "../../../i18n/overlays/formality/de.json";' in generated
+    assert '  "de": de_overlay,' in generated
+    assert '"en"' not in generated

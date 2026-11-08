@@ -544,7 +544,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     page.goto(f"{BASE}/settings")
     expect(page.get_by_role("heading", name="Einstellungen")).to_be_visible()
     assert_accessible(page)
-    switcher = page.get_by_role("banner").get_by_role("combobox")
+    switcher = page.get_by_role("banner").locator('select[name="locale"]')
     switcher.select_option("en")
     expect(page.get_by_role("heading", name="Settings")).to_be_visible()
     for region in ("Providers", "Prompts", "Language", "Appearance"):
@@ -568,7 +568,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     assert_accessible(page)
     # Back to German, on the page the switch left: the stored choice drives
     # every surface, and the flow hands the sweep a German app again.
-    page.get_by_role("banner").get_by_role("combobox").select_option("de")
+    page.get_by_role("banner").locator('select[name="locale"]').select_option("de")
     expect(page.get_by_label("Roman")).to_be_visible()
     expect(page.get_by_text("Eine Überschreibung dieses Romans ist in Kraft.")).to_be_visible()
     assert_accessible(page)
