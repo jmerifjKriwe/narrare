@@ -129,12 +129,13 @@ export function ProvidersPanel() {
 
   // The preset-created provider's suggested model, on its way to the model
   // form: one emission per created provider, numbered so the seed cannot
-  // re-apply after the user has changed or cleared it.
+  // re-apply after the user has changed or cleared it, and carrying the
+  // created row's id so the model form can point at it.
   const seedToken = useRef(0);
   const [modelSeed, setModelSeed] = useState<ModelSeed | null>(null);
-  const onPresetCreated = useCallback((model: string) => {
+  const onPresetCreated = useCallback((providerId: string, model: string) => {
     seedToken.current += 1;
-    setModelSeed({ model, token: seedToken.current });
+    setModelSeed({ providerId, model, token: seedToken.current });
   }, []);
 
   // The third door: a route change with a dirty form asks too. The blocker

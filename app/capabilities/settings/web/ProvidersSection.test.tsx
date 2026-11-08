@@ -289,8 +289,12 @@ describe("the preset select", () => {
     api.POST.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
     renderSection();
 
-    // The save is refused: the notice speaks for that attempt.
-    await userEvent.type(screen.getByLabelText(t("settings.providers.nameLabel")), "Neu");
+    // The failed save is a preset attempt's: the preset is really chosen
+    // first, so switching away is a real change of the select's value.
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "zai-coding-plan",
+    );
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
     expect(await screen.findByText(t("settings.providers.errorSave"))).toBeTruthy();
 
@@ -300,6 +304,12 @@ describe("the preset select", () => {
       "",
     );
     expect(screen.queryByText(t("settings.providers.errorSave"))).toBeNull();
+    expect((screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
   });
 
   it("hands the chosen preset's model to the panel once, only on a stored create", async () => {
@@ -328,12 +338,23 @@ describe("the preset select", () => {
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
     expect(onPresetCreated).toHaveBeenCalledTimes(1);
-    expect(onPresetCreated).toHaveBeenCalledWith("glm-5.3-flash");
+    expect(onPresetCreated).toHaveBeenCalledWith(
+      "22222222-2222-2222-2222-222222222222",
+      "glm-5.3-flash",
+    );
 
-    // A failed create emits nothing either: nothing was stored, nothing seeds.
+    // A FAILED create from a preset emits nothing either: the preset is
+    // chosen again after the reset form, so this attempt really is a
+    // preset create — and its refusal stores nothing to seed from.
     onPresetCreated.mockClear();
     api.POST.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
-    await userEvent.type(screen.getByLabelText(t("settings.providers.nameLabel")), "Nope");
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "opencode-go",
+    );
+    expect(
+      (screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value,
+    ).toBe("OpenCode Go"); // the attempt below really rides the preset
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
     expect(await screen.findByText(t("settings.providers.errorSave"))).toBeTruthy();
     expect(onPresetCreated).not.toHaveBeenCalled();

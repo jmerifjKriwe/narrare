@@ -122,17 +122,21 @@ export function ModelsSection({
     onDirty(dirty);
   }, [dirty, onDirty]);
 
-  // The seed lands once per emission and only in an untouched create form:
-  // a value the user typed, cleared, or an edit they opened is theirs, and
-  // nothing is ever sent they have not seen in the input.
+  // The seed lands once per emission and only in an untouched create form —
+  // no edit open, no provider chosen, no model typed: everything already in
+  // the form is the user's own, and nothing is ever sent they have not seen
+  // in the input. The seeded values are the form's new baseline, so the
+  // leave guard does not arm for a suggestion; typing afterwards arms it
+  // normally.
   const seededToken = useRef(0);
   useEffect(() => {
     if (modelSeed === null || modelSeed.token === seededToken.current) return;
-    seededToken.current = modelSeed.token;
-    setForm((current) =>
-      current.model === "" ? { ...current, model: modelSeed.model } : current,
-    );
-  }, [modelSeed]);
+    seededToken.current = modelSeed.token; // one shot: consumed whether it lands or not
+    if (editing !== null || form.providerId !== "" || form.model !== "") return;
+    const seeded = { ...form, providerId: modelSeed.providerId, model: modelSeed.model };
+    setForm(seeded);
+    setSnapshot(seeded);
+  }, [modelSeed, editing, form]);
 
   // The chosen provider's preset, by vendor: the datalist's vocabulary and
   // the date beside it. A provider with no vendor, or a vendor no preset

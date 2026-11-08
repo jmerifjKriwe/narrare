@@ -134,10 +134,13 @@ const TASKS = [
 
 const NO_GUARD = { dirty: false, ask: async () => true };
 
+type Seed = { providerId: string; model: string; token: number };
+
 function renderSections(
   providers: Provider[] = [PROVIDER],
   presets: typeof PRESETS | null = PRESETS,
-  modelSeed: { model: string; token: number } | null = null,
+  modelSeed: Seed | null = null,
+  onDirty: (value: boolean) => void = () => {},
 ): ReturnType<typeof render> {
   return render(
     <>
@@ -147,7 +150,7 @@ function renderSections(
         models={[DEFAULT_MODEL, SECOND_MODEL]}
         reload={async () => {}}
         guard={NO_GUARD}
-        onDirty={() => {}}
+        onDirty={onDirty}
         modelSeed={modelSeed}
       />
       <TasksSection
@@ -165,7 +168,8 @@ function rerenderSections(
   ui: ReturnType<typeof render>,
   providers: Provider[],
   presets: typeof PRESETS | null,
-  modelSeed: { model: string; token: number } | null,
+  modelSeed: Seed | null,
+  onDirty: (value: boolean) => void = () => {},
 ): void {
   ui.rerender(
     <>
@@ -175,7 +179,7 @@ function rerenderSections(
         models={[DEFAULT_MODEL, SECOND_MODEL]}
         reload={async () => {}}
         guard={NO_GUARD}
-        onDirty={() => {}}
+        onDirty={onDirty}
         modelSeed={modelSeed}
       />
       <TasksSection
@@ -320,7 +324,10 @@ describe("the model input's datalist", () => {
       (option) => option.value,
     );
     expect(suggested).toEqual(["glm-5.3", "glm-5.3-flash", "glm-5.3-turbo"]);
-    expect(screen.getByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }))).toBeTruthy();
+    const dateLine = screen.getByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }));
+    expect(dateLine).toBeTruthy();
+    // The input describes itself with the date line, so focus hears it.
+    expect(input.getAttribute("aria-describedby")).toBe(dateLine.id);
   });
 
   it("stays empty and quiet when the provider names no vendor, free text still saving", async () => {
@@ -334,6 +341,8 @@ describe("the model input's datalist", () => {
     const input = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
     const datalist = document.getElementById(input.getAttribute("list") as string);
     expect(datalist?.querySelectorAll("option")).toHaveLength(0);
+    // No vocabulary, no date line — and no describedby pointing at one.
+    expect(input.getAttribute("aria-describedby")).toBeNull();
     expect(screen.queryByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }))).toBeNull();
     expect(screen.queryByText(t("settings.profiles.catalogDateUnknown"))).toBeNull();
 
@@ -365,43 +374,59 @@ describe("the model input's datalist", () => {
   });
 });
 
-describe("the preset-created provider's model seed", () => {
-  it("pre-seeds the model input once, editable and clearable", async () => {
+describe("the preset-created provider's seed", () => {
+  it("points the form at the created provider and pre-seeds its model once", async () => {
     const ui = renderSections();
 
     // Nothing yet: no provider has been created from a preset.
-    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
-      "",
-    );
+    const modelInput = () => screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    const providerSelect = () =>
+      screen.getByLabelText(t("settings.profiles.providerLabel")) as HTMLSelectElement;
+    expect(modelInput().value).toBe("");
+    expect(providerSelect().value).toBe("");
 
-    // The panel emits the seed; the input shows it as an editable starting value.
-    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3", token: 1 });
-    const input = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
-    expect(input.value).toBe("glm-5.3");
+    // The panel emits the seed: the form points at the created provider,
+    // with the preset's model as an editable starting value.
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3", token: 1 });
+    expect(providerSelect().value).toBe(PROVIDER.id);
+    expect(modelInput().value).toBe("glm-5.3");
 
     // The user's own edit wins: a later emission for another provider does
     // not overwrite what is in the input.
-    await userEvent.type(input, "-flash");
-    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3-turbo", token: 2 });
-    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
-      "glm-5.3-flash",
-    );
+    await userEvent.type(modelInput(), "-flash");
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3-turbo", token: 2 });
+    expect(modelInput().value).toBe("glm-5.3-flash");
 
     // Clearing is the user's act, and it sticks: rerenders that carry the
     // panel's last seed again (any reload does) re-apply nothing.
-    const cleared = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
-    await userEvent.clear(cleared);
-    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3-turbo", token: 2 });
-    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
-      "",
-    );
-    expect(
-      (screen.getByRole("button", { name: t("settings.profiles.create") }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true); // cleared normally: the model is required again
+    await userEvent.clear(modelInput());
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3-turbo", token: 2 });
+
+    // The cleared model is what holds the save back: name and provider are
+    // both filled here, so the disabled save says the model is required.
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    expect(modelInput().value).toBe("");
+    const save = screen.getByRole("button", { name: t("settings.profiles.create") }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await userEvent.type(modelInput(), "glm-5.3");
+    expect(save.disabled).toBe(false);
   });
 
-  it("never lands over a typed model or in an opened edit", async () => {
+  it("does not arm the leave guard for the seed alone; typing arms it", async () => {
+    const onDirty = vi.fn();
+    const ui = renderSections([PROVIDER], PRESETS, null, onDirty);
+
+    // The seed lands: provider and model are the form's baseline, so the
+    // form stays clean — nothing armed for a value nobody typed.
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3", token: 1 }, onDirty);
+    expect(onDirty).toHaveBeenLastCalledWith(false);
+
+    // Typing afterwards is the user's own text: the guard arms.
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "-flash");
+    expect(onDirty).toHaveBeenLastCalledWith(true);
+  });
+
+  it("never lands over a typed model or in an opened edit, even a cleared one", async () => {
     const ui = renderSections();
 
     // The user typed a model first; the seed for a just-created provider
@@ -410,21 +435,19 @@ describe("the preset-created provider's model seed", () => {
       screen.getByLabelText(t("settings.profiles.modelLabel")),
       "my-own-finetune",
     );
-    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3", token: 1 });
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3", token: 1 });
     expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
       "my-own-finetune",
     );
 
-    // An opened edit always carries the stored model: a seed arriving then
-    // edits nothing the user did not open themselves.
+    // An opened edit is the stored model's — even after the user clears its
+    // model field, the seed must not inject itself into the edit form.
     rerenderSections(ui, [PROVIDER], PRESETS, null);
     await userEvent.click(screen.getAllByRole("button", { name: t("settings.profiles.edit") })[0]);
+    await userEvent.clear(screen.getByLabelText(t("settings.profiles.modelLabel")));
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3-turbo", token: 2 });
     expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
-      DEFAULT_MODEL.model,
-    );
-    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3-turbo", token: 2 });
-    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
-      DEFAULT_MODEL.model,
+      "",
     );
   });
 });
@@ -560,20 +583,44 @@ describe("the mount's reads through the panel", () => {
     render(<ProvidersPanel />);
     expect(await screen.findAllByText("ZAI · glm-5.3-flash").then((rows) => rows.length)).toBeGreaterThan(0);
 
-    // Create a provider from the Coding Plan preset.
+    // Create a provider from the Coding Plan preset. The stored row joins
+    // the providers list, as the real reload after a create would bring it.
+    let stored = [PROVIDER];
+    api.GET.mockImplementation(async (path: string) => {
+      switch (path) {
+        case "/api/settings/providers":
+          return { data: stored, response: ok() };
+        case "/api/settings/models":
+          return { data: [DEFAULT_MODEL], response: ok() };
+        case "/api/settings/assignments":
+          return { data: [], response: ok() };
+        case "/api/settings/tasks":
+          return { data: TASKS, response: ok() };
+        case "/api/settings/presets":
+          return { data: PRESETS, response: ok() };
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+    api.POST.mockImplementation(async () => {
+      const created = { ...PROVIDER, id: "99999999-9999-9999-9999-999999999999", name: "Z.ai Coding Plan" };
+      stored = [...stored, created];
+      return { data: created, response: new Response(null, { status: 201 }) };
+    });
     await userEvent.selectOptions(
       screen.getByLabelText(t("settings.providers.presetLabel")),
       "zai-coding-plan",
     );
-    api.POST.mockResolvedValue({
-      data: { ...PROVIDER, id: "99999999-9999-9999-9999-999999999999" },
-      response: new Response(null, { status: 201 }),
-    });
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
 
-    // The model form now starts at the preset's model, as an editable value.
+    // The model form now points at the created provider, with the preset's
+    // model as the editable starting value.
     const input = await screen.findByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
     expect(input.value).toBe("glm-5.3");
+    const providerSelect = screen.getByLabelText(
+      t("settings.profiles.providerLabel"),
+    ) as HTMLSelectElement;
+    expect(providerSelect.value).toBe("99999999-9999-9999-9999-999999999999");
   });
 });
 

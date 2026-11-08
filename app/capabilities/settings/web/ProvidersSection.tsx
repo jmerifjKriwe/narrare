@@ -16,9 +16,10 @@ export type Preset = components["schemas"]["PresetRead"];
 /**
  * The model a preset-created provider suggests to the model form: the
  * seed's token makes it one-shot — a second save of the model form, or an
- * edit, never re-seeds from the same emission.
+ * edit, never re-seeds from the same emission — and its provider id points
+ * the model form's provider select at the row just stored.
  */
-export type ModelSeed = { model: string; token: number };
+export type ModelSeed = { providerId: string; model: string; token: number };
 
 /** The kinds the form offers; the server's provider vocabulary is exactly these three. */
 export const KINDS: readonly string[] = ["fake", "openai-chat", "anthropic"];
@@ -109,8 +110,8 @@ export function ProvidersSection({
   reload: () => Promise<void>;
   guard: Guard;
   onDirty: (dirty: boolean) => void;
-  /** The panel's ear: a preset-created provider suggests its model once. */
-  onPresetCreated: (model: string) => void;
+  /** The panel's ear: a preset-created provider names itself and its model. */
+  onPresetCreated: (providerId: string, model: string) => void;
 }) {
   const t = useTranslation();
   const [editing, setEditing] = useState<Provider | null>(null);
@@ -230,7 +231,10 @@ export function ProvidersSection({
       // The one response that carries the full key becomes the one box that
       // shows it; dismissed, it never exists again anywhere.
       if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
-      if (presetModel !== null) onPresetCreated(presetModel);
+      // The created provider is the model form's next subject: it names
+      // itself so the form can point at it, with the preset's model as the
+      // suggestion. A failed save emits nothing — nothing was stored.
+      if (presetModel !== null) onPresetCreated(data.id, presetModel);
       resetForm();
       await reload();
       return;
