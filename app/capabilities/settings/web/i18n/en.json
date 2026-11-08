@@ -68,6 +68,7 @@
   "settings.providers.errorSave": "The provider could not be saved. Is the local service running?",
   "settings.providers.keyOnce": "The provider “{name}” was stored. This is the only time the API key is shown: {key}",
   "settings.providers.keyOnceDone": "Got it",
+  "settings.providers.kind.anthropic": "Anthropic (Claude)",
   "settings.providers.kind.fake": "Fake (deterministic, no network)",
   "settings.providers.kind.openai-chat": "OpenAI-compatible chat",
   "settings.providers.kindLabel": "Kind",

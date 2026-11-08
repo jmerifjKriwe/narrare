@@ -39,9 +39,9 @@ def test_llm_providers_is_registered_with_exactly_these_columns() -> None:
     assert set(table.columns.keys()) == LLM_PROVIDER_COLUMNS
 
 
-def test_the_provider_kind_vocabulary_is_fake_and_openai_chat() -> None:
+def test_the_provider_kind_vocabulary_is_fake_openai_chat_and_anthropic() -> None:
     """Verify PROVIDER_KINDS is the closed vocabulary beside the free-text column."""
-    assert PROVIDER_KINDS == ("fake", "openai-chat")
+    assert PROVIDER_KINDS == ("fake", "openai-chat", "anthropic")
 
 
 OWNER = uuid4()

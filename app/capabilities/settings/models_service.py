@@ -417,13 +417,13 @@ class ModelService:
         The endpoint shape is the provider's, and the provider's own gate
         has vetted it; what is left for the model's gate is the output
         reservation that leaves room for input (``max_output_tokens`` below
-        ``context_window`` whenever both are known, on the kind that answers
+        ``context_window`` whenever both are known, on the kinds that answer
         real calls — a catalog-merged pair that still leaves no room is
         refused by the allocator — never clamped, D8 — and the writing
         router maps that refusal). Broken config never reaches a model call
         (design, the settings surface).
         """
-        if provider.kind != "openai-chat":
+        if provider.kind not in ("openai-chat", "anthropic"):
             return
         if (
             context_window is not None

@@ -13,6 +13,11 @@ discovery, so the settings surface's test and discovery endpoints run against
 the same kind of socket a real endpoint is. It records every request it
 receives and can refuse them: the adapter's raise-once semantics need a vendor
 that says no.
+
+The messages vendor speaks the Anthropic ``/messages`` SSE shape (a start
+frame carrying the input tokens, ``text_delta`` pieces, one delta frame with
+the output tokens, one stop) under the same contract: it records, and it can
+refuse — the anthropic adapter is pinned against the same kind of socket.
 """
 
 import hashlib
@@ -183,9 +188,17 @@ class ChatVendor:
         """The most recent request the vendor saw."""
         return self._server.received[-1]
 
-    def refuse_requests(self) -> None:
-        """Answer every chat completion with HTTP 401 from now on."""
+    def refuse_requests(self, status: int = 401, payload: dict[str, Any] | None = None) -> None:
+        """Answer every chat completion with ``status`` from now on.
+
+        The body is the vendor-shaped error the client maps: the default is
+        the 401 message a wrong key produces; a 404 test passes the shape the
+        wire's own ``not_found_error`` carries, so the adapter's mapping is
+        pinned against the body a real server sends.
+        """
         self._server.refuse = True
+        self._server.refuse_status = status
+        self._server.refuse_payload = payload
 
     def omit_done_marker(self) -> None:
         """End the SSE answer without the wire's ``[DONE]`` line, like a local server."""
@@ -216,8 +229,8 @@ class ChatVendor:
         self._thread.join(timeout=5)
 
 
-class _ChatHandler(BaseHTTPRequestHandler):
-    """Answers the OpenAI chat shape from the server object's mutable switches.
+class _JsonHandler(BaseHTTPRequestHandler):
+    """The two moves both wire handlers share: a JSON reply, and the record.
 
     http.server's types are invisible repository-wide (``useLibraryCodeForTypes``),
     hence ``Any`` on the members.
@@ -239,6 +252,13 @@ class _ChatHandler(BaseHTTPRequestHandler):
         folded = {name.lower(): value for name, value in self.headers.items()}
         server.received.append({"path": self.path, "headers": folded, "body": body})
 
+    def log_message(self, format: str, *args: Any) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Silence the request log; the record is what tests assert on."""
+
+
+class _ChatHandler(_JsonHandler):
+    """Answers the OpenAI chat shape from the server object's mutable switches."""
+
     def do_POST(self) -> None:
         server: Any = self.server
         length = int(self.headers.get("content-length", 0))
@@ -250,8 +270,10 @@ class _ChatHandler(BaseHTTPRequestHandler):
             return
         self._record(body)
         if server.refuse:
-            payload = json.dumps({"error": {"message": "Incorrect API key provided"}}).encode()
-            self._reply(401, "application/json", payload)
+            payload = json.dumps(
+                server.refuse_payload or {"error": {"message": "Incorrect API key provided"}}
+            ).encode()
+            self._reply(server.refuse_status, "application/json", payload)
             return
         if server.delay:
             # The slow answer the read-timeout tests need: this request's own
@@ -281,15 +303,14 @@ class _ChatHandler(BaseHTTPRequestHandler):
         ).encode()
         self._reply(200, "application/json", payload)
 
-    def log_message(self, format: str, *args: Any) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
-        """Silence the request log; the record is what tests assert on."""
-
 
 @contextmanager
 def chat_vendor() -> Generator[ChatVendor]:
     """A real HTTP server on a free port, answering the OpenAI chat shape."""
     server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _ChatHandler)
     server.refuse = False
+    server.refuse_status = 401
+    server.refuse_payload = None
     server.done_line = True
     server.answer = CHAT_DELTAS
     server.delay = 0.0
@@ -299,6 +320,166 @@ def chat_vendor() -> Generator[ChatVendor]:
     thread.start()
     try:
         yield ChatVendor(
+            base_url=f"http://127.0.0.1:{server.server_port}/v1", server=server, thread=thread
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+MESSAGES_DELTAS = ("Hel", "lo")
+"""The streamed answer, in order: the adapter's tests assert these verbatim."""
+
+MESSAGES_USAGE = (4, 2)
+"""The stream's token counts, as the start and delta frames report them:
+``(input_tokens, output_tokens)``."""
+
+
+def _messages_frames(*, error_type: str | None) -> str:
+    """The Messages SSE answer: a start, the deltas, one delta frame, the stop.
+
+    The framing is the real API's — ``event:`` and ``data:`` lines, blank line
+    between frames — and the ``type`` in every ``data:`` payload repeats the
+    event's name, the way a real stream carries it.
+    """
+    input_tokens, output_tokens = MESSAGES_USAGE
+    start = (
+        "event: message_start\n"
+        "data: "
+        + json.dumps(
+            {
+                "type": "message_start",
+                "message": {
+                    "id": "msg_vendor",
+                    "role": "assistant",
+                    "usage": {"input_tokens": input_tokens, "output_tokens": 0},
+                },
+            }
+        )
+        + "\n\n"
+    )
+    deltas = "".join(
+        "event: content_block_delta\n"
+        "data: "
+        + json.dumps(
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "text_delta", "text": piece},
+            }
+        )
+        + "\n\n"
+        for piece in MESSAGES_DELTAS
+    )
+    stop = (
+        "event: message_delta\n"
+        "data: "
+        + json.dumps(
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn"},
+                "usage": {"output_tokens": output_tokens},
+            }
+        )
+        + "\n\n"
+        "event: message_stop\n"
+        'data: {"type":"message_stop"}\n\n'
+    )
+    error = (
+        "event: error\n"
+        "data: "
+        + json.dumps(
+            {
+                "type": "error",
+                "error": {"type": error_type, "message": "the stand-in refused"},
+            }
+        )
+        + "\n\n"
+    )
+    return start + deltas + (error if error_type else stop)
+
+
+class MessagesVendor:
+    """The Messages stand-in's address, its switches, and every request it received."""
+
+    def __init__(self, base_url: str, server: Any, thread: threading.Thread) -> None:
+        self.base_url = base_url
+        self._server = server
+        self._thread = thread
+
+    @property
+    def received(self) -> list[dict[str, Any]]:
+        """Every request the vendor saw, in arrival order."""
+        return self._server.received
+
+    @property
+    def last(self) -> dict[str, Any]:
+        """The most recent request the vendor saw."""
+        return self._server.received[-1]
+
+    def refuse_requests(self, status: int = 401, payload: dict[str, Any] | None = None) -> None:
+        """Answer every message request with ``status`` from now on.
+
+        The payload is the wire's own error envelope — ``{"type": "error",
+        "error": {"type": …}}`` — so the adapter's mapping is pinned against
+        the shape a real refusal carries, not a bare status alone.
+        """
+        self._server.refuse = True
+        self._server.refuse_status = status
+        self._server.refuse_payload = payload
+
+    def fail_stream(self, error_type: str) -> None:
+        """Answer with a 200 stream that ends in an ``error`` event, no stop.
+
+        A refusal can arrive mid-stream on the real wire: the status was 200,
+        the headers are sent, and the error travels as an event of its own.
+        """
+        self._server.fail_stream = error_type
+
+    def close(self) -> None:
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join(timeout=5)
+
+
+class _MessagesHandler(_JsonHandler):
+    """Answers the Anthropic Messages shape from the server object's switches."""
+
+    def do_POST(self) -> None:
+        server: Any = self.server
+        length = int(self.headers.get("content-length", 0))
+        raw = self.rfile.read(length)
+        body: dict[str, Any] | None = json.loads(raw) if raw else None
+        if self.path != "/v1/messages":
+            self._record(None)
+            self._reply(404, "application/json", b"{}")
+            return
+        self._record(body)
+        if server.refuse:
+            payload = json.dumps(server.refuse_payload or {}).encode()
+            self._reply(server.refuse_status, "application/json", payload)
+            return
+        self._reply(
+            200,
+            "text/event-stream",
+            _messages_frames(error_type=server.fail_stream).encode(),
+        )
+
+
+@contextmanager
+def messages_vendor() -> Generator[MessagesVendor]:
+    """A real HTTP server on a free port, answering the Anthropic Messages shape."""
+    server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _MessagesHandler)
+    server.refuse = False
+    server.refuse_status = 401
+    server.refuse_payload = None
+    server.fail_stream = None
+    server.received = []
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield MessagesVendor(
             base_url=f"http://127.0.0.1:{server.server_port}/v1", server=server, thread=thread
         )
     finally:

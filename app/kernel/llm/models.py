@@ -38,12 +38,11 @@ from app.kernel.db.base import UserOwned
 OK = "ok"
 ERROR = "error"
 
-PROVIDER_KINDS = ("fake", "openai-chat")
+PROVIDER_KINDS = ("fake", "openai-chat", "anthropic")
 """The kinds of provider a user can save, beside the free-text ``kind``
 column — validating one is the settings service's gate, not the database's.
-The list is open at one end on purpose: a provider kind arrives (an
-``anthropic`` adapter) that no code but the adapter and the catalog knows,
-and this list is where it lands."""
+The list is open at one end on purpose: a provider kind arrives that no code
+but its adapter and the catalog knows, and this list is where it lands."""
 
 
 class LLMProvider(UserOwned):

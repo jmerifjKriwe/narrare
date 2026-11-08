@@ -11,7 +11,7 @@ window gate and the assignments round out the surface.
 """
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -52,9 +52,24 @@ def fernet_tier(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
+def make_client() -> Callable[[], AsyncClient]:
+    """A client factory over the real application, the one home of the transport.
+
+    The race tests need two requests that do not share one connection, so
+    they build their own clients here instead of inlining the construction —
+    a transport change has exactly one place to land.
+    """
+
+    def make() -> AsyncClient:
+        return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+    return make
+
+
+@pytest.fixture
+async def client(make_client: Callable[[], AsyncClient]) -> AsyncIterator[AsyncClient]:
     """An HTTP client that drives the real application through ASGI."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with make_client() as client:
         yield client
 
 
@@ -214,6 +229,7 @@ async def test_setting_a_new_default_flips_the_old_one(client: AsyncClient) -> N
 
 async def test_two_concurrent_creates_keep_one_default_and_a_named_loser(
     client: AsyncClient,
+    make_client: Callable[[], AsyncClient],
 ) -> None:
     """Two first-models at once: one default survives, never a 500.
 
@@ -234,11 +250,8 @@ async def test_two_concurrent_creates_keep_one_default_and_a_named_loser(
         "model": "vendor-mini",
     }
     # The race needs two requests that do not share one connection: two
-    # clients of their own, built exactly the way the fixture builds one.
-    async with (
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as first,
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as second,
-    ):
+    # clients of their own, from the module's one factory.
+    async with make_client() as first, make_client() as second:
         responses = await asyncio.gather(
             first.post("/api/settings/models", json=payload),
             second.post("/api/settings/models", json=payload | {"name": "Race two"}),
@@ -318,6 +331,7 @@ async def test_a_stale_first_model_read_loses_the_create_as_a_named_race(
 
 async def test_two_concurrent_default_swaps_keep_one_default_and_a_named_loser(
     client: AsyncClient,
+    make_client: Callable[[], AsyncClient],
 ) -> None:
     """Two sessions swap the default at once: one default survives, never a 500.
 
@@ -337,11 +351,8 @@ async def test_two_concurrent_default_swaps_keep_one_default_and_a_named_loser(
     third = await _create(client, str(provider["id"]), "Third")
 
     # The race needs two requests that do not share one connection: two
-    # clients of their own, built exactly the way the fixture builds one.
-    async with (
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as left,
-        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as right,
-    ):
+    # clients of their own, from the module's one factory.
+    async with make_client() as left, make_client() as right:
         responses = await asyncio.gather(
             left.patch(f"/api/settings/models/{second['id']}", json={"is_default": True}),
             right.patch(f"/api/settings/models/{third['id']}", json={"is_default": True}),
@@ -584,11 +595,22 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused(
     Equality leaves a zero input budget and greater-than a negative one; the gate
     refuses both where the pair is known, so the allocator only ever sees ordered
     pairs (a catalog-merged degenerate pair is refused there, never clamped, D8).
-    The gate runs on the answering kind only: a fake never allocates, so its
-    reversed pair is none of the gate's business.
+    The gate runs on the answering kinds only: a fake never allocates, so its
+    reversed pair is none of the gate's business — while the second answering
+    kind (anthropic) is gated exactly like openai-chat.
     """
     provider = await _create_provider(client)
     fake = await client.post("/api/settings/providers", json={"name": "Geist", "kind": "fake"})
+    anthropic = await client.post(
+        "/api/settings/providers",
+        json={
+            "name": "Anthropic",
+            "kind": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+            "api_key": SECRET,
+        },
+    )
+    assert anthropic.status_code == 201, anthropic.text
     reversed_on_fake = await client.post(
         "/api/settings/models",
         json={
@@ -600,6 +622,19 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused(
         },
     )
     assert reversed_on_fake.status_code == 201, reversed_on_fake.text
+
+    reversed_on_anthropic = await client.post(
+        "/api/settings/models",
+        json={
+            "name": "Umgekehrt",
+            "provider_id": anthropic.json()["id"],
+            "model": "claude-sonnet-4-5",
+            "context_window": 1000,
+            "max_output_tokens": 2000,
+        },
+    )
+    assert reversed_on_anthropic.status_code == 422
+    assert "max_output_tokens" in reversed_on_anthropic.text
 
     equal = await client.post(
         "/api/settings/models",

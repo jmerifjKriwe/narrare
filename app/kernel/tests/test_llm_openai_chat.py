@@ -9,11 +9,19 @@ DeepSeek, Groq and local servers (Ollama, llama.cpp, vLLM).
 from uuid import uuid4
 
 import pytest
-from openai import APITimeoutError, AuthenticationError
+from openai import APITimeoutError
 
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.contract import DONE, CompletionRequest, Delta, Message, Usage
+from app.kernel.llm.contract import (
+    DONE,
+    CompletionRequest,
+    Delta,
+    Message,
+    ModelNotFoundError,
+    ProviderAuthError,
+    Usage,
+)
 from app.kernel.llm.openai_chat import OpenAIChatProvider
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import resolve_provider
@@ -148,15 +156,38 @@ async def test_a_vendor_keeps_the_answers_trailing_whitespace() -> None:
 
 
 async def test_a_refusal_raises_exactly_once() -> None:
-    """A 401 raises, and the vendor saw one request: ``max_retries=0`` in force."""
+    """A 401 raises the contract's auth failure, and the vendor saw one request.
+
+    ``max_retries=0`` in force: one refusal, one raise, no second request.
+    """
     with chat_vendor() as vendor:
         vendor.refuse_requests()
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(ProviderAuthError):
             [
                 event
                 async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
             ]
         assert len(vendor.received) == 1
+
+
+async def test_a_missing_model_is_named() -> None:
+    """A 404 raises the contract's :class:`ModelNotFoundError`, naming the model.
+
+    The refusal carries the wire's ``not_found_error`` shape; the SDK maps the
+    status, and the adapter maps the exception — the same typed failure the
+    anthropic adapter raises for its own wire's 404.
+    """
+    with chat_vendor() as vendor:
+        vendor.refuse_requests(
+            404,
+            {"error": {"message": "No model found: vendor-mini", "type": "not_found_error"}},
+        )
+        with pytest.raises(ModelNotFoundError) as raised:
+            [
+                event
+                async for event in _provider(vendor.base_url).stream(CompletionRequest.user("Hi"))
+            ]
+    assert raised.value.model == "vendor-mini"
 
 
 async def test_the_request_carries_model_messages_stream_options_and_the_key() -> None:

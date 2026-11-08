@@ -31,6 +31,13 @@ if TYPE_CHECKING:
 DISCOVERY_TIMEOUT = 30.0
 """Listing models is request/response: half a minute is generous."""
 
+REMOTE_KINDS = ("openai-chat", "anthropic")
+"""The kinds whose row is an endpoint: the gate vets them as one family —
+a base URL required (there is a vendor default at resolution, but a saved
+provider that names none is a configuration nobody can read), a key required
+when the endpoint is remote, and ``https://`` whenever a key would cross the
+network. The fake — no endpoint, no secret — is the only other kind today."""
+
 
 class ProviderNotFoundError(LookupError):
     """No provider of the user's carries the id."""
@@ -184,8 +191,15 @@ class ProviderService:
         provider = await self._providers().get(provider_id)
         if provider is None:
             raise ProviderNotFoundError(f"no provider {provider_id}")
-        if provider.kind != "openai-chat":
+        if provider.kind == "fake":
             raise NoEndpointError("a fake provider has no endpoint to discover models on")
+        if provider.kind != "openai-chat":
+            # An endpoint of another wire (anthropic): the SDK's model list
+            # would speak the wrong shape under the wrong auth header. The
+            # row has no discovery until its own adapter teaches it one.
+            raise NoEndpointError(
+                f"a {provider.kind} provider has no OpenAI-shaped endpoint to discover models on"
+            )
         endpoint = provider.base_url
         if not endpoint:
             raise NoEndpointError("the provider has no endpoint to discover models on")
@@ -205,15 +219,14 @@ class ProviderService:
     def _gate(self, *, kind: str, base_url: str | None, has_key: bool) -> None:
         """Refuse a configuration that could never answer, naming the fields.
 
-        An ``openai-chat`` provider is the remote kind: it needs a ``base_url``
-        — the row *is* the endpoint, there is no vendor default to fall back
-        to — an ``api_key`` when the endpoint is remote (a local server may
-        answer without one), and an ``https://`` endpoint whenever the key
-        would cross the network — a remote ``http://`` address would carry the
-        bearer credential in cleartext. A fake has no endpoint and needs
-        nothing. Broken config never reaches a model call.
+        A remote-kind provider (:data:`REMOTE_KINDS`) needs a ``base_url`` —
+        the row *is* the endpoint — an ``api_key`` when the endpoint is remote
+        (a local server may answer without one), and an ``https://`` endpoint
+        whenever the key would cross the network — a remote ``http://`` address
+        would carry the bearer credential in cleartext. A fake has no endpoint
+        and needs nothing. Broken config never reaches a model call.
         """
-        if kind != "openai-chat":
+        if kind not in REMOTE_KINDS:
             return
         fields: list[str] = []
         if not base_url:
@@ -226,7 +239,7 @@ class ProviderService:
         if fields:
             raise ProviderRefusedError(
                 tuple(fields),
-                "a half-configured openai-chat provider is refused; "
+                f"a half-configured {kind} provider is refused; "
                 f"missing or unusable: {', '.join(fields)}",
             )
 

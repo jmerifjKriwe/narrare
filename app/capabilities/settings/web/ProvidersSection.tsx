@@ -12,12 +12,13 @@ import type { components } from "@shell/lib/api/schema";
 
 export type Provider = components["schemas"]["ProviderRead"];
 
-/** The kinds the form offers; the server's provider vocabulary is exactly these two. */
-export const KINDS: readonly string[] = ["fake", "openai-chat"];
+/** The kinds the form offers; the server's provider vocabulary is exactly these three. */
+export const KINDS: readonly string[] = ["fake", "openai-chat", "anthropic"];
 
 export const KIND_LABELS: Record<string, MessageKey> = {
   fake: "settings.providers.kind.fake",
   "openai-chat": "settings.providers.kind.openai-chat",
+  anthropic: "settings.providers.kind.anthropic",
 };
 
 /**

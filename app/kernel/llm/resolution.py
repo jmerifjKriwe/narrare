@@ -27,6 +27,7 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
+from app.kernel.llm.anthropic_messages import AnthropicMessagesProvider
 from app.kernel.llm.catalog import ModelInfo, effective_info
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the dataclass field names it
 from app.kernel.llm.fake import FakeProvider
@@ -35,6 +36,10 @@ from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, OpenAIChatProvider
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.secrets import load_key
 from app.kernel.vendor import needs_api_key
+
+ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com/v1"
+"""Where the Messages wire lives when a provider row names no endpoint of its
+own — the same fallback role openai-chat's ``DEFAULT_BASE_URL`` plays."""
 
 KNOWN_TASK_KEYS: tuple[str, ...] = (
     "writing.continuation",
@@ -179,6 +184,17 @@ def from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedPro
             temperature_default=profile.temperature,
         )
         kind, model = "openai-chat", profile.model or ""
+    elif provider.kind == "anthropic":
+        base_url = (provider.base_url or ANTHROPIC_DEFAULT_BASE_URL).rstrip("/")
+        api_key = _provider_key(provider, base_url)
+        adapter = AnthropicMessagesProvider(
+            base_url=base_url,
+            model=profile.model or "",
+            api_key=api_key,
+            request_timeout=profile.request_timeout,
+            temperature_default=profile.temperature,
+        )
+        kind, model = "anthropic", profile.model or ""
     elif provider.kind == "fake":
         # A fake stores no key; its model string is free text, ignored for
         # answering and carried through to the audit.
@@ -202,7 +218,7 @@ def from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedPro
         max_output_tokens=max_output_tokens,
         temperature=profile.temperature,
         request_timeout=profile.request_timeout,
-        # A fake has no endpoint to name; an openai-chat provider always does.
+        # A fake has no endpoint to name; a remote-kind provider always does.
         base_url=base_url or None,
         api_key=api_key or None,
         info=info,

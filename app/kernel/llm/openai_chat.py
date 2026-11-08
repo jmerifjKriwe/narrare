@@ -4,10 +4,14 @@ One shape covers OpenAI, OpenRouter, DeepSeek, Groq and local servers (Ollama,
 llama.cpp, vLLM): they differ in base URL, model and key, not in protocol. A
 vendor with a different protocol gets its own module next to this one.
 
-The refusal path stays unhandled on purpose: a 401 or a 500 raises exactly
-once — the client is built with ``max_retries=0``, as the hand-rolled client
-before it — the router turns the raise into the stream's error frame, and the
-UI shows a message instead of an answer that quietly stopped.
+The refusal path names the two mistakes a user can act on: a 401 becomes
+:class:`~app.kernel.llm.contract.ProviderAuthError` and a 404 the
+:class:`~app.kernel.llm.contract.ModelNotFoundError` carrying this provider's
+model — the same two the anthropic adapter raises from the wire's own codes.
+Anything else raises unclassified, exactly once — the client is built with
+``max_retries=0``, as the hand-rolled client before it — the router turns the
+raise into the stream's error frame, and the UI shows a message instead of an
+answer that quietly stopped.
 
 Wire semantics are the ones the deleted hand-rolled parser had: delta frames
 in arrival order, one Usage when the server reports it (requested always —
@@ -21,9 +25,17 @@ from collections.abc import AsyncIterator, Mapping  # noqa: TC003
 from os import environ
 from typing import TYPE_CHECKING, cast
 
-from openai import AsyncOpenAI, Omit, Timeout, omit  # nosemgrep
+from openai import AsyncOpenAI, AuthenticationError, NotFoundError, Omit, Timeout, omit  # nosemgrep
 
-from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
+from app.kernel.llm.contract import (
+    DONE,
+    CompletionEvent,
+    CompletionRequest,
+    Delta,
+    ModelNotFoundError,
+    ProviderAuthError,
+    Usage,
+)
 from app.kernel.vendor import needs_api_key
 
 if TYPE_CHECKING:
@@ -156,26 +168,38 @@ class OpenAIChatProvider:
             timeout=self.request_timeout if self.request_timeout is not None else TIMEOUT,
         )
         try:
-            completion = await client.chat.completions.create(
-                model=self.model,
-                # The wire carries the roles verbatim (contract: "system" |
-                # "user"); the cast states that contract over the SDK's literals.
-                messages=cast(
-                    "list[ChatCompletionMessageParam]",
-                    [
-                        {"role": message.role, "content": message.content}
-                        for message in request.messages
-                    ],
-                ),
-                # Always: without it the stream carries no token counts, and
-                # the audit (plan §3.4) would have nothing to record.
-                stream=True,
-                stream_options={"include_usage": True},
-                temperature=temperature if temperature is not None else omit,
-                max_tokens=request.max_tokens if request.max_tokens is not None else omit,
-                response_format=response_format if response_format is not None else omit,
-                extra_headers=keyless_headers(self.api_key),
-            )
+            try:
+                completion = await client.chat.completions.create(
+                    model=self.model,
+                    # The wire carries the roles verbatim (contract: "system" |
+                    # "user"); the cast states that contract over the SDK's literals.
+                    messages=cast(
+                        "list[ChatCompletionMessageParam]",
+                        [
+                            {"role": message.role, "content": message.content}
+                            for message in request.messages
+                        ],
+                    ),
+                    # Always: without it the stream carries no token counts, and
+                    # the audit (plan §3.4) would have nothing to record.
+                    stream=True,
+                    stream_options={"include_usage": True},
+                    temperature=temperature if temperature is not None else omit,
+                    max_tokens=request.max_tokens if request.max_tokens is not None else omit,
+                    response_format=response_format if response_format is not None else omit,
+                    extra_headers=keyless_headers(self.api_key),
+                )
+            except NotFoundError as failure:
+                # The two refusals a user can act on become the contract's
+                # typed failures — the same two the anthropic adapter raises
+                # from the wire's status codes, so the surfaces above name the
+                # mistake without knowing the vendor. Everything else stays
+                # unclassified; the error frames (plan Task 8) translate codes.
+                raise ModelNotFoundError(self.model) from failure
+            except AuthenticationError as failure:
+                raise ProviderAuthError(
+                    f"the endpoint refused the credential (401): {failure.message}"
+                ) from failure
             async for chunk in completion:
                 if chunk.usage is not None:
                     # A usage frame yields its counts; the same frame's text

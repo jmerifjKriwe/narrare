@@ -68,6 +68,7 @@
   "settings.providers.errorSave": "Der Anbieter konnte nicht gespeichert werden. Läuft der lokale Dienst?",
   "settings.providers.keyOnce": "Der Anbieter „{name}“ wurde gespeichert. Der API-Schlüssel wird nur dieses eine Mal angezeigt: {key}",
   "settings.providers.keyOnceDone": "Verstanden",
+  "settings.providers.kind.anthropic": "Anthropic (Claude)",
   "settings.providers.kind.fake": "Fake (deterministisch, ohne Netzwerk)",
   "settings.providers.kind.openai-chat": "OpenAI-kompatibler Chat",
   "settings.providers.kindLabel": "Art",

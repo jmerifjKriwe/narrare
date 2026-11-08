@@ -409,13 +409,28 @@ def test_the_rows_hold_long_facts_at_the_narrowest_page(page: Page, stack: Stack
     page.goto(BASE + "/settings/provider")
     long_url = "https://vendor.example.invalid/v1/" + "segment/" * 24 + "ende"
     long_model = "ein-sehr-langes-modellkennzeichen-" + "x" * 80
-    _create_provider(page, "Lang", base_url=long_url)
-    _create_model(page, "Lang", "Lang", long_model)
-    assert_accessible(page)
-    assert_page_fits(page)
-    # The module's stack is one user for every test in the file: what this
-    # page drove is removed again, so the flow test's fresh-stack assumption
-    # ("the first model becomes the default on its own") stays true in
-    # either run order.
-    _run("DELETE FROM provider_profiles WHERE name = :name", {"name": "Lang"})
-    _run("DELETE FROM llm_providers WHERE name = :name", {"name": "Lang"})
+    try:
+        _create_provider(page, "Lang", base_url=long_url)
+        _create_model(page, "Lang", "Lang", long_model)
+        # The "served by" caption renders the model the cascade actually
+        # serves. Without a tier naming the long model, the caption would
+        # never render it and this pin would measure nothing — so a task is
+        # assigned to the long model first, in default collection order too.
+        continuation = _region(page, TASKS).get_by_label("Weiterschreiben")
+        continuation.select_option(label=f"Lang · {long_model}")
+        # The PUT's refetch is what moves the select (the flow test's lesson);
+        # the caption under the very row that was assigned is the wait this
+        # page's measure needs.
+        expect(page.locator('[id="settings-task-effective-writing.continuation"]')).to_contain_text(
+            f"Lang · {long_model}"
+        )
+        assert_accessible(page)
+        assert_page_fits(page)
+    finally:
+        # The module's stack is one user for every test in the file: what this
+        # page drove is removed again — on a red assertion too, so the stack
+        # stays unpolluted — and the flow test's fresh-stack assumption ("the
+        # first model becomes the default on its own") stays true in either
+        # run order. The assignment cascades away with the profile.
+        _run("DELETE FROM provider_profiles WHERE name = :name", {"name": "Lang"})
+        _run("DELETE FROM llm_providers WHERE name = :name", {"name": "Lang"})

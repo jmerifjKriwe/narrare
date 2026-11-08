@@ -34,6 +34,7 @@ pytestmark = pytest.mark.timeout(30)
 
 SECRET = "sk-test-secret"
 REMOTE = "https://api.vendor.example/v1"
+LOCAL = "http://127.0.0.1:9/v1"
 
 OTHER = uuid4()
 
@@ -263,21 +264,93 @@ async def test_deleting_a_provider_without_models_removes_the_row(client: AsyncC
 async def test_a_half_configured_provider_is_refused_with_named_fields(
     client: AsyncClient,
 ) -> None:
-    """An openai-chat provider needs a base URL — the row is the endpoint."""
+    """A remote-kind provider needs a base URL — the row is the endpoint."""
     no_base_url = await client.post(
         "/api/settings/providers", json={"name": "Ohne Ziel", "kind": "openai-chat"}
     )
     assert no_base_url.status_code == 422
     assert "base_url" in no_base_url.text
 
+    no_base_url_anthropic = await client.post(
+        "/api/settings/providers", json={"name": "Ohne Ziel", "kind": "anthropic"}
+    )
+    assert no_base_url_anthropic.status_code == 422
+    assert "base_url" in no_base_url_anthropic.text
+
     unknown_kind = await client.post(
-        "/api/settings/providers", json={"name": "Art", "kind": "anthropic"}
+        "/api/settings/providers", json={"name": "Art", "kind": "mistral"}
     )
     assert unknown_kind.status_code == 422
     assert "kind" in unknown_kind.text
 
     # Nothing half-configured was stored.
     assert (await client.get("/api/settings/providers")).json() == []
+
+
+async def test_an_anthropic_provider_is_gated_like_openai_chat(client: AsyncClient) -> None:
+    """The second remote kind: remote needs a key, and https when a key travels."""
+    keyless_remote = await client.post(
+        "/api/settings/providers",
+        json={
+            "name": "Ohne Schlüssel",
+            "kind": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+        },
+    )
+    assert keyless_remote.status_code == 422
+    assert "api_key" in keyless_remote.text
+
+    cleartext = await client.post(
+        "/api/settings/providers",
+        json={
+            "name": "Klar",
+            "kind": "anthropic",
+            "base_url": "http://api.vendor.example",
+            "api_key": SECRET,
+        },
+    )
+    assert cleartext.status_code == 422
+    assert "base_url" in cleartext.text
+
+    # The secure twin saves, so the refusals were the key's and the scheme's,
+    # not the kind's or the remote host's.
+    secure = await client.post(
+        "/api/settings/providers",
+        json={
+            "name": "Sicher",
+            "kind": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+            "api_key": SECRET,
+        },
+    )
+    assert secure.status_code == 201, secure.text
+    assert secure.json()["base_url"] == "https://api.anthropic.com/v1"
+
+
+async def test_a_local_anthropic_endpoint_still_needs_no_key(client: AsyncClient) -> None:
+    """Loopback plainly serves without a key, on the anthropic kind too."""
+    response = await client.post(
+        "/api/settings/providers",
+        json={"name": "Lokal ohne Schlüssel", "kind": "anthropic", "base_url": LOCAL},
+    )
+    assert response.status_code == 201, response.text
+
+
+async def test_an_anthropic_provider_has_no_openai_shaped_discovery(client: AsyncClient) -> None:
+    """Discovery asks the OpenAI shape; an anthropic row is refused, not probed."""
+    provider = await client.post(
+        "/api/settings/providers",
+        json={
+            "name": "Anthropic",
+            "kind": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+            "api_key": SECRET,
+        },
+    )
+    assert provider.status_code == 201
+    listed = await client.get(f"/api/settings/providers/{provider.json()['id']}/models")
+    assert listed.status_code == 409
+    assert "anthropic" in listed.json()["detail"]
 
 
 async def test_a_remote_http_endpoint_carrying_a_key_is_refused(client: AsyncClient) -> None:

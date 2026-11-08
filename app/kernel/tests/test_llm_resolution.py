@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm import catalog
+from app.kernel.llm.anthropic_messages import AnthropicMessagesProvider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
@@ -31,6 +32,7 @@ from app.kernel.llm.models import ProviderProfile  # noqa: TC001  the helper's r
 from app.kernel.llm.openai_chat import OpenAIChatProvider
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import (
+    ANTHROPIC_DEFAULT_BASE_URL,
     KNOWN_TASK_KEYS,
     ResolvedProvider,
     environment_provider,
@@ -377,6 +379,60 @@ async def test_an_openai_chat_model_resolves_its_endpoint_and_key(
     )
     assert resolved.api_key == "sk-provider"
     assert isinstance(resolved.provider, OpenAIChatProvider)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_anthropic_model_resolves_its_endpoint_and_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The anthropic branch builds its adapter from the same rows openai-chat uses."""
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Anthropic", kind="anthropic", base_url=REMOTE)
+        await providers.update(provider, api_key=save_key(provider.id, "sk-ant-provider"))
+        profile = await ProfileRepository(session, OWNER).create(
+            name="Claude", provider_id=provider.id, model="claude-sonnet-4-5"
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.profile_id == profile.id
+    assert (resolved.kind, resolved.model, resolved.base_url) == (
+        "anthropic",
+        "claude-sonnet-4-5",
+        REMOTE,
+    )
+    assert resolved.api_key == "sk-ant-provider"
+    assert isinstance(resolved.provider, AnthropicMessagesProvider)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_anthropic_row_without_an_endpoint_names_the_vendor_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A base-url-less anthropic row still resolves — to the Messages wire's home.
+
+    The settings gate refuses the endpoint-less write, so the row is reachable
+    only by repair SQL; resolution answers with the vendor default the same
+    way an endpoint-less openai-chat row would answer with OpenAI's.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Anthropic", kind="anthropic")
+        await providers.update(provider, api_key=save_key(provider.id, "sk-ant-default"))
+        await ProfileRepository(session, OWNER).create(
+            name="Claude", provider_id=provider.id, model="claude-sonnet-4-5"
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert isinstance(resolved.provider, AnthropicMessagesProvider)
+    assert resolved.base_url == ANTHROPIC_DEFAULT_BASE_URL
+    assert resolved.api_key == "sk-ant-default"
 
 
 @pytest.mark.usefixtures("two_users")
