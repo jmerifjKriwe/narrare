@@ -184,6 +184,11 @@ class LlmCall(UserOwned):
     latency_ms: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(16))
     error: Mapped[str | None] = mapped_column(Text)
+    # The wire code the failure maps to (contract.error_code), NULL for a
+    # clean call and for a stream the consumer walked away from — the row
+    # names the kind of refusal, the sentence the surfaces showed is the
+    # web's business.
+    error_code: Mapped[str | None] = mapped_column(String(40))
     prompt_text: Mapped[str] = mapped_column(Text)
     response_text: Mapped[str] = mapped_column(Text)
     truncated: Mapped[bool] = mapped_column(Boolean, default=False)

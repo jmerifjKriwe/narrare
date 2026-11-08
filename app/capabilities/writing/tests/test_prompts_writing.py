@@ -340,7 +340,7 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame(
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
-    assert response.text == "event: error\ndata: {}\n\n"
+    assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
     async with Session() as session:
         assert await session.scalar(sql_text("SELECT count(*) FROM llm_calls")) == 0
     refusals = [

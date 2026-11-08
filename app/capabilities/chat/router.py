@@ -17,7 +17,7 @@ from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
+from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events, failure_frame
 from app.kernel.prompts import PromptRenderError
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
 from app.kernel.secrets import KeyUnavailableError
@@ -70,9 +70,12 @@ async def _events(
         async for event in events:
             if isinstance(event, Delta):
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
-    except Exception:
+    except Exception as failure:
         logger.exception("chat stream failed")
-        yield ERROR_FRAME
+        # The coded frame — what the surfaces translate: the failure's wire
+        # code, the model a missing one names, the detail behind the reader's
+        # disclosure. One spelling for both routers.
+        yield failure_frame(failure)
     else:
         yield "event: done\ndata: {}\n\n"
     finally:
@@ -114,22 +117,22 @@ async def ask(
         ) from None
     except PromptRenderError:
         # A prompt the effective chain refuses (an override that cannot render)
-        # ends the stream the way the lost key below does: the one error frame,
-        # refused by name and never swapped for the bundled template.
+        # ends the stream the way the lost key below does: the one coded error
+        # frame, refused by name and never swapped for the bundled template.
         logger.exception("chat prompt refused")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
-    # can no longer produce ends the stream with the error frame a dead
+    # can no longer produce ends the stream with the coded error frame a dead
     # provider gets — no call ran, so no audit row.
     try:
         resolved = await resolve_provider(service.session, user_id, "chat.ask")
     except KeyUnavailableError:
         logger.exception("chat provider resolution failed")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("key-unavailable"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The pooled connection goes back before the provider stream holds the
     # response open: nothing reads the database during the stream.

@@ -33,6 +33,8 @@ from app.kernel.llm.contract import (
     CompletionEvent,
     CompletionRequest,
     Delta,
+    ModelNotFoundError,
+    ProviderAuthError,
     TextProvider,
 )
 from app.kernel.llm.fake import FakeProvider
@@ -153,8 +155,8 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
         row = (
             await session.execute(
                 text(
-                    "SELECT status, error, response_text, input_tokens, output_tokens,"
-                    " novel_id FROM llm_calls"
+                    "SELECT status, error, error_code, response_text, input_tokens,"
+                    " output_tokens, novel_id FROM llm_calls"
                 )
             )
         ).one()
@@ -168,6 +170,10 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
         if frame == "event: error"
         else "stream interrupted"
     )
+    # The code names a failure of the call: the provider's raise is
+    # unclassified (unknown), a clean end and a consumer walking away carry
+    # none — today's semantics, plus the one column.
+    assert row.error_code == ("unknown" if frame == "event: error" else None)
     expected_usage = (None, None) if frame == "delta" else (3, 2)
     assert (row.input_tokens, row.output_tokens) == expected_usage
 
@@ -250,6 +256,10 @@ class _DyingProvider:
     It sits exactly where the real one does — behind the provider boundary —
     so everything below the boundary runs the real code."""
 
+    def __init__(self, failure: Exception) -> None:
+        """Script the failure the stream dies with."""
+        self.failure = failure
+
     def describe(self) -> str:
         """Identify the provider that fails after emitting partial text."""
         return "dying"
@@ -259,9 +269,54 @@ class _DyingProvider:
         return []
 
     async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
-        """Yield one partial text delta, then raise a provider failure."""
+        """Yield one partial text delta, then raise the scripted failure."""
         yield Delta(text="Halb")
-        raise RuntimeError("the provider died")
+        raise self.failure
+
+
+@pytest.mark.parametrize(
+    ("failure", "frame"),
+    [
+        (
+            RuntimeError("the provider died"),
+            'event: error\ndata: {"code": "unknown", "detail": "the provider died"}\n\n',
+        ),
+        (
+            ModelNotFoundError("acme/turbo-3"),
+            "event: error\ndata: "
+            '{"code": "model-not-found", "model": "acme/turbo-3",'
+            ' "detail": "the endpoint does not serve the model \'acme/turbo-3\'"}\n\n',
+        ),
+        (
+            ProviderAuthError("the endpoint refused the credential (401): bad key"),
+            "event: error\ndata: "
+            '{"code": "provider-auth",'
+            ' "detail": "the endpoint refused the credential (401): bad key"}\n\n',
+        ),
+    ],
+)
+async def test_a_provider_that_dies_mid_stream_ends_with_its_coded_frame(
+    failure: Exception, frame: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Whatever killed the stream, the frame names it: code, facts, exact bytes.
+
+    The typed failures arrive through the same `except` the unclassified one
+    does — the routers never re-derive a message, they frame what the
+    contract raised.
+    """
+
+    async def _dying(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return _resolved(_DyingProvider(failure))
+
+    monkeypatch.setattr(writing_router, "resolve_provider", _dying)
+    async with _client() as client:
+        chapter_id = await _create_chapter(client)
+        response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
+
+    assert response.status_code == 200
+    assert _deltas(response.text) == ["Halb"]  # what arrived, arrived
+    assert response.text.endswith(frame)  # the coded frame, byte for byte
+    assert "event: done" not in response.text
 
 
 async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure(
@@ -270,7 +325,7 @@ async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure(
     """Verify partial provider output is preserved with an error event and a failed audit."""
 
     async def _dying(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
-        return _resolved(_DyingProvider())
+        return _resolved(_DyingProvider(RuntimeError("the provider died")))
 
     monkeypatch.setattr(writing_router, "resolve_provider", _dying)
     async with _client() as client:
@@ -283,10 +338,13 @@ async def test_a_provider_that_dies_mid_stream_errors_and_audits_the_failure(
     assert "event: done" not in response.text
 
     async with Session() as session:
-        row = (await session.execute(text("SELECT status, error, task_key FROM llm_calls"))).one()
+        row = (
+            await session.execute(text("SELECT status, error, error_code, task_key FROM llm_calls"))
+        ).one()
     assert row.task_key == "writing.continuation"
     assert row.status == "error"
     assert "the provider died" in row.error
+    assert row.error_code == "unknown"
 
 
 async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_frame(
@@ -322,7 +380,7 @@ async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_fr
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
-    assert response.text == "event: error\ndata: {}\n\n"
+    assert response.text == 'event: error\ndata: {"code": "key-unavailable"}\n\n'
     async with Session() as session:
         assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
 
@@ -334,7 +392,7 @@ async def test_an_impossible_budget_pair_ends_the_stream_with_the_one_error_fram
 
     Resolution has already succeeded — the refusal comes from the builder the
     route calls second — so the stream ends the way a lost key ends it: one
-    error frame, no provider call, no llm_calls row claiming either.
+    coded error frame, no provider call, no llm_calls row claiming either.
     """
 
     def _impossible(**_: object) -> ContextBudgets:
@@ -348,7 +406,7 @@ async def test_an_impossible_budget_pair_ends_the_stream_with_the_one_error_fram
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
-    assert response.text == "event: error\ndata: {}\n\n"
+    assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
     async with Session() as session:
         assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
     refusals = [

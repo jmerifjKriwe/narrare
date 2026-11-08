@@ -1,7 +1,7 @@
 """Chat over the knowledge base: real database, catalog's fake provider."""
 
 import json
-from collections.abc import Sequence  # noqa: TC003
+from collections.abc import AsyncIterator, Sequence  # noqa: TC003
 from logging import Formatter
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,8 +12,10 @@ from cryptography.fernet import Fernet
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
+from app.capabilities.chat import router as chat_router
 from app.capabilities.chat.router import (
     _events,  # pyright: ignore[reportPrivateUsage]  the stream's finalizer is under test
     ask,
@@ -25,7 +27,13 @@ from app.kernel.contracts.models import Chunk, Document
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
-from app.kernel.llm.contract import TextProvider  # noqa: TC001  the helper's parameter
+from app.kernel.llm.contract import (
+    CompletionEvent,
+    CompletionRequest,
+    ModelNotFoundError,
+    ProviderAuthError,
+    TextProvider,
+)
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
@@ -139,8 +147,8 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
         row = (
             await session.execute(
                 text(
-                    "SELECT status, error, response_text, input_tokens, output_tokens"
-                    " FROM llm_calls"
+                    "SELECT status, error, error_code, response_text, input_tokens,"
+                    " output_tokens FROM llm_calls"
                 )
             )
         ).one()
@@ -153,6 +161,10 @@ async def test_disconnected_stream_is_audited_once(spec_version: str, frame: str
         if frame == "event: error"
         else "stream interrupted"
     )
+    # The code names a failure of the call: the provider's raise is
+    # unclassified (unknown), a clean end and a consumer walking away carry
+    # none — today's semantics, plus the one column.
+    assert row.error_code == ("unknown" if frame == "event: error" else None)
     expected_usage = (None, None) if frame == "delta" else (3, 2)
     assert (row.input_tokens, row.output_tokens) == expected_usage
 
@@ -317,9 +329,75 @@ async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_fr
         response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})
 
     assert response.status_code == 200
-    assert response.text == "event: error\ndata: {}\n\n"
+    assert response.text == 'event: error\ndata: {"code": "key-unavailable"}\n\n'
     async with Session() as session:
         assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
+
+
+class _DyingProvider:
+    """Answers nothing and dies on the scripted failure: the mid-stream path."""
+
+    def __init__(self, failure: Exception) -> None:
+        """Script the failure the stream dies with."""
+        self.failure = failure
+
+    def describe(self) -> str:
+        """Identify the provider that refuses to answer at all."""
+        return "dying"
+
+    def configuration_problems(self) -> list[str]:
+        """Report that this deterministic provider needs no configuration."""
+        return []
+
+    async def stream(self, request: CompletionRequest) -> AsyncIterator[CompletionEvent]:
+        """Raise the scripted failure before a single event."""
+        raise self.failure
+        yield  # pragma: no cover — the raise above makes this an async generator
+
+
+@pytest.mark.parametrize(
+    ("failure", "frame"),
+    [
+        (
+            RuntimeError("the provider died"),
+            'event: error\ndata: {"code": "unknown", "detail": "the provider died"}\n\n',
+        ),
+        (
+            ModelNotFoundError("acme/turbo-3"),
+            "event: error\ndata: "
+            '{"code": "model-not-found", "model": "acme/turbo-3",'
+            ' "detail": "the endpoint does not serve the model \'acme/turbo-3\'"}\n\n',
+        ),
+        (
+            ProviderAuthError("the endpoint refused the credential (401): bad key"),
+            "event: error\ndata: "
+            '{"code": "provider-auth",'
+            ' "detail": "the endpoint refused the credential (401): bad key"}\n\n',
+        ),
+    ],
+)
+async def test_a_dead_provider_ends_the_answer_with_its_coded_frame(
+    failure: Exception, frame: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Whatever killed the answer, the frame names it: code, facts, exact bytes.
+
+    The typed failures arrive through the same `except` the unclassified one
+    does — the router never re-derives a message, it frames what the
+    contract raised. The sources frame went out first; the error frame is
+    the terminal one.
+    """
+    await _seed(LOCAL_USER_ID, "Notizen", PASSAGE)
+
+    async def _dying(session: AsyncSession, user_id: UUID, task_key: str) -> ResolvedProvider:
+        return _resolved(_DyingProvider(failure))
+
+    monkeypatch.setattr(chat_router, "resolve_provider", _dying)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})
+
+    assert response.status_code == 200
+    assert response.text.endswith(frame)
+    assert "event: done" not in response.text
 
 
 class _OtherModel:

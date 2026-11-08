@@ -19,7 +19,15 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.audit import CAP, audited_stream, record_call
 from app.kernel.llm.catalog import ModelInfo
-from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
+from app.kernel.llm.contract import (
+    DONE,
+    CompletionEvent,
+    CompletionRequest,
+    Delta,
+    ModelNotFoundError,
+    ProviderAuthError,
+    Usage,
+)
 from app.kernel.llm.models import LlmCall
 from app.kernel.llm.resolution import ResolvedProvider
 
@@ -38,6 +46,7 @@ LLM_CALL_COLUMNS = {
     "latency_ms",
     "status",
     "error",
+    "error_code",
     "prompt_text",
     "response_text",
     "truncated",
@@ -279,7 +288,9 @@ async def _audited_row() -> Any:
     """The single audit row every test in this group expects to find."""
     async with Session() as session:
         return (
-            await session.execute(text("SELECT status, error, response_text FROM llm_calls"))
+            await session.execute(
+                text("SELECT status, error, error_code, response_text FROM llm_calls")
+            )
         ).one()
 
 
@@ -342,6 +353,62 @@ async def test_audited_stream_records_the_usage_refusal_in_the_error_column() ->
     row = await _audited_row()
     assert row.status == "error"
     assert "prompt_tokens" in row.error
+    # Unclassified by contract: the code says so, never prose.
+    assert row.error_code == "unknown"
+
+
+@pytest.mark.usefixtures("a_user")
+@pytest.mark.parametrize(
+    ("failure", "expected_code"),
+    [
+        (ModelNotFoundError("glm-5.3"), "model-not-found"),
+        (
+            ProviderAuthError("the endpoint refused the credential (401): no such key"),
+            "provider-auth",
+        ),
+    ],
+)
+async def test_a_typed_failure_carries_its_wire_code_on_the_row(
+    failure: Exception, expected_code: str
+) -> None:
+    """The two actionable refusals name themselves in the audit, same as on the wire."""
+    provider = _ScriptedProvider((), fail=failure)
+    stream = audited_stream(
+        _resolved(provider),
+        CompletionRequest.user("Continue"),
+        user_id=OWNER,
+        task_key="test.stream",
+    )
+    with pytest.raises(type(failure)):
+        async for _ in stream:
+            pass
+    row = await _audited_row()
+    assert row.status == "error"
+    assert row.error_code == expected_code
+
+
+@pytest.mark.usefixtures("a_user")
+async def test_a_clean_call_leaves_the_code_absent() -> None:
+    """A code names a failure: an ok row carries none.
+
+    (A disconnect row is pinned code-less too — in the continuation suite,
+    where the interrupt machinery lives.)
+    """
+    provider = _ScriptedProvider(
+        (Delta(text="part "), Usage(input_tokens=3, output_tokens=2), DONE)
+    )
+    events = [
+        event
+        async for event in audited_stream(
+            _resolved(provider),
+            CompletionRequest.user("Continue"),
+            user_id=OWNER,
+            task_key="test.stream",
+        )
+    ]
+    assert events[-1] is DONE
+    row = await _audited_row()
+    assert (row.status, row.error_code) == ("ok", None)
 
 
 class _RaisingAfterDoneProvider(_ScriptedProvider):

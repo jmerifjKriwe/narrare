@@ -110,6 +110,30 @@ class ProviderAuthError(RuntimeError):
     """
 
 
+ERROR_MODEL_NOT_FOUND = "model-not-found"
+ERROR_PROVIDER_AUTH = "provider-auth"
+ERROR_UNKNOWN = "unknown"
+"""The wire codes an error frame can carry: the two typed failures, and
+everything else. The strings are the surfaces' localization keys' subjects —
+``errors.modelNotFound`` and friends pick the sentence from one of these —
+so renaming one is a cross-tree change, kernel and web together."""
+
+
+def error_code(failure: BaseException) -> str:
+    """The wire code a stream failure becomes: one of the three, never prose.
+
+    The two typed failures map to their codes; anything else — an endpoint
+    answering the wrong shape, a wire that died mid-frame — is unclassified
+    by contract, so it rides as ``unknown`` and the surfaces say the one
+    generic sentence.
+    """
+    if isinstance(failure, ModelNotFoundError):
+        return ERROR_MODEL_NOT_FOUND
+    if isinstance(failure, ProviderAuthError):
+        return ERROR_PROVIDER_AUTH
+    return ERROR_UNKNOWN
+
+
 class TextProvider(Protocol):
     """What every entry offers, real or fake."""
 

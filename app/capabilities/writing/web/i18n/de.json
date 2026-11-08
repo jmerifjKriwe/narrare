@@ -3,7 +3,6 @@
   "chapters.actionsFor": "Aktionen für {title}",
   "chapters.cancel": "Abbrechen",
   "chapters.continue": "Weiterschreiben",
-  "chapters.continueError": "Die Fortsetzung ist fehlgeschlagen.",
   "chapters.defaultTitle": "Kapitel {n}",
   "chapters.delete": "Löschen",
   "chapters.deleteBody": "{title} löschen? Das kann nicht widerrufen werden.",

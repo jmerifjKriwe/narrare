@@ -432,9 +432,13 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
 
     page.get_by_role("button", name="Weiterschreiben").click()
 
-    # The refusal is the stream's one error frame, named where the button
-    # sits. No ghost ever appears, and the typed text is all the editor owns.
-    expect(page.get_by_role("alert")).to_contain_text("Die Fortsetzung ist fehlgeschlagen.")
+    # The refusal is the stream's one coded error frame, named where the
+    # button sits: the prompt-refused sentence, with the settings door linked
+    # inside it. No ghost ever appears, and the typed text is all the editor
+    # owns.
+    expect(page.get_by_role("alert")).to_contain_text(
+        "Die Anfrage wurde abgelehnt, bevor sie das Modell erreichte."
+    )
     expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
     expect(page.locator(".ProseMirror")).to_contain_text("Die stille Boje lag im Schilf.")
     expect(page.locator(".ProseMirror")).not_to_contain_text("Der Nebel")

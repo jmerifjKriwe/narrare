@@ -4,12 +4,13 @@ import { announce } from "@shell/lib/announce";
 import { client, isModelChange } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { offerProposal } from "@shell/lib/proposal";
-import { readFrames, type Source } from "@shell/lib/stream";
+import { readFrames, type Source, type StreamFailure } from "@shell/lib/stream";
 import { Button } from "@shell/ui/Button";
 import { Field, Input } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Row } from "@shell/ui/Row";
 import { ProposalCard } from "@shell/ui/ProposalCard";
+import { StreamError } from "@shell/ui/StreamError";
 
 /** One question, one streamed answer, the sources it cites — the flow both
  * surfaces share: the standalone page and the workspace dock. */
@@ -19,7 +20,11 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<Source[] | null>(null);
   const [asking, setAsking] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // The failure the ask died with, when one did: the payload the error frame
+  // carried — its code picks the sentence. Empty for the failures that carry
+  // no frame (a refusal above, a cut wire); `modelChanged` overrides it with
+  // the embedding mismatch's own words.
+  const [failure, setFailure] = useState<StreamFailure | null>(null);
   const [modelChanged, setModelChanged] = useState(false);
   // The offer card is spent once its answer was offered or dropped; a new
   // question brings a fresh card with its fresh answer.
@@ -44,7 +49,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
     setAsking(true);
     setAnswer("");
     setSources(null);
-    setFailed(false);
+    setFailure(null);
     setModelChanged(false);
     setOfferSpent(false);
     // Whether this ask actually wrote words: an empty-but-clean stream has
@@ -61,7 +66,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       if (!response.ok) {
         // The mismatch refusal names its fix; every other failure stays generic.
         setModelChanged(isModelChange(error));
-        setFailed(true);
+        setFailure({});
         return;
       }
       for await (const frame of readFrames(response)) {
@@ -74,9 +79,10 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           setAnswer((current) => current + frame.delta);
         }
         // An error frame replaces the done frame: the provider died, and a
-        // silent end would look like a complete answer.
+        // silent end would look like a complete answer. The frame's payload
+        // — code, model, detail — is what the notice speaks.
         if (frame.error) {
-          setFailed(true);
+          setFailure(frame.error);
           return;
         }
       }
@@ -94,7 +100,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       // Everything else is the wire dying mid-answer: a rethrow would leave
       // a half answer looking finished beside an unhandled rejection. The
       // failure belongs on the panel, exactly like a refusal does.
-      if (!controller.signal.aborted) setFailed(true);
+      if (!controller.signal.aborted) setFailure({});
     } finally {
       // The cleanup owns only its own ask: a later ask that began while
       // this one settles has replaced the ref, and nulling it now would
@@ -131,16 +137,18 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       </form>
       <section aria-label={t("chat.answerLabel")} className="mt-6">
         <p className="whitespace-pre-wrap text-body leading-relaxed">{answer}</p>
-        {failed ? (
+        {modelChanged ? (
           <Notice tone="danger" live="alert" className="mt-2">
-            {modelChanged ? t("chat.modelChanged") : t("chat.error")}
+            {t("chat.modelChanged")}
           </Notice>
+        ) : failure ? (
+          <StreamError failure={failure} className="mt-2" />
         ) : null}
         {/* The dock's own follow-through: a complete answer can be handed
             to the editor beside it — as a ghost there, never as text
             without the writer's keypress. The standalone page has no
             editor to offer into, so it never shows the card. */}
-        {canOffer && !asking && !failed && answer !== "" && !offerSpent ? (
+        {canOffer && !asking && failure === null && answer !== "" && !offerSpent ? (
           <ProposalCard
             titleKey="chat.offerAsVariant"
             body={answer}

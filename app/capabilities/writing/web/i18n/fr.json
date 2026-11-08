@@ -3,7 +3,6 @@
   "chapters.actionsFor": "Actions pour {title}",
   "chapters.cancel": "Annuler",
   "chapters.continue": "Continuer l'écriture",
-  "chapters.continueError": "La suite a échoué.",
   "chapters.defaultTitle": "Chapitre {n}",
   "chapters.delete": "Supprimer",
   "chapters.deleteBody": "Supprimer {title} ? Cette action ne peut pas être annulée.",
