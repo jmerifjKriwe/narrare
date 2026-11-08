@@ -68,8 +68,55 @@ runs:
       run: pnpm install --frozen-lockfile
       if: inputs.node != 'false'
       shell: bash
-    - name: Install just
-      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+    # `just` is a separate binary not shipped on the runner, and downloading it
+    # from GitHub Releases has been flaky (504) for hours at a time. Cache the
+    # binary keyed by version so a cache hit skips the network entirely, and
+    # retry the download on a miss. This keeps `just` (the best fit for this
+    # polyglot repo) without the download being a single point of failure.
+    - name: Cache just binary
+      id: just-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        # The default pins 1.58.0 with the SHA pin above; callers may override.
-        just-version: ${{ inputs.just-version }} # zizmor: ignore[unpinned-tools]
+        path: ~/.local/share/just
+        key: just-${{ runner.os }}-${{ runner.arch }}-${{ inputs.just-version }}
+
+    - name: Install just (download with retry on cache miss)
+      if: steps.just-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        JUST_VERSION: ${{ inputs.just-version }}
+      run: |
+        set -euo pipefail
+        mkdir -p ~/.local/share/just ~/.local/bin
+        # All CI runs on ubuntu-latest (x86_64); the musl build is static.
+        target="x86_64-unknown-linux-musl"
+        url="https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${target}.tar.gz"
+        for attempt in 1 2 3 4 5; do
+          if curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o /tmp/just.tar.gz "$url"; then
+            break
+          fi
+          echo "just download attempt ${attempt} failed" >&2
+          if [ "$attempt" = "5" ]; then
+            echo "failed to download just ${JUST_VERSION} after 5 attempts" >&2
+            exit 1
+          fi
+          sleep $((attempt * 5))
+        done
+        tar -xzf /tmp/just.tar.gz -C ~/.local/share/just
+        chmod +x ~/.local/share/just/just
+        ln -sf ~/.local/share/just/just ~/.local/bin/just
+        rm -f /tmp/just.tar.gz
+
+    - name: Put just on PATH
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$HOME/.local/bin"
+        if [ -x "$HOME/.local/share/just/just" ] && [ ! -e "$HOME/.local/bin/just" ]; then
+          ln -s "$HOME/.local/share/just/just" "$HOME/.local/bin/just"
+        fi
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Verify just
+      shell: bash
+      run: just --version
