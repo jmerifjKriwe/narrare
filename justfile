@@ -69,7 +69,7 @@ typecheck:
     uv run pyright
     pnpm --dir web typecheck
 
-# Who calls a symbol: just callers app/kernel/llm/repositories.py ordered
+# Who calls a symbol: just callers app/kernel/llm/repositories.py:69
 [positional-arguments]
 callers *args:
     uv run python -m scripts.callers "$@"

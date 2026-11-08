@@ -1,11 +1,12 @@
-"""The settings payloads: the language, the provider profiles, the assignments.
+"""The settings payloads: the language, the providers, the provider profiles,
+the assignments.
 
-``None`` on the locale means "follow the browser". On a profile update, an
-``api_key`` that is absent or empty means "keep the stored one" — clearing a
-key is not an operation, only replacing it is. Every read of a profile shows
-the mask (``sk-…`` plus the last four characters), never the key: the one
-response that carries the full key is the create's, once (design §Masked
-keys).
+``None`` on the locale means "follow the browser". On a profile or provider
+update, an ``api_key`` that is absent or empty means "keep the stored one" —
+clearing a key is not an operation, only replacing it is. Every read of a
+profile or provider shows the mask (``sk-…`` plus the last four characters),
+never the key: the one response that carries the full key is the create's,
+once (design §Masked keys).
 """
 
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
@@ -14,7 +15,7 @@ from uuid import UUID  # noqa: TC003
 from pydantic import BaseModel, Field, field_validator
 
 from app.generated.locales import LOCALES
-from app.kernel.llm.models import PROFILE_KINDS
+from app.kernel.llm.models import PROFILE_KINDS, PROVIDER_KINDS
 
 
 class SettingsRead(BaseModel):
@@ -121,6 +122,66 @@ class ProfileRead(BaseModel):
 
 
 class ProfileCreated(ProfileRead):
+    """The create's answer: the one response that carries the full key.
+
+    ``api_key`` is the plaintext exactly once, for the client that just sent
+    it to confirm against; it is ``None`` when no key was stored (a fake, or
+    a local endpoint without one).
+    """
+
+    api_key: str | None = None
+
+
+class ProviderCreate(BaseModel):
+    """One new provider: the saved endpoint its models hang off.
+
+    ``api_key`` is write-only; the mask comes back.
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    kind: str
+    base_url: str | None = Field(default=None, max_length=500)
+    models_url: str | None = Field(default=None, max_length=500)
+    vendor: str | None = Field(default=None, max_length=40)
+    api_key: str | None = None
+
+    @field_validator("kind")
+    @classmethod
+    def _kind_is_in_the_vocabulary(cls, value: str) -> str:
+        # A closed vocabulary in code, like ENTITY_TYPES; a typo must fail at
+        # the gate, not at the first call that resolves the provider.
+        if value not in PROVIDER_KINDS:
+            known = "|".join(PROVIDER_KINDS)
+            raise ValueError(f"unknown provider kind {value!r}; known: {known}")
+        return value
+
+
+class ProviderUpdate(BaseModel):
+    """What a patch may change. The kind is what the provider is: not editable.
+
+    Absent fields stay unchanged; present nulls clear the nullable columns.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    base_url: str | None = Field(default=None, max_length=500)
+    models_url: str | None = Field(default=None, max_length=500)
+    vendor: str | None = Field(default=None, max_length=40)
+    api_key: str | None = None
+
+
+class ProviderRead(BaseModel):
+    """A provider as every read shows it: the mask, never the key."""
+
+    id: UUID
+    name: str
+    kind: str
+    base_url: str | None
+    models_url: str | None
+    vendor: str | None
+    api_key_mask: str | None
+
+
+class ProviderCreated(ProviderRead):
     """The create's answer: the one response that carries the full key.
 
     ``api_key`` is the plaintext exactly once, for the client that just sent

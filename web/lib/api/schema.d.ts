@@ -666,6 +666,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Providers
+         * @description The user's providers, by name; every key read shows the mask.
+         */
+        get: operations["list_providers_api_settings_providers_get"];
+        put?: never;
+        /**
+         * Create Provider
+         * @description Store one provider endpoint; the full key returns once.
+         */
+        post: operations["create_provider_api_settings_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Provider
+         * @description Delete a provider no model points at; the guard names the models otherwise.
+         */
+        delete: operations["delete_provider_api_settings_providers__provider_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Provider
+         * @description Apply the patch; an empty ``api_key`` keeps the stored one.
+         */
+        patch: operations["update_provider_api_settings_providers__provider_id__patch"];
+        trace?: never;
+    };
+    "/api/settings/providers/{provider_id}/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Provider Models
+         * @description Model discovery against the provider's endpoint.
+         */
+        get: operations["list_provider_models_api_settings_providers__provider_id__models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/tasks": {
         parameters: {
             query?: never;
@@ -1726,6 +1794,96 @@ export interface components {
             relation_type: string;
             /** Target Name */
             target_name: string;
+        };
+        /**
+         * ProviderCreate
+         * @description One new provider: the saved endpoint its models hang off.
+         *
+         *     ``api_key`` is write-only; the mask comes back.
+         */
+        ProviderCreate: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Kind */
+            kind: string;
+            /** Models Url */
+            models_url?: string | null;
+            /** Name */
+            name: string;
+            /** Vendor */
+            vendor?: string | null;
+        };
+        /**
+         * ProviderCreated
+         * @description The create's answer: the one response that carries the full key.
+         *
+         *     ``api_key`` is the plaintext exactly once, for the client that just sent
+         *     it to confirm against; it is ``None`` when no key was stored (a fake, or
+         *     a local endpoint without one).
+         */
+        ProviderCreated: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Api Key Mask */
+            api_key_mask: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Models Url */
+            models_url: string | null;
+            /** Name */
+            name: string;
+            /** Vendor */
+            vendor: string | null;
+        };
+        /**
+         * ProviderRead
+         * @description A provider as every read shows it: the mask, never the key.
+         */
+        ProviderRead: {
+            /** Api Key Mask */
+            api_key_mask: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Models Url */
+            models_url: string | null;
+            /** Name */
+            name: string;
+            /** Vendor */
+            vendor: string | null;
+        };
+        /**
+         * ProviderUpdate
+         * @description What a patch may change. The kind is what the provider is: not editable.
+         *
+         *     Absent fields stay unchanged; present nulls clear the nullable columns.
+         */
+        ProviderUpdate: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Models Url */
+            models_url?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Vendor */
+            vendor?: string | null;
         };
         /**
          * ReembedResult
@@ -3194,6 +3352,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileTestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_providers_api_settings_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRead"][];
+                };
+            };
+        };
+    };
+    create_provider_api_settings_providers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_provider_api_settings_providers__provider_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_provider_api_settings_providers__provider_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_provider_models_api_settings_providers__provider_id__models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
                 };
             };
             /** @description Validation Error */

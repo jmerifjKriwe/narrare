@@ -10,6 +10,8 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import Any
 from uuid import UUID  # noqa: TC003
 
+from sqlalchemy import func, select
+
 from app.kernel.db.base import ScopedRepository
 from app.kernel.llm.models import LLMProvider, ProviderProfile, TaskAssignment
 
@@ -96,6 +98,35 @@ class ProfileRepository(ScopedRepository[ProviderProfile]):
         """Remove the profile; its assignments cascade at the database."""
         await self.session.delete(profile)
         await self.session.flush()
+
+    async def count_for_provider(self, provider_id: UUID) -> int:
+        """How many of the user's profiles point at this provider.
+
+        The delete guard's count — the user scope is the repository's, so
+        another user's profile never blocks (nor is counted for) this one.
+        """
+        statement = (
+            select(func.count())
+            .select_from(ProviderProfile)
+            .where(self.owned(), ProviderProfile.provider_id == provider_id)
+        )
+        count = await self.session.scalar(statement)
+        return count or 0
+
+    async def models_for_provider(self, provider_id: UUID) -> Sequence[str]:
+        """The names the user's profiles at this provider answer by, sorted.
+
+        A profile that carries no ``model`` names itself instead, so the
+        guard's message can name every blocker whatever the row holds.
+        """
+        named = func.coalesce(ProviderProfile.model, ProviderProfile.name)
+        statement = (
+            select(named)
+            .where(self.owned(), ProviderProfile.provider_id == provider_id)
+            .order_by(named)
+        )
+        result = await self.session.scalars(statement)
+        return result.all()
 
 
 class AssignmentRepository(ScopedRepository[TaskAssignment]):
