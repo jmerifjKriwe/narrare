@@ -11,7 +11,7 @@
  * what the sections say, and the requests are verified by the backend and
  * E2E suites against the real stack.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -450,6 +450,72 @@ describe("the preset-created provider's seed", () => {
       "",
     );
   });
+
+  it("keeps typed values dirty when a seed lands beside them", async () => {
+    const onDirty = vi.fn();
+    const ui = renderSections([PROVIDER], PRESETS, null, onDirty);
+
+    // The user typed a name first; then the provider create lands.
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Mein Modell");
+    expect(onDirty).toHaveBeenLastCalledWith(true);
+
+    rerenderSections(ui, [PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3", token: 1 }, onDirty);
+
+    // The seed fills provider and model, the typed name survives — and the
+    // guard stays armed: a suggestion never marks typed work as saved.
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "glm-5.3",
+    );
+    expect((screen.getByLabelText(t("settings.profiles.providerLabel")) as HTMLSelectElement).value).toBe(
+      PROVIDER.id,
+    );
+    expect((screen.getByLabelText(t("settings.profiles.nameLabel")) as HTMLInputElement).value).toBe(
+      "Mein Modell",
+    );
+    expect(onDirty).toHaveBeenLastCalledWith(true);
+  });
+
+  it("re-points a still-seeded form at the next created provider, keeping it clean", async () => {
+    const onDirty = vi.fn();
+    const ui = renderSections([PROVIDER, VENDORED_PROVIDER], PRESETS, null, onDirty);
+
+    // Provider A is created from a preset; the form seeds A.
+    rerenderSections(ui, [PROVIDER, VENDORED_PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3", token: 1 }, onDirty);
+    expect(onDirty).toHaveBeenLastCalledWith(false);
+
+    // Provider B is created from another preset while the form sits exactly
+    // at the previous seed: the form re-points at B, still clean.
+    rerenderSections(ui, [PROVIDER, VENDORED_PROVIDER], PRESETS, { providerId: VENDORED_PROVIDER.id, model: "glm-5.3-turbo", token: 2 }, onDirty);
+    expect((screen.getByLabelText(t("settings.profiles.providerLabel")) as HTMLSelectElement).value).toBe(
+      VENDORED_PROVIDER.id,
+    );
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "glm-5.3-turbo",
+    );
+    expect(onDirty).toHaveBeenLastCalledWith(false);
+  });
+
+  it("consumes the next seed when the previous one was touched, keeping both", async () => {
+    const onDirty = vi.fn();
+    const ui = renderSections([PROVIDER, VENDORED_PROVIDER], PRESETS, null, onDirty);
+
+    // Seed A lands; the user then types a name of their own.
+    rerenderSections(ui, [PROVIDER, VENDORED_PROVIDER], PRESETS, { providerId: PROVIDER.id, model: "glm-5.3", token: 1 }, onDirty);
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Mein Modell");
+
+    // Provider B is created: the touched form keeps A and the typed name.
+    rerenderSections(ui, [PROVIDER, VENDORED_PROVIDER], PRESETS, { providerId: VENDORED_PROVIDER.id, model: "glm-5.3-turbo", token: 2 }, onDirty);
+    expect((screen.getByLabelText(t("settings.profiles.providerLabel")) as HTMLSelectElement).value).toBe(
+      PROVIDER.id,
+    );
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "glm-5.3",
+    );
+    expect((screen.getByLabelText(t("settings.profiles.nameLabel")) as HTMLInputElement).value).toBe(
+      "Mein Modell",
+    );
+    expect(onDirty).toHaveBeenLastCalledWith(true);
+  });
 });
 
 describe("the mount's reads through the panel", () => {
@@ -614,13 +680,16 @@ describe("the mount's reads through the panel", () => {
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
 
     // The model form now points at the created provider, with the preset's
-    // model as the editable starting value.
+    // model as the editable starting value. The select's value lands with
+    // the reload's rerender, so it is awaited — a slow mock must not flake.
     const input = await screen.findByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
     expect(input.value).toBe("glm-5.3");
     const providerSelect = screen.getByLabelText(
       t("settings.profiles.providerLabel"),
     ) as HTMLSelectElement;
-    expect(providerSelect.value).toBe("99999999-9999-9999-9999-999999999999");
+    await waitFor(() =>
+      expect(providerSelect.value).toBe("99999999-9999-9999-9999-999999999999"),
+    );
   });
 });
 

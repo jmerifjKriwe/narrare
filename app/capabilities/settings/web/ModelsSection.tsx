@@ -122,21 +122,33 @@ export function ModelsSection({
     onDirty(dirty);
   }, [dirty, onDirty]);
 
-  // The seed lands once per emission and only in an untouched create form —
-  // no edit open, no provider chosen, no model typed: everything already in
-  // the form is the user's own, and nothing is ever sent they have not seen
-  // in the input. The seeded values are the form's new baseline, so the
-  // leave guard does not arm for a suggestion; typing afterwards arms it
-  // normally.
+  // The seed lands once per emission, and only where nothing of the user's
+  // is in the form: an untouched create form, or one that is exactly the
+  // system's previous seed — unchanged since, so the next created provider
+  // may re-point it. Anything the user typed or changed consumes the seed,
+  // and the baseline moves only on the two seeded keys: a suggestion never
+  // marks typed values as saved, and the leave guard arms on them alone.
   const seededToken = useRef(0);
+  const lastSeed = useRef<{ providerId: string; model: string } | null>(null);
   useEffect(() => {
     if (modelSeed === null || modelSeed.token === seededToken.current) return;
     seededToken.current = modelSeed.token; // one shot: consumed whether it lands or not
-    if (editing !== null || form.providerId !== "" || form.model !== "") return;
-    const seeded = { ...form, providerId: modelSeed.providerId, model: modelSeed.model };
-    setForm(seeded);
-    setSnapshot(seeded);
-  }, [modelSeed, editing, form]);
+    if (editing !== null) return;
+    const untouchedCreate = form.providerId === "" && form.model === "";
+    const atPreviousSeed =
+      lastSeed.current !== null &&
+      dirty === false &&
+      form.providerId === lastSeed.current.providerId &&
+      form.model === lastSeed.current.model;
+    if (!untouchedCreate && !atPreviousSeed) return;
+    setForm({ ...form, providerId: modelSeed.providerId, model: modelSeed.model });
+    setSnapshot((current) => ({
+      ...current,
+      providerId: modelSeed.providerId,
+      model: modelSeed.model,
+    }));
+    lastSeed.current = { providerId: modelSeed.providerId, model: modelSeed.model };
+  }, [modelSeed, editing, form, dirty]);
 
   // The chosen provider's preset, by vendor: the datalist's vocabulary and
   // the date beside it. A provider with no vendor, or a vendor no preset
