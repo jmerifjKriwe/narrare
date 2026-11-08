@@ -657,8 +657,11 @@ export interface paths {
          * List Presets
          * @description The nine provider presets with their catalog model ids and the date.
          *
-         *     The create form's one read: no user rows behind it, so no error
-         *     vocabulary either — the catalog is static and always answers.
+         *     The create form's one read. No user rows sit behind it, so there is no
+         *     per-user error vocabulary — the one way it can fail is a damaged
+         *     snapshot: a bad manual refresh raises :class:`CatalogError` through the
+         *     catalog join and surfaces as a 500, the same loud failure every other
+         *     catalog reader owes.
          */
         get: operations["list_presets_api_settings_presets_get"];
         put?: never;

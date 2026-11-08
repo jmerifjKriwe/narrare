@@ -337,6 +337,35 @@ def test_snapshot_date_answers_none_when_the_snapshot_names_no_date(
     assert snapshot_date() is None
 
 
+def test_a_whole_catalog_pass_reads_the_snapshot_exactly_once(
+    re_vendoring: Callable[[str], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify load, date and list together re-open the file never.
+
+    The date rides the cached parse, so a pass that loads the catalog, asks
+    for its date and lists a vendor's models must cost one ``read_text`` —
+    not two. Counting the reads pins the requirement itself: a second,
+    eager parse moved *inside* ``load_catalog`` would still pass a pin on
+    ``snapshot_date``'s own caching while costing every pass the file twice.
+    """
+    re_vendoring(synthetic_snapshot(date="2030-01-31"))
+    reads = 0
+    real_read_text = Path.read_text
+
+    def counting_read_text(
+        path: Path, encoding: str | None = None, errors: str | None = None
+    ) -> str:
+        nonlocal reads
+        reads += 1
+        return real_read_text(path, encoding, errors)
+
+    monkeypatch.setattr(Path, "read_text", counting_read_text)
+    assert load_catalog()
+    assert snapshot_date() == "2030-01-31"
+    assert vendor_models("acme") == ("turbo-3",)
+    assert reads == 1
+
+
 def test_vendor_models_lists_the_vendors_bare_ids_sorted(vendoring: Install) -> None:
     """Verify bare ids in sort order; an unknown vendor names none.
 

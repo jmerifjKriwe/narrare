@@ -13,6 +13,13 @@ import type { components } from "@shell/lib/api/schema";
 export type Provider = components["schemas"]["ProviderRead"];
 export type Preset = components["schemas"]["PresetRead"];
 
+/**
+ * The model a preset-created provider suggests to the model form: the
+ * seed's token makes it one-shot — a second save of the model form, or an
+ * edit, never re-seeds from the same emission.
+ */
+export type ModelSeed = { model: string; token: number };
+
 /** The kinds the form offers; the server's provider vocabulary is exactly these three. */
 export const KINDS: readonly string[] = ["fake", "openai-chat", "anthropic"];
 
@@ -95,12 +102,15 @@ export function ProvidersSection({
   reload,
   guard,
   onDirty,
+  onPresetCreated,
 }: {
   providers: Provider[] | null;
   presets: Preset[] | null;
   reload: () => Promise<void>;
   guard: Guard;
   onDirty: (dirty: boolean) => void;
+  /** The panel's ear: a preset-created provider suggests its model once. */
+  onPresetCreated: (model: string) => void;
 }) {
   const t = useTranslation();
   const [editing, setEditing] = useState<Provider | null>(null);
@@ -115,10 +125,11 @@ export function ProvidersSection({
   const [saveFailed, setSaveFailed] = useState(false);
   const [deleteRefused, setDeleteRefused] = useState<"in-use" | "other" | null>(null);
   const [models, setModels] = useState<Record<string, string[] | "failed">>({});
-  // The stored-key hint's id: wired to the key input by hand, because the
-  // hint belongs to the control's column of the grid row (Field's own hint
-  // would land under the label).
+  // The stored-key hint's and the preset note's ids: wired to their controls
+  // by hand, because both belong to the control's column of the grid row
+  // (Field's own hint would land under the label).
   const apiKeyHintId = useId();
+  const presetNoteId = useId();
 
   const dirty = dirtyFields(form, snapshot).length > 0;
   useEffect(() => {
@@ -170,6 +181,9 @@ export function ProvidersSection({
     if (chosen === null) {
       setForm({ ...EMPTY_FORM, kind: "fake" });
       setSnapshot({ ...EMPTY_FORM, kind: "fake" });
+      // The blank form is a fresh start too: a failed save before the
+      // choice was the old attempt's failure, not this one's.
+      setSaveFailed(false);
       return;
     }
     const filled: FormState = {
@@ -194,6 +208,10 @@ export function ProvidersSection({
     // An empty key field never reaches the body: only replacing a key is an
     // operation, and "keep the stored one" is the absence of one.
     const apiKey = form.apiKey.trim() === "" ? {} : { api_key: form.apiKey.trim() };
+    // The preset the create rode in on: its model becomes the model form's
+    // seed, once, when the provider is stored. Captured before resetForm
+    // clears the choice.
+    const presetModel = editing === null ? (chosenPreset?.model ?? null) : null;
     if (editing === null) {
       const { data, response } = await client.POST("/api/settings/providers", {
         body: {
@@ -212,6 +230,7 @@ export function ProvidersSection({
       // The one response that carries the full key becomes the one box that
       // shows it; dismissed, it never exists again anywhere.
       if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
+      if (presetModel !== null) onPresetCreated(presetModel);
       resetForm();
       await reload();
       return;
@@ -364,7 +383,11 @@ export function ProvidersSection({
         {editing === null ? null : <p className="text-body text-muted">{editing.name}</p>}
         {editing === null && presets !== null && presets.length > 0 ? (
           <Field label={t("settings.providers.presetLabel")} className={LABEL_ROW}>
-            <Select value={presetId} onChange={(event) => choosePreset(event.target.value)}>
+            <Select
+              value={presetId}
+              onChange={(event) => choosePreset(event.target.value)}
+              aria-describedby={chosenPreset?.note_key ? presetNoteId : undefined}
+            >
               {/* The blank choice is the default: the form the page always
                   had, before the presets were one click away. */}
               <option value="">{t("settings.providers.presetCustom")}</option>
@@ -375,7 +398,7 @@ export function ProvidersSection({
               ))}
             </Select>
             {chosenPreset?.note_key ? (
-              <p className="col-start-2 text-label text-muted">
+              <p id={presetNoteId} className="col-start-2 text-label text-muted">
                 {t(chosenPreset.note_key as MessageKey)}
               </p>
             ) : null}

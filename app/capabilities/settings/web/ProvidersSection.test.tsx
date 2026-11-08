@@ -47,8 +47,20 @@ const PROVIDER = {
   api_key_mask: "sk-…cret",
 };
 
-/** The presets payload's shape, as the endpoint returns it (two of the nine). */
+/** The presets payload's shape, as the endpoint returns it (three of the nine). */
 const PRESETS = [
+  {
+    id: "opencode-go",
+    label: "OpenCode Go",
+    kind: "openai-chat",
+    base_url: "https://opencode.ai/inference/go/openai/v1",
+    models_url: "https://opencode.ai/inference/go/v1/models",
+    vendor: "opencode-go",
+    model: "glm-5.3-flash",
+    note_key: null,
+    models: ["glm-5.3-flash", "glm-5.3"],
+    snapshot_date: "2026-10-27",
+  },
   {
     id: "zai",
     label: "Z.ai",
@@ -85,6 +97,7 @@ function renderSection(presets: typeof PRESETS | null = PRESETS): void {
       reload={async () => {}}
       guard={NO_GUARD}
       onDirty={() => {}}
+      onPresetCreated={() => {}}
     />,
   );
 }
@@ -141,7 +154,10 @@ describe("the preset select", () => {
     const preset = screen.getByLabelText(t("settings.providers.presetLabel")) as HTMLSelectElement;
     expect(preset.value).toBe("");
     const options = Array.from(preset.options).map((option) => option.textContent);
-    expect(options).toEqual([t("settings.providers.presetCustom"), ...PRESETS.map((entry) => entry.label)]);
+    expect(options).toEqual([
+      t("settings.providers.presetCustom"),
+      ...PRESETS.map((entry) => entry.label),
+    ]);
   });
 
   it("is absent while the presets are still on their way", () => {
@@ -158,14 +174,20 @@ describe("the preset select", () => {
     expect(screen.queryByLabelText(t("settings.providers.presetLabel"))).toBeNull();
   });
 
-  it("fills name, kind, base URL, models URL and vendor, and clears the key", async () => {
+  it("fills name, kind, base URL, models URL and vendor, and clears a typed key", async () => {
     renderSection();
 
+    // A key typed for one endpoint must never survive the fill: the choice
+    // is a *new* endpoint, and its key field starts clean — whatever was in
+    // the field belonged to another vendor's terms.
+    const key = screen.getByLabelText(t("settings.providers.apiKeyLabel")) as HTMLInputElement;
+    await userEvent.type(key, "sk-for-someone-else");
     await userEvent.selectOptions(
       screen.getByLabelText(t("settings.providers.presetLabel")),
       "zai-coding-plan",
     );
 
+    expect(key.value).toBe("");
     expect((screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value).toBe(
       "Z.ai Coding Plan",
     );
@@ -181,8 +203,31 @@ describe("the preset select", () => {
     expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
       "zai-coding-plan",
     );
-    expect((screen.getByLabelText(t("settings.providers.apiKeyLabel")) as HTMLInputElement).value).toBe(
-      "",
+
+    // And nothing of the cleared key reaches the request either.
+    api.POST.mockResolvedValue({
+      data: { ...PROVIDER, id: "22222222-2222-2222-2222-222222222222", api_key: "sk-preset" },
+      response: new Response(null, { status: 201 }),
+    });
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+    const body = api.POST.mock.calls[0][1].body as Record<string, string>;
+    expect(body.api_key).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("sk-for-someone-else");
+  });
+
+  it("fills the models URL when the preset keeps its list on its own path", async () => {
+    renderSection();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "opencode-go",
+    );
+
+    expect(
+      (screen.getByLabelText(t("settings.providers.modelsUrlLabel")) as HTMLInputElement).value,
+    ).toBe("https://opencode.ai/inference/go/v1/models");
+    expect((screen.getByLabelText(t("settings.providers.baseUrlLabel")) as HTMLInputElement).value).toBe(
+      "https://opencode.ai/inference/go/openai/v1",
     );
   });
 
@@ -226,6 +271,72 @@ describe("the preset select", () => {
 
     await userEvent.selectOptions(preset, "zai");
     expect(screen.queryByText(t("settings.providers.note.zaiCodingPlan"))).toBeNull();
+  });
+
+  it("describes the note to the select, so focus hears it", async () => {
+    renderSection();
+
+    const preset = screen.getByLabelText(t("settings.providers.presetLabel")) as HTMLSelectElement;
+    await userEvent.selectOptions(preset, "zai-coding-plan");
+    const note = screen.getByText(t("settings.providers.note.zaiCodingPlan"));
+    expect(preset.getAttribute("aria-describedby")).toBe(note.id);
+
+    await userEvent.selectOptions(preset, "zai");
+    expect(preset.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("clears a failed save's notice when the blank form is chosen", async () => {
+    api.POST.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
+    renderSection();
+
+    // The save is refused: the notice speaks for that attempt.
+    await userEvent.type(screen.getByLabelText(t("settings.providers.nameLabel")), "Neu");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+    expect(await screen.findByText(t("settings.providers.errorSave"))).toBeTruthy();
+
+    // Back to the blank form: the old attempt's failure is not this one's.
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "",
+    );
+    expect(screen.queryByText(t("settings.providers.errorSave"))).toBeNull();
+  });
+
+  it("hands the chosen preset's model to the panel once, only on a stored create", async () => {
+    const onPresetCreated = vi.fn();
+    api.POST.mockResolvedValue({
+      data: { ...PROVIDER, id: "22222222-2222-2222-2222-222222222222" },
+      response: new Response(null, { status: 201 }),
+    });
+    render(
+      <ProvidersSection
+        providers={[PROVIDER]}
+        presets={PRESETS}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        onPresetCreated={onPresetCreated}
+      />,
+    );
+
+    // A choice alone emits nothing: only the stored provider does.
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "opencode-go",
+    );
+    expect(onPresetCreated).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+    expect(onPresetCreated).toHaveBeenCalledTimes(1);
+    expect(onPresetCreated).toHaveBeenCalledWith("glm-5.3-flash");
+
+    // A failed create emits nothing either: nothing was stored, nothing seeds.
+    onPresetCreated.mockClear();
+    api.POST.mockResolvedValue({ data: undefined, response: new Response(null, { status: 500 }) });
+    await userEvent.type(screen.getByLabelText(t("settings.providers.nameLabel")), "Nope");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+    expect(await screen.findByText(t("settings.providers.errorSave"))).toBeTruthy();
+    expect(onPresetCreated).not.toHaveBeenCalled();
   });
 
   it("returns to the blank form when the custom choice is picked again", async () => {
@@ -342,6 +453,7 @@ describe("the dirty form", () => {
         reload={async () => {}}
         guard={{ dirty: true, ask }}
         onDirty={() => {}}
+        onPresetCreated={() => {}}
       />,
     );
 

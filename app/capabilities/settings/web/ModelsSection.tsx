@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { components } from "@shell/lib/api/schema";
 import { client } from "@shell/lib/api/client";
@@ -9,7 +9,7 @@ import { Field, Input, Select } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 
-import { LABEL_ROW, type Guard, type Preset, type Provider } from "./ProvidersSection";
+import { LABEL_ROW, type Guard, type ModelSeed, type Preset, type Provider } from "./ProvidersSection";
 
 type Model = components["schemas"]["ModelRead"];
 type ModelTestResult = components["schemas"]["ModelTestResult"];
@@ -88,6 +88,7 @@ export function ModelsSection({
   reload,
   guard,
   onDirty,
+  modelSeed,
 }: {
   providers: Provider[] | null;
   presets: Preset[] | null;
@@ -95,6 +96,8 @@ export function ModelsSection({
   reload: () => Promise<void>;
   guard: Guard;
   onDirty: (dirty: boolean) => void;
+  /** The preset-created provider's suggested model, or none yet. */
+  modelSeed: ModelSeed | null;
 }) {
   const t = useTranslation();
   const [editing, setEditing] = useState<Model | null>(null);
@@ -108,14 +111,28 @@ export function ModelsSection({
   // The actions' failure (default flip, probe) speaks its own words beside
   // the form's save refusal: a refused save is not an unreachable service.
   const [failure, setFailure] = useState(false);
-  // The datalist's id, wired to the model input by hand — the suggestions
-  // live outside the field's own wiring, in the vocabulary the vendor names.
+  // The datalist's and the date line's ids: the suggestions are wired to the
+  // input by hand (they live outside the field's own wiring), and the date
+  // line is described beside them so focus hears both.
   const modelListId = useId();
+  const catalogDateId = useId();
 
   const dirty = dirtyFields(form, snapshot).length > 0;
   useEffect(() => {
     onDirty(dirty);
   }, [dirty, onDirty]);
+
+  // The seed lands once per emission and only in an untouched create form:
+  // a value the user typed, cleared, or an edit they opened is theirs, and
+  // nothing is ever sent they have not seen in the input.
+  const seededToken = useRef(0);
+  useEffect(() => {
+    if (modelSeed === null || modelSeed.token === seededToken.current) return;
+    seededToken.current = modelSeed.token;
+    setForm((current) =>
+      current.model === "" ? { ...current, model: modelSeed.model } : current,
+    );
+  }, [modelSeed]);
 
   // The chosen provider's preset, by vendor: the datalist's vocabulary and
   // the date beside it. A provider with no vendor, or a vendor no preset
@@ -385,6 +402,7 @@ export function ModelsSection({
             spellCheck={false}
             autoComplete="off"
             list={modelListId}
+            aria-describedby={vendorModels.length === 0 ? undefined : catalogDateId}
           />
           {/* The vendor's catalog vocabulary, suggested — never required:
               free text survives, and an empty list is simply empty. */}
@@ -394,7 +412,7 @@ export function ModelsSection({
             ))}
           </datalist>
           {vendorModels.length === 0 ? null : (
-            <p className="col-start-2 text-label text-muted">
+            <p id={catalogDateId} className="col-start-2 text-label text-muted">
               {vendorPreset?.snapshot_date == null
                 ? t("settings.profiles.catalogDateUnknown")
                 : t("settings.profiles.catalogDated", { date: vendorPreset.snapshot_date })}

@@ -4405,7 +4405,7 @@
     },
     "/api/settings/presets": {
       "get": {
-        "description": "The nine provider presets with their catalog model ids and the date.\n\nThe create form's one read: no user rows behind it, so no error\nvocabulary either — the catalog is static and always answers.",
+        "description": "The nine provider presets with their catalog model ids and the date.\n\nThe create form's one read. No user rows sit behind it, so there is no\nper-user error vocabulary — the one way it can fail is a damaged\nsnapshot: a bad manual refresh raises :class:`CatalogError` through the\ncatalog join and surfaces as a 500, the same loud failure every other\ncatalog reader owes.",
         "operationId": "list_presets_api_settings_presets_get",
         "responses": {
           "200": {

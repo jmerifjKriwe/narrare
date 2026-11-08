@@ -11,7 +11,7 @@ import { Dialog } from "@shell/ui/Dialog";
 import { Notice } from "@shell/ui/Notice";
 
 import { ModelsSection } from "./ModelsSection";
-import { ProvidersSection, type Guard, type Provider } from "./ProvidersSection";
+import { ProvidersSection, type Guard, type ModelSeed, type Provider } from "./ProvidersSection";
 import { TasksSection } from "./TasksSection";
 
 type Model = components["schemas"]["ModelRead"];
@@ -127,6 +127,16 @@ export function ProvidersPanel() {
   const onProviderDirty = useCallback((value: boolean) => markDirty("providers", value), [markDirty]);
   const onModelDirty = useCallback((value: boolean) => markDirty("models", value), [markDirty]);
 
+  // The preset-created provider's suggested model, on its way to the model
+  // form: one emission per created provider, numbered so the seed cannot
+  // re-apply after the user has changed or cleared it.
+  const seedToken = useRef(0);
+  const [modelSeed, setModelSeed] = useState<ModelSeed | null>(null);
+  const onPresetCreated = useCallback((model: string) => {
+    seedToken.current += 1;
+    setModelSeed({ model, token: seedToken.current });
+  }, []);
+
   // The third door: a route change with a dirty form asks too. The blocker
   // mounts only where a router exists, so the panel stays renderable alone.
   const router = useRouter({ warn: false });
@@ -141,7 +151,7 @@ export function ProvidersPanel() {
     <>
       {failure !== null ? (
         // The reads failed: said where the way back is — one press asks
-        // all four again, no reload demanded.
+        // all five again, no reload demanded.
         <Notice
           tone="danger"
           live="alert"
@@ -168,6 +178,7 @@ export function ProvidersPanel() {
         reload={reload}
         guard={guard}
         onDirty={onProviderDirty}
+        onPresetCreated={onPresetCreated}
       />
       <ModelsSection
         providers={providers}
@@ -176,6 +187,7 @@ export function ProvidersPanel() {
         reload={reload}
         guard={guard}
         onDirty={onModelDirty}
+        modelSeed={modelSeed}
       />
       <TasksSection
         models={models}

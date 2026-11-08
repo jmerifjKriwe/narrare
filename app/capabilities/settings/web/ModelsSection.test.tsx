@@ -137,8 +137,9 @@ const NO_GUARD = { dirty: false, ask: async () => true };
 function renderSections(
   providers: Provider[] = [PROVIDER],
   presets: typeof PRESETS | null = PRESETS,
-): void {
-  render(
+  modelSeed: { model: string; token: number } | null = null,
+): ReturnType<typeof render> {
+  return render(
     <>
       <ModelsSection
         providers={providers}
@@ -147,6 +148,35 @@ function renderSections(
         reload={async () => {}}
         guard={NO_GUARD}
         onDirty={() => {}}
+        modelSeed={modelSeed}
+      />
+      <TasksSection
+        models={[DEFAULT_MODEL, SECOND_MODEL]}
+        assignments={[]}
+        tasks={TASKS}
+        reload={async () => {}}
+      />
+    </>,
+  );
+}
+
+/** Rerender with new seed state, as the panel would between emissions. */
+function rerenderSections(
+  ui: ReturnType<typeof render>,
+  providers: Provider[],
+  presets: typeof PRESETS | null,
+  modelSeed: { model: string; token: number } | null,
+): void {
+  ui.rerender(
+    <>
+      <ModelsSection
+        providers={providers}
+        presets={presets}
+        models={[DEFAULT_MODEL, SECOND_MODEL]}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        modelSeed={modelSeed}
       />
       <TasksSection
         models={[DEFAULT_MODEL, SECOND_MODEL]}
@@ -335,6 +365,70 @@ describe("the model input's datalist", () => {
   });
 });
 
+describe("the preset-created provider's model seed", () => {
+  it("pre-seeds the model input once, editable and clearable", async () => {
+    const ui = renderSections();
+
+    // Nothing yet: no provider has been created from a preset.
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
+
+    // The panel emits the seed; the input shows it as an editable starting value.
+    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3", token: 1 });
+    const input = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    expect(input.value).toBe("glm-5.3");
+
+    // The user's own edit wins: a later emission for another provider does
+    // not overwrite what is in the input.
+    await userEvent.type(input, "-flash");
+    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3-turbo", token: 2 });
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "glm-5.3-flash",
+    );
+
+    // Clearing is the user's act, and it sticks: rerenders that carry the
+    // panel's last seed again (any reload does) re-apply nothing.
+    const cleared = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    await userEvent.clear(cleared);
+    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3-turbo", token: 2 });
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect(
+      (screen.getByRole("button", { name: t("settings.profiles.create") }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true); // cleared normally: the model is required again
+  });
+
+  it("never lands over a typed model or in an opened edit", async () => {
+    const ui = renderSections();
+
+    // The user typed a model first; the seed for a just-created provider
+    // arrives and must not replace what they wrote.
+    await userEvent.type(
+      screen.getByLabelText(t("settings.profiles.modelLabel")),
+      "my-own-finetune",
+    );
+    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3", token: 1 });
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      "my-own-finetune",
+    );
+
+    // An opened edit always carries the stored model: a seed arriving then
+    // edits nothing the user did not open themselves.
+    rerenderSections(ui, [PROVIDER], PRESETS, null);
+    await userEvent.click(screen.getAllByRole("button", { name: t("settings.profiles.edit") })[0]);
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      DEFAULT_MODEL.model,
+    );
+    rerenderSections(ui, [PROVIDER], PRESETS, { model: "glm-5.3-turbo", token: 2 });
+    expect((screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement).value).toBe(
+      DEFAULT_MODEL.model,
+    );
+  });
+});
+
 describe("the mount's reads through the panel", () => {
   it("are the page's own five, asked together on mount", async () => {
     const { ProvidersPanel } = await import("./ProvidersPanel");
@@ -411,6 +505,75 @@ describe("the mount's reads through the panel", () => {
     render(<ProvidersPanel />);
     const status = await screen.findByRole("status");
     expect(status.textContent).toContain(t("settings.profiles.loading"));
+  });
+
+  it("keep the sections when the presets read fails, with the alert beside them", async () => {
+    const { ProvidersPanel } = await import("./ProvidersPanel");
+    api.GET.mockImplementation(async (path: string) => {
+      switch (path) {
+        case "/api/settings/providers":
+          return { data: [PROVIDER], response: ok() };
+        case "/api/settings/models":
+          return { data: [DEFAULT_MODEL], response: ok() };
+        case "/api/settings/assignments":
+          return { data: [], response: ok() };
+        case "/api/settings/tasks":
+          return { data: TASKS, response: ok() };
+        case "/api/settings/presets":
+          throw new TypeError("Failed to fetch");
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+
+    render(<ProvidersPanel />);
+    // The sections the four other reads feed still render: rows, forms and
+    // the provider select are all there — only the preset select and the
+    // datalist vocabulary are absent (their props arrived as null).
+    expect(await screen.findAllByText(labelOf(DEFAULT_MODEL)).then((rows) => rows.length)).toBeGreaterThan(0);
+    expect(screen.getByLabelText(t("settings.profiles.modelLabel"))).toBeTruthy();
+    expect(screen.getByLabelText(t("settings.profiles.providerLabel"))).toBeTruthy();
+    expect(screen.queryByLabelText(t("settings.providers.presetLabel"))).toBeNull();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorLoad"));
+  });
+
+  it("seeds the model form with the preset's model after a provider is created from it", async () => {
+    const { ProvidersPanel } = await import("./ProvidersPanel");
+    api.GET.mockImplementation(async (path: string) => {
+      switch (path) {
+        case "/api/settings/providers":
+          return { data: [PROVIDER], response: ok() };
+        case "/api/settings/models":
+          return { data: [DEFAULT_MODEL], response: ok() };
+        case "/api/settings/assignments":
+          return { data: [], response: ok() };
+        case "/api/settings/tasks":
+          return { data: TASKS, response: ok() };
+        case "/api/settings/presets":
+          return { data: PRESETS, response: ok() };
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+
+    render(<ProvidersPanel />);
+    expect(await screen.findAllByText("ZAI · glm-5.3-flash").then((rows) => rows.length)).toBeGreaterThan(0);
+
+    // Create a provider from the Coding Plan preset.
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "zai-coding-plan",
+    );
+    api.POST.mockResolvedValue({
+      data: { ...PROVIDER, id: "99999999-9999-9999-9999-999999999999" },
+      response: new Response(null, { status: 201 }),
+    });
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+
+    // The model form now starts at the preset's model, as an editable value.
+    const input = await screen.findByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    expect(input.value).toBe("glm-5.3");
   });
 });
 

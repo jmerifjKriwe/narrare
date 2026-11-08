@@ -60,3 +60,14 @@ def test_the_table_is_well_formed() -> None:
         if entry.models_url is not None:
             assert entry.models_url.startswith("https://")
         assert entry.note_key is None or entry.id == "zai-coding-plan"
+
+
+def test_every_preset_suggests_a_model_its_vendor_still_serves() -> None:
+    """Verify each preset's model is one its catalog vocabulary carries.
+
+    The suggested model seeds the model form and its picker; a catalog
+    refresh that dropped it would leave ``PresetRead.model`` dead data —
+    spelled by the endpoint, shown to nobody, matched by no suggestion.
+    """
+    for entry in PRESETS:
+        assert entry.model in vendor_models(entry.vendor), entry.id
