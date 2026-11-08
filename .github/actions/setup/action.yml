@@ -109,7 +109,7 @@ runs:
 
     - name: Put just on PATH
       shell: bash
-      run: |
+      run: |  # zizmor: ignore[github-env]
         set -euo pipefail
         mkdir -p "$HOME/.local/bin"
         if [ -x "$HOME/.local/share/just/just" ] && [ ! -e "$HOME/.local/bin/just" ]; then
