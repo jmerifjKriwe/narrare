@@ -11,7 +11,9 @@ read-only view, so a damaged file is a :class:`CatalogError` naming the file
 at load instead of a bare ``KeyError`` at the first call it prices, and no
 caller can leak a mutation into later lookups. Its two lookup indexes — the
 vendor-prefix tier and the normalized tier — are built in the same pass, so a
-lookup never re-sorts the thousands of ids.
+lookup never re-sorts the thousands of ids. The same pass captures the
+snapshot's date: :func:`snapshot_date` serves it from the cache, never from
+a second read of the file.
 """
 
 from collections.abc import Mapping  # noqa: TC003
@@ -64,9 +66,8 @@ _FIELDS = _WINDOW_FIELDS + _PRICE_FIELDS + _FLAG_FIELDS
 _catalog: MappingProxyType[str, ModelInfo] | None = None
 """The parsed snapshot, parsed once, then served by reference."""
 
-_DATE_UNSET = object()
-_snapshot_date: object = _DATE_UNSET
-"""The snapshot's date, read once; the sentinel keeps "no date" from "unread"."""
+_snapshot_date: str | None = None
+"""The snapshot's date, captured by the same parse that filled the cache."""
 
 _index_cache: dict[
     int, tuple[Mapping[str, ModelInfo], dict[str, ModelInfo], dict[str, ModelInfo]]
@@ -85,31 +86,41 @@ def load_catalog() -> MappingProxyType[str, ModelInfo]:
     """Every vendored model, keyed by its full ``vendor/model`` id.
 
     Parsed once per process: the snapshot is static and 2.5 MB, and the
-    resolver's per-call lookups must not re-read it. The return is a
-    read-only view over the cached dict — an assignment raises ``TypeError``
-    instead of leaking into every later lookup. A damaged snapshot — broken
-    JSON, no ``models`` object, an entry whose fields are not exactly
-    ``ModelInfo``'s, a value of the wrong kind — raises
+    resolver's per-call lookups must not re-read it. The parse also captures
+    the snapshot's date, which :func:`snapshot_date` serves from this cache.
+    The return is a read-only view over the cached dict — an assignment raises
+    ``TypeError`` instead of leaking into every later lookup. A damaged
+    snapshot — broken JSON, no ``models`` object, an entry whose fields are not
+    exactly ``ModelInfo``'s, a value of the wrong kind — raises
     :class:`CatalogError` naming the file, at load.
 
     Tests that need their own snapshot monkeypatch this function; whatever
     mapping it returns is indexed like the real one, once per mapping.
     """
-    global _catalog
+    global _catalog, _snapshot_date
     if _catalog is None:
-        _catalog = MappingProxyType(_parse(SNAPSHOT))
+        infos, date = _parse(SNAPSHOT)
+        _snapshot_date = date
+        _catalog = MappingProxyType(infos)
     return _catalog
 
 
-def _parse(snapshot: Path) -> dict[str, ModelInfo]:
-    """Parse and shape-check the snapshot, or raise :class:`CatalogError`."""
+def _parse(snapshot: Path) -> tuple[dict[str, ModelInfo], str | None]:
+    """Parse, shape-check and date the snapshot, or raise :class:`CatalogError`.
+
+    The date is part of the payload the parse already reads; a second read of
+    the 2.5 MB file for one string would be the dearest fact on the settings
+    page. A date that is absent or not a string stays ``None`` — the callers
+    show a date, never a failure.
+    """
     try:
         payload = loads(snapshot.read_text())
         entries = payload["models"]
         infos = {model_id: _info(model_id, entry) for model_id, entry in entries.items()}
+        date = payload.get("snapshot_date")
     except (KeyError, TypeError, AttributeError, ValueError) as damaged:
         raise CatalogError(f"damaged catalog snapshot at {snapshot}: {damaged}") from damaged
-    return infos
+    return infos, date if isinstance(date, str) else None
 
 
 def _info(model_id: str, entry: object) -> ModelInfo:
@@ -197,25 +208,15 @@ def vendor_models(vendor: str) -> tuple[str, ...]:
 
 
 def snapshot_date() -> str | None:
-    """The snapshot's own ``snapshot_date``, read once with the catalog.
+    """The snapshot's own ``snapshot_date``, served from the cached parse.
 
-    ``None`` when the file names no date or cannot be read as JSON — the
-    callers show a date, never a failure, and :class:`CatalogError` stays
-    :func:`load_catalog`'s to raise.
+    ``None`` when the file names no date — the callers show a date, never a
+    failure, and :class:`CatalogError` stays :func:`load_catalog`'s to raise.
+    The date is captured when the snapshot is parsed, so reading it walks the
+    same cache every lookup walks and never touches the file again.
     """
-    global _snapshot_date
-    if _snapshot_date is _DATE_UNSET:
-        _snapshot_date = _read_date(SNAPSHOT)
-    return cast("str | None", _snapshot_date)
-
-
-def _read_date(snapshot: Path) -> str | None:
-    """The snapshot's ``snapshot_date``, or None when absent or unreadable."""
-    try:
-        date = loads(snapshot.read_text()).get("snapshot_date")
-    except OSError, ValueError, AttributeError:
-        return None
-    return date if isinstance(date, str) else None
+    load_catalog()
+    return _snapshot_date
 
 
 def compute_cost(

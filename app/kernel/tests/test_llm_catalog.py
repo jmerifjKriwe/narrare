@@ -8,7 +8,9 @@ the catalog's. The synthetic snapshots here pin the rules; the smoke tests
 hold the vendored file to the shape the rules assume.
 """
 
-from json import loads
+from dataclasses import asdict
+from json import dumps, loads
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -26,7 +28,6 @@ from app.kernel.llm.catalog import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     # What the vendoring fixture installs: the snapshot effective_info reads.
     Install = Callable[[dict[str, ModelInfo]], None]
@@ -46,6 +47,33 @@ def priced(input_price: float | None = 3.0, output_price: float | None = 15.0) -
         supports_tools=True,
         supports_vision=False,
     )
+
+
+def synthetic_snapshot(*, date: str | None) -> str:
+    """A one-model snapshot as JSON text, dated or not, shaped like the real one."""
+    payload: dict[str, object] = {"models": {"acme/turbo-3": asdict(priced())}}
+    if date is not None:
+        payload["snapshot_date"] = date
+    return dumps(payload)
+
+
+@pytest.fixture
+def re_vendoring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[str], None]:
+    """Install a synthetic snapshot *file* as the one the cache re-reads.
+
+    The :func:`vendoring` seam swaps the parsed mapping; this one swaps the
+    file the parse reads, so the parse itself — damage, dating — is what is
+    under test. Resetting ``_catalog`` is what forces the re-read.
+    """
+
+    def install(contents: str) -> None:
+        snapshot = tmp_path / "models.json"
+        snapshot.write_text(contents)
+        monkeypatch.setattr(catalog, "SNAPSHOT", snapshot)
+        monkeypatch.setattr(catalog, "_catalog", None)  # the cache must re-read
+        monkeypatch.setattr(catalog, "_snapshot_date", None)  # the parse re-captures it
+
+    return install
 
 
 @pytest.fixture
@@ -276,6 +304,37 @@ def test_snapshot_date_names_the_vendored_files_date() -> None:
     """Verify the reader answers with the file's own ``snapshot_date``."""
     raw = loads(catalog.SNAPSHOT.read_text())
     assert snapshot_date() == raw["snapshot_date"]
+
+
+def test_snapshot_date_answers_the_synthetic_snapshots_date(
+    re_vendoring: Callable[[str], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify a dated snapshot's date travels with the cache's own parse.
+
+    The date is captured when the catalog is parsed, not on a second read:
+    once ``load_catalog`` has answered, the file could vanish and the cached
+    date would still be the truth the settings page shows.
+    """
+    re_vendoring(synthetic_snapshot(date="2030-01-31"))
+    entries = load_catalog()  # the parse: the date is captured here
+    assert load_catalog() is entries
+    # Not re-readable any more: a second file read would crash, the cached
+    # parse must not need one.
+    monkeypatch.setattr(catalog, "SNAPSHOT", Path("/nonexistent/models.json"))
+    assert snapshot_date() == "2030-01-31"
+
+
+def test_snapshot_date_answers_none_when_the_snapshot_names_no_date(
+    re_vendoring: Callable[[str], None],
+) -> None:
+    """Verify a dateless snapshot stays silent: ``None``, never a failure.
+
+    The settings page names the date beside the model picker; a snapshot
+    without one must show the honest "unknown" there, and the read endpoint
+    must carry ``null``, not an error.
+    """
+    re_vendoring(synthetic_snapshot(date=None))
+    assert snapshot_date() is None
 
 
 def test_vendor_models_lists_the_vendors_bare_ids_sorted(vendoring: Install) -> None:

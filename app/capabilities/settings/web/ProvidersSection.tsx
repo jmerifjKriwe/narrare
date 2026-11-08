@@ -11,6 +11,7 @@ import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
 
 export type Provider = components["schemas"]["ProviderRead"];
+export type Preset = components["schemas"]["PresetRead"];
 
 /** The kinds the form offers; the server's provider vocabulary is exactly these three. */
 export const KINDS: readonly string[] = ["fake", "openai-chat", "anthropic"];
@@ -78,17 +79,25 @@ function formOf(provider: Provider): FormState {
  * facts — kind, base URL, models URL, vendor — and the one secret of the
  * page: its key shows exactly once (the create's), every later read the mask.
  *
+ * Creating starts at the preset select: one choice fills the endpoint fields
+ * and clears the key, so a known vendor is one click from "no providers
+ * yet". Every filled field stays editable, and "Custom provider" — the
+ * blank form — is the default. The select speaks only while creating: an
+ * edit is what the provider already is.
+ *
  * The section's one filled primary is the form's save (L1); every other
  * control is a bordered equal. The states speak through `Notice`: the empty
  * list, the save and delete refusals, and the row's own model discovery.
  */
 export function ProvidersSection({
   providers,
+  presets,
   reload,
   guard,
   onDirty,
 }: {
   providers: Provider[] | null;
+  presets: Preset[] | null;
   reload: () => Promise<void>;
   guard: Guard;
   onDirty: (dirty: boolean) => void;
@@ -99,6 +108,9 @@ export function ProvidersSection({
   // The values the form was opened with: anything else is dirty and asks
   // before it is thrown away.
   const [snapshot, setSnapshot] = useState<FormState>(EMPTY_FORM);
+  // The preset the form currently reflects, "" for the blank custom form.
+  // Not a form column: it names how the fields were filled, not what saves.
+  const [presetId, setPresetId] = useState("");
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [deleteRefused, setDeleteRefused] = useState<"in-use" | "other" | null>(null);
@@ -122,6 +134,7 @@ export function ProvidersSection({
     void (async () => {
       if (dirty && !(await guard.ask())) return;
       setEditing(provider);
+      setPresetId("");
       setForm(formOf(provider));
       setSnapshot(formOf(provider));
       setSaveFailed(false);
@@ -131,6 +144,7 @@ export function ProvidersSection({
   /** Close the form without a question — after a save it holds nothing new. */
   function resetForm(): void {
     setEditing(null);
+    setPresetId("");
     setForm({ ...EMPTY_FORM, kind: "fake" });
     setSnapshot({ ...EMPTY_FORM, kind: "fake" });
     setSaveFailed(false);
@@ -142,6 +156,37 @@ export function ProvidersSection({
       resetForm();
     })();
   }
+
+  /**
+   * The preset choice: fill the endpoint fields from it, clear the key, and
+   * take the fill as the form's new baseline — only edits after the choice
+   * are dirty and ask. "Custom provider" is the blank form again. The
+   * choice replaces typed values without asking: choosing it *is* the
+   * deliberate act, and every field stays editable afterwards.
+   */
+  function choosePreset(id: string): void {
+    setPresetId(id);
+    const chosen = presets?.find((preset) => preset.id === id) ?? null;
+    if (chosen === null) {
+      setForm({ ...EMPTY_FORM, kind: "fake" });
+      setSnapshot({ ...EMPTY_FORM, kind: "fake" });
+      return;
+    }
+    const filled: FormState = {
+      name: chosen.label,
+      kind: chosen.kind,
+      baseUrl: chosen.base_url,
+      modelsUrl: chosen.models_url ?? "",
+      vendor: chosen.vendor,
+      // A preset never carries a key over: the field the choice clears.
+      apiKey: "",
+    };
+    setForm(filled);
+    setSnapshot(filled);
+    setSaveFailed(false);
+  }
+
+  const chosenPreset = presets?.find((preset) => preset.id === presetId) ?? null;
 
   async function submit(event: React.FormEvent): Promise<void> {
     event.preventDefault();
@@ -317,6 +362,25 @@ export function ProvidersSection({
 
       <form onSubmit={submit} className="mt-5 flex flex-col gap-2">
         {editing === null ? null : <p className="text-body text-muted">{editing.name}</p>}
+        {editing === null && presets !== null && presets.length > 0 ? (
+          <Field label={t("settings.providers.presetLabel")} className={LABEL_ROW}>
+            <Select value={presetId} onChange={(event) => choosePreset(event.target.value)}>
+              {/* The blank choice is the default: the form the page always
+                  had, before the presets were one click away. */}
+              <option value="">{t("settings.providers.presetCustom")}</option>
+              {presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+            </Select>
+            {chosenPreset?.note_key ? (
+              <p className="col-start-2 text-label text-muted">
+                {t(chosenPreset.note_key as MessageKey)}
+              </p>
+            ) : null}
+          </Field>
+        ) : null}
         <Field label={t("settings.providers.nameLabel")} className={LABEL_ROW}>
           <Input
             value={form.name}

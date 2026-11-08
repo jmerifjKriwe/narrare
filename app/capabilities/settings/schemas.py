@@ -178,6 +178,30 @@ class ProviderCreated(ProviderRead):
     api_key: str | None = None
 
 
+class PresetRead(BaseModel):
+    """One provider preset as the create form reads it, with the catalog join.
+
+    The preset is the kernel table's row — label, model and vendor are the
+    vendors' proper spellings, data rather than catalog text. ``models`` is
+    the vendor's catalog vocabulary, bare and sorted, the model picker's
+    list; a vendor the catalog does not carry joins to an empty list and the
+    form still saves free text. ``snapshot_date`` is the catalog's own date,
+    ``None`` when the snapshot names none — the picker's honesty mark rides
+    this response, so the form needs no second call.
+    """
+
+    id: str
+    label: str
+    kind: str
+    base_url: str
+    models_url: str | None
+    vendor: str
+    model: str
+    note_key: str | None
+    models: list[str]
+    snapshot_date: str | None
+
+
 class ModelTestResult(BaseModel):
     """What one connection test found: it ran, and it either answered or named why."""
 

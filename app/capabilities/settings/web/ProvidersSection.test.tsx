@@ -47,11 +47,45 @@ const PROVIDER = {
   api_key_mask: "sk-…cret",
 };
 
+/** The presets payload's shape, as the endpoint returns it (two of the nine). */
+const PRESETS = [
+  {
+    id: "zai",
+    label: "Z.ai",
+    kind: "openai-chat",
+    base_url: "https://api.z.ai/api/paas/v4",
+    models_url: null,
+    vendor: "zai",
+    model: "glm-5.3",
+    note_key: null,
+    models: ["glm-5.3", "glm-5.3-flash"],
+    snapshot_date: "2026-10-27",
+  },
+  {
+    id: "zai-coding-plan",
+    label: "Z.ai Coding Plan",
+    kind: "openai-chat",
+    base_url: "https://api.z.ai/api/coding/paas/v4",
+    models_url: null,
+    vendor: "zai-coding-plan",
+    model: "glm-5.3",
+    note_key: "settings.providers.note.zaiCodingPlan",
+    models: ["glm-5.3"],
+    snapshot_date: null,
+  },
+];
+
 const NO_GUARD = { dirty: false, ask: async () => true };
 
-function renderSection(): void {
+function renderSection(presets: typeof PRESETS | null = PRESETS): void {
   render(
-    <ProvidersSection providers={[PROVIDER]} reload={async () => {}} guard={NO_GUARD} onDirty={() => {}} />,
+    <ProvidersSection
+      providers={[PROVIDER]}
+      presets={presets}
+      reload={async () => {}}
+      guard={NO_GUARD}
+      onDirty={() => {}}
+    />,
   );
 }
 
@@ -97,6 +131,119 @@ describe("the kind select", () => {
       t("settings.providers.kind.openai-chat"),
       t("settings.providers.kind.anthropic"),
     ]);
+  });
+});
+
+describe("the preset select", () => {
+  it("opens the create on the custom choice — the blank form — and offers the presets", () => {
+    renderSection();
+
+    const preset = screen.getByLabelText(t("settings.providers.presetLabel")) as HTMLSelectElement;
+    expect(preset.value).toBe("");
+    const options = Array.from(preset.options).map((option) => option.textContent);
+    expect(options).toEqual([t("settings.providers.presetCustom"), ...PRESETS.map((entry) => entry.label)]);
+  });
+
+  it("is absent while the presets are still on their way", () => {
+    renderSection(null);
+
+    expect(screen.queryByLabelText(t("settings.providers.presetLabel"))).toBeNull();
+  });
+
+  it("is absent while editing: the provider is already what it is", async () => {
+    renderSection();
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.edit") }));
+
+    expect(screen.queryByLabelText(t("settings.providers.presetLabel"))).toBeNull();
+  });
+
+  it("fills name, kind, base URL, models URL and vendor, and clears the key", async () => {
+    renderSection();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "zai-coding-plan",
+    );
+
+    expect((screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value).toBe(
+      "Z.ai Coding Plan",
+    );
+    expect((screen.getByLabelText(t("settings.providers.kindLabel")) as HTMLSelectElement).value).toBe(
+      "openai-chat",
+    );
+    expect((screen.getByLabelText(t("settings.providers.baseUrlLabel")) as HTMLInputElement).value).toBe(
+      "https://api.z.ai/api/coding/paas/v4",
+    );
+    expect(
+      (screen.getByLabelText(t("settings.providers.modelsUrlLabel")) as HTMLInputElement).value,
+    ).toBe("");
+    expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
+      "zai-coding-plan",
+    );
+    expect((screen.getByLabelText(t("settings.providers.apiKeyLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
+  });
+
+  it("keeps the fill editable: a typed-over field still saves", async () => {
+    api.POST.mockResolvedValue({
+      data: { ...PROVIDER, id: "22222222-2222-2222-2222-222222222222", api_key: "sk-preset" },
+      response: new Response(null, { status: 201 }),
+    });
+    renderSection();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.providers.presetLabel")),
+      "zai-coding-plan",
+    );
+    const name = screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement;
+    await userEvent.clear(name);
+    await userEvent.type(name, "Mein Z.ai");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+
+    expect(api.POST).toHaveBeenCalledWith(
+      "/api/settings/providers",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          name: "Mein Z.ai",
+          kind: "openai-chat",
+          base_url: "https://api.z.ai/api/coding/paas/v4",
+          vendor: "zai-coding-plan",
+        }),
+      }),
+    );
+    const body = api.POST.mock.calls[0][1].body as Record<string, string>;
+    expect(body.api_key).toBeUndefined(); // cleared, and never typed: nothing sent
+  });
+
+  it("speaks the preset's note while the one that owes it is chosen", async () => {
+    renderSection();
+
+    const preset = screen.getByLabelText(t("settings.providers.presetLabel")) as HTMLSelectElement;
+    await userEvent.selectOptions(preset, "zai-coding-plan");
+    expect(screen.getByText(t("settings.providers.note.zaiCodingPlan"))).toBeTruthy();
+
+    await userEvent.selectOptions(preset, "zai");
+    expect(screen.queryByText(t("settings.providers.note.zaiCodingPlan"))).toBeNull();
+  });
+
+  it("returns to the blank form when the custom choice is picked again", async () => {
+    renderSection();
+
+    const preset = screen.getByLabelText(t("settings.providers.presetLabel")) as HTMLSelectElement;
+    await userEvent.selectOptions(preset, "zai-coding-plan");
+    await userEvent.selectOptions(preset, "");
+
+    expect((screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect((screen.getByLabelText(t("settings.providers.kindLabel")) as HTMLSelectElement).value).toBe(
+      "fake",
+    );
   });
 });
 
@@ -189,7 +336,13 @@ describe("the dirty form", () => {
   it("asks before Cancel throws typed values away, and Stay keeps them", async () => {
     const ask = vi.fn(async () => false);
     render(
-      <ProvidersSection providers={[PROVIDER]} reload={async () => {}} guard={{ dirty: true, ask }} onDirty={() => {}} />,
+      <ProvidersSection
+        providers={[PROVIDER]}
+        presets={null}
+        reload={async () => {}}
+        guard={{ dirty: true, ask }}
+        onDirty={() => {}}
+      />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.edit") }));

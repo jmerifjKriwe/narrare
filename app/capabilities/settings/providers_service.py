@@ -19,14 +19,18 @@ from uuid import UUID  # noqa: TC003  the service's parameter annotations name i
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
+from app.capabilities.settings.schemas import PresetRead
+from app.kernel.llm.catalog import snapshot_date, vendor_models
 from app.kernel.llm.models import LLMProvider  # noqa: TC001
 from app.kernel.llm.openai_chat import client_for, keyless_headers
+from app.kernel.llm.presets import PRESETS
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.secrets import NoKeyStoreError, erase_key, load_key, save_key
 from app.kernel.vendor import needs_api_key
 
 if TYPE_CHECKING:
     from app.capabilities.settings.schemas import ProviderCreate, ProviderUpdate
+    from app.kernel.llm.presets import ProviderPreset
 
 DISCOVERY_TIMEOUT = 30.0
 """Listing models is request/response: half a minute is generous."""
@@ -37,6 +41,23 @@ a base URL required (there is a vendor default at resolution, but a saved
 provider that names none is a configuration nobody can read), a key required
 when the endpoint is remote, and ``https://`` whenever a key would cross the
 network. The fake — no endpoint, no secret — is the only other kind today."""
+
+_preset_cache: tuple[tuple[ProviderPreset, tuple[str, ...], str | None], ...] | None = None
+"""The presets joined with their catalog vocabulary and the snapshot's date.
+
+The catalog is static, so the join is built once per process: a settings
+visit must not re-walk the 2.5 MB snapshot per request. Everything in it is
+frozen data; the reads return fresh schema copies of the rows.
+"""
+
+
+def _preset_catalog() -> tuple[tuple[ProviderPreset, tuple[str, ...], str | None], ...]:
+    """The join behind :meth:`ProviderService.presets`, built on first read."""
+    global _preset_cache
+    if _preset_cache is None:
+        date = snapshot_date()
+        _preset_cache = tuple((entry, vendor_models(entry.vendor), date) for entry in PRESETS)
+    return _preset_cache
 
 
 class ProviderNotFoundError(LookupError):
@@ -75,6 +96,32 @@ class ProviderService:
     async def list(self) -> Sequence[LLMProvider]:
         """Every provider of the user's, by name."""
         return await self._providers().ordered()
+
+    def presets(self) -> list[PresetRead]:
+        """The nine presets with their catalog vocabulary and the date.
+
+        One read for the whole create form: the fields it fills, the model
+        picker's list (the vendor's catalog ids, bare and sorted), and the
+        snapshot's date beside it. A vendor the catalog does not carry joins
+        to an empty list — the picker is then simply empty, and free text
+        still saves. The join itself is cached per process
+        (:func:`_preset_catalog`); this maps it into the read schema.
+        """
+        return [
+            PresetRead(
+                id=entry.id,
+                label=entry.label,
+                kind=entry.kind,
+                base_url=entry.base_url,
+                models_url=entry.models_url,
+                vendor=entry.vendor,
+                model=entry.model,
+                note_key=entry.note_key,
+                models=list(models),
+                snapshot_date=date,
+            )
+            for entry, models, date in _preset_catalog()
+        ]
 
     async def create(self, payload: ProviderCreate) -> tuple[LLMProvider, str | None]:
         """Store one provider endpoint.

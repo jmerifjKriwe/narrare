@@ -1429,6 +1429,89 @@
         "title": "NovelUpdate",
         "type": "object"
       },
+      "PresetRead": {
+        "description": "One provider preset as the create form reads it, with the catalog join.\n\nThe preset is the kernel table's row — label, model and vendor are the\nvendors' proper spellings, data rather than catalog text. ``models`` is\nthe vendor's catalog vocabulary, bare and sorted, the model picker's\nlist; a vendor the catalog does not carry joins to an empty list and the\nform still saves free text. ``snapshot_date`` is the catalog's own date,\n``None`` when the snapshot names none — the picker's honesty mark rides\nthis response, so the form needs no second call.",
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "models_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models Url"
+          },
+          "note_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Key"
+          },
+          "snapshot_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Date"
+          },
+          "vendor": {
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "base_url",
+          "models_url",
+          "vendor",
+          "model",
+          "note_key",
+          "models",
+          "snapshot_date"
+        ],
+        "title": "PresetRead",
+        "type": "object"
+      },
       "PromptDetail": {
         "description": "One key as the editor shows it: the bundled source, the variable\nlegend, the override in force, the source a render would use.",
         "properties": {
@@ -4315,6 +4398,32 @@
           }
         },
         "summary": "Test Model",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/presets": {
+      "get": {
+        "description": "The nine provider presets with their catalog model ids and the date.\n\nThe create form's one read: no user rows behind it, so no error\nvocabulary either — the catalog is static and always answers.",
+        "operationId": "list_presets_api_settings_presets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PresetRead"
+                  },
+                  "title": "Response List Presets Api Settings Presets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Presets",
         "tags": [
           "settings"
         ]

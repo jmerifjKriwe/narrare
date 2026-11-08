@@ -42,6 +42,7 @@ from app.capabilities.settings.schemas import (
     ModelRead,
     ModelTestResult,
     ModelUpdate,
+    PresetRead,
     ProviderCreate,
     ProviderCreated,
     ProviderRead,
@@ -225,6 +226,16 @@ async def test_model(model_id: UUID, service: ModelServiceDep) -> ModelTestResul
 async def list_providers(service: ProviderServiceDep) -> list[ProviderRead]:
     """The user's providers, by name; every key read shows the mask."""
     return [_provider_masked(provider) for provider in await service.list()]
+
+
+@router.get("/presets", response_model=list[PresetRead])
+async def list_presets(service: ProviderServiceDep) -> list[PresetRead]:
+    """The nine provider presets with their catalog model ids and the date.
+
+    The create form's one read: no user rows behind it, so no error
+    vocabulary either — the catalog is static and always answers.
+    """
+    return service.presets()
 
 
 @router.post("/providers", response_model=ProviderCreated, status_code=201)

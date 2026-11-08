@@ -646,6 +646,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Presets
+         * @description The nine provider presets with their catalog model ids and the date.
+         *
+         *     The create form's one read: no user rows behind it, so no error
+         *     vocabulary either — the catalog is static and always answers.
+         */
+        get: operations["list_presets_api_settings_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/providers": {
         parameters: {
             query?: never;
@@ -1625,6 +1648,40 @@ export interface components {
             language?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /**
+         * PresetRead
+         * @description One provider preset as the create form reads it, with the catalog join.
+         *
+         *     The preset is the kernel table's row — label, model and vendor are the
+         *     vendors' proper spellings, data rather than catalog text. ``models`` is
+         *     the vendor's catalog vocabulary, bare and sorted, the model picker's
+         *     list; a vendor the catalog does not carry joins to an empty list and the
+         *     form still saves free text. ``snapshot_date`` is the catalog's own date,
+         *     ``None`` when the snapshot names none — the picker's honesty mark rides
+         *     this response, so the form needs no second call.
+         */
+        PresetRead: {
+            /** Base Url */
+            base_url: string;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Model */
+            model: string;
+            /** Models */
+            models: string[];
+            /** Models Url */
+            models_url: string | null;
+            /** Note Key */
+            note_key: string | null;
+            /** Snapshot Date */
+            snapshot_date: string | null;
+            /** Vendor */
+            vendor: string;
         };
         /**
          * PromptDetail
@@ -3269,6 +3326,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_presets_api_settings_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetRead"][];
                 };
             };
         };

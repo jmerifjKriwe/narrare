@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import type { components } from "@shell/lib/api/schema";
 import { client } from "@shell/lib/api/client";
@@ -9,7 +9,7 @@ import { Field, Input, Select } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 
-import { LABEL_ROW, type Guard, type Provider } from "./ProvidersSection";
+import { LABEL_ROW, type Guard, type Preset, type Provider } from "./ProvidersSection";
 
 type Model = components["schemas"]["ModelRead"];
 type ModelTestResult = components["schemas"]["ModelTestResult"];
@@ -72,18 +72,25 @@ function tuned(value: string): number | null {
  * test. Everything endpoint-shaped lives on the provider this row names —
  * the form offers no endpoint and no key, because the model carries none.
  *
+ * The model input speaks its vendor's vocabulary: a `<datalist>` fed from
+ * the chosen provider's preset models, with free text untouched — a model
+ * the catalog does not know still saves. The list names the catalog's date
+ * beside it, honestly unknown when the snapshot names none.
+ *
  * The section's one filled primary is the form's save (L1); every other
  * control is a bordered equal. The states speak through `Notice`: the empty
  * list, the save and delete refusals, and the row's own probe outcome.
  */
 export function ModelsSection({
   providers,
+  presets,
   models,
   reload,
   guard,
   onDirty,
 }: {
   providers: Provider[] | null;
+  presets: Preset[] | null;
   models: Model[] | null;
   reload: () => Promise<void>;
   guard: Guard;
@@ -101,11 +108,24 @@ export function ModelsSection({
   // The actions' failure (default flip, probe) speaks its own words beside
   // the form's save refusal: a refused save is not an unreachable service.
   const [failure, setFailure] = useState(false);
+  // The datalist's id, wired to the model input by hand — the suggestions
+  // live outside the field's own wiring, in the vocabulary the vendor names.
+  const modelListId = useId();
 
   const dirty = dirtyFields(form, snapshot).length > 0;
   useEffect(() => {
     onDirty(dirty);
   }, [dirty, onDirty]);
+
+  // The chosen provider's preset, by vendor: the datalist's vocabulary and
+  // the date beside it. A provider with no vendor, or a vendor no preset
+  // carries, leaves both empty — free text is the whole interface then.
+  const chosenProvider = (providers ?? []).find((entry) => entry.id === form.providerId) ?? null;
+  const vendorPreset =
+    chosenProvider?.vendor != null && chosenProvider.vendor !== ""
+      ? (presets?.find((preset) => preset.vendor === chosenProvider.vendor) ?? null)
+      : null;
+  const vendorModels = vendorPreset?.models ?? [];
 
   /** One form field's change, by its key in the form state. */
   function set<K extends keyof FormState>(key: K, value: string): void {
@@ -364,7 +384,22 @@ export function ModelsSection({
             onChange={(event) => set("model", event.target.value)}
             spellCheck={false}
             autoComplete="off"
+            list={modelListId}
           />
+          {/* The vendor's catalog vocabulary, suggested — never required:
+              free text survives, and an empty list is simply empty. */}
+          <datalist id={modelListId}>
+            {vendorModels.map((model) => (
+              <option key={model} value={model} />
+            ))}
+          </datalist>
+          {vendorModels.length === 0 ? null : (
+            <p className="col-start-2 text-label text-muted">
+              {vendorPreset?.snapshot_date == null
+                ? t("settings.profiles.catalogDateUnknown")
+                : t("settings.profiles.catalogDated", { date: vendorPreset.snapshot_date })}
+            </p>
+          )}
         </Field>
         <Field label={t("settings.profiles.contextWindowLabel")} className={LABEL_ROW}>
           <Input

@@ -31,6 +31,7 @@ import { client } from "@shell/lib/api/client";
 
 import { ModelsSection } from "./ModelsSection";
 import { TasksSection, labelOf } from "./TasksSection";
+import type { Provider } from "./ProvidersSection";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -47,6 +48,43 @@ const PROVIDER = {
   vendor: null,
   api_key_mask: null,
 };
+
+const VENDORED_PROVIDER = {
+  ...PROVIDER,
+  id: "44444444-4444-4444-4444-444444444444",
+  name: "Z.ai direct",
+  kind: "openai-chat",
+  base_url: "https://api.z.ai/api/paas/v4",
+  vendor: "zai",
+};
+
+/** The presets payload's shape, as the endpoint returns it (two of the nine). */
+const PRESETS = [
+  {
+    id: "zai",
+    label: "Z.ai",
+    kind: "openai-chat",
+    base_url: "https://api.z.ai/api/paas/v4",
+    models_url: null,
+    vendor: "zai",
+    model: "glm-5.3",
+    note_key: null,
+    models: ["glm-5.3", "glm-5.3-flash", "glm-5.3-turbo"],
+    snapshot_date: "2026-10-27",
+  },
+  {
+    id: "zai-coding-plan",
+    label: "Z.ai Coding Plan",
+    kind: "openai-chat",
+    base_url: "https://api.z.ai/api/coding/paas/v4",
+    models_url: null,
+    vendor: "zai-coding-plan",
+    model: "glm-5.3",
+    note_key: "settings.providers.note.zaiCodingPlan",
+    models: ["glm-5.3"],
+    snapshot_date: null,
+  },
+];
 
 const DEFAULT_MODEL = {
   id: "22222222-2222-2222-2222-222222222222",
@@ -96,11 +134,15 @@ const TASKS = [
 
 const NO_GUARD = { dirty: false, ask: async () => true };
 
-function renderSections(): void {
+function renderSections(
+  providers: Provider[] = [PROVIDER],
+  presets: typeof PRESETS | null = PRESETS,
+): void {
   render(
     <>
       <ModelsSection
-        providers={[PROVIDER]}
+        providers={providers}
+        presets={presets}
         models={[DEFAULT_MODEL, SECOND_MODEL]}
         reload={async () => {}}
         guard={NO_GUARD}
@@ -232,8 +274,69 @@ describe("the model form's inputs", () => {
   });
 });
 
+describe("the model input's datalist", () => {
+  it("suggests the chosen provider's vendor models, with the catalog's date", async () => {
+    renderSections([VENDORED_PROVIDER]);
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      VENDORED_PROVIDER.id,
+    );
+    const input = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    expect(input.getAttribute("list")).toBeTruthy();
+    const datalist = document.getElementById(input.getAttribute("list") as string);
+    expect(datalist?.tagName.toLowerCase()).toBe("datalist");
+    const suggested = Array.from(datalist?.querySelectorAll("option") ?? []).map(
+      (option) => option.value,
+    );
+    expect(suggested).toEqual(["glm-5.3", "glm-5.3-flash", "glm-5.3-turbo"]);
+    expect(screen.getByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }))).toBeTruthy();
+  });
+
+  it("stays empty and quiet when the provider names no vendor, free text still saving", async () => {
+    api.POST.mockResolvedValue({ data: DEFAULT_MODEL, response: new Response(null, { status: 201 }) });
+    renderSections();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      PROVIDER.id,
+    );
+    const input = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    const datalist = document.getElementById(input.getAttribute("list") as string);
+    expect(datalist?.querySelectorAll("option")).toHaveLength(0);
+    expect(screen.queryByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }))).toBeNull();
+    expect(screen.queryByText(t("settings.profiles.catalogDateUnknown"))).toBeNull();
+
+    // The picker being empty is not a gate: a model the catalog does not
+    // carry still saves, spelled by hand.
+    await userEvent.type(input, "my-own-finetune");
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.create") }));
+
+    expect(api.POST).toHaveBeenCalledWith(
+      "/api/settings/models",
+      expect.objectContaining({
+        body: expect.objectContaining({ model: "my-own-finetune" }),
+      }),
+    );
+  });
+
+  it("says the date is unknown when the snapshot names none", async () => {
+    const [dated, dateless] = PRESETS;
+    renderSections([VENDORED_PROVIDER, { ...VENDORED_PROVIDER, id: "55555555-5555-5555-5555-555555555555", vendor: "zai-coding-plan" }], [dated, dateless]);
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      "55555555-5555-5555-5555-555555555555",
+    );
+
+    expect(screen.getByText(t("settings.profiles.catalogDateUnknown"))).toBeTruthy();
+    expect(screen.queryByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }))).toBeNull();
+  });
+});
+
 describe("the mount's reads through the panel", () => {
-  it("are the page's own four, asked together on mount", async () => {
+  it("are the page's own five, asked together on mount", async () => {
     const { ProvidersPanel } = await import("./ProvidersPanel");
     api.GET.mockImplementation(async (path: string) => {
       switch (path) {
@@ -245,6 +348,8 @@ describe("the mount's reads through the panel", () => {
           return { data: [], response: ok() };
         case "/api/settings/tasks":
           return { data: TASKS, response: ok() };
+        case "/api/settings/presets":
+          return { data: PRESETS, response: ok() };
         default:
           throw new Error(`unexpected GET ${path}`);
       }
@@ -261,6 +366,7 @@ describe("the mount's reads through the panel", () => {
         "/api/settings/models",
         "/api/settings/assignments",
         "/api/settings/tasks",
+        "/api/settings/presets",
       ]),
     );
   });
@@ -277,6 +383,8 @@ describe("the mount's reads through the panel", () => {
           return { data: [], response: ok() };
         case "/api/settings/tasks":
           throw new TypeError("Failed to fetch");
+        case "/api/settings/presets":
+          return { data: PRESETS, response: ok() };
         default:
           throw new Error(`unexpected GET ${path}`);
       }

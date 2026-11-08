@@ -17,13 +17,15 @@ import { TasksSection } from "./TasksSection";
 type Model = components["schemas"]["ModelRead"];
 type Assignment = components["schemas"]["AssignmentRead"];
 type TaskEffective = components["schemas"]["TaskEffectiveRead"];
+type Preset = components["schemas"]["PresetRead"];
 
 /**
  * The provider surface, composed of its three sections: the providers (the
  * endpoints their models hang off), the models (which provider serves which
  * model string, and how it is tuned), and the tasks (which model serves
  * which task key). The panel owns what the sections share — the mount's
- * four reads, the load failure with its retry, and the one leave guard for
+ * five reads (the presets among them: both forms pick from the same
+ * catalog), the load failure with its retry, and the one leave guard for
  * both forms — so a section stays a form and a list, and the page keeps one
  * dialog, one ask, and one place that says "the load failed".
  */
@@ -33,10 +35,11 @@ export function ProvidersPanel() {
   const [models, setModels] = useState<Model[] | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tasks, setTasks] = useState<TaskEffective[]>([]);
+  const [presets, setPresets] = useState<Preset[] | null>(null);
   const [failure, setFailure] = useState<MessageKey | null>(null);
 
   useEffect(() => {
-    // All four views load on mount: the task selects and their effective
+    // All five views load on mount: the task selects and their effective
     // lines display out of these lists, so a fresh visit must show the
     // stored choices — not "automatic" until some later mutation happens to
     // refetch them. A navigation away during that first fetch must not
@@ -50,15 +53,17 @@ export function ProvidersPanel() {
   }, []);
 
   async function reload(cancelled: () => boolean = () => false): Promise<void> {
-    // The four reads fail independently: a lost key that fails /tasks must
+    // The five reads fail independently: a lost key that fails /tasks must
     // not also hide the providers and models that did arrive. Settled
     // results keep every success, and the panel's alert names the failure.
-    const [providerList, modelList, assignmentList, taskList] = await Promise.allSettled([
-      client.GET("/api/settings/providers"),
-      client.GET("/api/settings/models"),
-      client.GET("/api/settings/assignments"),
-      client.GET("/api/settings/tasks"),
-    ]);
+    const [providerList, modelList, assignmentList, taskList, presetList] =
+      await Promise.allSettled([
+        client.GET("/api/settings/providers"),
+        client.GET("/api/settings/models"),
+        client.GET("/api/settings/assignments"),
+        client.GET("/api/settings/tasks"),
+        client.GET("/api/settings/presets"),
+      ]);
     if (cancelled()) return;
     let failed = false;
     if (providerList.status === "fulfilled" && providerList.value.response.ok) {
@@ -78,6 +83,11 @@ export function ProvidersPanel() {
     }
     if (taskList.status === "fulfilled" && taskList.value.response.ok) {
       setTasks(taskList.value.data ?? []);
+    } else {
+      failed = true;
+    }
+    if (presetList.status === "fulfilled" && presetList.value.response.ok) {
+      setPresets(presetList.value.data ?? []);
     } else {
       failed = true;
     }
@@ -154,12 +164,14 @@ export function ProvidersPanel() {
 
       <ProvidersSection
         providers={providers}
+        presets={presets}
         reload={reload}
         guard={guard}
         onDirty={onProviderDirty}
       />
       <ModelsSection
         providers={providers}
+        presets={presets}
         models={models}
         reload={reload}
         guard={guard}

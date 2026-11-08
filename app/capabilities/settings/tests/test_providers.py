@@ -22,7 +22,9 @@ from app.api.main import app
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+from app.kernel.llm.catalog import load_catalog, snapshot_date, vendor_models
 from app.kernel.llm.models import LLMProvider, ProviderProfile
+from app.kernel.llm.presets import PRESETS
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.secrets import load_key
 from app.kernel.testing.vendor import chat_vendor
@@ -501,3 +503,66 @@ async def test_a_raw_keyring_failure_becomes_the_named_refusal_not_a_500(
     )
     assert response.status_code == 503
     assert (await client.get("/api/settings/providers")).json() == []
+
+
+# The presets: the create form's one read, and the picker vocabulary it carries.
+
+
+async def test_the_presets_list_the_nine_with_their_catalog_models(
+    client: AsyncClient,
+) -> None:
+    """Every preset with its picker vocabulary and the snapshot's date.
+
+    The models are the vendor's catalog ids — bare, sorted — and the date is
+    the snapshot's own: the picker's honesty mark rides the same response,
+    so the form needs no second call. The Coding Plan preset carries its
+    note key; the OpenCode presets keep their model list's own URL.
+    """
+    response = await client.get("/api/settings/presets")
+    assert response.status_code == 200
+    presets = response.json()
+    assert [entry["id"] for entry in presets] == [entry.id for entry in PRESETS]
+
+    coding = presets[-1]
+    assert coding["label"] == "Z.ai Coding Plan"
+    assert coding["kind"] == "openai-chat"
+    assert coding["base_url"] == "https://api.z.ai/api/coding/paas/v4"
+    assert coding["models_url"] is None
+    assert coding["vendor"] == "zai-coding-plan"
+    assert coding["model"] == "glm-5.3"
+    assert coding["note_key"] == "settings.providers.note.zaiCodingPlan"
+    assert coding["models"] == sorted(
+        entry.split("/", 1)[1] for entry in load_catalog() if entry.startswith("zai-coding-plan/")
+    )
+    assert coding["snapshot_date"] == snapshot_date()
+
+    opencode = next(entry for entry in presets if entry["id"] == "opencode")
+    assert opencode["models_url"] == "https://opencode.ai/inference/v1/models"
+    # A vendor the catalog carries fills its preset's list — none ships empty.
+    assert all(entry["models"] for entry in presets)
+
+
+async def test_the_preset_join_is_built_once_per_process(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A second read re-serves the cache; the snapshot is scanned once.
+
+    The catalog is static, so the join is per process: a settings visit must
+    not re-walk the 2.5 MB snapshot per request.
+    """
+    from app.capabilities.settings import providers_service
+
+    reads = 0
+
+    def counting_vendor_models(vendor: str) -> tuple[str, ...]:
+        nonlocal reads
+        reads += 1
+        return vendor_models(vendor)
+
+    monkeypatch.setattr(providers_service, "_preset_cache", None)
+    monkeypatch.setattr(providers_service, "vendor_models", counting_vendor_models)
+    first = await client.get("/api/settings/presets")
+    second = await client.get("/api/settings/presets")
+    assert first.status_code == second.status_code == 200
+    assert second.json() == first.json()
+    assert reads == len(PRESETS)  # the first read built the join; the second walked the cache
