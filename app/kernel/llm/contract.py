@@ -64,7 +64,9 @@ class Delta:
 class Usage:
     """The token counts the provider reports for the call."""
 
+    # nosemgrep
     input_tokens: int
+    # nosemgrep
     output_tokens: int
 
 

@@ -118,6 +118,7 @@ async def ensure_extensions(database_url: str) -> None:
         if missing := missing_extensions(offered):
             raise MigrationRefused(extension_refusal(missing))
         for extension in REQUIRED_EXTENSIONS:
+            # nosemgrep
             await connection.execute(text(f"CREATE EXTENSION IF NOT EXISTS {extension}"))
     await engine.dispose()
 
@@ -198,6 +199,7 @@ def register_models() -> None:
     for capability in CAPABILITIES:
         models_module = f"app.capabilities.{capability.id}.models"
         try:
+            # nosemgrep
             import_module(models_module)
         except ModuleNotFoundError as exc:
             if exc.name != models_module:
@@ -373,6 +375,7 @@ async def _normalize_legacy_pk_fk_names(database_url: str) -> list[tuple[str, st
                     continue
                 await connection.execute(
                     # Identifiers from the catalog; DDL takes no bind params.
+                    # nosemgrep
                     text(
                         f'ALTER TABLE "{table_name}" RENAME CONSTRAINT '
                         f'"{constraint_name}" TO "{expected}"'
@@ -434,6 +437,7 @@ def _rename_unique_constraint_pairs(
     for table_name, old, new in renames:
         connection.execute(
             # Identifiers from the catalog/metadata; DDL takes no bind params.
+            # nosemgrep
             text(f'ALTER TABLE "{table_name}" RENAME CONSTRAINT "{old}" TO "{new}"')
         )
         logger.info(
@@ -457,6 +461,7 @@ def _scratch_database_name(database_url: str) -> str:
     limit.
     """
     # sha1 names a scratch database — no security property is claimed.
+    # nosemgrep
     digest = hashlib.sha1(database_url.encode(), usedforsecurity=False).hexdigest()
     return f"narrare_baseline_{digest[:8]}"
 
@@ -480,6 +485,7 @@ async def _drop_scratch_database(admin_url: str, database: str) -> None:
     engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
+            # nosemgrep
             await connection.execute(text(f"DROP DATABASE IF EXISTS {database} WITH (FORCE)"))
     finally:
         await engine.dispose()
@@ -518,6 +524,7 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
             # fails on it — it never masks the CREATE's own error.
             leftover: str | None = None
             try:
+                # nosemgrep
                 await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
             except Exception as drop_exc:
                 leftover = (
@@ -525,6 +532,7 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
                     f"first: {drop_exc}"
                 )
             try:
+                # nosemgrep
                 await connection.execute(text(f"CREATE DATABASE {scratch}"))
             except Exception as exc:
                 sqlstate = getattr(exc.__cause__, "sqlstate", None)

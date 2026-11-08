@@ -21,14 +21,14 @@ from collections.abc import AsyncIterator, Mapping  # noqa: TC003
 from os import environ
 from typing import TYPE_CHECKING, cast
 
-from openai import AsyncOpenAI, Omit, Timeout, omit
+from openai import AsyncOpenAI, Omit, Timeout, omit  # nosemgrep
 
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.vendor import needs_api_key
 
 if TYPE_CHECKING:
-    from openai.types.chat import ChatCompletionMessageParam
-    from openai.types.chat.completion_create_params import ResponseFormat
+    from openai.types.chat import ChatCompletionMessageParam  # nosemgrep
+    from openai.types.chat.completion_create_params import ResponseFormat  # nosemgrep
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 

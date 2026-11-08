@@ -161,7 +161,7 @@ class _Entities(ScopedRepository[Entity]):
         self,
         novel_id: UUID,
         name: str,
-        type: str,
+        type: str,  # pylint: disable=redefined-builtin
         content: str,
         aliases: Sequence[str],
         tags: Sequence[str],

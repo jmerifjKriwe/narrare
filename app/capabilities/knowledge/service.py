@@ -300,7 +300,11 @@ class KnowledgeService:
         return job
 
     async def list_entities(
-        self, novel_id: UUID, type: str | None = None, tag: str | None = None, q: str | None = None
+        self,
+        novel_id: UUID,
+        type: str | None = None,  # pylint: disable=redefined-builtin
+        tag: str | None = None,
+        q: str | None = None,
     ) -> Sequence[Entity]:
         """The novel's entities, filtered by type and tag or fuzzy-found by
         q (the trigram tier over search_text); raise NotFoundError for an

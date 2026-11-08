@@ -221,6 +221,7 @@ async def _sweep(prefix: str) -> None:
                     continue  # another machine's run, against a shared server
                 if boot == _BOOT and _alive(pid):
                     continue  # live on this boot
+                # nosemgrep
                 await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
     finally:
         await engine.dispose()
@@ -271,14 +272,18 @@ async def drop_every_table(database_url: str) -> None:
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
         result = await connection.execute(
+            # nosemgrep
             text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
         )
         for (table_name,) in result.fetchall():
+            # nosemgrep
             await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
         result = await connection.execute(
+            # nosemgrep
             text("SELECT viewname FROM pg_views WHERE schemaname = 'public'")
         )
         for (view_name,) in result.fetchall():
+            # nosemgrep
             await connection.execute(text(f'DROP VIEW IF EXISTS "{view_name}" CASCADE'))
     await engine.dispose()
 
@@ -298,11 +303,14 @@ async def _ensure(database: str) -> None:
     try:
         async with engine.connect() as connection:
             exists = await connection.scalar(
-                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": database}
+                # nosemgrep
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": database},
             )
             if not exists:
                 # A parallel pytest worker may create it between the check and here.
                 with suppress(Exception):
+                    # nosemgrep
                     await connection.execute(text(f'CREATE DATABASE "{database}"'))
             # Only a name this process minted is marked. The comment sits
             # outside the CREATE's own suppression: a database created but

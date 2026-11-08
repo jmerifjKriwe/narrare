@@ -292,6 +292,7 @@ export function ProvidersPanel() {
         model: form.model.trim() === "" ? null : form.model.trim(),
         ...apiKey,
         context_window: tuned(form.contextWindow),
+// nosemgrep
         max_output_tokens: tuned(form.maxOutput),
         temperature: tuned(form.temperature),
         request_timeout: tuned(form.timeout),

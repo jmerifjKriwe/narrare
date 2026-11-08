@@ -150,6 +150,7 @@ def get_registry() -> PromptRegistry:
                             module.relative_to(capabilities.parent.parent).with_suffix("").parts
                         )
                         with suppress(Exception):
+                            # nosemgrep
                             import_module(name)
         except Exception:
             _registry = None

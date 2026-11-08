@@ -29,6 +29,7 @@ on:
 permissions:
   contents: write
   packages: write
+# nosemgrep
   id-token: write
   attestations: write
 

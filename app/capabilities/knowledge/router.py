@@ -161,7 +161,7 @@ async def start_extraction(
 async def list_entities(
     novel_id: UUID,
     service: ServiceDep,
-    type: str | None = None,
+    type: str | None = None,  # pylint: disable=redefined-builtin
     tag: str | None = None,
     q: str | None = None,
 ) -> list[EntityRead]:

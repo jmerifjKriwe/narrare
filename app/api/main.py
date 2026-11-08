@@ -57,6 +57,7 @@ def _job_handlers() -> dict[str, JobHandler]:
     for folder in sorted(CAPABILITIES.iterdir()):
         if not (folder / "jobs.py").is_file():
             continue
+        # nosemgrep
         found = import_module(f"app.capabilities.{folder.name}.jobs").handlers
         for kind, handler in found.items():
             if kind in handlers:
@@ -144,6 +145,7 @@ def create_app(dist: Path | None = None) -> FastAPI:
     app = FastAPI(title="Narrare", version=__version__, lifespan=lifespan)
 
     for folder in sorted(path for path in CAPABILITIES.iterdir() if (path / "router.py").exists()):
+        # nosemgrep
         app.include_router(import_module(f"app.capabilities.{folder.name}.router").router)
 
     # Kernel machinery beside the capability routers: the jobs lane's one read

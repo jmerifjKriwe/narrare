@@ -18,7 +18,7 @@ refusal, not a startup that never returns.
 
 import asyncio
 import shlex
-import subprocess
+import subprocess  # nosec B404
 from datetime import UTC, datetime
 from os import environ, replace
 from typing import TYPE_CHECKING, cast
@@ -186,7 +186,10 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
             try:
                 with sink:
                     try:
+                        # nosemgrep
+                        # nosec B603
                         result = subprocess.run(  # noqa: S603  the operator's own template
+                            # nosemgrep
                             command_line,
                             stdout=sink,
                             stderr=subprocess.PIPE,

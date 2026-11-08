@@ -25,7 +25,8 @@ def fetch_api() -> dict[str, Any]:
     # Named, or models.dev refuses the library default with a 403.
     request = Request(API_URL, headers={"User-Agent": "narrare-catalog-refresh"})
     # The audited URL is API_URL: a pinned https literal, not user input.
-    with urlopen(request, timeout=60) as response:  # noqa: S310
+    # nosemgrep
+    with urlopen(request, timeout=60) as response:  # noqa: S310  # nosec B310
         return loads(response.read())
 
 

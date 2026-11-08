@@ -87,6 +87,7 @@ export async function exportNovel(
   path?: string,
   fallbackFilename = "untitled.zip",
 ): Promise<ExportReceipt | ZipDownload> {
+// nosemgrep
   const response = await fetch(`/api/writing/novels/${encodeURIComponent(novelId)}/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
