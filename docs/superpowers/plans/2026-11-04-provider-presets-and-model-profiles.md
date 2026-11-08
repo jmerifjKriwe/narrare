@@ -176,7 +176,7 @@ git commit -m "feat(settings): a providers resource with its own gate" \
 
 **Interfaces:**
 - Consumes: `ProviderRepository`, `ProviderService` (Tasks 1–2).
-- Produces: `ModelCreate`/`ModelUpdate`/`ModelRead` (renamed from `Profile*`) carrying `provider_id`; `ModelService` (renamed from `ProfileService`) with `list/model/test/tasks/assign`; `from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedProvider`; `effective_info(model_id, *, vendor, profile_context_window, profile_max_output_tokens)`.
+- Produces: `ModelCreate`/`ModelUpdate`/`ModelRead` (renamed from `Profile*`) carrying `provider_id`; `ModelService` (renamed from `ProfileService`) with `list/test/tasks/assign` — no singular model read, the list is every consumer's source (model-level discovery is gone with Task 3: discovery lives on the provider, Task 2's route); `from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedProvider`; `effective_info(model_id, *, vendor, profile_context_window, profile_max_output_tokens)`.
 
 - [ ] **Step 1: Write the failing resolution test**
 
