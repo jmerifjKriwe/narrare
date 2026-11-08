@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
+import subprocess  # nosec B404
 import sys
 from typing import TYPE_CHECKING, Any
 
@@ -22,7 +22,7 @@ def run_merge(
     base_path.write_text(json.dumps(base), encoding="utf-8")
     ours_path.write_text(json.dumps(ours), encoding="utf-8")
     theirs_path.write_text(json.dumps(theirs), encoding="utf-8")
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(  # noqa: S603  # nosec B603
         [
             sys.executable,
             "scripts/merge_json.py",
@@ -71,7 +71,7 @@ def test_invalid_json_exits_1(tmp_path: Path) -> None:
     base_path.write_text("{", encoding="utf-8")
     ours_path.write_text("{}", encoding="utf-8")
     theirs_path.write_text("{}", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(  # noqa: S603  # nosec B603
         [
             sys.executable,
             "scripts/merge_json.py",
@@ -126,7 +126,7 @@ def test_generated_mode_writes_regenerated_content_to_ours(tmp_path: Path) -> No
 
     ours = tmp_path / "ours.ts"
     ours.write_text("ours\n", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(  # noqa: S603  # nosec B603
         [
             sys.executable,
             "scripts/merge_json.py",
@@ -167,7 +167,7 @@ def test_generated_mode_does_not_require_json_inputs(tmp_path: Path) -> None:
 
     ours = tmp_path / "ours.ts"
     ours.write_text("ours\n", encoding="utf-8")
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(  # noqa: S603  # nosec B603
         [
             sys.executable,
             "scripts/merge_json.py",

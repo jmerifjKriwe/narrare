@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import shutil
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 from typing import cast
@@ -101,9 +102,17 @@ def deep_merge(base: object, ours: object, theirs: object, prefix: str = "") -> 
     raise MergeConflictError(prefix or "<root>")
 
 
+def _executable(name: str) -> str:
+    resolved = shutil.which(name)
+    if resolved is None:
+        raise FileNotFoundError(f"{name} is not on PATH")
+    return resolved
+
+
 def _repository_root() -> Path:
-    completed = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
+    git = _executable("git")
+    completed = subprocess.run(  # noqa: S603  # nosec B603
+        [git, "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
         check=True,
@@ -112,8 +121,9 @@ def _repository_root() -> Path:
 
 
 def _regenerate(root: Path, path: str, ours: Path) -> None:
-    subprocess.run(
-        ["just", "generate"],  # noqa: S607
+    just = _executable("just")
+    subprocess.run(  # noqa: S603  # nosec B603
+        [just, "generate"],
         cwd=root,
         check=True,
     )
