@@ -1,5 +1,6 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 import { Link, useMatches } from "@tanstack/react-router";
+import { workspaceRouteId } from "../lib/generated/workspace";
 
 import { useTranslation } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
@@ -22,20 +23,18 @@ import { Icon, type IconName } from "../ui/icons";
 
 /** The rail's destinations: exactly the paths Link itself accepts. */
 type RailTo = ComponentProps<typeof Link>["to"];
+
+/** The icon's colour expression, derived from the capability id. */
+export function areaStyle(area: string): CSSProperties {
+  return { color: `var(--area-${area}, var(--foreground))` };
+}
 type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 
-/** The rail's four areas and the one utility each may wear: an identity mark
- *  on the icon, never a fill, a text colour, a cover or a notice. The hues
- *  are measured ≥ 3:1 against `--panel` in both themes. */
-export const AREA_ICON = {
-  writing: "text-area-writing",
-  knowledge: "text-area-knowledge",
-  chat: "text-area-chat",
-  settings: "text-area-settings",
-} as const;
-
-type RailArea = keyof typeof AREA_ICON;
-
+/** The area's identity hue: an identity mark on the icon, never a fill, a
+ *  text colour, a cover or a notice. A capability adds its `--area-<id>`
+ *  token in `globals.css`; without one the foreground ink is the fallback.
+ *  The four existing hues are measured ≥ 3:1 against `--panel` in both
+ *  themes. */
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({
   to,
@@ -47,7 +46,7 @@ function RailLink({
   to: RailTo;
   label: string;
   icon: IconName;
-  area: RailArea;
+  area: string;
   activeOptions?: RailActiveOptions;
 }) {
   return (
@@ -62,7 +61,7 @@ function RailLink({
        * a direct declaration the link's inherited ink cannot override. */
       className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
-      <span className={AREA_ICON[area]}>
+      <span style={areaStyle(area)}>
         <Icon name={icon} />
       </span>
       {/* The name, always in the DOM and clipped by the collapsed rail: a
@@ -92,7 +91,7 @@ export function IconRail() {
   // content while the narrower reading pages never notice (their cap binds
   // first). The router's matches, not a pathname sniff: one rail, one
   // breakpoint that reads which route is showing.
-  const onWorkspace = useMatches().some((match) => match.routeId === "/novels/$id");
+  const onWorkspace = useMatches().some((match) => match.routeId === workspaceRouteId);
   return (
     /* The show-leg is the route's answer (the ternary above): from 1280 on
      * the workspace, where the prose floor owns 1024–1279; from 1024 on

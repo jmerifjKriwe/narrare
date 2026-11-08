@@ -1,0 +1,4 @@
+i18n/*.json merge=narrare-json
+web/lib/generated/* merge=narrare-generated
+web/lib/api/openapi.json merge=narrare-generated
+web/lib/api/schema.d.ts merge=narrare-generated
