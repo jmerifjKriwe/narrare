@@ -9,8 +9,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "../lib/api/client";
-import { applyFormality } from "../lib/formality";
-import { t } from "../lib/i18n";
+import { activeFormality, applyFormality } from "../lib/formality";
+import { t, useTranslation } from "../lib/i18n";
 import { applyLocale, chosenLocale } from "../lib/locale";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
@@ -26,6 +26,7 @@ afterEach(() => {
   // The locale and the register are global state; the test must not leak them.
   applyLocale(null);
   applyFormality("informal");
+  localStorage.clear();
 });
 
 describe("LanguageSwitcher's refused write", () => {
@@ -50,5 +51,51 @@ describe("LanguageSwitcher's refused write", () => {
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toBe(t("settings.errorSave"));
     expect(alert.parentElement?.className).toContain("flex-col");
+  });
+});
+
+describe("LanguageSwitcher's formality control", () => {
+  /** A page surface that shows a sentence whose register the overlay changes. */
+  function Probe() {
+    const t = useTranslation();
+    return <p>{t("settings.appearance.hint")}</p>;
+  }
+
+  it("shows the register control for a language that distinguishes it", () => {
+    applyLocale("de");
+    render(<LanguageSwitcher />);
+
+    expect(
+      screen.getByRole("combobox", { name: t("settings.formality") }),
+    ).toBeTruthy();
+  });
+
+  it("hides the register control for English", () => {
+    applyLocale("en");
+    render(<LanguageSwitcher />);
+
+    expect(
+      screen.queryByRole("combobox", { name: t("settings.formality") }),
+    ).toBeNull();
+  });
+
+  it("applies the formal register and re-renders the words", () => {
+    applyLocale("de");
+    render(
+      <>
+        <LanguageSwitcher />
+        <Probe />
+      </>,
+    );
+    expect(screen.getByText("System folgt deinem Gerät.")).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: t("settings.formality") }),
+      { target: { value: "formal" } },
+    );
+
+    expect(activeFormality()).toBe("formal");
+    expect(localStorage.getItem("narrare.formality")).toBe("formal");
+    expect(screen.getByText("System folgt Ihrem Gerät.")).toBeTruthy();
   });
 });

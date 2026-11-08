@@ -12,6 +12,7 @@
   "knowledge.relationDeleteText": "Wollen Sie die Beziehung zu {name} wirklich löschen? Das lässt sich nicht rückgängig machen.",
   "knowledge.relationTargetRequired": "Bitte wählen Sie einen Eintrag aus.",
   "knowledge.relationTypeRequired": "Bitte geben Sie eine Beziehungsart ein.",
+  "novels.continue": "Machen Sie weiter",
   "novels.deleteDocuments": "Ihre Dokumente bleiben — sie gehören zur Bibliothek, nicht zum Buch.",
   "novels.empty": "Noch kein Buch. Legen Sie Ihr erstes an, um zu schreiben.",
   "novels.errorLoad": "Ihre Romane konnten nicht geladen werden. Läuft der lokale Dienst?",

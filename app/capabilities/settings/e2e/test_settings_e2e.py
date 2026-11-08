@@ -62,6 +62,26 @@ def test_a_chosen_language_survives_a_fresh_browser(
     assert_accessible(page)
 
 
+def test_a_chosen_register_survives_a_reload(page: Page, stack: Stack) -> None:
+    page.goto(f"{WEB_URL}/settings/language")
+    expect(page.get_by_role("heading", name="Sprache")).to_be_visible()
+
+    # The default is the familiar register, and the hint says so.
+    formality = page.get_by_role("banner").locator('select[name="formality"]')
+    expect(formality).to_have_value("informal")
+    expect(page.get_by_text("Wie Narrare dich anspricht.")).to_be_visible()
+
+    formality.select_option("formal")
+    expect(page.get_by_text("Wie Narrare Sie anspricht.")).to_be_visible()
+
+    # The register is a local choice; a reload reads it back before the paint.
+    page.reload()
+    expect(page.get_by_role("banner").locator('select[name="formality"]')).to_have_value("formal")
+    expect(page.get_by_text("Wie Narrare Sie anspricht.")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_skip_link_jumps_to_main_content(page: Page, stack: Stack) -> None:
     # A short window with books on the shelf, so the page really scrolls: the
     # shell is one viewport tall and #main owns the page scroll, so the rule

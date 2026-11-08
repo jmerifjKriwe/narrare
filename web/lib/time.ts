@@ -2,7 +2,7 @@ import { formattingLocale } from "./format";
 
 /**
  * A last-touched stamp in the reader's own words — "gestern", "yesterday",
- * "hier" — chosen by Intl.RelativeTimeFormat in the active locale. The
+ * "hier" — chosen by Intl.RelativeTimeFormat in the active formatting locale. The
  * wording is the platform's, so no catalog carries it and every language the
  * app can switch to is covered without a new key.
  * `timestamp` must be parseable by Date.parse; an invalid timestamp raises RangeError.

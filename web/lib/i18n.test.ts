@@ -121,6 +121,15 @@ describe("the formal register", () => {
     expect(t("settings.appearance.hint")).toBe("System folgt Ihrem Gerät.");
   });
 
+  it("serves the formal overlay in French", () => {
+    applyLocale("fr");
+    applyFormality("informal");
+    expect(t("settings.appearance.hint")).toBe("Système suit ton appareil.");
+
+    applyFormality("formal");
+    expect(t("settings.appearance.hint")).toBe("Système suit votre appareil.");
+  });
+
   it("falls through to the base where the overlay is silent", () => {
     applyLocale("de");
     applyFormality("formal");
@@ -134,6 +143,19 @@ describe("the formal register", () => {
 
     expect(t("settings.appearance.hint")).toBe(
       catalogs.en["settings.appearance.hint"],
+    );
+  });
+
+  it("formats a parameterized formal message", () => {
+    applyLocale("de");
+    applyFormality("informal");
+    expect(t("knowledge.deleteBody", { title: "Mira" })).toContain(
+      "wo du sie hergeladen hast",
+    );
+
+    applyFormality("formal");
+    expect(t("knowledge.deleteBody", { title: "Mira" })).toContain(
+      "wo Sie sie hergeladen haben",
     );
   });
 

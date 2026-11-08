@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { countWords } from "./words";
+import { applyFormality } from "./formality";
+import { t } from "./i18n";
+import { applyLocale } from "./locale";
+import { countWords, formatWordCount } from "./words";
+
+afterEach(() => {
+  applyLocale("en");
+  applyFormality("informal");
+});
 
 /**
  * The client half of the shared word rule (R31): the server is the authority
@@ -41,5 +49,16 @@ describe("countWords", () => {
 
   it("counts an empty body as nothing", () => {
     expect(countWords("")).toBe(0);
+  });
+});
+
+describe("formatWordCount", () => {
+  it("groups the number exactly as the ICU # in chapters.wordCount", () => {
+    applyLocale("en");
+    applyFormality("informal");
+
+    expect(t("chapters.wordCount", { count: 1234 })).toBe(
+      `${formatWordCount(1234)} words`,
+    );
   });
 });

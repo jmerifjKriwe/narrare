@@ -93,6 +93,25 @@ def test_a_capability_with_an_i18n_dir_carries_every_locale(tmp_path: Path) -> N
         catalog_sources(tmp_path, ("en", "de"))
 
 
+def test_a_capability_catalog_for_an_unknown_language_is_refused(
+    tmp_path: Path,
+) -> None:
+    write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
+    write_catalog(
+        tmp_path / "app/capabilities/demo/web/i18n/en.json",
+        {"demo.heading": "Demo"},
+        required=False,
+    )
+    write_catalog(
+        tmp_path / "app/capabilities/demo/web/i18n/es.json",
+        {"demo.heading": "Demostración"},
+        required=False,
+    )
+
+    with pytest.raises(SystemExit, match="es"):
+        catalog_sources(tmp_path, ("en",))
+
+
 def test_a_hyphenated_locale_becomes_a_valid_identifier(tmp_path: Path) -> None:
     write_catalog(tmp_path / "i18n/en.json", {"app.title": "App"})
     write_catalog(tmp_path / "i18n/pt-BR.json", {"app.title": "App"})

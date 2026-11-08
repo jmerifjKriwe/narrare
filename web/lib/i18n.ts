@@ -33,7 +33,7 @@ export function t(key: MessageKey, params?: Record<string, string | number>): st
   if (params === undefined) return message;
 
   const formatLocale = formattingLocale();
-  const cached = `${formatLocale}\u0000${formality}\u0000${key}`;
+  const cached = `${locale}\u0000${formatLocale}\u0000${formality}\u0000${key}`;
   let formatter = formatters.get(cached);
   if (formatter === undefined) {
     formatter = new IntlMessageFormat(message, formatLocale);

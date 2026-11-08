@@ -10,6 +10,8 @@
  * says it does. The two implementations move together.
  */
 
+import { formatNumber } from "./format";
+
 /**
  * The shared class: trim the ends with it, split the middle with it, judge
  * emptiness by the trimmed value — never three sets, one.
@@ -27,8 +29,6 @@ export function countWords(markdown: string): number {
   const trimmed = markdown.replace(WORD_EDGE, "");
   return trimmed === "" ? 0 : trimmed.split(WORD_GAP).length;
 }
-
-import { formatNumber } from "./format";
 
 /**
  * The count as the locale groups it — exactly the number the ICU `#` in

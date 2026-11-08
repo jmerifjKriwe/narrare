@@ -5,8 +5,8 @@ import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 import { Field, FileInput, Input } from "@shell/ui/field";
 import { client, isModelChange, type Hit, type KnowledgeDocument } from "@shell/lib/api/client";
+import { formatDate } from "@shell/lib/format";
 import { useTranslation } from "@shell/lib/i18n";
-import { activeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { useDeleteDocument } from "@shell/lib/query";
 import { Notice } from "@shell/ui/Notice";
@@ -76,14 +76,12 @@ export function formatBytes(bytes: number | null): string | null {
 
 /**
  * An upload's calendar date in the reader's own words — "07.11.2026" in
- * German, "Nov 7, 2026" in English — chosen by Intl in the active locale
- * (German's medium style is numeric, no month name), the platform's
- * wording so no catalog carries it (`formatRelative`'s precedent).
+ * German, "Nov 7, 2026" in English — through the shared helper, so the chosen
+ * language keeps the browser's regional variant (de-AT). The platform's
+ * wording, so no catalog carries it (`formatRelative`'s precedent).
  */
 function formatUploadedDate(timestamp: string): string {
-  return new Intl.DateTimeFormat(activeLocale(), { dateStyle: "medium" }).format(
-    Date.parse(timestamp),
-  );
+  return formatDate(timestamp, { dateStyle: "medium" });
 }
 
 /**

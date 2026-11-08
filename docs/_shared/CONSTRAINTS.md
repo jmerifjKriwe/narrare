@@ -18,8 +18,9 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
 5. **English in code, tests and developer documentation; user-visible text in
    every catalog the app carries** (en, de, fr today) through `i18n/<code>.json`
    for shared text and `app/capabilities/<id>/web/i18n/<code>.json` for
-   capability text. Every catalog is sorted, carries the same keys, and covers
-   its locale's `Intl.PluralRules` categories; a missing key is a build error.
+   capability text. Every catalog is sorted, carries the same keys, and writes
+   the plural categories its copy needs (`other` is ICU's fallback); a missing
+   key is a build error.
 
 ## The shape of a capability
 

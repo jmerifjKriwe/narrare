@@ -79,15 +79,20 @@ User-visible text lives in the catalogs, never in a component. The shell's and
 shared text lives in `i18n/<code>.json`; a capability's own text lives in
 `app/capabilities/<id>/web/i18n/<code>.json`. The generator merges both into
 `web/lib/generated/catalogs.ts`; a missing key in any catalog is a build error.
+Ownership follows the key's namespace, not the component that renders it:
+`settings.*` lives in the settings capability even though the shell's bar
+renders it.
 
 - **Prefix keys with their feature namespace**, not the capability id:
   `novels.heading`, `settings.language`, `knowledge.type.character`. The file
   path carries capability ownership; the key keeps the feature readable.
 - **Sort keys alphabetically** in every catalog file. The generator refuses an
   unsorted file, so a new key lands where it belongs instead of at the end.
-- **Cover every plural category.** For a message with `{count, plural, …}`,
-  check `Intl.PluralRules("<code>").resolvedOptions().pluralCategories` and
-  write a branch for each. The parser test proves syntax, not grammar.
+- **Cover the plural categories the copy needs.** For a message with
+  `{count, plural, …}`, check
+  `Intl.PluralRules("<code>").resolvedOptions().pluralCategories`; write a
+  branch for each category the wording distinguishes, and let `other` cover
+  the rest. The parser test proves syntax, not grammar.
 - **Watch ICU quoting.** A lone `'` starts a quoted literal: `'{name}'` prints
   the braces, not the value. Use typographic quotes in prose or escape them.
 - **Name languages in their own words** via `locale.name` (Deutsch, Français,
