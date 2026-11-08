@@ -28,7 +28,7 @@
 ## Boundaries
 
 - [ ] No capability imports another; shared domain lives in `app/kernel/`
-- [ ] User-visible text exists in `i18n/en.json`, `de.json` and `fr.json`
+- [ ] User-visible text exists in the catalogs (`i18n/*.json` and each capability's `web/i18n/*.json`)
 - [ ] No new rule, registry, check script, hook, required field or mandatory document — or it was approved (`docs/_shared/CONSTRAINTS.md`)
 
 ## UX review
@@ -43,7 +43,7 @@
 - [ ] Generated text is applied only on user confirmation
 - [ ] Visible state change under 200 ms after the action starts
 - [ ] Idle → working → streaming → done is distinguishable
-- [ ] All user-visible strings go through the i18n catalog (en, de, fr)
+- [ ] All user-visible strings go through the merged catalogs
 - [ ] Errors say what happened and what to do next
 - [ ] AI activity is announced to assistive tech (aria-live or equivalent)
 - [ ] Focus lands sensibly after output arrives
