@@ -91,3 +91,7 @@ logs/
 skills-lock.json
 clawpatch-report.md
 .agent-of-empires/
+
+# OpenCode local config (user/agent-specific, not project config)
+.opencode/
+opencode.json
