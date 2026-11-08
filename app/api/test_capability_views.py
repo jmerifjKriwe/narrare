@@ -32,6 +32,8 @@ from scripts.generate_capabilities import (
     typescript_nav,
     typescript_routes,
     typescript_settings_pages,
+    typescript_workspace,
+    workspace_route_id,
 )
 
 ROOT = Path(__file__).parents[2]
@@ -406,3 +408,17 @@ def test_both_command_file_extensions_stop_the_scan(tmp_path: Path) -> None:
     (folder / "commands.tsx").write_text(_COMMAND_MODULE, encoding="utf-8")
     with pytest.raises(SystemExit, match=r"commands\.ts and commands\.tsx"):
         scan_commands(tmp_path)
+
+
+def test_workspace_route_id_must_be_exported() -> None:
+    sources = {
+        "writing": 'const workspace = createRoute({ path: "/novels/$id" });\n'
+        "export const workspaceRoute = workspace;"
+    }
+    with pytest.raises(SystemExit, match="workspaceRouteId"):
+        workspace_route_id(sources)
+
+
+def test_workspace_view_is_null_without_a_host(tmp_path: Path) -> None:
+    root = _routes_repo(tmp_path, {"chat": "export const routes = [] as const;"})
+    assert "= null" in typescript_workspace(root)

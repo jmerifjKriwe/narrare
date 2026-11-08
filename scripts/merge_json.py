@@ -101,6 +101,17 @@ def deep_merge(base: object, ours: object, theirs: object, prefix: str = "") -> 
     raise MergeConflictError(prefix or "<root>")
 
 
+def allowed_generated_path(path: str) -> bool:
+    normalized = Path(path)
+    if normalized.is_absolute() or ".." in normalized.parts:
+        return False
+    return (
+        path == "web/lib/api/openapi.json"
+        or path == "web/lib/api/schema.d.ts"
+        or path.startswith("web/lib/generated/")
+    )
+
+
 def _regenerate(root: Path, path: str, ours: Path) -> None:
     """Regenerate in-process; no shell, no external executable.
 
@@ -108,6 +119,8 @@ def _regenerate(root: Path, path: str, ours: Path) -> None:
     no Python equivalent. It stays manual: the driver refuses and the developer
     runs ``just generate`` after the merge.
     """
+    if not allowed_generated_path(path):
+        raise RuntimeError(f"{path} is not a generated merge-driver path")
     if path.endswith("schema.d.ts"):
         raise RuntimeError(
             "schema.d.ts needs `just generate`; the Node step has no in-process path"

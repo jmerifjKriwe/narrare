@@ -155,3 +155,39 @@ def test_json_output_keeps_utf8_and_existing_order(
     text = ours.read_text(encoding="utf-8")
     assert '"ä"' in text
     assert text.index('"b"') < text.index('"a"') < text.index('"c"')
+
+
+def test_generated_regeneration_failure_exits_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ours = tmp_path / "ours.ts"
+    ours.write_text("stale\n", encoding="utf-8")
+
+    def fail_regenerate(root: Path, path: str, target: Path) -> None:
+        raise RuntimeError("generator failed")
+
+    monkeypatch.setattr(merge_json, "_regenerate", fail_regenerate)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "merge_json.py",
+            "--generated",
+            "--path",
+            "web/lib/generated/routes.ts",
+            "--ours",
+            str(ours),
+            "--base",
+            "/does/not/exist",
+            "--theirs",
+            "/does/not/exist",
+        ],
+    )
+    assert merge_json.main() == 1
+
+
+def test_generated_paths_are_allowlisted() -> None:
+    assert merge_json.allowed_generated_path("web/lib/generated/routes.ts")
+    assert merge_json.allowed_generated_path("web/lib/api/openapi.json")
+    assert not merge_json.allowed_generated_path("../etc/passwd")
+    assert not merge_json.allowed_generated_path("web/lib/api/other.json")
