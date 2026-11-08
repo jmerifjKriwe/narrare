@@ -323,7 +323,8 @@ def test_no_settings_exports_leave_an_empty_registry_and_no_route_block(
         'export const dockRoutes = [() => createRoute({ path: "chat" })] as const;',
         "writing": "export const routes = [] as const;\n"
         'const workspace = createRoute({ path: "/novels/$id" });\n'
-        "export const workspaceRoute = workspace;",
+        "export const workspaceRoute = workspace;\n"
+        'export const workspaceRouteId = "/novels/$id";',
     }
     root = _routes_repo(tmp_path, sources)
     pages = typescript_settings_pages(root)
