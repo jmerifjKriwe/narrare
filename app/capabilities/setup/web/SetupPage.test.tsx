@@ -94,6 +94,16 @@ describe("SetupPage", () => {
     });
   });
 
+  it("names a submit that never reaches the service", async () => {
+    api.POST.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    render(<SetupPage />);
+    await typeTitleAndSubmit();
+    // A rejected fetch has no response to inspect: the page says so where
+    // a refused one appears, and the handler resolves instead of rejecting.
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain(t("setup.failed"));
+  });
+
   it("a selected demo disables the title input, names the demo's title, and keeps the typed title", async () => {
     render(<SetupPage />);
     const user = userEvent.setup();

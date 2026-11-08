@@ -62,19 +62,26 @@ export function SetupPage() {
     // A demo names the novel itself, so it submits without a typed title;
     // the blank path still needs one.
     if (!selected && title.trim() === "") return;
-    const { data, response } = await client.POST("/api/setup", {
-      // The blank path sends no demo at all — absent, not null — so the
-      // request an older API sees is byte-for-byte the one it always saw.
-      body: {
-        novel_title: selected ? selected.title : title,
-        ...(selected ? { demo: selected.slug } : {}),
-      },
-    });
-    if (!response.ok || !data) {
+    try {
+      const { data, response } = await client.POST("/api/setup", {
+        // The blank path sends no demo at all — absent, not null — so the
+        // request an older API sees is byte-for-byte the one it always saw.
+        body: {
+          novel_title: selected ? selected.title : title,
+          ...(selected ? { demo: selected.slug } : {}),
+        },
+      });
+      if (!response.ok || !data) {
+        setFailed(true);
+        return;
+      }
+      void navigate({ to: "/novels/$id", params: { id: data.novel_id } });
+    } catch {
+      // A rejected fetch has no response to inspect: the page names the
+      // failure where a refused one appears, and the handler resolves
+      // instead of leaving the rejection to the browser.
       setFailed(true);
-      return;
     }
-    void navigate({ to: "/novels/$id", params: { id: data.novel_id } });
   }
 
   return (

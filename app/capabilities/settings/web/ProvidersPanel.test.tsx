@@ -306,3 +306,40 @@ describe("a secondary action whose request cannot be sent", () => {
     await expectFailure();
   });
 });
+
+describe("a save whose request cannot be sent", () => {
+  it("names a create that never reaches the service", async () => {
+    await renderPanel();
+    api.POST.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await userEvent.type(
+      screen.getByLabelText(t("settings.profiles.nameLabel")),
+      "New Profile",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: t("settings.profiles.create") }),
+    );
+
+    // The save refusal speaks where a refused response does, and the
+    // handler resolves instead of rejecting.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorSave"));
+  });
+
+  it("names an edit that never reaches the service", async () => {
+    await renderPanel();
+    api.PATCH.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: t("settings.profiles.edit") })[0],
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: t("settings.profiles.save") }),
+    );
+
+    // The edit branch shares the create branch's refusal surface: a rejected
+    // PATCH must not be the one path that leaves the rejection unhandled.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorSave"));
+  });
+});

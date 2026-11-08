@@ -168,6 +168,7 @@ export function ProvidersPanel() {
   // would land under the label).
   const apiKeyHintId = useId();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once load — `reload` is a component-scope function re-created every render, so listing it would re-run this effect every render.
   useEffect(() => {
     // Both views load on mount: the assignment selects display their values
     // out of this list, so a fresh visit must show the stored choices — not
@@ -247,63 +248,76 @@ export function ProvidersPanel() {
     // An empty key field never reaches the body: only replacing a key is an
     // operation, and "keep the stored one" is the absence of one.
     const apiKey = form.apiKey.trim() === "" ? {} : { api_key: form.apiKey.trim() };
-    if (editing === null) {
-      const { data, response } = await client.POST("/api/settings/profiles", {
-        body: {
-          name: form.name.trim(),
-          kind: form.kind,
-          ...(form.baseUrl.trim() === "" ? {} : { base_url: form.baseUrl.trim() }),
-          ...(form.model.trim() === "" ? {} : { model: form.model.trim() }),
-          ...apiKey,
-          ...(optionalNumber(form.contextWindow) === undefined
-            ? {}
-            : { context_window: optionalNumber(form.contextWindow) }),
-          ...(optionalNumber(form.maxOutput) === undefined
-            ? {}
-            : { max_output_tokens: optionalNumber(form.maxOutput) }),
-          ...(optionalNumber(form.temperature) === undefined
-            ? {}
-            : { temperature: optionalNumber(form.temperature) }),
-          ...(optionalNumber(form.timeout) === undefined
-            ? {}
-            : { request_timeout: optionalNumber(form.timeout) }),
-        },
-      });
-      if (!response.ok || data === undefined) {
-        setSaveFailed(true);
-        return;
-      }
-      // The one response that carries the full key becomes the one box that
-      // shows it; dismissed, it never exists again anywhere.
-      if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
-      resetForm();
-      await reload();
-      return;
-    }
-    // An edit sends every column explicitly: an emptied field clears it
-    // (present nulls clear), which is what a form full of values means —
-    // the tuning columns included, or a cleared value would silently keep
-    // governing every request.
-    const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
-      params: { path: { profile_id: editing.id } },
-      body: {
-        name: form.name.trim(),
-        base_url: form.baseUrl.trim() === "" ? null : form.baseUrl.trim(),
-        model: form.model.trim() === "" ? null : form.model.trim(),
-        ...apiKey,
-        context_window: tuned(form.contextWindow),
+    try {
+      if (editing === null) {
+        const { data, response } = await client.POST("/api/settings/profiles", {
+          body: {
+            name: form.name.trim(),
+            kind: form.kind,
+            ...(form.baseUrl.trim() === "" ? {} : { base_url: form.baseUrl.trim() }),
+            ...(form.model.trim() === "" ? {} : { model: form.model.trim() }),
+            ...apiKey,
+            ...(optionalNumber(form.contextWindow) === undefined
+              ? {}
+              : { context_window: optionalNumber(form.contextWindow) }),
+            ...(optionalNumber(form.maxOutput) === undefined
+              ? {}
+              : { max_output_tokens: optionalNumber(form.maxOutput) }),
+            ...(optionalNumber(form.temperature) === undefined
+              ? {}
+              : { temperature: optionalNumber(form.temperature) }),
+            ...(optionalNumber(form.timeout) === undefined
+              ? {}
+              : { request_timeout: optionalNumber(form.timeout) }),
+          },
+        });
+        if (!response.ok || data === undefined) {
+          setSaveFailed(true);
+          return;
+        }
+        // The one response that carries the full key becomes the one box that
+        // shows it; dismissed, it never exists again anywhere.
+        if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
+        resetForm();
+      } else {
+        // An edit sends every column explicitly: an emptied field clears it
+        // (present nulls clear), which is what a form full of values means —
+        // the tuning columns included, or a cleared value would silently keep
+        // governing every request.
+        const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
+          params: { path: { profile_id: editing.id } },
+          body: {
+            name: form.name.trim(),
+            base_url: form.baseUrl.trim() === "" ? null : form.baseUrl.trim(),
+            model: form.model.trim() === "" ? null : form.model.trim(),
+            ...apiKey,
+            context_window: tuned(form.contextWindow),
 // nosemgrep
-        max_output_tokens: tuned(form.maxOutput),
-        temperature: tuned(form.temperature),
-        request_timeout: tuned(form.timeout),
-      },
-    });
-    if (!response.ok) {
+            max_output_tokens: tuned(form.maxOutput),
+            temperature: tuned(form.temperature),
+            request_timeout: tuned(form.timeout),
+          },
+        });
+        if (!response.ok) {
+          setSaveFailed(true);
+          return;
+        }
+        resetForm();
+      }
+    } catch {
+      // A rejected fetch has no response to inspect: the save says so where
+      // a refused response does, and the handler resolves instead of
+      // leaving the rejection to the browser.
       setSaveFailed(true);
       return;
     }
-    resetForm();
-    await reload();
+    // After a save that landed: the reload's own reads settle, so a lost
+    // service is the load alert, never a save refusal.
+    try {
+      await reload();
+    } catch {
+      setFailure("settings.profiles.errorLoad");
+    }
   }
 
   async function makeDefault(profile: Profile): Promise<void> {
