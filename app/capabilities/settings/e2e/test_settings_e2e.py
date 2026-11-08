@@ -66,8 +66,9 @@ def test_a_chosen_register_survives_a_reload(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/settings/language")
     expect(page.get_by_role("heading", name="Sprache")).to_be_visible()
 
-    # The default is the familiar register, and the hint says so.
-    formality = page.get_by_role("banner").locator('select[name="formality"]')
+    # The default is the familiar register, and the hint says so. The register
+    # control lives on this page, not in the bar's quick switch.
+    formality = page.locator('select[name="formality"]')
     expect(formality).to_have_value("informal")
     expect(page.get_by_text("Wie Narrare dich anspricht.")).to_be_visible()
 
@@ -76,7 +77,7 @@ def test_a_chosen_register_survives_a_reload(page: Page, stack: Stack) -> None:
 
     # The register is a local choice; a reload reads it back before the paint.
     page.reload()
-    expect(page.get_by_role("banner").locator('select[name="formality"]')).to_have_value("formal")
+    expect(page.locator('select[name="formality"]')).to_have_value("formal")
     expect(page.get_by_text("Wie Narrare Sie anspricht.")).to_be_visible()
 
     assert_accessible(page)

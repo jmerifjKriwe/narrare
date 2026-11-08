@@ -26,7 +26,11 @@ import { Select } from "../ui/field";
  *  stacked `Field` is the form's shape, not the bar's). A refused write
  *  speaks through the whole danger `Notice`, the one surface the state
  *  colours may wear. */
-export function LanguageSwitcher() {
+export function LanguageSwitcher({
+  showFormality = true,
+}: {
+  showFormality?: boolean;
+}) {
   const t = useTranslation();
   // The control exists twice on /settings (the bar's quick switch and the
   // page's own section), so the id that ties label to select must be unique
@@ -93,8 +97,10 @@ export function LanguageSwitcher() {
         </Select>
       </div>
       {/* English has no formality distinction; the control would promise a
-          choice that changes nothing. */}
-      {locale !== "en" ? (
+          choice that changes nothing. The bar's quick switch leaves the
+          register to the settings page: a second row there would tax every
+          page's first screen. */}
+      {showFormality && locale !== "en" ? (
         <div className="mt-2 flex items-center gap-2">
           <label htmlFor={formalityId} className="font-medium text-label">
             {t("settings.formality")}

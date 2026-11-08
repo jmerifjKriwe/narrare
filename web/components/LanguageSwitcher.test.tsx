@@ -70,6 +70,15 @@ describe("LanguageSwitcher's formality control", () => {
     ).toBeTruthy();
   });
 
+  it("hides the register control when the bar asks for the quick switch only", () => {
+    applyLocale("de");
+    render(<LanguageSwitcher showFormality={false} />);
+
+    expect(
+      screen.queryByRole("combobox", { name: t("settings.formality") }),
+    ).toBeNull();
+  });
+
   it("hides the register control for English", () => {
     applyLocale("en");
     render(<LanguageSwitcher />);
