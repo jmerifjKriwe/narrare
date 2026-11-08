@@ -15,8 +15,12 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
 3. **No side effect in the request path** beyond the request's own transaction.
 4. **Every user-owned row carries `user_id`**; data access goes through the scoped
    repository base.
-5. **English in code, tests and developer documentation; user-visible text in en,
-   de and fr** through the i18n catalog. A missing key is a build error.
+5. **English in code, tests and developer documentation; user-visible text in
+   every catalog the app carries** (en, de, fr today) through `i18n/<code>.json`
+   for shared text and `app/capabilities/<id>/web/i18n/<code>.json` for
+   capability text. Every catalog is sorted, carries the same keys, and writes
+   the plural categories its copy needs (`other` is ICU's fallback); a missing
+   key is a build error.
 
 ## The shape of a capability
 

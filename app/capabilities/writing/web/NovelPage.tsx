@@ -1109,7 +1109,7 @@ export function NovelPage() {
                         {title}{" "}
                       </span>
                       <span className="shrink-0 text-meta tabular-nums">
-                        {formatWordCount(words, activeLocale())}
+                        {formatWordCount(words)}
                       </span>
                     </Row>
                   </li>

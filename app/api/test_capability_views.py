@@ -1,16 +1,16 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes nine views: the Python registry `app/api/main.py`
+`just generate` writes ten views: the Python registry `app/api/main.py`
 cross-checks at startup, the locale list the server validates against, the
-TypeScript nav data, the TypeScript catalog map, the TypeScript route table,
-the TypeScript dock registry, the TypeScript settings registry, the
-TypeScript command registry and the user-docs index. A stale view means the
+TypeScript nav data, the TypeScript catalog map, the TypeScript overlay map,
+the TypeScript route table, the TypeScript dock registry, the TypeScript
+settings registry, the TypeScript command registry and the user-docs index.
+A stale view means the
 UI or the startup check runs on old facts — the same failure mode the OpenAPI
 drift test guards — so forgetting `just generate` must be a red suite, not a
 wrong UI.
 """
 
-import json
 from pathlib import Path
 
 import pytest
@@ -21,6 +21,7 @@ from scripts.generate_capabilities import (
     docs_index,
     facts,
     locales,
+    overlay_sources,
     python_locales,
     python_registry,
     scan_commands,
@@ -30,6 +31,7 @@ from scripts.generate_capabilities import (
     typescript_commands,
     typescript_docks,
     typescript_nav,
+    typescript_overlays,
     typescript_routes,
     typescript_settings_pages,
     typescript_workspace,
@@ -74,9 +76,17 @@ def test_committed_typescript_catalogs_match_the_catalog_files() -> None:
     # The map and the Locale union are generated from i18n/*.json: a language
     # added without `just generate` would exist on disk and not in the build.
     known, _, _ = _views()
-    assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(known), (
-        "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
-    )
+    assert _committed("web", "lib", "generated", "catalogs.ts") == typescript_catalogs(
+        ROOT, known
+    ), "web/lib/generated/catalogs.ts is stale: run `just generate` and commit the result"
+
+
+def test_committed_typescript_overlays_match_the_overlay_files() -> None:
+    known, loaded, _ = _views()
+    overlays = overlay_sources(ROOT, known, loaded)
+    assert _committed("web", "lib", "generated", "overlays.ts") == typescript_overlays(
+        known, overlays
+    ), "web/lib/generated/overlays.ts is stale: run `just generate` and commit the result"
 
 
 def test_committed_typescript_routes_match_the_route_sources() -> None:
@@ -123,11 +133,10 @@ def test_every_facts_title_key_exists_in_every_catalog() -> None:
     # facts() raises on a missing key; this test names the rule for the reader:
     # a capability's label is user-visible text, and user-visible text exists
     # in en, de and fr or nowhere.
-    known, _, loaded_facts = _views()
+    known, loaded, loaded_facts = _views()
     for locale in known:
-        catalog = json.loads((ROOT / "i18n" / f"{locale}.json").read_text(encoding="utf-8"))
         for capability in loaded_facts:
-            assert capability.title in catalog
+            assert capability.title in loaded[locale]
 
 
 def test_two_docks_at_one_path_stop_the_scan_naming_both_capabilities() -> None:
@@ -279,7 +288,7 @@ def test_settings_pages_table_renders_the_rows_like_the_dock_registry(
     )
     assert "export const settingsPages = [\n" in pages
     assert "] as const satisfies ReadonlyArray<{" in pages
-    assert "titleKey: keyof typeof en;" in pages
+    assert "titleKey: keyof typeof catalogs.en;" in pages
 
 
 def test_routes_table_wires_settings_factories_after_the_settings_route(

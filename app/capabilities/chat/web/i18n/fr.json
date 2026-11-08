@@ -1,0 +1,13 @@
+{
+  "chat.answerLabel": "Réponse",
+  "chat.answerReady": "Réponse prête.",
+  "chat.ask": "Demander",
+  "chat.dockTitle": "Discussion",
+  "chat.error": "La réponse a échoué.",
+  "chat.heading": "Discussion",
+  "chat.modelChanged": "Le modèle d'embeddings a changé ; ré-encodez d'abord la base de connaissances.",
+  "chat.noSources": "Aucune source trouvée",
+  "chat.offerAsVariant": "Proposer comme variante",
+  "chat.questionLabel": "Question",
+  "chat.sources": "Sources"
+}

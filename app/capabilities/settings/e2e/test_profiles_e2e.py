@@ -298,7 +298,7 @@ def test_the_new_surfaces_speak_every_language(page: Page, stack: Stack) -> None
     expect(page.get_by_role("heading", name="Aufgaben")).to_be_visible()
 
     # The bar's quick switch drives every page's language.
-    switcher = page.get_by_role("banner").get_by_role("combobox")
+    switcher = page.get_by_role("banner").locator('select[name="locale"]')
     switcher.select_option("en")
     expect(page.get_by_role("heading", name="Settings")).to_be_visible()
     expect(page.get_by_role("heading", name="Providers")).to_be_visible()

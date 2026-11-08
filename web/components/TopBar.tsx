@@ -90,7 +90,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           >
             <Icon name="settings" />
           </Link>
-          <LanguageSwitcher />
+          <LanguageSwitcher showFormality={false} />
         </div>
       </div>
     </header>

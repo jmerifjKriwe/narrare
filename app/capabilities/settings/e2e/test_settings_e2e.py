@@ -32,7 +32,7 @@ def test_a_chosen_language_survives_a_fresh_browser(
 
     # Nobody has chosen: the browser's language (de-DE, pinned in conftest) wins.
     expect(page.get_by_role("heading", name="Wissen")).to_be_visible()
-    switcher = page.get_by_role("combobox")
+    switcher = page.get_by_role("banner").locator('select[name="locale"]')
     expect(switcher).to_have_value("auto")
     expect(page.locator("html")).to_have_attribute("lang", "de")
 
@@ -53,11 +53,32 @@ def test_a_chosen_language_survives_a_fresh_browser(
         expect(other.locator("html")).to_have_attribute("lang", "en")
 
         # Back to automatic, and the browser decides again.
-        other.get_by_role("combobox").select_option("auto")
+        other.get_by_role("banner").locator('select[name="locale"]').select_option("auto")
         expect(other.get_by_role("heading", name="Wissen")).to_be_visible()
         expect(other.locator("html")).to_have_attribute("lang", "de")
     finally:
         other_context.close()
+
+    assert_accessible(page)
+
+
+def test_a_chosen_register_survives_a_reload(page: Page, stack: Stack) -> None:
+    page.goto(f"{WEB_URL}/settings/language")
+    expect(page.get_by_role("heading", name="Sprache")).to_be_visible()
+
+    # The default is the familiar register, and the hint says so. The register
+    # control lives on this page, not in the bar's quick switch.
+    formality = page.locator('select[name="formality"]')
+    expect(formality).to_have_value("informal")
+    expect(page.get_by_text("Wie Narrare dich anspricht.")).to_be_visible()
+
+    formality.select_option("formal")
+    expect(page.get_by_text("Wie Narrare Sie anspricht.")).to_be_visible()
+
+    # The register is a local choice; a reload reads it back before the paint.
+    page.reload()
+    expect(page.locator('select[name="formality"]')).to_have_value("formal")
+    expect(page.get_by_text("Wie Narrare Sie anspricht.")).to_be_visible()
 
     assert_accessible(page)
 

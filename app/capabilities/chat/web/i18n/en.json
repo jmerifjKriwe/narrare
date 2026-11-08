@@ -1,0 +1,13 @@
+{
+  "chat.answerLabel": "Answer",
+  "chat.answerReady": "Answer ready.",
+  "chat.ask": "Ask",
+  "chat.dockTitle": "Chat",
+  "chat.error": "The answer failed.",
+  "chat.heading": "Chat",
+  "chat.modelChanged": "The embedding model changed; re-embed the knowledge base first.",
+  "chat.noSources": "No source found",
+  "chat.offerAsVariant": "Offer as a variant",
+  "chat.questionLabel": "Question",
+  "chat.sources": "Sources"
+}

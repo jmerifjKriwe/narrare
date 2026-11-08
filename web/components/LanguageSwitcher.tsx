@@ -1,9 +1,16 @@
 import { useId, useState, useSyncExternalStore } from "react";
 
 import { client } from "../lib/api/client";
+import {
+  activeFormality,
+  applyFormality,
+  subscribeFormality,
+  type Formality,
+} from "../lib/formality";
 import { catalogs, locales } from "../lib/generated/catalogs";
 import { useTranslation } from "../lib/i18n";
 import {
+  activeLocale,
   applyLocale,
   chosenLocale,
   subscribeLocale,
@@ -19,13 +26,24 @@ import { Select } from "../ui/field";
  *  stacked `Field` is the form's shape, not the bar's). A refused write
  *  speaks through the whole danger `Notice`, the one surface the state
  *  colours may wear. */
-export function LanguageSwitcher() {
+export function LanguageSwitcher({
+  showFormality = true,
+}: {
+  showFormality?: boolean;
+}) {
   const t = useTranslation();
   // The control exists twice on /settings (the bar's quick switch and the
   // page's own section), so the id that ties label to select must be unique
   // per instance — a hardcoded id would collide there and break both labels.
   const id = useId();
+  const formalityId = useId();
   const chosen = useSyncExternalStore(subscribeLocale, chosenLocale, chosenLocale);
+  const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
+  const formality = useSyncExternalStore(
+    subscribeFormality,
+    activeFormality,
+    activeFormality,
+  );
   const [failed, setFailed] = useState(false);
 
   /** Apply and persist a locale (`auto` clears it); restore the prior choice if saving fails. */
@@ -62,6 +80,7 @@ export function LanguageSwitcher() {
         </label>
         <Select
           id={id}
+          name="locale"
           value={chosen ?? "auto"}
           onChange={(event) => void choose(event.target.value)}
         >
@@ -77,6 +96,28 @@ export function LanguageSwitcher() {
           ))}
         </Select>
       </div>
+      {/* English has no formality distinction; the control would promise a
+          choice that changes nothing. The bar's quick switch leaves the
+          register to the settings page: a second row there would tax every
+          page's first screen. */}
+      {showFormality && locale !== "en" ? (
+        <div className="mt-2 flex items-center gap-2">
+          <label htmlFor={formalityId} className="font-medium text-label">
+            {t("settings.formality")}
+          </label>
+          <Select
+            id={formalityId}
+            name="formality"
+            value={formality}
+            onChange={(event) =>
+              applyFormality(event.target.value as Formality)
+            }
+          >
+            <option value="informal">{t("settings.formality.informal")}</option>
+            <option value="formal">{t("settings.formality.formal")}</option>
+          </Select>
+        </div>
+      ) : null}
       {failed ? (
         <Notice tone="danger" live="alert">
           {t("settings.errorSave")}

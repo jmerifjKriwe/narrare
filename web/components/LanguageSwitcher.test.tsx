@@ -9,7 +9,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "../lib/api/client";
-import { t } from "../lib/i18n";
+import { activeFormality, applyFormality } from "../lib/formality";
+import { t, useTranslation } from "../lib/i18n";
 import { applyLocale, chosenLocale } from "../lib/locale";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
@@ -22,8 +23,10 @@ const patch = client.PATCH as unknown as ReturnType<typeof vi.fn>;
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  // The locale is global state; the test must not leak it.
+  // The locale and the register are global state; the test must not leak them.
   applyLocale(null);
+  applyFormality("informal");
+  localStorage.clear();
 });
 
 describe("LanguageSwitcher's refused write", () => {
@@ -32,19 +35,76 @@ describe("LanguageSwitcher's refused write", () => {
     patch.mockRejectedValue(new Error("the service is down"));
     render(<LanguageSwitcher />);
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "en" } });
+    const language = screen.getByRole("combobox", {
+      name: t("settings.language"),
+    });
+    fireEvent.change(language, { target: { value: "en" } });
     await screen.findByRole("alert");
 
     // The write did not happen, so neither the store nor the control
     // pretends it did.
     expect(chosenLocale()).toBe("de");
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
-    expect(select.value).toBe("de");
+    expect((language as HTMLSelectElement).value).toBe("de");
 
     // The failure speaks below the row: its parent is the stacked root,
     // not the inline label-and-control row.
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toBe(t("settings.errorSave"));
     expect(alert.parentElement?.className).toContain("flex-col");
+  });
+});
+
+describe("LanguageSwitcher's formality control", () => {
+  /** A page surface that shows a sentence whose register the overlay changes. */
+  function Probe() {
+    const t = useTranslation();
+    return <p>{t("settings.appearance.hint")}</p>;
+  }
+
+  it("shows the register control for a language that distinguishes it", () => {
+    applyLocale("de");
+    render(<LanguageSwitcher />);
+
+    expect(
+      screen.getByRole("combobox", { name: t("settings.formality") }),
+    ).toBeTruthy();
+  });
+
+  it("hides the register control when the bar asks for the quick switch only", () => {
+    applyLocale("de");
+    render(<LanguageSwitcher showFormality={false} />);
+
+    expect(
+      screen.queryByRole("combobox", { name: t("settings.formality") }),
+    ).toBeNull();
+  });
+
+  it("hides the register control for English", () => {
+    applyLocale("en");
+    render(<LanguageSwitcher />);
+
+    expect(
+      screen.queryByRole("combobox", { name: t("settings.formality") }),
+    ).toBeNull();
+  });
+
+  it("applies the formal register and re-renders the words", () => {
+    applyLocale("de");
+    render(
+      <>
+        <LanguageSwitcher />
+        <Probe />
+      </>,
+    );
+    expect(screen.getByText("System folgt deinem Gerät.")).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: t("settings.formality") }),
+      { target: { value: "formal" } },
+    );
+
+    expect(activeFormality()).toBe("formal");
+    expect(localStorage.getItem("narrare.formality")).toBe("formal");
+    expect(screen.getByText("System folgt Ihrem Gerät.")).toBeTruthy();
   });
 });
