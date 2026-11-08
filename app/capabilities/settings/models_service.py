@@ -108,12 +108,18 @@ class ModelService:
 
         The provider comes back beside the model because every read names it;
         the NOT NULL pointer and the FK keep the pair complete for every row
-        the writers store.
+        the writers store. A row whose provider is gone anyway — reachable
+        only by repair SQL, never through the writers — is skipped, the way
+        :meth:`_paired` refuses by name: the list stays readable instead of
+        crashing on a dangling pointer it cannot fix.
         """
         names = {provider.id: provider for provider in await self._providers().ordered()}
-        return [
-            (profile, names[profile.provider_id]) for profile in await self._profiles().ordered()
-        ]
+        pairs: list[tuple[ProviderProfile, LLMProvider]] = []
+        for profile in await self._profiles().ordered():
+            provider = names.get(profile.provider_id)
+            if provider is not None:
+                pairs.append((profile, provider))
+        return pairs
 
     async def create(self, payload: ModelCreate) -> tuple[ProviderProfile, LLMProvider]:
         """Store one model under one of the user's providers; the first is the default.

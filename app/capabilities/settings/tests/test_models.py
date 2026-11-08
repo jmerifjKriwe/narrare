@@ -548,6 +548,38 @@ async def test_a_model_cannot_be_patched_onto_another_users_provider() -> None:
         assert [str(entry["provider_id"]) for entry in listed] == [str(provider["id"])]
 
 
+async def test_a_model_whose_provider_is_not_the_users_is_skipped_by_the_list(
+    client: AsyncClient,
+) -> None:
+    """A pointer the user's provider set cannot resolve is skipped, never a 500.
+
+    Unreachable through the writers (the gate refuses a cross-user pointer),
+    reachable by repair SQL: the FK has no user scope, so a stored row can
+    name a provider that exists but is not the user's. The list skips the
+    dangling row and stays readable — the single-row reads are the ones that
+    refuse by name (the service's ``_paired``).
+    """
+    await seed_user(OTHER)
+    async with Session() as session:
+        theirs = await ProviderRepository(session, OTHER).create(
+            name="Their vendor", kind="openai-chat", base_url="http://127.0.0.1:9/v1"
+        )
+        await session.commit()
+
+    provider = await _create_provider(client)
+    doomed = await _create(client, str(provider["id"]), "Dangling")
+    async with Session() as session:
+        await session.execute(
+            text("UPDATE provider_profiles SET provider_id = :theirs WHERE id = :id"),
+            {"theirs": str(theirs.id), "id": str(doomed["id"])},
+        )
+        await session.commit()
+
+    listed = await client.get("/api/settings/models")
+    assert listed.status_code == 200
+    assert [entry["name"] for entry in listed.json()] == []
+
+
 async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> None:
     """``max_output_tokens`` must stay below ``context_window`` when both are set.
 

@@ -293,7 +293,7 @@ export function ModelsSection({
                       </span>
                     ) : null}
                   </p>
-                  <p className="mt-1 text-body text-muted">
+                  <p className="mt-1 min-w-0 break-words text-body text-muted">
                     {model.provider_name}
                     {" · "}
                     {model.model}

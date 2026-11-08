@@ -133,7 +133,7 @@ export function TasksSection({
               </Select>
               <p
                 id={`settings-task-effective-${task.task_key}`}
-                className="col-start-2 text-label font-normal text-muted"
+                className="col-start-2 min-w-0 break-words text-label font-normal text-muted"
               >
                 {effective}
               </p>
