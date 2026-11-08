@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 import { Link, useMatches } from "@tanstack/react-router";
 import { workspaceRouteId } from "../lib/generated/routes";
 
@@ -23,11 +23,18 @@ import { Icon, type IconName } from "../ui/icons";
 
 /** The rail's destinations: exactly the paths Link itself accepts. */
 type RailTo = ComponentProps<typeof Link>["to"];
+
+/** The icon's colour expression, derived from the capability id. */
+export function areaStyle(area: string): CSSProperties {
+  return { color: `var(--area-${area}, var(--foreground))` };
+}
 type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 
-/** The rail's four areas and the one utility each may wear: an identity mark
- *  on the icon, never a fill, a text colour, a cover or a notice. The hues
- *  are measured ≥ 3:1 against `--panel` in both themes. */
+/** The area's identity hue: an identity mark on the icon, never a fill, a
+ *  text colour, a cover or a notice. A capability adds its `--area-<id>`
+ *  token in `globals.css`; without one the foreground ink is the fallback.
+ *  The four existing hues are measured ≥ 3:1 against `--panel` in both
+ *  themes. */
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({
   to,
@@ -54,7 +61,7 @@ function RailLink({
        * a direct declaration the link's inherited ink cannot override. */
       className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
-      <span style={{ color: `var(--area-${area}, var(--foreground))` }}>
+      <span style={areaStyle(area)}>
         <Icon name={icon} />
       </span>
       {/* The name, always in the DOM and clipped by the collapsed rail: a
