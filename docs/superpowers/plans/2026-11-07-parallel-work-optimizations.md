@@ -315,3 +315,11 @@ Expected: 0 violations.
 - **Native** - I implement every task myself in this session, the way this harness runs work, then one fresh reviewer on the most capable model checks the whole branch. Cheapest and fastest; no independent review until the end.
 
 For this plan I recommend **subagent-driven**, because the phases are independent and a shipped mistake in the merge driver or contracts split would affect every future change. Does the plan capture what you want, and which approach should we use?
+## Deviations from the plan as written
+
+- **Merge-driver tests live in `app/kernel/tests/test_merge_json.py`.** The plan allowed this alternative. `pyproject.toml` sets `testpaths = ["app"]`, so a test under `scripts/tests/` would never run in a gate.
+- **`--generated` runs before any JSON parsing and writes `%A`.** The plan's first draft parsed all three inputs first and never wrote the regenerated file back to `--ours`. The driver now takes `--path %P`, regenerates, reads the regenerated working-tree file, and writes those bytes to `%A`; `.gitattributes`/`CONTRIBUTING.md` carry the `%P` argument.
+- **JSON merge preserves existing key order.** Sorted keys rewrote every catalog line on every merge. The driver keeps the branch's order and appends keys only the other side added; `ensure_ascii=False` keeps de/fr text as text.
+- **Delete-vs-modify is a conflict.** A key deleted on one side and changed on the other now exits 1 instead of silently resurrecting the edit.
+- **The area hue is an inline CSS variable, not a dynamic Tailwind class.** Tailwind's scanner cannot see `text-area-${id}`, so the four existing hues collapsed in the browser. `IconRail` exports `areaStyle(area)` returning `var(--area-<id>, var(--foreground))`; a new capability adds its `--area-<id>` token in `globals.css`, and the fallback is the foreground ink.
+- **The generator fails loudly when `workspaceRouteId` is missing.** Falling back to the path literal is only accidentally equal to the TanStack route id; a nested workspace route would silently break the breakpoint.
