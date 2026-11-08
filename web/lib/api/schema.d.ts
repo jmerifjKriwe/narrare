@@ -578,7 +578,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/settings/profiles": {
+    "/api/settings/models": {
         parameters: {
             query?: never;
             header?: never;
@@ -586,23 +586,23 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Profiles
+         * List Models
          * @description The user's models, the default first; every read names its provider.
          */
-        get: operations["list_profiles_api_settings_profiles_get"];
+        get: operations["list_models_api_settings_models_get"];
         put?: never;
         /**
-         * Create Profile
+         * Create Model
          * @description Store one model under one of the user's providers; the first is the default.
          */
-        post: operations["create_profile_api_settings_profiles_post"];
+        post: operations["create_model_api_settings_models_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/settings/profiles/{profile_id}": {
+    "/api/settings/models/{model_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -613,20 +613,20 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete Profile
+         * Delete Model
          * @description Delete a non-default model; its assignments cascade with it.
          */
-        delete: operations["delete_profile_api_settings_profiles__profile_id__delete"];
+        delete: operations["delete_model_api_settings_models__model_id__delete"];
         options?: never;
         head?: never;
         /**
-         * Update Profile
+         * Update Model
          * @description Apply the patch; the provider and the model string can both move.
          */
-        patch: operations["update_profile_api_settings_profiles__profile_id__patch"];
+        patch: operations["update_model_api_settings_models__model_id__patch"];
         trace?: never;
     };
-    "/api/settings/profiles/{profile_id}/test": {
+    "/api/settings/models/{model_id}/test": {
         parameters: {
             query?: never;
             header?: never;
@@ -636,10 +636,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Test Profile
+         * Test Model
          * @description One cheap completion through the model's provider, audited as settings.test.
          */
-        post: operations["test_profile_api_settings_profiles__profile_id__test_post"];
+        post: operations["test_model_api_settings_models__model_id__test_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3125,7 +3125,7 @@ export interface operations {
             };
         };
     };
-    list_profiles_api_settings_profiles_get: {
+    list_models_api_settings_models_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3145,7 +3145,7 @@ export interface operations {
             };
         };
     };
-    create_profile_api_settings_profiles_post: {
+    create_model_api_settings_models_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3178,12 +3178,12 @@ export interface operations {
             };
         };
     };
-    delete_profile_api_settings_profiles__profile_id__delete: {
+    delete_model_api_settings_models__model_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                profile_id: string;
+                model_id: string;
             };
             cookie?: never;
         };
@@ -3207,12 +3207,12 @@ export interface operations {
             };
         };
     };
-    update_profile_api_settings_profiles__profile_id__patch: {
+    update_model_api_settings_models__model_id__patch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                profile_id: string;
+                model_id: string;
             };
             cookie?: never;
         };
@@ -3242,12 +3242,12 @@ export interface operations {
             };
         };
     };
-    test_profile_api_settings_profiles__profile_id__test_post: {
+    test_model_api_settings_models__model_id__test_post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                profile_id: string;
+                model_id: string;
             };
             cookie?: never;
         };

@@ -26,6 +26,7 @@
   "settings.language": "Language",
   "settings.models": "Models",
   "settings.profiles.cancel": "Cancel",
+  "settings.profiles.chooseProvider": "Choose a provider",
   "settings.profiles.contextWindowLabel": "Context window (tokens)",
   "settings.profiles.create": "Add model",
   "settings.profiles.defaultBadge": "Default",

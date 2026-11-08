@@ -308,7 +308,6 @@ async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_fr
         )
         await ProfileRepository(session, LOCAL_USER_ID).create(
             name="Broken model",
-            kind="openai-chat",
             provider_id=provider.id,
             model="acme/turbo-3",
         )

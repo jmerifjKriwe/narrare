@@ -192,18 +192,24 @@ export function ProvidersSection({
   }
 
   async function remove(provider: Provider): Promise<void> {
-    const { response } = await client.DELETE("/api/settings/providers/{provider_id}", {
-      params: { path: { provider_id: provider.id } },
-    });
-    if (response.ok) {
-      setDeleteRefused(null);
-      await reload();
-      return;
+    try {
+      const { response } = await client.DELETE("/api/settings/providers/{provider_id}", {
+        params: { path: { provider_id: provider.id } },
+      });
+      if (response.ok) {
+        setDeleteRefused(null);
+        await reload();
+        return;
+      }
+      // The 409 is the delete guard: its message names the models still
+      // pointed here, so the page names the way out too — in the reader's
+      // language, not the server's.
+      setDeleteRefused(response.status === 409 ? "in-use" : "other");
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
+      setDeleteRefused("other");
     }
-    // The 409 is the delete guard: its message names the models still
-    // pointed here, so the page names the way out too — in the reader's
-    // language, not the server's.
-    setDeleteRefused(response.status === 409 ? "in-use" : "other");
   }
 
   async function discoverModels(provider: Provider): Promise<void> {
@@ -269,7 +275,7 @@ export function ProvidersSection({
                   <p className="flex flex-wrap items-baseline gap-2 text-body font-medium">
                     {provider.name}
                   </p>
-                  <p className="mt-1 text-body text-muted">
+                  <p className="mt-1 min-w-0 break-words text-body text-muted">
                     {KIND_LABELS[provider.kind] === undefined
                       ? provider.kind
                       : t(KIND_LABELS[provider.kind])}

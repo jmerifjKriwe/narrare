@@ -90,7 +90,7 @@ async def test_deleting_a_provider_cascades_its_profiles() -> None:
         providers = ProviderRepository(session, OWNER)
         profiles = ProfileRepository(session, OWNER)
         provider = await providers.create(name="Doomed", kind="fake")
-        profile = await profiles.create(name="Points at it", kind="fake", provider_id=provider.id)
+        profile = await profiles.create(name="Points at it", provider_id=provider.id)
         await providers.delete(provider)
         await session.commit()
         profile_id = profile.id

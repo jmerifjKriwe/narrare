@@ -34,7 +34,7 @@ async def _create_model(
     )
     assert provider.status_code == 201, provider.text
     created = await client.post(
-        "/api/settings/profiles",
+        "/api/settings/models",
         json={"name": name, "provider_id": provider.json()["id"], "model": model},
     )
     assert created.status_code == 201, created.text
@@ -184,7 +184,7 @@ async def test_a_lost_provider_key_is_a_named_502(monkeypatch: pytest.MonkeyPatc
         )
         assert provider.status_code == 201, provider.text
         created = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={
                 "name": "Lost key model",
                 "provider_id": provider.json()["id"],

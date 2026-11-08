@@ -356,41 +356,63 @@ rather than to the provider revision alone.
 async def test_the_provider_step_gives_every_profile_a_provider(url: str) -> None:
     """The provider backfill is 1:1: the profile's own id becomes the provider's.
 
-    The gate replays real history over a real row — the shape an upgraded
+    The gate replays real history over real rows — the shape an upgraded
     deployment has: upgrade to the revision before the provider step, insert
-    one profile the old way (no ``provider_id`` column yet), upgrade to head.
-    The new table then holds exactly one provider carrying the profile's
-    endpoint and key, and the profile points at it by its own id — the
+    profiles the old way (no ``provider_id`` column yet) for two different
+    users, upgrade to head. Each profile then gets exactly one provider
+    carrying its own endpoint and key, and points at it by its own id — the
     mapping that keeps the stored key material (the ciphertext column, and
-    the keychain plaintext keyed by that id) valid from either side.
+    the keychain plaintext keyed by that id) valid from either side. The
+    second user is the point: a backfill that copied only the first user's
+    rows — or mixed the two users' rows up — must fail here, because the
+    NOT NULL pointer and the user_id both come out per profile, not per table.
     """
     await drop_every_table(url)
     await asyncio.to_thread(command.upgrade, alembic_config(url), PROVIDER_STEP_PREDECESSOR)
 
-    user_id, profile_id = uuid4(), uuid4()
+    first_user, first_profile = uuid4(), uuid4()
+    second_user, second_profile = uuid4(), uuid4()
     engine = create_async_engine(url)
     try:
         async with engine.begin() as connection:
-            await connection.execute(
-                text("INSERT INTO users (id, created_at) VALUES (:id, now())"), {"id": user_id}
-            )
-            await connection.execute(
-                text(
-                    "INSERT INTO provider_profiles (id, user_id, name, kind, base_url, "
-                    "api_key, api_key_hint, is_default, created_at, updated_at) "
-                    "VALUES (:id, :user_id, :name, :kind, :base_url, :api_key, :api_key_hint, "
-                    "true, now(), now())"
+            for user_id in (first_user, second_user):
+                await connection.execute(
+                    text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                    {"id": user_id},
+                )
+            for user_id, profile_id, name, base_url, hint in (
+                (
+                    first_user,
+                    first_profile,
+                    "OpenCode Go",
+                    "https://opencode.ai/inference/go/openai/v1",
+                    "1234",
                 ),
-                {
-                    "id": profile_id,
-                    "user_id": user_id,
-                    "name": "OpenCode Go",
-                    "kind": "openai-chat",
-                    "base_url": "https://opencode.ai/inference/go/openai/v1",
-                    "api_key": "gAAAA-ciphertext",
-                    "api_key_hint": "1234",
-                },
-            )
+                (
+                    second_user,
+                    second_profile,
+                    "Zweite Stelle",
+                    "https://zweit.example/v1",
+                    "abcd",
+                ),
+            ):
+                await connection.execute(
+                    text(
+                        "INSERT INTO provider_profiles (id, user_id, name, kind, base_url, "
+                        "api_key, api_key_hint, is_default, created_at, updated_at) "
+                        "VALUES (:id, :user_id, :name, :kind, :base_url, :api_key, :api_key_hint, "
+                        "true, now(), now())"
+                    ),
+                    {
+                        "id": profile_id,
+                        "user_id": user_id,
+                        "name": name,
+                        "kind": "openai-chat",
+                        "base_url": base_url,
+                        "api_key": f"gAAAA-ciphertext-{hint}",
+                        "api_key_hint": hint,
+                    },
+                )
     finally:
         await engine.dispose()
 
@@ -402,43 +424,68 @@ async def test_the_provider_step_gives_every_profile_a_provider(url: str) -> Non
             providers: int | None = await connection.scalar(
                 text("SELECT count(*) FROM llm_providers")
             )
-            (
-                linked_provider_id,
-                provider_id_column,
-                provider_user_id,
-                provider_name,
-                provider_kind,
-                provider_base_url,
-                provider_models_url,
-                provider_vendor,
-                provider_api_key,
-                provider_api_key_hint,
-            ) = (
+            rows = (
                 await connection.execute(
                     text(
-                        "SELECT p.provider_id, v.id, v.user_id, v.name, v.kind, v.base_url, "
-                        "v.models_url, v.vendor, v.api_key, v.api_key_hint "
-                        "FROM provider_profiles p JOIN llm_providers v ON v.id = p.provider_id"
+                        "SELECT p.id, p.user_id, p.provider_id, p.name,"
+                        " v.id, v.user_id, v.name, v.kind, v.base_url,"
+                        " v.models_url, v.vendor, v.api_key, v.api_key_hint"
+                        " FROM provider_profiles p JOIN llm_providers v ON v.id = p.provider_id"
+                        " ORDER BY p.name"
                     )
                 )
-            ).one()
+            ).all()
     finally:
         await engine.dispose()
 
-    assert providers == 1  # one profile in, one provider out — no orphans, no copies
-    assert linked_provider_id == profile_id  # the profile's own id — nothing guessed
-    assert (provider_id_column, provider_user_id, provider_name, provider_kind) == (
+    # Two profiles in, two providers out — no orphans, no copies, no NULLs.
+    assert providers == 2
+    assert len(rows) == 2
+    facts: dict[str, tuple[str, str, str, str]] = {}
+    for (
         profile_id,
-        user_id,
-        "OpenCode Go",
-        "openai-chat",
-    )
-    assert (provider_base_url, provider_models_url, provider_vendor) == (
+        profile_user_id,
+        linked_provider_id,
+        profile_name,
+        provider_id_column,
+        provider_user_id,
+        provider_name,
+        provider_kind,
+        provider_base_url,
+        provider_models_url,
+        provider_vendor,
+        provider_api_key,
+        provider_api_key_hint,
+    ) in rows:
+        assert linked_provider_id == profile_id  # the profile's own id — nothing guessed
+        assert provider_id_column == profile_id
+        assert (provider_user_id, provider_name, provider_kind) == (
+            profile_user_id,
+            profile_name,
+            "openai-chat",
+        )
+        assert provider_models_url is None and provider_vendor is None
+        # Keyed by the profile's name: per-user copying, named for the two
+        # rows — each profile's facts land on its own provider under its own
+        # user; a partial or crossed backfill mismatches right here.
+        facts[str(profile_name)] = (
+            str(profile_user_id),
+            str(provider_base_url),
+            str(provider_api_key),
+            str(provider_api_key_hint),
+        )
+    assert facts["OpenCode Go"] == (
+        str(first_user),
         "https://opencode.ai/inference/go/openai/v1",
-        None,
-        None,
+        "gAAAA-ciphertext-1234",
+        "1234",
     )
-    assert (provider_api_key, provider_api_key_hint) == ("gAAAA-ciphertext", "1234")
+    assert facts["Zweite Stelle"] == (
+        str(second_user),
+        "https://zweit.example/v1",
+        "gAAAA-ciphertext-abcd",
+        "abcd",
+    )
 
 
 # ---------------------------------------------------------------------------

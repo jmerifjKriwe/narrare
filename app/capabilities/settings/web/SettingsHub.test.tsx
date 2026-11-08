@@ -62,7 +62,7 @@ beforeEach(() => {
     switch (path) {
       case "/api/settings/providers":
         return { data: [], response: ok() };
-      case "/api/settings/profiles":
+      case "/api/settings/models":
         return { data: [], response: ok() };
       case "/api/settings/assignments":
         return { data: [], response: ok() };

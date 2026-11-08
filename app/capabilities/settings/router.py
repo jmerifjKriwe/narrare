@@ -5,8 +5,8 @@ HTTP one: a missing model is 404, the gate's refusals are 422s naming their
 fields (a ``provider_id`` that is not the user's among them), the default
 guard and a create or default swap that lost the race are 409s, and a failed
 connection *test* is none of these — it is the 200 that carries the failure,
-because the test ran. The models keep the ``/api/settings/profiles`` paths
-until the rename revision; only their payloads speak of models.
+because the test ran. The routes are named for what they hold:
+``/api/settings/models``.
 
 The provider routes speak the same dialect: a missing provider is 404, the
 gate's refusals are 422s naming their fields, a delete a model still points
@@ -21,15 +21,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.capabilities.settings.profiles_service import (
+from app.capabilities.settings.models_service import (
     DefaultProfileError,
     DefaultProfileRaceError,
     ModelService,
-    NoEndpointError,
     ProfileNotFoundError,
     ProfileRefusedError,
 )
 from app.capabilities.settings.providers_service import (
+    NoEndpointError,
     ProviderHasModelsError,
     ProviderNotFoundError,
     ProviderRefusedError,
@@ -92,7 +92,7 @@ def _masked(profile: ProviderProfile, provider_name: str) -> ModelRead:
     return ModelRead(
         id=profile.id,
         name=profile.name,
-        provider_id=profile.provider_id,  # pyright: ignore[reportArgumentType]  the gate keeps it set
+        provider_id=profile.provider_id,
         provider_name=provider_name,
         model=profile.model or "",
         is_default=profile.is_default,
@@ -176,14 +176,14 @@ async def update_theme(payload: SettingsThemeUpdate, service: ServiceDep) -> Set
     return SettingsThemeRead(theme=theme)
 
 
-@router.get("/profiles", response_model=list[ModelRead])
-async def list_profiles(service: ModelServiceDep) -> list[ModelRead]:
+@router.get("/models", response_model=list[ModelRead])
+async def list_models(service: ModelServiceDep) -> list[ModelRead]:
     """The user's models, the default first; every read names its provider."""
     return [_masked(profile, provider.name) for profile, provider in await service.list()]
 
 
-@router.post("/profiles", response_model=ModelRead, status_code=201)
-async def create_profile(payload: ModelCreate, service: ModelServiceDep) -> ModelRead:
+@router.post("/models", response_model=ModelRead, status_code=201)
+async def create_model(payload: ModelCreate, service: ModelServiceDep) -> ModelRead:
     """Store one model under one of the user's providers; the first is the default."""
     try:
         profile, provider = await service.create(payload)
@@ -192,32 +192,30 @@ async def create_profile(payload: ModelCreate, service: ModelServiceDep) -> Mode
     return _masked(profile, provider.name)
 
 
-@router.patch("/profiles/{profile_id}", response_model=ModelRead)
-async def update_profile(
-    profile_id: UUID, payload: ModelUpdate, service: ModelServiceDep
-) -> ModelRead:
+@router.patch("/models/{model_id}", response_model=ModelRead)
+async def update_model(model_id: UUID, payload: ModelUpdate, service: ModelServiceDep) -> ModelRead:
     """Apply the patch; the provider and the model string can both move."""
     try:
-        profile, provider = await service.update(profile_id, payload)
+        profile, provider = await service.update(model_id, payload)
     except (ProfileNotFoundError, ProfileRefusedError, DefaultProfileRaceError) as error:
         raise _profile_errors(error) from None
     return _masked(profile, provider.name)
 
 
-@router.delete("/profiles/{profile_id}", status_code=204)
-async def delete_profile(profile_id: UUID, service: ModelServiceDep) -> None:
+@router.delete("/models/{model_id}", status_code=204)
+async def delete_model(model_id: UUID, service: ModelServiceDep) -> None:
     """Delete a non-default model; its assignments cascade with it."""
     try:
-        await service.delete(profile_id)
+        await service.delete(model_id)
     except (ProfileNotFoundError, DefaultProfileError) as error:
         raise _profile_errors(error) from None
 
 
-@router.post("/profiles/{profile_id}/test", response_model=ModelTestResult)
-async def test_profile(profile_id: UUID, service: ModelServiceDep) -> ModelTestResult:
+@router.post("/models/{model_id}/test", response_model=ModelTestResult)
+async def test_model(model_id: UUID, service: ModelServiceDep) -> ModelTestResult:
     """One cheap completion through the model's provider, audited as settings.test."""
     try:
-        result = await service.test(profile_id)
+        result = await service.test(model_id)
     except ProfileNotFoundError:
         raise HTTPException(status_code=404, detail="profile not found") from None
     return ModelTestResult(ok=result.ok, error=result.error, latency_ms=result.latency_ms)

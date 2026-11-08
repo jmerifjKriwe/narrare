@@ -108,7 +108,7 @@ async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) 
     if profile is None:
         ordered = await profiles.ordered()  # the default first, then by name
         profile = ordered[0] if ordered else None
-    if profile is not None and profile.provider_id is not None:
+    if profile is not None:
         provider = await ProviderRepository(session, user_id).get(profile.provider_id)
         if provider is not None:
             return from_profile(profile, provider)

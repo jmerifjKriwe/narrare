@@ -175,14 +175,14 @@ def _route_model(api: httpx.Client, vendor: ChatVendor) -> None:
     their text is the demo prose instead of one canned German sentence.
     """
     fake = api.post(
-        "/api/settings/profiles",
+        "/api/settings/models",
         json={"name": "Deterministic stand-in", "kind": "fake"},
     )
     fake.raise_for_status()
     fake_id = str(fake.json()["id"])
 
     local = api.post(
-        "/api/settings/profiles",
+        "/api/settings/models",
         json={
             "name": "Local endpoint",
             "kind": "openai-chat",

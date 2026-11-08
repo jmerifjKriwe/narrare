@@ -95,7 +95,6 @@ async def test_the_stored_request_timeout_reaches_the_socket_through_resolution(
             )
             await ProfileRepository(session, owner).create(
                 name="Stored model",
-                kind="openai-chat",
                 provider_id=provider.id,
                 model="vendor-mini",
                 request_timeout=0.2,

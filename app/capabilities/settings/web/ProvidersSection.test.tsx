@@ -133,6 +133,16 @@ describe("a provider the server refuses to delete", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(t("settings.providers.errorInUse"));
   });
+
+  it("names a delete that never reaches the service", async () => {
+    api.DELETE.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderSection();
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.delete") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.providers.errorDelete"));
+  });
 });
 
 describe("model discovery on the row", () => {

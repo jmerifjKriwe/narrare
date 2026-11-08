@@ -64,9 +64,7 @@ async def seeded_model() -> ProviderProfile:
         providers = ProviderRepository(session, LOCAL_USER_ID)
         provider = await providers.create(name="Vendor", kind="openai-chat", base_url=REMOTE)
         profiles = ProfileRepository(session, LOCAL_USER_ID)
-        model = await profiles.create(
-            name="GLM", kind="openai-chat", provider_id=provider.id, model="GLM"
-        )
+        model = await profiles.create(name="GLM", provider_id=provider.id, model="GLM")
         await session.commit()
     return model
 

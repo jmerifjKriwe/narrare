@@ -67,10 +67,6 @@ class DefaultProfileRaceError(RuntimeError):
     """
 
 
-class NoEndpointError(RuntimeError):
-    """The provider has no endpoint (a fake), so there is nothing to probe."""
-
-
 @dataclass(frozen=True)
 class TestResult:
     """What one connection test found: it ran, and it either answered or named why."""
@@ -111,16 +107,13 @@ class ModelService:
         """Every model of the user's with its provider: the default first.
 
         The provider comes back beside the model because every read names it;
-        the FK keeps the pointer dangling nowhere, so the pair is always
-        complete for the rows the writers store.
+        the NOT NULL pointer and the FK keep the pair complete for every row
+        the writers store.
         """
         names = {provider.id: provider for provider in await self._providers().ordered()}
-        pairs: list[tuple[ProviderProfile, LLMProvider]] = []
-        for profile in await self._profiles().ordered():
-            provider = names.get(profile.provider_id) if profile.provider_id is not None else None
-            if provider is not None:
-                pairs.append((profile, provider))
-        return pairs
+        return [
+            (profile, names[profile.provider_id]) for profile in await self._profiles().ordered()
+        ]
 
     async def create(self, payload: ModelCreate) -> tuple[ProviderProfile, LLMProvider]:
         """Store one model under one of the user's providers; the first is the default.
@@ -128,9 +121,7 @@ class ModelService:
         The provider's own gate has already vetted the endpoint this model
         points at; the model gate refuses only what the model itself could
         get wrong — a provider that is not the user's, and an output
-        reservation that leaves no input room. The legacy kind column copies
-        the provider's kind, so the row never claims a shape its provider
-        does not have.
+        reservation that leaves no input room.
 
         The default race is the profile create's (design D7): two creates
         that both read an empty table collide on the partial unique index,
@@ -149,7 +140,6 @@ class ModelService:
         is_default = not await profiles.ordered()
         fields: dict[str, object] = {
             "name": payload.name,
-            "kind": provider.kind,
             "provider_id": provider.id,
             "model": payload.model,
             "context_window": payload.context_window,
@@ -178,14 +168,13 @@ class ModelService:
 
         Clearing the name, the provider or the model string is refused —
         a model without one of them is not a configuration, and an absent
-        field means "keep" the way it always did. Moving the provider copies
-        its kind into the legacy column in the same write, and the gate runs
-        on the patched pair before anything is stored. ``is_default: true``
-        hands the default over from its holder in the same transaction;
-        ``false`` is refused — "models exist with no default" is not a legal
-        state. Two swaps in flight can both unset the old holder before
-        either raises its own model, so the later ``is_default = true`` flush
-        trips the partial unique index; that one flush is caught and named
+        field means "keep" the way it always did. The gate runs on the
+        patched pair before anything is stored. ``is_default: true`` hands
+        the default over from its holder in the same transaction; ``false``
+        is refused — "models exist with no default" is not a legal state.
+        Two swaps in flight can both unset the old holder before either
+        raises its own model, so the later ``is_default = true`` flush trips
+        the partial unique index; that one flush is caught and named
         :class:`DefaultProfileRaceError` (the create race's answer), never
         left as a bare ``IntegrityError``.
         """
@@ -235,8 +224,6 @@ class ModelService:
         ):
             if field in set_fields:
                 updates[field] = getattr(payload, field)
-        if "provider_id" in updates:
-            updates["kind"] = provider.kind  # the legacy column follows the provider
         if updates:
             await profiles.update(profile, **updates)
         if payload.is_default:
@@ -403,15 +390,11 @@ class ModelService:
     async def _paired(self, profile: ProviderProfile) -> LLMProvider:
         """The provider of a stored model, for the reads and probes that need it.
 
-        The write gate keeps the pointer set and the FK keeps it dangling
-        nowhere, so this is total for every row the writers store; a row
-        that got here anyway is named, not crashed on.
+        The write gate keeps the pointer set and the NOT NULL column plus the
+        FK keep it dangling nowhere, so this is total for every row the
+        writers store; a row that got here anyway is named, not crashed on.
         """
-        provider = (
-            await self._providers().get(profile.provider_id)
-            if profile.provider_id is not None
-            else None
-        )
+        provider = await self._providers().get(profile.provider_id)
         if provider is None:
             raise ProfileNotFoundError(f"no provider behind model {profile.id}")
         return provider

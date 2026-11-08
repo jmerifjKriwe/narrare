@@ -141,7 +141,7 @@ export function ModelsSection({
     event.preventDefault();
     if (form.name.trim() === "" || form.providerId === "" || form.model.trim() === "") return;
     if (editing === null) {
-      const { response } = await client.POST("/api/settings/profiles", {
+      const { response } = await client.POST("/api/settings/models", {
         body: {
           name: form.name.trim(),
           provider_id: form.providerId,
@@ -172,8 +172,8 @@ export function ModelsSection({
     // (present nulls clear), which is what a form full of values means —
     // the tuning columns included, or a cleared value would silently keep
     // governing every request.
-    const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
-      params: { path: { profile_id: editing.id } },
+    const { response } = await client.PATCH("/api/settings/models/{model_id}", {
+      params: { path: { model_id: editing.id } },
       body: {
         name: form.name.trim(),
         provider_id: form.providerId,
@@ -195,8 +195,8 @@ export function ModelsSection({
   async function makeDefault(model: Model): Promise<void> {
     setFailure(false);
     try {
-      const { response } = await client.PATCH("/api/settings/profiles/{profile_id}", {
-        params: { path: { profile_id: model.id } },
+      const { response } = await client.PATCH("/api/settings/models/{model_id}", {
+        params: { path: { model_id: model.id } },
         body: { is_default: true },
       });
       if (!response.ok) {
@@ -212,24 +212,30 @@ export function ModelsSection({
   }
 
   async function remove(model: Model): Promise<void> {
-    const { response } = await client.DELETE("/api/settings/profiles/{profile_id}", {
-      params: { path: { profile_id: model.id } },
-    });
-    if (response.ok) {
-      setDeleteRefused(null);
-      await reload();
-      return;
+    try {
+      const { response } = await client.DELETE("/api/settings/models/{model_id}", {
+        params: { path: { model_id: model.id } },
+      });
+      if (response.ok) {
+        setDeleteRefused(null);
+        await reload();
+        return;
+      }
+      // The 409 is the default guard: its message names the way out, so the
+      // page names it too — in the reader's language, not the server's.
+      setDeleteRefused(response.status === 409 ? "default" : "other");
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
+      setDeleteRefused("other");
     }
-    // The 409 is the default guard: its message names the way out, so the
-    // page names it too — in the reader's language, not the server's.
-    setDeleteRefused(response.status === 409 ? "default" : "other");
   }
 
   async function testConnection(model: Model): Promise<void> {
     setFailure(false);
     try {
-      const { data, response } = await client.POST("/api/settings/profiles/{profile_id}/test", {
-        params: { path: { profile_id: model.id } },
+      const { data, response } = await client.POST("/api/settings/models/{model_id}/test", {
+        params: { path: { model_id: model.id } },
       });
       if (response.ok && data) {
         setTestResults((current) => ({ ...current, [model.id]: data }));
@@ -337,6 +343,14 @@ export function ModelsSection({
             value={form.providerId}
             onChange={(event) => set("providerId", event.target.value)}
           >
+            {form.providerId === "" ? (
+              // The create starts with no provider named: the blank select
+              // says so out loud, instead of sitting silently on a disabled
+              // save. An edit always opens with the stored provider named.
+              <option value="" disabled>
+                {t("settings.profiles.chooseProvider")}
+              </option>
+            ) : null}
             {(providers ?? []).map((provider) => (
               <option key={provider.id} value={provider.id}>
                 {provider.name}

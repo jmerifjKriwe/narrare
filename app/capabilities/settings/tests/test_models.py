@@ -11,7 +11,8 @@ window gate and the assignments round out the surface.
 """
 
 import asyncio
-from collections.abc import Sequence  # noqa: TC003
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import pytest
@@ -21,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.api.main import app
-from app.capabilities.settings.profiles_service import (
+from app.capabilities.settings.models_service import (
     DefaultProfileRaceError,
     ModelService,
 )
@@ -32,6 +33,9 @@ from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.models import ProviderProfile
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.testing.vendor import chat_vendor
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 pytestmark = pytest.mark.timeout(30)
 
@@ -50,6 +54,19 @@ def fernet_tier(monkeypatch: pytest.MonkeyPatch) -> None:
 def _client() -> AsyncClient:
     """An HTTP client that drives the real application through ASGI."""
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+@pytest.fixture
+async def client() -> AsyncIterator[AsyncClient]:
+    """An HTTP client that drives the real application through ASGI."""
+    async with _client() as client:
+        yield client
+
+
+async def test_models_live_at_their_own_path(client: AsyncClient) -> None:
+    """The model resource is named for what it holds; the old path is gone."""
+    assert (await client.get("/api/settings/models")).status_code == 200
+    assert (await client.get("/api/settings/profiles")).status_code == 404
 
 
 async def _create_provider(
@@ -81,7 +98,7 @@ async def _create(
         "model": "vendor-mini",
     }
     payload.update(overrides)
-    response = await client.post("/api/settings/profiles", json=payload)
+    response = await client.post("/api/settings/models", json=payload)
     assert response.status_code == 201, response.text
     return dict(response.json())
 
@@ -98,7 +115,7 @@ async def test_a_model_names_a_provider_of_the_same_user() -> None:
     """A provider_id nobody carries is refused with the field, never linked."""
     async with _client() as client:
         nobody = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={
                 "name": "Ohne Anbieter",
                 "provider_id": "00000000-0000-0000-0000-000000000099",
@@ -109,14 +126,14 @@ async def test_a_model_names_a_provider_of_the_same_user() -> None:
         assert "provider_id" in nobody.text
 
         empty_model = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={"name": "Ohne Modell", "provider_id": str(uuid4()), "model": ""},
         )
         assert empty_model.status_code == 422
         assert "model" in empty_model.text
 
         # Nothing unusable was stored.
-        assert (await client.get("/api/settings/profiles")).json() == []
+        assert (await client.get("/api/settings/models")).json() == []
 
 
 async def test_a_model_cannot_point_at_another_users_provider() -> None:
@@ -130,12 +147,12 @@ async def test_a_model_cannot_point_at_another_users_provider() -> None:
 
     async with _client() as client:
         response = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={"name": "Fremd", "provider_id": str(theirs.id), "model": "vendor-mini"},
         )
         assert response.status_code == 422
         assert "provider_id" in response.text
-        assert (await client.get("/api/settings/profiles")).json() == []
+        assert (await client.get("/api/settings/models")).json() == []
 
         # The same id is invisible on the provider surface too: another
         # user's provider is neither listed nor reachable here.
@@ -154,13 +171,13 @@ async def test_a_model_read_carries_no_key_at_all() -> None:
         assert "api_key_mask" not in created
         assert "kind" not in created
 
-        listed = (await client.get("/api/settings/profiles")).json()
+        listed = (await client.get("/api/settings/models")).json()
         assert listed[0]["provider_name"] == "Vendor"
         assert "api_key" not in listed[0]
         assert "api_key_mask" not in listed[0]
 
         renamed = await client.patch(
-            f"/api/settings/profiles/{created['id']}", json={"name": "Renamed"}
+            f"/api/settings/models/{created['id']}", json={"name": "Renamed"}
         )
         assert renamed.status_code == 200
         assert "api_key" not in renamed.json()
@@ -183,13 +200,11 @@ async def test_a_patch_cannot_clear_the_name_the_provider_or_the_model() -> None
         model = await _create(client, str(provider["id"]), "Bleibt")
 
         for field in ("name", "provider_id", "model"):
-            response = await client.patch(
-                f"/api/settings/profiles/{model['id']}", json={field: None}
-            )
+            response = await client.patch(f"/api/settings/models/{model['id']}", json={field: None})
             assert response.status_code == 422, (field, response.text)
             assert field in response.text
 
-        listed = (await client.get("/api/settings/profiles")).json()[0]
+        listed = (await client.get("/api/settings/models")).json()[0]
         assert listed["name"] == "Bleibt"
         assert listed["model"] == "vendor-mini"
 
@@ -201,12 +216,12 @@ async def test_setting_a_new_default_flips_the_old_one() -> None:
         first = await _create(client, str(provider["id"]), "First")
         second = await _create(client, str(provider["id"]), "Second")
         response = await client.patch(
-            f"/api/settings/profiles/{second['id']}", json={"is_default": True}
+            f"/api/settings/models/{second['id']}", json={"is_default": True}
         )
         assert response.status_code == 200
         assert response.json()["is_default"] is True
 
-        listed = (await client.get("/api/settings/profiles")).json()
+        listed = (await client.get("/api/settings/models")).json()
         by_default = {str(model["id"]): model["is_default"] for model in listed}
         assert by_default[str(first["id"])] is False
         assert by_default[str(second["id"])] is True
@@ -234,8 +249,8 @@ async def test_two_concurrent_creates_keep_one_default_and_a_named_loser() -> No
         }
         async with _client() as first, _client() as second:
             responses = await asyncio.gather(
-                first.post("/api/settings/profiles", json=payload),
-                second.post("/api/settings/profiles", json=payload | {"name": "Race two"}),
+                first.post("/api/settings/models", json=payload),
+                second.post("/api/settings/models", json=payload | {"name": "Race two"}),
             )
 
     statuses = sorted(response.status_code for response in responses)
@@ -331,8 +346,8 @@ async def test_two_concurrent_default_swaps_keep_one_default_and_a_named_loser()
 
     async with _client() as left, _client() as right:
         responses = await asyncio.gather(
-            left.patch(f"/api/settings/profiles/{second['id']}", json={"is_default": True}),
-            right.patch(f"/api/settings/profiles/{third['id']}", json={"is_default": True}),
+            left.patch(f"/api/settings/models/{second['id']}", json={"is_default": True}),
+            right.patch(f"/api/settings/models/{third['id']}", json={"is_default": True}),
         )
 
     statuses = sorted(response.status_code for response in responses)
@@ -419,7 +434,7 @@ async def test_a_lost_swap_on_patch_is_a_named_409(monkeypatch: pytest.MonkeyPat
 
         monkeypatch.setattr(ModelService, "update", lost)
         response = await client.patch(
-            f"/api/settings/profiles/{model['id']}", json={"is_default": True}
+            f"/api/settings/models/{model['id']}", json={"is_default": True}
         )
     assert response.status_code == 409
     assert "default" in response.json()["detail"]
@@ -454,7 +469,7 @@ async def test_a_model_cannot_be_patched_out_of_being_the_default() -> None:
         provider = await _create_provider(client)
         model = await _create(client, str(provider["id"]))
         response = await client.patch(
-            f"/api/settings/profiles/{model['id']}", json={"is_default": False}
+            f"/api/settings/models/{model['id']}", json={"is_default": False}
         )
         assert response.status_code == 422
         assert "is_default" in response.text
@@ -465,10 +480,10 @@ async def test_the_default_model_cannot_be_deleted_and_the_error_names_the_way_o
     async with _client() as client:
         provider = await _create_provider(client)
         model = await _create(client, str(provider["id"]))
-        response = await client.delete(f"/api/settings/profiles/{model['id']}")
+        response = await client.delete(f"/api/settings/models/{model['id']}")
         assert response.status_code == 409
         assert "second" in response.json()["detail"]
-        listed = (await client.get("/api/settings/profiles")).json()
+        listed = (await client.get("/api/settings/models")).json()
         assert [str(m["id"]) for m in listed] == [str(model["id"])]
 
 
@@ -483,14 +498,14 @@ async def test_deleting_a_model_cascades_its_assignments() -> None:
         )
         assert assigned.status_code == 200
 
-        deleted = await client.delete(f"/api/settings/profiles/{doomed['id']}")
+        deleted = await client.delete(f"/api/settings/models/{doomed['id']}")
         assert deleted.status_code == 204
 
         assert (await client.get("/api/settings/assignments")).json() == []
 
 
-async def test_moving_a_model_to_another_provider_follows_the_kind() -> None:
-    """The legacy kind column copies the provider it now points at."""
+async def test_moving_a_model_to_another_provider_stores_the_new_pointer() -> None:
+    """A provider move repoints the row; the provider owns every endpoint fact."""
     async with _client() as client:
         vendor = await _create_provider(client)
         geist = await client.post("/api/settings/providers", json={"name": "Geist", "kind": "fake"})
@@ -498,14 +513,39 @@ async def test_moving_a_model_to_another_provider_follows_the_kind() -> None:
         model = await _create(client, str(vendor["id"]))
 
         moved = await client.patch(
-            f"/api/settings/profiles/{model['id']}",
+            f"/api/settings/models/{model['id']}",
             json={"provider_id": geist.json()["id"]},
         )
         assert moved.status_code == 200, moved.text
         assert moved.json()["provider_name"] == "Geist"
 
-    (kind,) = await _stored(UUID(str(model["id"])), "kind")
-    assert kind == "fake"
+    (stored_provider,) = await _stored(UUID(str(model["id"])), "provider_id")
+    assert str(stored_provider) == geist.json()["id"]
+
+
+async def test_a_model_cannot_be_patched_onto_another_users_provider() -> None:
+    """The update path runs the same user-scoped gate the create does."""
+    await seed_user(OTHER)
+    async with Session() as session:
+        theirs = await ProviderRepository(session, OTHER).create(
+            name="Their vendor", kind="openai-chat", base_url="http://127.0.0.1:9/v1"
+        )
+        await session.commit()
+
+    async with _client() as client:
+        provider = await _create_provider(client)
+        model = await _create(client, str(provider["id"]))
+
+        patched = await client.patch(
+            f"/api/settings/models/{model['id']}",
+            json={"provider_id": str(theirs.id)},
+        )
+        assert patched.status_code == 422
+        assert "provider_id" in patched.text
+
+        # The refusal stored nothing: the model still points at its own provider.
+        listed = (await client.get("/api/settings/models")).json()
+        assert [str(entry["provider_id"]) for entry in listed] == [str(provider["id"])]
 
 
 async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> None:
@@ -521,7 +561,7 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> N
         provider = await _create_provider(client)
         fake = await client.post("/api/settings/providers", json={"name": "Geist", "kind": "fake"})
         reversed_on_fake = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={
                 "name": "Umgekehrt",
                 "provider_id": fake.json()["id"],
@@ -533,7 +573,7 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> N
         assert reversed_on_fake.status_code == 201, reversed_on_fake.text
 
         equal = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={
                 "name": "Grenze",
                 "provider_id": provider["id"],
@@ -546,7 +586,7 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> N
         assert "max_output_tokens" in equal.text
 
         greater = await client.post(
-            "/api/settings/profiles",
+            "/api/settings/models",
             json={
                 "name": "Über",
                 "provider_id": provider["id"],
@@ -569,7 +609,7 @@ async def test_an_output_reservation_that_leaves_no_input_room_is_refused() -> N
 
         # Shrinking the window under the stored reservation is the same refusal.
         patched = await client.patch(
-            f"/api/settings/profiles/{ordered['id']}", json={"context_window": 150}
+            f"/api/settings/models/{ordered['id']}", json={"context_window": 150}
         )
         assert patched.status_code == 422
         assert "max_output_tokens" in patched.text
@@ -585,7 +625,7 @@ async def test_the_connection_test_hits_the_provider_and_audits_settings_test() 
         async with _client() as client:
             provider = await _create_provider(client, base_url=vendor.base_url)
             model = await _create(client, str(provider["id"]))
-            result = await client.post(f"/api/settings/profiles/{model['id']}/test")
+            result = await client.post(f"/api/settings/models/{model['id']}/test")
 
     assert result.status_code == 200
     body = result.json()
@@ -620,7 +660,7 @@ async def test_a_failing_connection_test_reports_the_failure_and_audits_it() -> 
         async with _client() as client:
             provider = await _create_provider(client, base_url=vendor.base_url)
             model = await _create(client, str(provider["id"]))
-            result = await client.post(f"/api/settings/profiles/{model['id']}/test")
+            result = await client.post(f"/api/settings/models/{model['id']}/test")
 
     assert result.status_code == 200
     body = result.json()
@@ -645,7 +685,7 @@ async def test_a_model_whose_provider_key_is_lost_fails_the_test_by_name() -> No
             )
             await session.commit()
 
-        result = await client.post(f"/api/settings/profiles/{model['id']}/test")
+        result = await client.post(f"/api/settings/models/{model['id']}/test")
 
     assert result.status_code == 200
     body = result.json()
@@ -693,9 +733,9 @@ async def test_a_missing_model_is_a_404_on_every_named_route() -> None:
     missing = "00000000-0000-0000-0000-000000000099"
     async with _client() as client:
         for method, path in (
-            ("PATCH", f"/api/settings/profiles/{missing}"),
-            ("DELETE", f"/api/settings/profiles/{missing}"),
-            ("POST", f"/api/settings/profiles/{missing}/test"),
+            ("PATCH", f"/api/settings/models/{missing}"),
+            ("DELETE", f"/api/settings/models/{missing}"),
+            ("POST", f"/api/settings/models/{missing}/test"),
         ):
             response = await client.request(method, path, json={} if method == "PATCH" else None)
             assert response.status_code == 404, (method, response.text)

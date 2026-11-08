@@ -5,11 +5,7 @@ The tables are kernel machinery, not shared domain vocabulary, so they live
 next to the provider boundary rather than in contracts. A user's
 ``LLMProvider`` row is the saved endpoint — the vendor, the base URL, the
 key — and a ``ProviderProfile`` (a model, until the rename lands) points at
-one of them while carrying the model choice and tuning: ``provider_id`` is
-nullable only until every existing profile has been given its provider row,
-and the later revision that fills it makes NOT NULL. A profile's ``kind``
-and key columns are legacy: the provider carries both now, the write copies
-the kind, and the later revision drops the columns. A ``TaskAssignment``
+exactly one of them and carries the model choice and tuning. A ``TaskAssignment``
 points one task key at one profile. ``LlmCall`` is a log, not user data:
 ``novel_id`` and ``profile_id`` carry no foreign key on purpose, so the
 audit outlives the novel and the profile it names. ``cost_usd`` stays NULL
@@ -42,19 +38,12 @@ from app.kernel.db.base import UserOwned
 OK = "ok"
 ERROR = "error"
 
-PROFILE_KINDS = ("fake", "openai-chat")
-"""The kinds the legacy profile column can still carry, until the revision
-that drops the column together with the endpoint facts it duplicated. No
-writer chooses a kind of its own any more: a model's kind is its provider's,
-copied at the write, so the column stays truthful while it exists."""
-
 PROVIDER_KINDS = ("fake", "openai-chat")
 """The kinds of provider a user can save, beside the free-text ``kind``
 column — validating one is the settings service's gate, not the database's.
-The vocabulary splits from :data:`PROFILE_KINDS` on purpose, not as a
-coincidence of equal contents: a provider kind arrives (an ``anthropic``
-adapter) that no profile row ever carried, and the two lists must be free to
-drift apart when it does."""
+The list is open at one end on purpose: a provider kind arrives (an
+``anthropic`` adapter) that no code but the adapter and the catalog knows,
+and this list is where it lands."""
 
 
 class LLMProvider(UserOwned):
@@ -96,12 +85,11 @@ class ProviderProfile(UserOwned):
     """One user's saved model: which provider serves it and how to tune it.
 
     Everything endpoint-shaped lives on the provider this row names; what is
-    left here is the identity (name, model string) and the tuning. The
-    ``kind``, ``base_url`` and key columns are legacy — the write copies the
-    provider's kind, and the later revision drops the columns together with
-    the table rename. ``is_default`` carries exactly-one-per-user semantics:
-    the settings service keeps the flip in one transaction (design D7), and
-    a partial unique index makes the database the last word on it — two
+    left here is the identity (name, model string) and the tuning, plus the
+    provider pointer the write gate refuses to leave unset or point across
+    users. ``is_default`` carries exactly-one-per-user semantics: the
+    settings service keeps the flip in one transaction (design D7), and a
+    partial unique index makes the database the last word on it — two
     concurrent creates cannot both mint a default.
     """
 
@@ -120,21 +108,15 @@ class ProviderProfile(UserOwned):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(120))
-    # A PROFILE_KINDS value; free text to the database.
-    kind: Mapped[str] = mapped_column(String(40))
-    # The provider row this profile points at — its endpoint and key once the
-    # profile stops carrying them itself. Nullable only until the backfill
-    # revision has given every existing profile its 1:1 provider row; the
-    # later revision makes it NOT NULL. A deleted provider cascades here at
-    # the database, and what a task then resolves is the resolver's story.
-    provider_id: Mapped[UUID | None] = mapped_column(
+    # The provider row this profile points at — its endpoint and key. NOT
+    # NULL since the revision that dropped the duplicated columns: a model
+    # without a provider is not a configuration. A deleted provider cascades
+    # here at the database, and what a task then resolves is the resolver's
+    # story.
+    provider_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("llm_providers.id", ondelete="CASCADE")
     )
-    base_url: Mapped[str | None] = mapped_column(String(500))
     model: Mapped[str | None] = mapped_column(String(200))
-    # Exactly what secrets.save_key returned: "" (keyring tier) or ciphertext.
-    api_key: Mapped[str] = mapped_column(Text, default="")
-    api_key_hint: Mapped[str | None] = mapped_column(String(8))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     context_window: Mapped[int | None] = mapped_column(Integer)
     max_output_tokens: Mapped[int | None] = mapped_column(Integer)

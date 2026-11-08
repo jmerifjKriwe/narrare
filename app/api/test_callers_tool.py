@@ -125,7 +125,7 @@ def test_line_queries_report_the_async_methods_actual_callers(
     assert main(args) == 0
     output = capsys.readouterr().out
     assert f"ordered — app/kernel/llm/repositories.py:{line} (method)" in output
-    assert "app/capabilities/settings/profiles_service.py:" in output
+    assert "app/capabilities/settings/models_service.py:" in output
 
 
 @pytest.mark.parametrize(
@@ -295,7 +295,7 @@ def test_main_waits_for_readiness_before_asking_for_callers(
 
 
 def test_call_sites_are_deduped_and_graded() -> None:
-    uri = f"file://{ROOT}/app/capabilities/settings/profiles_service.py"
+    uri = f"file://{ROOT}/app/capabilities/settings/models_service.py"
     test_uri = f"file://{ROOT}/app/kernel/tests/test_llm_profiles.py"
     result = cast(
         "list[IncomingCall]",
@@ -316,7 +316,7 @@ def test_call_sites_are_deduped_and_graded() -> None:
         ],
     )
     assert collect_calls(result) == [
-        CallSite("app/capabilities/settings/profiles_service.py", 113, "list"),
+        CallSite("app/capabilities/settings/models_service.py", 113, "list"),
         CallSite("app/kernel/tests/test_llm_profiles.py", 134, "test_ordered"),
     ]
     assert [site.is_test for site in collect_calls(result)] == [False, True]

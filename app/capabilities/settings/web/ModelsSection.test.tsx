@@ -199,11 +199,36 @@ describe("the model form's inputs", () => {
     await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.create") }));
 
     expect(api.POST).toHaveBeenCalledWith(
-      "/api/settings/profiles",
+      "/api/settings/models",
       expect.objectContaining({
         body: expect.objectContaining({ provider_id: PROVIDER.id, model: "glm-5.3-flash" }),
       }),
     );
+  });
+
+  it("name the missing provider instead of silently disabling the save", async () => {
+    renderSections();
+
+    // The blank create opens on an explicit, disabled placeholder option —
+    // a select that merely showed nothing left the disabled save unexplained.
+    const select = screen.getByLabelText(
+      t("settings.profiles.providerLabel"),
+    ) as HTMLSelectElement;
+    expect(select.value).toBe("");
+    const placeholder = select.querySelector('option[value=""]') as HTMLOptionElement;
+    expect(placeholder).toBeTruthy();
+    expect(placeholder.textContent).toBe(t("settings.profiles.chooseProvider"));
+    expect(placeholder.disabled).toBe(true);
+
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "glm-5.3-flash");
+    const save = screen.getByRole("button", {
+      name: t("settings.profiles.create"),
+    }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+
+    await userEvent.selectOptions(select, PROVIDER.id);
+    expect(save.disabled).toBe(false);
   });
 });
 
@@ -214,7 +239,7 @@ describe("the mount's reads through the panel", () => {
       switch (path) {
         case "/api/settings/providers":
           return { data: [PROVIDER], response: ok() };
-        case "/api/settings/profiles":
+        case "/api/settings/models":
           return { data: [DEFAULT_MODEL], response: ok() };
         case "/api/settings/assignments":
           return { data: [], response: ok() };
@@ -233,7 +258,7 @@ describe("the mount's reads through the panel", () => {
     expect(paths).toEqual(
       expect.arrayContaining([
         "/api/settings/providers",
-        "/api/settings/profiles",
+        "/api/settings/models",
         "/api/settings/assignments",
         "/api/settings/tasks",
       ]),
@@ -246,7 +271,7 @@ describe("the mount's reads through the panel", () => {
       switch (path) {
         case "/api/settings/providers":
           return { data: [PROVIDER], response: ok() };
-        case "/api/settings/profiles":
+        case "/api/settings/models":
           return { data: [DEFAULT_MODEL], response: ok() };
         case "/api/settings/assignments":
           return { data: [], response: ok() };
@@ -261,10 +286,37 @@ describe("the mount's reads through the panel", () => {
     expect(await screen.findAllByText(labelOf(DEFAULT_MODEL)).then((rows) => rows.length)).toBeGreaterThan(0);
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(t("settings.profiles.errorLoad"));
+    // The failure sits above everything it concerns: the alert precedes each
+    // section's heading in the page's own order.
+    for (const key of ["settings.providers", "settings.models", "settings.assignments"] as const) {
+      const heading = screen.getByRole("heading", { name: t(key) });
+      expect(heading.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeFalsy();
+    }
+  });
+
+  it("announce the load while the lists are still on their way", async () => {
+    const { ProvidersPanel } = await import("./ProvidersPanel");
+    // Nothing ever answers: the mount stays between "asked" and "arrived",
+    // exactly the span the loading status exists to speak in.
+    api.GET.mockImplementation(() => new Promise(() => {}));
+
+    render(<ProvidersPanel />);
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toContain(t("settings.profiles.loading"));
   });
 });
 
 describe("a secondary action whose request cannot be sent", () => {
+  it("names a delete that never reaches the service", async () => {
+    renderSections();
+    api.DELETE.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await userEvent.click(screen.getAllByRole("button", { name: t("settings.profiles.delete") })[0]);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorDelete"));
+  });
+
   it("names a test connection that never reaches the service", async () => {
     renderSections();
     api.POST.mockRejectedValue(new TypeError("Failed to fetch"));

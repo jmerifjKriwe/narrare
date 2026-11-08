@@ -19,7 +19,6 @@ from uuid import UUID  # noqa: TC003  the service's parameter annotations name i
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.settings.profiles_service import NoEndpointError
 from app.kernel.llm.models import LLMProvider  # noqa: TC001
 from app.kernel.llm.openai_chat import client_for, keyless_headers
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
@@ -47,6 +46,10 @@ class ProviderRefusedError(ValueError):
 
 class ProviderHasModelsError(RuntimeError):
     """The provider still has models pointed at it; the message names them."""
+
+
+class NoEndpointError(RuntimeError):
+    """The provider has no endpoint (a fake), so there is nothing to ask."""
 
 
 class ProviderService:

@@ -85,7 +85,6 @@ async def _fake_profile(
     )
     return await ProfileRepository(session, user_id).create(
         name=name,
-        kind="fake",
         provider_id=provider.id,
         model=model,
         is_default=is_default,
@@ -193,7 +192,7 @@ async def test_a_deleted_provider_takes_its_models_off_the_cascade() -> None:
         providers = ProviderRepository(session, OWNER)
         doomed_provider = await providers.create(name="Doomed provider", kind="fake")
         doomed = await ProfileRepository(session, OWNER).create(
-            name="Doomed", kind="fake", provider_id=doomed_provider.id, model="doomed-model"
+            name="Doomed", provider_id=doomed_provider.id, model="doomed-model"
         )
         default = await _fake_profile(
             session, OWNER, name="Default", model="default-model", is_default=True
@@ -309,7 +308,7 @@ async def test_a_model_resolves_through_its_provider() -> None:
             name="P", kind="openai-chat", base_url=LOCAL, vendor="opencode-go"
         )
         await ProfileRepository(session, OWNER).create(
-            name="M", kind="openai-chat", provider_id=provider.id, model="glm-5.3-flash"
+            name="M", provider_id=provider.id, model="glm-5.3-flash"
         )
         await session.commit()
 
@@ -364,7 +363,6 @@ async def test_an_openai_chat_model_resolves_its_endpoint_and_key(
         await providers.update(provider, api_key=save_key(provider.id, "sk-provider"))
         profile = await ProfileRepository(session, OWNER).create(
             name="Hosted model",
-            kind="openai-chat",
             provider_id=provider.id,
             model="acme/turbo-3",
         )
@@ -400,7 +398,6 @@ async def test_the_resolved_repr_never_carries_the_api_key(
         await providers.update(provider, api_key=save_key(provider.id, "sk-never-repr"))
         await ProfileRepository(session, OWNER).create(
             name="Hosted model",
-            kind="openai-chat",
             provider_id=provider.id,
             model="acme/turbo-3",
         )
@@ -431,7 +428,7 @@ async def test_a_local_openai_chat_model_without_a_key_resolves_keyless() -> Non
             name="Lokal", kind="openai-chat", base_url="http://127.0.0.1:11434/v1"
         )
         await ProfileRepository(session, OWNER).create(
-            name="Lokal model", kind="openai-chat", provider_id=provider.id, model="llama3"
+            name="Lokal model", provider_id=provider.id, model="llama3"
         )
         await session.commit()
 
@@ -459,7 +456,6 @@ async def test_a_provider_whose_key_is_lost_refuses_by_name(
         )
         await ProfileRepository(session, OWNER).create(
             name="Broken model",
-            kind="openai-chat",
             provider_id=provider.id,
             model="acme/turbo-3",
         )

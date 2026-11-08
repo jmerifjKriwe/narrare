@@ -4121,10 +4121,10 @@
         ]
       }
     },
-    "/api/settings/profiles": {
+    "/api/settings/models": {
       "get": {
         "description": "The user's models, the default first; every read names its provider.",
-        "operationId": "list_profiles_api_settings_profiles_get",
+        "operationId": "list_models_api_settings_models_get",
         "responses": {
           "200": {
             "content": {
@@ -4133,7 +4133,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ModelRead"
                   },
-                  "title": "Response List Profiles Api Settings Profiles Get",
+                  "title": "Response List Models Api Settings Models Get",
                   "type": "array"
                 }
               }
@@ -4141,14 +4141,14 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List Profiles",
+        "summary": "List Models",
         "tags": [
           "settings"
         ]
       },
       "post": {
         "description": "Store one model under one of the user's providers; the first is the default.",
-        "operationId": "create_profile_api_settings_profiles_post",
+        "operationId": "create_model_api_settings_models_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4181,24 +4181,24 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Profile",
+        "summary": "Create Model",
         "tags": [
           "settings"
         ]
       }
     },
-    "/api/settings/profiles/{profile_id}": {
+    "/api/settings/models/{model_id}": {
       "delete": {
         "description": "Delete a non-default model; its assignments cascade with it.",
-        "operationId": "delete_profile_api_settings_profiles__profile_id__delete",
+        "operationId": "delete_model_api_settings_models__model_id__delete",
         "parameters": [
           {
             "in": "path",
-            "name": "profile_id",
+            "name": "model_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Profile Id",
+              "title": "Model Id",
               "type": "string"
             }
           }
@@ -4218,22 +4218,22 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete Profile",
+        "summary": "Delete Model",
         "tags": [
           "settings"
         ]
       },
       "patch": {
         "description": "Apply the patch; the provider and the model string can both move.",
-        "operationId": "update_profile_api_settings_profiles__profile_id__patch",
+        "operationId": "update_model_api_settings_models__model_id__patch",
         "parameters": [
           {
             "in": "path",
-            "name": "profile_id",
+            "name": "model_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Profile Id",
+              "title": "Model Id",
               "type": "string"
             }
           }
@@ -4270,24 +4270,24 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Profile",
+        "summary": "Update Model",
         "tags": [
           "settings"
         ]
       }
     },
-    "/api/settings/profiles/{profile_id}/test": {
+    "/api/settings/models/{model_id}/test": {
       "post": {
         "description": "One cheap completion through the model's provider, audited as settings.test.",
-        "operationId": "test_profile_api_settings_profiles__profile_id__test_post",
+        "operationId": "test_model_api_settings_models__model_id__test_post",
         "parameters": [
           {
             "in": "path",
-            "name": "profile_id",
+            "name": "model_id",
             "required": true,
             "schema": {
               "format": "uuid",
-              "title": "Profile Id",
+              "title": "Model Id",
               "type": "string"
             }
           }
@@ -4314,7 +4314,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Test Profile",
+        "summary": "Test Model",
         "tags": [
           "settings"
         ]

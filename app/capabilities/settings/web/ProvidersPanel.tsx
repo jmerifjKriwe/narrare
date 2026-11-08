@@ -55,7 +55,7 @@ export function ProvidersPanel() {
     // results keep every success, and the panel's alert names the failure.
     const [providerList, modelList, assignmentList, taskList] = await Promise.allSettled([
       client.GET("/api/settings/providers"),
-      client.GET("/api/settings/profiles"),
+      client.GET("/api/settings/models"),
       client.GET("/api/settings/assignments"),
       client.GET("/api/settings/tasks"),
     ]);
@@ -121,8 +121,37 @@ export function ProvidersPanel() {
   // mounts only where a router exists, so the panel stays renderable alone.
   const router = useRouter({ warn: false });
 
+  // The page says where it stands before the sections do: the load failure
+  // sits above everything it concerns, and the one loading status announces
+  // while the lists are still on their way (a section renders nothing on
+  // null — without the status the first paint would be silence).
+  const loading = failure === null && (providers === null || models === null);
+
   return (
     <>
+      {failure !== null ? (
+        // The reads failed: said where the way back is — one press asks
+        // all four again, no reload demanded.
+        <Notice
+          tone="danger"
+          live="alert"
+          className="mt-3"
+          action={
+            <Button variant="secondary" onClick={() => void reload()}>
+              {t("settings.retry")}
+            </Button>
+          }
+        >
+          {t(failure)}
+        </Notice>
+      ) : null}
+
+      {loading ? (
+        <Notice tone="quiet" live="status" className="mt-3">
+          {t("settings.profiles.loading")}
+        </Notice>
+      ) : null}
+
       <ProvidersSection
         providers={providers}
         reload={reload}
@@ -142,23 +171,6 @@ export function ProvidersPanel() {
         tasks={tasks}
         reload={reload}
       />
-
-      {failure !== null ? (
-        // The reads failed: said where the way back is — one press asks
-        // all four again, no reload demanded.
-        <Notice
-          tone="danger"
-          live="alert"
-          className="mt-3"
-          action={
-            <Button variant="secondary" onClick={() => void reload()}>
-              {t("settings.retry")}
-            </Button>
-          }
-        >
-          {t(failure)}
-        </Notice>
-      ) : null}
 
       {router ? <LeaveBlocker dirty={dirty} ask={askToLeave} /> : null}
 
