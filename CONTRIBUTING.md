@@ -193,6 +193,8 @@ git config merge.narrare-json.name "Narrare JSON merge"
 git config merge.narrare-json.driver "uv run python scripts/merge_json.py --base %O --ours %A --theirs %B"
 git config merge.narrare-generated.name "Narrare generated merge"
 git config merge.narrare-generated.driver "uv run python scripts/merge_json.py --generated --path %P --base %O --ours %A --theirs %B"
+
+The generated driver rebuilds the capability views and `openapi.json` in-process. `web/lib/api/schema.d.ts` is produced by the Node `openapi-typescript` step and stays manual: after a merge that touches it, run `just generate`.
 ```
 
 ## Code of Conduct

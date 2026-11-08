@@ -12,9 +12,8 @@ or unreadable input.
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
-import shutil
+import os
 import sys
 from pathlib import Path
 from typing import cast
@@ -102,35 +101,30 @@ def deep_merge(base: object, ours: object, theirs: object, prefix: str = "") -> 
     raise MergeConflictError(prefix or "<root>")
 
 
-def _executable(name: str) -> str:
-    resolved = shutil.which(name)
-    if resolved is None:
-        raise FileNotFoundError(f"{name} is not on PATH")
-    return resolved
-
-
-async def _run(argv: list[str], cwd: Path | None = None) -> str:
-    process = await asyncio.create_subprocess_exec(
-        *argv,
-        cwd=cwd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await process.communicate()
-    if process.returncode != 0:
-        detail = stderr.decode().strip() or f"{argv[0]} exited {process.returncode}"
-        raise RuntimeError(detail)
-    return stdout.decode()
-
-
-def _repository_root() -> Path:
-    git = _executable("git")
-    return Path(asyncio.run(_run([git, "rev-parse", "--show-toplevel"])).strip())
-
-
 def _regenerate(root: Path, path: str, ours: Path) -> None:
-    just = _executable("just")
-    asyncio.run(_run([just, "generate"], cwd=root))
+    """Regenerate in-process; no shell, no external executable.
+
+    ``schema.d.ts`` is produced by the Node openapi-typescript step, which has
+    no Python equivalent. It stays manual: the driver refuses and the developer
+    runs ``just generate`` after the merge.
+    """
+    if path.endswith("schema.d.ts"):
+        raise RuntimeError(
+            "schema.d.ts needs `just generate`; the Node step has no in-process path"
+        )
+    previous = Path.cwd()
+    os.chdir(root)
+    try:
+        if path == "web/lib/api/openapi.json":
+            from scripts.export_openapi import main as export_main
+
+            export_main()
+        else:
+            from scripts.generate_capabilities import main as generate_main
+
+            generate_main()
+    finally:
+        os.chdir(previous)
     source = root / path
     if not source.is_file():
         raise FileNotFoundError(f"generator did not write {path}")
@@ -154,7 +148,7 @@ def main() -> int:
             print("merge_json: --generated requires --path <%P>", file=sys.stderr)
             return 1
         try:
-            root = Path(args.root) if args.root else _repository_root()
+            root = Path(args.root) if args.root else Path.cwd()
             _regenerate(root, args.path, Path(args.ours))
         except (OSError, RuntimeError) as exc:
             print(f"merge_json: regeneration failed: {exc}", file=sys.stderr)
