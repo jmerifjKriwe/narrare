@@ -26,7 +26,7 @@ from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, De
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.models import ProviderProfile  # noqa: TC001  the helper's return annotation
 from app.kernel.llm.openai_chat import OpenAIChatProvider
-from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository
 from app.kernel.llm.resolution import (
     KNOWN_TASK_KEYS,
     ResolvedProvider,

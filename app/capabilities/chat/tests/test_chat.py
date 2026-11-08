@@ -26,7 +26,7 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.embeddings import FakeEmbeddingProvider, get_embedding_provider
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the helper's parameter
-from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.repositories import ProfileRepository
 from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response

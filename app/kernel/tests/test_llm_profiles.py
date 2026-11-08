@@ -21,13 +21,14 @@ from app.kernel.llm.models import (
     ProviderProfile,
     TaskAssignment,
 )
-from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository
 
 PROVIDER_PROFILE_COLUMNS = {
     "id",
     "user_id",
     "name",
     "kind",
+    "provider_id",
     "base_url",
     "model",
     "api_key",

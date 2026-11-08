@@ -28,7 +28,7 @@ from app.capabilities.settings.schemas import ProfileCreate, ProfileUpdate
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.llm.models import ProviderProfile
-from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.repositories import ProfileRepository
 from app.kernel.testing.vendor import chat_vendor
 
 pytestmark = pytest.mark.timeout(30)

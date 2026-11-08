@@ -43,7 +43,7 @@
 **Interfaces:**
 - Produces: `LLMProvider` (`llm_providers`), `ProviderProfile.provider_id: UUID` (nullable in this revision), `PROVIDER_KINDS = ("fake", "openai-chat")`, `ProviderRepository` in `app.kernel.llm.repositories`.
 
-- [ ] **Step 1: Write the failing repository test**
+- [x] **Step 1: Write the failing repository test**
 
 ```python
 # app/kernel/tests/test_llm_providers.py
@@ -57,17 +57,17 @@ async def test_a_provider_is_created_under_its_owner() -> None:
     assert provider.vendor == "opencode-go"
 ```
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `just test-file app/kernel/tests/test_llm_providers.py`
 Expected: FAIL — `LLMProvider`/`ProviderRepository` do not exist.
 
-- [ ] **Step 3: Add the table and the repository**
+- [x] **Step 3: Add the table and the repository**
 
 `models.py`: `class LLMProvider(UserOwned)` with `__tablename__ = "llm_providers"` and the columns `name String(120)`, `kind String(40)`, `base_url String(500)`, `models_url String(500)`, `vendor String(40)`, `api_key Text default ""`, `api_key_hint String(8)`, `created_at`, `updated_at`; `ProviderProfile` gains `provider_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("llm_providers.id", ondelete="CASCADE"))`; `PROVIDER_KINDS = ("fake", "openai-chat")`.
 `repositories.py`: `class ProviderRepository(ScopedRepository[LLMProvider])` with `get(provider_id)`, `ordered()`, `create(**fields)`, `update(provider, **fields)`, `delete(provider)` — the shapes `ProfileRepository` already has.
 
-- [ ] **Step 4: Draft the revision and hand-write the backfill**
+- [x] **Step 4: Draft the revision and hand-write the backfill**
 
 Run: `just db-revision "llm providers, one row per profile"`
 Then in the generated file, after `op.add_column("provider_profiles", …)`:
@@ -85,7 +85,7 @@ op.execute("UPDATE provider_profiles SET provider_id = id")
 
 The profile's own id becomes the provider's id — a 1:1 mapping with nothing to guess. `downgrade()` drops the column and the table.
 
-- [ ] **Step 5: Write the backfill test**
+- [x] **Step 5: Write the backfill test**
 
 ```python
 # app/kernel/db/tests/test_migrations.py — new test
@@ -96,12 +96,12 @@ async def test_the_provider_step_gives_every_profile_a_provider(...) -> None:
     assert await scalar("SELECT provider_id FROM provider_profiles") == profile_id
 ```
 
-- [ ] **Step 6: Run the kernel and settings suites**
+- [x] **Step 6: Run the kernel and settings suites**
 
 Run: `just test-file app/kernel/tests/test_llm_providers.py`, `just test-file app/kernel/db/tests/test_migrations.py`, `just check`
 Expected: PASS; `just check` clean (nothing reads the new column yet).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/kernel docs/superpowers

@@ -15,7 +15,7 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import DONE, CompletionRequest, Delta, Message, Usage
 from app.kernel.llm.openai_chat import OpenAIChatProvider
-from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.repositories import ProfileRepository
 from app.kernel.llm.resolution import resolve_provider
 from app.kernel.testing.vendor import CHAT_DELTAS, CHAT_USAGE, chat_vendor
 

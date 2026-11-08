@@ -36,7 +36,7 @@ from app.kernel.llm.contract import (
     TextProvider,
 )
 from app.kernel.llm.fake import FakeProvider
-from app.kernel.llm.profiles import ProfileRepository
+from app.kernel.llm.repositories import ProfileRepository
 from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response

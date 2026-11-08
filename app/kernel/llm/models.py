@@ -1,10 +1,14 @@
-"""The provider-profile tables and the llm_calls audit: what a user configures
+"""The provider tables and the llm_calls audit: what a user configures
 and the evidence later work asserts on (plan §3.4, WP2a design §Goals).
 
 The tables are kernel machinery, not shared domain vocabulary, so they live
 next to the provider boundary rather than in contracts. A user's
-``ProviderProfile`` rows carry their own provider choice — ``api_key`` holds
-Fernet ciphertext or stays empty when the OS keychain holds the plaintext
+``LLMProvider`` row is the saved endpoint — the vendor, the base URL, the
+key — and a ``ProviderProfile`` points at one of them while carrying its own
+model choice and tuning: ``provider_id`` is nullable until every existing
+profile has been given its provider row, and the later revision that fills
+it makes NOT NULL. Until then a profile carries ``api_key`` itself — Fernet
+ciphertext or empty when the OS keychain holds the plaintext
 (:mod:`app.kernel.secrets` decides; never plaintext) — and a
 ``TaskAssignment`` points one task key at one profile. ``LlmCall`` is a log,
 not user data: ``novel_id`` and ``profile_id`` carry no foreign key on
@@ -43,6 +47,48 @@ PROFILE_KINDS = ("fake", "openai-chat")
 beside a free-text column, like ``ENTITY_TYPES`` — validating a kind is the
 settings service's gate (WP2a T4), not the database's."""
 
+PROVIDER_KINDS = PROFILE_KINDS
+"""The kinds of provider a user can save, beside the free-text ``kind``
+column — validating one is the settings service's gate, not the database's.
+The same two answers as :data:`PROFILE_KINDS` while a provider is only a
+profile's endpoint; the vocabulary splits when a provider kind arrives that
+no profile carries."""
+
+
+class LLMProvider(UserOwned):
+    """One user's saved provider: the endpoint its models hang off.
+
+    The row exists so a profile names a provider instead of repeating it:
+    ``vendor`` and ``models_url`` are facts about the endpoint, ``api_key``
+    the same two-tier storage the profile column holds today — what
+    :func:`app.kernel.secrets.save_key` returned, or ``""`` when the OS
+    keychain keeps the plaintext. ``base_url`` is nullable for a kind with
+    no endpoint of its own, exactly the fake's shape today.
+    """
+
+    __tablename__ = "llm_providers"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120))
+    # A PROVIDER_KINDS value; free text to the database.
+    kind: Mapped[str] = mapped_column(String(40))
+    base_url: Mapped[str | None] = mapped_column(String(500))
+    # Where the endpoint lists its models, when it has such a URL at all.
+    models_url: Mapped[str | None] = mapped_column(String(500))
+    # The vendor's own naming, for the catalog to key on — free text.
+    vendor: Mapped[str | None] = mapped_column(String(40))
+    # Exactly what secrets.save_key returned: "" (keyring tier) or ciphertext.
+    api_key: Mapped[str] = mapped_column(Text, default="")
+    api_key_hint: Mapped[str | None] = mapped_column(String(8))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
 
 class ProviderProfile(UserOwned):
     """One user's saved provider configuration: what to call and how to tune it.
@@ -72,6 +118,14 @@ class ProviderProfile(UserOwned):
     name: Mapped[str] = mapped_column(String(120))
     # A PROFILE_KINDS value; free text to the database.
     kind: Mapped[str] = mapped_column(String(40))
+    # The provider row this profile points at — its endpoint and key once the
+    # profile stops carrying them itself. Nullable only until the backfill
+    # revision has given every existing profile its 1:1 provider row; the
+    # later revision makes it NOT NULL. A deleted provider cascades here at
+    # the database, and what a task then resolves is the resolver's story.
+    provider_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("llm_providers.id", ondelete="CASCADE")
+    )
     base_url: Mapped[str | None] = mapped_column(String(500))
     model: Mapped[str | None] = mapped_column(String(200))
     # Exactly what secrets.save_key returned: "" (keyring tier) or ciphertext.

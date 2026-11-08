@@ -6,8 +6,8 @@ receiver in this codebase. This asks that same server one more question instead
 of building a second index: one hop, exact call sites, and nothing that can go
 stale between two commits.
 
-    just callers app/kernel/llm/profiles.py ordered
-    just callers app/kernel/llm/profiles.py:26
+    just callers app/kernel/llm/repositories.py ordered
+    just callers app/kernel/llm/repositories.py:26
 
 Exact positions matter more than breadth here — a text search for `.create(`
 finds ten call sites in this repo and no way to tell which receiver they hit.

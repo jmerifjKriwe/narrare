@@ -27,7 +27,7 @@ from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest
 from app.kernel.llm.models import ProviderProfile, TaskAssignment  # noqa: TC001
 from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, client_for, keyless_headers
-from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository
 from app.kernel.llm.resolution import (
     AUDIT_ONLY_TASK_KEYS,
     KNOWN_TASK_KEYS,

@@ -30,7 +30,7 @@ from app.kernel.llm.contract import TextProvider  # noqa: TC001  the dataclass f
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.models import PROFILE_KINDS, ProviderProfile
 from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, OpenAIChatProvider
-from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository
 from app.kernel.secrets import load_key
 from app.kernel.vendor import needs_api_key
 
