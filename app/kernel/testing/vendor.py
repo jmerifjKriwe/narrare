@@ -264,6 +264,17 @@ class ChatVendor:
         """
         self._server.model_paths.add(path)
 
+    def redirect_models(self, status: int = 302) -> None:
+        """Answer the models paths with ``status`` and a Location, from now on.
+
+        The redirecting list URL: discovery saves one address and the
+        endpoint answers "it moved" — what the client does with a hop (and
+        what it refuses to carry along) is pinned against a real redirect
+        on the wire, not against a client-side mock of one.
+        """
+        self._server.model_redirect = status
+        self._server.model_redirect_to = "https://elsewhere.example/v1/models"
+
     @property
     def list_requests(self) -> int:
         """How many requests arrived at any served models path."""
@@ -338,6 +349,13 @@ class _ChatHandler(_JsonHandler):
         if self.path not in server.model_paths:
             self._reply(404, "application/json", b"{}")
             return
+        if server.model_redirect is not None:
+            # The redirecting list URL: a bare 302, somewhere else to go.
+            self.send_response(server.model_redirect)
+            self.send_header("Location", server.model_redirect_to)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if server.refuse:
             payload = json.dumps(
                 server.refuse_payload or {"error": {"message": "Incorrect API key provided"}}
@@ -360,6 +378,8 @@ def chat_vendor() -> Generator[ChatVendor]:
     server.received = []
     server.completions = 0
     server.model_paths = {"/v1/models"}
+    server.model_redirect = None
+    server.model_redirect_to = None
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
@@ -608,6 +628,15 @@ class ListVendor:
         """The Authorization header the last request carried, ``None`` without one."""
         return self.last["headers"].get("authorization")
 
+    def serve_body(self, payload: bytes) -> None:
+        """Answer every GET with ``payload`` verbatim, from now on.
+
+        The malformed list: a body that is not the wire's shape is what a
+        misconfigured (or lying) endpoint answers, and what the discovery
+        parse does with it is pinned against real bytes, not a mocked raise.
+        """
+        self._server.payload = payload
+
     def close(self) -> None:
         self._server.shutdown()
         self._server.server_close()
@@ -619,9 +648,14 @@ class _ListHandler(_JsonHandler):
 
     def do_GET(self) -> None:
         self._record(None)
-        payload = json.dumps(
-            {"object": "list", "data": [{"id": model, "object": "model"} for model in LIST_MODELS]}
-        ).encode()
+        payload = getattr(self.server, "payload", None)
+        if payload is None:
+            payload = json.dumps(
+                {
+                    "object": "list",
+                    "data": [{"id": model, "object": "model"} for model in LIST_MODELS],
+                }
+            ).encode()
         self._reply(200, "application/json", payload)
 
 

@@ -381,10 +381,17 @@ export function ProvidersSection({
                     <Notice tone="warning" live="status" className="mt-2">
                       {t("settings.providers.errorModels")}
                     </Notice>
+                  ) : discovered.length === 0 ? (
+                    <Notice tone="quiet" live="status" className="mt-2">
+                      {t("settings.providers.modelsEmpty")}
+                    </Notice>
                   ) : (
                     // The ids, each one a pick: pressing it hands the id to
-                    // the model form, pointed at this provider.
-                    <Notice tone="quiet" live="status" className="mt-2">
+                    // the model form, pointed at this provider. The label
+                    // stacks above the chips (`flex-col items-start` beats
+                    // the Notice's own row), and a chip wraps its id within
+                    // itself — a long one cannot push past a 360 px screen.
+                    <Notice tone="quiet" live="status" className="mt-2 flex-col items-start">
                       <span className="block text-label text-muted">
                         {t("settings.providers.models")}
                       </span>
@@ -394,6 +401,7 @@ export function ProvidersSection({
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="max-w-full break-all"
                               onClick={() => onModelSeed(provider.id, id)}
                             >
                               {id}

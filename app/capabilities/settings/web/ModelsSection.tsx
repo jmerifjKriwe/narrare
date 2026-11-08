@@ -96,7 +96,9 @@ export function ModelsSection({
   reload: () => Promise<void>;
   guard: Guard;
   onDirty: (dirty: boolean) => void;
-  /** The preset-created provider's suggested model, or none yet. */
+  /** The panel's suggestion for the model form — a preset-created
+   *  provider's model, or a discovery id the user picked — handed over once;
+   *  `null` is none yet. */
   modelSeed: ModelSeed | null;
 }) {
   const t = useTranslation();

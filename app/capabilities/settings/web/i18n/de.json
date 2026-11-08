@@ -75,6 +75,7 @@
   "settings.providers.kind.openai-chat": "OpenAI-kompatibler Chat",
   "settings.providers.kindLabel": "Art",
   "settings.providers.models": "Verfügbare Modelle",
+  "settings.providers.modelsEmpty": "Der Endpunkt listet keine Modelle.",
   "settings.providers.modelsUrlLabel": "Modellliste-URL",
   "settings.providers.nameLabel": "Name",
   "settings.providers.note.zaiCodingPlan": "Dieser Endpunkt liefert nur die Modelle des Coding Plans und wird auf das Kontingent des Plans angerechnet; ein allgemeiner Z.ai-API-Schlüssel funktioniert hier nicht.",

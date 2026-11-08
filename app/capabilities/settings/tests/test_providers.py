@@ -484,6 +484,40 @@ async def test_discovery_keeps_the_key_on_the_endpoint_host(client: AsyncClient)
     assert "x-api-key" not in other.last["headers"]
 
 
+async def test_discovery_keeps_the_anthropic_key_on_the_endpoint_host(
+    client: AsyncClient,
+) -> None:
+    """An anthropic list on another host is asked anonymously: no key arrives there.
+
+    The same rule as the bearer wire, other header: the messages vendor
+    serves the endpoint under ``127.0.0.1``, the list stand-in under
+    ``localhost`` — the version header still rides (protocol, not
+    credential), the key stays home.
+    """
+    with messages_vendor() as vendor, list_vendor() as other:
+        provider = await client.post(
+            "/api/settings/providers",
+            json={
+                "name": "Anthropic",
+                "kind": "anthropic",
+                "base_url": vendor.base_url,
+                "api_key": SECRET,
+                "models_url": f"{other.base_url}/models",
+            },
+        )
+        assert provider.status_code == 201, provider.text
+        listed = await client.get(f"/api/settings/providers/{provider.json()['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json() == ["vendor-max", "vendor-mini"]  # sorted, deduplicated
+    # The endpoint's own host was never asked; the list saw no credential.
+    assert vendor.received == []
+    assert "x-api-key" not in other.last["headers"]
+    assert "authorization" not in other.last["headers"]
+    # The protocol header is not a credential: it rides every anthropic ask.
+    assert other.last["headers"]["anthropic-version"] == "2023-06-01"
+
+
 async def test_discovery_asks_an_anthropic_provider_for_its_models(
     client: AsyncClient,
 ) -> None:
@@ -543,6 +577,49 @@ async def test_a_refusing_endpoint_fails_discovery_as_a_502(client: AsyncClient)
         response = await client.get(f"/api/settings/providers/{provider['id']}/models")
 
     assert response.status_code == 502
+
+
+async def test_a_redirecting_list_url_fails_discovery_as_a_502(client: AsyncClient) -> None:
+    """A redirect is not a list: the hop is refused, and no second request runs.
+
+    The saved URL is answered 302 — following it would carry the ask,
+    credential included, to wherever the endpoint points (a redirect is a
+    new host answering, the one place the key-withholding rule cannot
+    look). httpx follows no redirect by default, so the answer is the
+    router's 502: one request on the wire, its key on its own host.
+    """
+    with chat_vendor() as vendor:
+        provider = await _create(client, base_url=vendor.base_url)
+        vendor.redirect_models()
+        response = await client.get(f"/api/settings/providers/{provider['id']}/models")
+
+    assert response.status_code == 502
+    [request] = vendor.received
+    assert request["headers"]["authorization"] == f"Bearer {SECRET}"
+
+
+async def test_a_list_body_that_is_not_the_wires_shape_fails_as_a_502(
+    client: AsyncClient,
+) -> None:
+    """Non-JSON, a missing ``data`` list, entries without ``id``: 502, never a 500.
+
+    A lying endpoint is a failed discovery, not a crash — every malformed
+    shape lands in the router's closed answer, the way an unreachable one
+    does. The ids come from real bytes on a real socket.
+    """
+    with list_vendor() as other:
+        provider = await _create(client, base_url=LOCAL, models_url=f"{other.base_url}/models")
+        other.serve_body(b"<html>not the wire</html>")
+        not_json = await client.get(f"/api/settings/providers/{provider['id']}/models")
+        other.serve_body(b'{"object": "list"}')
+        no_data = await client.get(f"/api/settings/providers/{provider['id']}/models")
+        other.serve_body(b'{"data": {"id": "one-object-where-a-list-belongs"}}')
+        not_a_list = await client.get(f"/api/settings/providers/{provider['id']}/models")
+        other.serve_body(b'{"data": [{"object": "model"}]}')
+        no_id = await client.get(f"/api/settings/providers/{provider['id']}/models")
+
+    for response in (not_json, no_data, not_a_list, no_id):
+        assert response.status_code == 502, response.text
 
 
 async def test_a_provider_whose_key_is_lost_fails_discovery_by_name(

@@ -75,6 +75,7 @@
   "settings.providers.kind.openai-chat": "OpenAI-compatible chat",
   "settings.providers.kindLabel": "Kind",
   "settings.providers.models": "Available models",
+  "settings.providers.modelsEmpty": "The endpoint lists no models.",
   "settings.providers.modelsUrlLabel": "Models URL",
   "settings.providers.nameLabel": "Name",
   "settings.providers.note.zaiCodingPlan": "This endpoint serves the Coding Plan models only and counts against the plan's quota; a general Z.ai API key does not work here.",

@@ -462,6 +462,52 @@ describe("model discovery on the row", () => {
     expect(onModelSeed).toHaveBeenCalledWith(PROVIDER.id, "vendor-mini");
   });
 
+  it("stacks the label above the chips, and a chip wraps its own id", async () => {
+    // A vendor id can be longer than a 360 px screen: the chip carries
+    // `max-w-full break-all` so the id breaks inside its button instead of
+    // pushing the panel wider, and the Notice stacks (`flex-col
+    // items-start` beats its own flex row) so the label stands above.
+    api.GET.mockResolvedValue({ data: ["vendor-max"], response: ok() });
+    render(
+      <ProvidersSection
+        providers={[PROVIDER]}
+        presets={PRESETS}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        onModelSeed={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
+    const notice = await screen.findByRole("status");
+    expect(notice.className).toContain("flex-col");
+    expect(notice.className).toContain("items-start");
+
+    const chip = screen.getByRole("button", { name: "vendor-max" });
+    expect(chip.className).toContain("max-w-full");
+    expect(chip.className).toContain("break-all");
+  });
+
+  it("says there are none when the endpoint lists no models", async () => {
+    api.GET.mockResolvedValue({ data: [], response: ok() });
+    render(
+      <ProvidersSection
+        providers={[PROVIDER]}
+        presets={PRESETS}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        onModelSeed={() => {}}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
+    const notice = await screen.findByRole("status");
+    expect(notice.textContent).toContain(t("settings.providers.modelsEmpty"));
+    // A bare heading is not an answer: neither the label nor a chip shows.
+    expect(screen.queryByText(t("settings.providers.models"))).toBeNull();
+  });
+
   it("offers discovery on the anthropic kind too — its wire answers a list", () => {
     render(
       <ProvidersSection

@@ -75,6 +75,7 @@
   "settings.providers.kind.openai-chat": "Chat compatible OpenAI",
   "settings.providers.kindLabel": "Type",
   "settings.providers.models": "Modèles disponibles",
+  "settings.providers.modelsEmpty": "Le point de terminaison ne liste aucun modèle.",
   "settings.providers.modelsUrlLabel": "URL de la liste de modèles",
   "settings.providers.nameLabel": "Nom",
   "settings.providers.note.zaiCodingPlan": "Ce point de terminaison ne sert que les modèles du Coding Plan et impute le quota du plan; une clé API Z.ai générale ne fonctionne pas ici.",

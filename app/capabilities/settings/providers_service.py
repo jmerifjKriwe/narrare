@@ -240,9 +240,20 @@ class ProviderService:
         travels only when the list URL shares the base URL's host; a list
         served from another host is asked anonymously, and a keyless local
         endpoint carries no credential at all. A fake provider has no
-        endpoint to ask. Any transport or endpoint failure propagates for
-        the router to name (502); a key its tier can no longer produce
-        refuses by name before any request runs.
+        endpoint to ask.
+
+        A redirect is not followed — httpx keeps ``follow_redirects`` off
+        here, so a 302 raises into the router's 502 instead of a second
+        request. That is the conservative reading on purpose: a redirect
+        is a new host answering, and the key-withholding rule above cannot
+        see where a hop would land, so the saved request is refused rather
+        than carried anywhere the row does not name.
+
+        Any transport or endpoint failure propagates for the router to name
+        (502); a key its tier can no longer produce refuses by name before
+        any request runs. A body that is not the wire's shape — non-JSON,
+        no ``data`` list, entries without ``id`` — fails the same way: a
+        list that cannot be parsed is not a list of models.
         """
         provider = await self._providers().get(provider_id)
         if provider is None:
