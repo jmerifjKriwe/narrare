@@ -4,16 +4,16 @@ and the evidence later work asserts on (plan §3.4, WP2a design §Goals).
 The tables are kernel machinery, not shared domain vocabulary, so they live
 next to the provider boundary rather than in contracts. A user's
 ``LLMProvider`` row is the saved endpoint — the vendor, the base URL, the
-key — and a ``ProviderProfile`` points at one of them while carrying its own
-model choice and tuning: ``provider_id`` is nullable until every existing
-profile has been given its provider row, and the later revision that fills
-it makes NOT NULL. Until then a profile carries ``api_key`` itself — Fernet
-ciphertext or empty when the OS keychain holds the plaintext
-(:mod:`app.kernel.secrets` decides; never plaintext) — and a
-``TaskAssignment`` points one task key at one profile. ``LlmCall`` is a log,
-not user data: ``novel_id`` and ``profile_id`` carry no foreign key on
-purpose, so the audit outlives the novel and the profile it names.
-``cost_usd`` stays NULL until a catalog prices it — NULL, never 0 — and
+key — and a ``ProviderProfile`` (a model, until the rename lands) points at
+one of them while carrying the model choice and tuning: ``provider_id`` is
+nullable only until every existing profile has been given its provider row,
+and the later revision that fills it makes NOT NULL. A profile's ``kind``
+and key columns are legacy: the provider carries both now, the write copies
+the kind, and the later revision drops the columns. A ``TaskAssignment``
+points one task key at one profile. ``LlmCall`` is a log, not user data:
+``novel_id`` and ``profile_id`` carry no foreign key on purpose, so the
+audit outlives the novel and the profile it names. ``cost_usd`` stays NULL
+until a catalog prices it — NULL, never 0 — and
 :func:`app.kernel.llm.audit.record_call` is the one writer.
 """
 
@@ -43,27 +43,29 @@ OK = "ok"
 ERROR = "error"
 
 PROFILE_KINDS = ("fake", "openai-chat")
-"""The kinds of profile a user can save. A short closed vocabulary in code
-beside a free-text column, like ``ENTITY_TYPES`` — validating a kind is the
-settings service's gate (WP2a T4), not the database's."""
+"""The kinds the legacy profile column can still carry, until the revision
+that drops the column together with the endpoint facts it duplicated. No
+writer chooses a kind of its own any more: a model's kind is its provider's,
+copied at the write, so the column stays truthful while it exists."""
 
-PROVIDER_KINDS = PROFILE_KINDS
+PROVIDER_KINDS = ("fake", "openai-chat")
 """The kinds of provider a user can save, beside the free-text ``kind``
 column — validating one is the settings service's gate, not the database's.
-The same two answers as :data:`PROFILE_KINDS` while a provider is only a
-profile's endpoint; the vocabulary splits when a provider kind arrives that
-no profile carries."""
+The vocabulary splits from :data:`PROFILE_KINDS` on purpose, not as a
+coincidence of equal contents: a provider kind arrives (an ``anthropic``
+adapter) that no profile row ever carried, and the two lists must be free to
+drift apart when it does."""
 
 
 class LLMProvider(UserOwned):
     """One user's saved provider: the endpoint its models hang off.
 
-    The row exists so a profile names a provider instead of repeating it:
+    The row exists so a model names a provider instead of repeating it:
     ``vendor`` and ``models_url`` are facts about the endpoint, ``api_key``
-    the same two-tier storage the profile column holds today — what
-    :func:`app.kernel.secrets.save_key` returned, or ``""`` when the OS
-    keychain keeps the plaintext. ``base_url`` is nullable for a kind with
-    no endpoint of its own, exactly the fake's shape today.
+    the two-tier storage — what :func:`app.kernel.secrets.save_key`
+    returned, or ``""`` when the OS keychain keeps the plaintext.
+    ``base_url`` is nullable for a kind with no endpoint of its own, exactly
+    the fake's shape today.
     """
 
     __tablename__ = "llm_providers"
@@ -91,14 +93,16 @@ class LLMProvider(UserOwned):
 
 
 class ProviderProfile(UserOwned):
-    """One user's saved provider configuration: what to call and how to tune it.
+    """One user's saved model: which provider serves it and how to tune it.
 
-    ``is_default`` carries exactly-one-per-user semantics: the settings
-    service keeps the flip in one transaction (design D7), and a partial
-    unique index makes the database the last word on it — two concurrent
-    creates cannot both mint a default. ``api_key_hint`` holds the last four
-    characters for masked reads without a keychain round-trip — a hint, not
-    a secret.
+    Everything endpoint-shaped lives on the provider this row names; what is
+    left here is the identity (name, model string) and the tuning. The
+    ``kind``, ``base_url`` and key columns are legacy — the write copies the
+    provider's kind, and the later revision drops the columns together with
+    the table rename. ``is_default`` carries exactly-one-per-user semantics:
+    the settings service keeps the flip in one transaction (design D7), and
+    a partial unique index makes the database the last word on it — two
+    concurrent creates cannot both mint a default.
     """
 
     __tablename__ = "provider_profiles"

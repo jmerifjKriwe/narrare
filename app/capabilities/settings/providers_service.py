@@ -102,7 +102,11 @@ class ProviderService:
         The kind is what the provider is, so it is not editable; the gate runs
         on the patched endpoint with the stored key taken into account, the
         way the profile patch does — redirecting a stored credential to a
-        cleartext endpoint is refused here too.
+        cleartext endpoint is refused here too. The stored ``base_url`` is
+        the normalized form the gate computed, not the payload's raw
+        spelling: the create strips, and so must the update, or a
+        trailing-slash patch would store an endpoint the keys and the
+        locality tier read differently than the gate vetted.
         """
         providers = self._providers()
         provider = await providers.get(provider_id)
@@ -124,9 +128,12 @@ class ProviderService:
             has_key=bool(payload.api_key) or stored_a_key,
         )
         updates: dict[str, object] = {}
-        for field in ("name", "base_url", "models_url", "vendor"):
+        for field in ("name", "models_url", "vendor"):
             if field in set_fields:
                 updates[field] = getattr(payload, field)
+        if "base_url" in set_fields:
+            # The normalized spelling, never the payload's raw one.
+            updates["base_url"] = base_url
         if payload.api_key:
             column, hint = self._store_key(provider.id, payload.api_key)
             updates["api_key"] = column

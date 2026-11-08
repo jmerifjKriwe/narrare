@@ -10,6 +10,7 @@ at the provider instead of a count.
 """
 
 from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
 import pytest
 from cryptography.fernet import Fernet
@@ -20,8 +21,10 @@ from sqlalchemy import text
 from app.api.main import app
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
+from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.models import LLMProvider, ProviderProfile
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
+from app.kernel.secrets import load_key
 from app.kernel.testing.vendor import chat_vendor
 
 if TYPE_CHECKING:
@@ -31,6 +34,8 @@ pytestmark = pytest.mark.timeout(30)
 
 SECRET = "sk-test-secret"
 REMOTE = "https://api.vendor.example/v1"
+
+OTHER = uuid4()
 
 
 @pytest.fixture(autouse=True)
@@ -51,10 +56,9 @@ async def client() -> AsyncIterator[AsyncClient]:
 async def seeded_model() -> ProviderProfile:
     """A provider with one model pointed at it, seeded straight into the tables.
 
-    No API route points a profile at a provider yet — the cut that moves the
-    pointer behind a route is a later task — so the rows are written the way
-    the Task 1 backfill left them: one provider, its profile carrying the
-    pointer and the model name.
+    Written the way the surface stores the pair: one provider, its model
+    carrying the pointer and the model name (the routes do the same since
+    the model write gate landed).
     """
     async with Session() as session:
         providers = ProviderRepository(session, LOCAL_USER_ID)
@@ -145,6 +149,95 @@ async def test_the_list_is_ordered_by_name(client: AsyncClient) -> None:
     await _create(client, "Alpha")
     listed = (await client.get("/api/settings/providers")).json()
     assert [provider["name"] for provider in listed] == ["Alpha", "Beta"]
+
+
+async def test_an_update_stores_the_normalized_base_url(client: AsyncClient) -> None:
+    """The gate computes a stripped endpoint; the row stores that spelling.
+
+    The create strips a trailing slash before it gates; an update that kept
+    the payload's raw form would store an endpoint the key tier and the
+    locality tier read differently than the gate vetted.
+    """
+    provider = await _create(client, "Schrägstrich")
+    response = await client.patch(
+        f"/api/settings/providers/{provider['id']}",
+        json={"base_url": "http://127.0.0.1:9/v1///"},
+    )
+    assert response.status_code == 200, response.text
+    stored = (await client.get("/api/settings/providers")).json()[0]
+    assert stored["base_url"] == "http://127.0.0.1:9/v1"
+
+
+async def test_replacing_the_key_updates_the_mask_and_the_old_key_stops_loading(
+    client: AsyncClient,
+) -> None:
+    """A PATCH with a new key stores the new one; the old plaintext is gone.
+
+    Replacement, not addition: the column names one key, so after the patch
+    the tier produces the new plaintext and could not produce the old even
+    if something still held it.
+    """
+    provider = await _create(client)
+    provider_id = UUID(str(provider["id"]))
+    (before, _hint_before) = await _stored(provider_id, "api_key", "api_key_hint")
+    assert load_key(provider_id, str(before)) == SECRET
+
+    replaced = await client.patch(
+        f"/api/settings/providers/{provider_id}", json={"api_key": "sk-second-key"}
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert replaced.json()["api_key_mask"] == "sk-…-key"  # the new key's last four
+
+    (column, hint) = await _stored(provider_id, "api_key", "api_key_hint")
+    assert load_key(provider_id, str(column)) == "sk-second-key"
+    assert column != before
+    assert hint == "-key"
+
+
+async def test_another_users_provider_is_invisible_and_untouchable(
+    client: AsyncClient,
+) -> None:
+    """The surface is user-scoped: another user's provider is 404 everywhere.
+
+    The reads never list it, and a patch, a delete or a discovery against it
+    names no row — the same not-found a missing id gets, so the answer does
+    not leak that the id exists for someone else.
+    """
+    await seed_user(OTHER)
+    async with Session() as session:
+        theirs = await ProviderRepository(session, OTHER).create(
+            name="Their vendor", kind="openai-chat", base_url=REMOTE, api_key="their-key"
+        )
+        await session.commit()
+
+    listed = (await client.get("/api/settings/providers")).json()
+    assert all(provider["id"] != str(theirs.id) for provider in listed)
+
+    for method, path in (
+        ("PATCH", f"/api/settings/providers/{theirs.id}"),
+        ("DELETE", f"/api/settings/providers/{theirs.id}"),
+        ("GET", f"/api/settings/providers/{theirs.id}/models"),
+    ):
+        response = await client.request(method, path, json={"name": "Stolen"})
+        assert response.status_code == 404, (method, response.text)
+        assert response.json()["detail"] == "provider not found"
+
+
+async def test_an_update_renames_the_provider(client: AsyncClient) -> None:
+    """The name is a patchable column: a rename lands and stays on reads.
+
+    The patch loop must carry the name like any other column — a 200 that
+    silently kept the old one passed here once, and only the E2E's rename
+    step caught it.
+    """
+    provider = await _create(client, "Alter Name")
+    response = await client.patch(
+        f"/api/settings/providers/{provider['id']}", json={"name": "Neuer Name"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "Neuer Name"
+    stored = (await client.get("/api/settings/providers")).json()[0]
+    assert stored["name"] == "Neuer Name"
 
 
 async def test_an_update_with_an_empty_key_keeps_the_stored_one(client: AsyncClient) -> None:

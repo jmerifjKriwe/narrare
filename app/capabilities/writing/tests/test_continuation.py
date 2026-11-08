@@ -36,7 +36,7 @@ from app.kernel.llm.contract import (
     TextProvider,
 )
 from app.kernel.llm.fake import FakeProvider
-from app.kernel.llm.repositories import ProfileRepository
+from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import ResolvedProvider
 from app.kernel.llm.streaming import FinalizingStreamingResponse
 from app.kernel.testing.streams import StreamProbeProvider, interrupt_response
@@ -301,14 +301,20 @@ async def test_a_profile_whose_key_is_lost_ends_the_stream_with_the_one_error_fr
     monkeypatch.setenv("NARRE_KEYRING", "off")
     monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
     async with Session() as session:
-        await ProfileRepository(session, LOCAL_USER_ID).create(
+        providers = ProviderRepository(session, LOCAL_USER_ID)
+        provider = await providers.create(
             name="Broken",
             kind="openai-chat",
             base_url="https://api.vendor.example/v1",
-            model="acme/turbo-3",
             # Ciphertext another NARRE_SECRET_KEY made: undecryptable on purpose.
             api_key="gAAAAABlindtext-not-what-this-key-encrypted",
             api_key_hint="roken",
+        )
+        await ProfileRepository(session, LOCAL_USER_ID).create(
+            name="Broken model",
+            kind="openai-chat",
+            provider_id=provider.id,
+            model="acme/turbo-3",
         )
         await session.commit()
 

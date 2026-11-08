@@ -2,7 +2,7 @@
 
 The page's task list no longer mirrors the kernel's keys; it renders one row
 per ``KNOWN_TASK_KEYS`` entry and names the tier that actually serves it — the
-exact assignment, a sibling's segment assignment, the default profile, or the
+exact assignment, a sibling's segment assignment, the default model, or the
 environment. The list is a read: resolving never writes, audits nothing, and
 leaves the assignments untouched.
 """
@@ -25,11 +25,20 @@ def _client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-async def _create_fake(client: AsyncClient, name: str) -> dict[str, object]:
-    """Create one fake profile through the API, requiring the 201."""
-    response = await client.post("/api/settings/profiles", json={"name": name, "kind": "fake"})
-    assert response.status_code == 201, response.text
-    return dict(response.json())
+async def _create_model(
+    client: AsyncClient, name: str, model: str = "fake-model"
+) -> dict[str, object]:
+    """Create one fake provider and one model under it, requiring both 201s."""
+    provider = await client.post(
+        "/api/settings/providers", json={"name": f"{name} Anbieter", "kind": "fake"}
+    )
+    assert provider.status_code == 201, provider.text
+    created = await client.post(
+        "/api/settings/profiles",
+        json={"name": name, "provider_id": provider.json()["id"], "model": model},
+    )
+    assert created.status_code == 201, created.text
+    return dict(created.json())
 
 
 def _row(rows: list[dict[str, object]], task_key: str) -> dict[str, object]:
@@ -49,10 +58,10 @@ async def test_every_known_key_has_exactly_one_row() -> None:
     assert len(rows) == len(KNOWN_TASK_KEYS)
 
 
-async def test_the_environment_tier_reports_the_fake_and_names_no_profile(
+async def test_the_environment_tier_reports_the_fake_and_names_no_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """With no profile and no environment choice the fake serves."""
+    """With no model and no environment choice the fake serves."""
     monkeypatch.delenv("NARRE_LLM_PROVIDER", raising=False)
     async with _client() as client:
         rows = (await client.get("/api/settings/tasks")).json()
@@ -65,7 +74,7 @@ async def test_the_environment_tier_reports_the_fake_and_names_no_profile(
 async def test_the_environment_tier_reports_its_adapter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``NARRE_LLM_PROVIDER`` names the serving adapter when no profile does."""
+    """``NARRE_LLM_PROVIDER`` names the serving adapter when no model does."""
     monkeypatch.setenv("NARRE_LLM_PROVIDER", "openai-compatible")
     monkeypatch.setenv("NARRE_LLM_MODEL", "env-model")
     async with _client() as client:
@@ -76,11 +85,11 @@ async def test_the_environment_tier_reports_its_adapter(
     assert all(row["profile_id"] is None and row["profile_name"] is None for row in routed)
 
 
-async def test_an_exact_assignment_names_that_profile() -> None:
+async def test_an_exact_assignment_names_that_model() -> None:
     """The task's own assignment is the first tier, and the row names it."""
     async with _client() as client:
-        await _create_fake(client, "Default")
-        second = await _create_fake(client, "Second")
+        await _create_model(client, "Default")
+        second = await _create_model(client, "Second")
         await client.put("/api/settings/assignments/chat.ask", json={"profile_id": second["id"]})
         rows = (await client.get("/api/settings/tasks")).json()
 
@@ -91,14 +100,14 @@ async def test_an_exact_assignment_names_that_profile() -> None:
         "kind": "fake",
         "assignable": True,
     }
-    # The keys without an assignment still follow the default profile.
+    # The keys without an assignment still follow the default model.
     assert _row(rows, "writing.continuation")["profile_name"] == "Default"
 
 
 async def test_the_audit_only_key_is_not_routed_and_not_assignable() -> None:
     """``settings.test`` is audited by the probe, never served by the cascade."""
     async with _client() as client:
-        await _create_fake(client, "Default")
+        await _create_model(client, "Default")
         rows = (await client.get("/api/settings/tasks")).json()
 
     assert _row(rows, "settings.test") == {
@@ -114,8 +123,8 @@ async def test_the_audit_only_key_is_not_routed_and_not_assignable() -> None:
 async def test_a_task_inherits_the_segment_prefix_assignment() -> None:
     """A sibling's assignment stands in for the segment, visibly."""
     async with _client() as client:
-        await _create_fake(client, "Default")
-        second = await _create_fake(client, "Second")
+        await _create_model(client, "Default")
+        second = await _create_model(client, "Second")
         await client.put(
             "/api/settings/assignments/knowledge.check-consistency",
             json={"profile_id": second["id"]},
@@ -128,10 +137,10 @@ async def test_a_task_inherits_the_segment_prefix_assignment() -> None:
 
 
 async def test_a_task_without_an_assignment_inherits_the_default() -> None:
-    """The default profile is the third tier; every row names it."""
+    """The default model is the third tier; every row names it."""
     async with _client() as client:
-        default = await _create_fake(client, "Default")
-        await _create_fake(client, "Second")
+        default = await _create_model(client, "Default")
+        await _create_model(client, "Second")
         rows = (await client.get("/api/settings/tasks")).json()
 
     for row in rows:
@@ -144,7 +153,7 @@ async def test_a_task_without_an_assignment_inherits_the_default() -> None:
 async def test_listing_tasks_writes_nothing_and_audits_nothing() -> None:
     """Resolution is a read: no assignment is created, no call is recorded."""
     async with _client() as client:
-        await _create_fake(client, "Default")
+        await _create_model(client, "Default")
         assert (await client.get("/api/settings/tasks")).status_code == 200
         assignments = (await client.get("/api/settings/assignments")).json()
 
@@ -154,24 +163,32 @@ async def test_listing_tasks_writes_nothing_and_audits_nothing() -> None:
     assert calls == 0
 
 
-async def test_a_lost_profile_key_is_a_named_502(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_a_lost_provider_key_is_a_named_502(monkeypatch: pytest.MonkeyPatch) -> None:
     """A key its tier can no longer produce fails the read, not the whole page.
 
     The list resolves every routable key, so a lost key is the read's failure:
     the router names it as a 502 (as discovery already does), and the client
-    can keep the profiles it did receive.
+    can keep the models it did receive.
     """
     monkeypatch.setenv("NARRE_KEYRING", "off")
     monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
     async with _client() as client:
-        created = await client.post(
-            "/api/settings/profiles",
+        provider = await client.post(
+            "/api/settings/providers",
             json={
                 "name": "Lost key",
                 "kind": "openai-chat",
                 "base_url": "http://127.0.0.1:9/v1",
-                "model": "vendor-mini",
                 "api_key": "sk-lost-key",
+            },
+        )
+        assert provider.status_code == 201, provider.text
+        created = await client.post(
+            "/api/settings/profiles",
+            json={
+                "name": "Lost key model",
+                "provider_id": provider.json()["id"],
+                "model": "vendor-mini",
             },
         )
         assert created.status_code == 201, created.text

@@ -20,6 +20,8 @@ from app.kernel.llm.catalog import (
     compute_cost,
     effective_info,
     load_catalog,
+    snapshot_date,
+    vendor_models,
 )
 
 if TYPE_CHECKING:
@@ -149,7 +151,32 @@ def test_a_real_kind_leaves_the_truth_table_untouched() -> None:
     assert local == 0.0
 
 
-# The lookup cascade: exact → provider prefix → normalized, first tier wins.
+# The lookup cascade: vendor exact → exact → provider prefix → normalized,
+# first tier wins.
+
+
+def test_the_vendors_exact_id_is_the_first_tier(vendoring: Install) -> None:
+    """Verify ``vendor/model`` is tried before the bare tier can answer.
+
+    Two providers serve the same bare model under different vendors; each
+    must reach its own vendor's fact sheet, not the bare tier's first match.
+    """
+    zed = priced(30.0, 60.0)
+    vendoring({"aaa/turbo-3": priced(), "zed/turbo-3": zed})
+    info = effective_info(
+        "turbo-3", vendor="zed", profile_context_window=None, profile_max_output_tokens=None
+    )
+    assert info is zed  # not the bare tier's aaa/turbo-3
+
+
+def test_an_unknown_vendors_model_falls_through_the_old_tiers(vendoring: Install) -> None:
+    """Verify a vendor the catalog does not carry changes nothing."""
+    meta = priced()
+    vendoring({"meta/llama-3": meta})
+    info = effective_info(
+        "llama-3", vendor="ghost", profile_context_window=None, profile_max_output_tokens=None
+    )
+    assert info is meta
 
 
 def test_an_exact_id_wins_over_a_prefix_match(vendoring: Install) -> None:
@@ -243,6 +270,24 @@ def test_the_snapshot_carries_a_date_and_at_least_one_price() -> None:
         info.input_price_per_mtok is not None and info.output_price_per_mtok is not None
         for info in load_catalog().values()
     )
+
+
+def test_snapshot_date_names_the_vendored_files_date() -> None:
+    """Verify the reader answers with the file's own ``snapshot_date``."""
+    raw = loads(catalog.SNAPSHOT.read_text())
+    assert snapshot_date() == raw["snapshot_date"]
+
+
+def test_vendor_models_lists_the_vendors_bare_ids_sorted(vendoring: Install) -> None:
+    """Verify bare ids in sort order; an unknown vendor names none.
+
+    The bare id is everything after the first slash, so a vendor whose own
+    ids carry path segments (``zed/z-ai/glm-5.3``) lists them whole — that is
+    the string the provider's users type as the model.
+    """
+    vendoring({"zed/turbo-3": priced(), "zed/z-ai/glm": priced(), "aaa/turbo-3": priced()})
+    assert vendor_models("zed") == ("turbo-3", "z-ai/glm")
+    assert vendor_models("nobody") == ()
 
 
 def test_the_snapshot_is_parsed_once_per_process() -> None:

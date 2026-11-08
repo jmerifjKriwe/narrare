@@ -566,7 +566,7 @@ export interface paths {
         get?: never;
         /**
          * Put Assignment
-         * @description Point the task at a profile, or clear it with ``profile_id: null``.
+         * @description Point the task at a model, or clear it with ``profile_id: null``.
          *
          *     Any non-empty task key is accepted — unknown keys are forward-compatible.
          */
@@ -587,13 +587,13 @@ export interface paths {
         };
         /**
          * List Profiles
-         * @description The user's profiles, the default first; every key read shows the mask.
+         * @description The user's models, the default first; every read names its provider.
          */
         get: operations["list_profiles_api_settings_profiles_get"];
         put?: never;
         /**
          * Create Profile
-         * @description Store one profile; the first becomes the default; the full key returns once.
+         * @description Store one model under one of the user's providers; the first is the default.
          */
         post: operations["create_profile_api_settings_profiles_post"];
         delete?: never;
@@ -614,36 +614,16 @@ export interface paths {
         post?: never;
         /**
          * Delete Profile
-         * @description Delete a non-default profile; its assignments cascade with it.
+         * @description Delete a non-default model; its assignments cascade with it.
          */
         delete: operations["delete_profile_api_settings_profiles__profile_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update Profile
-         * @description Apply the patch; an empty ``api_key`` keeps the stored one.
+         * @description Apply the patch; the provider and the model string can both move.
          */
         patch: operations["update_profile_api_settings_profiles__profile_id__patch"];
-        trace?: never;
-    };
-    "/api/settings/profiles/{profile_id}/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Profile Models
-         * @description Model discovery against the profile's endpoint.
-         */
-        get: operations["list_profile_models_api_settings_profiles__profile_id__models_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/api/settings/profiles/{profile_id}/test": {
@@ -657,7 +637,7 @@ export interface paths {
         put?: never;
         /**
          * Test Profile
-         * @description One cheap completion against the profile's endpoint, audited as settings.test.
+         * @description One cheap completion through the model's provider, audited as settings.test.
          */
         post: operations["test_profile_api_settings_profiles__profile_id__test_post"];
         delete?: never;
@@ -746,7 +726,7 @@ export interface paths {
          * @description The effective provider per known task key, for the page's task list.
          *
          *     Reads only: each row is the resolution cascade's answer, never a write
-         *     and never an audit row. A profile whose key its tier can no longer
+         *     and never an audit row. A provider whose key its tier can no longer
          *     produce fails the read by name — 502, as discovery maps the same class —
          *     so a lost key is never a bare 500.
          */
@@ -1463,6 +1443,116 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * ModelCreate
+         * @description One new model under one of the user's providers.
+         *
+         *     The provider is named, not repeated: kind, endpoint and key live there.
+         *     The service's gate refuses a ``provider_id`` that is not the user's —
+         *     the schema cannot know ownership, only shape.
+         */
+        ModelCreate: {
+            /** Context Window */
+            context_window?: number | null;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /**
+             * Provider Id
+             * Format: uuid
+             */
+            provider_id: string;
+            /** Request Timeout */
+            request_timeout?: number | null;
+            /** Temperature */
+            temperature?: number | null;
+        };
+        /**
+         * ModelRead
+         * @description A model as every read shows it: its provider named, no key anywhere.
+         *
+         *     The key and its mask live on the provider; the model carries none.
+         */
+        ModelRead: {
+            /** Context Window */
+            context_window: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Max Output Tokens */
+            max_output_tokens: number | null;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /**
+             * Provider Id
+             * Format: uuid
+             */
+            provider_id: string;
+            /** Provider Name */
+            provider_name: string;
+            /** Request Timeout */
+            request_timeout: number | null;
+            /** Temperature */
+            temperature: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ModelTestResult
+         * @description What one connection test found: it ran, and it either answered or named why.
+         */
+        ModelTestResult: {
+            /** Error */
+            error: string | null;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Ok */
+            ok: boolean;
+        };
+        /**
+         * ModelUpdate
+         * @description What a patch may change. The provider and the model string can move.
+         *
+         *     Absent fields stay unchanged; present nulls clear the tunables. Clearing
+         *     the name, the provider or the model string is refused by the service —
+         *     a model without one of them is not a configuration. ``is_default: true``
+         *     hands the default over from the current holder.
+         */
+        ModelUpdate: {
+            /** Context Window */
+            context_window?: number | null;
+            /** Is Default */
+            is_default?: boolean | null;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Provider Id */
+            provider_id?: string | null;
+            /** Request Timeout */
+            request_timeout?: number | null;
+            /** Temperature */
+            temperature?: number | null;
+        };
         /** NovelCreate */
         NovelCreate: {
             /** Blurb */
@@ -1535,157 +1625,6 @@ export interface components {
             language?: string | null;
             /** Title */
             title?: string | null;
-        };
-        /**
-         * ProfileCreate
-         * @description One new provider profile. ``api_key`` is write-only; the mask comes back.
-         */
-        ProfileCreate: {
-            /** Api Key */
-            api_key?: string | null;
-            /** Base Url */
-            base_url?: string | null;
-            /** Context Window */
-            context_window?: number | null;
-            /** Kind */
-            kind: string;
-            /** Max Output Tokens */
-            max_output_tokens?: number | null;
-            /** Model */
-            model?: string | null;
-            /** Name */
-            name: string;
-            /** Request Timeout */
-            request_timeout?: number | null;
-            /** Temperature */
-            temperature?: number | null;
-        };
-        /**
-         * ProfileCreated
-         * @description The create's answer: the one response that carries the full key.
-         *
-         *     ``api_key`` is the plaintext exactly once, for the client that just sent
-         *     it to confirm against; it is ``None`` when no key was stored (a fake, or
-         *     a local endpoint without one).
-         */
-        ProfileCreated: {
-            /** Api Key */
-            api_key?: string | null;
-            /** Api Key Mask */
-            api_key_mask: string | null;
-            /** Base Url */
-            base_url: string | null;
-            /** Context Window */
-            context_window: number | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Is Default */
-            is_default: boolean;
-            /** Kind */
-            kind: string;
-            /** Max Output Tokens */
-            max_output_tokens: number | null;
-            /** Model */
-            model: string | null;
-            /** Name */
-            name: string;
-            /** Request Timeout */
-            request_timeout: number | null;
-            /** Temperature */
-            temperature: number | null;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /**
-         * ProfileRead
-         * @description A profile as every read shows it: the mask, never the key.
-         */
-        ProfileRead: {
-            /** Api Key Mask */
-            api_key_mask: string | null;
-            /** Base Url */
-            base_url: string | null;
-            /** Context Window */
-            context_window: number | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Is Default */
-            is_default: boolean;
-            /** Kind */
-            kind: string;
-            /** Max Output Tokens */
-            max_output_tokens: number | null;
-            /** Model */
-            model: string | null;
-            /** Name */
-            name: string;
-            /** Request Timeout */
-            request_timeout: number | null;
-            /** Temperature */
-            temperature: number | null;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /**
-         * ProfileTestResult
-         * @description What one connection test found: it ran, and it either answered or named why.
-         */
-        ProfileTestResult: {
-            /** Error */
-            error: string | null;
-            /** Latency Ms */
-            latency_ms: number;
-            /** Ok */
-            ok: boolean;
-        };
-        /**
-         * ProfileUpdate
-         * @description What a patch may change. The kind is what the profile is: not editable.
-         *
-         *     Absent fields stay unchanged; present nulls clear the nullable columns.
-         *     ``is_default: true`` hands the default over from the current holder.
-         */
-        ProfileUpdate: {
-            /** Api Key */
-            api_key?: string | null;
-            /** Base Url */
-            base_url?: string | null;
-            /** Context Window */
-            context_window?: number | null;
-            /** Is Default */
-            is_default?: boolean | null;
-            /** Max Output Tokens */
-            max_output_tokens?: number | null;
-            /** Model */
-            model?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Request Timeout */
-            request_timeout?: number | null;
-            /** Temperature */
-            temperature?: number | null;
         };
         /**
          * PromptDetail
@@ -2079,11 +2018,11 @@ export interface components {
          * TaskEffectiveRead
          * @description One known task key and the tier that actually serves it.
          *
-         *     ``profile_id`` and ``profile_name`` are ``None`` exactly when no profile
+         *     ``profile_id`` and ``profile_name`` are ``None`` exactly when no model
          *     serves — the environment tier answers. ``kind`` names the serving adapter
          *     either way (``fake`` or ``openai-chat``), so the page can say what answers
          *     without claiming the cascade's stored choice. An audit-only key has no
-         *     serving tier: ``kind`` is ``audit``, the profile fields are ``None``, and
+         *     serving tier: ``kind`` is ``audit``, the model fields are ``None``, and
          *     ``assignable`` is ``False``.
          */
         TaskEffectiveRead: {
@@ -3201,7 +3140,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileRead"][];
+                    "application/json": components["schemas"]["ModelRead"][];
                 };
             };
         };
@@ -3215,7 +3154,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProfileCreate"];
+                "application/json": components["schemas"]["ModelCreate"];
             };
         };
         responses: {
@@ -3225,7 +3164,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileCreated"];
+                    "application/json": components["schemas"]["ModelRead"];
                 };
             };
             /** @description Validation Error */
@@ -3279,7 +3218,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProfileUpdate"];
+                "application/json": components["schemas"]["ModelUpdate"];
             };
         };
         responses: {
@@ -3289,38 +3228,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_profile_models_api_settings_profiles__profile_id__models_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                profile_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string[];
+                    "application/json": components["schemas"]["ModelRead"];
                 };
             };
             /** @description Validation Error */
@@ -3351,7 +3259,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileTestResult"];
+                    "application/json": components["schemas"]["ModelTestResult"];
                 };
             };
             /** @description Validation Error */

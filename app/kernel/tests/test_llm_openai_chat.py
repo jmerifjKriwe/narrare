@@ -15,7 +15,7 @@ from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm.contract import DONE, CompletionRequest, Delta, Message, Usage
 from app.kernel.llm.openai_chat import OpenAIChatProvider
-from app.kernel.llm.repositories import ProfileRepository
+from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import resolve_provider
 from app.kernel.testing.vendor import CHAT_DELTAS, CHAT_USAGE, chat_vendor
 
@@ -89,10 +89,14 @@ async def test_the_stored_request_timeout_reaches_the_socket_through_resolution(
     with chat_vendor() as vendor:
         vendor.delay_completions(1.0)
         async with Session() as session:
+            providers = ProviderRepository(session, owner)
+            provider = await providers.create(
+                name="Stored", kind="openai-chat", base_url=vendor.base_url
+            )
             await ProfileRepository(session, owner).create(
-                name="Stored",
+                name="Stored model",
                 kind="openai-chat",
-                base_url=vendor.base_url,
+                provider_id=provider.id,
                 model="vendor-mini",
                 request_timeout=0.2,
                 is_default=True,

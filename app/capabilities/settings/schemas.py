@@ -1,12 +1,13 @@
-"""The settings payloads: the language, the providers, the provider profiles,
-the assignments.
+"""The settings payloads: the language, the providers, the models, the
+assignments.
 
-``None`` on the locale means "follow the browser". On a profile or provider
-update, an ``api_key`` that is absent or empty means "keep the stored one" —
-clearing a key is not an operation, only replacing it is. Every read of a
-profile or provider shows the mask (``sk-…`` plus the last four characters),
-never the key: the one response that carries the full key is the create's,
-once (design §Masked keys).
+``None`` on the locale means "follow the browser". On a provider update, an
+``api_key`` that is absent or empty means "keep the stored one" — clearing a
+key is not an operation, only replacing it is. Every read of a provider
+shows the mask (``sk-…`` plus the last four characters), never the key: the
+one response that carries the full key is the provider create's, once
+(design §Masked keys). A model carries no key at all — it names a provider,
+and the provider holds the secret.
 """
 
 from datetime import datetime  # noqa: TC003  Pydantic resolves these at runtime
@@ -15,7 +16,7 @@ from uuid import UUID  # noqa: TC003
 from pydantic import BaseModel, Field, field_validator
 
 from app.generated.locales import LOCALES
-from app.kernel.llm.models import PROFILE_KINDS, PROVIDER_KINDS
+from app.kernel.llm.models import PROVIDER_KINDS
 
 
 class SettingsRead(BaseModel):
@@ -61,41 +62,35 @@ class SettingsThemeUpdate(BaseModel):
         return value
 
 
-class ProfileCreate(BaseModel):
-    """One new provider profile. ``api_key`` is write-only; the mask comes back."""
+class ModelCreate(BaseModel):
+    """One new model under one of the user's providers.
+
+    The provider is named, not repeated: kind, endpoint and key live there.
+    The service's gate refuses a ``provider_id`` that is not the user's —
+    the schema cannot know ownership, only shape.
+    """
 
     name: str = Field(min_length=1, max_length=120)
-    kind: str
-    base_url: str | None = Field(default=None, max_length=500)
-    model: str | None = Field(default=None, max_length=200)
-    api_key: str | None = None
+    provider_id: UUID
+    model: str = Field(min_length=1, max_length=200)
     context_window: int | None = Field(default=None, gt=0)
     max_output_tokens: int | None = Field(default=None, gt=0)
     temperature: float | None = Field(default=None, ge=0, le=2)
     request_timeout: float | None = Field(default=None, gt=0)
 
-    @field_validator("kind")
-    @classmethod
-    def _kind_is_in_the_vocabulary(cls, value: str) -> str:
-        # A closed vocabulary in code, like ENTITY_TYPES; a typo must fail at
-        # the gate, not at the first call that resolves the profile.
-        if value not in PROFILE_KINDS:
-            known = "|".join(PROFILE_KINDS)
-            raise ValueError(f"unknown profile kind {value!r}; known: {known}")
-        return value
 
+class ModelUpdate(BaseModel):
+    """What a patch may change. The provider and the model string can move.
 
-class ProfileUpdate(BaseModel):
-    """What a patch may change. The kind is what the profile is: not editable.
-
-    Absent fields stay unchanged; present nulls clear the nullable columns.
-    ``is_default: true`` hands the default over from the current holder.
+    Absent fields stay unchanged; present nulls clear the tunables. Clearing
+    the name, the provider or the model string is refused by the service —
+    a model without one of them is not a configuration. ``is_default: true``
+    hands the default over from the current holder.
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    base_url: str | None = Field(default=None, max_length=500)
-    model: str | None = Field(default=None, max_length=200)
-    api_key: str | None = None
+    provider_id: UUID | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=200)
     context_window: int | None = Field(default=None, gt=0)
     max_output_tokens: int | None = Field(default=None, gt=0)
     temperature: float | None = Field(default=None, ge=0, le=2)
@@ -103,15 +98,17 @@ class ProfileUpdate(BaseModel):
     is_default: bool | None = None
 
 
-class ProfileRead(BaseModel):
-    """A profile as every read shows it: the mask, never the key."""
+class ModelRead(BaseModel):
+    """A model as every read shows it: its provider named, no key anywhere.
+
+    The key and its mask live on the provider; the model carries none.
+    """
 
     id: UUID
     name: str
-    kind: str
-    base_url: str | None
-    model: str | None
-    api_key_mask: str | None
+    provider_id: UUID
+    provider_name: str
+    model: str
     is_default: bool
     context_window: int | None
     max_output_tokens: int | None
@@ -119,17 +116,6 @@ class ProfileRead(BaseModel):
     request_timeout: float | None
     created_at: datetime
     updated_at: datetime
-
-
-class ProfileCreated(ProfileRead):
-    """The create's answer: the one response that carries the full key.
-
-    ``api_key`` is the plaintext exactly once, for the client that just sent
-    it to confirm against; it is ``None`` when no key was stored (a fake, or
-    a local endpoint without one).
-    """
-
-    api_key: str | None = None
 
 
 class ProviderCreate(BaseModel):
@@ -192,7 +178,7 @@ class ProviderCreated(ProviderRead):
     api_key: str | None = None
 
 
-class ProfileTestResult(BaseModel):
+class ModelTestResult(BaseModel):
     """What one connection test found: it ran, and it either answered or named why."""
 
     ok: bool
@@ -214,11 +200,11 @@ class AssignmentRead(BaseModel):
 class TaskEffectiveRead(BaseModel):
     """One known task key and the tier that actually serves it.
 
-    ``profile_id`` and ``profile_name`` are ``None`` exactly when no profile
+    ``profile_id`` and ``profile_name`` are ``None`` exactly when no model
     serves — the environment tier answers. ``kind`` names the serving adapter
     either way (``fake`` or ``openai-chat``), so the page can say what answers
     without claiming the cascade's stored choice. An audit-only key has no
-    serving tier: ``kind`` is ``audit``, the profile fields are ``None``, and
+    serving tier: ``kind`` is ``audit``, the model fields are ``None``, and
     ``assignable`` is ``False``.
     """
 

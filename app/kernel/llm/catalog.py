@@ -3,7 +3,7 @@
 ``data/models.json`` is a snapshot of ``https://models.dev/api.json`` reduced
 to the fields this kernel needs, dated in ``snapshot_date`` and refreshed by
 hand (:mod:`app.kernel.llm.data.refresh`) — nothing here touches the network
-at runtime. Lookup tolerates how a profile spells a model, and the cost truth
+at runtime. Lookup tolerates how a provider serves a model, and the cost truth
 table (design D4) turns what the catalog knows into what a call cost.
 
 The snapshot is parsed once per process into a module cache and returned as a
@@ -63,6 +63,10 @@ _FIELDS = _WINDOW_FIELDS + _PRICE_FIELDS + _FLAG_FIELDS
 
 _catalog: MappingProxyType[str, ModelInfo] | None = None
 """The parsed snapshot, parsed once, then served by reference."""
+
+_DATE_UNSET = object()
+_snapshot_date: object = _DATE_UNSET
+"""The snapshot's date, read once; the sentinel keeps "no date" from "unread"."""
 
 _index_cache: dict[
     int, tuple[Mapping[str, ModelInfo], dict[str, ModelInfo], dict[str, ModelInfo]]
@@ -138,26 +142,31 @@ def _info(model_id: str, entry: object) -> ModelInfo:
 def effective_info(
     model_id: str,
     *,
+    vendor: str | None = None,
     profile_context_window: int | None,
     profile_max_output_tokens: int | None,
 ) -> ModelInfo | None:
-    """The catalog's facts for the model a profile named, or None.
+    """The catalog's facts for the model a provider serves, or None.
 
-    Three tiers, first match wins. The exact full id; then the id under any
-    vendor — the query's provider prefix (``id.split("/")[0]``) is traded for
-    the full id's vendor segment, so ``llama-3`` and ``groq/llama-3`` both
-    find ``meta/llama-3``, the first full id in sort order when several do;
-    then a normalized match folding case and the ``-`` ``.`` ``:`` ``_``
-    separators (``llama3:8b`` ≡ ``llama-3-8b``). An id no tier reaches has no
-    info: the cost stays NULL and the settings UI asks.
+    Four tiers, first match wins. The provider's own vendor spelled the full
+    id (``vendor/model``), first — the same model string prices differently
+    per provider, and this tier is what makes that true. Then the exact id
+    as given; then the id under any vendor — the query's provider prefix
+    (``id.split("/")[0]``) is traded for the full id's vendor segment, so
+    ``llama-3`` and ``groq/llama-3`` both find ``meta/llama-3``, the first
+    full id in sort order when several do; then a normalized match folding
+    case and the ``-`` ``.`` ``:`` ``_`` separators (``llama3:8b`` ≡
+    ``llama-3-8b``). An id no tier reaches has no info: the cost stays NULL
+    and the settings UI asks.
 
-    The profile's two tunables override the catalog's; prices and
-    capabilities are the catalog's or nobody's.
+    The model's two tunables override the catalog's; prices and capabilities
+    are the catalog's or nobody's.
     """
     entries = load_catalog()
     by_bare, by_folded = _indexes(entries)
     found = (
-        entries.get(model_id)
+        (entries.get(f"{vendor}/{model_id}") if vendor else None)
+        or entries.get(model_id)
         or by_bare.get(_bare(model_id))
         or by_folded.get(_fold(_bare(model_id)))
     )
@@ -168,6 +177,45 @@ def effective_info(
     if profile_max_output_tokens is not None:
         found = replace(found, max_output_tokens=profile_max_output_tokens)
     return found
+
+
+def vendor_models(vendor: str) -> tuple[str, ...]:
+    """The model ids the vendor serves, bare and sorted; none for an unknown one.
+
+    The bare id is everything after the first slash — a vendor whose ids
+    carry path segments of their own lists them whole, which is the string
+    the provider's users type as the model. This is the form filler's
+    vocabulary, not a lookup: spelling a model is the user's job, pricing it
+    is :func:`effective_info`'s.
+    """
+    prefix = f"{vendor}/"
+    return tuple(
+        sorted(
+            model_id[len(prefix) :] for model_id in load_catalog() if model_id.startswith(prefix)
+        )
+    )
+
+
+def snapshot_date() -> str | None:
+    """The snapshot's own ``snapshot_date``, read once with the catalog.
+
+    ``None`` when the file names no date or cannot be read as JSON — the
+    callers show a date, never a failure, and :class:`CatalogError` stays
+    :func:`load_catalog`'s to raise.
+    """
+    global _snapshot_date
+    if _snapshot_date is _DATE_UNSET:
+        _snapshot_date = _read_date(SNAPSHOT)
+    return cast("str | None", _snapshot_date)
+
+
+def _read_date(snapshot: Path) -> str | None:
+    """The snapshot's ``snapshot_date``, or None when absent or unreadable."""
+    try:
+        date = loads(snapshot.read_text()).get("snapshot_date")
+    except OSError, ValueError, AttributeError:
+        return None
+    return date if isinstance(date, str) else None
 
 
 def compute_cost(

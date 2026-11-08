@@ -8,7 +8,7 @@ With neither a usable keychain nor ``NARRE_SECRET_KEY``, storing is refused
 by name — there is no silent third tier and no auto-generated key file. A
 key its tier can no longer produce — a restored database whose keychain was
 cleared, a rotated ``NARRE_SECRET_KEY`` — fails ``load_key`` with
-``KeyUnavailableError``, whose message names the profile id and never the key.
+``KeyUnavailableError``, whose message names the row's id and never the key.
 
 The module never touches the database: the caller (the settings service)
 writes ``api_key`` with the returned column value and ``api_key_hint`` with
@@ -43,7 +43,7 @@ class NoKeyStoreError(RuntimeError):
 
 class KeyUnavailableError(RuntimeError):
     """The stored key cannot be produced again: gone from the keychain, or
-    undecryptable ciphertext. The message names the profile id — and never the
+    undecryptable ciphertext. The message names the row's id — and never the
     key — so a caller can say which configuration lost its key while the
     masked list keeps showing the hint.
     """
@@ -101,10 +101,12 @@ def save_key(profile_id: UUID, plaintext: str) -> str:
 def load_key(profile_id: UUID, column: str) -> str:
     """Produce the plaintext again from whichever tier stored it.
 
-    ``column`` is the profile's ``api_key`` value, which names its tier: empty
+    ``column`` is the row's ``api_key`` value, which names its tier: empty
     means the keychain holds the key, anything else is ciphertext to decrypt.
-    Raises :class:`KeyUnavailableError` — the message names the profile id —
-    when the tier cannot produce the key.
+    Raises :class:`KeyUnavailableError` — the message names the row's id —
+    when the tier cannot produce the key. The id is a provider row's today
+    (models carry no key of their own any more); the wording names no table,
+    so both histories read it the same way.
     """
     entry = str(profile_id)
     if not column:
@@ -114,16 +116,16 @@ def load_key(profile_id: UUID, column: str) -> str:
                 stored = keyring.get_password(SERVICE, entry)
         if stored is not None:
             return stored
-        raise KeyUnavailableError(f"the keychain no longer holds the key of profile {entry}")
+        raise KeyUnavailableError(f"the keychain no longer holds the key stored under {entry}")
     fernet = _fernet()
     if fernet is None:
         raise KeyUnavailableError(
-            f"cannot decrypt the stored key of profile {entry}: NARRE_SECRET_KEY is not set"
+            f"cannot decrypt the key stored under {entry}: NARRE_SECRET_KEY is not set"
         )
     try:
         return fernet.decrypt(column.encode()).decode()
     except InvalidToken:
-        raise KeyUnavailableError(f"cannot decrypt the stored key of profile {entry}") from None
+        raise KeyUnavailableError(f"cannot decrypt the key stored under {entry}") from None
 
 
 def erase_key(profile_id: UUID) -> None:

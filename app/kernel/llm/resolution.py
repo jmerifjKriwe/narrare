@@ -2,20 +2,22 @@
 
 Five tiers, first hit wins: the task's own assignment, an assignment standing
 in for the task's capability segment (its first dot-separated name), the
-user's default profile, the environment tier, and the fake. The environment
+user's default model, the environment tier, and the fake. The environment
 tier reads the same ``NARRE_LLM_PROVIDER`` the process-wide choice always
 did — semantics unchanged, so a fresh clone and a headless CI run keep
 answering with zero setup — with ``openai-compatible`` as the accepted alias
 naming the ``openai-chat`` adapter. The floor is the fake: no configuration
 anywhere still answers.
 
-The resolved structure is what the call is audited with and what later work
-consumes: the profile that served, its kind and model, and the numeric
-tunables — the profile's stored columns where set, the catalog's where it
-knows the model, ``None`` where neither does. ``settings.test`` sits in
-:data:`KNOWN_TASK_KEYS` because the settings surface audits its probe calls
-under it; an unlisted key resolves all the same, so a new capability ships
-before its key is listed.
+A model resolves through its provider: the model row names the provider and
+the model string, the provider row carries kind, endpoint, key and vendor,
+and the catalog prices the model under the provider's vendor. The resolved
+structure is what the call is audited with and what later work consumes: the
+model that served, its kind and model string, and the numeric tunables — the
+model's stored columns where set, the catalog's where it knows the model,
+``None`` where neither does. ``settings.test`` sits in :data:`KNOWN_TASK_KEYS`
+because the settings surface audits its probe calls under it; an unlisted key
+resolves all the same, so a new capability ships before its key is listed.
 """
 
 from collections.abc import Callable  # noqa: TC003
@@ -28,9 +30,9 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.kernel.llm.catalog import ModelInfo, effective_info
 from app.kernel.llm.contract import TextProvider  # noqa: TC001  the dataclass field names it
 from app.kernel.llm.fake import FakeProvider
-from app.kernel.llm.models import PROFILE_KINDS, ProviderProfile
+from app.kernel.llm.models import PROVIDER_KINDS, LLMProvider, ProviderProfile
 from app.kernel.llm.openai_chat import DEFAULT_BASE_URL, OpenAIChatProvider
-from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.secrets import load_key
 from app.kernel.vendor import needs_api_key
 
@@ -46,7 +48,7 @@ AUDIT_ONLY_TASK_KEYS: tuple[str, ...] = ("settings.test",)
 """Known keys that are audited but never routed.
 
 The settings surface's connection probe audits its call under ``settings.test``
-while it tests the profile the user clicked, not the cascade's answer, so the
+while it tests the model the user clicked, not the cascade's answer, so the
 key has no serving tier to report. Readers that list effective providers skip
 it; assignment remains API-accepted but has no consumer.
 """
@@ -63,12 +65,12 @@ class ResolvedProvider:
     """One task's provider for one user, with the facts the call is audited with.
 
     ``provider`` answers; everything else describes the choice. The numeric
-    fields are the profile's stored columns merged with the catalog's
+    fields are the model's stored columns merged with the catalog's
     (:func:`app.kernel.llm.catalog.effective_info`) — ``None`` when neither
     knows. ``info`` is that merge itself, computed once here: the audit and
     the job handlers price the call from it instead of merging again. A
     ``None`` info means no catalog tier reached the model; ``api_key`` is
-    the plaintext the profile's tier produced; it never reaches a log line,
+    the plaintext the provider's tier produced; it never reaches a log line,
     a response, an audit row, or a repr — the dataclass keeps it out of the
     generated one.
     """
@@ -91,10 +93,11 @@ async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) 
 
     Reads only, on the caller's session: resolution never writes, so the
     request's own transaction stays the only one. A task assignment whose
-    profile is gone (the database cascades the assignment with the profile)
-    falls through to the next tier without a sound, and a profile whose key
-    its tier can no longer produce raises :class:`app.kernel.secrets.KeyUnavailableError`
-    — the message names the profile, never the key — before any call runs.
+    model is gone (the database cascades the assignment with the model, and
+    the model with its provider) falls through to the next tier without a
+    sound, and a provider whose key its tier can no longer produce raises
+    :class:`app.kernel.secrets.KeyUnavailableError` — the message names the
+    row, never the key — before any call runs.
     """
     assignments = AssignmentRepository(session, user_id)
     assignment = await assignments.for_task(task_key)
@@ -105,8 +108,10 @@ async def resolve_provider(session: AsyncSession, user_id: UUID, task_key: str) 
     if profile is None:
         ordered = await profiles.ordered()  # the default first, then by name
         profile = ordered[0] if ordered else None
-    if profile is not None:
-        return from_profile(profile)
+    if profile is not None and profile.provider_id is not None:
+        provider = await ProviderRepository(session, user_id).get(profile.provider_id)
+        if provider is not None:
+            return from_profile(profile, provider)
     return environment_provider()
 
 
@@ -126,17 +131,17 @@ def environment_provider() -> ResolvedProvider:
         )
     if name == "openai-compatible":
         chat = OpenAIChatProvider.from_environment()
-        provider: TextProvider = chat
+        adapter: TextProvider = chat
         kind, model = "openai-chat", chat.model
         base_url: str | None = chat.base_url
         api_key: str | None = chat.api_key
     else:
-        provider = ENV_PROVIDERS[name]()
+        adapter = ENV_PROVIDERS[name]()
         kind, model = "fake", "fake"
         base_url = api_key = None
-    info, context_window, max_output_tokens = _merged(model, None, None)
+    info, context_window, max_output_tokens = _merged(model, None, None, None)
     return ResolvedProvider(
-        provider=provider,
+        provider=adapter,
         profile_id=None,
         kind=kind,
         model=model,
@@ -150,20 +155,23 @@ def environment_provider() -> ResolvedProvider:
     )
 
 
-def from_profile(profile: ProviderProfile) -> ResolvedProvider:
-    """The profile tiers' resolution: the profile's own provider and columns.
+def from_profile(profile: ProviderProfile, provider: LLMProvider) -> ResolvedProvider:
+    """The model tiers' resolution: the provider row carries the endpoint.
 
-    The cascade calls this with the profile it chose; the settings surface
-    calls it with the profile a probe names, so both build the identical
-    provider from the identical columns. A profile whose key its tier can no
-    longer produce raises :class:`app.kernel.secrets.KeyUnavailableError`
-    before any call runs — except a local endpoint configured without a key,
-    which never had one to lose (the settings gate allows exactly that).
+    The cascade calls this with the model it chose and that model's provider;
+    the settings surface calls it with the model a probe names, so both build
+    the identical adapter from the identical rows. The kind, the endpoint and
+    the key are the provider's — a model never carries them — and the
+    vendor names the catalog tier the model is priced under. A provider whose
+    key its tier can no longer produce raises
+    :class:`app.kernel.secrets.KeyUnavailableError` before any call runs —
+    except a local endpoint configured without a key, which never had one to
+    lose (the settings gate allows exactly that).
     """
-    if profile.kind == "openai-chat":
-        base_url = (profile.base_url or DEFAULT_BASE_URL).rstrip("/")
-        api_key: str = _profile_key(profile, base_url)
-        provider: TextProvider = OpenAIChatProvider(
+    if provider.kind == "openai-chat":
+        base_url = (provider.base_url or DEFAULT_BASE_URL).rstrip("/")
+        api_key: str = _provider_key(provider, base_url)
+        adapter: TextProvider = OpenAIChatProvider(
             base_url=base_url,
             model=profile.model or "",
             api_key=api_key,
@@ -171,22 +179,22 @@ def from_profile(profile: ProviderProfile) -> ResolvedProvider:
             temperature_default=profile.temperature,
         )
         kind, model = "openai-chat", profile.model or ""
-    elif profile.kind == "fake":
-        # A fake stores no key; its model is free text, ignored for answering
-        # and carried through to the audit.
-        provider = FakeProvider()
+    elif provider.kind == "fake":
+        # A fake stores no key; its model string is free text, ignored for
+        # answering and carried through to the audit.
+        adapter = FakeProvider()
         kind, model = "fake", profile.model or "fake"
         base_url, api_key = "", ""
     else:
         raise ValueError(
-            f"profile {profile.id} carries unknown kind {profile.kind!r};"
-            f" known: {'|'.join(PROFILE_KINDS)}"
+            f"provider {provider.id} carries unknown kind {provider.kind!r};"
+            f" known: {'|'.join(PROVIDER_KINDS)}"
         )
     info, context_window, max_output_tokens = _merged(
-        model, profile.context_window, profile.max_output_tokens
+        model, provider.vendor, profile.context_window, profile.max_output_tokens
     )
     return ResolvedProvider(
-        provider=provider,
+        provider=adapter,
         profile_id=profile.id,
         kind=kind,
         model=model,
@@ -194,15 +202,15 @@ def from_profile(profile: ProviderProfile) -> ResolvedProvider:
         max_output_tokens=max_output_tokens,
         temperature=profile.temperature,
         request_timeout=profile.request_timeout,
-        # A fake has no endpoint to name; an openai-chat profile always does.
+        # A fake has no endpoint to name; an openai-chat provider always does.
         base_url=base_url or None,
         api_key=api_key or None,
         info=info,
     )
 
 
-def _profile_key(profile: ProviderProfile, base_url: str) -> str:
-    """The profile's key, or the empty no-key of a keyless local endpoint.
+def _provider_key(provider: LLMProvider, base_url: str) -> str:
+    """The provider's key, or the empty no-key of a keyless local endpoint.
 
     A non-empty column (Fernet ciphertext) or a stored hint (the keyring tier
     wrote the plaintext elsewhere) names a key whichever tier holds it must
@@ -211,25 +219,32 @@ def _profile_key(profile: ProviderProfile, base_url: str) -> str:
     without a stored key is a row the gate refuses; resolution refuses by
     name instead of calling out silently keyless.
     """
-    if profile.api_key or profile.api_key_hint is not None or needs_api_key(base_url):
-        return load_key(profile.id, profile.api_key)
+    if provider.api_key or provider.api_key_hint is not None or needs_api_key(base_url):
+        return load_key(provider.id, provider.api_key)
     return ""
 
 
 def _merged(
-    model: str, context_window: int | None, max_output_tokens: int | None
+    model: str,
+    vendor: str | None,
+    context_window: int | None,
+    max_output_tokens: int | None,
 ) -> tuple[ModelInfo | None, int | None, int | None]:
     """The one merge: the catalog's facts, and the two windows after the override.
 
     ``effective_info`` already applies the caller's stored windows over the
-    catalog's, so the returned info *is* the merged fact sheet. The two ints
-    keep the stored value where the profile set one — even on a model no
-    tier reaches, where the info is ``None`` and the profile's numbers are
-    the only source. Every consumer takes its facts from here instead of
-    merging a second time.
+    catalog's — trying the provider's ``vendor/model`` spelling first — so
+    the returned info *is* the merged fact sheet. The two ints keep the
+    stored value where the model set one — even on a model no tier reaches,
+    where the info is ``None`` and the model's numbers are the only source.
+    Every consumer takes its facts from here instead of merging a second
+    time.
     """
     info = effective_info(
-        model, profile_context_window=context_window, profile_max_output_tokens=max_output_tokens
+        model,
+        vendor=vendor,
+        profile_context_window=context_window,
+        profile_max_output_tokens=max_output_tokens,
     )
     return (
         info,

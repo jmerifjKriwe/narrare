@@ -912,6 +912,321 @@
         "title": "JobRead",
         "type": "object"
       },
+      "ModelCreate": {
+        "description": "One new model under one of the user's providers.\n\nThe provider is named, not repeated: kind, endpoint and key live there.\nThe service's gate refuses a ``provider_id`` that is not the user's —\nthe schema cannot know ownership, only shape.",
+        "properties": {
+          "context_window": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider_id": {
+            "format": "uuid",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "request_timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Timeout"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          }
+        },
+        "required": [
+          "name",
+          "provider_id",
+          "model"
+        ],
+        "title": "ModelCreate",
+        "type": "object"
+      },
+      "ModelRead": {
+        "description": "A model as every read shows it: its provider named, no key anywhere.\n\nThe key and its mask live on the provider; the model carries none.",
+        "properties": {
+          "context_window": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider_id": {
+            "format": "uuid",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "provider_name": {
+            "title": "Provider Name",
+            "type": "string"
+          },
+          "request_timeout": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Timeout"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider_id",
+          "provider_name",
+          "model",
+          "is_default",
+          "context_window",
+          "max_output_tokens",
+          "temperature",
+          "request_timeout",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ModelRead",
+        "type": "object"
+      },
+      "ModelTestResult": {
+        "description": "What one connection test found: it ran, and it either answered or named why.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "error",
+          "latency_ms"
+        ],
+        "title": "ModelTestResult",
+        "type": "object"
+      },
+      "ModelUpdate": {
+        "description": "What a patch may change. The provider and the model string can move.\n\nAbsent fields stay unchanged; present nulls clear the tunables. Clearing\nthe name, the provider or the model string is refused by the service —\na model without one of them is not a configuration. ``is_default: true``\nhands the default over from the current holder.",
+        "properties": {
+          "context_window": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
+          },
+          "request_timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Timeout"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          }
+        },
+        "title": "ModelUpdate",
+        "type": "object"
+      },
       "NovelCreate": {
         "properties": {
           "blurb": {
@@ -1112,520 +1427,6 @@
           }
         },
         "title": "NovelUpdate",
-        "type": "object"
-      },
-      "ProfileCreate": {
-        "description": "One new provider profile. ``api_key`` is write-only; the mask comes back.",
-        "properties": {
-          "api_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Api Key"
-          },
-          "base_url": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Base Url"
-          },
-          "context_window": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context Window"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "max_output_tokens": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Output Tokens"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "name": {
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "request_timeout": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Request Timeout"
-          },
-          "temperature": {
-            "anyOf": [
-              {
-                "maximum": 2,
-                "minimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Temperature"
-          }
-        },
-        "required": [
-          "name",
-          "kind"
-        ],
-        "title": "ProfileCreate",
-        "type": "object"
-      },
-      "ProfileCreated": {
-        "description": "The create's answer: the one response that carries the full key.\n\n``api_key`` is the plaintext exactly once, for the client that just sent\nit to confirm against; it is ``None`` when no key was stored (a fake, or\na local endpoint without one).",
-        "properties": {
-          "api_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Api Key"
-          },
-          "api_key_mask": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Api Key Mask"
-          },
-          "base_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Base Url"
-          },
-          "context_window": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context Window"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "is_default": {
-            "title": "Is Default",
-            "type": "boolean"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "max_output_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Output Tokens"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "request_timeout": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Request Timeout"
-          },
-          "temperature": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Temperature"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "kind",
-          "base_url",
-          "model",
-          "api_key_mask",
-          "is_default",
-          "context_window",
-          "max_output_tokens",
-          "temperature",
-          "request_timeout",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ProfileCreated",
-        "type": "object"
-      },
-      "ProfileRead": {
-        "description": "A profile as every read shows it: the mask, never the key.",
-        "properties": {
-          "api_key_mask": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Api Key Mask"
-          },
-          "base_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Base Url"
-          },
-          "context_window": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context Window"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "is_default": {
-            "title": "Is Default",
-            "type": "boolean"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "max_output_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Output Tokens"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "request_timeout": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Request Timeout"
-          },
-          "temperature": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Temperature"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "kind",
-          "base_url",
-          "model",
-          "api_key_mask",
-          "is_default",
-          "context_window",
-          "max_output_tokens",
-          "temperature",
-          "request_timeout",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ProfileRead",
-        "type": "object"
-      },
-      "ProfileTestResult": {
-        "description": "What one connection test found: it ran, and it either answered or named why.",
-        "properties": {
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "latency_ms": {
-            "title": "Latency Ms",
-            "type": "integer"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "ok",
-          "error",
-          "latency_ms"
-        ],
-        "title": "ProfileTestResult",
-        "type": "object"
-      },
-      "ProfileUpdate": {
-        "description": "What a patch may change. The kind is what the profile is: not editable.\n\nAbsent fields stay unchanged; present nulls clear the nullable columns.\n``is_default: true`` hands the default over from the current holder.",
-        "properties": {
-          "api_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Api Key"
-          },
-          "base_url": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Base Url"
-          },
-          "context_window": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Context Window"
-          },
-          "is_default": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Default"
-          },
-          "max_output_tokens": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Output Tokens"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "request_timeout": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Request Timeout"
-          },
-          "temperature": {
-            "anyOf": [
-              {
-                "maximum": 2,
-                "minimum": 0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Temperature"
-          }
-        },
-        "title": "ProfileUpdate",
         "type": "object"
       },
       "PromptDetail": {
@@ -2564,7 +2365,7 @@
         "type": "object"
       },
       "TaskEffectiveRead": {
-        "description": "One known task key and the tier that actually serves it.\n\n``profile_id`` and ``profile_name`` are ``None`` exactly when no profile\nserves — the environment tier answers. ``kind`` names the serving adapter\neither way (``fake`` or ``openai-chat``), so the page can say what answers\nwithout claiming the cascade's stored choice. An audit-only key has no\nserving tier: ``kind`` is ``audit``, the profile fields are ``None``, and\n``assignable`` is ``False``.",
+        "description": "One known task key and the tier that actually serves it.\n\n``profile_id`` and ``profile_name`` are ``None`` exactly when no model\nserves — the environment tier answers. ``kind`` names the serving adapter\neither way (``fake`` or ``openai-chat``), so the page can say what answers\nwithout claiming the cascade's stored choice. An audit-only key has no\nserving tier: ``kind`` is ``audit``, the model fields are ``None``, and\n``assignable`` is ``False``.",
         "properties": {
           "assignable": {
             "title": "Assignable",
@@ -4268,7 +4069,7 @@
     },
     "/api/settings/assignments/{task_key}": {
       "put": {
-        "description": "Point the task at a profile, or clear it with ``profile_id: null``.\n\nAny non-empty task key is accepted — unknown keys are forward-compatible.",
+        "description": "Point the task at a model, or clear it with ``profile_id: null``.\n\nAny non-empty task key is accepted — unknown keys are forward-compatible.",
         "operationId": "put_assignment_api_settings_assignments__task_key__put",
         "parameters": [
           {
@@ -4322,7 +4123,7 @@
     },
     "/api/settings/profiles": {
       "get": {
-        "description": "The user's profiles, the default first; every key read shows the mask.",
+        "description": "The user's models, the default first; every read names its provider.",
         "operationId": "list_profiles_api_settings_profiles_get",
         "responses": {
           "200": {
@@ -4330,7 +4131,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/ProfileRead"
+                    "$ref": "#/components/schemas/ModelRead"
                   },
                   "title": "Response List Profiles Api Settings Profiles Get",
                   "type": "array"
@@ -4346,13 +4147,13 @@
         ]
       },
       "post": {
-        "description": "Store one profile; the first becomes the default; the full key returns once.",
+        "description": "Store one model under one of the user's providers; the first is the default.",
         "operationId": "create_profile_api_settings_profiles_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProfileCreate"
+                "$ref": "#/components/schemas/ModelCreate"
               }
             }
           },
@@ -4363,7 +4164,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfileCreated"
+                  "$ref": "#/components/schemas/ModelRead"
                 }
               }
             },
@@ -4388,7 +4189,7 @@
     },
     "/api/settings/profiles/{profile_id}": {
       "delete": {
-        "description": "Delete a non-default profile; its assignments cascade with it.",
+        "description": "Delete a non-default model; its assignments cascade with it.",
         "operationId": "delete_profile_api_settings_profiles__profile_id__delete",
         "parameters": [
           {
@@ -4423,7 +4224,7 @@
         ]
       },
       "patch": {
-        "description": "Apply the patch; an empty ``api_key`` keeps the stored one.",
+        "description": "Apply the patch; the provider and the model string can both move.",
         "operationId": "update_profile_api_settings_profiles__profile_id__patch",
         "parameters": [
           {
@@ -4441,7 +4242,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProfileUpdate"
+                "$ref": "#/components/schemas/ModelUpdate"
               }
             }
           },
@@ -4452,7 +4253,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfileRead"
+                  "$ref": "#/components/schemas/ModelRead"
                 }
               }
             },
@@ -4475,57 +4276,9 @@
         ]
       }
     },
-    "/api/settings/profiles/{profile_id}/models": {
-      "get": {
-        "description": "Model discovery against the profile's endpoint.",
-        "operationId": "list_profile_models_api_settings_profiles__profile_id__models_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "profile_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Profile Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": "Response List Profile Models Api Settings Profiles  Profile Id  Models Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Profile Models",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
     "/api/settings/profiles/{profile_id}/test": {
       "post": {
-        "description": "One cheap completion against the profile's endpoint, audited as settings.test.",
+        "description": "One cheap completion through the model's provider, audited as settings.test.",
         "operationId": "test_profile_api_settings_profiles__profile_id__test_post",
         "parameters": [
           {
@@ -4544,7 +4297,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProfileTestResult"
+                  "$ref": "#/components/schemas/ModelTestResult"
                 }
               }
             },
@@ -4772,7 +4525,7 @@
     },
     "/api/settings/tasks": {
       "get": {
-        "description": "The effective provider per known task key, for the page's task list.\n\nReads only: each row is the resolution cascade's answer, never a write\nand never an audit row. A profile whose key its tier can no longer\nproduce fails the read by name — 502, as discovery maps the same class —\nso a lost key is never a bare 500.",
+        "description": "The effective provider per known task key, for the page's task list.\n\nReads only: each row is the resolution cascade's answer, never a write\nand never an audit row. A provider whose key its tier can no longer\nproduce fails the read by name — 502, as discovery maps the same class —\nso a lost key is never a bare 500.",
         "operationId": "list_tasks_api_settings_tasks_get",
         "responses": {
           "200": {
