@@ -88,6 +88,11 @@ const novelRoute = createRoute({
 // point.
 export const workspaceRoute = novelRoute;
 
+// The TanStack Router route id of the workspace route, for shell code that
+// needs to recognise it (breakpoint, chromeless handling) without hardcoding
+// a path that belongs to this capability.
+export const workspaceRouteId = "/novels/$id";
+
 // The capability route contract: every route this capability mounts under the
 // shell root, as a const tuple. The generated table (web/lib/generated/
 // routes.ts) imports this array; a capability without this file mounts
