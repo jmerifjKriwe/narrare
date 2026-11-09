@@ -66,7 +66,7 @@ export function EntitiesPanel() {
   // is state, not navigation history (unlike chapters, a click here must
   // not own a back-button step). The row is judged against the novel's
   // own list, so a dead id is no selection, never an error.
-  const { entity: entityParam } = useSearch({ from: "/novels/$id/wissen" });
+  const { entity: entityParam } = useSearch({ from: "/novels/$id/knowledge" });
   const navigate = useNavigate();
   // Two views of one list: the unfiltered ask feeds the filters' options,
   // the detail and the pickers; the narrowed ask is what the rows show.

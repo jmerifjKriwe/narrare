@@ -197,7 +197,7 @@ def _rerun_extraction_to_done(dock: Locator, extract: Locator, status: Locator) 
     expect(status).to_have_attribute("data-job-status", "done")
 
 
-def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_reviews_extraction_beside_the_editor(page: Page, stack: Stack) -> None:
     _open_workspace_with_validated_title(page, "Das Wissen der Bucht")
 
     page.get_by_role("button", name="Neues Kapitel").click()
@@ -322,7 +322,7 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     assert_accessible(page)
 
 
-def test_the_wissen_dock_reviews_the_novels_findings(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_reviews_the_novels_findings(page: Page, stack: Stack) -> None:
     """The whole-novel check: the planted contradictions, reviewed to empty.
 
     Two chapters give Mira and Tom two different ages each; the check —
@@ -397,7 +397,7 @@ def test_the_wissen_dock_reviews_the_novels_findings(page: Page, stack: Stack) -
     assert_accessible(page)
 
 
-def test_the_wissen_dock_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
     """An outage in the dock reads as an outage, never as an empty list.
 
     A local service that is not running is a real condition of this
@@ -436,7 +436,7 @@ def test_the_wissen_dock_names_an_unreachable_backend(page: Page, stack: Stack) 
     assert_accessible(page)
 
 
-def test_the_wissen_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> None:
     """The review flow without a pointer: Tab reaches, Enter decides.
 
     The dock's tab, the extraction trigger and both review decisions are
@@ -1474,7 +1474,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     base = f"{WEB_URL}/novels/{novel_id}"
 
     # The dock opens straight onto the named entity's card.
-    page.goto(f"{base}/wissen?entity={leuchtturm}")
+    page.goto(f"{base}/knowledge?entity={leuchtturm}")
     dock = page.get_by_role("complementary", name="Wissen")
     expect(dock).to_be_visible()
     entities = dock.get_by_role("region", name="Entitäten")
@@ -1491,7 +1491,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     # the param is asserted, not the whole URL.)
     page.goto(base)
     expect(page.get_by_role("heading", name="Die adressierte Bucht")).to_be_visible()
-    page.goto(f"{base}/wissen?entity={leuchtturm}")
+    page.goto(f"{base}/knowledge?entity={leuchtturm}")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_be_visible()
     _row_named(entities, "Mira").click()
     expect(dock.get_by_role("region", name="Mira")).to_be_visible()
@@ -1506,7 +1506,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     workspace_url = page.url
 
     # A dead id degrades: nothing selected, and the param leaves the URL.
-    page.goto(f"{base}/wissen?entity=00000000-0000-0000-0000-000000000000")
+    page.goto(f"{base}/knowledge?entity=00000000-0000-0000-0000-000000000000")
     expect(_row_named(dock.get_by_role("region", name="Entitäten"), "Mira")).to_be_visible()
     expect(dock.get_by_role("region", name="Leuchtturm")).to_have_count(0)
     expect(dock.get_by_role("region", name="Mira")).to_have_count(0)
@@ -1547,7 +1547,7 @@ def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack)
         second_chapter = second.json()["id"]
 
     base = f"{WEB_URL}/novels/{novel_id}"
-    page.goto(f"{base}/wissen?entity={leuchtturm}&chapter={first_chapter}")
+    page.goto(f"{base}/knowledge?entity={leuchtturm}&chapter={first_chapter}")
     dock = page.get_by_role("complementary", name="Wissen")
     expect(dock).to_be_visible()
     entities = dock.get_by_role("region", name="Entitäten")

@@ -93,18 +93,24 @@ Corrections and notes:
   corrected 21; the justfile actually carried 23 without `test-cov`, and the
   GitHub platform work (2026-11-05) added `test-cov` — §6 lists 24 since
   2026-11-05, and both targets here were aligned to it at the same time.
-- **Governance counters: hooks 11, check scripts 4, recipes 27 (2026-11-09).**
-  Three targets are exceeded without a recorded deviation, unlike the CI-jobs
-  deviation above. Each addition names a failure that has occurred:
-  `scripts/check_commit_msg.py` (release-please grammar, duplicate lines in
-  v0.3.0/v0.3.1), `scripts/check_doc_links.py` (stale links),
-  `scripts/check_pins.py` (tool pins Dependabot cannot see), plus the
-  pre-push hooks `uv-lock`, `pyright-full`, `pytest`, `web-tests-full` and
-  `check-generated`, `fuzz`, `test-frontend-changed`. The target values stay
-  (≤ 10 / ≤ 3 / 24) as the standard; the deviation is recorded here rather
-  than by removing hooks that name real failures. Reconcile on the next
-  governance pass — either document each addition's failure or fold it into
-  an existing hook.
+- **Governance counters: hooks 10, check scripts 3, recipes 27 (2026-11-09).**
+  The hook target is met: the two web pre-commit hooks were merged into one
+  (`web` runs the typecheck and the changed tests), so ten stand where eleven
+  did, inside ≤ 10. The check-script target is met: `check_doc_links.py` is
+  deleted because no gate called it; `check_secrets.py` (the secret scan),
+  `check_commit_msg.py` (release-please grammar, duplicate lines in
+  v0.3.0/v0.3.1) and `check_pins.py` (tool pins Dependabot cannot see)
+  remain, each naming a failure that has occurred.
+  Recipes 27 is the one remaining deviation from the 24 target — the three
+  names are `check-generated`, `test-frontend-changed` and `fuzz` — and the
+  deviation stays recorded here; the target values (≤ 10 / ≤ 3 / 24) remain
+  the standard.
+- **Mutation sweep returned (2026-11-09).** Mutation testing returned on
+  2026-11-09 as an advisory monthly sweep (`mutation.yml`), approved the same
+  day with the three §8 statements recorded verbatim in
+  [the 2026-11-05 GitHub platform design](2026-11-05-github-platform-design.md)'s
+  addendum. It names no context in `ci-required` and is therefore not a gate:
+  the §6 "Removed" line is corrected accordingly, not reversed.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
   `packages/`, tests included. The old value is stale, not wrong in method.
 - **Provider surfaces: the 15 → 1 consolidation is already banked** (ADR-099). One
@@ -251,7 +257,7 @@ direct push is covered by the nightly; the nightly runs every capability.
 `release-please` runs separately. The wall clock is the longest capability suite —
 the suites run side by side, the aggregator waits on them in seconds.
 
-**`justfile` keeps 24 public recipes:**
+**`justfile` budgets 24 public recipes.** It carries 27: `check-generated`, `test-frontend-changed` and `fuzz` are the three additions §2's governance counters record. The list below is the 24 the architecture targets.
 
 ```text
 dev, dev-api, dev-web, dev-services, dev-services-stop, dev-setup,
@@ -268,9 +274,13 @@ while the product is not live; a schema change lands in the models and the
 database is recreated.
 
 Removed: eval-nightly, mutation-testing, warnings-summary, budget-report, the
-architecture CI job, and the changes-detection maze. The second typechecker (pyrefly)
-is removed; one typechecker, one answer. VRT and golden-baseline machinery is removed —
-visual similarity to a baseline nobody reviews does not catch a product defect.
+architecture CI job, and the changes-detection maze. Corrected 2026-11-09: the
+mutation sweep returned as an advisory monthly workflow (`mutation.yml`),
+approved that day under §8's three statements and naming no context in
+`ci-required` — scheduling, not a gate, so it does not reopen this removal.
+The second typechecker (pyrefly) is removed; one typechecker, one answer. VRT
+and golden-baseline machinery is removed — visual similarity to a baseline
+nobody reviews does not catch a product defect.
 Kept: release-please, CHANGELOG, coverage badge.
 
 Consequence: a developer can run the full local gate in under a minute and a half, and
@@ -481,9 +491,10 @@ dependency that cannot answer is removed.
 
 ---
 
-## 14. As built, 2026-10-25
+## 14. As built, 2026-10-25 (updated 2026-11-09)
 
-The five capabilities — writing, knowledge, chat, setup, settings — are built.
+The six capabilities — writing, knowledge, chat, setup, settings, prompts —
+are built.
 These are the places the code is simpler than §3–§6 describe, recorded here so
 the authority and the tree cannot disagree silently. Each entry names the
 trigger that would build the missing piece.
@@ -508,12 +519,13 @@ trigger that would build the missing piece.
   generated table is the single composition point. Component tests live beside
   their components in the capability folder. A new route is a `routes.tsx`
   change plus `just generate`.
-- **`kernel/jobs` is built; `kernel/events` and `kernel/prompts` are not.**
+- **`kernel/jobs` and `kernel/prompts` are built; `kernel/events` is not.**
   The knowledge phase needed durable work (extraction, the whole-novel check),
   so the table, the single worker and the stale-row sweep landed there (§13).
-  Prompts still live in the capabilities that own them, joined only by the
-  `SOURCE_PREFIX` and `PURPOSE_PREFIX` markers in the provider contract; a
-  prompt registry arrives with the override system.
+  Prompts arrived with the override system (WP4, approved 2026-10-29): the
+  registry and the override rows follow the ADR-102 pattern — a settings-like
+  surface over kernel machinery — and the `SOURCE_PREFIX` and
+  `PURPOSE_PREFIX` markers stay in the provider contract.
 - **Prove-it outcomes:** pydantic-ai removed (a streaming completion over a
   fixed prompt needs one async method), mem0 removed (pgvector plus
   `kernel/retrieval.py` covers the ground), pgvector kept, Alembic removed
@@ -529,8 +541,8 @@ trigger that would build the missing piece.
   is the tree the PR already tested. The nightly runs only when `main` carries a commit the last
   successful nightly did not test; an unchanged `main` skips every job through
   one guard, and a direct push to `main` is covered by it.
-- **Recipes: 21** — the count §6 lists; the earlier 22 in §2 and §12 was a
-  miscount (see §2's corrections).
+- **Recipes: 27** — the justfile's count; §6 budgets 24 and §2 records the
+  three-recipe deviation.
 - **The web shell is a Vite SPA, not Next.js.** Every page was a client
   component, so Next contributed a file router and a dev proxy while costing a
   third runtime in the packaging ladder (ADR-101) and a `next start` process in

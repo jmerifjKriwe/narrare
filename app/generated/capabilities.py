@@ -11,53 +11,32 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Capability:
     id: str
-    title_key: str
-    path: str
     needs: tuple[str, ...]
-    in_nav: bool
 
 
 CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         id="chat",
-        title_key="chat.heading",
-        path="/chat",
         needs=("embeddings", "llm"),
-        in_nav=True,
     ),
     Capability(
         id="knowledge",
-        title_key="knowledge.heading",
-        path="/knowledge",
         needs=("embeddings",),
-        in_nav=True,
     ),
     Capability(
         id="prompts",
-        title_key="prompts.heading",
-        path="/settings/prompts",
         needs=(),
-        in_nav=False,
     ),
     Capability(
         id="settings",
-        title_key="settings.heading",
-        path="/settings",
         needs=(),
-        in_nav=False,
     ),
     Capability(
         id="setup",
-        title_key="setup.welcome",
-        path="/setup",
         needs=(),
-        in_nav=False,
     ),
     Capability(
         id="writing",
-        title_key="novels.heading",
-        path="/",
         needs=("llm",),
-        in_nav=False,
     ),
 )

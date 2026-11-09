@@ -1,10 +1,11 @@
 """The committed generated views are the facts files and the catalogs, rendered.
 
-`just generate` writes ten views: the Python registry `app/api/main.py`
+`just generate` writes eleven views: the Python registry `app/api/main.py`
 cross-checks at startup, the locale list the server validates against, the
 TypeScript nav data, the TypeScript catalog map, the TypeScript overlay map,
-the TypeScript route table, the TypeScript dock registry, the TypeScript
-settings registry, the TypeScript command registry and the user-docs index.
+the TypeScript route table, the TypeScript workspace-route id, the TypeScript
+dock registry, the TypeScript settings registry, the TypeScript command
+registry and the user-docs index.
 A stale view means the
 UI or the startup check runs on old facts — the same failure mode the OpenAPI
 drift test guards — so forgetting `just generate` must be a red suite, not a

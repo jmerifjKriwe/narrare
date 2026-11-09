@@ -1,19 +1,8 @@
-import { announce as announceToLiveRegion, clearAnnouncer } from "@react-aria/live-announcer";
-
 /**
- * The one door for screen-reader announcements. The shell owns the
- * live-region policy — every caller, whatever capability it lives in,
- * gets the same region and the same politeness — so a component announces
- * without knowing how it is heard.
+ * The callers' path for screen-reader announcements — the one door the
+ * shell owns (same region, same politeness, whoever calls). The React-Aria
+ * dependency itself lives behind `web/ui/`, the only import point; this
+ * module only forwards, so a capability's import path does not change when
+ * the implementation moves.
  */
-export function announce(text: string): void {
-  announceToLiveRegion(text, "polite");
-}
-
-/** Empty the live region. The shell owns this too: a test between cases
- *  is a caller like any other, and what the region remembers — and for
- *  how long — is not a caller's decision to make. */
-export function clearAnnouncements(): void {
-  clearAnnouncer("assertive");
-  clearAnnouncer("polite");
-}
+export { announce, clearAnnouncements } from "../ui/liveAnnounce";

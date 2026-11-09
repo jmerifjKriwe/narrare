@@ -25,13 +25,13 @@ const knowledgeRoute = createRoute({
 // factories — this file never imports the workspace route (capabilities
 // never import each other); the generated table (web/lib/generated/routes.ts)
 // passes the workspace route in, which is the one place the two sides meet.
-// Path "wissen" under /novels/$id mounts the dock beside the editor, and
+// Path "knowledge" under /novels/$id mounts the dock beside the editor, and
 // the generated dock registry picks the row up from this export alone.
 export const dockRoutes = [
   <Parent extends AnyRoute>(parent: Parent) =>
     createRoute({
       getParentRoute: () => parent,
-      path: "wissen",
+      path: "knowledge",
       component: KnowledgeDock,
       // The selected entity is URL state, the workspace's chapter param's
       // sibling: a link opens the dock on the entity it names (the palette's

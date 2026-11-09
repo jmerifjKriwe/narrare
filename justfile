@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 25 public recipes; private helpers start with `_`.
+# 27 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 

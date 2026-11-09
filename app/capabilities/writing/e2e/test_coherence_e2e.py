@@ -377,7 +377,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     expect(page.get_by_role("heading", name=NOVEL)).to_be_visible()
     expect(page.locator(RAIL)).to_be_visible()
     assert_accessible(page)
-    page.get_by_role("button", name=CHAPTER_ONE).click()
+    page.get_by_role("button", name=re.compile(rf"^{re.escape(CHAPTER_ONE)}\b")).click()
     expect(page).to_have_url(re.compile(f"chapter={chapter_one_id}"))
 
     # --- The dock: an entity with a relation. The card names its edge, both
@@ -461,7 +461,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # row — its id and its free-text model, not the bundled default's.
     page.goto(f"{BASE}/novels/{novel_id}")
     expect(page.get_by_role("heading", name=NOVEL)).to_be_visible()
-    page.get_by_role("button", name=CHAPTER_ONE).click()
+    page.get_by_role("button", name=re.compile(rf"^{re.escape(CHAPTER_ONE)}\b")).click()
     expect(page.locator(PROSE)).to_be_visible()
     page.get_by_role("button", name="Weiterschreiben").click()
     ghost = page.locator(f"{PROSE} .ghost")
@@ -577,7 +577,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # arrival, then answers the mechanical floor: the document fits, and
     # where the editor is on screen the prose keeps its 320 px content box.
     novel_url = f"{BASE}/novels/{novel_id}"
-    dock_url = f"{novel_url}/wissen?entity={waldgeist_id}"
+    dock_url = f"{novel_url}/knowledge?entity={waldgeist_id}"
 
     faces: list[tuple[str, str, Callable[[], None], bool]] = [
         (

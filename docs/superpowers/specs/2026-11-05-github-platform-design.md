@@ -480,3 +480,37 @@ and asked ten questions. Resolutions, folded into the body above:
    allowed.
 10. **`workflow-lint` day one** — blocking, with the tree cleaned and every
     suppression commented before the phase lands.
+
+## Addendum, 2026-11-09
+
+Three workflows the map above does not name, and the governance approval
+behind one of them. The same date is recorded in the architecture spec's
+§2 corrections.
+
+### Workflow map, completed
+
+| File | Triggers | Jobs | Blocks merge |
+| --- | --- | --- | --- |
+| `fuzz.yml` | `schedule` weekly (Sunday 05:17 UTC), `workflow_dispatch` | bounded Atheris run over the interchange parser — the same target `just fuzz` runs locally | no — scheduled security sweep, advisory like CodeQL and Scorecard |
+| `pins.yml` | `schedule` monthly (1st 08:23 UTC), `workflow_dispatch` | pin check via `scripts/check_pins.py` over the pins Dependabot cannot follow; opens or updates one `ci/tool-pins` issue | no — the pin guard this design asked for (the composite-action caveat under reusable workflows), advisory |
+| `mutation.yml` | `schedule` monthly (1st 04:17 UTC), `workflow_dispatch` | mutmut sweep over `app/kernel`, report uploaded as an artifact | no — approved 2026-11-09, advisory monthly |
+
+### Mutation testing, approved 2026-11-09
+
+The non-goals reject the return of v1 gates, mutation testing among them.
+It returned anyway, on 2026-11-09 — as an advisory monthly sweep, not the v1
+shape: v1's mutation gate blocked merges, this workflow names no context in
+`ci-required` and blocks nothing, so the non-goals stand. The product owner
+approved it the same day under the architecture spec's §8, with the three
+statements:
+
+> 1. Failure it prevents: branch coverage proves a line ran, not that the assertion
+>    would notice a wrong result. The sweep mutates `app/kernel` monthly and names
+>    survivors — branches the tests execute without checking.
+> 2. Effort per change: none. The workflow is advisory, monthly, and names no
+>    context in `ci-required`; it costs one scheduled run plus triage of survivors as
+>    ordinary findings.
+> 3. Cheaper alternative: branch coverage already runs in the `tests` job; the
+>    Hypothesis property tests from the same commit prove input spaces, not assertion
+>    strength. Nothing cheaper proves "the test bites"; if one appears, the workflow
+>    goes.

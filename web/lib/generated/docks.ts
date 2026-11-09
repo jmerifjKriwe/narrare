@@ -11,7 +11,7 @@ import { catalogs } from "./catalogs";
 
 export const docks = [
   { id: "chat", path: "/novels/$id/chat", titleKey: "chat.dockTitle" },
-  { id: "knowledge", path: "/novels/$id/wissen", titleKey: "knowledge.dockTitle" },
+  { id: "knowledge", path: "/novels/$id/knowledge", titleKey: "knowledge.dockTitle" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 REQUIRED = {
     "locale.name": "English",
     "docs.table.capability": "Capability",
+    "docs.table.nav": "Navigation",
     "docs.table.path": "Path",
     "docs.table.needs": "Needs",
     "needs.llm": "LLM",

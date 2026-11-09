@@ -1,6 +1,6 @@
 # The GitHub surface — a map
 
-**Status:** as configured on 2026-11-05 (the [GitHub platform design](../superpowers/specs/2026-11-05-github-platform-design.md) is the record of the decisions and their reasons; this page is the map of what now exists, not a second rulebook)
+**Status:** as configured on 2026-11-09 (first captured 2026-11-05) (the [GitHub platform design](../superpowers/specs/2026-11-05-github-platform-design.md) is the record of the decisions and their reasons; this page is the map of what now exists, not a second rulebook)
 
 What lives here: `.github/workflows/` (the workflows), `.github/actions/` (the
 composite setup), `.github/dependabot.yml`, the repository settings and the
@@ -18,6 +18,7 @@ way it is lives in the design spec, not here.
 | `scorecard.yml` | `schedule` (weekly, Sunday 07:11 UTC), `push: main`, `branch_protection_rule`, `workflow_dispatch` | `analysis` | no — advisory |
 | `pins.yml` | `schedule` (monthly, 1st 08:23 UTC), `workflow_dispatch` | `check` | no — advisory; reports through the [`ci/tool-pins` issue](#dependabot) |
 | `fuzz.yml` | `schedule` (weekly, Sunday 05:17 UTC), `workflow_dispatch` | `fuzz` | no — advisory |
+| `mutation.yml` | `schedule` (monthly, 1st 04:17 UTC), `workflow_dispatch` | `mutation` (mutmut over `app/kernel`, report artifact) | no — advisory |
 | `publish.yml` | `release: published`, `workflow_dispatch` | `publish` (promote the digest the release PR's gates tested, record it in the release) | no — a failed promotion marks the release and fails |
 
 `publish.yml` publishes the image the release pull request's gates built and
