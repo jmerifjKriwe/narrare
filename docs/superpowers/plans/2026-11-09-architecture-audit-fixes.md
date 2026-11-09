@@ -72,7 +72,7 @@ The three §8 statements for the addendum, verbatim:
 >    goes.
 
 **Gates:** `CI=true just check`; `pre-commit validate-config`; `just --list` shows 27
-recipes; `rg -n "check_doc_links|find_free_ports" .` returns nothing; the hook ids in
+recipes; `rg -n "check_doc_links|find_free_ports" justfile .pre-commit-config.yaml .github pyproject.toml` returns nothing; the hook ids in
 `.pre-commit-config.yaml` number 10.
 
 **Commits**

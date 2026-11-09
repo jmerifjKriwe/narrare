@@ -1,6 +1,6 @@
 # The GitHub surface — a map
 
-**Status:** as configured on 2026-11-05 (the [GitHub platform design](../superpowers/specs/2026-11-05-github-platform-design.md) is the record of the decisions and their reasons; this page is the map of what now exists, not a second rulebook)
+**Status:** as configured on 2026-11-09 (first captured 2026-11-05) (the [GitHub platform design](../superpowers/specs/2026-11-05-github-platform-design.md) is the record of the decisions and their reasons; this page is the map of what now exists, not a second rulebook)
 
 What lives here: `.github/workflows/` (the workflows), `.github/actions/` (the
 composite setup), `.github/dependabot.yml`, the repository settings and the
