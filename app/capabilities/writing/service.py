@@ -9,12 +9,7 @@ from zipfile import BadZipFile
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.writing.metadata import (
-    InvalidNovelUpdateError as InvalidNovelUpdateError,
-)
-from app.capabilities.writing.metadata import (
-    normalized_novel_updates,
-)
+from app.capabilities.writing.metadata import normalized_novel_updates
 from app.capabilities.writing.prompts import render_continuation
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
 from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate

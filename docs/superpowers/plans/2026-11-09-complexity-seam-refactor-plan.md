@@ -112,7 +112,7 @@ git commit --trailer "Assisted-by: OpenCode (zai-coding-plan/glm-5.3-flash)" \
 
 **Interfaces:**
 - Consumes: `NovelUpdate` from `app.capabilities.writing.schemas`.
-- Produces: `class InvalidNovelUpdateError(ValueError)` with `.field: str`; `service.py` re-exports it by importing it, so `app.capabilities.writing.service.InvalidNovelUpdateError` keeps working.
+- Produces: `class InvalidNovelUpdateError(ValueError)` with `.field: str`; `router.py` imports it from `metadata.py` directly.
 - Produces: `normalized_novel_updates(changes: NovelUpdate) -> dict[str, object]`, returning only fields in `changes.model_fields_set`, with the same values the current `update_novel` writes. A carried `None` is present in the dict.
 - Produces (module-private): `_normalize_title`, `_normalize_genre`, `_normalize_author`, `_normalize_blurb`, `_normalize_language`.
 
