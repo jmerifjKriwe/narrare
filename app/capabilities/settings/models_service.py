@@ -460,7 +460,10 @@ class ModelService:
         never the whole row: prompt and response are up to 64 KB each of
         text no mark reads. The row speaks about the *last* call, so a
         success after a failure is no mark: an ``ok`` row (and a model never
-        called) both answer with the empty pair.
+        called) both answer with the empty pair. A code-less ``error`` row
+        is the consumer-interrupted stream — the reader walked away, and
+        that is not the model's failure — so it leaves the mark off too;
+        a coded failure still marks.
         """
         newest = (
             await self.session.execute(
@@ -470,7 +473,7 @@ class ModelService:
                 .limit(1)
             )
         ).first()
-        if newest is None or newest.status != ERROR:
+        if newest is None or newest.status != ERROR or newest.error_code is None:
             return None, None
         return newest.error_code, newest.created_at
 

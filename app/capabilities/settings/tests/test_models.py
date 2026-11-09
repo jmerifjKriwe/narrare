@@ -823,12 +823,16 @@ async def _audit_call(
     *,
     profile_id: str | UUID,
     error_code: str | None,
+    status: str | None = None,
+    error: str | None = None,
 ) -> None:
     """One audit row for the model, landed the way the audit's own writer does.
 
     ``error_code=None`` with ``status="ok"`` is the clean call; a code always
-    rides an ``error`` row. The write commits here, the way a finished stream's
-    finalizer would.
+    rides an ``error`` row. An explicit ``status``/``error`` overrides the
+    mapping — the consumer-interrupted stream writes an error row with no
+    code and a walk-away sentence, and this is how its shape is planted.
+    The write commits here, the way a finished stream's finalizer would.
     """
     await record_call(
         session,
@@ -837,10 +841,10 @@ async def _audit_call(
         provider_kind="fake",
         model="vendor-mini",
         latency_ms=5,
-        status="ok" if error_code is None else ERROR,
+        status=status or ("ok" if error_code is None else ERROR),
         prompt_text="p",
         response_text="",
-        error=None if error_code is None else "boom",
+        error=error if error is not None else (None if error_code is None else "boom"),
         error_code=error_code,
         profile_id=UUID(str(profile_id)),
     )
@@ -878,6 +882,45 @@ async def test_a_clean_call_after_a_failure_clears_the_mark(client: AsyncClient)
     )
     assert row["last_error_code"] is None
     assert row["last_error_at"] is None
+
+
+async def test_an_interrupted_stream_leaves_the_model_unmarked(client: AsyncClient) -> None:
+    """A code-less error row is the consumer's walk-away, not the model's failure.
+
+    The consumer-interrupted stream writes an error row without an error
+    code — the reader closed the editor mid-answer, nothing about the model
+    broke — so it leaves the failure mark off: no code, no date. A *coded*
+    failure still marks, which the two neighbours here pin.
+    """
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    async with Session() as session:
+        await _audit_call(
+            session,
+            profile_id=str(model["id"]),
+            error_code=None,
+            status=ERROR,
+            error="stream interrupted",
+        )
+
+    row = next(
+        entry
+        for entry in (await client.get("/api/settings/models")).json()
+        if entry["id"] == model["id"]
+    )
+    assert row["last_error_code"] is None
+    assert row["last_error_at"] is None
+
+    # A coded failure after the walk-away is a real refusal: it marks.
+    async with Session() as session:
+        await _audit_call(session, profile_id=str(model["id"]), error_code="provider-auth")
+    row = next(
+        entry
+        for entry in (await client.get("/api/settings/models")).json()
+        if entry["id"] == model["id"]
+    )
+    assert row["last_error_code"] == "provider-auth"
+    assert row["last_error_at"] is not None
 
 
 async def test_the_model_read_names_whether_the_catalog_prices_it(
