@@ -7,7 +7,7 @@ name: Mutation
 
 on:
   schedule:
-    - cron: "17 4 1 * *"  # first Sunday-ish slot, monthly
+    - cron: "17 4 1 * *"  # monthly, the 1st at 04:17 UTC
   workflow_dispatch:
 
 permissions: {}
