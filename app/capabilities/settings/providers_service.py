@@ -212,6 +212,15 @@ class ProviderService:
         guard's read and the delete, or by a path the write gate does not
         own) refuses the delete with an IntegrityError, which the router
         maps to the same 409. Nothing cascades away silently.
+
+        The erase is the one non-transactional side effect, so the delete
+        flushes before the keychain is touched: RESTRICT refuses at the
+        flush, and only a delete that is really going through erases —
+        an erase that ran first would leave a live provider whose key is
+        gone (the hint intact, every later call a 503, the only recovery
+        a re-typed key). A key-store failure at the erase still prevents
+        the delete: the session never commits, and the row stays as it
+        was.
         """
         providers = self._providers()
         provider = await providers.get(provider_id)
@@ -224,13 +233,14 @@ class ProviderService:
                 "the provider still has models pointed at it"
                 f" ({names}); point them at another provider or delete them first"
             )
+        # The flush is the refusal point: before the keychain, never after.
+        await providers.delete(provider)
         try:
             erase_key(provider.id)
         except NoKeyStoreError:
             raise
         except Exception as failure:
             raise NoKeyStoreError(f"the key store failed while erasing: {failure}") from failure
-        await providers.delete(provider)
         await self.session.commit()
 
     async def discover(self, provider_id: UUID) -> list[str]:

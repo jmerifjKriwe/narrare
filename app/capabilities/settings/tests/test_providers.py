@@ -19,6 +19,7 @@ from keyring.errors import KeyringError
 from sqlalchemy import text
 
 from app.api.main import app
+from app.capabilities.settings import providers_service
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
@@ -262,6 +263,61 @@ async def test_deleting_a_provider_without_models_removes_the_row(client: AsyncC
     deleted = await client.delete(f"/api/settings/providers/{provider['id']}")
     assert deleted.status_code == 204
     assert (await client.get("/api/settings/providers")).json() == []
+
+
+async def test_a_refused_delete_never_touches_the_keychain(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The erase runs after the delete's flush, never before it.
+
+    The erase is the one non-transactional side effect: run before the
+    RESTRICT refusal, it would leave a live provider whose key is gone —
+    the hint intact, every later call a 503, the only recovery a re-typed
+    key. The suite's keyring-off tier makes the erase a no-op, so the
+    order is pinned with a spy: the refused delete never erases, the
+    stored key still loads from its column, and a delete that really goes
+    through still erases.
+    """
+    erased: list[UUID] = []
+
+    def _spy_erase(provider_id: UUID) -> None:
+        erased.append(provider_id)
+
+    monkeypatch.setattr(providers_service, "erase_key", _spy_erase)
+
+    provider = await _create(client)
+    stranger = uuid4()
+    async with Session() as session:
+        await session.execute(
+            text("INSERT INTO users (id, created_at) VALUES (:id, now())"), {"id": stranger}
+        )
+        await session.execute(
+            text(
+                "INSERT INTO provider_profiles (id, user_id, name, provider_id, is_default,"
+                " created_at, updated_at)"
+                " VALUES (:id, :user_id, 'Fremd', :provider_id, false, now(), now())"
+            ),
+            {"id": uuid4(), "user_id": stranger, "provider_id": provider["id"]},
+        )
+        await session.commit()
+
+    refused = await client.delete(f"/api/settings/providers/{provider['id']}")
+    assert refused.status_code == 409, refused.text
+    # The keychain never heard of the refusal: no erase ran.
+    assert erased == []
+    # The stored key still loads from its column — the tier's own read.
+    [column] = await _stored(provider["id"], "api_key")
+    assert load_key(UUID(str(provider["id"])), str(column)) == SECRET
+
+    # The pointer goes, the delete goes through — and erases, as before.
+    async with Session() as session:
+        await session.execute(
+            text("DELETE FROM provider_profiles WHERE user_id = :user"), {"user": stranger}
+        )
+        await session.commit()
+    deleted = await client.delete(f"/api/settings/providers/{provider['id']}")
+    assert deleted.status_code == 204
+    assert erased == [UUID(str(provider["id"]))]
 
 
 async def test_a_delete_the_guard_cannot_see_still_refuses_as_a_409(
