@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -222,28 +222,40 @@ def _open_settings(page: Page) -> None:
     expect(page).to_have_url(f"{BASE}/settings/provider")
 
 
-def _create_profile_and_assign(page: Page, name: str, context_window: str) -> None:
-    """Create one fake provider and its model through the forms, hand it the task.
+def _seed_fake_provider(page: Page, name: str) -> str:
+    """Seed a fake provider through the API, its id returned.
 
-    Since the provider split, the page asks twice: the endpoint goes into
-    the Anbieter region's form, the model under it into the Modelle one.
-    The window is the field's whole point here; the output cap stays empty,
-    so the kernel default 1024 applies (D7: every unset limit falls back on
-    its own). The assignment is the select's composed option — the pair a
-    task points at, "{provider} · {model}" — waited out until the PUT's
-    refetch moves the control, the same wait the settings flow uses before
-    it leaves the page.
+    The create form offers no fake: the kind is the kernel's boundary
+    stand-in, not a configuration a user writes, so the row arrives the
+    way every other client arrives — the same API the pages themselves
+    speak to. Called before the settings page mounts, the reads the forms
+    load already carry the row.
+    """
+    response = page.request.post(
+        f"{API_URL}/api/settings/providers",
+        data={"name": name, "kind": "fake"},
+    )
+    assert response.ok, response.text()
+    return str(response.json()["id"])
+
+
+def _create_profile_and_assign(page: Page, name: str, context_window: str) -> None:
+    """Create one fake provider (seeded through the API) and its model through
+    the forms, hand the task to it.
+
+    The fake is not a form choice any more — the kernel's boundary stand-in
+    is seeded through the API before the page mounts, so the Anbieter
+    select already carries the row. The model goes in under it through the
+    Modelle form; the window is the field's whole point here; the output
+    cap stays empty, so the kernel default 1024 applies (D7: every unset
+    limit falls back on its own). The assignment is the select's composed
+    option — the pair a task points at, "{provider} · {model}" — waited
+    out until the PUT's refetch moves the control, the same wait the
+    settings flow uses before it leaves the page.
     """
     model = f"modell-{name.split()[-1].lower()}"
+    _seed_fake_provider(page, name)
     _open_settings(page)
-    providers = page.get_by_role("region", name="Anbieter", exact=True)
-    providers.get_by_label("Name", exact=True).fill(name)
-    # A select's label wraps it, so its text runs "Art <selected option>" —
-    # a substring match, which an exact one would never answer.
-    providers.get_by_label("Art").select_option(label="Fake (deterministisch, ohne Netzwerk)")
-    providers.get_by_role("button", name="Anbieter hinzufügen").click()
-    expect(providers.get_by_role("listitem").filter(has_text=name)).to_be_visible()
-
     models = page.get_by_role("region", name="Modelle", exact=True)
     models.get_by_label("Name", exact=True).fill(name)
     models.get_by_label("Anbieter").select_option(label=name)
