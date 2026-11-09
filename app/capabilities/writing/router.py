@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.capabilities.writing.metadata import InvalidNovelUpdateError
 from app.capabilities.writing.schemas import (
     ChapterCreate,
     ChapterOrderUpdate,
@@ -30,7 +31,6 @@ from app.capabilities.writing.service import (
     ArchiveInvalidError,
     ArchiveTooLargeError,
     FieldRefusedError,
-    InvalidNovelUpdateError,
     NotFoundError,
     OrderMismatchError,
     TargetNotEmptyError,

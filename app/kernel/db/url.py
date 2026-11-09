@@ -65,6 +65,56 @@ def _value(env: Mapping[str, str], name: str) -> str:
     return (env.get(_variable(name)) or "").strip()
 
 
+def _port(raw: str, variable: str) -> int:
+    try:
+        port = int(raw)
+    except ValueError:
+        raise DatabaseConfigurationError(f"{variable} is not a port number: {raw!r}") from None
+    if not 1 <= port <= 65535:
+        raise DatabaseConfigurationError(f"{variable} must be between 1 and 65535, not {port}")
+    return port
+
+
+def _dev_port(source: Mapping[str, str]) -> int | None:
+    # Dev-only port override for parallel checkouts; validated below.
+    raw = (source.get("NARRE_DEV_DB_PORT") or "").strip()
+    if not raw:
+        return None
+    return _port(raw, "NARRE_DEV_DB_PORT")
+
+
+def _read_parts(source: Mapping[str, str]) -> dict[str, str]:
+    parts = {name: _value(source, name) for name in (*_REQUIRED, *_OPTIONAL)}
+    password = source.get("NARRE_DB_PASSWORD") or ""
+    # Whitespace-only reads as unset, like every other part: a template that
+    # renders an unused field as spaces must not become a password. Anything
+    # else is taken verbatim — a password may contain spaces, and trimming one
+    # would hide the difference between a typo and the real secret.
+    parts["password"] = password if password.strip() else ""
+    return parts
+
+
+def _build_url(parts: Mapping[str, str], port: int) -> URL:
+    query: dict[str, str] = {}
+    if parts["sslmode"]:
+        if parts["sslmode"] not in SSL_MODES:
+            raise DatabaseConfigurationError(
+                f"NARRE_DB_SSLMODE is not one of {', '.join(sorted(SSL_MODES))}:"
+                f" {parts['sslmode']!r}"
+            )
+        query["ssl"] = parts["sslmode"]
+
+    return URL.create(
+        DRIVERNAME,
+        username=parts["user"],
+        password=parts["password"] or None,
+        host=parts["host"],
+        port=port,
+        database=parts["name"],
+        query=query,
+    )
+
+
 def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
     """The effective connection: URL, else the parts, else the development default.
 
@@ -79,35 +129,16 @@ def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
     if given:
         return DatabaseConfig(url=make_url(given), source="NARRE_DATABASE_URL")
 
-    # Dev-only port override for parallel checkouts; validated below.
-    dev_port_raw = (source.get("NARRE_DEV_DB_PORT") or "").strip()
-    dev_port: int | None = None
-    if dev_port_raw:
-        try:
-            dev_port = int(dev_port_raw)
-        except ValueError:
-            raise DatabaseConfigurationError(
-                f"NARRE_DEV_DB_PORT is not a port number: {dev_port_raw!r}"
-            ) from None
-        if not 1 <= dev_port <= 65535:
-            raise DatabaseConfigurationError(
-                f"NARRE_DEV_DB_PORT must be between 1 and 65535, not {dev_port}"
-            )
+    dev_port = _dev_port(source)
 
-    parts = {name: _value(source, name) for name in (*_REQUIRED, *_OPTIONAL)}
-    password = source.get("NARRE_DB_PASSWORD") or ""
-    # Whitespace-only reads as unset, like every other part: a template that
-    # renders an unused field as spaces must not become a password. Anything
-    # else is taken verbatim — a password may contain spaces, and trimming one
-    # would hide the difference between a typo and the real secret.
-    parts["password"] = password if password.strip() else ""
+    parts = _read_parts(source)
 
     # Fall back to the dev port when NARRE_DB_PORT is unset, so the single knob
     # keeps the application in step with the compose mapping. Only when another
     # part is present, so a lone NARRE_DEV_DB_PORT still lands on the default
     # branch below instead of being treated as an incomplete parts set.
     required_present = any(parts[name] for name in _REQUIRED)
-    if not parts["port"] and dev_port_raw and required_present:
+    if not parts["port"] and dev_port is not None and required_present:
         parts["port"] = str(dev_port)
 
     if not any(parts.values()):
@@ -126,35 +157,9 @@ def resolve(env: Mapping[str, str] | None = None) -> DatabaseConfig:
 
     port = DEFAULT_PORT
     if parts["port"]:
-        try:
-            port = int(parts["port"])
-        except ValueError:
-            raise DatabaseConfigurationError(
-                f"NARRE_DB_PORT is not a port number: {parts['port']!r}"
-            ) from None
-        if not 1 <= port <= 65535:
-            raise DatabaseConfigurationError(
-                f"NARRE_DB_PORT must be between 1 and 65535, not {port}"
-            )
+        port = _port(parts["port"], "NARRE_DB_PORT")
 
-    query: dict[str, str] = {}
-    if parts["sslmode"]:
-        if parts["sslmode"] not in SSL_MODES:
-            raise DatabaseConfigurationError(
-                f"NARRE_DB_SSLMODE is not one of {', '.join(sorted(SSL_MODES))}:"
-                f" {parts['sslmode']!r}"
-            )
-        query["ssl"] = parts["sslmode"]
-
-    url = URL.create(
-        DRIVERNAME,
-        username=parts["user"],
-        password=parts["password"] or None,
-        host=parts["host"],
-        port=port,
-        database=parts["name"],
-        query=query,
-    )
+    url = _build_url(parts, port)
     return DatabaseConfig(
         url=url,
         # Names the connection, never the secret in it.
