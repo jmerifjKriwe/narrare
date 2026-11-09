@@ -234,7 +234,7 @@ class _RenderEnvironment(SandboxedEnvironment):
         self,
         names: Iterable[str | Template],
         parent: str | None = None,
-        globals: MutableMapping[str, Any] | None = None,
+        globals: MutableMapping[str, Any] | None = None,  # pylint: disable=redefined-builtin,
     ) -> Template:
         return _guarded(super().select_template(names, parent, globals), self._guard)
 

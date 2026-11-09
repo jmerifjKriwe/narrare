@@ -186,10 +186,7 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
             try:
                 with sink:
                     try:
-                        # nosemgrep
-                        # nosec B603
-                        result = subprocess.run(  # noqa: S603  the operator's own template
-                            # nosemgrep
+                        result = subprocess.run(  # noqa: S603  the operator's own template  # nosec B603  # nosemgrep
                             command_line,
                             stdout=sink,
                             stderr=subprocess.PIPE,

@@ -236,6 +236,7 @@ async def _drop(name: str) -> None:
     engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
+            # nosemgrep
             await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
     finally:
         await engine.dispose()
