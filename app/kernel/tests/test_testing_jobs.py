@@ -6,14 +6,12 @@ state when the window closes. These tests pin it without a stack, so a change
 to the loop fails here rather than in a ten-minute browser run.
 """
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
+import httpx
 import pytest
 
 from app.kernel.testing.jobs import wait_for_job
-
-if TYPE_CHECKING:
-    import httpx
 
 
 class _Response:
@@ -34,7 +32,7 @@ class _Client:
         self._statuses = statuses
         self.calls = 0
 
-    def get(self, url: str) -> _Response:
+    def get(self, url: str, *, timeout: float | None = None) -> _Response:
         status = self._statuses[min(self.calls, len(self._statuses) - 1)]
         self.calls += 1
         return _Response({"status": status})
@@ -57,4 +55,15 @@ def test_a_failed_row_stops_the_poll_the_same_way() -> None:
 
 def test_a_row_that_never_settles_names_the_timeout_and_the_last_state() -> None:
     with pytest.raises(TimeoutError, match=r"job-1 did not settle.*'running'"):
-        _waiting(["running"], timeout=0.0)
+        _waiting(["running"], timeout=0.05)
+
+
+def test_a_request_that_outlasts_the_window_is_named_not_propagated() -> None:
+    """The window bounds the request, not only the sleeps between requests."""
+
+    class _Hanging:
+        def get(self, url: str, *, timeout: float | None = None) -> _Response:
+            raise httpx.TimeoutException("no answer")
+
+    with pytest.raises(TimeoutError, match="job-1 did not settle"):
+        wait_for_job(cast("httpx.Client", _Hanging()), "job-1", timeout=5.0)

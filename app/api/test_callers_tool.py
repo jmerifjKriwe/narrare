@@ -235,6 +235,16 @@ def test_wait_for_gives_up_on_a_silent_server() -> None:
         server.close()
 
 
+def test_wait_for_names_the_exit_when_the_server_dies() -> None:
+    """A dead server is an exit to name, not a silence to time out on."""
+    server = LanguageServer(["/bin/true"], ROOT)
+    try:
+        with pytest.raises(RuntimeError, match="closed its output before answering probe/ready"):
+            server.wait_for("probe/ready", timeout=5)
+    finally:
+        server.close()
+
+
 def test_main_waits_for_readiness_before_asking_for_callers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
