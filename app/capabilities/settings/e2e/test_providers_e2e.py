@@ -1,7 +1,8 @@
 """The provider cluster's flow on the real stack: providers, models, assignments.
 
 Everything the cluster promises, proven through the UI: a fake provider
-created in the browser, two models under it, the default flipped,
+seeded through the API — the form offers no fake, the kind is the kernel's
+boundary stand-in — two models under it, the default flipped,
 ``writing.continuation`` assigned to one of them — and the continuation in
 the workbench then lands on the assigned model's row in ``llm_calls``, not
 the default's. A provider born from a preset carries the flow's second
@@ -18,6 +19,7 @@ stack module).
 
 import asyncio
 import re
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
@@ -29,7 +31,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.vendor import chat_vendor
 from app.kernel.testing.viewport import assert_page_fits
 
@@ -39,6 +41,8 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
 BASE = WEB_URL
+# the settings API the page itself answers to (the knowledge e2e's pattern)
+API = API_URL
 # this run's stack database (e2e/conftest.py)
 DATABASE = testsupport.test_database("narrare_v2_settings_e2e")
 
@@ -100,25 +104,61 @@ def _model_id(name: str) -> str:
     return str(row[0])
 
 
+def _sweep(*steps: tuple[str, dict[str, object] | None]) -> None:
+    """The finally-block cleanups, safe to run over a red test.
+
+    Each delete runs in turn; a cleanup that fails re-raises only when the
+    test body itself succeeded. Over a red body the original traceback must
+    win — a sweep error would bury the very failure the run is there to
+    show. The steps key on the ids captured at creation, so a renamed row
+    is still found and nothing is matched by a look-alike name.
+    """
+    body_failed = sys.exc_info()[0] is not None
+    for statement, params in steps:
+        try:
+            _run(statement, params)
+        except Exception:
+            if not body_failed:
+                raise
+
+
 def _region(page: Page, name: str) -> Locator:
     """One of the provider page's three labelled sections."""
     return page.get_by_role("region", name=name, exact=True)
+
+
+def _seed_fake_provider(page: Page, name: str, base_url: str | None = None) -> str:
+    """Seed a fake provider through the API, its id returned.
+
+    The create form offers no fake: the kind is the kernel's boundary
+    stand-in, not a configuration a user writes, so the rows the flows
+    below need arrive the way every other client arrives — the same API the
+    page itself speaks to. Called before the page mounts, the list the
+    sections read already carries the row.
+    """
+    body: dict[str, object] = {"name": name, "kind": "fake"}
+    if base_url is not None:
+        body["base_url"] = base_url
+    response = page.request.post(f"{API}/api/settings/providers", data=body)
+    assert response.ok, response.text()
+    return str(response.json()["id"])
 
 
 def _create_provider(
     page: Page,
     name: str,
     *,
-    kind: str = "Fake (deterministisch, ohne Netzwerk)",
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> Locator:
-    """Create one provider through the form, the only way a user can."""
+    """Create one provider through the form, the only way a user can.
+
+    The form offers the two remote kinds; the default select lands on the
+    OpenAI-chat one, which is the kind every form-created provider here
+    carries.
+    """
     section = _region(page, PROVIDERS)
     section.get_by_label("Name", exact=True).fill(name)
-    # A select's label wraps it, so its text runs "Art <selected option>" —
-    # a substring match, which an exact one would never answer.
-    section.get_by_label("Art").select_option(label=kind)
     if base_url is not None:
         section.get_by_label("Serveradresse").fill(base_url)
     if api_key is not None:
@@ -153,6 +193,9 @@ def _create_model(
 def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) -> None:
     """The whole provider cluster, driven as a user drives it."""
     with chat_vendor() as vendor:
+        # The fake provider is seeded before the page mounts (the form
+        # offers no fake); everything below drives the real UI.
+        _seed_fake_provider(page, "Fake Anbieter")
         # The gear in the top bar is the door to the settings; the hub names
         # the clusters, and the Anbieter card is the door to the provider
         # page, where the whole flow below happens. The gear is scoped to
@@ -171,7 +214,6 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
 
         # One fake provider carries both models; the first model becomes
         # the default on its own.
-        _create_provider(page, "Fake Anbieter")
         eins = _create_model(page, "Fake Eins", "Fake Anbieter", "modell-eins")
         expect(eins.get_by_text("Standard", exact=True)).to_have_count(1)
         zwei = _create_model(page, "Fake Zwei", "Fake Anbieter", "modell-zwei")
@@ -187,9 +229,12 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
         # actually points at.
         continuation = _region(page, TASKS).get_by_label("Weiterschreiben")
         continuation.select_option(label="Fake Anbieter · modell-eins")
-        # The PUT's refetch is what moves the select; wait for it before
-        # leaving, or the reload below could race the stored row.
-        expect(continuation).not_to_have_value("")
+        # The PUT's refetch is what moves the page: the effective line is
+        # the wait — it renders only once the assignment was stored and
+        # read back, so the reload below cannot race the stored row.
+        expect(page.locator('[id="settings-task-effective-writing.continuation"]')).to_contain_text(
+            "über Fake Anbieter · modell-eins"
+        )
         # A fresh visit shows the stored assignment: the mount itself must
         # load it, not the first mutation's refetch.
         page.reload()
@@ -212,7 +257,6 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
         vendor_row = _create_provider(
             page,
             "Vendor Anbieter",
-            kind="OpenAI-kompatibler Chat",
             base_url=vendor.base_url,
             api_key=VENDOR_KEY,
         )
@@ -317,8 +361,10 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
     preset carries models from its vendor's catalog, and the task rows
     read the pair that serves them.
 
-    One choice fills the create form — name, kind, both URLs, vendor — and
-    the key is the one field the hand still types. Nothing presses
+    One choice fills the create form — name, kind, both URLs — and
+    the key is the one field the hand still types. The vendor is the
+    preset's, sent with the create and pinned on the stored row via the
+    API read; the form shows no vendor field. Nothing presses
     *Verbindung testen* or *Modelle laden*: no vendor is called anywhere in
     this flow. Creation is local, and the model vocabulary — the created
     provider's suggestion and the input's datalist — is the vendored
@@ -330,8 +376,16 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
     providers = _region(page, PROVIDERS)
     models = _region(page, MODELS)
 
+    # The ids the finally-cleanup deletes by, captured at creation: an
+    # id that was never minted is None, and the sweep deletes only what
+    # exists — no name look-alike, and no NameError over a red body.
+    go_provider_id: str | None = None
+    go_flash_id: str | None = None
+    go_52_id: str | None = None
     try:
         # The preset fills the endpoint fields in one choice; the key is typed.
+        # The vendor is no form field — its stored value is read back from
+        # the API below, after the row exists.
         providers.get_by_label("Vorlage").select_option(label="OpenCode Go")
         expect(providers.get_by_label("Name", exact=True)).to_have_value("OpenCode Go")
         expect(providers.get_by_label("Art")).to_have_value("openai-chat")
@@ -341,11 +395,20 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
         expect(providers.get_by_label("Modellliste-URL")).to_have_value(
             "https://opencode.ai/inference/go/v1/models"
         )
-        expect(providers.get_by_label("Anbieterkennung")).to_have_value("opencode-go")
         providers.get_by_label("API-Schlüssel").fill(GO_KEY)
         providers.get_by_role("button", name="Anbieter hinzufügen").click()
         go_row = providers.get_by_role("listitem").filter(has_text="OpenCode Go")
         expect(go_row).to_be_visible()
+        # The stored row carries what the form never showed: the preset's
+        # vendor, on the openai-chat kind the row keeps. The read is the
+        # API's own answer — the row's fact line shows the vendor too, but
+        # the stored value is the fact this test pins.
+        stored = page.request.get(f"{API}/api/settings/providers")
+        assert stored.ok, stored.text()
+        [go_stored] = [row for row in stored.json() if row["name"] == "OpenCode Go"]
+        go_provider_id = str(go_stored["id"])
+        assert go_stored["vendor"] == "opencode-go"
+        assert go_stored["kind"] == "openai-chat"
         # The vendor is the fact the model form's catalog speaks through; the
         # mask is the key's only later face.
         expect(go_row).to_contain_text("opencode-go")
@@ -361,6 +424,7 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
         models.get_by_role("button", name="Modell hinzufügen").click()
         flash_row = models.get_by_role("listitem").filter(has_text="Go Flash")
         expect(flash_row).to_be_visible()
+        go_flash_id = _model_id("Go Flash")
         # The row reads the pair — provider · model — the facts a task points at.
         expect(flash_row).to_contain_text("OpenCode Go · glm-5.3-flash")
 
@@ -373,17 +437,19 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
         models.get_by_role("button", name="Modell hinzufügen").click()
         zwei_row = models.get_by_role("listitem").filter(has_text="Go 5.2")
         expect(zwei_row).to_be_visible()
+        go_52_id = _model_id("Go 5.2")
         expect(zwei_row).to_contain_text("OpenCode Go · glm-5.2")
 
         # Two tasks, one per model; the options and the rows beneath them read
-        # the pair — provider · model — never the model row's own name.
+        # the pair — provider · model — never the model row's own name. The
+        # effective lines are the wait: they render only once the PUT's
+        # refetch has the stored assignment, which is what the database
+        # reads below lean on.
         tasks = _region(page, TASKS)
         continuation = tasks.get_by_label("Weiterschreiben")
         continuation.select_option(label="OpenCode Go · glm-5.3-flash")
-        expect(continuation).not_to_have_value("")
         chat = tasks.get_by_label("Chat, Fragen")
         chat.select_option(label="OpenCode Go · glm-5.2")
-        expect(chat).not_to_have_value("")
         # The effective lines, per row: the run's shuffled order decides
         # whether the unassigned tasks also resolve to one of these models
         # (the default tier answers them when this test runs first), so a
@@ -405,6 +471,15 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
         )
         assert str(stored_chat) == _model_id("Go 5.2")
 
+        # The tasks read names the serving providers' kinds on both
+        # effective rows — the API's own answer, the same field the page's
+        # task rows render from.
+        tasks_read = page.request.get(f"{API}/api/settings/tasks")
+        assert tasks_read.ok, tasks_read.text()
+        kinds = {row["task_key"]: row["kind"] for row in tasks_read.json()}
+        assert kinds["writing.continuation"] == "openai-chat"
+        assert kinds["chat.ask"] == "openai-chat"
+
         # A fresh visit reads the stored assignments back: the mount loads them
         # and the rows keep naming the pair.
         page.reload()
@@ -421,9 +496,23 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
         # page drove is removed again — on a red assertion too, so the stack
         # stays unpolluted — and the flow test's fresh-stack assumption ("the
         # first model becomes the default on its own") stays true in either
-        # run order. The assignments cascade away with the models.
-        _run("DELETE FROM provider_profiles WHERE name IN ('Go Flash', 'Go 5.2')")
-        _run("DELETE FROM llm_providers WHERE name = 'OpenCode Go'")
+        # run order. The assignments cascade away with the models; the
+        # deletes key on the ids captured at creation, never on names.
+        cleanup: list[tuple[str, dict[str, object] | None]] = []
+        if go_flash_id is not None and go_52_id is not None:
+            # The ids are the app's own UUIDs, captured from the stored rows;
+            # the interpolation is the expanding-IN form text() cannot bind.
+            cleanup.append(
+                (
+                    f"DELETE FROM provider_profiles WHERE id IN ('{go_flash_id}', '{go_52_id}')",  # noqa: S608
+                    None,
+                )
+            )
+        if go_provider_id is not None:
+            cleanup.append(
+                (f"DELETE FROM llm_providers WHERE id = '{go_provider_id}'", None)  # noqa: S608
+            )
+        _sweep(*cleanup)
 
 
 def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -> None:
@@ -526,12 +615,16 @@ def test_the_rows_hold_long_facts_at_the_narrowest_page(page: Page, stack: Stack
     the panel column fails here at the pixel, not by eye.
     """
     page.set_viewport_size({"width": 360, "height": 800})
-    page.goto(BASE + "/settings/provider")
     long_url = "https://vendor.example.invalid/v1/" + "segment/" * 24 + "ende"
     long_model = "ein-sehr-langes-modellkennzeichen-" + "x" * 80
+    # The fake provider is seeded before the page mounts (the form offers
+    # no fake), with the long URL the row must carry.
+    lang_provider_id = _seed_fake_provider(page, "Lang", base_url=long_url)
+    lang_model_id: str | None = None
+    page.goto(BASE + "/settings/provider")
     try:
-        _create_provider(page, "Lang", base_url=long_url)
         _create_model(page, "Lang", "Lang", long_model)
+        lang_model_id = _model_id("Lang")
         # The "served by" caption renders the model the cascade actually
         # serves. Without a tier naming the long model, the caption would
         # never render it and this pin would measure nothing — so a task is
@@ -551,6 +644,14 @@ def test_the_rows_hold_long_facts_at_the_narrowest_page(page: Page, stack: Stack
         # page drove is removed again — on a red assertion too, so the stack
         # stays unpolluted — and the flow test's fresh-stack assumption ("the
         # first model becomes the default on its own") stays true in either
-        # run order. The assignment cascades away with the profile.
-        _run("DELETE FROM provider_profiles WHERE name = :name", {"name": "Lang"})
-        _run("DELETE FROM llm_providers WHERE name = :name", {"name": "Lang"})
+        # run order. The assignment cascades away with the profile; the
+        # deletes key on the ids captured at creation, never on names.
+        cleanup: list[tuple[str, dict[str, object] | None]] = []
+        if lang_model_id is not None:
+            cleanup.append(
+                (f"DELETE FROM provider_profiles WHERE id = '{lang_model_id}'", None)  # noqa: S608
+            )
+        cleanup.append(
+            (f"DELETE FROM llm_providers WHERE id = '{lang_provider_id}'", None)  # noqa: S608
+        )
+        _sweep(*cleanup)
