@@ -130,11 +130,13 @@ def load_key(profile_id: UUID, column: str) -> str:
 
 
 def erase_key(profile_id: UUID) -> None:
-    """Remove the keychain entry this profile's key lives in, if any.
+    """Remove the keychain entry this provider row's key lives in, if any.
 
-    The Fernet tier has no keychain entry (the ciphertext sits in the column,
-    which the caller deletes with the row), and a missing entry is not an
-    error: erasing a profile that never stored a key stays quiet.
+    The Fernet tier has no keychain entry (the ciphertext sits in the
+    column, which the caller deletes with the row), and a missing entry is
+    not an error: erasing a provider row that never stored a key stays
+    quiet. The caller deletes the row first and erases second — the erase
+    is the one side effect no transaction can roll back.
     """
     if not _keyring_usable():
         return

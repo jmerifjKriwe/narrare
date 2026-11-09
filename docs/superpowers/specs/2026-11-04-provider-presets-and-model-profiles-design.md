@@ -40,7 +40,8 @@ Two measured defects motivated the shape and are fixed by it:
    `provider.vendor + "/" + model`, so price and context window follow the
    provider; the profile's own tunables still override the window.
 5. **Discovery asks the provider's `models_url`** and sends the key only to the
-   endpoint's own host — for both remote kinds, Anthropic included
+   endpoint's own origin — scheme, host and port, and never over plain http
+   for a remote endpoint — for both remote kinds, Anthropic included
    (`GET {base_url}/models` with `x-api-key` and `anthropic-version`, same
    `data[].id` reply).
 6. **Claude speaks its native API**: a third `PROVIDER_KINDS` value `anthropic`
@@ -230,7 +231,8 @@ a providers/models split in the settings surface, i18n, tests, an extended E2E.
   so the boundary's fake provider stays a provider row chosen by configuration,
   as the constraint requires; the settings form never offers it.
 - `ProviderProfile` (`provider_profiles`, now the model level): `id`, `user_id`,
-  `provider_id` (FK, cascade), `name`, `model`, `context_window`,
+  `provider_id` (FK, RESTRICT — the delete guard's named 409 first, the
+  database as its atomic backstop), `name`, `model`, `context_window`,
   `max_output_tokens`, `temperature`, `request_timeout`, `is_default`.
   The partial unique index keeping one default per user moves here unchanged.
 - `TaskAssignment` unchanged: `task_key → profile_id`.
@@ -292,8 +294,10 @@ Wire mapping for Claude:
     a provider has no single model to call.
   - `GET /api/settings/providers/{id}/models` — discovery against the
     provider's `models_url` (absent: `{base_url}/models`). Direct `httpx` GET,
-    `data[].id` parsed; **the key travels only when `models_url`'s host equals
-    `base_url`'s host**, so a list on another host is asked anonymously.
+    `data[].id` parsed; **the key travels only when `models_url` sits on
+    `base_url`'s exact origin (scheme, host, port) and never over plain http
+    for a remote endpoint**, so a list on another origin — a same-host,
+    other-port list included — is asked anonymously.
     Headers follow the kind: `Authorization: Bearer` for `openai-chat`,
     `x-api-key` plus `anthropic-version: 2023-06-01` for `anthropic`. Both
     reply `{data: [{id}]}`.
@@ -409,7 +413,8 @@ raised six questions. Their answers survive the re-cut:
    carrying the table with model ids; a TypeScript copy would be a second,
    unread source.
 2. **How does discovery issue its request?** Direct `httpx` GET of
-   `models_url`, `data[].id`, key only on the endpoint's host, headers by kind —
+   `models_url`, `data[].id`, key only on the endpoint's exact origin
+   (scheme, host, port; never plain http remote), headers by kind —
    `Bearer` for `openai-chat`, `x-api-key` plus `anthropic-version` for
    `anthropic`.
 3. **Default base URL and gate.** A dedicated Anthropic default, and the same
