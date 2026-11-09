@@ -1,36 +1,27 @@
-import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { client } from "@shell/lib/api/client";
-import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
 import { queryClient, useDeleteChapter } from "@shell/lib/query";
 import { unsavedStatus } from "@shell/lib/save";
-import { formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
-import { Field, Input } from "@shell/ui/field";
-import { ActionMenu } from "@shell/ui/Menu";
-import { Icon } from "@shell/ui/icons";
-import { Notice } from "@shell/ui/Notice";
-import { Row } from "@shell/ui/Row";
 
-import { ChapterEditor } from "./ChapterEditor";
 import { ChapterDeleteDialog, ChapterRenameDialog } from "./ChapterDialogs";
+import { ChapterRail } from "./novel/ChapterRail";
+import { DockColumn } from "./novel/DockColumn";
+import { EditorColumn } from "./novel/EditorColumn";
 import { useChapterRail } from "./novel/useChapterRail";
 import { useNovelDraft } from "./novel/useNovelDraft";
 import { useNovelWorkspace } from "./novel/useNovelWorkspace";
+import { WorkspaceToolbar } from "./novel/WorkspaceToolbar";
 import type { FocusStep } from "./routes";
 
 // The step machine as data: no arithmetic on the union, and the ends are
 // their own neighbours so a stray call cannot walk off the scale.
 const DEEPEN: Record<FocusStep, FocusStep> = { 0: 1, 1: 2, 2: 2 };
 const RELEASE: Record<FocusStep, FocusStep> = { 0: 0, 1: 0, 2: 1 };
-
-// The drag's drop marker: a 2 px primary edge at the slot's top — the row
-// a drop would land at. Its look is the spec's "left to the builder"; it
-// lives on the slot so the Row's own classes stay untouched.
-const DROP_HINT = "shadow-[inset_0_2px_0_var(--primary)]";
 
 /** The novel workbench: the chapter rail beside the editor, panel state in the URL. */
 export function NovelPage() {
@@ -279,66 +270,21 @@ export function NovelPage() {
           state (they toggle); the group's name is the one dock control the
           toolbar carries — no separate dock toggle beside the tabs. */}
       {focus < 2 ? (
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          {/* The band wraps before it overflows: a phone's 328 px content
-              box cannot hold four icon buttons and an input's automatic
-              minimum on one line, and the field is `min-w-0` so it shrinks
-              into the space the buttons leave (or takes a line of its own)
-              instead of pushing the page's gutter aside. */}
-          <Button
-            variant="icon"
-            icon={<Icon name="focus" />}
-            label={t("workspace.focusToggle")}
-            aria-pressed={focus > 0}
-            onClick={() => step(focus === 0 ? 1 : 0)}
-          />
-          {focus === 0 ? (
-            <Button
-              variant="icon"
-              icon={<Icon name={collapsed ? "railShow" : "railHide"} />}
-              label={t("workspace.railToggle")}
-              aria-pressed={collapsed}
-              onClick={toggleRail}
-            />
-          ) : null}
-          <div role="group" aria-label={t("workspace.dockToggle")} className="flex items-center gap-2">
-            {docks.map((dock) => (
-              <Button
-                key={dock.id}
-                variant="icon"
-                icon={<Icon name={dock.id} />}
-                label={t(dock.titleKey)}
-                aria-pressed={activeDock?.path === dock.path}
-                onClick={() => toggleDock(dock)}
-              />
-            ))}
-          </div>
-          {/* The rail's filter (Task 12): the long rail's own field, in the
-              band that already holds the rail's collapse control. It stands
-              only above twenty chapters and only while the rail itself is
-              on screen — a field for a hidden list would be a promise with
-              no subject. The input's accessible name is the fuller phrase
-              that carries the visible label inside it, so the name a reader
-              hears says what the field matches. */}
-          {focus === 0 && showRail && !pending && !failed && chapters.length > 20 ? (
-            <Field label={t("chapters.railFilter")} className="ml-auto w-40 min-w-0">
-              <Input
-                type="search"
-                value={railFilter ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  // The walk ends with the question: its row may no longer
-                  // be in the list the next answer renders, and a stale
-                  // index would leave that list without a tab stop.
-                  setWalkedIndex(null);
-                  setRailFilter(value.trim() === "" ? null : value);
-                }}
-                aria-label={t("chapters.railFilterAria")}
-                className="min-w-0"
-              />
-            </Field>
-          ) : null}
-        </div>
+        <WorkspaceToolbar
+          focus={focus}
+          collapsed={collapsed}
+          showRail={showRail}
+          pending={pending}
+          failed={failed}
+          chapterCount={chapters.length}
+          railFilter={railFilter}
+          activeDockPath={activeDock?.path}
+          step={step}
+          toggleRail={toggleRail}
+          toggleDock={toggleDock}
+          setWalkedIndex={setWalkedIndex}
+          setRailFilter={setRailFilter}
+        />
       ) : null}
 
       {/* The workbench: the rail beside the editor, so writing never scrolls
@@ -364,317 +310,54 @@ export function NovelPage() {
             load failed, there is no list to be empty — the empty copy would
             mask exactly the state this page just named in the editor column. */}
         {showRail && !pending && !failed ? (
-          <aside
-            /* Beside the editor at ≥1024 (the columns the desktop E2Es
-               pin); below, a drawer over it. The 224 the rail takes are
-               the desktop arithmetic's own — the gutter to the prose lives
-               inside the column (lg:pr-6), so rail + column + dock sum to
-               the container with no gap of their own; the column's 16 px
-               padding is the gap the card's ring needs. The list bounds
-               its height and scrolls inside itself (Review Focus 2); below
-               the breakpoint the whole drawer scrolls instead. The drawer
-               paints one z-step above the dock's: opening it over a live
-               dock covers the dock without unmounting it, so the dock's
-               own draft survives behind it. At ≥1024 the column is also
-               sticky: a long manuscript scrolls the page under the
-               editor, and the rail — capped a viewport tall minus its
-               own chrome — holds its place beside the writing instead of
-               being carried out of sight with the page's top; `top-4`
-               and the 16rem max-height budget keep the box inside the
-               viewport at any height it takes. */
-            className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
-            aria-label={t("chapters.heading")}
-          >
-            <h2 className="text-emph font-semibold tracking-tight">{t("chapters.heading")}</h2>
-            {chapters.length === 0 ? (
-              <p className="mt-2 text-body text-muted">{t("chapters.empty")}</p>
-            ) : null}
-            {/* The list scrolls itself in the desktop columns only (its
-                bounded height is a column fact); below 1024 the drawer
-                scrolls whole, so the list must neither clip nor shrink
-                there. The desktop column is sticky (the rail holds its
-                place beside the editor while a long manuscript scrolls
-                the page), and the rows it shows are the filtered list —
-                the walk below indexes into what rendered. */}
-            <ul
-              ref={railListRef}
-              className="mt-3 flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
-            >
-              {visibleChapters.map((chapter, index) => {
-                const isCurrent = chapter.id === active;
-                const title = chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
-                // The count is spoken as the sentence the footer prints
-                // ("… 2.107 Wörter") and shown as its number alone — the
-                // localized grouping, so the row and the footer read alike.
-                const words = chapterCounts.get(chapter.id) ?? 0;
-                // One tab stop in the list, whatever the filter did to it:
-                // the open chapter's row — or, when the filter hides that
-                // row (or the book has no open chapter yet), the first
-                // visible one, so the keyboard always has a way in.
-                const isTabStop =
-                  walkedIndex !== null
-                    ? walkedIndex === index
-                    : isCurrent || (activeVisibleIndex < 0 && index === 0);
-                return (
-                  <li
-                    key={chapter.id}
-                    /* The slot is the drop target, and the marker is the
-                       slot's own top edge — the row the drop would land
-                       at — so the Row's classes stay untouched (spec §7:
-                       no markup or role change). `onDragOver` must
-                       preventDefault for the drop to be allowed at all,
-                       and only while a drag of ours is in flight. */
-                    onDragOver={(event) => {
-                      if (dragId.current === null) return;
-                      event.preventDefault();
-                      setDropIndex(index);
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      const source = dragId.current;
-                      dragId.current = null;
-                      setDropIndex(null);
-                      if (source === null) return;
-                      void moveTo(source, index);
-                    }}
-                    className={
-                      dropIndex === index && dragId.current !== null ? DROP_HINT : undefined
-                    }
-                  >
-                    <Row
-                      current={isCurrent}
-                      selected={isCurrent}
-                      /* The name is composed, not computed: title and count
-                         sit in separate flex items, and every accname
-                         implementation stitches those together by its own
-                         whitespace rules — a title ending in a digit would
-                         reach the reader as one number ("Kapitel 11"). The
-                         label spells exactly the words on screen, with the
-                         separator made explicit. */
-                      aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
-                      tabIndex={isTabStop ? 0 : -1}
-                      /* The desktop drag: the row is the grab, the slot
-                         above is the landing. Wired only while no filter
-                         is active — a filtered list has no unambiguous
-                         drop index (Task 12's rule). */
-                      draggable={railFilter === null}
-                      onDragStart={
-                        railFilter === null
-                          ? () => {
-                              dragId.current = chapter.id;
-                            }
-                          : undefined
-                      }
-                      onDragEnd={() => {
-                        dragId.current = null;
-                        setDropIndex(null);
-                      }}
-                      onKeyDown={(event) => {
-                        // Alt+↑/↓ moves the focused row one step; the
-                        // plain arrows keep the walk. The handler is the
-                        // row's own, so the editor's Alt+arrows never
-                        // reach it — there they keep the OS meaning.
-                        if (
-                          event.altKey &&
-                          (event.key === "ArrowDown" || event.key === "ArrowUp")
-                        ) {
-                          event.preventDefault();
-                          void move(chapter.id, event.key === "ArrowDown" ? 1 : -1);
-                          return;
-                        }
-                        walkRail(event, index);
-                      }}
-                      onClick={() => {
-                        // The chapter already open is no switch: a second
-                        // history entry for the same address would only eat
-                        // the back button. Either way the walk is over —
-                        // the tab stop returns to the selection.
-                        setWalkedIndex(null);
-                        if (chapter.id === active) return;
-                        select(chapter.id);
-                      }}
-                    >
-                      {/* The separator is visible text, not only label:
-                          axe requires the visible words to be part of the
-                          accessible name, and without a space in the
-                          content the reader would still stitch "Kapitel"
-                          and the count into one number. The count stays
-                          foreground — muted on the selected row's wash is
-                          below AA, the exact case the Row's own docs name. */}
-                      <span className="min-w-0 flex-1 truncate">
-                        {title}{" "}
-                      </span>
-                      <span className="shrink-0 text-meta tabular-nums">
-                        {formatWordCount(words)}
-                      </span>
-                    </Row>
-                  </li>
-                );
-              })}
-            </ul>
-            <Button onClick={() => void createChapter()} className="mt-3 w-full">
-              {t("chapters.new")}
-            </Button>
-            {orderFailed ? (
-              <Notice tone="danger" live="alert" className="mt-2">
-                {t("chapters.orderFailed")}
-              </Notice>
-            ) : null}
-            {createFailed ? (
-              <Notice tone="danger" live="alert" className="mt-2">
-                {t("chapters.errorCreate")}
-              </Notice>
-            ) : null}
-          </aside>
+          <ChapterRail
+            visibleChapters={visibleChapters}
+            chapterCounts={chapterCounts}
+            active={active}
+            activeVisibleIndex={activeVisibleIndex}
+            walkedIndex={walkedIndex}
+            railListRef={railListRef}
+            dragId={dragId}
+            dropIndex={dropIndex}
+            railFilter={railFilter}
+            orderFailed={orderFailed}
+            createFailed={createFailed}
+            chapterCount={chapters.length}
+            move={move}
+            moveTo={moveTo}
+            setWalkedIndex={setWalkedIndex}
+            setDropIndex={setDropIndex}
+            select={select}
+            walkRail={walkRail}
+            onCreateChapter={createChapter}
+          />
         ) : null}
 
-        <section
-          className="flex min-w-0 flex-1 flex-col items-center lg:pr-4"
-          inert={railOverlay || dockOverlay || undefined}
-        >
-          {/* The writing surface is the card (F18): ChapterEditor paints it,
-              the page only leaves it the column. The arithmetic is the
-              workspace's: rail 224 + column 592 + dock 352 = the container's
-              1168; the column is the card's 576 plus the 16 px gap the focus
-              ring needs, so the ring never lands on the dock's seam. The
-              measure stays 544 inside the card, wherever the dock is. */}
-          <div className="w-full py-6">
-            <div className="mx-auto w-full max-w-[576px]">
-              {pending ? (
-              // The page has asked and is waiting — a named state, not a blank
-              // or empty-looking book. Quiet and polite: nothing is wrong.
-              <Notice tone="quiet" live="status" className="mt-6">
-                {t("chapters.loading")}
-              </Notice>
-            ) : failed ? (
-              // The book could not be loaded — refused or unreachable, with
-              // nothing on screen to keep. The failure is named where the
-              // retry is one press away (the shelf's outage shape).
-              <Notice
-                tone="danger"
-                live="alert"
-                className="mt-6"
-                action={
-                  <Button variant="secondary" onClick={retry}>
-                    {t("chapters.retry")}
-                  </Button>
-                }
-              >
-                {t("chapters.errorLoad")}
-              </Notice>
-            ) : (
-              <>
-                {refreshFailed ? (
-                  // The refresh failed, but the chapters on screen are the
-                  // last loaded ones: a quiet note beside the work, not the
-                  // outage's louder clothes — the editor and the rail stay,
-                  // and the retry asks again. The shelf's derived-boolean
-                  // pattern: one Notice, `live="status"` keeps it from being
-                  // silent to a screen reader — background speech about work
-                  // that stays, not an alert about work that is gone.
-                  <Notice
-                    tone="quiet"
-                    live="status"
-                    className="mt-6"
-                    action={
-                      <Button variant="secondary" onClick={retry}>
-                        {t("chapters.retry")}
-                      </Button>
-                    }
-                  >
-                    {t("chapters.refreshFailed")}
-                  </Notice>
-                ) : null}
-                {orderFailed && !showRail ? (
-                  // The same refusal the rail's aside names, for the
-                  // states that have no rail to name it: the runhead's
-                  // move items render at a focus depth that hides the
-                  // rail and with the column collapsed, and a 409 there
-                  // would revert silently. One of the two notices is
-                  // mounted at any time — `showRail` partitions them —
-                  // so the alert is announced once, from the surface
-                  // that is on screen.
-                  <Notice tone="danger" live="alert" className="mt-6">
-                    {t("chapters.orderFailed")}
-                  </Notice>
-                ) : null}
-                {current ? (
-                  <ChapterEditor
-                    key={current.id}
-                    chapterId={current.id}
-                    body={current.body}
-                    title={draft.title}
-                    onTitleChange={changeTitle}
-                    status={status}
-                    schedule={schedule}
-                    proposal={offer ?? undefined}
-                    onProposalResolve={resolveOffer}
-                    bookTitle={novelQuery.data?.title}
-                    chapterNumber={current.position + 1}
-                    chapterTotal={chapters.length}
-                    focusDepth={focus}
-                    actions={
-                      <ActionMenu
-                        label={t("chapters.actions")}
-                        // The trigger names the chapter as the page holds
-                        // it — the draft, not the cache row — so a typed
-                        // title reaches the button's name before the save
-                        // lands (the row catches up on the refetch).
-                        triggerAriaLabel={t("chapters.actionsFor", {
-                          title:
-                            draft.title ||
-                            t("chapters.defaultTitle", { n: current.position + 1 }),
-                        })}
-                        items={[
-                          {
-                            id: "rename",
-                            label: t("chapters.rename"),
-                            onSelect: () => setRenameOpen(true),
-                          },
-                          {
-                            id: "moveUp",
-                            // The ends are their own no-ops, offered but
-                            // disabled: the shortcut the hint names is the
-                            // rail's own Alt+↑ (D6), discoverable exactly
-                            // where the action lives. A filter disables
-                            // the move wherever the row sits — a filtered
-                            // list has no unambiguous neighbour — and the
-                            // label itself says why, so the reason travels
-                            // with the item to readers and screens alike.
-                            label:
-                              railFilter === null
-                                ? t("chapters.moveUp")
-                                : t("chapters.moveUpFiltered"),
-                            shortcut: "Alt+↑",
-                            disabled: railFilter !== null || currentIndex <= 0,
-                            onSelect: () => void move(current.id, -1),
-                          },
-                          {
-                            id: "moveDown",
-                            label:
-                              railFilter === null
-                                ? t("chapters.moveDown")
-                                : t("chapters.moveDownFiltered"),
-                            shortcut: "Alt+↓",
-                            disabled:
-                              railFilter !== null || currentIndex >= chapters.length - 1,
-                            onSelect: () => void move(current.id, 1),
-                          },
-                          {
-                            id: "delete",
-                            label: t("chapters.delete"),
-                            onSelect: () => setDeleteOpen(true),
-                          },
-                        ]}
-                      />
-                    }
-                  />
-                ) : null}
-              </>
-            )}
-            </div>
-          </div>
-        </section>
+        <EditorColumn
+          railOverlay={railOverlay}
+          dockOverlay={dockOverlay}
+          pending={pending}
+          failed={failed}
+          refreshFailed={refreshFailed}
+          orderFailed={orderFailed}
+          showRail={showRail}
+          current={current}
+          chapterTotal={chapters.length}
+          currentIndex={currentIndex}
+          draftTitle={draft.title}
+          status={status}
+          offer={offer}
+          bookTitle={novelQuery.data?.title}
+          focus={focus}
+          railFilter={railFilter}
+          retry={retry}
+          onTitleChange={changeTitle}
+          schedule={schedule}
+          onProposalResolve={resolveOffer}
+          onRenameOpen={() => setRenameOpen(true)}
+          onDeleteOpen={() => setDeleteOpen(true)}
+          onMove={move}
+        />
 
         {dockOverlay && !railOverlay ? (
           <div
@@ -693,32 +376,7 @@ export function NovelPage() {
             squats in the header (one control per panel). The column scrolls
             alone so a long answer never scrolls the editor out of view. */}
         {openDock ? (
-          <aside
-            /* Same contract as the rail, mirrored: a drawer from the
-               right below 1024, the desktop's dock column at ≥1024. The
-               352 the dock takes are the arithmetic's own; the column's
-               16 px padding is the gap the card's ring needs. The column is
-               a flex
-               stack so the title holds its place while the body under it
-               takes the remaining height and scrolls alone. The rail's
-               drawer sits a z-step above this one: a rail opened over a
-               live dock covers it without unmounting it, so the dock's
-               in-progress ask survives behind the drawer — and while it is
-               covered the dock goes `inert`, so the keyboard cannot land on
-               controls the drawer hides. */
-            className="flex w-88 shrink-0 flex-col rounded-[var(--radius-lg)] border border-rule bg-panel p-4 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:right-0 max-lg:z-20 max-lg:max-w-full max-lg:shadow-overlay lg:max-h-[calc(100dvh-16rem)] lg:pl-6"
-            aria-label={t(openDock.titleKey)}
-            inert={railOverlay || undefined}
-          >
-            <h2 className="text-emph font-semibold tracking-tight">{t(openDock.titleKey)}</h2>
-            {/* The dock owns its scroll: it takes the height it needs up to
-                the viewport's own cap (the rail's arithmetic), and the body
-                under the title scrolls inside it. A fixed 50 vh window used
-                to cut a row in half while 200 px of the page stood unused. */}
-            <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
-              <Outlet />
-            </div>
-          </aside>
+          <DockColumn openDock={openDock} railOverlay={railOverlay} />
         ) : null}
       </div>
 
