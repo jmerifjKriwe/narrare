@@ -499,15 +499,13 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
         # run order. The assignments cascade away with the models; the
         # deletes key on the ids captured at creation, never on names.
         cleanup: list[tuple[str, dict[str, object] | None]] = []
-        if go_flash_id is not None and go_52_id is not None:
-            # The ids are the app's own UUIDs, captured from the stored rows;
-            # the interpolation is the expanding-IN form text() cannot bind.
-            cleanup.append(
-                (
-                    f"DELETE FROM provider_profiles WHERE id IN ('{go_flash_id}', '{go_52_id}')",  # noqa: S608
-                    None,
+        for model_id in (go_flash_id, go_52_id):
+            if model_id is not None:
+                # One delete per id that exists: a death between the two
+                # creations must not skip the first model's row.
+                cleanup.append(
+                    (f"DELETE FROM provider_profiles WHERE id = '{model_id}'", None)  # noqa: S608
                 )
-            )
         if go_provider_id is not None:
             cleanup.append(
                 (f"DELETE FROM llm_providers WHERE id = '{go_provider_id}'", None)  # noqa: S608
