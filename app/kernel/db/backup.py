@@ -186,8 +186,9 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
             try:
                 with sink:
                     try:
-                        result = subprocess.run(  # noqa: S603  the operator's own template  # nosec B603
-                            # nosemgrep -- NARRE_BACKUP_COMMAND is operator config; argv, no shell
+                        # nosemgrep -- audit rule; NARRE_BACKUP_COMMAND is operator config
+                        result = subprocess.run(  # noqa: S603  # nosec B603
+                            # nosemgrep -- tainted-env rule anchors on the argument
                             command_line,
                             stdout=sink,
                             stderr=subprocess.PIPE,
