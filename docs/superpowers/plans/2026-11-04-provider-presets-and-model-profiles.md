@@ -17,7 +17,7 @@
 - `just generate` after any schema/route change; commit the generated OpenAPI, capability views and TS client.
 - Text: user-visible strings only through `i18n/{en,de,fr}.json`; a missing key fails `just check`.
 - Commits: conventional, `feat`/`fix` carry a `User-visible:` line, trailer `Assisted-by: OpenCode (<model>)`, never `--no-verify`.
-- Servers never send prose to the UI — codes and parameters only (spec, #582).
+- The message is codes and parameters only; raw vendor text rides behind a closed details disclosure, never as the message (#582).
 - The schema cut is two revisions (A then B) so every task's gates are green; columns the code no longer reads are dropped in the second.
 - The only provider a test may fake is a `kind=fake` provider row at the boundary; E2E drives the real browser, API and database.
 

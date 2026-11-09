@@ -1,14 +1,15 @@
 """Two tiers of API-key storage: the OS keychain first, Fernet as the fallback.
 
-``save_key`` returns exactly what the profile's ``api_key`` column holds: an
-empty string in the keyring tier (the plaintext lives in the OS keychain
-under this app's service name and the profile id) or Fernet ciphertext in the
-Fernet tier (whose key is the ``NARRE_SECRET_KEY`` environment variable).
-With neither a usable keychain nor ``NARRE_SECRET_KEY``, storing is refused
-by name — there is no silent third tier and no auto-generated key file. A
-key its tier can no longer produce — a restored database whose keychain was
-cleared, a rotated ``NARRE_SECRET_KEY`` — fails ``load_key`` with
-``KeyUnavailableError``, whose message names the row's id and never the key.
+``save_key`` returns exactly what the provider row's ``api_key`` column
+holds: an empty string in the keyring tier (the plaintext lives in the OS
+keychain under this app's service name and the provider row's id) or Fernet
+ciphertext in the Fernet tier (whose key is the ``NARRE_SECRET_KEY``
+environment variable). With neither a usable keychain nor
+``NARRE_SECRET_KEY``, storing is refused by name — there is no silent third
+tier and no auto-generated key file. A key its tier can no longer produce —
+a restored database whose keychain was cleared, a rotated
+``NARRE_SECRET_KEY`` — fails ``load_key`` with ``KeyUnavailableError``,
+whose message names the row's id and never the key.
 
 The module never touches the database: the caller (the settings service)
 writes ``api_key`` with the returned column value and ``api_key_hint`` with
@@ -27,10 +28,10 @@ from keyring.backends.null import Keyring as NullKeyring
 from keyring.errors import PasswordDeleteError
 
 SERVICE = "narrare"
-"""The keyring service name; the entry's username is the profile id."""
+"""The keyring service name; the entry's username is the provider row's id."""
 
 _PROBE = "__narrare_tier_probe__"
-"""A username no profile has: reading it only asks the backend to answer."""
+"""A username no provider row has: reading it only asks the backend to answer."""
 
 
 class NoKeyStoreError(RuntimeError):

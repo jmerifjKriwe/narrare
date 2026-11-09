@@ -4,8 +4,8 @@ and the evidence later work asserts on (plan §3.4, WP2a design §Goals).
 The tables are kernel machinery, not shared domain vocabulary, so they live
 next to the provider boundary rather than in contracts. A user's
 ``LLMProvider`` row is the saved endpoint — the vendor, the base URL, the
-key — and a ``ProviderProfile`` (a model, until the rename lands) points at
-exactly one of them and carries the model choice and tuning. A ``TaskAssignment``
+key — and a ``ProviderProfile`` (a saved model) points at exactly one of
+them and carries the model choice and tuning. A ``TaskAssignment``
 points one task key at one profile. ``LlmCall`` is a log, not user data:
 ``novel_id`` and ``profile_id`` carry no foreign key on purpose, so the
 audit outlives the novel and the profile it names. ``cost_usd`` stays NULL

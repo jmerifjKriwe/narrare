@@ -72,9 +72,9 @@ database copy; no hint display without reading the key itself.
 `writing.continuation`, `chat.ask`, `knowledge.extract-entities`,
 `knowledge.check-consistency` route; `settings.test` is audit-only
 (`app/kernel/llm/resolution.py`). Resolution is exact task key → prefix → the
-user's default → environment → `fake`. A new vendor on the OpenAI chat shape is a
-profile row and no code; a new API shape is an adapter plus one `PROVIDER_KINDS`
-value.
+user's default → environment → `fake`. A new vendor on the OpenAI chat shape is
+a provider row with its models under it and no code; a new API shape is an
+adapter plus one `PROVIDER_KINDS` value.
 
 Model metadata comes from a vendored models.dev snapshot
 (`app/kernel/llm/data/models.json`, refreshed by
@@ -146,8 +146,10 @@ The provider-presets wave
 split the single profile into two levels without moving this decision's core: a
 provider is now its own row (`llm_providers`: name, `kind`, `base_url`,
 `models_url`, `vendor`, and the key) and the model profiles (`provider_profiles`)
-hang off it. Assignments still target model profiles — the task names what
-serves; the provider carries where and how. The kind vocabulary is
+hang off it. The reason is the one the old shape could not survive: a single
+profile conflated endpoint and model, and the same model through two providers
+must stay two priced facts. Assignments still target model profiles — the task
+names what serves; the provider carries where and how. The kind vocabulary is
 `PROVIDER_KINDS` (`fake`, `openai-chat`, `anthropic`), read from the provider
 row; the profile-era `PROFILE_KINDS` is gone. The first API shape beyond OpenAI
 chat arrived with the wave itself: the native Anthropic Messages adapter, which
