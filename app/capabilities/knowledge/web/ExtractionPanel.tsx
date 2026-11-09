@@ -18,7 +18,7 @@ import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
 import { ProposalCard } from "@shell/ui/ProposalCard";
 
-import { entityTypeLabel } from "./EntitiesPanel";
+import { entityTypeLabel } from "./entityTypes";
 import { relationTypeLabel } from "./relations";
 
 /** Extraction and its review: the chapter the editor is showing, through
