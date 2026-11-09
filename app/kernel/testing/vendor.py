@@ -614,6 +614,18 @@ class ListVendor:
         self._thread = thread
 
     @property
+    def loopback_url(self) -> str:
+        """The same server under ``127.0.0.1`` — the chat vendor's host name.
+
+        The origin pin needs a list that shares the endpoint's host *name*
+        but not its port: this is how a test points a ``models_url`` at this
+        server while every host-name comparison still reads "the same
+        machine". The request arrives here either way; only the rule under
+        test decides whether a credential rode along.
+        """
+        return f"http://127.0.0.1:{self._server.server_port}"
+
+    @property
     def received(self) -> list[dict[str, Any]]:
         """Every request the vendor saw, in arrival order."""
         return self._server.received

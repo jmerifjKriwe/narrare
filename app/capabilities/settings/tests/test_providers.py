@@ -22,6 +22,7 @@ from app.api.main import app
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
+from app.kernel.llm.anthropic_messages import ANTHROPIC_VERSION
 from app.kernel.llm.catalog import load_catalog, snapshot_date, vendor_models
 from app.kernel.llm.models import LLMProvider, ProviderProfile
 from app.kernel.llm.presets import PRESETS
@@ -557,6 +558,52 @@ async def test_discovery_keeps_the_anthropic_key_on_the_endpoint_host(
     assert "authorization" not in other.last["headers"]
     # The protocol header is not a credential: it rides every anthropic ask.
     assert other.last["headers"]["anthropic-version"] == "2023-06-01"
+
+
+async def test_discovery_keeps_the_key_to_the_endpoints_origin(client: AsyncClient) -> None:
+    """A same-host list on another port is asked anonymously — the rule is the origin.
+
+    The credential follows scheme AND host AND port, never the host name
+    alone: a models_url that shares the endpoint's ``127.0.0.1`` but not its
+    port answers from another server on this machine, and the key must stay
+    home — on both wires, the bearer and ``x-api-key``. The host-only check
+    this test replaces sent the credential to that other server.
+    """
+    with chat_vendor() as vendor, messages_vendor(), list_vendor() as other:
+        provider = await _create(
+            client,
+            base_url=vendor.base_url,
+            models_url=f"{other.loopback_url}/models",
+        )
+        listed = await client.get(f"/api/settings/providers/{provider['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert listed.json() == ["vendor-max", "vendor-mini"]
+    # The endpoint was never asked; the same-host list saw no credential.
+    assert vendor.received == []
+    assert other.authorization is None
+    assert "x-api-key" not in other.last["headers"]
+
+    # The anthropic wire, same mistake barred: the version header is
+    # protocol and rides, the key is a credential and does not.
+    with messages_vendor() as vendor, list_vendor() as other:
+        provider = await client.post(
+            "/api/settings/providers",
+            json={
+                "name": "Anthropic",
+                "kind": "anthropic",
+                "base_url": vendor.base_url,
+                "api_key": SECRET,
+                "models_url": f"{other.loopback_url}/models",
+            },
+        )
+        assert provider.status_code == 201, provider.text
+        listed = await client.get(f"/api/settings/providers/{provider.json()['id']}/models")
+
+    assert listed.status_code == 200, listed.text
+    assert "x-api-key" not in other.last["headers"]
+    assert "authorization" not in other.last["headers"]
+    assert other.last["headers"]["anthropic-version"] == ANTHROPIC_VERSION
 
 
 async def test_discovery_asks_an_anthropic_provider_for_its_models(

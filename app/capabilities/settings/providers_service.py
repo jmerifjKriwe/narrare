@@ -9,7 +9,7 @@ exactly one response (the create's), the column holds what
 and the delete guard that names the models still pointed at the provider
 instead of a count. Discovery asks the provider's own list URL over plain
 httpx — the wire headers its kind speaks, the key held to the endpoint's
-own host.
+own origin (scheme, host and port).
 
 No side effect beyond the request's own transaction: each method commits once.
 """
@@ -205,10 +205,13 @@ class ProviderService:
     async def delete(self, provider_id: UUID) -> None:
         """Remove a provider no model points at; its key goes with it.
 
-        The guard refuses while a profile of the user's still points here,
-        naming the models — the way out, not a count. The database would
-        cascade such profiles away silently, which is exactly what the guard
-        exists to prevent.
+        The guard refuses while a model of the user's still points here,
+        naming the models — the way out, not a count. Behind the guard the
+        database's own RESTRICT on the model-to-provider FK is the atomic
+        backstop: a pointer the guard cannot see (written between the
+        guard's read and the delete, or by a path the write gate does not
+        own) refuses the delete with an IntegrityError, which the router
+        maps to the same 409. Nothing cascades away silently.
         """
         providers = self._providers()
         provider = await providers.get(provider_id)
@@ -237,10 +240,12 @@ class ProviderService:
         the row names one, ``{base_url}/models`` otherwise — with the wire
         headers its kind speaks: a bearer credential for ``openai-chat``,
         ``x-api-key`` and the version header for ``anthropic``. The key
-        travels only when the list URL shares the base URL's host; a list
-        served from another host is asked anonymously, and a keyless local
-        endpoint carries no credential at all. A fake provider has no
-        endpoint to ask.
+        travels only when the list URL sits on the base URL's exact origin —
+        scheme AND host AND port, an ``httpx.URL`` comparison — and never
+        over plain http for a remote endpoint: a list served from another
+        origin, a same-host ``http://…/models`` beside an ``https`` base
+        included, is asked anonymously, and a keyless local endpoint carries
+        no credential at all. A fake provider has no endpoint to ask.
 
         A redirect is not followed — httpx keeps ``follow_redirects`` off
         here, so a 302 raises into the router's 502 instead of a second
@@ -272,12 +277,25 @@ class ProviderService:
         headers: dict[str, str] = {}
         if provider.kind == "anthropic":
             # The wire's protocol header rides every request; only the
-            # credential below is gated on the host (and on existing at all).
+            # credential below is gated on the origin (and on existing at
+            # all).
             headers["anthropic-version"] = ANTHROPIC_VERSION
-        if api_key and httpx.URL(url).host == httpx.URL(endpoint).host:
-            # The credential follows its host: a list served from another
-            # host — a gateway's URL beside the chat endpoint — never sees
-            # the key, whatever the endpoint it belongs to would accept.
+        list_url = httpx.URL(url)
+        endpoint_url = httpx.URL(endpoint)
+        if (
+            api_key
+            and list_url.scheme == endpoint_url.scheme
+            and list_url.host == endpoint_url.host
+            and list_url.port == endpoint_url.port
+            and not (list_url.scheme == "http" and needs_api_key(endpoint))
+        ):
+            # The credential follows its exact origin — scheme, host and
+            # port — and never crosses plain http for a remote endpoint: a
+            # list served beside the chat endpoint on another port, another
+            # scheme, or another host never sees the key, whatever the
+            # endpoint it belongs to would accept. The host name alone was
+            # not enough — the same machine listens on many ports, and a
+            # keyless-looking host match is not the endpoint's answer.
             if provider.kind == "anthropic":
                 headers["x-api-key"] = api_key
             else:
