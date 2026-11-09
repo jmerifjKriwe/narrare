@@ -495,6 +495,17 @@ export function ProvidersSection({
                 {KIND_LABELS[kind] === undefined ? kind : t(KIND_LABELS[kind])}
               </option>
             ))}
+            {/* A kind the form no longer offers — every fake row from the
+                profile era — is still what the row is: while the edit is
+                open it renders as the selected option, so the disabled
+                select names the kind instead of showing nothing. */}
+            {editing !== null && !KINDS.includes(editing.kind) ? (
+              <option value={editing.kind}>
+                {KIND_LABELS[editing.kind] === undefined
+                  ? editing.kind
+                  : t(KIND_LABELS[editing.kind])}
+              </option>
+            ) : null}
           </Select>
         </Field>
         <Field label={t("settings.providers.baseUrlLabel")} className={LABEL_ROW}>

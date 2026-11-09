@@ -462,6 +462,26 @@ describe("the key's round-trip", () => {
       true,
     );
   });
+
+  it("shows a stored kind the form no longer offers while editing", async () => {
+    // Every fake row from the profile era: the kind is outside KINDS, and
+    // the disabled select must still name it — the catalog label, selected
+    // — instead of rendering an empty control.
+    render(<Harness providers={[{ ...PROVIDER, kind: "fake", base_url: null }]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.edit") }));
+
+    const kind = screen.getByLabelText(t("settings.providers.kindLabel")) as HTMLSelectElement;
+    expect(kind.value).toBe("fake");
+    expect(kind.disabled).toBe(true);
+    expect(kind.options[kind.selectedIndex]?.textContent).toBe(t("settings.providers.kind.fake"));
+    // The create form's own vocabulary is unchanged by the extra option.
+    expect(
+      Array.from(kind.options)
+        .filter((option) => !option.selected)
+        .map((option) => option.value),
+    ).toEqual(["openai-chat", "anthropic"]);
+  });
 });
 
 describe("a provider the server refuses to delete", () => {
