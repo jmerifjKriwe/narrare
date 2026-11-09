@@ -58,6 +58,11 @@ class _JsonFormatter(Formatter):
 
 _handler = logging.StreamHandler()
 _handler.setFormatter(_JsonFormatter())
+_logger = getLogger("narrare")
+_logger.handlers = [_handler]
+_logger.setLevel(INFO)
+_logger.propagate = False
+# Keep the root logger aligned for any code that logs through it directly.
 basicConfig(level=INFO, handlers=[_handler])
 
 
