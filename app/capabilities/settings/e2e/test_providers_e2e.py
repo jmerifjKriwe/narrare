@@ -4,7 +4,10 @@ Everything the cluster promises, proven through the UI: a fake provider
 created in the browser, two models under it, the default flipped,
 ``writing.continuation`` assigned to one of them — and the continuation in
 the workbench then lands on the assigned model's row in ``llm_calls``, not
-the default's. The vendor provider answers the connection test (run on its
+the default's. A provider born from a preset carries the flow's second
+door: one choice fills the endpoint fields, the key is typed, and the
+models hang off the preset's vendor catalog with tasks naming the pair.
+The vendor provider answers the connection test (run on its
 model) and the model discovery (run on the provider, the row that owns the
 endpoint) over real HTTP; its key is shown exactly once, the list shows the
 mask, an update with an empty key field keeps the stored one, and deleting
@@ -41,6 +44,9 @@ DATABASE = testsupport.test_database("narrare_v2_settings_e2e")
 
 VENDOR_KEY = "sk-e2e-key-abcd"  # the last four are the mask the list must show
 VENDOR_MASK = "sk-…abcd"
+
+GO_KEY = "sk-go-e2e-abcd"  # the OpenCode Go provider's typed key, mask as below
+GO_MASK = "sk-…abcd"
 
 PROVIDERS = "Anbieter"  # the section's heading, in the stack's de
 MODELS = "Modelle"
@@ -304,6 +310,120 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
     )
     assert (test_model, test_status) == ("vendor-mini", "ok")
     assert test_cost == 0.0
+
+
+def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) -> None:
+    """The preset flow, end to end: a provider born from the OpenCode Go
+    preset carries models from its vendor's catalog, and the task rows
+    read the pair that serves them.
+
+    One choice fills the create form — name, kind, both URLs, vendor — and
+    the key is the one field the hand still types. Nothing presses
+    *Verbindung testen* or *Modelle laden*: no vendor is called anywhere in
+    this flow. Creation is local, and the model vocabulary — the created
+    provider's suggestion and the input's datalist — is the vendored
+    catalog, so both models arrive from local facts. The task rows then
+    name ``OpenCode Go · <model>``, the pair a task actually points at.
+    """
+    page.goto(BASE + "/settings/provider")
+    expect(_region(page, PROVIDERS).get_by_role("heading", name=PROVIDERS)).to_be_visible()
+    providers = _region(page, PROVIDERS)
+    models = _region(page, MODELS)
+
+    try:
+        # The preset fills the endpoint fields in one choice; the key is typed.
+        providers.get_by_label("Vorlage").select_option(label="OpenCode Go")
+        expect(providers.get_by_label("Name", exact=True)).to_have_value("OpenCode Go")
+        expect(providers.get_by_label("Art")).to_have_value("openai-chat")
+        expect(providers.get_by_label("Serveradresse")).to_have_value(
+            "https://opencode.ai/inference/go/openai/v1"
+        )
+        expect(providers.get_by_label("Modellliste-URL")).to_have_value(
+            "https://opencode.ai/inference/go/v1/models"
+        )
+        expect(providers.get_by_label("Anbieterkennung")).to_have_value("opencode-go")
+        providers.get_by_label("API-Schlüssel").fill(GO_KEY)
+        providers.get_by_role("button", name="Anbieter hinzufügen").click()
+        go_row = providers.get_by_role("listitem").filter(has_text="OpenCode Go")
+        expect(go_row).to_be_visible()
+        # The vendor is the fact the model form's catalog speaks through; the
+        # mask is the key's only later face.
+        expect(go_row).to_contain_text("opencode-go")
+        expect(go_row).to_contain_text(GO_MASK)
+        expect(page.get_by_text(GO_KEY)).to_be_visible()
+        page.get_by_role("button", name="Verstanden").click()
+        expect(page.locator("body")).not_to_contain_text(GO_KEY)
+
+        # The created provider hands its preset's model to the model form: the
+        # suggestion is the vendor's catalog word, there before any keystroke.
+        expect(models.get_by_label("Modell", exact=True)).to_have_value("glm-5.3-flash")
+        models.get_by_label("Name", exact=True).fill("Go Flash")
+        models.get_by_role("button", name="Modell hinzufügen").click()
+        flash_row = models.get_by_role("listitem").filter(has_text="Go Flash")
+        expect(flash_row).to_be_visible()
+        # The row reads the pair — provider · model — the facts a task points at.
+        expect(flash_row).to_contain_text("OpenCode Go · glm-5.3-flash")
+
+        # The second model comes from the datalist the vendor's catalog feeds:
+        # the input suggests the snapshot's ids, free text untouched.
+        models.get_by_label("Anbieter").select_option(label="OpenCode Go")
+        expect(page.locator("datalist option[value='glm-5.2']")).to_have_count(1)
+        models.get_by_label("Name", exact=True).fill("Go 5.2")
+        models.get_by_label("Modell", exact=True).fill("glm-5.2")
+        models.get_by_role("button", name="Modell hinzufügen").click()
+        zwei_row = models.get_by_role("listitem").filter(has_text="Go 5.2")
+        expect(zwei_row).to_be_visible()
+        expect(zwei_row).to_contain_text("OpenCode Go · glm-5.2")
+
+        # Two tasks, one per model; the options and the rows beneath them read
+        # the pair — provider · model — never the model row's own name.
+        tasks = _region(page, TASKS)
+        continuation = tasks.get_by_label("Weiterschreiben")
+        continuation.select_option(label="OpenCode Go · glm-5.3-flash")
+        expect(continuation).not_to_have_value("")
+        chat = tasks.get_by_label("Chat, Fragen")
+        chat.select_option(label="OpenCode Go · glm-5.2")
+        expect(chat).not_to_have_value("")
+        # The effective lines, per row: the run's shuffled order decides
+        # whether the unassigned tasks also resolve to one of these models
+        # (the default tier answers them when this test runs first), so a
+        # page-wide text query can collide — the row's own paragraph is the
+        # fact this test owns.
+        expect(page.locator('[id="settings-task-effective-writing.continuation"]')).to_have_text(
+            "über OpenCode Go · glm-5.3-flash"
+        )
+        expect(page.locator('[id="settings-task-effective-chat.ask"]')).to_have_text(
+            "über OpenCode Go · glm-5.2"
+        )
+        # The stored assignments name the two model rows, not a look-alike.
+        [(stored_continuation,)] = _rows(
+            "SELECT a.profile_id FROM task_assignments a WHERE a.task_key = 'writing.continuation'"
+        )
+        assert str(stored_continuation) == _model_id("Go Flash")
+        [(stored_chat,)] = _rows(
+            "SELECT a.profile_id FROM task_assignments a WHERE a.task_key = 'chat.ask'"
+        )
+        assert str(stored_chat) == _model_id("Go 5.2")
+
+        # A fresh visit reads the stored assignments back: the mount loads them
+        # and the rows keep naming the pair.
+        page.reload()
+        expect(_region(page, TASKS).get_by_role("heading", name=TASKS)).to_be_visible()
+        expect(page.locator('[id="settings-task-effective-writing.continuation"]')).to_have_text(
+            "über OpenCode Go · glm-5.3-flash"
+        )
+        expect(page.locator('[id="settings-task-effective-chat.ask"]')).to_have_text(
+            "über OpenCode Go · glm-5.2"
+        )
+        assert_accessible(page)
+    finally:
+        # The module's stack is one user for every test in the file: what this
+        # page drove is removed again — on a red assertion too, so the stack
+        # stays unpolluted — and the flow test's fresh-stack assumption ("the
+        # first model becomes the default on its own") stays true in either
+        # run order. The assignments cascade away with the models.
+        _run("DELETE FROM provider_profiles WHERE name IN ('Go Flash', 'Go 5.2')")
+        _run("DELETE FROM llm_providers WHERE name = 'OpenCode Go'")
 
 
 def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -> None:
