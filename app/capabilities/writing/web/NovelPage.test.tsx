@@ -39,6 +39,7 @@ import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
 import { activeLocale, applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { DELAY_MS } from "@shell/lib/save";
 import { rootRoute } from "@shell/routes/__root";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -63,6 +64,11 @@ const api = client as unknown as Record<
 >;
 
 const NOVEL_ID = "6f1c2a52-9d3e-4f6e-8df5-7db9df0f4a52";
+
+/** Past the autosave's window, with margin for the event loop: the negative
+ *  cases below ("no PUT after the debounce") must outlast the real timer,
+ *  and the margin is what keeps them from racing it. */
+const PAST_DEBOUNCE_MS = DELAY_MS + 300;
 
 const NOVEL = {
   id: NOVEL_ID,
@@ -1339,7 +1345,7 @@ describe("the runhead's action menu", () => {
     // Past the debounce: the timer's flush finds the slot the delete
     // emptied — and no failed status was ever named for a deletion the
     // user asked for.
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE_MS));
     expect(api.PUT).not.toHaveBeenCalled();
     expect(screen.queryByText(t("save.failed"))).toBeNull();
     expect(rows.map((row) => row.id)).toEqual([CHAPTER_ID]);
@@ -1547,7 +1553,7 @@ describe("the runhead's action menu", () => {
     // Past the debounce: no PUT flew — the document is identical to the
     // server's, and an identical document is not unsaved work — and no
     // status was ever named, not a save and not a failure.
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE_MS));
     expect(api.PUT).not.toHaveBeenCalled();
     expect(screen.queryByText(t("save.saved"))).toBeNull();
     expect(screen.queryByText(t("save.failed"))).toBeNull();

@@ -59,7 +59,6 @@ address, a dead link that degrades instead of erroring.
 import asyncio
 import re
 from concurrent.futures import ThreadPoolExecutor
-from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
@@ -71,6 +70,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
@@ -82,6 +82,11 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 # standalone search test's upload does — through the real service, its real
 # ingestion and the E2E stack's real embedding stand-in.
 API = API_URL
+
+# Two turns of the jobs poll's own clock. The done row must stop the timer, so
+# this window is the observation itself — no expect() proves an absence over
+# time, and a shorter window would miss a late tick.
+POLL_SILENCE_MS = 2500
 
 # this run's stack database (e2e/conftest.py)
 DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
@@ -303,7 +308,7 @@ def test_the_knowledge_dock_reviews_extraction_beside_the_editor(page: Page, sta
         "request",
         lambda request: poll_silence.append(request.url) if "/api/jobs/" in request.url else None,
     )
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(POLL_SILENCE_MS)
     assert poll_silence == [], f"the done job is still polled: {poll_silence}"
 
     # The chapter-scoped search: typing narrows the list it sits above.
@@ -391,7 +396,7 @@ def test_the_knowledge_dock_reviews_the_novels_findings(page: Page, stack: Stack
         "request",
         lambda request: poll_silence.append(request.url) if "/api/jobs/" in request.url else None,
     )
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(POLL_SILENCE_MS)
     assert poll_silence == [], f"the done check job is still polled: {poll_silence}"
 
     assert_accessible(page)
@@ -887,16 +892,9 @@ def _seed_entities(novel_title: str) -> str:
             f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id}
         )
         enqueued.raise_for_status()
-        # The worker rides the API process: poll the row it settles.
-        for _ in range(120):
-            job = api.get(f"/api/jobs/{enqueued.json()['job_id']}")
-            job.raise_for_status()
-            if job.json()["status"] in ("done", "failed"):
-                break
-            sleep(0.25)
-        else:
-            pytest.fail("the seeded extraction never settled")
-        assert job.json()["status"] == "done"
+        # The worker rides the API process: wait for the row it settles.
+        job = wait_for_job(api, enqueued.json()["job_id"])
+        assert job["status"] == "done"
         suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
         suggestions.raise_for_status()
         assert len(suggestions.json()) == 5

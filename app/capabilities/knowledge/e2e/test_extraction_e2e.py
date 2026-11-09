@@ -13,7 +13,6 @@ and creates its edge for real (D8) — on the real API, over the real database.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from time import monotonic, sleep
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -24,6 +23,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL
 
 if TYPE_CHECKING:
@@ -99,14 +99,7 @@ def test_an_enqueued_extraction_completes_across_an_api_restart(stack: Stack) ->
     stack.start_api()
 
     with httpx.Client(base_url=API, timeout=30) as client:
-        deadline = monotonic() + 60  # the lane polls twice a second when idle
-        while True:
-            response = client.get(f"/api/jobs/{job_id}")
-            response.raise_for_status()
-            job = response.json()
-            if job["status"] in {"done", "failed"} or monotonic() >= deadline:
-                break
-            sleep(0.5)
+        job = wait_for_job(client, job_id)
         assert job["status"] == "done", f"the restart lost the job: {job}"
         assert job["progress"] == 100
         # the chapter names seven distinct candidates: the fake proposes them

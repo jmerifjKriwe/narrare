@@ -14,7 +14,7 @@ import subprocess  # nosec B404 - controlled just invocation, no shell
 import sys
 import time
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -197,6 +197,90 @@ def test_server_output_end_fails_fast_without_losing_responses(
             assert server.request("initialize", {}, timeout=2) is expected
     finally:
         server.close()
+
+
+def test_wait_for_parks_a_response_for_the_request_that_claims_it() -> None:
+    """A frame that arrives before the awaited notification is not lost."""
+    program = (
+        "import sys, time\n"
+        "stream = sys.stdin.buffer\n"
+        "length = int(stream.readline().split(b':', 1)[1])\n"
+        "stream.readline()\n"
+        "stream.read(length)\n"  # the notification this test sends first
+        'note = b\'{"method":"probe/ready"}\'\n'
+        'resp = b\'{"id":1,"result":true}\'\n'
+        "out = sys.stdout.buffer\n"
+        # The response first, so wait_for must park it before the note
+        # arrives; dropping it would lose the answer to the next request.
+        "out.write(b'Content-Length: %d\\r\\n\\r\\n' % len(resp) + resp)\n"
+        "out.write(b'Content-Length: %d\\r\\n\\r\\n' % len(note) + note)\n"
+        "out.flush()\n"
+        "time.sleep(5)\n"
+    )
+    server = LanguageServer([sys.executable, "-c", program], cwd=ROOT)
+    try:
+        server.notify("initialized", {})
+        server.wait_for("probe/ready", timeout=5)
+        assert server.request("initialize", {}, timeout=5) is True
+    finally:
+        server.close()
+
+
+def test_wait_for_gives_up_on_a_silent_server() -> None:
+    server = LanguageServer([sys.executable, "-c", "import time; time.sleep(5)"], cwd=ROOT)
+    try:
+        with pytest.raises(TimeoutError, match="did not send probe/ready"):
+            server.wait_for("probe/ready", timeout=0.2)
+    finally:
+        server.close()
+
+
+def test_wait_for_names_the_exit_when_the_server_dies() -> None:
+    """A dead server is an exit to name, not a silence to time out on."""
+    server = LanguageServer(["/bin/true"], ROOT)
+    try:
+        with pytest.raises(RuntimeError, match="closed its output before answering probe/ready"):
+            server.wait_for("probe/ready", timeout=5)
+    finally:
+        server.close()
+
+
+def test_main_waits_for_readiness_before_asking_for_callers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The order is the fix: no call-hierarchy request before the diagnostics."""
+    path = tmp_path / "mod.py"
+    path.write_text("async def ordered() -> None: ...\n", encoding="utf-8")
+    item = {"name": "ordered", "kind": 6, "uri": path.as_uri()}
+    calls: list[str] = []
+
+    class Recording(LanguageServer):
+        def __init__(self, command: list[str], cwd: Path) -> None:
+            pass
+
+        def notify(self, method: str, params: dict[str, Any]) -> None:
+            calls.append(method)
+
+        def wait_for(self, method: str, timeout: float) -> None:
+            calls.append(f"wait_for:{method}")
+
+        def request(self, method: str, params: dict[str, Any], timeout: float) -> object:
+            calls.append(method)
+            return [item] if method == "textDocument/prepareCallHierarchy" else []
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr("scripts.callers.LanguageServer", Recording)
+    assert main([f"{path}:1"]) == 0
+    # The wait must follow the didOpen that starts the analysis, and precede
+    # the first call-hierarchy question: either inversion is the original bug.
+    assert calls.index("textDocument/didOpen") < calls.index(
+        "wait_for:textDocument/publishDiagnostics"
+    )
+    assert calls.index("wait_for:textDocument/publishDiagnostics") < calls.index(
+        "textDocument/prepareCallHierarchy"
+    )
 
 
 def test_call_sites_are_deduped_and_graded() -> None:

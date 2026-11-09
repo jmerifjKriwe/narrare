@@ -8,12 +8,12 @@ stop or the fresh lane picks the queued row up after the restart, the outcome
 must be the same: a done job and a queryable findings queue.
 """
 
-from time import monotonic, sleep
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL
 
 if TYPE_CHECKING:
@@ -61,14 +61,7 @@ def test_an_enqueued_check_completes_across_an_api_restart(stack: Stack) -> None
     stack.start_api()
 
     with httpx.Client(base_url=API, timeout=30) as client:
-        deadline = monotonic() + 60  # the lane polls twice a second when idle
-        while True:
-            response = client.get(f"/api/jobs/{job_id}")
-            response.raise_for_status()
-            job = response.json()
-            if job["status"] in {"done", "failed"} or monotonic() >= deadline:
-                break
-            sleep(0.5)
+        job = wait_for_job(client, job_id)
         assert job["status"] == "done", f"the restart lost the job: {job}"
         assert job["progress"] == 100
         assert job["result"] == {"findings": 1, "skipped_chapters": []}

@@ -23,7 +23,10 @@ type DirtyPayload = { title?: string; body?: string };
  *  attempt, and the reference is what tells them apart. */
 type PendingSlot = { draft: DocumentDraft; dirty: Set<keyof DocumentDraft> };
 
-const DELAY_MS = 800;
+/** The debounce window. Exported so a test that must prove "past the
+ *  debounce, nothing happened" waits on this constant instead of a copy of
+ *  its value: change the window and the test follows it. */
+export const DELAY_MS = 800;
 
 /**
  * Whether a status means text that exists only in the browser: waiting for

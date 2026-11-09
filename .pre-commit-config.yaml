@@ -91,8 +91,11 @@ repos:
         name: Tests
         entry: bash
         args:
+          # `-v`, not `-q`: the header is the only place pytest-randomly prints
+          # its seed, and an order-dependent failure at push is unreproducible
+          # without it.
           - "-c"
-          - "{ exec 3<>/dev/tcp/localhost/5433; } 2>/dev/null || { echo 'dev services not running — run: just dev-services'; exit 2; }; exec 3>&-; uv run pytest app -q"
+          - "{ exec 3<>/dev/tcp/localhost/5433; } 2>/dev/null || { echo 'dev services not running — run: just dev-services'; exit 2; }; exec 3>&-; uv run pytest app -v"
         language: system
         pass_filenames: false
         always_run: true
