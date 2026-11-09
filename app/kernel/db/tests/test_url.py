@@ -130,3 +130,25 @@ def test_an_unknown_sslmode_is_refused_by_name() -> None:
 def test_the_sslmode_reaches_asyncpg_as_its_own_parameter() -> None:
     config = resolve({**PARTS, "NARRE_DB_SSLMODE": "require"})
     assert config.url.query["ssl"] == "require"
+
+
+def test_a_dev_db_port_that_is_not_a_number_is_refused_by_name() -> None:
+    with pytest.raises(DatabaseConfigurationError) as refused:
+        resolve({"NARRE_DEV_DB_PORT": "5442x"})
+    assert "NARRE_DEV_DB_PORT" in str(refused.value)
+
+
+def test_a_dev_db_port_outside_the_range_is_refused() -> None:
+    with pytest.raises(DatabaseConfigurationError) as refused:
+        resolve({"NARRE_DEV_DB_PORT": "70000"})
+    assert "NARRE_DEV_DB_PORT" in str(refused.value)
+
+
+def test_the_url_wins_over_the_dev_db_port() -> None:
+    config = resolve(
+        {
+            "NARRE_DATABASE_URL": "postgresql+asyncpg://u:p@elsewhere:5432/other",
+            "NARRE_DEV_DB_PORT": "5442",
+        }
+    )
+    assert config.url.port == 5432
