@@ -148,16 +148,23 @@ def _latest_continuation(title: str) -> tuple[str, str]:
     """The novel's latest continuation audit row: status and prompt text.
 
     The audit is the only writer of llm_calls, so what a test asserts here is
-    what the request really carried.
+    what the request really carried. The row is written by the stream's
+    finalizer, which commits a moment after the ghost is taken, so the read
+    retries briefly instead of assuming the row is already visible.
     """
-    [row] = _rows(
-        "SELECT status, prompt_text FROM llm_calls c"
-        " JOIN novels n ON c.novel_id = n.id"
-        " WHERE n.title = :title AND c.task_key = 'writing.continuation'"
-        " ORDER BY c.created_at DESC LIMIT 1",
-        {"title": title},
-    )
-    return str(row[0]), str(row[1])
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        rows = _rows(
+            "SELECT status, prompt_text FROM llm_calls c"
+            " JOIN novels n ON c.novel_id = n.id"
+            " WHERE n.title = :title AND c.task_key = 'writing.continuation'"
+            " ORDER BY c.created_at DESC LIMIT 1",
+            {"title": title},
+        )
+        if rows:
+            return str(rows[0][0]), str(rows[0][1])
+        time.sleep(0.1)
+    raise AssertionError(f"no continuation audit row for {title!r} within 10 s")
 
 
 def _override_count(novel_id: str) -> int:
