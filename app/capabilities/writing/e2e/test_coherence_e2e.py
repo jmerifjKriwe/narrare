@@ -577,7 +577,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # arrival, then answers the mechanical floor: the document fits, and
     # where the editor is on screen the prose keeps its 320 px content box.
     novel_url = f"{BASE}/novels/{novel_id}"
-    dock_url = f"{novel_url}/wissen?entity={waldgeist_id}"
+    dock_url = f"{novel_url}/knowledge?entity={waldgeist_id}"
 
     faces: list[tuple[str, str, Callable[[], None], bool]] = [
         (

@@ -120,7 +120,7 @@ def test_the_icon_rail_answers_the_surface(page: Page, stack: Stack, width: int)
     # chain there — the only leg where that mechanism, not the width alone,
     # decides the answer. The rail must stay hidden.
     if width < 1280:
-        page.goto(f"{url}/wissen")
+        page.goto(f"{url}/knowledge")
         expect(page.locator('aside[aria-label="Wissen"]')).to_be_visible()
         expect(page.locator(ICON_RAIL)).to_have_count(1)
         expect(page.locator(ICON_RAIL)).to_be_hidden()

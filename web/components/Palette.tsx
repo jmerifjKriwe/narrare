@@ -379,7 +379,7 @@ export function Palette({
     (entityId: string) => {
       if (novelId === null) return;
       void navigate({
-        to: "/novels/$id/wissen",
+        to: "/novels/$id/knowledge",
         params: { id: novelId },
         search: (prev) => ({ ...prev, entity: entityId }),
       });

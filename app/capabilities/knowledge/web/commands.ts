@@ -8,15 +8,15 @@ import type { Command } from "@shell/lib/commands";
 // imports this capability's code.
 export const commands = [
   {
-    id: "open-wissen-dock",
-    titleKey: "commands.openWissenDock",
+    id: "open-knowledge-dock",
+    titleKey: "commands.openKnowledgeDock",
     // The dock lives at a novel: without one the row is off, and `run`
     // guards on the same fact instead of trusting it — a palette never
     // runs an off row, so the guard only ever fires from a stale context.
     run: (ctx) => {
       if (ctx.novelId === null) return;
       void ctx.navigate({
-        to: "/novels/$id/wissen",
+        to: "/novels/$id/knowledge",
         params: { id: ctx.novelId },
         // The dock opens where the workbench stood: an absent `search` is
         // the router's empty record, and it would wipe the address — the
