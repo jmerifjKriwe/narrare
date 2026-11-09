@@ -7,6 +7,7 @@ their owner. Invariant logic (the default flip, the delete guard, D7) belongs
 to the settings service, not here.
 """
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -15,23 +16,20 @@ from sqlalchemy import select
 from app.kernel.db.base import Base
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.models import (
-    PROFILE_KINDS,
-    LlmCall,
-    ProviderProfile,
-    TaskAssignment,
-)
-from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
+from app.kernel.llm.models import LlmCall, ProviderProfile, TaskAssignment
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 PROVIDER_PROFILE_COLUMNS = {
     "id",
     "user_id",
     "name",
-    "kind",
-    "base_url",
+    "provider_id",
     "model",
-    "api_key",
-    "api_key_hint",
     "is_default",
     "context_window",
     "max_output_tokens",
@@ -65,11 +63,6 @@ def test_task_assignments_is_registered_with_exactly_these_columns() -> None:
     assert set(table.columns.keys()) == TASK_ASSIGNMENT_COLUMNS
 
 
-def test_the_kind_vocabulary_is_fake_and_openai_chat() -> None:
-    """Verify PROFILE_KINDS is the closed vocabulary beside the free-text column."""
-    assert PROFILE_KINDS == ("fake", "openai-chat")
-
-
 OWNER = uuid4()
 OTHER = uuid4()
 
@@ -85,28 +78,39 @@ async def two_users(empty_tables: None, schema: None) -> None:
     await seed_user(OTHER)
 
 
+async def _profile(
+    session: AsyncSession,
+    user_id: UUID,
+    name: str,
+    **fields: object,
+) -> ProviderProfile:
+    """One model of the user's, with its own provider row, uncommitted.
+
+    Every model travels with its provider: the column is NOT NULL, and the
+    tests seed the pair the way the surface stores it.
+    """
+    provider = await ProviderRepository(session, user_id).create(name=name, kind="fake")
+    return await ProfileRepository(session, user_id).create(
+        name=name, provider_id=provider.id, **fields
+    )
+
+
 @pytest.mark.usefixtures("two_users")
 async def test_profiles_persist_through_the_repository_scoped_to_their_user() -> None:
     """Verify a profile comes back through its owner's repository and no other."""
     async with Session() as session:
-        await ProfileRepository(session, OWNER).create(
-            name="Local fake", kind="fake", is_default=True
-        )
-        await ProfileRepository(session, OWNER).create(
-            name="Hosted",
-            kind="openai-chat",
-            base_url="https://api.example.com",
+        await _profile(session, OWNER, "Local fake", is_default=True)
+        await _profile(
+            session,
+            OWNER,
+            "Hosted",
             model="some-model",
-            api_key="gAAAA-ciphertext",
-            api_key_hint="abcd",
             context_window=128_000,
             max_output_tokens=4_096,
             temperature=0.7,
             request_timeout=30.0,
         )
-        other_profile = await ProfileRepository(session, OTHER).create(
-            name="Other's fake", kind="fake"
-        )
+        other_profile = await _profile(session, OTHER, "Other's fake")
         await session.commit()
 
     async with Session() as session:
@@ -124,10 +128,9 @@ async def test_profiles_persist_through_the_repository_scoped_to_their_user() ->
 async def test_ordered_lists_the_default_first_then_the_names() -> None:
     """Verify the ordering contract: default first, the rest by name."""
     async with Session() as session:
-        repo = ProfileRepository(session, OWNER)
-        await repo.create(name="alpha", kind="fake")
-        await repo.create(name="gamma", kind="fake", is_default=True)
-        await repo.create(name="beta", kind="fake")
+        await _profile(session, OWNER, "alpha")
+        await _profile(session, OWNER, "gamma", is_default=True)
+        await _profile(session, OWNER, "beta")
         await session.commit()
 
     async with Session() as session:
@@ -140,9 +143,10 @@ async def test_ordered_lists_the_default_first_then_the_names() -> None:
 async def test_update_applies_fields_and_delete_removes_the_profile() -> None:
     """Verify update changes the stored columns and delete drops the row."""
     async with Session() as session:
-        repo = ProfileRepository(session, OWNER)
-        profile = await repo.create(name="First", kind="fake")
-        await repo.update(profile, name="Renamed", model="fake-model", temperature=0.3)
+        profile = await _profile(session, OWNER, "First")
+        await ProfileRepository(session, OWNER).update(
+            profile, name="Renamed", model="fake-model", temperature=0.3
+        )
         await session.commit()
         profile_id = profile.id
 
@@ -166,21 +170,18 @@ async def test_update_applies_fields_and_delete_removes_the_profile() -> None:
 async def test_update_refuses_ownership_and_identity_columns() -> None:
     """``user_id`` and ``id`` are not editable: passing them is a bug, not a choice."""
     async with Session() as session:
-        repo = ProfileRepository(session, OWNER)
-        profile = await repo.create(name="First", kind="fake")
+        profile = await _profile(session, OWNER, "First")
         with pytest.raises(ValueError, match="id, user_id"):
-            await repo.update(profile, user_id=uuid4(), id=uuid4())
+            await ProfileRepository(session, OWNER).update(profile, user_id=uuid4(), id=uuid4())
 
 
 @pytest.mark.usefixtures("two_users")
 async def test_deleting_a_profile_cascades_its_assignments() -> None:
     """Verify the foreign key takes the profile's assignments with it."""
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        assignments = AssignmentRepository(session, OWNER)
-        profile = await profiles.create(name="Doomed", kind="fake")
-        await assignments.set("chat.ask", profile.id)
-        await profiles.delete(profile)
+        profile = await _profile(session, OWNER, "Doomed")
+        await AssignmentRepository(session, OWNER).set("chat.ask", profile.id)
+        await ProfileRepository(session, OWNER).delete(profile)
         await session.commit()
 
     async with Session() as session:
@@ -191,13 +192,13 @@ async def test_deleting_a_profile_cascades_its_assignments() -> None:
 async def test_set_points_a_task_at_a_profile_and_replaces_the_choice() -> None:
     """Verify set writes one row per task and re-points it on a second set."""
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        first = await profiles.create(name="First", kind="fake")
-        second = await profiles.create(name="Second", kind="fake")
-        assignments = AssignmentRepository(session, OWNER)
-        await assignments.set("writing.continuation", first.id)
-        await assignments.set("writing.continuation", second.id)  # replace, not a row
-        await assignments.set("chat.ask", first.id)
+        first = await _profile(session, OWNER, "First")
+        second = await _profile(session, OWNER, "Second")
+        await AssignmentRepository(session, OWNER).set("writing.continuation", first.id)
+        await AssignmentRepository(session, OWNER).set(
+            "writing.continuation", second.id
+        )  # replace, not a row
+        await AssignmentRepository(session, OWNER).set("chat.ask", first.id)
         await session.commit()
 
     async with Session() as session:
@@ -215,11 +216,9 @@ async def test_set_points_a_task_at_a_profile_and_replaces_the_choice() -> None:
 async def test_for_prefix_matches_dotted_children_never_the_bare_key() -> None:
     """Verify a prefix lookup finds `<prefix>.…` assignments and nothing else."""
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        profile = await profiles.create(name="One", kind="fake")
-        assignments = AssignmentRepository(session, OWNER)
-        await assignments.set("writing.continuation", profile.id)
-        await assignments.set("knowledge", profile.id)  # a bare key, not a prefix
+        profile = await _profile(session, OWNER, "One")
+        await AssignmentRepository(session, OWNER).set("writing.continuation", profile.id)
+        await AssignmentRepository(session, OWNER).set("knowledge", profile.id)  # a bare key
         await session.commit()
 
     async with Session() as session:
@@ -243,10 +242,8 @@ async def test_for_prefix_treats_like_wildcards_in_the_prefix_literally() -> Non
     the user never assigned.
     """
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        profile = await profiles.create(name="One", kind="fake")
-        assignments = AssignmentRepository(session, OWNER)
-        await assignments.set("axe.b.continue", profile.id)
+        profile = await _profile(session, OWNER, "One")
+        await AssignmentRepository(session, OWNER).set("axe.b.continue", profile.id)
         await session.commit()
 
     async with Session() as session:
@@ -258,10 +255,8 @@ async def test_for_prefix_treats_like_wildcards_in_the_prefix_literally() -> Non
 async def test_for_prefix_still_finds_a_key_carrying_a_literal_percent() -> None:
     """Escaping narrows the read; it must not stop matching the literal key."""
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        profile = await profiles.create(name="One", kind="fake")
-        assignments = AssignmentRepository(session, OWNER)
-        await assignments.set("a%b.continue", profile.id)
+        profile = await _profile(session, OWNER, "One")
+        await AssignmentRepository(session, OWNER).set("a%b.continue", profile.id)
         await session.commit()
 
     async with Session() as session:
@@ -275,12 +270,10 @@ async def test_for_prefix_still_finds_a_key_carrying_a_literal_percent() -> None
 async def test_clear_removes_the_assignment_and_stays_quiet_without_one() -> None:
     """Verify clear drops the user's assignment and tolerates a missing one."""
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        profile = await profiles.create(name="One", kind="fake")
-        assignments = AssignmentRepository(session, OWNER)
-        await assignments.set("chat.ask", profile.id)
-        await assignments.clear("chat.ask")
-        await assignments.clear("chat.ask")  # nothing there: quiet
+        profile = await _profile(session, OWNER, "One")
+        await AssignmentRepository(session, OWNER).set("chat.ask", profile.id)
+        await AssignmentRepository(session, OWNER).clear("chat.ask")
+        await AssignmentRepository(session, OWNER).clear("chat.ask")  # nothing there: quiet
         await session.commit()
 
     async with Session() as session:
@@ -291,8 +284,8 @@ async def test_clear_removes_the_assignment_and_stays_quiet_without_one() -> Non
 async def test_assignments_are_scoped_per_user_even_for_the_same_task() -> None:
     """Verify both users can hold the same task_key without seeing each other."""
     async with Session() as session:
-        mine = await ProfileRepository(session, OWNER).create(name="Mine", kind="fake")
-        theirs = await ProfileRepository(session, OTHER).create(name="Theirs", kind="fake")
+        mine = await _profile(session, OWNER, "Mine")
+        theirs = await _profile(session, OTHER, "Theirs")
         await AssignmentRepository(session, OWNER).set("chat.ask", mine.id)
         await AssignmentRepository(session, OTHER).set("chat.ask", theirs.id)
         await session.commit()
@@ -310,7 +303,7 @@ async def test_assignments_are_scoped_per_user_even_for_the_same_task() -> None:
 async def test_an_llm_call_row_round_trips_its_profile_id() -> None:
     """Verify the audit column carries a profile id and stays nullable."""
     async with Session() as session:
-        profile = await ProfileRepository(session, OWNER).create(name="One", kind="fake")
+        profile = await _profile(session, OWNER, "One")
         session.add(
             LlmCall(
                 user_id=OWNER,

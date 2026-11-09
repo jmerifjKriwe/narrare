@@ -29,6 +29,7 @@ from app.capabilities.knowledge.repository import (
     EntitySuggestionRepository,
     RelationRepository,
     entity_search_text,
+    touch_novel,
 )
 from app.capabilities.knowledge.schemas import EntityUpdate, ReembedResult, RelationPatch
 from app.kernel.auth import SetupRequiredError
@@ -184,11 +185,23 @@ class KnowledgeService:
         self.suggestions = EntitySuggestionRepository(session, user_id)
         self.findings = ConsistencyFindingRepository(session, user_id)
 
-    async def list_documents(self) -> Sequence[Document]:
-        return await self.documents.list()
+    async def list_documents(self) -> list[tuple[Document, int]]:
+        """The documents, newest first, each paired with its passage count
+        from one grouped query — the list states size and count without a
+        query per row."""
+        documents = await self.documents.list()
+        counts = await self.chunks.count_chunks([document.id for document in documents])
+        return [(document, counts.get(document.id, 0)) for document in documents]
+
+    async def chunk_count(self, document_id: UUID) -> int:
+        """One document's passage count — the upload response's answer, the
+        same grouped count the list runs for every row at once."""
+        counts = await self.chunks.count_chunks([document_id])
+        return counts.get(document_id, 0)
 
     async def ingest(self, title: str, text: str) -> Document:
-        if len(text.encode("utf-8")) > MAX_UPLOAD_BYTES:
+        byte_size = len(text.encode("utf-8"))
+        if byte_size > MAX_UPLOAD_BYTES:
             raise DocumentTooLargeError
         if await self.session.get(User, self.user_id) is None:
             raise SetupRequiredError
@@ -200,10 +213,26 @@ class KnowledgeService:
         stored = await self.passages.stored_width()
         if stored is not None and stored != width:
             raise EmbeddingMismatchError(stored, width)
-        document = await self.documents.create(title, width)
+        document = await self.documents.create(title, width, byte_size)
         await self.chunks.create_many(document.id, chunks, vectors)
         await self.session.commit()
         return document
+
+    async def delete_document(self, document_id: UUID) -> None:
+        """Delete a document: the row goes, and its passages go with it.
+
+        The chunks' foreign key cascades, so a wrong upload leaves no
+        residue — the text cannot answer a search again (D4's hard delete,
+        the export the safety net).
+
+        Commit the deletion; raise NotFoundError for an absent or unowned
+        document.
+        """
+        document = await self.documents.get(document_id)
+        if document is None:
+            raise NotFoundError
+        await self.documents.delete(document)
+        await self.session.commit()
 
     async def search(self, query: str, limit: int) -> Sequence[Passage]:
         [vector] = await self.embeddings.embed([query])
@@ -271,7 +300,11 @@ class KnowledgeService:
         return job
 
     async def list_entities(
-        self, novel_id: UUID, type: str | None = None, tag: str | None = None, q: str | None = None
+        self,
+        novel_id: UUID,
+        type: str | None = None,  # pylint: disable=redefined-builtin
+        tag: str | None = None,
+        q: str | None = None,
     ) -> Sequence[Entity]:
         """The novel's entities, filtered by type and tag or fuzzy-found by
         q (the trigram tier over search_text); raise NotFoundError for an
@@ -325,6 +358,8 @@ class KnowledgeService:
         )
         skipped = await self._resolve_proposals(entity, suggestion)
         suggestion.status = ACCEPTED
+        # the canon gained a row (D8): the accept is a write to the book
+        await touch_novel(self.session, self.user_id, suggestion.novel_id)
         await self.session.commit()
         return entity, skipped
 
@@ -512,6 +547,8 @@ class KnowledgeService:
             # body-only edit moves no identity word, and a type change alone
             # moves nothing, so those are plain column writes.
             entity.search_text = entity_search_text(entity.name, entity.aliases, entity.tags)
+        # the canon changed (D8): the correction is a write to the book
+        await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
         return entity
 
@@ -530,6 +567,8 @@ class KnowledgeService:
         if entity is None:
             raise NotFoundError
         await self.entities.delete(entity)
+        # the canon lost a row (D8): the deletion is a write to the book
+        await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
 
     async def entity_relations(self, entity_id: UUID) -> Sequence[EntityRelation]:
@@ -589,6 +628,8 @@ class KnowledgeService:
             if getattr(error.orig, "sqlstate", None) == UNIQUE_VIOLATION:
                 raise RelationExistsError from None
             raise NotFoundError from None
+        # the canon gained an edge (D8): the book was written in
+        await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
         return relation
 
@@ -607,6 +648,12 @@ class KnowledgeService:
         relation = await self.relations.get(relation_id)
         if relation is None:
             raise NotFoundError
+        # The edge's novel, from either end: an edge joins one story —
+        # add_relation enforces it at birth and a merge cannot cross
+        # novels — so the from-end's row answers for the whole edge. Read
+        # before the patch: a later read would autoflush the pending
+        # retype outside the race backstop the commit below carries.
+        end = await self.entities.get(relation.from_entity_id)
         provided = changes.model_fields_set
         if "relation_type" in provided:
             checked = _validate_relation_type(changes.relation_type)
@@ -620,6 +667,10 @@ class KnowledgeService:
         if "note" in provided:
             relation.note = changes.note
         try:
+            # the canon changed (D8): the retype is a write to the book,
+            # and a refused one rolls back with the retype it rode
+            if end is not None:
+                await touch_novel(self.session, self.user_id, end.novel_id)
             await self.session.commit()
         except IntegrityError:
             # The constraint caught what the look-before-write missed: a
@@ -640,7 +691,12 @@ class KnowledgeService:
         relation = await self.relations.get(relation_id)
         if relation is None:
             raise NotFoundError
+        # Either end names the edge's novel (see update_relation): the
+        # canon is about to lose an edge (D8), and the book was written in.
+        end = await self.entities.get(relation.from_entity_id)
         await self.relations.delete(relation)
+        if end is not None:
+            await touch_novel(self.session, self.user_id, end.novel_id)
         await self.session.commit()
 
     async def merge_entities(self, source_id: UUID, target_id: UUID) -> Entity:
@@ -750,5 +806,9 @@ class KnowledgeService:
             )
         target.search_text = entity_search_text(target.name, target.aliases, target.tags)
         await self.entities.delete(source)
+        # the archive changed three ways — a row gone, its edges re-pointed,
+        # its fields folded (D8): the book was written in. The ends share a
+        # novel by the check above, so the survivor's novel is the merge's.
+        await touch_novel(self.session, self.user_id, target.novel_id)
         await self.session.commit()
         return target

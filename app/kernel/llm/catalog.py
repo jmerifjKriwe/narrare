@@ -3,7 +3,7 @@
 ``data/models.json`` is a snapshot of ``https://models.dev/api.json`` reduced
 to the fields this kernel needs, dated in ``snapshot_date`` and refreshed by
 hand (:mod:`app.kernel.llm.data.refresh`) — nothing here touches the network
-at runtime. Lookup tolerates how a profile spells a model, and the cost truth
+at runtime. Lookup tolerates how a provider serves a model, and the cost truth
 table (design D4) turns what the catalog knows into what a call cost.
 
 The snapshot is parsed once per process into a module cache and returned as a
@@ -11,7 +11,9 @@ read-only view, so a damaged file is a :class:`CatalogError` naming the file
 at load instead of a bare ``KeyError`` at the first call it prices, and no
 caller can leak a mutation into later lookups. Its two lookup indexes — the
 vendor-prefix tier and the normalized tier — are built in the same pass, so a
-lookup never re-sorts the thousands of ids.
+lookup never re-sorts the thousands of ids. The same pass captures the
+snapshot's date: :func:`snapshot_date` serves it from the cache, never from
+a second read of the file.
 """
 
 from collections.abc import Mapping  # noqa: TC003
@@ -64,6 +66,9 @@ _FIELDS = _WINDOW_FIELDS + _PRICE_FIELDS + _FLAG_FIELDS
 _catalog: MappingProxyType[str, ModelInfo] | None = None
 """The parsed snapshot, parsed once, then served by reference."""
 
+_snapshot_date: str | None = None
+"""The snapshot's date, captured by the same parse that filled the cache."""
+
 _index_cache: dict[
     int, tuple[Mapping[str, ModelInfo], dict[str, ModelInfo], dict[str, ModelInfo]]
 ] = {}
@@ -81,31 +86,41 @@ def load_catalog() -> MappingProxyType[str, ModelInfo]:
     """Every vendored model, keyed by its full ``vendor/model`` id.
 
     Parsed once per process: the snapshot is static and 2.5 MB, and the
-    resolver's per-call lookups must not re-read it. The return is a
-    read-only view over the cached dict — an assignment raises ``TypeError``
-    instead of leaking into every later lookup. A damaged snapshot — broken
-    JSON, no ``models`` object, an entry whose fields are not exactly
-    ``ModelInfo``'s, a value of the wrong kind — raises
+    resolver's per-call lookups must not re-read it. The parse also captures
+    the snapshot's date, which :func:`snapshot_date` serves from this cache.
+    The return is a read-only view over the cached dict — an assignment raises
+    ``TypeError`` instead of leaking into every later lookup. A damaged
+    snapshot — broken JSON, no ``models`` object, an entry whose fields are not
+    exactly ``ModelInfo``'s, a value of the wrong kind — raises
     :class:`CatalogError` naming the file, at load.
 
     Tests that need their own snapshot monkeypatch this function; whatever
     mapping it returns is indexed like the real one, once per mapping.
     """
-    global _catalog
+    global _catalog, _snapshot_date
     if _catalog is None:
-        _catalog = MappingProxyType(_parse(SNAPSHOT))
+        infos, date = _parse(SNAPSHOT)
+        _snapshot_date = date
+        _catalog = MappingProxyType(infos)
     return _catalog
 
 
-def _parse(snapshot: Path) -> dict[str, ModelInfo]:
-    """Parse and shape-check the snapshot, or raise :class:`CatalogError`."""
+def _parse(snapshot: Path) -> tuple[dict[str, ModelInfo], str | None]:
+    """Parse, shape-check and date the snapshot, or raise :class:`CatalogError`.
+
+    The date is part of the payload the parse already reads; a second read of
+    the 2.5 MB file for one string would be the dearest fact on the settings
+    page. A date that is absent or not a string stays ``None`` — the callers
+    show a date, never a failure.
+    """
     try:
         payload = loads(snapshot.read_text())
         entries = payload["models"]
         infos = {model_id: _info(model_id, entry) for model_id, entry in entries.items()}
+        date = payload.get("snapshot_date")
     except (KeyError, TypeError, AttributeError, ValueError) as damaged:
         raise CatalogError(f"damaged catalog snapshot at {snapshot}: {damaged}") from damaged
-    return infos
+    return infos, date if isinstance(date, str) else None
 
 
 def _info(model_id: str, entry: object) -> ModelInfo:
@@ -138,26 +153,31 @@ def _info(model_id: str, entry: object) -> ModelInfo:
 def effective_info(
     model_id: str,
     *,
+    vendor: str | None = None,
     profile_context_window: int | None,
     profile_max_output_tokens: int | None,
 ) -> ModelInfo | None:
-    """The catalog's facts for the model a profile named, or None.
+    """The catalog's facts for the model a provider serves, or None.
 
-    Three tiers, first match wins. The exact full id; then the id under any
-    vendor — the query's provider prefix (``id.split("/")[0]``) is traded for
-    the full id's vendor segment, so ``llama-3`` and ``groq/llama-3`` both
-    find ``meta/llama-3``, the first full id in sort order when several do;
-    then a normalized match folding case and the ``-`` ``.`` ``:`` ``_``
-    separators (``llama3:8b`` ≡ ``llama-3-8b``). An id no tier reaches has no
-    info: the cost stays NULL and the settings UI asks.
+    Four tiers, first match wins. The provider's own vendor spelled the full
+    id (``vendor/model``), first — the same model string prices differently
+    per provider, and this tier is what makes that true. Then the exact id
+    as given; then the id under any vendor — the query's provider prefix
+    (``id.split("/")[0]``) is traded for the full id's vendor segment, so
+    ``llama-3`` and ``groq/llama-3`` both find ``meta/llama-3``, the first
+    full id in sort order when several do; then a normalized match folding
+    case and the ``-`` ``.`` ``:`` ``_`` separators (``llama3:8b`` ≡
+    ``llama-3-8b``). An id no tier reaches has no info: the cost stays NULL
+    and the settings UI asks.
 
-    The profile's two tunables override the catalog's; prices and
-    capabilities are the catalog's or nobody's.
+    The model's two tunables override the catalog's; prices and capabilities
+    are the catalog's or nobody's.
     """
     entries = load_catalog()
     by_bare, by_folded = _indexes(entries)
     found = (
-        entries.get(model_id)
+        (entries.get(f"{vendor}/{model_id}") if vendor else None)
+        or entries.get(model_id)
         or by_bare.get(_bare(model_id))
         or by_folded.get(_fold(_bare(model_id)))
     )
@@ -168,6 +188,35 @@ def effective_info(
     if profile_max_output_tokens is not None:
         found = replace(found, max_output_tokens=profile_max_output_tokens)
     return found
+
+
+def vendor_models(vendor: str) -> tuple[str, ...]:
+    """The model ids the vendor serves, bare and sorted; none for an unknown one.
+
+    The bare id is everything after the first slash — a vendor whose ids
+    carry path segments of their own lists them whole, which is the string
+    the provider's users type as the model. This is the form filler's
+    vocabulary, not a lookup: spelling a model is the user's job, pricing it
+    is :func:`effective_info`'s.
+    """
+    prefix = f"{vendor}/"
+    return tuple(
+        sorted(
+            model_id[len(prefix) :] for model_id in load_catalog() if model_id.startswith(prefix)
+        )
+    )
+
+
+def snapshot_date() -> str | None:
+    """The snapshot's own ``snapshot_date``, served from the cached parse.
+
+    ``None`` when the file names no date — the callers show a date, never a
+    failure, and :class:`CatalogError` stays :func:`load_catalog`'s to raise.
+    The date is captured when the snapshot is parsed, so reading it walks the
+    same cache every lookup walks and never touches the file again.
+    """
+    load_catalog()
+    return _snapshot_date
 
 
 def compute_cost(

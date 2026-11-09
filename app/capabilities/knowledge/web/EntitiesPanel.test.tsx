@@ -30,15 +30,15 @@ function renderPanel() {
     path: "/novels/$id",
     component: Outlet,
   });
-  const wissen = createRoute({
+  const knowledge = createRoute({
     getParentRoute: () => novel,
-    path: "wissen",
+    path: "knowledge",
     component: EntitiesPanel,
     validateSearch: (search: Record<string, unknown>) => ({ entity: search.entity as string | undefined }),
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([novel.addChildren([wissen])]),
-    history: createMemoryHistory({ initialEntries: ["/novels/novel/wissen"] }),
+    routeTree: rootRoute.addChildren([novel.addChildren([knowledge])]),
+    history: createMemoryHistory({ initialEntries: ["/novels/novel/knowledge"] }),
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);

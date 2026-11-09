@@ -1,0 +1,21 @@
+# The build context is the repository; everything the image does not read stays
+# out of it, so a change in docs/ or a test file never invalidates a layer.
+.git
+.github
+.venv
+docs
+_scratch
+backups
+coverage.xml
+data
+**/__pycache__
+**/*.py[cod]
+**/tests
+**/e2e
+.pytest_cache
+.ruff_cache
+node_modules
+web/node_modules
+web/dist
+web/test-results
+web/playwright-report

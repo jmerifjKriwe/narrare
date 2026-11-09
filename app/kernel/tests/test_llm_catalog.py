@@ -8,7 +8,9 @@ the catalog's. The synthetic snapshots here pin the rules; the smoke tests
 hold the vendored file to the shape the rules assume.
 """
 
-from json import loads
+from dataclasses import asdict
+from json import dumps, loads
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -20,11 +22,12 @@ from app.kernel.llm.catalog import (
     compute_cost,
     effective_info,
     load_catalog,
+    snapshot_date,
+    vendor_models,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     # What the vendoring fixture installs: the snapshot effective_info reads.
     Install = Callable[[dict[str, ModelInfo]], None]
@@ -44,6 +47,33 @@ def priced(input_price: float | None = 3.0, output_price: float | None = 15.0) -
         supports_tools=True,
         supports_vision=False,
     )
+
+
+def synthetic_snapshot(*, date: str | None) -> str:
+    """A one-model snapshot as JSON text, dated or not, shaped like the real one."""
+    payload: dict[str, object] = {"models": {"acme/turbo-3": asdict(priced())}}
+    if date is not None:
+        payload["snapshot_date"] = date
+    return dumps(payload)
+
+
+@pytest.fixture
+def re_vendoring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[str], None]:
+    """Install a synthetic snapshot *file* as the one the cache re-reads.
+
+    The :func:`vendoring` seam swaps the parsed mapping; this one swaps the
+    file the parse reads, so the parse itself — damage, dating — is what is
+    under test. Resetting ``_catalog`` is what forces the re-read.
+    """
+
+    def install(contents: str) -> None:
+        snapshot = tmp_path / "models.json"
+        snapshot.write_text(contents)
+        monkeypatch.setattr(catalog, "SNAPSHOT", snapshot)
+        monkeypatch.setattr(catalog, "_catalog", None)  # the cache must re-read
+        monkeypatch.setattr(catalog, "_snapshot_date", None)  # the parse re-captures it
+
+    return install
 
 
 @pytest.fixture
@@ -149,7 +179,32 @@ def test_a_real_kind_leaves_the_truth_table_untouched() -> None:
     assert local == 0.0
 
 
-# The lookup cascade: exact → provider prefix → normalized, first tier wins.
+# The lookup cascade: vendor exact → exact → provider prefix → normalized,
+# first tier wins.
+
+
+def test_the_vendors_exact_id_is_the_first_tier(vendoring: Install) -> None:
+    """Verify ``vendor/model`` is tried before the bare tier can answer.
+
+    Two providers serve the same bare model under different vendors; each
+    must reach its own vendor's fact sheet, not the bare tier's first match.
+    """
+    zed = priced(30.0, 60.0)
+    vendoring({"aaa/turbo-3": priced(), "zed/turbo-3": zed})
+    info = effective_info(
+        "turbo-3", vendor="zed", profile_context_window=None, profile_max_output_tokens=None
+    )
+    assert info is zed  # not the bare tier's aaa/turbo-3
+
+
+def test_an_unknown_vendors_model_falls_through_the_old_tiers(vendoring: Install) -> None:
+    """Verify a vendor the catalog does not carry changes nothing."""
+    meta = priced()
+    vendoring({"meta/llama-3": meta})
+    info = effective_info(
+        "llama-3", vendor="ghost", profile_context_window=None, profile_max_output_tokens=None
+    )
+    assert info is meta
 
 
 def test_an_exact_id_wins_over_a_prefix_match(vendoring: Install) -> None:
@@ -243,6 +298,84 @@ def test_the_snapshot_carries_a_date_and_at_least_one_price() -> None:
         info.input_price_per_mtok is not None and info.output_price_per_mtok is not None
         for info in load_catalog().values()
     )
+
+
+def test_snapshot_date_names_the_vendored_files_date() -> None:
+    """Verify the reader answers with the file's own ``snapshot_date``."""
+    raw = loads(catalog.SNAPSHOT.read_text())
+    assert snapshot_date() == raw["snapshot_date"]
+
+
+def test_snapshot_date_answers_the_synthetic_snapshots_date(
+    re_vendoring: Callable[[str], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify a dated snapshot's date travels with the cache's own parse.
+
+    The date is captured when the catalog is parsed, not on a second read:
+    once ``load_catalog`` has answered, the file could vanish and the cached
+    date would still be the truth the settings page shows.
+    """
+    re_vendoring(synthetic_snapshot(date="2030-01-31"))
+    entries = load_catalog()  # the parse: the date is captured here
+    assert load_catalog() is entries
+    # Not re-readable any more: a second file read would crash, the cached
+    # parse must not need one.
+    monkeypatch.setattr(catalog, "SNAPSHOT", Path("/nonexistent/models.json"))
+    assert snapshot_date() == "2030-01-31"
+
+
+def test_snapshot_date_answers_none_when_the_snapshot_names_no_date(
+    re_vendoring: Callable[[str], None],
+) -> None:
+    """Verify a dateless snapshot stays silent: ``None``, never a failure.
+
+    The settings page names the date beside the model picker; a snapshot
+    without one must show the honest "unknown" there, and the read endpoint
+    must carry ``null``, not an error.
+    """
+    re_vendoring(synthetic_snapshot(date=None))
+    assert snapshot_date() is None
+
+
+def test_a_whole_catalog_pass_reads_the_snapshot_exactly_once(
+    re_vendoring: Callable[[str], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify load, date and list together re-open the file never.
+
+    The date rides the cached parse, so a pass that loads the catalog, asks
+    for its date and lists a vendor's models must cost one ``read_text`` —
+    not two. Counting the reads pins the requirement itself: a second,
+    eager parse moved *inside* ``load_catalog`` would still pass a pin on
+    ``snapshot_date``'s own caching while costing every pass the file twice.
+    """
+    re_vendoring(synthetic_snapshot(date="2030-01-31"))
+    reads = 0
+    real_read_text = Path.read_text
+
+    def counting_read_text(
+        path: Path, encoding: str | None = None, errors: str | None = None
+    ) -> str:
+        nonlocal reads
+        reads += 1
+        return real_read_text(path, encoding, errors)
+
+    monkeypatch.setattr(Path, "read_text", counting_read_text)
+    assert load_catalog()
+    assert snapshot_date() == "2030-01-31"
+    assert vendor_models("acme") == ("turbo-3",)
+    assert reads == 1
+
+
+def test_vendor_models_lists_the_vendors_bare_ids_sorted(vendoring: Install) -> None:
+    """Verify bare ids in sort order; an unknown vendor names none.
+
+    The bare id is everything after the first slash, so a vendor whose own
+    ids carry path segments (``zed/z-ai/glm-5.3``) lists them whole — that is
+    the string the provider's users type as the model.
+    """
+    vendoring({"zed/turbo-3": priced(), "zed/z-ai/glm": priced(), "aaa/turbo-3": priced()})
+    assert vendor_models("zed") == ("turbo-3", "z-ai/glm")
+    assert vendor_models("nobody") == ()
 
 
 def test_the_snapshot_is_parsed_once_per_process() -> None:

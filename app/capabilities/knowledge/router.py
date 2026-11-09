@@ -59,7 +59,10 @@ ServiceDep = Annotated[KnowledgeService, Depends(_service)]
 
 @router.get("/documents", response_model=list[DocumentRead])
 async def list_documents(service: ServiceDep) -> list[DocumentRead]:
-    return [DocumentRead.model_validate(document) for document in await service.list_documents()]
+    return [
+        DocumentRead.model_validate(document).model_copy(update={"chunk_count": count})
+        for document, count in await service.list_documents()
+    ]
 
 
 @router.post("/documents", response_model=DocumentRead, status_code=201)
@@ -87,7 +90,22 @@ async def upload_document(
             status_code=409,
             detail={"code": "embedding-mismatch", "stored": error.stored, "found": error.found},
         ) from None
-    return DocumentRead.model_validate(document)
+    return DocumentRead.model_validate(document).model_copy(
+        update={"chunk_count": await service.chunk_count(document.id)}
+    )
+
+
+@router.delete("/documents/{document_id}", status_code=204)
+async def delete_document(document_id: UUID, service: ServiceDep) -> None:
+    """Delete a document. Its chunks' foreign key cascades: the passages go
+    with the row, and search cannot find its text again.
+
+    Raise HTTP 404 for an absent or unowned document.
+    """
+    try:
+        await service.delete_document(document_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="document not found") from None
 
 
 @router.post("/reembed", response_model=ReembedResult)
@@ -143,7 +161,7 @@ async def start_extraction(
 async def list_entities(
     novel_id: UUID,
     service: ServiceDep,
-    type: str | None = None,
+    type: str | None = None,  # pylint: disable=redefined-builtin
     tag: str | None = None,
     q: str | None = None,
 ) -> list[EntityRead]:

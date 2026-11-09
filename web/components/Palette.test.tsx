@@ -138,10 +138,10 @@ function stubRoutes(root: typeof rootRoute) {
     path: "/novels/$id",
     component: () => <p>workbench</p>,
   });
-  const wissen = createRoute({
+  const knowledge = createRoute({
     getParentRoute: () => novel,
-    path: "wissen",
-    component: () => <p>wissen</p>,
+    path: "knowledge",
+    component: () => <p>knowledge</p>,
   });
   const settings = createRoute({
     getParentRoute: () => root,
@@ -153,7 +153,7 @@ function stubRoutes(root: typeof rootRoute) {
     path: "/settings/prompts",
     component: () => <p>prompts</p>,
   });
-  return [home, novel, wissen, settings, prompts];
+  return [home, novel, knowledge, settings, prompts];
 }
 
 function renderAt(path: string) {
@@ -336,7 +336,7 @@ describe("the groups fill from context", () => {
     const commands = await paletteGroup(t("palette.commands"));
     expect(within(commands).getByRole("button", { name: t("commands.openSettings") })).toBeTruthy();
     expect(within(commands).getByRole("button", { name: t("commands.openPrompts") })).toBeTruthy();
-    expect(within(commands).getByRole("button", { name: t("commands.openWissenDock") })).toBeTruthy();
+    expect(within(commands).getByRole("button", { name: t("commands.openKnowledgeDock") })).toBeTruthy();
     expect(within(commands).getByRole("button", { name: t("commands.newChapter") })).toBeTruthy();
     expect(within(commands).getByRole("button", { name: t("commands.exportNovel") })).toBeTruthy();
   });
@@ -359,7 +359,7 @@ describe("the groups fill from context", () => {
     expect(within(pages).getAllByRole("button", { name: t("knowledge.dockTitle") }).length).toBe(1);
     expect(within(pages).getAllByRole("button", { name: t("chat.heading") }).length).toBe(1);
     const commands = await paletteGroup(t("palette.commands"));
-    expect(within(commands).queryByRole("button", { name: t("commands.openWissenDock") })).toBeNull();
+    expect(within(commands).queryByRole("button", { name: t("commands.openKnowledgeDock") })).toBeNull();
     expect(within(commands).queryByRole("button", { name: t("commands.newChapter") })).toBeNull();
     expect(within(commands).queryByRole("button", { name: t("commands.exportNovel") })).toBeNull();
     expect(within(commands).getByRole("button", { name: t("commands.openSettings") })).toBeTruthy();
@@ -437,7 +437,7 @@ describe("the deep links", () => {
     const user = userEvent.setup();
     await user.click(await paletteRow("Meister Lampe"));
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/wissen`),
+      expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}/knowledge`),
     );
     expect(router.state.location.search).toMatchObject({ entity: ENTITY_ID });
     expect(screen.queryByRole("dialog")).toBeNull();

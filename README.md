@@ -80,8 +80,11 @@ model.
 
 ## Getting started
 
-This is a developer setup: Narrare runs from source today, and there is no installer
-and no image yet. A first run needs the toolchain below and two commands.
+Narrare runs as a container image next to a PostgreSQL with pgvector; installation,
+upgrade and restore are in [docs/user/install.md](docs/user/install.md). What follows
+is the developer setup, for working on the code itself.
+
+A first run needs the toolchain below and two commands.
 
 ### Requirements
 
@@ -115,7 +118,8 @@ headless run wants.
 Pre-1.0 and moving. The foundation is in place: provider profiles and their per-task
 assignment live in the app's settings, and a manuscript exports to and imports from a
 portable archive, with conflicts reported rather than silently overwritten. Series do
-not exist yet, and neither does a packaged release.
+not exist yet, and the only packaged form is the container image — no installer, no
+desktop app.
 
 What *is* built is proven the expensive way: every capability carries an end-to-end
 test that drives a real browser against the real API and a real Postgres, and the only

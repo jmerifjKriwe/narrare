@@ -1,29 +1,59 @@
-"""Close audited event generators before the response releases their resources."""
+"""Close audited event generators before the response releases their resources.
 
+The error frame is here too: the one frame a stream ends with when it cannot
+deliver an answer, carrying a machine code (and whatever facts name the
+cause) instead of the empty payload it used to be. The code is what the web
+surfaces translate; the frames' exact bytes are pinned in
+``app/kernel/tests/test_llm_streaming.py``.
+"""
+
+import json
 from collections.abc import AsyncGenerator, Mapping  # noqa: TC003
 from typing import TYPE_CHECKING
 
 from anyio import CancelScope
 from starlette.responses import StreamingResponse
 
+from app.kernel.llm.contract import error_code
+
 if TYPE_CHECKING:
     from starlette.types import Receive, Scope, Send
 
 
-ERROR_FRAME = "event: error\ndata: {}\n\n"
-"""The one frame a stream ends with when no provider call could run.
+def error_frame(code: str, **params: str) -> str:
+    """The one frame a stream ends with when it cannot deliver an answer.
 
-Resolution failed before a call — a lost key, a budget that leaves no
-room — so no provider was asked and no audit row exists; the stream still
-ends the way a dead provider's does, so the reader sees one message
-instead of an answer that silently stopped. Writing and chat both send
-exactly this frame; the constant is the single spelling.
-"""
+    ``event: error`` with a JSON payload that always names ``code`` — what
+    the reader localizes — plus the facts that name the cause (``model`` for
+    a missing model, ``detail`` for the provider's own message). The bytes
+    are the contract: one line per field, the payload's keys in insertion
+    order, exactly what the web reader parses back.
+    """
+    return f"event: error\ndata: {json.dumps({'code': code, **params})}\n\n"
 
 
-async def error_events() -> AsyncGenerator[str]:
-    """The one frame a stream ends with when no provider call could run."""
-    yield ERROR_FRAME
+def failure_frame(failure: BaseException) -> str:
+    """The frame for a failure a consumer's ``except`` just caught.
+
+    The code comes from the contract's closed vocabulary; a ``model``
+    attribute (``ModelNotFoundError`` carries it) and the failure's own text,
+    when it has one, ride along as the facts behind the sentence. One helper
+    for writing and chat, so both routers spell the dead-provider frame the
+    same way.
+    """
+    params: dict[str, str] = {}
+    model = getattr(failure, "model", None)
+    if isinstance(model, str):
+        params["model"] = model
+    detail = str(failure)
+    if detail:
+        params["detail"] = detail
+    return error_frame(error_code(failure), **params)
+
+
+async def error_events(code: str = "unknown", **params: str) -> AsyncGenerator[str]:
+    """Yield exactly the one error frame: a stream's whole ending, coded."""
+    yield error_frame(code, **params)
 
 
 class FinalizingStreamingResponse(StreamingResponse):

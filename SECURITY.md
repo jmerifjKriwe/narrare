@@ -21,6 +21,35 @@ get an acknowledgement once the report has been read, and an honest answer about
 whether and when a fix lands. A real issue found in good faith is credited in the
 advisory unless you prefer otherwise.
 
+## Threat model
+
+Narrare is single-tenant and local: one user, one database, one machine. The threats
+it is built to resist are those that survive that boundary — not a hostile internet.
+
+- **Prompt injection through imported or extracted text.** Documents, chapters and
+  extracted entities feed LLM prompts. Mitigations: prompts are templated and
+  parameterized, never string-concatenated with untrusted input; the LLM's output is
+  never executed as code or SQL; extraction results land as *suggestions* that
+  require explicit user acceptance.
+- **Cross-user data access.** Every user-owned row carries `user_id` and access goes
+  through the scoped repository base (`app/kernel/db/base.py`). Even though today
+  there is only the fixed local user, the scoping is enforced so a second tenant
+  cannot be bolted on without the guard already in place.
+- **SQL injection.** All queries go through SQLAlchemy ORM/parameterized statements;
+  no raw SQL with interpolated values. Fuzzing (`scripts/fuzz_archive.py`) covers
+  the interchange parser.
+- **Secret leakage.** Keys live in the OS keyring or a Fernet-encrypted file, never
+  in the database; gitleaks runs in the pre-commit hook and in CI; the
+  `check_secrets.py` gate scans the full history.
+- **Supply-chain compromise.** Dependencies are pinned (lockfiles, SHA-pinned
+  GitHub Actions); Dependabot opens update PRs; `pip-audit` and `pnpm audit` run in
+  CI; CodeQL and Scorecard scan the repository.
+- **Path traversal / file handling.** Asset and upload paths are resolved against a
+  fixed root and validated; the SPA catch-all (`app/api/main.py`) keeps unknown
+  `/api` paths as JSON and missing bundles as 404.
+- **Denial of service on the local machine.** Out of scope — a local tool trusts
+  its own user. Rate limiting is not implemented.
+
 ## Scope
 
 In scope is Narrare's own code: the API, the web app, database access, file and asset

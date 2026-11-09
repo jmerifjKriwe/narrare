@@ -22,28 +22,56 @@
  */
 import "./editorApiServer";
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
-import { useAutosave, unsavedStatus, type FlushOutcome } from "@shell/lib/save";
+import {
+  useAutosave,
+  unsavedStatus,
+  type DocumentDraft,
+  type FlushOutcome,
+} from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
 
-/** The editor as the page mounts it: the autosave hook above, `status` and
- *  `schedule` handed down — saving is not the editor's. The flush button
+/** The editor as the page mounts it: the autosave hook above, `status`,
+ *  `schedule` and the runhead's `title`/`onTitleChange` handed down —
+ *  saving is not the editor's, and the draft is the page's, held here the
+ *  way NovelPage holds it: every schedule passes through one wrapper, so
+ *  the field state and the pending save cannot disagree. The flush button
  *  stands where the page's leave paths call `save.flush()`. */
-function Harness(props: { chapterId?: string; body?: string; proposal?: string | null;
+function Harness(props: { chapterId?: string; body?: string; title?: string; proposal?: string | null;
   onProposalResolve?: (accepted: boolean) => void;
-  onSaved?: (id: string, body: string) => void;
+  onSaved?: (id: string, draft: DocumentDraft) => void;
   onFlushed?: (outcome: FlushOutcome) => void }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
+  // The document as one draft — title beside body — reset from the props
+  // the editor initializes from; the editor owns the caret, the page owns
+  // the document.
+  const [draft, setDraft] = useState<DocumentDraft>({
+    title: props.title ?? "",
+    body: props.body ?? "",
+  });
+  const latest = useRef(draft);
+  latest.current = draft;
+  const schedule = useCallback(
+    (next: DocumentDraft, changed: keyof DocumentDraft) => {
+      setDraft(next);
+      save.schedule(next, changed);
+    },
+    [save.schedule],
+  );
+  const onTitleChange = useCallback(
+    (value: string) => schedule({ ...latest.current, title: value }, "title"),
+    [schedule],
+  );
   // NovelPage hands this predicate to the router blocker; jsdom has no
   // router, so the same function answers a dispatched event here — the
   // predicate itself is shared, not copied, so it cannot drift.
@@ -62,8 +90,10 @@ function Harness(props: { chapterId?: string; body?: string; proposal?: string |
       <ChapterEditor
         chapterId={props.chapterId ?? CHAPTER}
         body={props.body ?? ""}
+        title={draft.title}
+        onTitleChange={onTitleChange}
         status={save.status}
-        schedule={save.schedule}
+        schedule={schedule}
         proposal={props.proposal}
         onProposalResolve={props.onProposalResolve}
       />
@@ -85,9 +115,25 @@ function streamOf(...frames: (object | string)[]): string {
 }
 
 /** How a dead provider ends the stream: the router's own error frame, byte
- * for byte (writing/router.py) — `event: error` with an empty payload, not
- * a `data:` shape no endpoint emits. */
-const PROVIDER_DIED = "event: error\ndata: {}\n\n";
+ * for byte (writing/router.py) — `event: error` with the unclassified code
+ * and the provider's message, not a `data:` shape no endpoint emits. */
+const PROVIDER_DIED =
+  'event: error\ndata: {"code": "unknown", "detail": "the provider died"}\n\n';
+
+/** The generic sentence any failure without an actionable code speaks: the
+ * unknown frame's, the refused request's, the cut wire's — always with the
+ * settings door inside. */
+function continueFailed(): string {
+  return t("errors.unknown", { link: t("errors.link") });
+}
+
+/** How the missing model ends the stream: the coded frame, byte for byte —
+ * the code the sentence is picked from, the model it names, the provider's
+ * message behind the disclosure. */
+const MODEL_GONE =
+  "event: error\ndata: "
+  + '{"code": "model-not-found", "model": "glm-5.3",'
+  + ' "detail": "the endpoint does not serve the model \'glm-5.3\'"}\n\n';
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry
 // is simply missing — and ProseMirror reads Range rects whenever it scrolls
@@ -378,7 +424,7 @@ describe("ChapterEditor's ghost text", () => {
       <Harness
         chapterId={CHAPTER}
         body="Anfang."
-        onSaved={(id, body) => saved.push([id, body])}
+        onSaved={(id, draft) => saved.push([id, draft.body])}
       />,
     );
     const user = await focusEditor();
@@ -413,7 +459,7 @@ describe("ChapterEditor's ghost text", () => {
     // and finds nothing, so only the status line can tell this from a save.
     const saved: [string, string][] = [];
     editorServer.refuseSaveEmpty = true;
-    render(<Harness body="" onSaved={(id, body) => saved.push([id, body])} />);
+    render(<Harness body="" onSaved={(id, draft) => saved.push([id, draft.body])} />);
     const user = await focusEditor();
     await user.keyboard("Niemand hat das gespeichert.");
     await waitFor(
@@ -494,7 +540,7 @@ describe("ChapterEditor's ghost text", () => {
   it("does not report a save that answers after the body was discarded", { timeout: 10_000 }, async () => {
     const saved: [string, string][] = [];
     editorServer.holdNext = 1;
-    render(<Harness body="" onSaved={(id, body) => saved.push([id, body])} />);
+    render(<Harness body="" onSaved={(id, draft) => saved.push([id, draft.body])} />);
     const user = await focusEditor();
     await user.keyboard("Zu spät.");
     await waitFor(() => expect(editorServer.requests).toHaveLength(1));
@@ -616,13 +662,35 @@ describe("ChapterEditor's ghost text", () => {
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
     // The error frame replaces the done frame: nothing of the suggestion
-    // remains, the failure is on screen — and the announcement names the
-    // failure. It does not claim the user discarded anything: only the
-    // user's own Esc may say that.
+    // remains, the failure is on screen — the generic sentence, the frame's
+    // code saying nothing actionable. The announcement names the failure;
+    // it does not claim the user discarded anything: only the user's own
+    // Esc may say that.
     await waitFor(() => expect(document.querySelector(".ghost")).toBeNull());
-    expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError"));
+    expect(screen.getByRole("alert").textContent).toContain(continueFailed());
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(before.discarded);
+  });
+
+  it("says what to do when the provider stopped serving the model", { timeout: 10_000 }, async () => {
+    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, MODEL_GONE);
+    render(<Harness chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The frame's code picks the sentence: it names the model, points at the
+    // settings with the link inside the sentence, and keeps the provider's
+    // own message behind the disclosure — technical detail, never the
+    // headline the reader is meant to act on.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      t("errors.modelNotFound", { model: "glm-5.3", link: t("errors.link") }),
+    );
+    const link = within(alert).getByRole("link", { name: t("errors.link") });
+    expect(link.getAttribute("href")).toBe("/settings/provider");
+    const disclosure = alert.querySelector("details");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure!.textContent).toContain("the endpoint does not serve the model");
   });
 
   it("announces a refused continuation as a failure", { timeout: 10_000 }, async () => {
@@ -636,7 +704,7 @@ describe("ChapterEditor's ghost text", () => {
     // failure is the truth of the click the user just made — the alert
     // shows it, and the announcement says it instead of nothing.
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+      expect(screen.getByRole("alert").textContent).toContain(continueFailed()),
     );
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
   });
@@ -659,7 +727,7 @@ describe("ChapterEditor's ghost text", () => {
     // about a ghost that is not on screen. The alert still names the
     // refused request — that one is the user's.
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+      expect(screen.getByRole("alert").textContent).toContain(continueFailed()),
     );
     expect(screen.getByText("Das Angebot bleibt.")).toBeTruthy();
     expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed);
@@ -708,11 +776,45 @@ describe("ChapterEditor's ghost text", () => {
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+      expect(screen.getByRole("alert").textContent).toContain(continueFailed()),
     );
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     const button = screen.getByRole("button", { name: t("chapters.continue") }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false)); // the finally ran
+  });
+});
+
+describe("ChapterEditor's runhead title", () => {
+  it("the_runhead_renders_the_title_as_an_editable_field", async () => {
+    render(<Harness title="Waldlauf" body="Anfang." />);
+
+    // The runhead's chapter line is the input: labelled by its own name,
+    // carrying the chapter's title as its value, and empty is legal — no
+    // required, and the server's 200-character ceiling held client-side.
+    const field = screen.getByRole("textbox", { name: t("chapters.titleLabel") });
+    expect((field as HTMLInputElement).value).toBe("Waldlauf");
+    expect((field as HTMLInputElement).maxLength).toBe(200);
+    expect((field as HTMLInputElement).required).toBe(false);
+  });
+
+  it("typing_a_title_leaves_the_save_pending", { timeout: 10_000 }, async () => {
+    render(<Harness title="" body="" />);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await user.type(screen.getByRole("textbox", { name: t("chapters.titleLabel") }), "Winternacht");
+
+    // Inside the debounce nothing is on the wire and nothing is claimed
+    // saved: a title is text like the body, pending until it lands.
+    expect(editorServer.requests).toEqual([]);
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+
+    // The debounce lands as one PUT, and it carries the title only — the
+    // chapter's untouched body never rides a rename.
+    await waitFor(() => expect(editorServer.requests).toHaveLength(1), { timeout: 4_000 });
+    expect(JSON.parse(editorServer.requests[0].body)).toStrictEqual({ title: "Winternacht" });
+    await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
+      timeout: 5000,
+    });
   });
 });
 

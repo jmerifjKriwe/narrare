@@ -56,7 +56,7 @@ Pure rendering and wiring do not require unit tests.
 
 ## Gates and CI
 
-- `just check` — lint and types (ruff, pyright, tsc).
+- `just check` — lint and types (ruff, Biome, pyright, tsc).
 - `just check-generated` — regenerates the capability views, the OpenAPI document,
   the typed client and the docs index; fails if the committed files change (CI
   only: `pnpm dlx` needs the network).
@@ -68,6 +68,8 @@ Pure rendering and wiring do not require unit tests.
 - `just verify` — check, test, test-frontend and the E2E, plus the production
   build, with the E2E narrowed the same way; it deliberately omits the CI-only
   `check-generated`.
+- `just test-frontend-changed` — only the web tests the working tree touches;
+  the inner loop for frontend work. Full suite via `test-frontend`.
 
 CI runs `just check`, `just check-generated`, `just test` and `just test-frontend`
 on every PR, plus the production build; the E2E narrows to the capabilities a
@@ -82,6 +84,10 @@ tool is introduced by this document — it states expectations, not mechanisms.
 - Backend tests get the real test database named per run — worktree token plus
   a per-run token, so two pytest runs never share tables — reset per session. No
   in-memory substitutes.
+- The test server defaults to the compose stack (`localhost:5433`); when
+  another checkout holds that port, `NARRE_TEST_DATABASE_URL` re-aims every
+  suite and every E2E stack at its own Postgres; the per-run names are minted
+  on whichever server that door opens.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
 - E2E suites create their own databases; see the capability conftests.
 

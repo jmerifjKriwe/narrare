@@ -10,8 +10,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.capabilities.writing.metadata import InvalidNovelUpdateError
 from app.capabilities.writing.schemas import (
     ChapterCreate,
+    ChapterOrderUpdate,
     ChapterRead,
     ChapterUpdate,
     ExportDone,
@@ -21,6 +23,7 @@ from app.capabilities.writing.schemas import (
     ImportReportRead,
     NovelCreate,
     NovelRead,
+    NovelUpdate,
     WritingErrorRead,
 )
 from app.capabilities.writing.service import (
@@ -29,6 +32,7 @@ from app.capabilities.writing.service import (
     ArchiveTooLargeError,
     FieldRefusedError,
     NotFoundError,
+    OrderMismatchError,
     TargetNotEmptyError,
     WritingService,
 )
@@ -39,7 +43,7 @@ from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
+from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events, failure_frame
 from app.kernel.prompts import PromptRenderError
 from app.kernel.secrets import KeyUnavailableError
 
@@ -106,9 +110,12 @@ async def _continuation_events(
         async for event in events:
             if isinstance(event, Delta):
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
-    except Exception:
+    except Exception as failure:
         logger.exception("continuation stream failed")
-        yield ERROR_FRAME
+        # The coded frame — what the surfaces translate: the failure's wire
+        # code, the model a missing one names, the detail behind the reader's
+        # disclosure. One spelling for both routers.
+        yield failure_frame(failure)
     else:
         yield "event: done\ndata: {}\n\n"
     finally:
@@ -150,6 +157,49 @@ async def create_novel(payload: NovelCreate, service: ServiceDep) -> NovelRead:
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
     return NovelRead.model_validate(novel)
+
+
+@router.patch(
+    "/novels/{novel_id}",
+    response_model=NovelRead,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        422: {"model": WritingErrorRead, "description": "An invalid field, named in `detail`"},
+    },
+)
+async def update_novel(novel_id: UUID, payload: NovelUpdate, service: ServiceDep) -> NovelRead:
+    """Correct a novel by hand: only the fields the body carries change.
+
+    Return the novel with its derived counts; raise HTTP 404 for an absent
+    or unowned novel, or HTTP 422 naming the field for a blank or over-long
+    title, an over-long genre or author, or a language that is over-long
+    or not a BCP-47-ish code.
+    """
+    try:
+        novel = await service.update_novel(novel_id, payload)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except InvalidNovelUpdateError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    return NovelRead.model_validate(novel)
+
+
+@router.delete(
+    "/novels/{novel_id}",
+    status_code=204,
+    responses={404: {"model": WritingErrorRead, "description": "Novel not found"}},
+)
+async def delete_novel(novel_id: UUID, service: ServiceDep) -> None:
+    """Delete an owned novel. The novel-scoped foreign keys cascade: its
+    chapters, entities, relations, suggestions and findings go with the
+    row; the library's documents are not the novel's and stay.
+
+    Raise HTTP 404 for an absent or unowned novel.
+    """
+    try:
+        await service.delete_novel(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
 
 
 @router.post(
@@ -304,6 +354,57 @@ async def create_chapter(
     return ChapterRead.model_validate(chapter)
 
 
+@router.put(
+    "/novels/{novel_id}/chapter-order",
+    status_code=204,
+    responses={
+        404: {"model": WritingErrorRead, "description": "Novel not found"},
+        409: {
+            "description": "The body is not the book's current whole of chapter ids",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": {
+                            "code": "order_mismatch",
+                            "chapter_ids": [
+                                "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
+                                "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1",
+                            ],
+                        }
+                    }
+                }
+            },
+        },
+    },
+)
+async def reorder_chapters(
+    novel_id: UUID, payload: ChapterOrderUpdate, service: ServiceDep
+) -> None:
+    """Rewrite an owned novel's chapter order as one whole.
+
+    The body carries every chapter of the novel in its new order. Respond
+    with HTTP 204, HTTP 404 for an absent or unowned novel, or HTTP 409
+    when the body is not the book's current whole — a chapter added or
+    deleted in a second tab, or an id repeated — with
+    ``detail.chapter_ids`` holding the stored ids in their position order:
+    the arrangement the client reverts to.
+    """
+    try:
+        await service.reorder_chapters(novel_id, payload.chapter_ids)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except OrderMismatchError as error:
+        # A dict, not a sentence: the client reverts to the order these ids
+        # name, and `code` is the stable key it localizes.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "order_mismatch",
+                "chapter_ids": [str(chapter_id) for chapter_id in error.current],
+            },
+        ) from None
+
+
 @router.get(
     "/chapters/{chapter_id}",
     response_model=ChapterRead,
@@ -334,6 +435,25 @@ async def update_chapter(
     return ChapterRead.model_validate(chapter)
 
 
+@router.delete(
+    "/chapters/{chapter_id}",
+    status_code=204,
+    responses={404: {"model": WritingErrorRead, "description": "Chapter not found"}},
+)
+async def delete_chapter(chapter_id: UUID, service: ServiceDep) -> None:
+    """Delete an owned chapter; the survivors close the gap, renumbered
+    contiguously in the same transaction, and the novel's timestamp
+    advances. The chapter's pending suggestions go with it; the novel's
+    findings stay.
+
+    Raise HTTP 404 for an absent or unowned chapter.
+    """
+    try:
+        await service.delete_chapter(chapter_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="chapter not found") from None
+
+
 @router.post(
     "/chapters/{chapter_id}/continue",
     response_class=FinalizingStreamingResponse,
@@ -359,18 +479,18 @@ async def continue_chapter(
     """Stream a continuation for an owned chapter; return HTTP 404 when it is not found."""
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
-    # can no longer produce ends the stream with the error frame a dead
+    # can no longer produce ends the stream with the coded error frame a dead
     # provider gets — no call ran, so no audit row.
     try:
         resolved = await resolve_provider(service.session, user_id, "writing.continuation")
     except KeyUnavailableError:
         logger.exception("continuation provider resolution failed")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("key-unavailable"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The builder sizes its slices from the resolved facts; a pair whose output
     # reserve fills the window refused there — mapped like the lost key above:
-    # the one error frame, no provider call, no audit row. A prompt the
+    # the one coded error frame, no provider call, no audit row. A prompt the
     # effective chain refuses (an override whose frame cannot hold its budget)
     # is mapped the same way, refused by name and never truncated.
     try:
@@ -385,12 +505,12 @@ async def continue_chapter(
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     except PromptRenderError:
         logger.exception("continuation prompt refused")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The audit names the novel, so read its id before the response starts,
     # while the request's session is still open — one scalar, scoped to the

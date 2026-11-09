@@ -10,20 +10,62 @@ Every flow drives the real stack — browser, API, Postgres — and ends on the
 accessibility floor.
 """
 
+import asyncio
 import re
-from typing import TYPE_CHECKING
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from playwright.sync_api import Page, Route, expect
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.kernel.db import testsupport
+from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
 from app.kernel.testing.stack import API_URL, WEB_URL
+from app.kernel.testing.viewport import assert_page_fits
 from app.kernel.testing.workbench import new_chapter
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
+
+# How long a settled navigation is watched for a late write. The address is
+# already correct; this window is the negative half — the chapter param must
+# never appear afterwards — so it is observed, not awaited.
+LATE_WRITE_WINDOW_MS = 300
+
+# The stack's own database (e2e/conftest.py), named per run: the same
+# process, the same minted name — the conftest's stack and this module's
+# row reads land on one database whatever run named it.
+DATABASE = testsupport.test_database("narrare_v2_e2e")
+
+
+def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
+    """Rows from the stack's database as plain tuples, in a worker thread.
+
+    The interchange suite's own helper, mirrored: pytest-asyncio keeps a
+    session loop running, and asyncio.run refuses to start a second one in
+    the same thread.
+    """
+
+    async def run() -> list[tuple[object, ...]]:
+        """Ask a fresh async engine; the dispose lands even on a failed query."""
+        engine = create_async_engine(url_for(DATABASE))
+        try:
+            async with engine.connect() as connection:
+                return [
+                    tuple(each) for each in await connection.execute(text(statement), params or {})
+                ]
+        finally:
+            await engine.dispose()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, run()).result()
 
 
 def _create_book(page: Page, title: str) -> None:
@@ -141,6 +183,115 @@ def test_rail_sits_beside_the_editor_without_scrolling(page: Page, stack: Stack)
         assert box["x"] >= 0 and box["x"] + box["width"] <= viewport["width"]
         assert box["y"] >= 0 and box["y"] + box["height"] <= viewport["height"]
 
+    assert_accessible(page)
+
+
+def test_a_sixty_chapter_rail_stays_inside_the_viewport(page: Page, stack: Stack) -> None:
+    """A long book never takes its rail out of sight.
+
+    Sixty chapters seeded through the API, the open chapter's body long
+    enough to scroll the page under the editor: the rail keeps its box
+    inside the viewport at 1280 while it scrolls, its list scrolls inside
+    itself, and the filter — the long rail's own, above twenty chapters —
+    stands in the toolbar band."""
+    page.set_viewport_size({"width": 1280, "height": 720})
+    _create_book(page, "Der lange Atem")
+    match = re.search(r"/novels/([0-9a-f-]+)", page.url)
+    assert match is not None, f"the workspace never got an address: {page.url}"
+    novel_id = match.group(1)
+
+    # Sixty chapters through the API; the last one — the book's
+    # last-touched, so the bare address opens it — then carries a body
+    # long enough to make the page scroll (the create endpoint takes a
+    # title only; the body is the editor's own PUT).
+    seeded: object = page.evaluate(
+        """async ([id]) => {
+          let lastId = null;
+          for (let n = 0; n < 60; n += 1) {
+            const answer = await fetch(`/api/writing/novels/${id}/chapters`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ title: "" }),
+            });
+            if (!answer.ok) return null;
+            lastId = (await answer.json()).id;
+          }
+          const body = Array.from({length: 150}, (_, i) =>
+            `Zeile ${i + 1}. Der Nebel kam von See und blieb über Nacht liegen.`).join("\\n");
+          const put = await fetch(`/api/writing/chapters/${lastId}`, {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ body }),
+          });
+          return put.ok ? lastId : null;
+        }""",
+        [novel_id],
+    )
+    assert isinstance(seeded, str)
+
+    page.reload()
+    rail = page.get_by_role("complementary")
+    editor = page.locator(".ProseMirror")
+    expect(rail).to_be_visible()
+    expect(editor).to_contain_text("Zeile 1.")
+
+    # The filter is the long rail's own: visible above twenty chapters.
+    expect(page.get_by_label("Kapitel filtern")).to_be_visible()
+
+    # The list is its own scroll container: sixty rows scroll inside the
+    # rail, never the page through it.
+    expect(rail.get_by_role("list")).to_have_css("overflow-y", "auto")
+    expect(rail.get_by_role("button", name=re.compile(r"^Kapitel 60\b"))).to_be_attached()
+
+    def rail_inside_viewport() -> None:
+        box = rail.bounding_box()
+        viewport = page.viewport_size
+        assert box is not None and viewport is not None
+        assert box["x"] >= 0 and box["x"] + box["width"] <= viewport["width"]
+        assert box["y"] >= 0 and box["y"] + box["height"] <= viewport["height"]
+
+    # The rail fits before the page scrolls…
+    rail_inside_viewport()
+
+    # …and stays inside the viewport while the editor's page scrolls under
+    # it — the scroll is real, proven on the scrollport's own offset.
+    page.evaluate("document.getElementById('main').scrollTo({top: 1600})")
+    scrolled: object = page.evaluate("document.getElementById('main').scrollTop")
+    assert isinstance(scrolled, (int, float)) and scrolled > 0
+    rail_inside_viewport()
+
+    assert_page_fits(page, prose_selector=".ProseMirror")
+    assert_accessible(page)
+
+    # The phone's own face: at 360 the rail is a drawer over the editor,
+    # and the filter — in the toolbar band with the rail's toggles — must
+    # stay both reachable and inside the band. The drawer opens the rail;
+    # the field shows with it, the band's children fit its content box (a
+    # field wider than the remaining line would push the page's gutter
+    # aside — measured, since jsdom lays out nothing), and the page must
+    # not grow a horizontal scrollbar to hold the two of them.
+    page.set_viewport_size({"width": 360, "height": 720})
+    page.get_by_role("button", name="Kapitelleiste").click()
+    drawer = page.get_by_role("complementary")
+    expect(drawer).to_be_visible()
+    expect(page.get_by_label("Kapitel filtern")).to_be_visible()
+    band: object = page.evaluate(
+        """() => {
+          const band = document.querySelector('div.mt-6.flex');
+          return band === null ? null
+            : { scroll: band.scrollWidth, client: band.clientWidth };
+        }"""
+    )
+    if not isinstance(band, dict):
+        pytest.fail(f"the toolbar band was not measured on {page.url}")
+    measured = cast("dict[str, object]", band)
+    scroll, client = measured.get("scroll"), measured.get("client")
+    if not isinstance(scroll, (int, float)) or not isinstance(client, (int, float)):
+        pytest.fail(f"the toolbar band measurement came back malformed: {band!r}")
+    assert float(scroll) <= float(client) + 1, (
+        f"the toolbar band overflows its content box at 360: {scroll}px > {client}px"
+    )
+    assert_page_fits(page, prose_selector=".ProseMirror")
     assert_accessible(page)
 
 
@@ -330,7 +481,7 @@ def test_a_bare_arrival_opens_the_last_touched_chapter_and_writes_nothing(
     expect(page.locator(".ProseMirror")).not_to_contain_text("Kalter Wind.")
     expect(page).to_have_url(re.compile(r"^(?!.*chapter=).*$"))
     # No late write either: the param never appears once the page settled.
-    page.wait_for_timeout(300)
+    page.wait_for_timeout(LATE_WRITE_WINDOW_MS)
     assert "chapter=" not in page.url
 
     # The dock reads the same fallback the editor opened: extraction offers
@@ -502,15 +653,20 @@ def test_the_outage_stays_reachable_at_a_narrow_window(page: Page, stack: Stack)
 
 
 def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack) -> None:
-    """A 404 is the same honesty: the error copy, not an empty chapter rail."""
+    """A 404 is the shelf's to answer: the quiet note, not an empty rail.
+
+    The book the address names is gone or was never there — the two are one
+    answer, the API's own rule — so the workbench degrades to the shelf and
+    the quiet note names what happened: no outage page claims a load the
+    service answered, and no empty rail claims a book.
+    """
     page.goto(f"{WEB_URL}/novels/00000000-0000-4000-8000-000000000000")
-    expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+    expect(page.get_by_role("status").filter(has_text="woanders gelöscht")).to_be_visible()
+    expect(page.get_by_role("heading", name="Romane")).to_be_visible()
     # The empty-rail copy is a loaded book's truth, not a missing one's.
     expect(page.get_by_text("Noch kein Kapitel")).not_to_be_visible()
-
-    # The retry says the same thing: the book is still not there.
-    page.get_by_role("button", name="Erneut versuchen").click()
-    expect(page.get_by_role("alert").filter(has_text="konnte nicht geladen")).to_be_visible()
+    # No outage voice: the service answered; the book is what is missing.
+    expect(page.get_by_role("alert")).to_have_count(0)
 
     assert_accessible(page)
 
@@ -587,6 +743,84 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
     assert_accessible(page)
 
 
+def test_moving_a_chapter_by_keyboard_survives_a_reload(page: Page, stack: Stack) -> None:
+    """Alt+ArrowUp on the focused row is a write, not a view: the new order
+    survives a reload, every chapter row keeps its own updated_at (an
+    arrangement is not a write, D8), and the novel's row advanced."""
+    _create_book(page, "Die Umordnung")
+    for _ in range(3):
+        new_chapter(page)
+
+    # Named rows first: an unnamed row is named by its position ("Kapitel
+    # n"), so a reordered rail of unnamed chapters reads exactly like the
+    # one it replaced. Names of their own make the rail show who moved.
+    for number, name in enumerate(["Erstes", "Zweites", "Drittes"], start=1):
+        page.get_by_role("button", name=re.compile(rf"^Kapitel {number}\b")).click()
+        page.get_by_label("Kapiteltitel").fill(name)
+        expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+
+    match = re.search(r"/novels/([0-9a-f-]+)", page.url)
+    assert match is not None, f"the workspace never got an address: {page.url}"
+    novel_id = match.group(1)
+
+    def chapter_rows() -> dict[str, tuple[str, int, datetime]]:
+        """The book's chapters by id: title, position, the row's own touch."""
+        return {
+            str(row[0]): (str(row[1]), cast("int", row[2]), cast("datetime", row[3]))
+            for row in _rows(
+                "SELECT id, title, position, updated_at FROM chapters"
+                " WHERE novel_id = :id ORDER BY position",
+                {"id": novel_id},
+            )
+        }
+
+    def novel_touched() -> datetime:
+        """The novel row's own clock — the one an arrangement advances."""
+        [row] = _rows("SELECT updated_at FROM novels WHERE id = :id", {"id": novel_id})
+        return cast("datetime", row[0])
+
+    before = chapter_rows()
+    touched_before = novel_touched()
+    assert [row[1] for row in before.values()] == [0, 1, 2]
+
+    # Zweites trades places with its neighbour: focus the row, hold Alt.
+    page.get_by_role("button", name=re.compile(r"^Zweites\b")).focus()
+    with page.expect_response(
+        lambda response: "chapter-order" in response.url and response.request.method == "PUT"
+    ) as moved:
+        page.keyboard.press("Alt+ArrowUp")
+    assert moved.value.ok
+
+    # The optimistic order is the rail's at once — no refetch between the
+    # keystroke and the answer.
+    rows = page.get_by_role("complementary").get_by_role(
+        "button", name=re.compile(r"^(Erstes|Zweites|Drittes)\b")
+    )
+    expect(rows).to_have_count(3)
+    expect(rows.nth(0)).to_have_accessible_name(re.compile(r"^Zweites\b"))
+
+    # The reload proves the row, not the cache: the arrangement is the
+    # server's, and the numbering follows it.
+    page.reload()
+    expect(rows).to_have_count(3)
+    expect(rows.nth(0)).to_have_accessible_name(re.compile(r"^Zweites\b"))
+    expect(rows.nth(1)).to_have_accessible_name(re.compile(r"^Erstes\b"))
+    expect(rows.nth(2)).to_have_accessible_name(re.compile(r"^Drittes\b"))
+
+    # The database agrees: same rows, same touch instants — the moved one
+    # included — and only the novel's own clock advanced.
+    after = chapter_rows()
+    assert after.keys() == before.keys()
+    for chapter_id, row in after.items():
+        assert row[2] == before[chapter_id][2]
+    assert [row[1] for row in after.values()] == [0, 1, 2]
+    [moved_id] = [cid for cid, row in after.items() if row[0] == "Zweites"]
+    assert after[moved_id][1] == 0
+    assert novel_touched() > touched_before
+
+    assert_accessible(page)
+
+
 def test_an_empty_book_shows_its_empty_state(page: Page, stack: Stack) -> None:
     """A book with no chapters shows the empty state, never an empty editor
     card (Review Focus 3)."""
@@ -632,8 +866,12 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     expect(page.locator(".ProseMirror")).to_contain_text("Wort")
 
     # The runhead: book · chapter on the left, the save state on the right —
-    # the save state is the runhead's, so typing proves it lives there.
-    expect(page.get_by_text("Das Zählwerk · Kapitel 2")).to_be_visible()
+    # the chapter's own name is written in the runhead's input now, and an
+    # untitled chapter wears the localized placeholder in it. The save
+    # state is the runhead's, so typing proves it lives there.
+    title_field = page.get_by_label("Kapiteltitel")
+    expect(page.get_by_text("Das Zählwerk ·")).to_be_visible()
+    expect(title_field).to_have_attribute("placeholder", "Kapitel 2")
     # The footer: the chapter's word count and its position in the book.
     expect(page.get_by_text("2.107 Wörter")).to_be_visible()
     expect(page.get_by_text("Kapitel 2 von 4")).to_be_visible()
@@ -645,5 +883,99 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=10_000)
     # The count is the live document's, not the stored row's.
     expect(page.get_by_text("2.108 Wörter")).to_be_visible()
+
+    assert_accessible(page)
+
+
+def test_deleting_a_chapter_opens_its_neighbour(page: Page, stack: Stack) -> None:
+    """The runhead's menu deletes the open chapter: the pending body is
+    retired before the delete flies, the chapter that takes its place opens
+    (the next, else the previous — D7), the rail loses one row, and the
+    database renumbers contiguously."""
+    _create_book(page, "Der Riss")
+    for _ in range(3):
+        new_chapter(page)
+    for number, name in enumerate(["Erstes", "Zweites", "Drittes"], start=1):
+        page.get_by_role("button", name=re.compile(rf"^Kapitel {number}\b")).click()
+        page.get_by_label("Kapiteltitel").fill(name)
+        expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+
+    # Open the middle chapter and leave an unsaved body on it: the delete
+    # must retire it, never flush it at a chapter on its way out.
+    page.get_by_role("button", name="Zweites").click()
+    editor = page.locator(".ProseMirror")
+    editor.click()
+    page.keyboard.type("Weg damit.")
+
+    # The runhead's menu: delete the open chapter, confirm in the dialog.
+    page.get_by_role("button", name="Aktionen für Zweites").click()
+    page.get_by_role("menuitem", name="Löschen").click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_text(re.compile("Zweites"))).to_be_visible()
+    dialog.get_by_role("button", name="Löschen").click()
+    expect(dialog).to_have_count(0)
+
+    # The neighbour: Drittes takes Zweites' place — the runhead wears its
+    # name, the rail has one row fewer, the address names the neighbour,
+    # and no failed save was named for the deletion the user asked for.
+    expect(page.get_by_label("Kapiteltitel")).to_have_value("Drittes")
+    expect(page.get_by_text("Nicht gespeichert", exact=True)).to_have_count(0)
+    rows = page.get_by_role("complementary").get_by_role(
+        "button", name=re.compile(r"^(Erstes|Drittes)\b")
+    )
+    expect(rows).to_have_count(2)
+    expect(page).to_have_url(re.compile("chapter="))
+
+    # The database: the survivors hold contiguous 0..n-1.
+    match = re.search(r"/novels/([0-9a-f-]+)", page.url)
+    assert match is not None, f"the workspace never got an address: {page.url}"
+    positions = _rows(
+        "SELECT position FROM chapters WHERE novel_id = :id ORDER BY position",
+        {"id": match.group(1)},
+    )
+    assert positions == [(0,), (1,)]
+
+    assert_accessible(page)
+
+
+def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack: Stack) -> None:
+    """The runhead's title is written where it is read: typing it saves, the
+    rail answers to the new name, and the shelf learns of the write. The
+    rename is the book's last touch — a second book, created after the
+    chapter, held the hero until the rename landed, so the hero's flip is
+    the rename's own doing, not the create's."""
+    _create_book(page, "Der stille Hof")
+    new_chapter(page)
+
+    # A second book, created later: it is the shelf's last-touched one —
+    # the hero names it, and the flip below is what the rename changes.
+    # (The hero's own paragraph, not the cover's title span: the generated
+    # cover repeats the book's name inside the same section.)
+    page.get_by_role("link", name="Alle Romane").click()
+    page.get_by_role("button", name="Neues Buch").click()
+    page.get_by_label("Titel").fill("Die späte Fähre")
+    page.get_by_role("button", name="Anlegen").click()
+    hero = page.locator("section[aria-labelledby='novels-continue']")
+    expect(hero.get_by_role("paragraph").filter(has_text="Die späte Fähre")).to_be_visible()
+
+    # Back into the first book, whose only chapter opens untitled.
+    page.get_by_role("link", name="Der stille Hof").click()
+    expect(page.get_by_role("heading", name="Der stille Hof")).to_be_visible()
+
+    page.get_by_label("Kapiteltitel").fill("Winternacht")
+    expect(page.get_by_text("Gespeichert")).to_be_visible()
+
+    # The rail answers to the new name — the placeholder row is gone.
+    # (Scoped to the rail: the runhead's action menu names the chapter in
+    # its trigger's label too, and a page-wide button search would find it.)
+    rail = page.get_by_role("complementary")
+    expect(rail.get_by_role("button", name=re.compile(r"^Winternacht\b"))).to_be_visible()
+    expect(rail.get_by_role("button", name=re.compile(r"^Kapitel 1\b"))).to_have_count(0)
+
+    # The shelf learned of the write: the hero names the renamed book now,
+    # and its card still opens it.
+    page.get_by_role("link", name="Alle Romane").click()
+    expect(hero.get_by_role("paragraph").filter(has_text="Der stille Hof")).to_be_visible()
+    expect(page.get_by_role("link", name=re.compile(r"Der stille Hof"))).to_be_visible()
 
     assert_accessible(page)

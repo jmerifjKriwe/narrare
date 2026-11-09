@@ -1,0 +1,61 @@
+# The compose installation: Narrare plus the pgvector server it needs. For
+# anyone who already runs a Postgres, the image alone is the whole product —
+# see docs/user/install.md — and this file is the convenience path.
+#
+# Configuration lives in `.env` beside this file. NARRE_SECRET_KEY is required
+# and must not change: it is how a stored provider key is decrypted, and a new
+# one makes the old keys unreadable.
+
+name: narrare
+
+services:
+  app:
+    image: ${NARRE_IMAGE:-ghcr.io/jmerifjKriwe/narrare:latest}
+    restart: unless-stopped
+    ports:
+      # Change NARRE_PORT when 8000 is taken. Everything is same-origin, so
+      # this is also the address the shell is served from.
+      - "${NARRE_PORT:-8000}:8000"
+    environment:
+      NARRE_DB_HOST: postgres
+      NARRE_DB_PORT: "5432"
+      NARRE_DB_NAME: ${NARRE_DB_NAME:-narrare}
+      NARRE_DB_USER: ${NARRE_DB_USER:-narrare}
+      NARRE_DB_PASSWORD: ${NARRE_DB_PASSWORD:-narrare}
+      # No default on purpose: a generated key would decrypt nothing next
+      # restart, and an empty one refuses to store provider keys at all.
+      NARRE_SECRET_KEY: ${NARRE_SECRET_KEY:?set NARRE_SECRET_KEY in .env}
+      NARRE_BACKUP_DIR: /backups
+    volumes:
+      # The pre-migration dump of every upgrade lands here, and it has to
+      # outlive the container that took it.
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image carries no curl; its own interpreter proves the shell answers.
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  postgres:
+    # A tag is a mutable ref; the digest is the contract.
+    image: pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8 # pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${NARRE_DB_NAME:-narrare}
+      POSTGRES_USER: ${NARRE_DB_USER:-narrare}
+      POSTGRES_PASSWORD: ${NARRE_DB_PASSWORD:-narrare}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NARRE_DB_USER:-narrare} -d ${NARRE_DB_NAME:-narrare}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:
+  backups:

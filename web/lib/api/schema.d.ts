@@ -88,6 +88,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Document
+         * @description Delete a document. Its chunks' foreign key cascades: the passages go
+         *     with the row, and search cannot find its text again.
+         *
+         *     Raise HTTP 404 for an absent or unowned document.
+         */
+        delete: operations["delete_document_api_knowledge_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/entities/{entity_id}": {
         parameters: {
             query?: never;
@@ -543,7 +566,7 @@ export interface paths {
         get?: never;
         /**
          * Put Assignment
-         * @description Point the task at a profile, or clear it with ``profile_id: null``.
+         * @description Point the task at a model, or clear it with ``profile_id: null``.
          *
          *     Any non-empty task key is accepted — unknown keys are forward-compatible.
          */
@@ -555,7 +578,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/settings/profiles": {
+    "/api/settings/models": {
         parameters: {
             query?: never;
             header?: never;
@@ -563,23 +586,23 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Profiles
-         * @description The user's profiles, the default first; every key read shows the mask.
+         * List Models
+         * @description The user's models, the default first; every read names its provider.
          */
-        get: operations["list_profiles_api_settings_profiles_get"];
+        get: operations["list_models_api_settings_models_get"];
         put?: never;
         /**
-         * Create Profile
-         * @description Store one profile; the first becomes the default; the full key returns once.
+         * Create Model
+         * @description Store one model under one of the user's providers; the first is the default.
          */
-        post: operations["create_profile_api_settings_profiles_post"];
+        post: operations["create_model_api_settings_models_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/settings/profiles/{profile_id}": {
+    "/api/settings/models/{model_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -590,20 +613,114 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete Profile
-         * @description Delete a non-default profile; its assignments cascade with it.
+         * Delete Model
+         * @description Delete a non-default model; its assignments cascade with it.
          */
-        delete: operations["delete_profile_api_settings_profiles__profile_id__delete"];
+        delete: operations["delete_model_api_settings_models__model_id__delete"];
         options?: never;
         head?: never;
         /**
-         * Update Profile
+         * Update Model
+         * @description Apply the patch; the provider and the model string can both move.
+         */
+        patch: operations["update_model_api_settings_models__model_id__patch"];
+        trace?: never;
+    };
+    "/api/settings/models/{model_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Model
+         * @description One cheap completion through the model's provider, audited as settings.test.
+         */
+        post: operations["test_model_api_settings_models__model_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Presets
+         * @description The nine provider presets with their catalog model ids and the date.
+         *
+         *     The create form's one read. No user rows sit behind it, so there is no
+         *     per-user error vocabulary — the one way it can fail is a damaged
+         *     snapshot: a bad manual refresh raises :class:`CatalogError` through the
+         *     catalog join and surfaces as a 500, the same loud failure every other
+         *     catalog reader owes.
+         */
+        get: operations["list_presets_api_settings_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Providers
+         * @description The user's providers, by name; every key read shows the mask.
+         */
+        get: operations["list_providers_api_settings_providers_get"];
+        put?: never;
+        /**
+         * Create Provider
+         * @description Store one provider endpoint; the full key returns once.
+         */
+        post: operations["create_provider_api_settings_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Provider
+         * @description Delete a provider no model points at; the guard names the models otherwise.
+         */
+        delete: operations["delete_provider_api_settings_providers__provider_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Provider
          * @description Apply the patch; an empty ``api_key`` keeps the stored one.
          */
-        patch: operations["update_profile_api_settings_profiles__profile_id__patch"];
+        patch: operations["update_provider_api_settings_providers__provider_id__patch"];
         trace?: never;
     };
-    "/api/settings/profiles/{profile_id}/models": {
+    "/api/settings/providers/{provider_id}/models": {
         parameters: {
             query?: never;
             header?: never;
@@ -611,32 +728,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Profile Models
-         * @description Model discovery against the profile's endpoint.
+         * List Provider Models
+         * @description Model discovery against the provider's endpoint.
          */
-        get: operations["list_profile_models_api_settings_profiles__profile_id__models_get"];
+        get: operations["list_provider_models_api_settings_providers__provider_id__models_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/settings/profiles/{profile_id}/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Test Profile
-         * @description One cheap completion against the profile's endpoint, audited as settings.test.
-         */
-        post: operations["test_profile_api_settings_profiles__profile_id__test_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -655,7 +752,7 @@ export interface paths {
          * @description The effective provider per known task key, for the page's task list.
          *
          *     Reads only: each row is the resolution cascade's answer, never a write
-         *     and never an audit row. A profile whose key its tier can no longer
+         *     and never an audit row. A provider whose key its tier can no longer
          *     produce fails the read by name — 502, as discovery maps the same class —
          *     so a lost key is never a bare 500.
          */
@@ -737,7 +834,16 @@ export interface paths {
          */
         put: operations["update_chapter_api_writing_chapters__chapter_id__put"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete Chapter
+         * @description Delete an owned chapter; the survivors close the gap, renumbered
+         *     contiguously in the same transaction, and the novel's timestamp
+         *     advances. The chapter's pending suggestions go with it; the novel's
+         *     findings stay.
+         *
+         *     Raise HTTP 404 for an absent or unowned chapter.
+         */
+        delete: operations["delete_chapter_api_writing_chapters__chapter_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -827,6 +933,50 @@ export interface paths {
          */
         get: operations["get_novel_api_writing_novels__novel_id__get"];
         put?: never;
+        post?: never;
+        /**
+         * Delete Novel
+         * @description Delete an owned novel. The novel-scoped foreign keys cascade: its
+         *     chapters, entities, relations, suggestions and findings go with the
+         *     row; the library's documents are not the novel's and stay.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel.
+         */
+        delete: operations["delete_novel_api_writing_novels__novel_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Novel
+         * @description Correct a novel by hand: only the fields the body carries change.
+         *
+         *     Return the novel with its derived counts; raise HTTP 404 for an absent
+         *     or unowned novel, or HTTP 422 naming the field for a blank or over-long
+         *     title, an over-long genre or author, or a language that is over-long
+         *     or not a BCP-47-ish code.
+         */
+        patch: operations["update_novel_api_writing_novels__novel_id__patch"];
+        trace?: never;
+    };
+    "/api/writing/novels/{novel_id}/chapter-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Chapters
+         * @description Rewrite an owned novel's chapter order as one whole.
+         *
+         *     The body carries every chapter of the novel in its new order. Respond
+         *     with HTTP 204, HTTP 404 for an absent or unowned novel, or HTTP 409
+         *     when the body is not the book's current whole — a chapter added or
+         *     deleted in a second tab, or an id repeated — with
+         *     ``detail.chapter_ids`` holding the stored ids in their position order:
+         *     the arrangement the client reverts to.
+         */
+        put: operations["reorder_chapters_api_writing_novels__novel_id__chapter_order_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -953,6 +1103,20 @@ export interface components {
              */
             title: string;
         };
+        /**
+         * ChapterOrderUpdate
+         * @description The PUT chapter-order body: the whole rail, in its new order.
+         *
+         *     Every chapter of the novel and nothing else — an arrangement is a
+         *     permutation of the ids the book holds this moment, so the service
+         *     compares the body against the stored set as one whole and refuses a
+         *     stale one (a second tab's add, delete or repeat) with the current
+         *     order, rather than reshape what the writer no longer sees.
+         */
+        ChapterOrderUpdate: {
+            /** Chapter Ids */
+            chapter_ids: string[];
+        };
         /** ChapterRead */
         ChapterRead: {
             /** Body */
@@ -1033,6 +1197,13 @@ export interface components {
         };
         /** DocumentRead */
         DocumentRead: {
+            /** Byte Size */
+            byte_size: number | null;
+            /**
+             * Chunk Count
+             * @default 0
+             */
+            chunk_count: number;
             /**
              * Created At
              * Format: date-time
@@ -1298,6 +1469,127 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * ModelCreate
+         * @description One new model under one of the user's providers.
+         *
+         *     The provider is named, not repeated: kind, endpoint and key live there.
+         *     The service's gate refuses a ``provider_id`` that is not the user's —
+         *     the schema cannot know ownership, only shape.
+         */
+        ModelCreate: {
+            /** Context Window */
+            context_window?: number | null;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /**
+             * Provider Id
+             * Format: uuid
+             */
+            provider_id: string;
+            /** Request Timeout */
+            request_timeout?: number | null;
+            /** Temperature */
+            temperature?: number | null;
+        };
+        /**
+         * ModelRead
+         * @description A model as every read shows it: its provider named, no key anywhere.
+         *
+         *     The key and its mask live on the provider; the model carries none. The
+         *     three state fields are the settings row's marks, read-only facts:
+         *     ``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`
+         *     with the provider's vendor — no second lookup path), and the
+         *     ``last_error_*`` pair is the model's newest audit row, kept only when that
+         *     call failed, so a later success clears the mark.
+         */
+        ModelRead: {
+            /** Context Window */
+            context_window: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** In Catalog */
+            in_catalog: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Last Error At */
+            last_error_at: string | null;
+            /** Last Error Code */
+            last_error_code: string | null;
+            /** Max Output Tokens */
+            max_output_tokens: number | null;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /**
+             * Provider Id
+             * Format: uuid
+             */
+            provider_id: string;
+            /** Provider Name */
+            provider_name: string;
+            /** Request Timeout */
+            request_timeout: number | null;
+            /** Temperature */
+            temperature: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ModelTestResult
+         * @description What one connection test found: it ran, and it either answered or named why.
+         */
+        ModelTestResult: {
+            /** Error */
+            error: string | null;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Ok */
+            ok: boolean;
+        };
+        /**
+         * ModelUpdate
+         * @description What a patch may change. The provider and the model string can move.
+         *
+         *     Absent fields stay unchanged; present nulls clear the tunables. Clearing
+         *     the name, the provider or the model string is refused by the service —
+         *     a model without one of them is not a configuration. ``is_default: true``
+         *     hands the default over from the current holder.
+         */
+        ModelUpdate: {
+            /** Context Window */
+            context_window?: number | null;
+            /** Is Default */
+            is_default?: boolean | null;
+            /** Max Output Tokens */
+            max_output_tokens?: number | null;
+            /** Model */
+            model?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Provider Id */
+            provider_id?: string | null;
+            /** Request Timeout */
+            request_timeout?: number | null;
+            /** Temperature */
+            temperature?: number | null;
+        };
         /** NovelCreate */
         NovelCreate: {
             /** Blurb */
@@ -1332,6 +1624,8 @@ export interface components {
             id: string;
             /** Language */
             language: string | null;
+            /** Last Exported At */
+            last_exported_at: string | null;
             /** Title */
             title: string;
             /**
@@ -1346,155 +1640,62 @@ export interface components {
             word_count: number;
         };
         /**
-         * ProfileCreate
-         * @description One new provider profile. ``api_key`` is write-only; the mask comes back.
-         */
-        ProfileCreate: {
-            /** Api Key */
-            api_key?: string | null;
-            /** Base Url */
-            base_url?: string | null;
-            /** Context Window */
-            context_window?: number | null;
-            /** Kind */
-            kind: string;
-            /** Max Output Tokens */
-            max_output_tokens?: number | null;
-            /** Model */
-            model?: string | null;
-            /** Name */
-            name: string;
-            /** Request Timeout */
-            request_timeout?: number | null;
-            /** Temperature */
-            temperature?: number | null;
-        };
-        /**
-         * ProfileCreated
-         * @description The create's answer: the one response that carries the full key.
+         * NovelUpdate
+         * @description The PATCH body: only the fields present are the change.
          *
-         *     ``api_key`` is the plaintext exactly once, for the client that just sent
-         *     it to confirm against; it is ``None`` when no key was stored (a fake, or
-         *     a local endpoint without one).
+         *     ``None`` is ambiguous by shape alone — an absent field and a cleared
+         *     author both look like None — so the service reads
+         *     ``model_fields_set`` to tell a carried change from a missing one. The
+         *     values are checked there, against the novel contract's trims and
+         *     limits: this schema carries the fields, the contract decides what a
+         *     value may be. A carried ``null`` clears author, genre, blurb or
+         *     language; the title is never clearable.
          */
-        ProfileCreated: {
-            /** Api Key */
-            api_key?: string | null;
-            /** Api Key Mask */
-            api_key_mask: string | null;
-            /** Base Url */
-            base_url: string | null;
-            /** Context Window */
-            context_window: number | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Is Default */
-            is_default: boolean;
-            /** Kind */
-            kind: string;
-            /** Max Output Tokens */
-            max_output_tokens: number | null;
-            /** Model */
-            model: string | null;
-            /** Name */
-            name: string;
-            /** Request Timeout */
-            request_timeout: number | null;
-            /** Temperature */
-            temperature: number | null;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
+        NovelUpdate: {
+            /** Author */
+            author?: string | null;
+            /** Blurb */
+            blurb?: string | null;
+            /** Genre */
+            genre?: string | null;
+            /** Language */
+            language?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /**
-         * ProfileRead
-         * @description A profile as every read shows it: the mask, never the key.
-         */
-        ProfileRead: {
-            /** Api Key Mask */
-            api_key_mask: string | null;
-            /** Base Url */
-            base_url: string | null;
-            /** Context Window */
-            context_window: number | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Is Default */
-            is_default: boolean;
-            /** Kind */
-            kind: string;
-            /** Max Output Tokens */
-            max_output_tokens: number | null;
-            /** Model */
-            model: string | null;
-            /** Name */
-            name: string;
-            /** Request Timeout */
-            request_timeout: number | null;
-            /** Temperature */
-            temperature: number | null;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /**
-         * ProfileTestResult
-         * @description What one connection test found: it ran, and it either answered or named why.
-         */
-        ProfileTestResult: {
-            /** Error */
-            error: string | null;
-            /** Latency Ms */
-            latency_ms: number;
-            /** Ok */
-            ok: boolean;
-        };
-        /**
-         * ProfileUpdate
-         * @description What a patch may change. The kind is what the profile is: not editable.
+         * PresetRead
+         * @description One provider preset as the create form reads it, with the catalog join.
          *
-         *     Absent fields stay unchanged; present nulls clear the nullable columns.
-         *     ``is_default: true`` hands the default over from the current holder.
+         *     The preset is the kernel table's row — label, model and vendor are the
+         *     vendors' proper spellings, data rather than catalog text. ``models`` is
+         *     the vendor's catalog vocabulary, bare and sorted, the model picker's
+         *     list; a vendor the catalog does not carry joins to an empty list and the
+         *     form still saves free text. ``snapshot_date`` is the catalog's own date,
+         *     ``None`` when the snapshot names none — the picker's honesty mark rides
+         *     this response, so the form needs no second call.
          */
-        ProfileUpdate: {
-            /** Api Key */
-            api_key?: string | null;
+        PresetRead: {
             /** Base Url */
-            base_url?: string | null;
-            /** Context Window */
-            context_window?: number | null;
-            /** Is Default */
-            is_default?: boolean | null;
-            /** Max Output Tokens */
-            max_output_tokens?: number | null;
+            base_url: string;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
             /** Model */
-            model?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Request Timeout */
-            request_timeout?: number | null;
-            /** Temperature */
-            temperature?: number | null;
+            model: string;
+            /** Models */
+            models: string[];
+            /** Models Url */
+            models_url: string | null;
+            /** Note Key */
+            note_key: string | null;
+            /** Snapshot Date */
+            snapshot_date: string | null;
+            /** Vendor */
+            vendor: string;
         };
         /**
          * PromptDetail
@@ -1603,6 +1804,96 @@ export interface components {
             relation_type: string;
             /** Target Name */
             target_name: string;
+        };
+        /**
+         * ProviderCreate
+         * @description One new provider: the saved endpoint its models hang off.
+         *
+         *     ``api_key`` is write-only; the mask comes back.
+         */
+        ProviderCreate: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Kind */
+            kind: string;
+            /** Models Url */
+            models_url?: string | null;
+            /** Name */
+            name: string;
+            /** Vendor */
+            vendor?: string | null;
+        };
+        /**
+         * ProviderCreated
+         * @description The create's answer: the one response that carries the full key.
+         *
+         *     ``api_key`` is the plaintext exactly once, for the client that just sent
+         *     it to confirm against; it is ``None`` when no key was stored (a fake, or
+         *     a local endpoint without one).
+         */
+        ProviderCreated: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Api Key Mask */
+            api_key_mask: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Models Url */
+            models_url: string | null;
+            /** Name */
+            name: string;
+            /** Vendor */
+            vendor: string | null;
+        };
+        /**
+         * ProviderRead
+         * @description A provider as every read shows it: the mask, never the key.
+         */
+        ProviderRead: {
+            /** Api Key Mask */
+            api_key_mask: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Models Url */
+            models_url: string | null;
+            /** Name */
+            name: string;
+            /** Vendor */
+            vendor: string | null;
+        };
+        /**
+         * ProviderUpdate
+         * @description What a patch may change. The kind is what the provider is: not editable.
+         *
+         *     Absent fields stay unchanged; present nulls clear the nullable columns.
+         */
+        ProviderUpdate: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Models Url */
+            models_url?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Vendor */
+            vendor?: string | null;
         };
         /**
          * ReembedResult
@@ -1798,12 +2089,12 @@ export interface components {
          * TaskEffectiveRead
          * @description One known task key and the tier that actually serves it.
          *
-         *     ``profile_id`` and ``profile_name`` are ``None`` exactly when no profile
+         *     ``profile_id`` and ``profile_name`` are ``None`` exactly when no model
          *     serves — the environment tier answers. ``kind`` names the serving adapter
-         *     either way (``fake`` or ``openai-chat``), so the page can say what answers
-         *     without claiming the cascade's stored choice. An audit-only key has no
-         *     serving tier: ``kind`` is ``audit``, the profile fields are ``None``, and
-         *     ``assignable`` is ``False``.
+         *     either way (``fake``, ``openai-chat`` or ``anthropic``), so the page can
+         *     say what answers without claiming the cascade's stored choice. An
+         *     audit-only key has no serving tier: ``kind`` is ``audit``, the model
+         *     fields are ``None``, and ``assignable`` is ``False``.
          */
         TaskEffectiveRead: {
             /** Assignable */
@@ -2015,6 +2306,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_knowledge_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -2876,7 +3196,7 @@ export interface operations {
             };
         };
     };
-    list_profiles_api_settings_profiles_get: {
+    list_models_api_settings_models_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2891,12 +3211,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileRead"][];
+                    "application/json": components["schemas"]["ModelRead"][];
                 };
             };
         };
     };
-    create_profile_api_settings_profiles_post: {
+    create_model_api_settings_models_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2905,7 +3225,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProfileCreate"];
+                "application/json": components["schemas"]["ModelCreate"];
             };
         };
         responses: {
@@ -2915,7 +3235,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileCreated"];
+                    "application/json": components["schemas"]["ModelRead"];
                 };
             };
             /** @description Validation Error */
@@ -2929,12 +3249,12 @@ export interface operations {
             };
         };
     };
-    delete_profile_api_settings_profiles__profile_id__delete: {
+    delete_model_api_settings_models__model_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                profile_id: string;
+                model_id: string;
             };
             cookie?: never;
         };
@@ -2958,18 +3278,18 @@ export interface operations {
             };
         };
     };
-    update_profile_api_settings_profiles__profile_id__patch: {
+    update_model_api_settings_models__model_id__patch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                profile_id: string;
+                model_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProfileUpdate"];
+                "application/json": components["schemas"]["ModelUpdate"];
             };
         };
         responses: {
@@ -2979,7 +3299,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileRead"];
+                    "application/json": components["schemas"]["ModelRead"];
                 };
             };
             /** @description Validation Error */
@@ -2993,12 +3313,180 @@ export interface operations {
             };
         };
     };
-    list_profile_models_api_settings_profiles__profile_id__models_get: {
+    test_model_api_settings_models__model_id__test_post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                profile_id: string;
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelTestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_presets_api_settings_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetRead"][];
+                };
+            };
+        };
+    };
+    list_providers_api_settings_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRead"][];
+                };
+            };
+        };
+    };
+    create_provider_api_settings_providers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_provider_api_settings_providers__provider_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_provider_api_settings_providers__provider_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_provider_models_api_settings_providers__provider_id__models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -3011,37 +3499,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": string[];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    test_profile_api_settings_profiles__profile_id__test_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                profile_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProfileTestResult"];
                 };
             };
             /** @description Validation Error */
@@ -3224,6 +3681,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChapterRead"];
                 };
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_chapter_api_writing_chapters__chapter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Chapter not found */
             404: {
@@ -3433,6 +3928,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_novel_api_writing_novels__novel_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_novel_api_writing_novels__novel_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovelUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovelRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description An invalid field, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+        };
+    };
+    reorder_chapters_api_writing_novels__novel_id__chapter_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChapterOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingErrorRead"];
+                };
+            };
+            /** @description The body is not the book's current whole of chapter ids */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": {
+                     *         "chapter_ids": [
+                     *           "0e2e6d64-2f68-4b6e-9a76-6a41e0f30f6b",
+                     *           "3d9a1c02-9c74-4c0f-9d0e-0f0e6c58a2f1"
+                     *         ],
+                     *         "code": "order_mismatch"
+                     *       }
+                     *     }
+                     */
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

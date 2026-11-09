@@ -736,7 +736,7 @@ class AuthorVoiceServiceProtocol(Protocol):
 > implementation-cycle DoD (per layer), retained as the historical
 > implementation record; the checkboxes are left as they were written before
 > the cycle and the completion evidence is in
-> [Implementation Evidence](#implementation-evidence) + Status & History.
+> Implementation Evidence + Status & History.
 
 ### Core Layer
 - [ ] Voice-generic `VoiceMetrics`/`VoiceAnalysis` extracted to a voice-generic home + re-exported from `packages/core/narrare_core/kb/schemas/character.py` + `packages/core/narrare_core/kb/schemas/__init__.py` (ADR-074 Retrofit-Plan step 1). Existing ANAL-008/WRITE-010/ANAL-009-Phase-1 tests stay green with zero import edits.

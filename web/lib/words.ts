@@ -10,11 +10,14 @@
  * says it does. The two implementations move together.
  */
 
+import { formatNumber } from "./format";
+
 /**
  * The shared class: trim the ends with it, split the middle with it, judge
  * emptiness by the trimmed value — never three sets, one.
  */
 const WORD_GAP = /[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/;
+// nosemgrep
 const WORD_EDGE = new RegExp(`^${WORD_GAP.source}|${WORD_GAP.source}$`, "g");
 
 /**
@@ -30,9 +33,9 @@ export function countWords(markdown: string): number {
 
 /**
  * The count as the locale groups it — exactly the number the ICU `#` in
- * `chapters.wordCount` prints (both go through `Intl.NumberFormat`), alone,
- * for the places that show the figure without the word.
+ * `chapters.wordCount` prints (both go through the active formatting locale),
+ * alone, for the places that show the figure without the word.
  */
-export function formatWordCount(count: number, locale: string): string {
-  return new Intl.NumberFormat(locale).format(count);
+export function formatWordCount(count: number): string {
+  return formatNumber(count);
 }

@@ -1,4 +1,5 @@
 import { Link, useMatches } from "@tanstack/react-router";
+import { workspaceRouteId } from "../lib/generated/workspace";
 
 import { useTranslation } from "../lib/i18n";
 import { usePageTitleValue } from "../lib/pageTitle";
@@ -31,7 +32,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   // The bar sits above that row and spans the viewport, so it must move with
   // the rail or its 1200 container centres 24 px left of every page's own
   // (measured: bar title 217 px, shelf heading 241 px).
-  const onWorkspace = useMatches().some((match) => match.routeId === "/novels/$id");
+  const onWorkspace = useMatches().some((match) => match.routeId === workspaceRouteId);
 
   return (
     <header
@@ -89,7 +90,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           >
             <Icon name="settings" />
           </Link>
-          <LanguageSwitcher />
+          <LanguageSwitcher showFormality={false} />
         </div>
       </div>
     </header>

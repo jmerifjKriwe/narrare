@@ -165,9 +165,9 @@ class _GuardedTemplate:
 
     def new_context(
         self,
-        vars: dict[str, Any] | None = None,
+        vars: dict[str, Any] | None = None,  # pylint: disable=redefined-builtin
         shared: bool = False,
-        locals: Mapping[str, Any] | None = None,
+        locals: Mapping[str, Any] | None = None,  # pylint: disable=redefined-builtin
     ) -> Context:
         return self._inner.new_context(vars, shared, locals)
 
@@ -226,7 +226,7 @@ class _RenderEnvironment(SandboxedEnvironment):
         self,
         name: str | Template,
         parent: str | None = None,
-        globals: MutableMapping[str, Any] | None = None,
+        globals: MutableMapping[str, Any] | None = None,  # pylint: disable=redefined-builtin
     ) -> Template:
         return _guarded(super().get_template(name, parent, globals), self._guard)
 
@@ -234,7 +234,7 @@ class _RenderEnvironment(SandboxedEnvironment):
         self,
         names: Iterable[str | Template],
         parent: str | None = None,
-        globals: MutableMapping[str, Any] | None = None,
+        globals: MutableMapping[str, Any] | None = None,  # pylint: disable=redefined-builtin,
     ) -> Template:
         return _guarded(super().select_template(names, parent, globals), self._guard)
 

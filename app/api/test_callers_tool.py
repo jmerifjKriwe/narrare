@@ -14,7 +14,7 @@ import subprocess  # nosec B404 - controlled just invocation, no shell
 import sys
 import time
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -58,8 +58,8 @@ def test_position_lands_inside_the_name_not_on_async() -> None:
 
 
 def test_line_target_picks_the_declared_name() -> None:
-    path, symbol, line = parse_target([f"{ROOT}/app/kernel/llm/profiles.py:26"])
-    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "", 26)
+    path, symbol, line = parse_target([f"{ROOT}/app/kernel/llm/repositories.py:26"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/repositories.py", "", 26)
 
 
 def test_a_line_target_resolves_to_the_declared_name_not_to_async() -> None:
@@ -69,13 +69,13 @@ def test_a_line_target_resolves_to_the_declared_name_not_to_async() -> None:
 
 
 def test_symbol_target_needs_no_line() -> None:
-    path, symbol, line = parse_target(["app/kernel/llm/profiles.py", "ordered"])
-    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "ordered", None)
+    path, symbol, line = parse_target(["app/kernel/llm/repositories.py", "ordered"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/repositories.py", "ordered", None)
 
 
 def test_a_target_without_a_symbol_or_a_line_is_refused() -> None:
     with pytest.raises(ValueError, match="symbol name or an explicit path:line"):
-        parse_target(["app/kernel/llm/profiles.py"])
+        parse_target(["app/kernel/llm/repositories.py"])
 
 
 def test_a_missing_file_is_named() -> None:
@@ -83,7 +83,9 @@ def test_a_missing_file_is_named() -> None:
         parse_target(["gibtsnicht.py", "ordered"])
 
 
-@pytest.mark.parametrize("target", ["app/kernel/llm/profiles.py", "app/kernel/llm/profiles.py:26"])
+@pytest.mark.parametrize(
+    "target", ["app/kernel/llm/repositories.py", "app/kernel/llm/repositories.py:26"]
+)
 def test_surplus_arguments_are_refused_before_starting_pyright(
     target: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -92,8 +94,8 @@ def test_surplus_arguments_are_refused_before_starting_pyright(
 
 
 def test_a_line_target_still_accepts_an_explicit_symbol() -> None:
-    path, symbol, line = parse_target(["app/kernel/llm/profiles.py:26", "ordered"])
-    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "ordered", 26)
+    path, symbol, line = parse_target(["app/kernel/llm/repositories.py:26", "ordered"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/repositories.py", "ordered", 26)
 
 
 @pytest.mark.parametrize("explicit_symbol", [False, True])
@@ -101,11 +103,20 @@ def test_line_queries_report_the_async_methods_actual_callers(
     explicit_symbol: bool, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Exercise line conversion and cursor placement against the real Pyright server."""
-    path = ROOT / "app/kernel/llm/profiles.py"
+    path = ROOT / "app/kernel/llm/repositories.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
+    # The file declares two ``ordered`` methods since providers arrived; the
+    # profile repository's is the one with callers, and the caller assertion
+    # below needs a called method — a 0-callers answer would prove nothing
+    # about the report.
+    profile_repository = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name == "ProfileRepository"
+    )
     line = next(
         node.lineno
-        for node in ast.walk(tree)
+        for node in ast.walk(profile_repository)
         if isinstance(node, ast.AsyncFunctionDef) and node.name == "ordered"
     )
     args = [f"{path}:{line}"]
@@ -113,8 +124,8 @@ def test_line_queries_report_the_async_methods_actual_callers(
         args.append("ordered")
     assert main(args) == 0
     output = capsys.readouterr().out
-    assert f"ordered — app/kernel/llm/profiles.py:{line} (method)" in output
-    assert "app/capabilities/settings/profiles_service.py:" in output
+    assert f"ordered — app/kernel/llm/repositories.py:{line} (method)" in output
+    assert "app/capabilities/settings/models_service.py:" in output
 
 
 @pytest.mark.parametrize(
@@ -199,8 +210,92 @@ def test_server_output_end_fails_fast_without_losing_responses(
         server.close()
 
 
+def test_wait_for_parks_a_response_for_the_request_that_claims_it() -> None:
+    """A frame that arrives before the awaited notification is not lost."""
+    program = (
+        "import sys, time\n"
+        "stream = sys.stdin.buffer\n"
+        "length = int(stream.readline().split(b':', 1)[1])\n"
+        "stream.readline()\n"
+        "stream.read(length)\n"  # the notification this test sends first
+        'note = b\'{"method":"probe/ready"}\'\n'
+        'resp = b\'{"id":1,"result":true}\'\n'
+        "out = sys.stdout.buffer\n"
+        # The response first, so wait_for must park it before the note
+        # arrives; dropping it would lose the answer to the next request.
+        "out.write(b'Content-Length: %d\\r\\n\\r\\n' % len(resp) + resp)\n"
+        "out.write(b'Content-Length: %d\\r\\n\\r\\n' % len(note) + note)\n"
+        "out.flush()\n"
+        "time.sleep(5)\n"
+    )
+    server = LanguageServer([sys.executable, "-c", program], cwd=ROOT)
+    try:
+        server.notify("initialized", {})
+        server.wait_for("probe/ready", timeout=5)
+        assert server.request("initialize", {}, timeout=5) is True
+    finally:
+        server.close()
+
+
+def test_wait_for_gives_up_on_a_silent_server() -> None:
+    server = LanguageServer([sys.executable, "-c", "import time; time.sleep(5)"], cwd=ROOT)
+    try:
+        with pytest.raises(TimeoutError, match="did not send probe/ready"):
+            server.wait_for("probe/ready", timeout=0.2)
+    finally:
+        server.close()
+
+
+def test_wait_for_names_the_exit_when_the_server_dies() -> None:
+    """A dead server is an exit to name, not a silence to time out on."""
+    server = LanguageServer(["/bin/true"], ROOT)
+    try:
+        with pytest.raises(RuntimeError, match="closed its output before answering probe/ready"):
+            server.wait_for("probe/ready", timeout=5)
+    finally:
+        server.close()
+
+
+def test_main_waits_for_readiness_before_asking_for_callers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The order is the fix: no call-hierarchy request before the diagnostics."""
+    path = tmp_path / "mod.py"
+    path.write_text("async def ordered() -> None: ...\n", encoding="utf-8")
+    item = {"name": "ordered", "kind": 6, "uri": path.as_uri()}
+    calls: list[str] = []
+
+    class Recording(LanguageServer):
+        def __init__(self, command: list[str], cwd: Path) -> None:
+            pass
+
+        def notify(self, method: str, params: dict[str, Any]) -> None:
+            calls.append(method)
+
+        def wait_for(self, method: str, timeout: float) -> None:
+            calls.append(f"wait_for:{method}")
+
+        def request(self, method: str, params: dict[str, Any], timeout: float) -> object:
+            calls.append(method)
+            return [item] if method == "textDocument/prepareCallHierarchy" else []
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr("scripts.callers.LanguageServer", Recording)
+    assert main([f"{path}:1"]) == 0
+    # The wait must follow the didOpen that starts the analysis, and precede
+    # the first call-hierarchy question: either inversion is the original bug.
+    assert calls.index("textDocument/didOpen") < calls.index(
+        "wait_for:textDocument/publishDiagnostics"
+    )
+    assert calls.index("wait_for:textDocument/publishDiagnostics") < calls.index(
+        "textDocument/prepareCallHierarchy"
+    )
+
+
 def test_call_sites_are_deduped_and_graded() -> None:
-    uri = f"file://{ROOT}/app/capabilities/settings/profiles_service.py"
+    uri = f"file://{ROOT}/app/capabilities/settings/models_service.py"
     test_uri = f"file://{ROOT}/app/kernel/tests/test_llm_profiles.py"
     result = cast(
         "list[IncomingCall]",
@@ -221,7 +316,7 @@ def test_call_sites_are_deduped_and_graded() -> None:
         ],
     )
     assert collect_calls(result) == [
-        CallSite("app/capabilities/settings/profiles_service.py", 113, "list"),
+        CallSite("app/capabilities/settings/models_service.py", 113, "list"),
         CallSite("app/kernel/tests/test_llm_profiles.py", 134, "test_ordered"),
     ]
     assert [site.is_test for site in collect_calls(result)] == [False, True]
@@ -280,7 +375,7 @@ def test_a_record_without_a_range_falls_back_to_the_callers_own_selection() -> N
 
 def test_the_surplus_argument_is_named() -> None:
     with pytest.raises(ValueError, match="typo"):
-        parse_target(["app/kernel/llm/profiles.py", "ordered", "typo"])
+        parse_target(["app/kernel/llm/repositories.py", "ordered", "typo"])
 
 
 def test_no_call_records_means_no_callers() -> None:

@@ -119,3 +119,50 @@ export function Dialog({
     </DialogTrigger>
   );
 }
+
+/**
+ * The overlay trio without a Dialog's shape: no trigger, no title heading,
+ * the content owned outright — the palette mounts its own chrome (an
+ * aria-labelled `RacDialog`, a top-aligned sheet, the search field as the
+ * first stop) and the ui primitive only stands for the composition, so
+ * no component below the ui line holds a React-Aria import itself.
+ * React-Aria still owns the whole focus contract; Escape and the outside
+ * dismissal close it through `onOpenChange`. The overlay is always
+ * dismissable, like every shell modal. Each layer's paint arrives as a
+ * prop: the caller places the surface (centered under `Dialog`, dropped
+ * from the top here), the primitive keeps no opinion.
+ */
+export function OverlayDialog({
+  isOpen,
+  onOpenChange,
+  overlayClassName,
+  modalClassName,
+  dialogClassName,
+  dialogAriaLabel,
+  children,
+}: {
+  isOpen: boolean;
+  onOpenChange?: (open: boolean) => void;
+  overlayClassName: string;
+  modalClassName: string;
+  dialogClassName: string;
+  /** The dialog's accessible name, when its content has no single
+   *  heading for `slot="title"` to label it by. */
+  dialogAriaLabel?: string;
+  children: ReactNode;
+}) {
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      className={overlayClassName}
+    >
+      <Modal className={modalClassName}>
+        <RacDialog aria-label={dialogAriaLabel} className={dialogClassName}>
+          {children}
+        </RacDialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}

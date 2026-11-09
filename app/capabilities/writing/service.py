@@ -9,12 +9,14 @@ from zipfile import BadZipFile
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
+from app.capabilities.writing.metadata import normalized_novel_updates
 from app.capabilities.writing.prompts import render_continuation
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
-from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead
+from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate
 from app.kernel.auth import SetupRequiredError
 from app.kernel.context import allocate
 from app.kernel.contracts.models import Chapter, Entity, Novel, User
+from app.kernel.contracts.positions import lock_novel
 from app.kernel.interchange import (
     ArchiveError,
     ArchiveTree,
@@ -36,6 +38,15 @@ class TargetNotEmptyError(Exception):
     def __init__(self, path: str) -> None:
         super().__init__(f"target not empty: {path}")
         self.path = path
+
+
+class OrderMismatchError(Exception):
+    """The body is not the book's current whole of chapter ids; `current` is,
+    in position order — the arrangement the client reverts to."""
+
+    def __init__(self, current: list[UUID]) -> None:
+        super().__init__("order mismatch")
+        self.current = current
 
 
 class ArchiveTooLargeError(Exception):
@@ -124,11 +135,54 @@ class WritingService:
             update={"chapter_count": chapter_count, "word_count": word_count}
         )
 
+    async def update_novel(self, novel_id: UUID, changes: NovelUpdate) -> NovelRead:
+        """Correct a novel's five metadata fields: only the fields the body carries.
+
+        The values are checked by ``metadata.normalized_novel_updates``, so a
+        hand-written call cannot skip the contract: it normalizes only the
+        carried fields and refuses an invalid one by name.
+        ``model_fields_set`` is what makes the update partial: a field the
+        body does not carry is not a change, and a carried ``null`` is one —
+        the cleared state. The write is one UPDATE through the repository's
+        save, and ``updated_at`` rides it through the column's ``onupdate``,
+        so an edit makes the export trace honestly stale; an empty body
+        carries no field and writes nothing.
+
+        Commit and return the novel, its derived counts filled the way the
+        read paths fill them. Raise NotFoundError if it is absent or
+        unowned, or InvalidNovelUpdateError for an invalid field, named.
+        """
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        updates = normalized_novel_updates(changes)
+        novel = await self.novels.save(novel, updates)
+        await self.session.commit()
+        return self._with_counts(novel, (await self.novels.counts(novel_id)).get(novel_id, (0, 0)))
+
+    async def delete_novel(self, novel_id: UUID) -> None:
+        """Delete a novel: the row goes, and everything it carried goes with it.
+
+        The novel-scoped foreign keys cascade in the database — chapters,
+        entities, suggestions, findings, and the entities' relations ride
+        their ends — so one delete of the root row is the whole book, and
+        the export is the safety net. Documents are the library's, not the
+        novel's, and survive. Commit the deletion; raise NotFoundError for
+        an absent or unowned novel.
+        """
+        novel = await self.novels.get(novel_id)
+        if novel is None:
+            raise NotFoundError
+        await self.novels.delete(novel)
+        await self.session.commit()
+
     async def create_chapter(self, novel_id: UUID, title: str) -> Chapter:
         await self._require_user()
         if await self.novels.get(novel_id) is None:
             raise NotFoundError
-        chapter = await self.chapters.create(novel_id, title)
+        # The same rule as the update: spaces are not a name, and "" after
+        # the trim is the honest unnamed.
+        chapter = await self.chapters.create(novel_id, title.strip())
         await self.session.commit()
         return chapter
 
@@ -203,12 +257,82 @@ class WritingService:
     async def update_chapter(self, chapter_id: UUID, changes: ChapterUpdate) -> Chapter:
         """Commit non-null edits and update the parent novel's timestamp.
 
+        A carried title is trimmed here, in the service, so a hand-written
+        call cannot skip it: spaces are not a name, and ``""`` after the
+        trim is the chapter returned to unnamed — stored as it is, with the
+        list's placeholder a rendering of it. Over-long stays the schema's
+        422; nothing else is refused.
+
+        The book's row is locked before the chapter's: the save's flush
+        takes the chapter row, and a delete or reorder holding the book's
+        row rewrites chapter rows under it — the same two rows, so the one
+        order (book first, the delete's and the reorder's) is what keeps
+        the pair from waiting on each other's row (Postgres 40P01).
+
         Return the chapter; raise NotFoundError if it is absent or another user's.
         """
         chapter = await self.get_chapter(chapter_id)
+        await lock_novel(self.session, user_id=self.user_id, novel_id=chapter.novel_id)
+        if changes.title is not None:
+            changes.title = changes.title.strip()
         chapter = await self.chapters.save(chapter, changes.model_dump(exclude_none=True))
         await self.session.commit()
         return chapter
+
+    async def delete_chapter(self, chapter_id: UUID) -> None:
+        """Delete one chapter and close the gap it leaves in the numbering.
+
+        The delete, the survivors' renumber and the novel's timestamp bump
+        are one transaction, so the rail never shows a missing number —
+        held under the book's row lock, the one every append takes: a
+        chapter created beside the delete either commits before the
+        survivors are read (and is renumbered with them) or waits and
+        allocates the number after the gap closed. The renumber moves a
+        position, never a "last written" — ``renumber`` pins each
+        survivor's ``updated_at`` to itself, and the novel's row is the
+        one that advances: the archive lost a chapter (D8). The chapter's
+        pending suggestions ride the foreign key's cascade; findings are
+        the novel's and stay. Raise NotFoundError for an absent or
+        unowned chapter.
+        """
+        chapter = await self.get_chapter(chapter_id)
+        novel_id = chapter.novel_id
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        await self.chapters.delete(chapter)
+        survivors = await self.chapters.list_for_novel(novel_id)
+        await self.chapters.renumber(novel_id, [survivor.id for survivor in survivors])
+        await self.chapters.touch_novel(novel_id)
+        await self.session.commit()
+
+    async def reorder_chapters(self, novel_id: UUID, chapter_ids: Sequence[UUID]) -> None:
+        """Rewrite the novel's chapter order as the one whole the body carries.
+
+        The body must be exactly the book's current ids — the same set, the
+        same length. Both the comparison and the rewrite sit under the
+        novel-row lock, the one every append takes: a chapter added or
+        deleted beside the reorder either commits before the read (and the
+        body, now short or long, is refused) or waits and takes its number
+        after the rewrite. A body that repeats an id is refused the same
+        way — its set or its length is wrong; the comparison is exact, no
+        intersection. On a mismatch nothing is written and
+        ``OrderMismatchError`` carries the stored ids in their position
+        order, what the client reverts to. The rewrite is ``renumber``
+        (each row's ``updated_at`` pinned to itself: an arrangement is not
+        a write, D8); the novel's row is the one that advances. Commit
+        once. Raise NotFoundError for an absent or unowned novel.
+        """
+        if await self.novels.get(novel_id) is None:
+            raise NotFoundError
+        await lock_novel(self.session, user_id=self.user_id, novel_id=novel_id)
+        current = [chapter.id for chapter in await self.chapters.list_for_novel(novel_id)]
+        # Set and length, one comparison each: the set catches an id the
+        # book does not hold (a deleted chapter, a foreign one), the length
+        # a body that repeats an id. Nothing is written before both agree.
+        if set(chapter_ids) != set(current) or len(chapter_ids) != len(current):
+            raise OrderMismatchError(current)
+        await self.chapters.renumber(novel_id, chapter_ids)
+        await self.chapters.touch_novel(novel_id)
+        await self.session.commit()
 
     async def export_novel(
         self, novel_id: UUID, mode: Literal["path", "zip"], path: str | None
@@ -221,7 +345,11 @@ class WritingService:
         receipt. The kernel engine reads the rows and raises
         `NovelNotFoundError` for a missing or foreign novel, which becomes
         NotFoundError here; the transport's own failures are the caller's
-        named fields.
+        named fields. Both deliveries leave the export's trace:
+        `last_exported_at` is written and committed only after the engine
+        has read the rows and, in path mode, the directory write has
+        succeeded — the ZIP commits the stamp before the bytes are
+        returned — so a refused or failed export sets nothing.
         """
         try:
             slug, files = await interchange_engine.export_novel(
@@ -230,7 +358,10 @@ class WritingService:
         except interchange_engine.NovelNotFoundError:
             raise NotFoundError from None
         if mode == "zip":
-            return slug, zip_bytes(files)
+            payload = zip_bytes(files)
+            await self.novels.touch_exported(novel_id)
+            await self.session.commit()
+            return slug, payload
         if path is None or not path.strip():
             raise FieldRefusedError(("path",), "exporting to a path needs a target path")
         # A file is not a target: say so, rather than call it a non-empty
@@ -248,6 +379,8 @@ class WritingService:
             # name). Both are the request's fault and come back named.
             reason = error.strerror if isinstance(error, OSError) and error.strerror else str(error)
             raise FieldRefusedError(("path",), f"{path}: {reason}") from None
+        await self.novels.touch_exported(novel_id)
+        await self.session.commit()
         tree = ArchiveTree(files)
         return ExportDone(
             # The directory actually written: a relative target is resolved so

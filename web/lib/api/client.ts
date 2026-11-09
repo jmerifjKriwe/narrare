@@ -2,7 +2,7 @@ import createClient from "openapi-fetch";
 
 import type { components, paths } from "./schema";
 
-/** One origin: the Next.js shell forwards /api to the FastAPI process. */
+/** One origin: FastAPI serves the built SPA, and the relative base keeps /api there. */
 export const client = createClient<paths>({ baseUrl: "" });
 
 export type Novel = components["schemas"]["NovelRead"];

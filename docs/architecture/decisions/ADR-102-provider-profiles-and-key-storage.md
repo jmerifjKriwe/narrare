@@ -72,9 +72,9 @@ database copy; no hint display without reading the key itself.
 `writing.continuation`, `chat.ask`, `knowledge.extract-entities`,
 `knowledge.check-consistency` route; `settings.test` is audit-only
 (`app/kernel/llm/resolution.py`). Resolution is exact task key → prefix → the
-user's default → environment → `fake`. A new vendor on the OpenAI chat shape is a
-profile row and no code; a new API shape is an adapter plus one `PROFILE_KINDS`
-value.
+user's default → environment → `fake`. A new vendor on the OpenAI chat shape is
+a provider row with its models under it and no code; a new API shape is an
+adapter plus one `PROVIDER_KINDS` value.
 
 Model metadata comes from a vendored models.dev snapshot
 (`app/kernel/llm/data/models.json`, refreshed by
@@ -130,10 +130,38 @@ record is its dated trace.
 
 ## Implementation Notes
 
-Profiles and assignments: `app/kernel/llm/profiles.py`; resolution cascade:
+Providers, models and assignments: `app/kernel/llm/repositories.py`; presets:
+`app/kernel/llm/presets.py`; resolution cascade:
 `app/kernel/llm/resolution.py`; the OpenAI chat adapter: `app/kernel/llm/openai_chat.py`;
+the Anthropic Messages adapter: `app/kernel/llm/anthropic_messages.py`;
 costs and limits: `app/kernel/llm/catalog.py`; the settings surface:
 `app/capabilities/settings/`.
+
+---
+
+## Amendment — the provider row and its models (2026-11-09)
+
+The provider-presets wave
+([spec](../../superpowers/specs/2026-11-04-provider-presets-and-model-profiles-design.md))
+split the single profile into two levels without moving this decision's core: a
+provider is now its own row (`llm_providers`: name, `kind`, `base_url`,
+`models_url`, `vendor`, and the key) and the model profiles (`provider_profiles`)
+hang off it. The reason is the one the old shape could not survive: a single
+profile conflated endpoint and model, and the same model through two providers
+must stay two priced facts. Assignments still target model profiles — the task
+names what serves; the provider carries where and how. The kind vocabulary is
+`PROVIDER_KINDS` (`fake`, `openai-chat`, `anthropic`), read from the provider
+row; the profile-era `PROFILE_KINDS` is gone. The first API shape beyond OpenAI
+chat arrived with the wave itself: the native Anthropic Messages adapter, which
+is why the second review trigger below is ticked. Presets are kernel data that
+fill the provider form in one choice; the model picker speaks the vendor's
+catalog vocabulary.
+
+The profile-shaped wording above and the v2 spec's "one profile row" line
+(spec §4) are superseded by this section; the spec's line carries a dated note
+in place (2026-11-09). The key decision — two storage tiers, the plaintext
+exactly once, the stored hint — is untouched: the key moved from the profile to
+the provider row, and the tiers did not change.
 
 ---
 
@@ -141,7 +169,9 @@ costs and limits: `app/kernel/llm/catalog.py`; the settings surface:
 
 - [ ] When the hosted multi-user model is decided (ADR-101's open question) — key
       storage per user then needs a second look.
-- [ ] When a provider with an API shape other than OpenAI chat is wanted — the
-      adapter-plus-`PROFILE_KINDS` path gets its first real exercise.
+- [x] When a provider with an API shape other than OpenAI chat is wanted — the
+      adapter-plus-`PROVIDER_KINDS` path got its first real exercise: the native
+      Anthropic Messages adapter landed in the provider-presets wave
+      (amendment 2026-11-09).
 - [ ] When a keyring backend misbehaves on a supported platform — the probe's
       read-only design gets re-checked against a write-failure case.

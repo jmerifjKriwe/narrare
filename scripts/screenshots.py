@@ -170,36 +170,46 @@ def _run_check(api: httpx.Client, novel_id: str) -> None:
 
 
 def _route_model(api: httpx.Client, vendor: ChatVendor) -> None:
-    """Two profiles, as a user would make them: the stand-in, and a local endpoint.
+    """Two providers with one model each, as a user would: the stand-in, and a local endpoint.
 
     The knowledge jobs stay on the deterministic fake — they answer JSON, which a
     prose stand-in cannot. Chat and the continuation go to the local endpoint, so
-    their text is the demo prose instead of one canned German sentence.
+    their text is the demo prose instead of one canned German sentence. The
+    provider row is the endpoint, so the pair is created first and the models
+    hang off it — the way the settings surface stores a configuration.
     """
     fake = api.post(
-        "/api/settings/profiles",
-        json={"name": "Deterministic stand-in", "kind": "fake"},
+        "/api/settings/providers", json={"name": "Deterministic stand-in", "kind": "fake"}
     )
     fake.raise_for_status()
     fake_id = str(fake.json()["id"])
 
     local = api.post(
-        "/api/settings/profiles",
-        json={
-            "name": "Local endpoint",
-            "kind": "openai-chat",
-            "base_url": vendor.base_url,
-            "model": "vendor-max",
-        },
+        "/api/settings/providers",
+        json={"name": "Local endpoint", "kind": "openai-chat", "base_url": vendor.base_url},
     )
     local.raise_for_status()
     local_id = str(local.json()["id"])
 
+    fake_model = api.post(
+        "/api/settings/models",
+        json={"name": "Deterministic stand-in", "provider_id": fake_id, "model": "fake"},
+    )
+    fake_model.raise_for_status()
+    fake_model_id = str(fake_model.json()["id"])
+
+    local_model = api.post(
+        "/api/settings/models",
+        json={"name": "Local endpoint", "provider_id": local_id, "model": "vendor-max"},
+    )
+    local_model.raise_for_status()
+    local_model_id = str(local_model.json()["id"])
+
     for task, profile_id in (
-        ("knowledge.extract-entities", fake_id),
-        ("knowledge.check-consistency", fake_id),
-        ("chat.ask", local_id),
-        ("writing.continuation", local_id),
+        ("knowledge.extract-entities", fake_model_id),
+        ("knowledge.check-consistency", fake_model_id),
+        ("chat.ask", local_model_id),
+        ("writing.continuation", local_model_id),
     ):
         assigned = api.put(f"/api/settings/assignments/{task}", json={"profile_id": profile_id})
         assigned.raise_for_status()

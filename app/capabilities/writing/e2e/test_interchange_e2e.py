@@ -411,7 +411,7 @@ def test_stale_import_is_refused(page: Page, stack: Stack, tmp_path: Path) -> No
     page.goto(BASE + "/")
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
-    page.get_by_role("button", name=CHAPTER_ONE).click()
+    page.get_by_role("button", name=re.compile(rf"^{re.escape(CHAPTER_ONE)}\b")).click()
     editor = page.locator(".ProseMirror")
     expect(editor).to_be_visible()
     editor.click()

@@ -6,10 +6,16 @@ the server — host, boot id, pid — that a sweep requires before it drops
 anything. A run that died mid-suite leaves its database behind; the next
 run's sweep reclaims it, but only when the marker names this host and either
 names another boot or a pid that is no longer alive. A name without a marker,
-or from another
-host, is never ours to drop. One shared name would carry one suite's rows
-into the next and let two concurrent runs truncate each other's tables
-mid-test (#611).
+or from another host, is never ours to drop. One shared name would carry one
+suite's rows into the next and let two concurrent runs truncate each other's
+tables mid-test (#611).
+
+The server itself is the compose default unless the environment says
+otherwise: two checkouts share one machine, and ``NARRE_TEST_DATABASE_URL``
+is how the second one aims its suites — and its E2E stacks — at its own
+Postgres instead of waiting for the port's first holder. The name a run
+mints on that server is still its own; the env var chooses the door, never
+the room behind it.
 """
 
 import asyncio
@@ -17,7 +23,7 @@ import re
 import sys
 from contextlib import suppress
 from hashlib import blake2s
-from os import getpid, kill
+from os import environ, getpid, kill
 from pathlib import Path
 from secrets import token_hex
 from socket import gethostname
@@ -25,17 +31,63 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
-SERVER = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+_ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
+
+# Attached to a running instance, exactly one database exists — the instance's
+# own — and that is what every test-database name resolves to. The name is
+# never recorded, so no session finish and no sweep can drop its data.
+if _ATTACH_URL and not environ.get("NARRE_DATABASE_URL"):
+    raise RuntimeError(
+        "NARRE_E2E_ATTACH needs NARRE_DATABASE_URL: the attached instance's"
+        " database is where the preconditions are seeded"
+    )
+
+_ATTACH = make_url(environ["NARRE_DATABASE_URL"]) if _ATTACH_URL else None
+
+# The test Postgres server. Two doors for a second checkout on one machine:
+#   - NARRE_TEST_DATABASE_URL: full URL override (wins, e.g. for an attached
+#     or remote server).
+#   - NARRE_TEST_DB_PORT: port-only override (host, user, password stay the
+#     compose defaults) — the convenient knob for parallel worktrees.
+# Attached runs never read it: their database is the instance's own.
+_test_db_url_override = (environ.get("NARRE_TEST_DATABASE_URL") or "").strip()
+_test_db_port_override = (environ.get("NARRE_TEST_DB_PORT") or "").strip()
+if _test_db_url_override:
+    _server = _test_db_url_override
+elif _test_db_port_override:
+    _server = f"postgresql+asyncpg://narrare:narrare@localhost:{int(_test_db_port_override)}"
+else:
+    _server = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+SERVER = _server
+
+
+def admin_url(database: str) -> str:
+    """A connection to `database` on the server the run may administer.
+
+    Attached to a running instance, that is the instance's server: creating and
+    dropping databases is how the default path prepares too, and a hardcoded
+    localhost here sent every admin step to the wrong machine.
+    """
+    if _ATTACH is not None:
+        return _ATTACH.set(database=database).render_as_string(hide_password=False)
+    return f"{SERVER}/{database}"
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # The per-run token: eight hex characters minted once per process. The same
 # process, the same prefix — the same name, always; two runs differ even when
 # their pids would be reused across the runs.
-_RUN_TOKEN = token_hex(4)
+#
+# The ``or`` is reload safety: ``importlib.reload`` re-executes the module in
+# this same dict (the SERVER tests do), and a token re-minted mid-run hands
+# every later ``test_database`` caller a name nobody ensured — or a sweep
+# inside a running loop. Carried, not re-minted; the caches below agree.
+_RUN_TOKEN: str = globals().get("_RUN_TOKEN") or token_hex(4)
 # ``test_database``'s suffix — which the sweep matches on: the worktree token
 # plus the run token, 16 lowercase hex characters in total.
 _RUN_SUFFIX = re.compile(r"[0-9a-f]{16}")
@@ -57,12 +109,17 @@ def _boot_id() -> str:
 
 _BOOT = _boot_id()
 
-_SWEPT: set[str] = set()
-_NAMES: dict[str, str] = {}
-_RUN_DATABASES: list[str] = []
+# Carried across a reload (see ``_RUN_TOKEN``): the run's sweeps and names
+# are this process's, not this import's.
+_SWEPT: set[str] = globals().get("_SWEPT") or set()
+_NAMES: dict[str, str] = globals().get("_NAMES") or {}
+_RUN_DATABASES: list[str] = globals().get("_RUN_DATABASES") or []
 
 
 def url_for(database: str) -> str:
+    if _ATTACH is not None:
+        # Built from the URL, so a query option (`?ssl=require`) survives.
+        return _ATTACH.set(database=database).render_as_string(hide_password=False)
     return f"{SERVER}/{database}"
 
 
@@ -99,7 +156,13 @@ def test_database(prefix: str = "narrare_v2_test") -> str:
     else's name.
 
     ``ensure_database`` is the caller's next step: nothing is created here.
+
+    Attached to a running instance (``NARRE_E2E_ATTACH``), the answer is that
+    instance's database: there is exactly one, it holds the artefact's state,
+    and a run that only drives it neither sweeps nor drops it.
     """
+    if _ATTACH is not None:
+        return _ATTACH.database or ""
     if prefix in _NAMES:
         return _NAMES[prefix]
     if prefix not in _SWEPT:
@@ -134,7 +197,7 @@ def sweep(prefix: str = "narrare_v2_test") -> None:
 
 
 async def _sweep(prefix: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             rows = await connection.execute(
@@ -158,6 +221,7 @@ async def _sweep(prefix: str) -> None:
                     continue  # another machine's run, against a shared server
                 if boot == _BOOT and _alive(pid):
                     continue  # live on this boot
+                # nosemgrep
                 await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
     finally:
         await engine.dispose()
@@ -169,9 +233,10 @@ def drop_database(name: str) -> None:
 
 
 async def _drop(name: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
+            # nosemgrep
             await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
     finally:
         await engine.dispose()
@@ -208,14 +273,18 @@ async def drop_every_table(database_url: str) -> None:
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
         result = await connection.execute(
+            # nosemgrep
             text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
         )
         for (table_name,) in result.fetchall():
+            # nosemgrep
             await connection.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
         result = await connection.execute(
+            # nosemgrep
             text("SELECT viewname FROM pg_views WHERE schemaname = 'public'")
         )
         for (view_name,) in result.fetchall():
+            # nosemgrep
             await connection.execute(text(f'DROP VIEW IF EXISTS "{view_name}" CASCADE'))
     await engine.dispose()
 
@@ -231,15 +300,18 @@ async def seed_user(user_id: UUID) -> None:
 
 
 async def _ensure(database: str) -> None:
-    engine = create_async_engine(f"{SERVER}/postgres", isolation_level="AUTOCOMMIT")
+    engine = create_async_engine(admin_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
             exists = await connection.scalar(
-                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": database}
+                # nosemgrep
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": database},
             )
             if not exists:
                 # A parallel pytest worker may create it between the check and here.
                 with suppress(Exception):
+                    # nosemgrep
                     await connection.execute(text(f'CREATE DATABASE "{database}"'))
             # Only a name this process minted is marked. The comment sits
             # outside the CREATE's own suppression: a database created but

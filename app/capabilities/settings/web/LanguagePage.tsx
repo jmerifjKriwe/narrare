@@ -1,6 +1,8 @@
 import { LanguageSwitcher } from "@shell/components/LanguageSwitcher";
 import { useTranslation } from "@shell/lib/i18n";
+import { activeLocale, subscribeLocale } from "@shell/lib/locale";
 import { usePageTitle } from "@shell/lib/pageTitle";
+import { useSyncExternalStore } from "react";
 
 /**
  * The language cluster's page: the bar's own control, reused here — one
@@ -11,6 +13,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  */
 export function LanguagePage() {
   const t = useTranslation();
+  const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
   // The tab's name: this page is "Sprache", not the area's name — a
   // sub-page owns its own, the way the prompts page does.
   usePageTitle(t("settings.language"));
@@ -22,6 +25,11 @@ export function LanguagePage() {
       </h2>
       <div className="mt-3">
         <LanguageSwitcher />
+        {locale !== "en" ? (
+          <p className="mt-2 text-caption text-muted">
+            {t("settings.formality.hint")}
+          </p>
+        ) : null}
       </div>
     </section>
   );

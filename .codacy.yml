@@ -1,0 +1,33 @@
+---
+# Codacy configuration.
+#
+# Top-level excludes: generated/lock files and dev tooling, tests, migrations
+# and E2E scaffolding — their findings are noise or handled by each tool's own
+# guards. Application code stays analysed.
+exclude_paths:
+  - "uv.lock"
+  - "pnpm-lock.yaml"
+  - "web/lib/api/openapi.json"
+  - "scripts/**"
+  - "web/scripts/**"
+  - "app/kernel/testing/**"
+  - "app/kernel/db/migrations/**"
+  - "**/tests/**"
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/e2e/**"
+
+# Engine-scoped excludes for single noisy rules that only bite on one file.
+engines:
+  # The "package dependencies with variant versions" rule fires on every caret
+  # range in the hand-maintained web manifest; other engines (secrets, deps)
+  # keep scanning it.
+  opengrep:
+    exclude_paths:
+      - "web/package.json"
+  # Dev database credentials in the E2E attach step of CI — not a secret.
+  checkov:
+    exclude_paths:
+      - ".github/workflows/ci.yml"

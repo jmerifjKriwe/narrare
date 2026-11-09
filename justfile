@@ -1,5 +1,5 @@
 # Narrare v2. One backend under app/, one web app under web/.
-# 25 public recipes; private helpers start with `_`.
+# 27 public recipes; private helpers start with `_`.
 # .env is the whole configuration surface; a missing file is fine.
 set dotenv-load := true
 
@@ -58,17 +58,18 @@ verify scope="affected":
     just build
     just test-e2e {{scope}}
 
-# Ruff: check and format check.
+# Ruff and Biome: check only.
 lint:
     uv run ruff check app scripts
     uv run ruff format --check app scripts
+    pnpm exec biome lint --error-on-warnings
 
 # Pyright for the backend, tsc for the web app.
 typecheck:
     uv run pyright
     pnpm --dir web typecheck
 
-# Who calls a symbol: just callers app/kernel/llm/profiles.py ordered
+# Who calls a symbol: just callers app/kernel/llm/repositories.py:69
 [positional-arguments]
 callers *args:
     uv run python -m scripts.callers "$@"
@@ -113,6 +114,11 @@ fuzz seconds="300":
 # Web unit tests.
 test-frontend:
     pnpm --dir web test
+
+# Only the web tests the working tree's change reaches — the inner loop for
+# frontend work, mirroring the pre-commit hook. Full suite via test-frontend.
+test-frontend-changed:
+    pnpm --dir web exec vitest run --changed HEAD
 
 # Production build of the web app.
 build:

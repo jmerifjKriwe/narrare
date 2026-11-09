@@ -135,6 +135,11 @@ function ExportForm({ novel, close }: { novel: Novel; close: () => void }) {
         mode === "path" ? path.trim() : undefined,
         `${proposeExportPath(novel.title)}.zip`,
       );
+      // The export stamped the row (`last_exported_at`, both deliveries):
+      // the row's key is invalidated, so every reader of it — the delete
+      // dialog's warning line above all — recomputes from the refetch
+      // instead of trusting a freshness window (§10).
+      void queryClient.invalidateQueries({ queryKey: ["novels", novel.id] });
       if ("blob" in result) {
         // The ZIP's report is the download itself; nothing to show, much
         // to claim — the announcement says the archive left, and the

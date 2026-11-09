@@ -66,8 +66,8 @@ function makeRouter(initialEntry = "/") {
     }),
     createRoute({
       getParentRoute: () => root,
-      path: "/novels/$id/wissen",
-      component: () => <p>wissen</p>,
+      path: "/novels/$id/knowledge",
+      component: () => <p>knowledge</p>,
     }),
   ];
   return createRouter({
@@ -119,7 +119,7 @@ describe("the generated commands", () => {
     "export-novel": { novel: true, bare: false },
     "open-settings": { novel: true, bare: true },
     "open-prompts": { novel: true, bare: true },
-    "open-wissen-dock": { novel: true, bare: false },
+    "open-knowledge-dock": { novel: true, bare: false },
     "run-extraction": { novel: true, bare: false },
     "run-consistency-check": { novel: true, bare: false },
   };
@@ -153,7 +153,7 @@ describe("the generated commands", () => {
     "export-novel": { novelId: "7", path: "/" },
     "open-settings": { novelId: null, path: "/settings" },
     "open-prompts": { novelId: null, path: "/settings/prompts" },
-    "open-wissen-dock": { novelId: "7", path: "/novels/7/wissen" },
+    "open-knowledge-dock": { novelId: "7", path: "/novels/7/knowledge" },
     "run-extraction": { novelId: "7", path: "/" },
     "run-consistency-check": { novelId: "7", path: "/" },
   };
@@ -174,7 +174,7 @@ describe("the generated commands", () => {
     }
   });
 
-  it("open-wissen-dock keeps the workspace's address — ?chapter= and a collapsed rail ride along", async () => {
+  it("open-knowledge-dock keeps the workspace's address — ?chapter= and a collapsed rail ride along", async () => {
     // The dock opens where the workbench stood: the chapter address is what
     // a reload or a share reads back, and the panel state lives in the same
     // URL. The router reads an absent `search` as the empty record, so a
@@ -182,11 +182,11 @@ describe("the generated commands", () => {
     // where that failure lands, not in a screenshot.
     const router = makeRouter(`/novels/7?chapter=${HELD_CHAPTER}&rail=false`);
     render(<RouterProvider router={router} />);
-    const dock = rows.find((command) => command.id === "open-wissen-dock");
-    if (!dock) throw new Error("open-wissen-dock missing from the aggregation");
+    const dock = rows.find((command) => command.id === "open-knowledge-dock");
+    if (!dock) throw new Error("open-knowledge-dock missing from the aggregation");
     dock.run(contextFor(router, "7"));
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/novels/7/wissen"),
+      expect(router.state.location.pathname).toBe("/novels/7/knowledge"),
     );
     expect(router.state.location.search).toMatchObject({
       chapter: HELD_CHAPTER,
@@ -200,8 +200,8 @@ describe("the generated commands", () => {
     // path. The assertion is the settled state, not a timer: the navigate
     // the context carries is spied, so a leaked navigation would be visible
     // in the calls, not only in a location that raced the wait.
-    const dock = rows.find((command) => command.id === "open-wissen-dock");
-    if (!dock) throw new Error("open-wissen-dock missing from the aggregation");
+    const dock = rows.find((command) => command.id === "open-knowledge-dock");
+    if (!dock) throw new Error("open-knowledge-dock missing from the aggregation");
     const router = makeRouter();
     const navigate = vi.spyOn(router, "navigate").mockResolvedValue(undefined as never);
     render(<RouterProvider router={router} />);

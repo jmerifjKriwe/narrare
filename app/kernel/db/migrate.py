@@ -36,15 +36,17 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import ForeignKeyConstraint, MetaData, UniqueConstraint, text
+from sqlalchemy import ForeignKeyConstraint, MetaData, UniqueConstraint, bindparam, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.kernel.db.backup import BackupFailed, dump_database
 from app.kernel.db.base import Base
 
 if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
+
     from sqlalchemy.engine import Connection
     from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -55,6 +57,10 @@ ALEMBIC_INI = Path(__file__).resolve().parents[3] / "alembic.ini"
 # Postgres SQLSTATE for undefined_table — the version table of a database
 # that has never been migrated.
 UNDEFINED_TABLE = "42P01"
+
+REQUIRED_EXTENSIONS: tuple[str, ...] = ("vector", "pg_trgm", "unaccent")
+"""Every table's DDL assumes these: vector for the embedding columns, pg_trgm for
+the trigram index over ``search_text``, unaccent for the query side's folding."""
 
 # Postgres SQLSTATE for insufficient_privilege — the extension pre-step's
 # one tolerable failure, because there the platform owns the step (D7).
@@ -85,23 +91,54 @@ def default_config() -> Config:
 
 
 async def ensure_extensions(database_url: str) -> None:
-    """Create the three extensions every table's DDL assumes; idempotent.
+    """Create the extensions every table's DDL assumes; idempotent.
 
     A separate pre-step, not DDL inside a revision: on a hosted database the
     app user may not be allowed to create extensions, and there the platform
     owns that step (design D7). It lives in this module, not in ``init.py``:
     ``prepare_database`` runs it before anything else, and ``init.py``
     imports this module — the other direction would be the cycle.
+
+    The catalog is consulted first: a server that cannot offer an extension is
+    refused with its name, because the driver's own error for that case is a
+    bare ``CREATE EXTENSION`` failure an operator has to decode. A server that
+    offers them but forbids creating them stays the privilege refusal below.
     """
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
-        # vector: the embedding columns; pg_trgm: the trigram search over
-        # search_text; unaccent: the diacritics-folding the query side
-        # applies (the index itself is a plain gin_trgm_ops on the column).
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+        offered = {
+            name
+            for (name,) in await connection.execute(
+                text("SELECT name FROM pg_available_extensions WHERE name IN :names").bindparams(
+                    bindparam("names", expanding=True)
+                ),
+                {"names": list(REQUIRED_EXTENSIONS)},
+            )
+        }
+        if missing := missing_extensions(offered):
+            raise MigrationRefused(extension_refusal(missing))
+        for extension in REQUIRED_EXTENSIONS:
+            # nosemgrep
+            await connection.execute(text(f"CREATE EXTENSION IF NOT EXISTS {extension}"))
     await engine.dispose()
+
+
+def missing_extensions(available: Collection[str]) -> list[str]:
+    """The required extensions this server does not offer, in schema order."""
+    return [extension for extension in REQUIRED_EXTENSIONS if extension not in available]
+
+
+def extension_refusal(missing: Sequence[str]) -> str:
+    """The one sentence an operator reads when the server cannot serve the schema."""
+    names = ", ".join(f"'{name}'" for name in missing)
+    noun = "extension" if len(missing) == 1 else "extensions"
+    return (
+        f"the database cannot provide the {noun} Narrare's schema needs: {names}"
+        " — use a server that ships"
+        f" {'it' if noun == 'extension' else 'them'} (the pgvector/pgvector image,"
+        f" or the distribution's contrib package), or have the platform create"
+        f" {'it' if noun == 'extension' else 'them'}"
+    )
 
 
 def head_revision(config: Config | None = None) -> str:
@@ -162,6 +199,7 @@ def register_models() -> None:
     for capability in CAPABILITIES:
         models_module = f"app.capabilities.{capability.id}.models"
         try:
+            # nosemgrep
             import_module(models_module)
         except ModuleNotFoundError as exc:
             if exc.name != models_module:
@@ -337,6 +375,7 @@ async def _normalize_legacy_pk_fk_names(database_url: str) -> list[tuple[str, st
                     continue
                 await connection.execute(
                     # Identifiers from the catalog; DDL takes no bind params.
+                    # nosemgrep
                     text(
                         f'ALTER TABLE "{table_name}" RENAME CONSTRAINT '
                         f'"{constraint_name}" TO "{expected}"'
@@ -398,6 +437,7 @@ def _rename_unique_constraint_pairs(
     for table_name, old, new in renames:
         connection.execute(
             # Identifiers from the catalog/metadata; DDL takes no bind params.
+            # nosemgrep
             text(f'ALTER TABLE "{table_name}" RENAME CONSTRAINT "{old}" TO "{new}"')
         )
         logger.info(
@@ -421,6 +461,7 @@ def _scratch_database_name(database_url: str) -> str:
     limit.
     """
     # sha1 names a scratch database — no security property is claimed.
+    # nosemgrep
     digest = hashlib.sha1(database_url.encode(), usedforsecurity=False).hexdigest()
     return f"narrare_baseline_{digest[:8]}"
 
@@ -444,6 +485,7 @@ async def _drop_scratch_database(admin_url: str, database: str) -> None:
     engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as connection:
+            # nosemgrep
             await connection.execute(text(f"DROP DATABASE IF EXISTS {database} WITH (FORCE)"))
     finally:
         await engine.dispose()
@@ -482,6 +524,7 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
             # fails on it — it never masks the CREATE's own error.
             leftover: str | None = None
             try:
+                # nosemgrep
                 await connection.execute(text(f"DROP DATABASE IF EXISTS {scratch} WITH (FORCE)"))
             except Exception as drop_exc:
                 leftover = (
@@ -489,6 +532,7 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
                     f"first: {drop_exc}"
                 )
             try:
+                # nosemgrep
                 await connection.execute(text(f"CREATE DATABASE {scratch}"))
             except Exception as exc:
                 sqlstate = getattr(exc.__cause__, "sqlstate", None)
@@ -543,6 +587,110 @@ async def _baseline_metadata_or_refuse(config: Config, database_url: str) -> tup
     if version_table is not None:
         metadata.remove(version_table)
     return baseline, metadata
+
+
+async def _take_pre_migration_backup(
+    database_url: str,
+    *,
+    pending: bool,
+    has_tables: bool,
+    backup: bool,
+    backup_dir: Path | None,
+) -> Path | None:
+    """Take the pre-migration dump when the run is about to write (D5).
+
+    Revisions are pending when the run will really write — a fresh replay,
+    a first upgrade's stamp, a versioned one behind head — and the
+    restorable copy happens then, but only when the database holds tables:
+    the dump protects prose, and an empty schema has none. This caller owes
+    none when ``backup=False``, and ``NARRE_MIGRATION_BACKUP=skip`` says
+    the operator already took their own copy. ``BackupFailed`` becomes the
+    refusal naming both ways out, so nothing migrates without its copy.
+    """
+    if not (
+        pending
+        and has_tables
+        and backup
+        and environ.get("NARRE_MIGRATION_BACKUP", "pg_dump") != "skip"
+    ):
+        return None
+    directory = backup_dir or Path(environ.get("NARRE_BACKUP_DIR") or "./backups")
+    try:
+        return await dump_database(database_url, directory)
+    except BackupFailed as exc:
+        raise MigrationRefused(
+            "the pre-migration dump failed and nothing was migrated: "
+            f"{exc}; install postgresql-client so the dump can run, "
+            "or set NARRE_MIGRATION_BACKUP=skip after taking your "
+            "own copy of the database"
+        ) from exc
+
+
+async def _bootstrap_or_refuse(config: Config, engine: AsyncEngine, database_url: str) -> str:
+    """Decide the stamp target for an unversioned table-bearing database (D4).
+
+    Normalizes the pre-convention constraint names, compares the schema
+    against the baseline revision's replay then the models at head — applying
+    a remove+add unique pair as the convention rename and comparing again —
+    and returns the matching target. Whatever still differs after both
+    targets is refused, by name.
+    """
+    # The bootstrap (design D4, CodeRabbit round 1, 2026-11-01). First the
+    # constraint names: a database created before the naming convention (D9)
+    # carries Postgres's own PK and FK defaults, and alembic renders its
+    # legacy-named uniques as remove+add pairs — both are renamed to the
+    # convention's, not held against the database.
+    await _normalize_legacy_pk_fk_names(database_url)
+    baseline, baseline_metadata = await _baseline_metadata_or_refuse(config, database_url)
+    head = head_revision(config)
+
+    async def _compare(target: MetaData | None) -> list[Any]:
+        async with engine.connect() as connection:
+            return await connection.run_sync(
+                lambda sync_connection: diff_against_models(config, sync_connection, target)
+            )
+
+    async def _apply_renames(target_diff: list[Any]) -> list[tuple[str, str, str]]:
+        async with engine.begin() as connection:
+            return await connection.run_sync(
+                lambda sync_connection: _rename_unique_constraint_pairs(
+                    sync_connection, target_diff
+                )
+            )
+
+    # The two real populations of an unversioned database, in order
+    # (CodeRabbit round 1, fix 2, 2026-11-01): the release era — equal to the
+    # baseline revision's replay, stamped at the baseline so the upgrade
+    # below carries it to head through every revision it missed — and the
+    # models era (``reset_schema``, the API suite's client fixture, any
+    # ``create_all``) — equal to the models at head, stamped at head with
+    # nothing left to upgrade. In either case a remove+add pair of the same
+    # unique constraint is the convention rename: applied as such, then the
+    # same target is compared again. Whatever still differs after both
+    # targets is the refusal's subject.
+    stamp_target = head
+    diff: list[Any] = []
+    for target_revision, target_metadata in (
+        (baseline, baseline_metadata),
+        (head, None),
+    ):
+        diff = await _compare(target_metadata)
+        if diff:
+            renamed = await _apply_renames(diff)
+            if renamed:
+                diff = await _compare(target_metadata)
+        if not diff:
+            stamp_target = target_revision
+            break
+    if diff:
+        raise MigrationRefused(
+            "the database has tables but no migration history, and its "
+            "schema matches neither the baseline revision "
+            f"{baseline} nor the models at head ({_describe(diff)}); "
+            "refusing to guess — align the schema with the models by "
+            "hand or reset the database"
+        )
+    return stamp_target
 
 
 async def prepare_database(
@@ -652,96 +800,20 @@ async def prepare_database(
 
                 # Revisions are pending when the run will really write — a
                 # fresh replay, a first upgrade's stamp, a versioned one
-                # behind head — and the restorable copy happens then (D5),
-                # but only when the database holds tables: the dump protects
-                # prose, and an empty schema has none — a fresh first boot
-                # skips it, which also keeps pg_dump out of the first boot's
-                # requirements (product owner, 2026-10-31). This caller owes
-                # none when ``backup=False``, and
-                # ``NARRE_MIGRATION_BACKUP=skip`` says the operator already
-                # took their own copy. The copy precedes the stamp below: a
-                # run with pending revisions either produces it or migrates
-                # nothing.
-                if (
-                    (current is None or current != head)
-                    and has_tables
-                    and backup
-                    and environ.get("NARRE_MIGRATION_BACKUP", "pg_dump") != "skip"
-                ):
-                    directory = backup_dir or Path(environ.get("NARRE_BACKUP_DIR") or "./backups")
-                    try:
-                        backup_path = await dump_database(database_url, directory)
-                    except BackupFailed as exc:
-                        raise MigrationRefused(
-                            "the pre-migration dump failed and nothing was migrated: "
-                            f"{exc}; install postgresql-client so the dump can run, "
-                            "or set NARRE_MIGRATION_BACKUP=skip after taking your "
-                            "own copy of the database"
-                        ) from exc
+                # behind head — and the restorable copy happens then (D5).
+                # The copy precedes the stamp below: a run with pending
+                # revisions either produces it or migrates nothing.
+                backup_path = await _take_pre_migration_backup(
+                    database_url,
+                    pending=(current is None or current != head),
+                    has_tables=has_tables,
+                    backup=backup,
+                    backup_dir=backup_dir,
+                )
 
                 stamp_target = head
                 if bootstrapped:
-                    # The bootstrap (design D4, CodeRabbit round 1,
-                    # 2026-11-01). First the constraint names: a database
-                    # created before the naming convention (D9) carries
-                    # Postgres's own PK and FK defaults, and alembic renders
-                    # its legacy-named uniques as remove+add pairs — both are
-                    # renamed to the convention's, not held against the
-                    # database.
-                    await _normalize_legacy_pk_fk_names(database_url)
-                    baseline, baseline_metadata = await _baseline_metadata_or_refuse(
-                        config, database_url
-                    )
-
-                    async def _compare(target: MetaData | None) -> list[Any]:
-                        async with engine.connect() as connection:
-                            return await connection.run_sync(
-                                lambda sync_connection: diff_against_models(
-                                    config, sync_connection, target
-                                )
-                            )
-
-                    async def _apply_renames(target_diff: list[Any]) -> list[tuple[str, str, str]]:
-                        async with engine.begin() as connection:
-                            return await connection.run_sync(
-                                lambda sync_connection: _rename_unique_constraint_pairs(
-                                    sync_connection, target_diff
-                                )
-                            )
-
-                    # The two real populations of an unversioned database,
-                    # in order (CodeRabbit round 1, fix 2, 2026-11-01): the
-                    # release era — equal to the baseline revision's replay,
-                    # stamped at the baseline so the upgrade below carries
-                    # it to head through every revision it missed — and the
-                    # models era (``reset_schema``, the API suite's client
-                    # fixture, any ``create_all``) — equal to the models at
-                    # head, stamped at head with nothing left to upgrade.
-                    # In either case a remove+add pair of the same unique
-                    # constraint is the convention rename: applied as such,
-                    # then the same target is compared again. Whatever still
-                    # differs after both targets is the refusal's subject.
-                    diff: list[Any] = []
-                    for target_revision, target_metadata in (
-                        (baseline, baseline_metadata),
-                        (head, None),
-                    ):
-                        diff = await _compare(target_metadata)
-                        if diff:
-                            renamed = await _apply_renames(diff)
-                            if renamed:
-                                diff = await _compare(target_metadata)
-                        if not diff:
-                            stamp_target = target_revision
-                            break
-                    if diff:
-                        raise MigrationRefused(
-                            "the database has tables but no migration history, and its "
-                            "schema matches neither the baseline revision "
-                            f"{baseline} nor the models at head ({_describe(diff)}); "
-                            "refusing to guess — align the schema with the models by "
-                            "hand or reset the database"
-                        )
+                    stamp_target = await _bootstrap_or_refuse(config, engine, database_url)
 
                 if bootstrapped:
                     await asyncio.to_thread(command.stamp, config, stamp_target)

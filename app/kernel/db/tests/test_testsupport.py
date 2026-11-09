@@ -13,7 +13,8 @@ import socket
 import subprocess
 from asyncio import run
 from hashlib import blake2s
-from os import getpid
+from importlib import reload
+from os import environ, getpid
 from pathlib import Path
 from secrets import token_hex
 from shutil import which
@@ -270,3 +271,113 @@ def test_the_sweep_leaves_the_legacy_name_and_an_unshaped_probe_alone() -> None:
         assert run(_exists(probe)) is True
     finally:
         testsupport.drop_database(probe)
+
+
+# The server's address is the environment's choice (this worktree's own
+# container answers on 5434 while another checkout's holds 5433): the
+# override and its default are the door the naming above runs behind. The
+# reloads rebind the module for every later importer in this process — the
+# restore puts the real address back before the suite moves on, and the run
+# token and the caches carry across a reload, so nothing here can re-mint or
+# forget a name the rest of the run is using (the pin below holds that).
+OVERRIDE = "postgresql+asyncpg://narrare:narrare@localhost:5434"
+DEFAULT = "postgresql+asyncpg://narrare:narrare@localhost:5433"
+
+
+def _restore(carried: str | None) -> None:
+    """Put the environment back and rebind the module to it."""
+    if carried is None:
+        environ.pop("NARRE_TEST_DATABASE_URL", None)
+    else:
+        environ["NARRE_TEST_DATABASE_URL"] = carried
+    reload(testsupport)
+
+
+def test_the_server_honours_the_environment_override() -> None:
+    carried = environ.get("NARRE_TEST_DATABASE_URL")
+    environ["NARRE_TEST_DATABASE_URL"] = OVERRIDE
+    try:
+        module = reload(testsupport)
+        assert module.SERVER == OVERRIDE
+        # The suites reach their database through the same door.
+        assert module.url_for("narrare_v2_test").startswith(OVERRIDE)
+    finally:
+        _restore(carried)
+
+
+def test_the_server_defaults_to_the_compose_address() -> None:
+    carried_url = environ.get("NARRE_TEST_DATABASE_URL")
+    carried_port = environ.get("NARRE_TEST_DB_PORT")
+    environ.pop("NARRE_TEST_DATABASE_URL", None)
+    environ.pop("NARRE_TEST_DB_PORT", None)
+    try:
+        assert reload(testsupport).SERVER == DEFAULT
+    finally:
+        _restore(carried_url)
+        if carried_port is None:
+            environ.pop("NARRE_TEST_DB_PORT", None)
+        else:
+            environ["NARRE_TEST_DB_PORT"] = carried_port
+        reload(testsupport)
+
+
+def test_the_server_honours_the_port_override() -> None:
+    carried_url = environ.get("NARRE_TEST_DATABASE_URL")
+    carried_port = environ.get("NARRE_TEST_DB_PORT")
+    environ.pop("NARRE_TEST_DATABASE_URL", None)
+    environ["NARRE_TEST_DB_PORT"] = "5434"
+    try:
+        module = reload(testsupport)
+        assert module.SERVER == OVERRIDE
+        assert module.url_for("narrare_v2_test").startswith(OVERRIDE)
+    finally:
+        _restore(carried_url)
+        if carried_port is None:
+            environ.pop("NARRE_TEST_DB_PORT", None)
+        else:
+            environ["NARRE_TEST_DB_PORT"] = carried_port
+        reload(testsupport)
+
+
+def test_the_full_url_wins_over_the_port_override() -> None:
+    carried_url = environ.get("NARRE_TEST_DATABASE_URL")
+    carried_port = environ.get("NARRE_TEST_DB_PORT")
+    environ["NARRE_TEST_DATABASE_URL"] = OVERRIDE
+    environ["NARRE_TEST_DB_PORT"] = "5499"
+    try:
+        module = reload(testsupport)
+        assert module.SERVER == OVERRIDE
+    finally:
+        _restore(carried_url)
+        if carried_port is None:
+            environ.pop("NARRE_TEST_DB_PORT", None)
+        else:
+            environ["NARRE_TEST_DB_PORT"] = carried_port
+        reload(testsupport)
+
+
+def test_a_reload_keeps_this_runs_names() -> None:
+    """A mid-run reload cannot hand the run a name nobody made.
+
+    ``importlib.reload`` re-executes the module in its own dict: with the
+    caches rebound to fresh empties, every by-value importer of
+    ``test_database`` — ``app/conftest.py``, the kernel conftest,
+    ``test_jobs``'s ``this_run`` — answers a new name no ``ensure_database``
+    created (``InvalidCatalogNameError`` at the next connect), or sweeps
+    from inside a running loop. Both shapes failed the WP6 gate run on
+    2026-11-07: pytest-randomly had moved these reloads ahead of
+    ``test_jobs``, and the leaked ``_sweep`` coroutine failed an unrelated
+    knowledge test at garbage collection.
+    """
+    before = testsupport.test_database()
+    carried = environ.get("NARRE_TEST_DATABASE_URL")
+    try:
+        environ["NARRE_TEST_DATABASE_URL"] = OVERRIDE
+        reload(testsupport)
+    finally:
+        _restore(carried)
+
+    assert testsupport.test_database() == before
+    # The sessionfinish drop reads this list: a reset here strands the run's
+    # database on the server for the next run's sweep to reclaim.
+    assert before in testsupport._RUN_DATABASES  # pyright: ignore[reportPrivateUsage]  the drop list is the unit under test

@@ -31,12 +31,15 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
+import { activeLocale, applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
+import { DELAY_MS } from "@shell/lib/save";
 import { rootRoute } from "@shell/routes/__root";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -61,6 +64,11 @@ const api = client as unknown as Record<
 >;
 
 const NOVEL_ID = "6f1c2a52-9d3e-4f6e-8df5-7db9df0f4a52";
+
+/** Past the autosave's window, with margin for the event loop: the negative
+ *  cases below ("no PUT after the debounce") must outlast the real timer,
+ *  and the margin is what keeps them from racing it. */
+const PAST_DEBOUNCE_MS = DELAY_MS + 300;
 
 const NOVEL = {
   id: NOVEL_ID,
@@ -117,6 +125,30 @@ const OTHER_CHAPTERS = [
   },
 ];
 
+/** Two chapters with names of their own. A reorder's witness needs them:
+ *  untitled rows are named by their position ("Kapitel n"), so a swapped
+ *  rail of unnamed chapters reads exactly like the one it replaced. */
+const TWO_NAMED_CHAPTERS = [
+  { ...TWO_CHAPTERS[0], title: "Erstes" },
+  { ...TWO_CHAPTERS[1], title: "Zweites" },
+];
+
+const THIRD_CHAPTER_ID = "b2f8ea7d-4a3b-4c5d-9e2f-8a1b0c3d4e06";
+/** Three named chapters: enough room that a second move is its own
+ *  arrangement, not the first one undone. */
+const THREE_NAMED_CHAPTERS = [
+  ...TWO_NAMED_CHAPTERS,
+  {
+    id: THIRD_CHAPTER_ID,
+    novel_id: NOVEL_ID,
+    title: "Drittes",
+    body: "",
+    position: 2,
+    created_at: "2026-10-30T09:00:00Z",
+    updated_at: "2026-10-30T09:00:00Z",
+  },
+];
+
 function ok(): Response {
   return new Response(null, { status: 200 });
 }
@@ -149,6 +181,16 @@ function mockTwoChapters(): void {
   api.GET.mockImplementation(async (path: string) => {
     if (path === "/api/writing/novels/{novel_id}/chapters") {
       return { data: TWO_CHAPTERS, response: ok() };
+    }
+    return loadedAnswer(path);
+  });
+}
+
+/** The loaded answers with the named pair in the rail's list. */
+function mockTwoNamedChapters(): void {
+  api.GET.mockImplementation(async (path: string) => {
+    if (path === "/api/writing/novels/{novel_id}/chapters") {
+      return { data: TWO_NAMED_CHAPTERS, response: ok() };
     }
     return loadedAnswer(path);
   });
@@ -201,11 +243,27 @@ async function editorElement(): Promise<HTMLElement> {
 }
 
 /** Click a rail row by its chapter number: the accessible name is the
- *  title plus the count the shared rule reports for its body. */
+ *  title plus the count the shared rule reports for its body, so the
+ *  predicate takes the whole leading title — chapter 1 never matches
+ *  chapter 10. */
 function chapterRow(n: number): HTMLElement {
+  const title = t("chapters.defaultTitle", { n });
   return screen.getByRole("button", {
-    name: new RegExp(`^${t("chapters.defaultTitle", { n })}\\b`),
+    name: (name: string) => name === title || name.startsWith(`${title} `),
   });
+}
+
+/** The rail's named chapters as DOM positions: where each titled row
+ *  sits in the list. `[1, 0]` is a reversed pair — "Zweites" is the
+ *  list's first. (Named rows, because a position-derived label moves
+ *  with the swap it names.) */
+function railOrder(): number[] {
+  const rail = screen.getByRole("complementary");
+  return ["Erstes", "Zweites"].map((name) =>
+    [...rail.querySelectorAll<HTMLButtonElement>("button")].findIndex((button) =>
+      (button.getAttribute("aria-label") ?? "").startsWith(`${name} `),
+    ),
+  );
 }
 
 afterEach(() => {
@@ -565,6 +623,989 @@ describe("the palette's novel jump", () => {
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anderer Anfang.");
     expect(screen.getByRole("heading", { name: OTHER_NOVEL.title })).toBeTruthy();
+  });
+});
+
+describe("a book deleted elsewhere", () => {
+  it("a_novel_deleted_elsewhere_degrades_to_the_shelf", { timeout: 10_000 }, async () => {
+    // The real 404 the API answers for a deleted book — not a component
+    // error: the novel's row is gone, whatever the workspace still holds.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+      if (path === "/api/writing/novels") return { data: [NOVEL], response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") {
+        return { data: undefined, response: new Response(null, { status: 404 }) };
+      }
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: CHAPTERS, response: ok() };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    renderAt(`/novels/${NOVEL_ID}`);
+
+    // The shelf takes the address over — no outage page for a book that
+    // was never missing, only deleted — and the quiet notice names what
+    // happened: status speech, not an alert, because nothing here asks the
+    // user to fix anything.
+    expect(await screen.findByRole("heading", { name: t("novels.heading") })).toBeTruthy();
+    const notice = await screen.findByText(t("novels.deleteElsewhere"));
+    expect(notice.getAttribute("role")).toBe("status");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("the rail's reorder", () => {
+  /** A rail row by its title: named rows are identity-stable across a
+   *  reorder, where position-derived labels move with the swap. The row's
+   *  name is the title followed by its word count, so the predicate takes
+   *  the whole leading title — "Kapitel 1" never matches "Kapitel 10". */
+  function titledRow(title: string): HTMLElement {
+    return screen.getByRole("button", {
+      name: (name: string) => name === title || name.startsWith(`${title} `),
+    });
+  }
+
+  /** Two chapters in the rail, a workbench around them, and the keyboard
+   *  driver — the state every case in this block starts from. The named
+   *  pair for the cases that watch the DOM order, the unnamed one for
+   *  the cases that watch the announcement's fallback label. */
+  async function renderTwoChapters(named = true) {
+    (named ? mockTwoNamedChapters : mockTwoChapters)();
+    api.PUT.mockResolvedValue({ response: ok() });
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    return userEvent.setup({ pointerEventsCheck: 0 });
+  }
+
+  it("alt_arrow_down_moves_the_focused_chapter", { timeout: 10_000 }, async () => {
+    const user = await renderTwoChapters();
+
+    // Alt+ArrowDown on the focused row is a move, not a walk: the row the
+    // focus holds trades places with its neighbour.
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The PUT carries the whole rail in its new order — every id, the
+    // arrangement as one permutation.
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        {
+          params: { path: { novel_id: NOVEL_ID } },
+          body: { chapter_ids: [SECOND_CHAPTER_ID, CHAPTER_ID] },
+        },
+      ),
+    );
+    // The optimistic order is the rail's at once: the second chapter's
+    // row is the list's first, before any answer arrives.
+    expect(railOrder()).toEqual([1, 0]);
+    // The cache holds the same arrangement with positions rewritten to
+    // match — the numbering the rows now render is the cache's own.
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([SECOND_CHAPTER_ID, CHAPTER_ID]);
+    expect(cached?.map((row) => row.position)).toEqual([0, 1]);
+  });
+
+  it("a_refused_order_reverts_and_names_the_refusal", { timeout: 10_000 }, async () => {
+    mockTwoNamedChapters();
+    // A second tab rearranged the book first: the PUT answers 409, the
+    // one refusal whose truth the rail's own cache lacks.
+    api.PUT.mockResolvedValue({ response: new Response(null, { status: 409 }) });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The refusal is named in the rail, beside the button that asks…
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+    // …the optimistic arrangement is gone — the rail and the cache are
+    // the ones they were…
+    expect(railOrder()).toEqual([0, 1]);
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([CHAPTER_ID, SECOND_CHAPTER_ID]);
+    // …and the 409 asked the chapters key to refetch: the server's whole
+    // is the arrangement the cache cannot know. The shelf was asked for
+    // nothing — the reorder never happened, and a failed write never
+    // asks for anything it did not do.
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] }),
+    );
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["novels"] });
+    invalidate.mockRestore();
+  });
+
+  it("a_refused_move_from_the_runhead_is_named_with_the_rail_hidden", { timeout: 10_000 }, async () => {
+    mockTwoNamedChapters();
+    // A second tab rearranged the book first: the PUT answers 409.
+    api.PUT.mockResolvedValue({ response: new Response(null, { status: 409 }) });
+    // The rail collapsed: the runhead's move items are still offered —
+    // and the refusal must be named on a surface that is on screen.
+    // (`?rail=false`, the toggle's own encoding: this router carries no
+    // validateSearch, and the raw parser hands booleans, not the 0 the
+    // page's own route would normalize.)
+    renderAt(`/novels/${NOVEL_ID}?rail=false`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    expect(screen.queryByRole("complementary")).toBeNull();
+
+    // The last-touched chapter is the open one; its menu offers the move.
+    const openTitle = "Zweites";
+    await user.click(screen.getByRole("button", { name: t("chapters.actionsFor", { title: openTitle }) }));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.moveUp") }));
+
+    // The refusal is named in the editor column, the surface that stayed.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+  });
+
+  it("a_successful_move_invalidates_the_shelf", { timeout: 10_000 }, async () => {
+    const user = await renderTwoChapters(false);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    chapterRow(1).focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The arrangement advanced the novel's row (D8), so the shelf is
+    // asked for again — and the chapters key is not: the optimistic
+    // order is what the 204 acknowledged, and a refetch mid-unsaved-body
+    // is exactly the state the save-side rule guards against.
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["novels"] }),
+    );
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["chapters", NOVEL_ID] });
+    invalidate.mockRestore();
+  });
+
+  it("the_move_is_announced_with_its_new_position", { timeout: 10_000 }, async () => {
+    const user = await renderTwoChapters(false);
+    clearAnnouncements();
+
+    chapterRow(1).focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // A plain list tells AT nothing about a reordering: every move is
+    // announced — the row's composed label (the position-derived one for
+    // an untitled chapter), the position it holds now, out of the book's
+    // total. The label leads the sentence exactly once, in any locale:
+    // a key that wrapped it in a kind word it already carries
+    // ("Kapitel Kapitel 1, …") would neither start with the label nor
+    // keep it singular — two pins, both locale-free.
+    const said = document.querySelector("[data-live-announcer]")?.textContent ?? "";
+    const label = t("chapters.defaultTitle", { n: 1 });
+    const spoken = said.trim();
+    expect(spoken).toContain(t("chapters.moved", { title: label, n: 2, m: 2 }));
+    expect(spoken.startsWith(label)).toBe(true);
+    expect(spoken.split(label).length - 1).toBe(1);
+  });
+
+  it("a_failed_move_does_not_clobber_a_later_moves_order", { timeout: 10_000 }, async () => {
+    // Key repeat is two moves in one breath: the first ask fails, the
+    // second lands. The first move's failure must restore nothing — the
+    // cache no longer holds its arrangement, and clobbering the later
+    // move's optimistic order with the earlier snapshot would show a
+    // rail the server never held.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: THREE_NAMED_CHAPTERS, response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+    // The answers land on the test's clock, not the mock's: key repeat
+    // fires both keystrokes before any network answer exists, so both
+    // arrangements are outstanding at once when the earlier one fails.
+    const answers: Array<(value: { response: Response }) => void> = [];
+    api.PUT.mockImplementation(
+      () => new Promise((resolve) => answers.push(resolve as never)),
+    );
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // Move A: Erstes down one — [Zweites, Erstes, Drittes]; its PUT fails.
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    // Move B: Drittes up one, computed from A's arrangement —
+    // [Zweites, Drittes, Erstes]; its PUT is the one that lands.
+    titledRow("Drittes").focus();
+    await user.keyboard("{Alt>}{ArrowUp}{/Alt}");
+
+    // The queue is one arrangement wide: A's ask flew, B's waits its
+    // turn — two PUTs can never be on the wire together committing
+    // inverted. Both keystrokes have happened by now.
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+    expect(api.PUT).toHaveBeenLastCalledWith(
+      "/api/writing/novels/{novel_id}/chapter-order",
+      {
+        params: { path: { novel_id: NOVEL_ID } },
+        body: { chapter_ids: [SECOND_CHAPTER_ID, CHAPTER_ID, THIRD_CHAPTER_ID] },
+      },
+    );
+
+    // A's answer lands as a failure — and the queue releases B's ask,
+    // which carries the arrangement B computed from A's optimistic one.
+    await act(async () => {
+      answers[0]?.({ response: new Response(null, { status: 500 }) });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(2));
+    expect(api.PUT).toHaveBeenLastCalledWith(
+      "/api/writing/novels/{novel_id}/chapter-order",
+      {
+        params: { path: { novel_id: NOVEL_ID } },
+        body: { chapter_ids: [SECOND_CHAPTER_ID, THIRD_CHAPTER_ID, CHAPTER_ID] },
+      },
+    );
+
+    // B's answer lands as the success it is.
+    await act(async () => {
+      answers[1]?.({ response: ok() });
+      await Promise.resolve();
+    });
+
+    // The failure is still named — one of the moves did not land…
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+    // …but the rail holds the arrangement that did: Zweites leads and
+    // Erstes is last (B's order), not the original A would have restored.
+    expect(railOrder()).toEqual([2, 0]);
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([
+      SECOND_CHAPTER_ID,
+      THIRD_CHAPTER_ID,
+      CHAPTER_ID,
+    ]);
+  });
+
+  it("a_lone_failed_move_reverts_the_rail", { timeout: 10_000 }, async () => {
+    // One move, one refusal, nothing queued behind it. A transport
+    // failure (500) asks for no refetch — nothing rescues the cache — so
+    // the restore itself is the only thing that can put the rail back:
+    // the optimistic arrangement must come back off, or it stays on the
+    // screen forever claiming an order the server never took.
+    mockTwoNamedChapters();
+    api.PUT.mockResolvedValue({ response: new Response(null, { status: 500 }) });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    titledRow("Erstes").focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+
+    // The refusal is named, and the rail and the cache are the ones they
+    // were — the revert, not a refetch, put them there.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("chapters.orderFailed"));
+    expect(railOrder()).toEqual([0, 1]);
+    const cached = queryClient.getQueryData<Array<Chapter>>(["chapters", NOVEL_ID]);
+    expect(cached?.map((row) => row.id)).toEqual([CHAPTER_ID, SECOND_CHAPTER_ID]);
+    expect(cached?.map((row) => row.position)).toEqual([0, 1]);
+  });
+
+  it("a_drag_and_drop_moves_the_chapter", { timeout: 10_000 }, async () => {
+    // Beyond the brief's four: the E2E is the keyboard's (drag under
+    // Playwright is the spec's named flake), so the drag path's only
+    // proof is here, at the DOM — drivable because the dragged id rides
+    // component state, never dataTransfer.
+    await renderTwoChapters();
+
+    const slots = screen
+      .getByRole("complementary")
+      .querySelectorAll<HTMLLIElement>("ul > li");
+    expect(slots.length).toBe(2);
+    fireEvent.dragStart(titledRow("Erstes"));
+    fireEvent.dragOver(slots[1]!);
+    fireEvent.drop(slots[1]!);
+    fireEvent.dragEnd(titledRow("Erstes"));
+
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        {
+          params: { path: { novel_id: NOVEL_ID } },
+          body: { chapter_ids: [SECOND_CHAPTER_ID, CHAPTER_ID] },
+        },
+      ),
+    );
+    expect(railOrder()).toEqual([1, 0]);
+  });
+});
+
+describe("the rail's filter", () => {
+  /** A book of many chapters: positions 0..n-1, unique ids, timestamps that
+   *  run with the position so the last row is the book's last-touched —
+   *  unless `touched` names another row as the one the fallback opens. */
+  function manyChapters(
+    count: number,
+    titled: Record<number, string> = {},
+    touched = count - 1,
+  ): Array<Chapter> {
+    const rows = Array.from({ length: count }, (_, position) => ({
+      id: `00000000-0000-4000-8000-${String(position).padStart(12, "0")}`,
+      novel_id: NOVEL_ID,
+      title: titled[position] ?? "",
+      body: "",
+      position,
+      created_at: "2026-10-30T09:00:00Z",
+      updated_at: `2026-10-30T10:${String(position % 60).padStart(2, "0")}:00Z`,
+    }));
+    rows[touched] = { ...rows[touched], updated_at: "2026-10-30T23:00:00Z" };
+    return rows;
+  }
+
+  /** The loaded answers with a long book in the rail's list. */
+  function mockManyChapters(
+    count: number,
+    titled: Record<number, string> = {},
+    touched = count - 1,
+  ): void {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: manyChapters(count, titled, touched), response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+  }
+
+  /** The runhead's menu trigger: named for the chapter it acts on. */
+  function menuTrigger(title: string): HTMLElement {
+    return screen.getByRole("button", { name: t("chapters.actionsFor", { title }) });
+  }
+
+  it("the_filter_appears_only_above_twenty_chapters", { timeout: 10_000 }, async () => {
+    // Twenty chapters: the rail stays as it was — the field is the long
+    // rail's own, not the book's.
+    mockManyChapters(20);
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+
+    // Twenty-one: the band above the rail gains the field.
+    cleanup();
+    queryClient.clear();
+    mockManyChapters(21);
+    renderAt(`/novels/${NOVEL_ID}`);
+    await editorElement();
+    expect(screen.getByRole("searchbox")).toBeTruthy();
+  });
+
+  it("the_filter_matches_an_untitled_chapters_rendered_label", { timeout: 10_000 }, async () => {
+    mockManyChapters(21);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // An untitled chapter is named by what its row says — the localized
+    // number — so that is what the filter answers to: the rendered label
+    // in the active locale, not the row's stored (empty) title.
+    await user.type(screen.getByRole("searchbox"), t("chapters.defaultTitle", { n: 7 }));
+
+    const rail = screen.getByRole("complementary");
+    expect(rail.querySelectorAll("li > button").length).toBe(1);
+    expect(chapterRow(7)).toBeTruthy();
+  });
+
+  it("the_filter_matches_diacritics_insensitively", { timeout: 10_000 }, async () => {
+    mockManyChapters(21, { 0: "Fürstenwald", 1: "Furth" });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // A bare "fur" finds the umlauted title, and the umlauted needle finds
+    // the bare one: neither side's diacritics decide a match.
+    await user.type(screen.getByRole("searchbox"), "fur");
+    const rail = screen.getByRole("complementary");
+    expect(rail.querySelectorAll("li > button").length).toBe(2);
+    expect(screen.getByRole("button", { name: /^Fürstenwald\b/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Furth\b/ })).toBeTruthy();
+
+    await user.clear(screen.getByRole("searchbox"));
+    await user.type(screen.getByRole("searchbox"), "für");
+    expect(rail.querySelectorAll("li > button").length).toBe(2);
+    expect(screen.getByRole("button", { name: /^Fürstenwald\b/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Furth\b/ })).toBeTruthy();
+  });
+
+  it("creating_a_chapter_clears_the_filter", { timeout: 10_000 }, async () => {
+    // A stateful list: the create's POST grows the book the next GET
+    // answers with — the same refetch the invalidation triggers.
+    const rows = manyChapters(21);
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: rows.map((row) => ({ ...row })), response: ok() };
+      }
+      return loadedAnswer(path);
+    });
+    api.POST.mockImplementation(async () => {
+      const created = {
+        id: `00000000-0000-4000-8000-${String(rows.length).padStart(12, "0")}`,
+        novel_id: NOVEL_ID,
+        title: "",
+        body: "",
+        position: rows.length,
+        created_at: "2026-10-30T11:00:00Z",
+        updated_at: "2026-10-30T11:00:00Z",
+      };
+      rows.push(created);
+      return { data: { ...created }, response: ok() };
+    });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // A filter that hides every row the book has.
+    await user.type(screen.getByRole("searchbox"), "Niemals");
+    expect(screen.getByRole("complementary").querySelectorAll("li > button").length).toBe(0);
+
+    // The create clears it — the new chapter must land in the visible
+    // list, and it does: the field is empty and the new row is current.
+    await user.click(screen.getByRole("button", { name: t("chapters.new") }));
+    const filter = screen.getByRole("searchbox") as HTMLInputElement;
+    await waitFor(() => expect(filter.value).toBe(""));
+    await waitFor(() =>
+      expect(chapterRow(22).getAttribute("aria-current")).toBe("true"),
+    );
+    expect(screen.getByRole("complementary").querySelectorAll("li > button").length).toBe(22);
+  });
+
+  it("the_move_menu_items_are_disabled_while_the_filter_is_active", { timeout: 10_000 }, async () => {
+    // The tenth chapter is the book's last-touched (the fallback opens it):
+    // a middle row, so the filter — not the book's ends — is the only
+    // thing that can disable the move items.
+    mockManyChapters(21, {}, 9);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    const openTitle = t("chapters.defaultTitle", { n: 10 });
+    expect(chapterRow(10).getAttribute("aria-current")).toBe("true");
+
+    // Without a filter the items are offered enabled (Task 10's contract).
+    await user.click(menuTrigger(openTitle));
+    expect(
+      screen.getByRole("menuitem", { name: t("chapters.moveUp") }).getAttribute("aria-disabled"),
+    ).not.toBe("true");
+    await user.keyboard("{Escape}");
+
+    // With a filter they disable and say why: the label itself carries the
+    // reason, not a tooltip beside it. The needle keeps the open chapter
+    // visible (its rendered label contains the first chapter's).
+    await user.type(screen.getByRole("searchbox"), t("chapters.defaultTitle", { n: 1 }));
+    await user.click(menuTrigger(openTitle));
+    expect(
+      screen.getByRole("menuitem", { name: t("chapters.moveUpFiltered") }).getAttribute(
+        "aria-disabled",
+      ),
+    ).toBe("true");
+    expect(
+      screen.getByRole("menuitem", { name: t("chapters.moveDownFiltered") }).getAttribute(
+        "aria-disabled",
+      ),
+    ).toBe("true");
+    expect(screen.queryByRole("menuitem", { name: t("chapters.moveUp") })).toBeNull();
+    await user.keyboard("{Escape}");
+
+    // The keyboard's move and the drag are the menu's equals: Alt+↓ on a
+    // visible row moves nothing while the filter stands, and no row
+    // offers a grab.
+    expect((chapterRow(10) as HTMLElement).draggable).toBe(false);
+    chapterRow(10).focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    expect(api.PUT).not.toHaveBeenCalled();
+
+    // A filter that hides the OPEN chapter leaves the keyboard a way in —
+    // and so does a walk the filter cut short. The walk is over when the
+    // question changes: its row may be gone, and the first visible row
+    // takes the stop either way.
+    const search = screen.getByRole("searchbox");
+    chapterRow(11).focus();
+    await user.keyboard("{ArrowDown}"); // the walk: chapter 11 → 12
+    expect(chapterRow(12).getAttribute("tabindex")).toBe("0");
+    await user.clear(search);
+    await user.type(search, t("chapters.defaultTitle", { n: 21 }));
+    const hiddenTitle = t("chapters.defaultTitle", { n: 10 });
+    expect(
+      screen.queryByRole("button", {
+        name: (name: string) => name === hiddenTitle || name.startsWith(`${hiddenTitle} `),
+      }),
+    ).toBeNull();
+    expect(chapterRow(21).getAttribute("tabindex")).toBe("0");
+  });
+
+  it("a_standing_filter_rematches_after_a_locale_switch", { timeout: 10_000 }, async () => {
+    // One titled row is the control: its label never changes with the
+    // language. Everything else on screen is the localized number, and a
+    // question asked in one language must be re-asked — not replayed —
+    // when the rows change their words.
+    const was = activeLocale();
+    mockManyChapters(21, { 0: "Waldlauf" });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    const rail = screen.getByRole("complementary");
+
+    try {
+      applyLocale("en");
+      await user.clear(screen.getByRole("searchbox"));
+      await user.type(screen.getByRole("searchbox"), "Chapter");
+      expect(rail.querySelectorAll("li > button").length).toBe(20);
+      expect(
+        screen.queryByRole("button", { name: /^Waldlauf\b/ }),
+      ).toBeNull();
+
+      // German rows say "Kapitel n": the standing English question no
+      // longer describes any of them, and the filter re-matches instead of
+      // replaying the English answer.
+      applyLocale("de");
+      await waitFor(() =>
+        expect(rail.querySelectorAll("li > button").length).toBe(0),
+      );
+    } finally {
+      applyLocale(was);
+    }
+  });
+});
+
+describe("the runhead's action menu", () => {
+  /** Three named chapters as a book the writes mutate: a stateful list, so
+   *  a delete or rename is answered by the very next read the way the
+   *  server would answer it. */
+  function mockStateful(
+    initial: Array<typeof CHAPTERS[number]>,
+    novel: Record<string, unknown> = NOVEL,
+  ): { rows: Array<typeof CHAPTERS[number]> } {
+    const rows = initial.map((row) => ({ ...row }));
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}") return { data: novel, response: ok() };
+      if (path === "/api/writing/novels/{novel_id}/chapters") {
+        return { data: rows.map((row) => ({ ...row })), response: ok() };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    api.PUT.mockImplementation(
+      async (
+        _path: string,
+        init: { params: { path: { chapter_id: string } }; body: Record<string, string> },
+      ) => {
+        const row = rows.find((each) => each.id === init.params.path.chapter_id);
+        if (!row) return { response: refused() };
+        Object.assign(row, init.body);
+        row.updated_at = new Date().toISOString();
+        return { data: { ...row }, response: ok() };
+      },
+    );
+    api.DELETE.mockImplementation(
+      async (_path: string, init: { params: { path: { chapter_id: string } } }) => {
+        const index = rows.findIndex((each) => each.id === init.params.path.chapter_id);
+        if (index < 0) return { response: new Response(null, { status: 404 }) };
+        rows.splice(index, 1);
+        rows.forEach((row, position) => {
+          row.position = position;
+        });
+        return { response: new Response(null, { status: 204 }) };
+      },
+    );
+    return { rows };
+  }
+
+  /** The runhead's menu trigger: named for the chapter it acts on. */
+  function menuTrigger(title: string): HTMLElement {
+    return screen.getByRole("button", { name: t("chapters.actionsFor", { title }) });
+  }
+
+  /** A rail row by its title — the reorder block's own finder, mirrored
+   *  for the named chapters these cases delete and rename. The row's name
+   *  is the title followed by its word count, so the predicate takes the
+   *  whole leading title — "Kapitel 1" never matches "Kapitel 10". */
+  function titledRow(title: string): HTMLElement {
+    return screen.getByRole("button", {
+      name: (name: string) => name === title || name.startsWith(`${title} `),
+    });
+  }
+
+  /** The runhead's title input, by its accessible name. */
+  function runheadTitle(): HTMLInputElement {
+    return screen.getByLabelText(t("chapters.titleLabel")) as HTMLInputElement;
+  }
+
+  /** Delete the open chapter the way a user does: the menu, the item, the
+   *  dialog's confirm. */
+  async function deleteThroughMenu(
+    user: ReturnType<typeof userEvent.setup>,
+    title: string,
+  ): Promise<void> {
+    await user.click(menuTrigger(title));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.delete") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  }
+
+  it("the_runhead_menu_offers_rename_delete_and_move", { timeout: 10_000 }, async () => {
+    mockStateful(THREE_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The rail is untouched by the menu's presence: three plain rows, no
+    // menu markup nested anywhere in them (UI-B's rows stay as they were).
+    expect(screen.getByRole("complementary").querySelectorAll("li > button").length).toBe(3);
+
+    // The book's last-touched chapter (Zweites, the middle one) is open;
+    // its menu offers the four actions, and the move items carry the
+    // shortcut the rail already answers to (D6: the hint is discoverable
+    // exactly where the action lives).
+    await user.click(menuTrigger("Zweites"));
+    expect(screen.getByRole("menuitem", { name: t("chapters.rename") })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: t("chapters.delete") })).toBeTruthy();
+    // The move items carry their shortcut as a visible hint and in
+    // `aria-keyshortcuts` — the accessible name is the label alone.
+    const up = screen.getByRole("menuitem", { name: t("chapters.moveUp") });
+    const down = screen.getByRole("menuitem", { name: t("chapters.moveDown") });
+    expect(up.textContent).toContain("Alt+↑");
+    expect(down.textContent).toContain("Alt+↓");
+    // A middle chapter can move both ways: neither item is disabled.
+    expect(up.getAttribute("aria-disabled")).not.toBe("true");
+    expect(down.getAttribute("aria-disabled")).not.toBe("true");
+
+    // The menu's move is the rail's own move: one PUT of the whole rail,
+    // the arrangement the keyboard's Alt+↓ would have written — Zweites
+    // trades places with Drittes.
+    await user.click(down);
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith(
+        "/api/writing/novels/{novel_id}/chapter-order",
+        {
+          params: { path: { novel_id: NOVEL_ID } },
+          body: { chapter_ids: [CHAPTER_ID, THIRD_CHAPTER_ID, SECOND_CHAPTER_ID] },
+        },
+      ),
+    );
+  });
+
+  it("deleting_the_open_chapter_opens_its_neighbour", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(THREE_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The next chapter takes the deleted one's place: delete Erstes, the
+    // book's first, and Zweites opens.
+    await user.click(titledRow("Erstes"));
+    await deleteThroughMenu(user, "Erstes");
+    expect(api.DELETE).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: CHAPTER_ID } },
+    });
+    await waitFor(() =>
+      expect(titledRow("Zweites").getAttribute("aria-current")).toBe("true"),
+    );
+    expect(screen.getByLabelText(t("chapters.titleLabel"))).toBeTruthy();
+    expect(runheadTitle().value).toBe("Zweites");
+    expect(rows.map((row) => row.id)).toEqual([SECOND_CHAPTER_ID, THIRD_CHAPTER_ID]);
+
+    // The last chapter has no next: the previous one takes its place.
+    await user.click(titledRow("Drittes"));
+    await deleteThroughMenu(user, "Drittes");
+    await waitFor(() =>
+      expect(titledRow("Zweites").getAttribute("aria-current")).toBe("true"),
+    );
+
+    // The book's last remaining chapter: no neighbour, the empty state —
+    // and the row is gone from the list the server would answer with.
+    await deleteThroughMenu(user, "Zweites");
+    await waitFor(() => expect(screen.getByText(t("chapters.empty"))).toBeTruthy());
+    expect(document.querySelector(".ProseMirror")).toBeNull();
+    expect(rows).toEqual([]);
+  });
+
+  it("deleting_the_open_chapter_retires_the_pending_save", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(TWO_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    // A body edit pending on the open chapter (Zweites, the book's
+    // last-touched) — inside the debounce, nothing on the wire yet.
+    await user.keyboard("Bleibt nicht.");
+    expect(api.PUT).not.toHaveBeenCalled();
+
+    await deleteThroughMenu(user, "Zweites");
+
+    // The neighbour opened, the DELETE flew — and the pending body was
+    // retired before it: no PUT at a chapter on its way out.
+    await waitFor(() =>
+      expect(titledRow("Erstes").getAttribute("aria-current")).toBe("true"),
+    );
+    expect(api.DELETE).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+      params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+    });
+    // Past the debounce: the timer's flush finds the slot the delete
+    // emptied — and no failed status was ever named for a deletion the
+    // user asked for.
+    await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE_MS));
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(screen.queryByText(t("save.failed"))).toBeNull();
+    expect(rows.map((row) => row.id)).toEqual([CHAPTER_ID]);
+  });
+
+  it("renaming_the_open_chapter_survives_the_next_debounce", { timeout: 10_000 }, async () => {
+    mockStateful(TWO_NAMED_CHAPTERS);
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    // A body edit pending on the open chapter (Zweites): the rename must
+    // not wait for it, and the flush that follows must not undo it.
+    await user.keyboard(" Ein Satz.");
+
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.rename") }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(t("chapters.renameLabel"));
+    await user.clear(input);
+    await user.type(input, "Winternacht");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.rename") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // The dialog's write carried the title alone…
+    await waitFor(() =>
+      expect(api.PUT).toHaveBeenCalledWith("/api/writing/chapters/{chapter_id}", {
+        params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+        body: { title: "Winternacht" },
+      }),
+    );
+    // …the runhead wears the new name at once…
+    expect(runheadTitle().value).toBe("Winternacht");
+
+    // …and the next flush carries the body only — the title is not dirty,
+    // so the rename survives the debounce it met (Task 9's contract).
+    await waitFor(
+      () =>
+        expect(api.PUT).toHaveBeenLastCalledWith("/api/writing/chapters/{chapter_id}", {
+          params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+          body: { body: " Ein Satz." },
+        }),
+      { timeout: 4000 },
+    );
+    const chapterPuts = api.PUT.mock.calls.filter(
+      ([path]) => path === "/api/writing/chapters/{chapter_id}",
+    );
+    expect(chapterPuts).toHaveLength(2);
+    expect(Object.keys(chapterPuts[1]![1].body)).toEqual(["body"]);
+    // The new title stands: the rail answers to it, not to the name the
+    // flush's draft was holding when the rename landed.
+    await waitFor(() => expect(titledRow("Winternacht")).toBeTruthy());
+    expect(runheadTitle().value).toBe("Winternacht");
+  });
+
+  it("the_delete_dialog_names_the_chapter_and_the_export_age", { timeout: 10_000 }, async () => {
+    const exportedAt = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    mockStateful(THREE_NAMED_CHAPTERS, { ...NOVEL, last_exported_at: exportedAt });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The dialog names what dies — the chapter, by its own name — and the
+    // scoped export line: this chapter was last written before the export,
+    // so it reads as unchanged since (the fresh line, days and all).
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(t("chapters.deleteBody", { title: "Zweites" })),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(t("chapters.exportFresh", { count: 3 }))).toBeTruthy();
+
+    // A dismissed ask deletes nothing.
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(api.DELETE).not.toHaveBeenCalled();
+  });
+
+  it("todays_export_reads_as_today_not_as_an_age", { timeout: 10_000 }, async () => {
+    // The most common export is the one that just happened: the line must
+    // read "Exported today — unchanged since.", not splice the plural's
+    // zero branch into a sentence that still carries its "ago" — the
+    // preposition lives inside the ICU branches, so no count can break
+    // the sentence around it.
+    const exportedAt = new Date().toISOString();
+    mockStateful(THREE_NAMED_CHAPTERS, { ...NOVEL, last_exported_at: exportedAt });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    const line = within(dialog).getByText(t("chapters.exportFresh", { count: 0 }));
+    expect(line.textContent).toBe(t("chapters.exportFresh", { count: 0 }));
+    // The known breakage, named: neither locale's zero branch may meet a
+    // leftover age word.
+    expect(t("chapters.exportFresh", { count: 0 })).not.toMatch(/today ago|heute ago/i);
+  });
+
+  it("the_export_line_reads_the_chapters_own_stamp_not_the_books", { timeout: 10_000 }, async () => {
+    // Two chapters, one export: Erstes was last written before it, Zweites
+    // after it — and the book's own row was touched before it too, so a
+    // comparison against the novel's updated_at would call both fresh.
+    // The line is each chapter's own story (§5's scoping): stale for the
+    // one that changed, fresh for the one that did not.
+    const exportedAt = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    const { rows } = mockStateful(THREE_NAMED_CHAPTERS, {
+      ...NOVEL,
+      last_exported_at: exportedAt,
+    });
+    rows[1].updated_at = new Date().toISOString();
+
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // Zweites (the book's last-touched, open by the fallback): changed
+    // since the export.
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    let dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(t("chapters.exportStale"))).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Erstes: unchanged since — the same dialog, the same book, the same
+    // export, a different chapter stamp and a different verdict.
+    await user.click(titledRow("Erstes"));
+    await user.click(menuTrigger("Erstes"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(t("chapters.exportFresh", { count: 3 }))).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+  });
+
+  it("a_refused_delete_hands_the_retired_body_back", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(TWO_NAMED_CHAPTERS);
+    // The delete is refused; every other write answers.
+    api.DELETE.mockResolvedValue({ response: new Response(null, { status: 500 }) });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    (await editorElement()).focus();
+    await user.keyboard("Bleibt doch.");
+    expect(api.PUT).not.toHaveBeenCalled();
+
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.delete") }));
+
+    // The refusal is named where the retry is one press away, and the
+    // dialog stays: nothing was deleted.
+    await waitFor(() =>
+      expect(within(dialog).getByText(t("chapters.errorDelete"))).toBeTruthy(),
+    );
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // The body the delete retired was handed back whole: only a restored
+    // slot can put its words on the wire, and the guards read that state —
+    // the debounce flush carries BOTH fields (the title's dirt is part of
+    // what the guards protect; a body-only restore would leave the
+    // document half-saved), the editor keeps it, and the chapter survives
+    // the refused delete.
+    await waitFor(
+      () =>
+        expect(api.PUT).toHaveBeenCalledWith(
+          "/api/writing/chapters/{chapter_id}",
+          {
+            params: { path: { chapter_id: SECOND_CHAPTER_ID } },
+            body: {
+              title: "Zweites",
+              body: "Bleibt doch.",
+            },
+          },
+        ),
+      { timeout: 4000 },
+    );
+    expect(document.querySelector(".ProseMirror")?.textContent).toContain("Bleibt doch.");
+    expect(rows.length).toBe(2);
+  });
+
+  it("a_refused_delete_leaves_a_clean_chapter_clean", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(TWO_NAMED_CHAPTERS);
+    api.DELETE.mockResolvedValue({ response: new Response(null, { status: 500 }) });
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // A clean chapter — nothing typed, nothing pending, nothing failed.
+    // The delete is refused and the ask dismissed: no phantom work may be
+    // invented on the way back. The restore belongs to the words that
+    // were pending, and there were none.
+    await user.click(menuTrigger("Zweites"));
+    await user.click(screen.getByRole("menuitem", { name: t("chapters.delete") }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.delete") }));
+    await waitFor(() =>
+      expect(within(dialog).getByText(t("chapters.errorDelete"))).toBeTruthy(),
+    );
+    await user.click(within(dialog).getByRole("button", { name: t("chapters.cancel") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Past the debounce: no PUT flew — the document is identical to the
+    // server's, and an identical document is not unsaved work — and no
+    // status was ever named, not a save and not a failure.
+    await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE_MS));
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(screen.queryByText(t("save.saved"))).toBeNull();
+    expect(screen.queryByText(t("save.failed"))).toBeNull();
+    expect(rows.length).toBe(2);
+  });
+
+  it("the_trigger_names_the_chapter_the_draft_holds", { timeout: 10_000 }, async () => {
+    mockStateful(TWO_NAMED_CHAPTERS);
+    // The save never lands: the row keeps the old name, so the trigger's
+    // name can only come from the page's held draft.
+    api.PUT.mockImplementation(() => new Promise(() => {}));
+    renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+
+    // The runhead's title keystroke is in the draft and nowhere else yet:
+    // the menu's trigger wears it at once, before any save could carry it
+    // to the row the cache holds.
+    await user.type(screen.getByLabelText(t("chapters.titleLabel")), "Winter");
+    expect(
+      screen.getByRole("button", { name: t("chapters.actionsFor", { title: "ZweitesWinter" }) }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: t("chapters.actionsFor", { title: "Zweites" }) }),
+    ).toBeNull();
+  });
+
+  it("deleting_the_latched_chapter_rederives_the_fallback", { timeout: 10_000 }, async () => {
+    const { rows } = mockStateful(TWO_NAMED_CHAPTERS);
+    // The bare address: the fallback opens the book's last-touched chapter
+    // (Zweites), and the URL writes no param.
+    const router = renderAt(`/novels/${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await editorElement();
+    expect(titledRow("Zweites").getAttribute("aria-current")).toBe("true");
+
+    await deleteThroughMenu(user, "Zweites");
+    await waitFor(() =>
+      expect(titledRow("Erstes").getAttribute("aria-current")).toBe("true"),
+    );
+    expect(rows.map((row) => row.id)).toEqual([CHAPTER_ID]);
+
+    // Back at the bare address (where history's back lands): the latch no
+    // longer names a dead row — the surviving chapter opens, and an
+    // editor renders instead of a workbench with nothing in it.
+    await act(async () => {
+      await router.navigate({ to: "/novels/$id", params: { id: NOVEL_ID } });
+    });
+    await waitFor(() =>
+      expect(titledRow("Erstes").getAttribute("aria-current")).toBe("true"),
+    );
+    expect(document.querySelector(".ProseMirror")).not.toBeNull();
   });
 });
 

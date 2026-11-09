@@ -1,6 +1,9 @@
 {
   "name": "narrare-workspace",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
-  "packageManager": "pnpm@11.5.2"
+  "packageManager": "pnpm@11.5.2",
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6"
+  }
 }

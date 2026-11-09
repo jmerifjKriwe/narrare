@@ -41,24 +41,17 @@ repos:
         stages: [pre-commit]
 
       # `app/capabilities/.*/web/`, not `app/capabilities/`: a backend-only
-      # capability commit owes neither tsc nor vitest (issue #446). A missed
-      # generated-input change is caught in CI by `just check-generated`; the
-      # hook stays out of it because `pnpm dlx` needs the network and the run is
-      # not sub-second (issue #622).
-      - id: web-typecheck
-        name: Web typecheck (tsc)
-        entry: pnpm --dir web typecheck
-        language: system
-        pass_filenames: false
-        files: (^web/|^app/capabilities/.*/web/|^i18n/)
-        stages: [pre-commit]
-
-      # The tests the working tree's change reaches, not all of them: the full
-      # suite runs on a web-touching push and in CI's `frontend` job, which no
-      # path filter can skip.
-      - id: web-tests
-        name: Web tests (changed)
-        entry: pnpm --dir web exec vitest run --changed HEAD
+      # capability commit owes neither tsc nor vitest (issue #446). One hook
+      # runs both: the types first, then the tests the working tree's change
+      # reaches — not all of them, because the full suite runs on a
+      # web-touching push (`web-tests-full`) and in CI's `frontend` job, which
+      # no path filter can skip. A missed generated-input change is caught in
+      # CI by `just check-generated`; the hook stays out of it because
+      # `pnpm dlx` needs the network and the run is not sub-second (issue
+      # #622).
+      - id: web
+        name: Web typecheck and tests (changed)
+        entry: bash -c 'pnpm --dir web typecheck && pnpm --dir web exec vitest run --changed HEAD'
         language: system
         pass_filenames: false
         files: (^web/|^app/capabilities/.*/web/|^i18n/)
@@ -98,8 +91,11 @@ repos:
         name: Tests
         entry: bash
         args:
+          # `-v`, not `-q`: the header is the only place pytest-randomly prints
+          # its seed, and an order-dependent failure at push is unreproducible
+          # without it.
           - "-c"
-          - "{ exec 3<>/dev/tcp/localhost/5433; } 2>/dev/null || { echo 'dev services not running — run: just dev-services'; exit 2; }; exec 3>&-; uv run pytest app -q"
+          - "{ exec 3<>/dev/tcp/localhost/5433; } 2>/dev/null || { echo 'dev services not running — run: just dev-services'; exit 2; }; exec 3>&-; uv run pytest app -v"
         language: system
         pass_filenames: false
         always_run: true

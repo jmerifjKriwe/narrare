@@ -59,7 +59,6 @@ address, a dead link that degrades instead of erroring.
 import asyncio
 import re
 from concurrent.futures import ThreadPoolExecutor
-from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
@@ -71,6 +70,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
@@ -82,6 +82,11 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 # standalone search test's upload does — through the real service, its real
 # ingestion and the E2E stack's real embedding stand-in.
 API = API_URL
+
+# Two turns of the jobs poll's own clock. The done row must stop the timer, so
+# this window is the observation itself — no expect() proves an absence over
+# time, and a shorter window would miss a late tick.
+POLL_SILENCE_MS = 2500
 
 # this run's stack database (e2e/conftest.py)
 DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
@@ -156,7 +161,13 @@ def _write_chapters(page: Page, bodies: tuple[str, ...]) -> None:
         page.get_by_role("button", name="Neues Kapitel").click()
         editor = page.locator(".ProseMirror")
         expect(editor).to_be_visible()
+        # The editor element survives the chapter switch: waiting only for
+        # visibility can type into the previous chapter before the new one
+        # arrives. The new chapter is empty, so an empty editor is the switch
+        # having landed; the focus assertion keeps the keystrokes in it.
+        expect(editor).to_have_text("")
         editor.click()
+        expect(editor).to_be_focused()
         page.keyboard.type(body)
         expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=15_000)
 
@@ -191,7 +202,7 @@ def _rerun_extraction_to_done(dock: Locator, extract: Locator, status: Locator) 
     expect(status).to_have_attribute("data-job-status", "done")
 
 
-def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_reviews_extraction_beside_the_editor(page: Page, stack: Stack) -> None:
     _open_workspace_with_validated_title(page, "Das Wissen der Bucht")
 
     page.get_by_role("button", name="Neues Kapitel").click()
@@ -297,7 +308,7 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
         "request",
         lambda request: poll_silence.append(request.url) if "/api/jobs/" in request.url else None,
     )
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(POLL_SILENCE_MS)
     assert poll_silence == [], f"the done job is still polled: {poll_silence}"
 
     # The chapter-scoped search: typing narrows the list it sits above.
@@ -316,7 +327,7 @@ def test_the_wissen_dock_reviews_extraction_beside_the_editor(page: Page, stack:
     assert_accessible(page)
 
 
-def test_the_wissen_dock_reviews_the_novels_findings(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_reviews_the_novels_findings(page: Page, stack: Stack) -> None:
     """The whole-novel check: the planted contradictions, reviewed to empty.
 
     Two chapters give Mira and Tom two different ages each; the check —
@@ -385,7 +396,7 @@ def test_the_wissen_dock_reviews_the_novels_findings(page: Page, stack: Stack) -
         "request",
         lambda request: poll_silence.append(request.url) if "/api/jobs/" in request.url else None,
     )
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(POLL_SILENCE_MS)
     assert poll_silence == [], f"the done check job is still polled: {poll_silence}"
 
     assert_accessible(page)
@@ -459,7 +470,7 @@ def test_the_finding_card_and_long_names_hold_the_dock_column(page: Page, stack:
     assert_accessible(page)
 
 
-def test_the_wissen_dock_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_names_an_unreachable_backend(page: Page, stack: Stack) -> None:
     """An outage in the dock reads as an outage, never as an empty list.
 
     A local service that is not running is a real condition of this
@@ -498,7 +509,7 @@ def test_the_wissen_dock_names_an_unreachable_backend(page: Page, stack: Stack) 
     assert_accessible(page)
 
 
-def test_the_wissen_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> None:
+def test_the_knowledge_dock_reviews_by_keyboard_alone(page: Page, stack: Stack) -> None:
     """The review flow without a pointer: Tab reaches, Enter decides.
 
     The dock's tab, the extraction trigger and both review decisions are
@@ -949,16 +960,9 @@ def _seed_entities(novel_title: str) -> str:
             f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id}
         )
         enqueued.raise_for_status()
-        # The worker rides the API process: poll the row it settles.
-        for _ in range(120):
-            job = api.get(f"/api/jobs/{enqueued.json()['job_id']}")
-            job.raise_for_status()
-            if job.json()["status"] in ("done", "failed"):
-                break
-            sleep(0.25)
-        else:
-            pytest.fail("the seeded extraction never settled")
-        assert job.json()["status"] == "done"
+        # The worker rides the API process: wait for the row it settles.
+        job = wait_for_job(api, enqueued.json()["job_id"])
+        assert job["status"] == "done"
         suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
         suggestions.raise_for_status()
         assert len(suggestions.json()) == 5
@@ -1536,7 +1540,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     base = f"{WEB_URL}/novels/{novel_id}"
 
     # The dock opens straight onto the named entity's card.
-    page.goto(f"{base}/wissen?entity={leuchtturm}")
+    page.goto(f"{base}/knowledge?entity={leuchtturm}")
     dock = page.get_by_role("complementary", name="Wissen")
     expect(dock).to_be_visible()
     entities = dock.get_by_role("region", name="Entitäten")
@@ -1553,7 +1557,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     # the param is asserted, not the whole URL.)
     page.goto(base)
     expect(page.get_by_role("heading", name="Die adressierte Bucht")).to_be_visible()
-    page.goto(f"{base}/wissen?entity={leuchtturm}")
+    page.goto(f"{base}/knowledge?entity={leuchtturm}")
     expect(dock.get_by_role("region", name="Leuchtturm")).to_be_visible()
     _row_named(entities, "Mira").click()
     expect(dock.get_by_role("region", name="Mira")).to_be_visible()
@@ -1568,7 +1572,7 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     workspace_url = page.url
 
     # A dead id degrades: nothing selected, and the param leaves the URL.
-    page.goto(f"{base}/wissen?entity=00000000-0000-0000-0000-000000000000")
+    page.goto(f"{base}/knowledge?entity=00000000-0000-0000-0000-000000000000")
     expect(_row_named(dock.get_by_role("region", name="Entitäten"), "Mira")).to_be_visible()
     expect(dock.get_by_role("region", name="Leuchtturm")).to_have_count(0)
     expect(dock.get_by_role("region", name="Mira")).to_have_count(0)
@@ -1609,7 +1613,7 @@ def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack)
         second_chapter = second.json()["id"]
 
     base = f"{WEB_URL}/novels/{novel_id}"
-    page.goto(f"{base}/wissen?entity={leuchtturm}&chapter={first_chapter}")
+    page.goto(f"{base}/knowledge?entity={leuchtturm}&chapter={first_chapter}")
     dock = page.get_by_role("complementary", name="Wissen")
     expect(dock).to_be_visible()
     entities = dock.get_by_role("region", name="Entitäten")

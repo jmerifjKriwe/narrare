@@ -21,6 +21,7 @@ from app.kernel.llm.contract import (
     CompletionRequest,
     Delta,
     Usage,
+    error_code,
 )
 from app.kernel.llm.models import ERROR, OK, LlmCall
 from app.kernel.llm.resolution import ResolvedProvider  # noqa: TC001  audited_stream's parameter
@@ -58,6 +59,7 @@ async def record_call(
     novel_id: UUID | None = None,
     prompt_key: str | None = None,
     error: str | None = None,
+    error_code: str | None = None,
     profile_id: UUID | None = None,
     base_url: str | None = None,
     kind: str | None = None,
@@ -68,7 +70,10 @@ async def record_call(
     Prompt and response are each limited to 65,536 characters; ``truncated``
     is true if either was shortened. Text exactly at the limit is preserved.
     ``latency_ms`` is the caller's elapsed time in milliseconds; absent token
-    counts remain NULL. This function neither flushes nor commits the session.
+    counts remain NULL. ``error_code`` is the closed wire code a failed call's
+    contract failure maps to (:func:`app.kernel.llm.contract.error_code`),
+    absent for a clean call. This function neither flushes nor commits the
+    session.
 
     The cost comes from the caller's facts: ``kind`` is the resolved kind (the
     fake tier is free whatever else is known), ``info`` is the catalog entry
@@ -93,6 +98,7 @@ async def record_call(
             novel_id=novel_id,
             prompt_key=prompt_key,
             error=error,
+            error_code=error_code,
             truncated=prompt_clipped or response_clipped,
             profile_id=profile_id,
             cost_usd=compute_cost(
@@ -126,8 +132,10 @@ async def audited_stream(
     response (§3.4 — a log row, not user data).
     Status names the call, not the delivery: ``ok`` once the provider ended
     cleanly — a ``Done`` event, when the provider sends one, ends it — ``error``
-    when the provider raised (the error text rides along), and ``error`` with
-    "stream interrupted" when the consumer went away before either happened.
+    when the provider raised (the error text rides along, and the row carries
+    the code the failure maps to, ``error_code``; NULL for a clean call), and
+    ``error`` with "stream interrupted" and no code when the consumer went
+    away before either happened — nothing failed that a code could name.
     The row lands before the caller yields its terminal frame — the audit's
     commit happens on the ``__anext__`` that ends or raises.
     """
@@ -136,6 +144,7 @@ async def audited_stream(
     started = monotonic()
     status = ERROR
     error: str | None = "stream interrupted"
+    code: str | None = None
     try:
         async for event in resolved.provider.stream(request):
             if isinstance(event, Delta):
@@ -153,6 +162,7 @@ async def audited_stream(
         # the row must not claim ok while carrying an error text.
         status = ERROR
         error = str(failure)
+        code = error_code(failure)
         raise
     else:
         status, error = OK, None
@@ -174,6 +184,7 @@ async def audited_stream(
                         output_tokens=usage.output_tokens if usage else None,
                         novel_id=novel_id,
                         error=error,
+                        error_code=code,
                         profile_id=resolved.profile_id,
                         base_url=resolved.base_url,
                         kind=resolved.kind,

@@ -4,12 +4,13 @@ import { announce } from "@shell/lib/announce";
 import { client, isModelChange, type Job } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { offerProposal } from "@shell/lib/proposal";
-import { readFrames, type Source } from "@shell/lib/stream";
+import { readFrames, type Source, type StreamFailure } from "@shell/lib/stream";
 import { Button } from "@shell/ui/Button";
 import { Field, Input } from "@shell/ui/field";
 import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
 import { ProposalCard } from "@shell/ui/ProposalCard";
+import { StreamError } from "@shell/ui/StreamError";
 
 /** One turn of the conversation: the question as asked, the answer as it
  *  streamed, the sources it cited — or the refusal with its way back. A
@@ -21,7 +22,11 @@ type Turn = {
   answer: string;
   sources: Source[] | null;
   asking: boolean;
-  failed: boolean;
+  // The failure the turn's ask died with, when it did: the payload the
+  // error frame carried — its code picks the sentence. Empty for the
+  // failures that carry no frame (a refusal above, a cut wire);
+  // `modelChanged` overrides it with the embedding mismatch's own words.
+  failure: StreamFailure | null;
   modelChanged: boolean;
   // The offer card is spent once its answer was offered or dropped; a new
   // question brings a fresh card with its fresh answer.
@@ -86,7 +91,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
               asking: true,
               answer: "",
               sources: null,
-              failed: false,
+              failure: null,
               modelChanged: false,
               offerSpent: false,
               openChunk: null,
@@ -109,7 +114,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       });
       if (!response.ok) {
         // The mismatch refusal names its fix; every other failure stays generic.
-        patchTurn(id, { modelChanged: isModelChange(error), failed: true });
+        patchTurn(id, { modelChanged: isModelChange(error), failure: {} });
         return;
       }
       for await (const frame of readFrames(response)) {
@@ -127,9 +132,10 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
           );
         }
         // An error frame replaces the done frame: the provider died, and a
-        // silent end would look like a complete answer.
+        // silent end would look like a complete answer. The frame's payload
+        // — code, model, detail — is what the notice speaks.
         if (frame.error) {
-          patchTurn(id, { failed: true });
+          patchTurn(id, { failure: frame.error });
           return;
         }
       }
@@ -147,7 +153,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
       // Everything else is the wire dying mid-answer: a rethrow would leave
       // a half answer looking finished beside an unhandled rejection. The
       // failure belongs on the turn, exactly like a refusal does.
-      if (!controller.signal.aborted) patchTurn(id, { failed: true });
+      if (!controller.signal.aborted) patchTurn(id, { failure: {} });
     } finally {
       // The cleanup owns only its own ask: a later ask that began while
       // this one settles has replaced the ref, and nulling it now would
@@ -172,7 +178,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
         answer: "",
         sources: null,
         asking: false,
-        failed: false,
+        failure: null,
         modelChanged: false,
         offerSpent: false,
         openChunk: null,
@@ -235,23 +241,24 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
                     {turn.answer}
                   </p>
                 )}
-                {turn.failed ? (
-                  <Notice
-                    tone="danger"
-                    live="alert"
-                    className="mt-2"
-                    action={
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => retryTurn(turn.id, turn.question)}
-                      >
-                        {t("settings.retry")}
-                      </Button>
-                    }
-                  >
-                    {turn.modelChanged ? t("chat.modelChanged") : t("chat.error")}
-                  </Notice>
+                {turn.failure ? (
+                  <>
+                    {turn.modelChanged ? (
+                      <Notice tone="danger" live="alert" className="mt-2">
+                        {t("chat.modelChanged")}
+                      </Notice>
+                    ) : (
+                      <StreamError failure={turn.failure} className="mt-2" />
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => retryTurn(turn.id, turn.question)}
+                    >
+                      {t("settings.retry")}
+                    </Button>
+                  </>
                 ) : null}
                 {turn.sources === null ? null : turn.sources.length === 0 ? (
                   <Notice tone="quiet" className="mt-2">
@@ -292,7 +299,7 @@ export function ChatPanel({ canOffer = false }: { canOffer?: boolean }) {
                     to the editor beside it — as a ghost there, never as text
                     without the writer's keypress. The standalone page has no
                     editor to offer into, so it never shows the card. */}
-                {canOffer && !turn.asking && !turn.failed && turn.answer !== "" && !turn.offerSpent ? (
+                {canOffer && !turn.asking && turn.failure === null && turn.answer !== "" && !turn.offerSpent ? (
                   <ProposalCard
                     titleKey="chat.offerAsVariant"
                     body={turn.answer}

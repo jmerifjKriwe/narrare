@@ -22,6 +22,11 @@ just dev-setup
 just dev          # API on :8000, web on :3100
 ```
 
+Two checkouts on one machine: copy `.env.example` to `.env` in each, then set
+`NARRE_DEV_DB_PORT` / `NARRE_TEST_DB_PORT` (and `NARRE_E2E_API_PORT` /
+`NARRE_E2E_WEB_PORT`) to disjoint values so the compose stacks and the test
+server do not collide. See `.env.example` (Dev database ports).
+
 Open <http://localhost:3100> — a fresh database lands on `/setup`. There is no
 other setup variant: the schema comes from the models, brought to the migration
 history's head by `just db-init`. A schema change ships as a revision
@@ -67,6 +72,46 @@ state what a user can now do: a `User-visible:` line in the commit body. Work no
 user can observe — including internal production code — goes under
 `chore(<scope>): …`. The `User-visible:` rule and the scope convention live in
 [`AGENTS.md`](AGENTS.md) and are checked in review.
+
+## Internationalization (i18n)
+
+User-visible text lives in the catalogs, never in a component. The shell's and
+shared text lives in `i18n/<code>.json`; a capability's own text lives in
+`app/capabilities/<id>/web/i18n/<code>.json`. The generator merges both into
+`web/lib/generated/catalogs.ts`; a missing key in any catalog is a build error.
+Ownership follows the key's namespace, not the component that renders it:
+`settings.*` lives in the settings capability even though the shell's bar
+renders it.
+
+- **Prefix keys with their feature namespace**, not the capability id:
+  `novels.heading`, `settings.language`, `knowledge.type.character`. The file
+  path carries capability ownership; the key keeps the feature readable.
+- **Sort keys alphabetically** in every catalog file. The generator refuses an
+  unsorted file, so a new key lands where it belongs instead of at the end.
+- **Cover the plural categories the copy needs.** For a message with
+  `{count, plural, …}`, check
+  `Intl.PluralRules("<code>").resolvedOptions().pluralCategories`; write a
+  branch for each category the wording distinguishes, and let `other` cover
+  the rest. The parser test proves syntax, not grammar.
+- **Watch ICU quoting.** A lone `'` starts a quoted literal: `'{name}'` prints
+  the braces, not the value. Use typographic quotes in prose or escape them.
+- **Name languages in their own words** via `locale.name` (Deutsch, Français,
+  English); the switcher shows the endonym whatever the app currently speaks.
+- **Never hardcode a locale list.** The set of languages is discovered from
+  `i18n/*.json`; a new catalog appears in the union and the switcher on the
+  next `just generate`.
+- **Format through `web/lib/format.ts`.** `formatDate`, `formatNumber` and
+  `formattingLocale` keep the chosen language and take the browser's regional
+  variant when it agrees (`de` + `de-AT` → `de-AT`). Do not call
+  `toLocaleString` with a hand-written locale.
+- **Formal variants are sparse.** A string whose formal wording differs lives
+  in `i18n/overlays/formality/<code>.json`; a key absent there falls through
+  to the base catalog. English has no overlay, and there is no de/fr key
+  parity: French already speaks the neutral register in its base.
+
+Adding a language means one central catalog plus one file per capability that
+owns keys, then `just generate`. Translating all keys is the work; registering
+the language is not.
 
 ## Changing the Schema
 
@@ -177,6 +222,20 @@ History liest.
    everything but only when `main` moved since the last one. Coverage is
    measured on `main`. There is no bypass.
 5. Address review feedback with new commits.
+
+## Git merge drivers
+
+This repository ships merge drivers for JSON catalogs and generated files.
+Configure them once per clone:
+
+```bash
+git config merge.narrare-json.name "Narrare JSON merge"
+git config merge.narrare-json.driver "uv run python scripts/merge_json.py --base %O --ours %A --theirs %B"
+git config merge.narrare-generated.name "Narrare generated merge"
+git config merge.narrare-generated.driver "uv run python scripts/merge_json.py --generated --path %P --base %O --ours %A --theirs %B"
+
+The generated driver rebuilds the capability views and `openapi.json` in-process. `web/lib/api/schema.d.ts` is produced by the Node `openapi-typescript` step and stays manual: after a merge that touches it, run `just generate`.
+```
 
 ## Code of Conduct
 
