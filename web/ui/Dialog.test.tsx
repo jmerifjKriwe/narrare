@@ -4,13 +4,16 @@
  * secondary — a dialog trigger is an opener, not the page's action — and the
  * old hardcoded `bg-primary` cannot sneak back past this guard. Only a
  * caller that is its screen's one primary passes "primary", so the primary
- * string is asserted exactly as `buttonClass` spells it.
+ * string is asserted exactly as `buttonClass` spells it. The controlled
+ * overlay's contract is pinned beside it: its accessible name, and Escape
+ * closing it through `onOpenChange`.
  */
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buttonClass } from "./Button";
-import { Dialog } from "./Dialog";
+import { Dialog, OverlayDialog } from "./Dialog";
 
 afterEach(cleanup);
 
@@ -33,5 +36,29 @@ describe("Dialog's trigger paint", () => {
     );
     const trigger = screen.getByRole("button", { name: "Öffnen" });
     expect(trigger.className).toContain(buttonClass("primary", "md"));
+  });
+});
+
+describe("OverlayDialog", () => {
+  it("labels the controlled dialog and closes through onOpenChange", async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <OverlayDialog
+        isOpen
+        onOpenChange={onOpenChange}
+        overlayClassName="fixed inset-0"
+        modalClassName="m-auto"
+        dialogClassName="p-6"
+        dialogAriaLabel="Palette"
+      >
+        <p>Inhalt</p>
+      </OverlayDialog>,
+    );
+
+    expect(screen.getByRole("dialog", { name: "Palette" })).toBeTruthy();
+
+    const user = userEvent.setup();
+    await user.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
