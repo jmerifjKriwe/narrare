@@ -1,32 +1,12 @@
-import { Link, Outlet, useBlocker, useChildMatches, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
+import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
-import { client, type Chapter } from "@shell/lib/api/client";
-import { announce } from "@shell/lib/announce";
+import { client } from "@shell/lib/api/client";
 import { docks } from "@shell/lib/generated/docks";
 import { useTranslation } from "@shell/lib/i18n";
-import { activeLocale } from "@shell/lib/locale";
-import { usePageTitle } from "@shell/lib/pageTitle";
-import { subscribeProposal } from "@shell/lib/proposal";
-import {
-  activeChapterFallback,
-  noteNovelDeletedElsewhere,
-  queryClient,
-  useChaptersQuery,
-  useDeleteChapter,
-  useNovelQuery,
-  useReorderChapters,
-} from "@shell/lib/query";
-import { normalize } from "@shell/lib/search";
-import { useAutosave, unsavedStatus, type DocumentDraft } from "@shell/lib/save";
-import { countWords, formatWordCount } from "@shell/lib/words";
+import { queryClient, useDeleteChapter } from "@shell/lib/query";
+import { unsavedStatus } from "@shell/lib/save";
+import { formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 import { Field, Input } from "@shell/ui/field";
@@ -37,6 +17,9 @@ import { Row } from "@shell/ui/Row";
 
 import { ChapterEditor } from "./ChapterEditor";
 import { ChapterDeleteDialog, ChapterRenameDialog } from "./ChapterDialogs";
+import { useChapterRail } from "./novel/useChapterRail";
+import { useNovelDraft } from "./novel/useNovelDraft";
+import { useNovelWorkspace } from "./novel/useNovelWorkspace";
 import type { FocusStep } from "./routes";
 
 // The step machine as data: no arithmetic on the union, and the ends are
@@ -49,283 +32,61 @@ const RELEASE: Record<FocusStep, FocusStep> = { 0: 0, 1: 0, 2: 1 };
 // lives on the slot so the Row's own classes stay untouched.
 const DROP_HINT = "shadow-[inset_0_2px_0_var(--primary)]";
 
-// One row of the generated dock registry. The workspace knows no dock by
-// name — its tabs, matching and labels all come from this table, and a new
-// dock (the Wissen dock) renders by appearing in it.
-type DockRow = (typeof docks)[number];
-
-/**
- * The workbench breakpoint as JS. Below it the rail and the dock are
- * overlays — the same width the `max-lg:` classes answer — and an overlay
- * owes the page it covers a scrim and its focus; the hook exists so `inert`
- * can answer the same media query the classes do. jsdom has no matchMedia:
- * it gets the desktop answer, which keeps the unit tests in the columns.
- */
-function useBelowWorkbenchBreakpoint(): boolean {
-  const query = "(max-width: 1023.98px)";
-  const [narrow, setNarrow] = useState(() =>
-    typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia(query).matches
-      : false,
-  );
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia(query);
-    const onChange = () => setNarrow(media.matches);
-    onChange();
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
-  return narrow;
-}
-
 /** The novel workbench: the chapter rail beside the editor, panel state in the URL. */
 export function NovelPage() {
   const t = useTranslation();
   // By route id, not the route object: the page stands apart from
   // routes.tsx, and the registered router still types `id` from the string.
   const { id: novelId } = useParams({ from: "/novels/$id" });
-  const { rail, focus: focusParam, chapter: chapterParam } = useSearch({ from: "/novels/$id" });
-  // Below the workbench breakpoint the rail is a drawer over the text, so
-  // there "absent" has to mean closed: opening it needs the explicit
-  // `?rail=true` the toggle writes. On the desktop columns absent still
-  // means expanded, and only a `?rail=false` closes the column.
-  const narrow = useBelowWorkbenchBreakpoint();
-  const collapsed = rail === false || (rail === undefined && narrow);
-  // Absent means the workbench: the URL names a depth only once it deepens.
-  const focus: FocusStep = focusParam ?? 0;
   const navigate = useNavigate();
-  // The workspace's reads go through Query, the one server-state path: the
-  // novel's row under `["novels", id]`, its chapters under
-  // `["chapters", id]`. Both queryFns throw on a non-ok answer, so the cache
-  // holds either the answer or the failure — a 404 is never an empty book.
-  const novelQuery = useNovelQuery(novelId);
-  const chaptersQuery = useChaptersQuery(novelId);
-  const chapters = chaptersQuery.data ?? [];
-  // One split per body per list, not per render: the rail's counts are
-  // derived where the list arrives, and a keystroke re-renders for free.
-  const chapterCounts = useMemo(
-    () => new Map(chapters.map((chapter) => [chapter.id, countWords(chapter.body)])),
-    [chapters],
-  );
-  // The page's name (§8.7): the book's title once its row is here — a
-  // catalog fallback while it waits, never an empty string.
-  usePageTitle(novelQuery.data?.title ?? t("chapters.loading"));
-  // The four states of the contract, derived per read, none stored: a read's
-  // error is judged against its own cache. An error with nothing from that
-  // read on screen is the named outage — the retry asks again, and the page
-  // has nothing to lose; an error that still holds its previous answer is a
-  // true refresh failure — the quiet note, and the work stays. The page never
-  // claims the book could not be loaded while its text is on screen. The
-  // chapters read is the workbench's spine (it decides whether there is
-  // something to show); the novel row rides along (the heading's title).
-  const novelLoaded = novelQuery.data !== undefined;
-  const chaptersLoaded = chaptersQuery.data !== undefined;
-  // The book deleted elsewhere (Task 13): a 404 from the novel's row is
-  // not an outage — the service answered, and the answer is that the book
-  // is gone. The degrade is a navigation to the shelf with the note that
-  // names what happened, and it outranks both failure voices below: an
-  // outage page would claim the book could not be loaded, when the truth
-  // is that there is no book to load. It fires whatever the screen holds —
-  // a first load that never arrived, or a refresh that found the row gone
-  // under open work; the leave guard still asks about unsaved words, and
-  // only the navigation that survives it lands here.
-  useEffect(() => {
-    if (!novelQuery.isError) return;
-    if ((novelQuery.error as { status?: number }).status !== 404) return;
-    noteNovelDeletedElsewhere();
-    void navigate({ to: "/" });
-  }, [novelQuery.isError, novelQuery.error, navigate]);
+  // The workbench's reads, selection and panel state live in the hooks —
+  // the page composes them and renders the same DOM.
+  const {
+    novelQuery,
+    chapters,
+    chapterCounts,
+    pending,
+    failed,
+    refreshFailed,
+    retry,
+    active,
+    select,
+    current,
+    currentIndex,
+    focus,
+    collapsed,
+    narrow,
+    showRail,
+    openDock,
+    activeDock,
+    step,
+    toggleRail,
+    toggleDock,
+    offer,
+    resolveOffer,
+    hintShown,
+  } = useNovelWorkspace(novelId);
+  const { status, schedule, discard, draft, changeTitle, rename, guardOpen, answerGuard } =
+    useNovelDraft(novelId, current);
+  const {
+    visibleChapters,
+    activeVisibleIndex,
+    railListRef,
+    walkedIndex,
+    setWalkedIndex,
+    walkRail,
+    railFilter,
+    setRailFilter,
+    orderFailed,
+    move,
+    moveTo,
+    dragId,
+    dropIndex,
+    setDropIndex,
+  } = useChapterRail(novelId, chapters, active);
   // The rail's own create failure: a chapter the user asked for that never
   // arrived must say so beside the button, not vanish into a silent click.
   const [createFailed, setCreateFailed] = useState(false);
-  const pending = novelQuery.isPending || chaptersQuery.isPending;
-  const failed =
-    (novelQuery.isError && !novelLoaded) || (chaptersQuery.isError && !chaptersLoaded);
-  const refreshFailed =
-    !failed &&
-    ((novelQuery.isError && novelLoaded) || (chaptersQuery.isError && chaptersLoaded));
-
-  // One retry asks both reads again: the workspace shows a book only when
-  // both have answered, so the recovery is whole or it is not recovery.
-  const retry = useCallback(() => {
-    void novelQuery.refetch();
-    void chaptersQuery.refetch();
-  }, [novelQuery, chaptersQuery]);
-
-  // The selection's address is the URL: a `chapter` param that names one of
-  // the book's own rows is the open chapter, full stop. Without it — or with
-  // one the book does not have — the page falls back to the chapter last
-  // written in, and that fallback is latched, not re-derived: the first list
-  // that yields a chapter fills it, and a refetch may never move the
-  // selection, because only a gated navigation may. (A create's refetch
-  // brings a newer updated_at; a re-derived fallback would flip the editor
-  // to the new row outside the gate and drop the unsaved body with it. An
-  // empty list is no answer of this kind: the latch waits, and the first
-  // chapter's refetch fills it.) The one thing that does invalidate the
-  // latch is its own row dying — a delete is the gated navigation that
-  // opened the neighbour, and the latched id must not outlive its row, or
-  // the bare address would resolve to a chapter that renders no editor.
-  // A live row, whatever the refetch brought, keeps the latch where it
-  // is. The latch is the
-  // book's, not the page's: a palette jump to another novel keeps this route
-  // mounted and changes only the param, and the old book's row must not
-  // survive as the new book's answer — the latch resets, and the new book's
-  // own last-touched chapter fills it once its list lands. Nothing about the
-  // fallback is written back: an arrival without a param leaves the address
-  // bare, so a reload still proves the server's choice.
-  const [fallback, setFallback] = useState<{
-    novel: string;
-    chapter: string | null;
-  } | null>(null);
-  useEffect(() => {
-    const rows = chaptersQuery.data;
-    if (rows === undefined) return;
-    setFallback((previous) =>
-      previous?.novel === novelId &&
-      previous.chapter !== null &&
-      rows.some((chapter) => chapter.id === previous.chapter)
-        ? previous
-        : { novel: novelId, chapter: activeChapterFallback(rows) },
-    );
-  }, [chaptersQuery.data, novelId]);
-  const active =
-    chapterParam !== undefined && chapters.some((chapter) => chapter.id === chapterParam)
-      ? chapterParam
-      : fallback?.novel === novelId
-        ? fallback.chapter
-        : null;
-
-  // The selection writes itself into the address — a push, so the back
-  // button walks the chapters. The navigation is the whole switch: the
-  // flush gate below stands in front of it, and the param's landing is
-  // what moves the editor.
-  const select = useCallback(
-    (chapterId: string) => {
-      void navigate({
-        to: ".",
-        search: (prev) => ({ ...prev, chapter: chapterId }),
-      });
-    },
-    [navigate],
-  );
-
-  // A param naming a chapter the book does not have is a dead link: the
-  // selection fell back above, and the dead value leaves the address — a
-  // replace, so the cleanup is not a history step the back button owns.
-  // Waiting for the rows before judging keeps a just-created chapter's
-  // address alive: the create selects only once the list that holds the
-  // row has landed, so this cleanup can never eat it.
-  useEffect(() => {
-    const rows = chaptersQuery.data;
-    if (chapterParam === undefined || rows === undefined) return;
-    if (rows.some((chapter) => chapter.id === chapterParam)) return;
-    void navigate({
-      to: ".",
-      search: (prev) => ({ ...prev, chapter: undefined }),
-      replace: true,
-    });
-  }, [chapterParam, chaptersQuery.data, navigate]);
-
-  // The proposal bus: the dock's panels (other capabilities) offer text
-  // through the shell; the workbench subscribes and feeds the editor's
-  // proposal props. One pending offer, last-wins, spent on resolve — and
-  // dead with this page: unmount drops the subscription, so an offer made
-  // to this workspace never haunts the next visit. `null` frees the
-  // editor's own continuation stream; only a live offer speaks here.
-  const [offer, setOffer] = useState<string | null>(null);
-  useEffect(() => subscribeProposal(setOffer), []);
-  const resolveOffer = useCallback(() => setOffer(null), []);
-
-  // The collapse is a navigation, not local state: the panel state becomes
-  // part of the URL — a shareable workspace, and one the back button undoes.
-  // `to: "."` keeps the navigation on whatever route is showing: collapsing
-  // the rail while a dock child route is open must not throw the dock away
-  // (a dock holds the ask in progress, so the drawer above it may cover the
-  // dock, never unmount it).
-
-  // Focus depth is URL state too, so it shares rail's properties: linkable,
-  // back-button-true. The updater takes the function form on purpose — it
-  // receives the current search and spreads it, so deepening or releasing
-  // focus preserves ?rail instead of clobbering it. The same `to: "."` keeps
-  // a dock child route mounted while the depth changes around it.
-  const step = useCallback(
-    (next: FocusStep) => {
-      if (next === focus) return; // the ends are no-ops, not new history entries
-      void navigate({
-        to: ".",
-        search: (prev) => ({ ...prev, focus: next }),
-      });
-    },
-    [focus, navigate],
-  );
-
-  // A dock child route is showing when one of the registry's rows matches:
-  // the matched child — not a local flag — is the dock's open state, so the
-  // URL is the whole truth and the back button closes it. The tab for a row
-  // is pressed exactly while that row's own route is the match, so switching
-  // docks is a navigation too. The panel itself renders through the Outlet
-  // in the dock column below.
-  const childMatches = useChildMatches();
-  const activeDock = docks.find((dock) =>
-    childMatches.some((match) => match.routeId === dock.path),
-  );
-
-  // Opening and closing are navigations to and from the dock child route,
-  // with the search written in the function form so ?rail and ?focus ride
-  // along. There is no dock param to scrub: the open dock's URL truth is
-  // the child route itself, and a closed dock leaves a clean URL.
-  const toggleDock = useCallback(
-    (dock: DockRow) => {
-      void navigate(
-        activeDock?.path === dock.path
-          ? {
-              to: "/novels/$id",
-              params: { id: novelId },
-              search: (prev) => ({ ...prev }),
-            }
-          : {
-              to: dock.path,
-              params: { id: novelId },
-              // A dock opened over an open rail drawer closes it: the dock's
-              // ask is the thing worth keeping, and the rail holds nothing
-              // that can be lost — its own open, by contrast, covers the
-              // dock without unmounting it.
-              search: (prev) => ({
-                ...prev,
-                ...(narrow && !collapsed ? { rail: false } : {}),
-              }),
-            },
-      );
-    },
-    [navigate, novelId, activeDock, narrow, collapsed],
-  );
-
-  // The rail's collapse (above, explained): at narrow the rail drawer paints
-  // above the dock's (z-30 over z-20), so opening it never needs to close the
-  // dock — the dock stays mounted with its in-progress question and answer,
-  // and closing the rail brings it back.
-  const toggleRail = useCallback(() => {
-    void navigate({
-      to: ".",
-      search: (prev) => ({ ...prev, rail: collapsed }),
-    });
-  }, [navigate, collapsed]);
-
-  // The leave guard's state, ahead of the keyboard contract: while an ask
-  // stands, F9/Esc are the dialog's keys, not the workbench's — a second
-  // ask would overwrite the first answer's resolver and strand the
-  // navigation that is still waiting on it.
-  const [guardOpen, setGuardOpen] = useState(false);
-  const guardAnswer = useRef<((leave: boolean) => void) | null>(null);
-  const guardBusy = useRef(false);
-  const answerGuard = useCallback((leave: boolean) => {
-    setGuardOpen(false);
-    guardBusy.current = false;
-    const answer = guardAnswer.current;
-    guardAnswer.current = null;
-    answer?.(leave);
-  }, []);
 
   // The keyboard contract. Phase 5's ghost text layers ABOVE this: its Esc
   // discards a suggestion first and marks the event handled, and only an Esc
@@ -352,17 +113,6 @@ export function NovelPage() {
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
   }, [focus, step, guardOpen]);
-
-  // The shell cannot be imported here (capabilities never reach across), so
-  // the deepest step is published as a body attribute the shell subscribes
-  // to. Cleanup on unmount: leaving the workbench restores chrome everywhere.
-  useEffect(() => {
-    if (focus !== 2) return;
-    document.body.dataset.focus = "2";
-    return () => {
-      delete document.body.dataset.focus;
-    };
-  }, [focus]);
 
   /** Create and select an untitled chapter, or show a retryable failure in the rail. */
   async function createChapter() {
@@ -408,346 +158,6 @@ export function NovelPage() {
     }
   }
 
-  const remember = useCallback(
-    (chapterId: string, draft: DocumentDraft) => {
-      // The saved draft reaches the cache before the ask: the patch makes
-      // the settled document — title and body both — the key's own answer,
-      // so the words, the row's name and the freshness their updated_at
-      // stands for cannot be remounted over by a refetch that never
-      // answers (or answers refused) on a later switch. The refetch stays
-      // the truth; the patch only holds the page's ground until it lands.
-      queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
-        rows?.map((row) =>
-          row.id === chapterId
-            ? { ...row, ...draft, updated_at: new Date().toISOString() }
-            : row,
-        ),
-      );
-      // This callback is `onSaved` — it fires only on success — so a failed
-      // save never asks for anything.
-      void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
-      // Same truth as the create path above: a settled save advanced the
-      // novel's updated_at, and the shelf's hero reads it through ["novels"].
-      void queryClient.invalidateQueries({ queryKey: ["novels"] });
-    },
-    [novelId],
-  );
-
-  const current = chapters.find((chapter) => chapter.id === active) ?? null;
-  // The open chapter's slot, for the runhead menu's move items: the ends
-  // of the rail are their own no-ops, and an offered deed that cannot run
-  // says so by its disabled state, not by a silent click.
-  const currentIndex = chapters.findIndex((chapter) => chapter.id === active);
-
-  // The autosave is the page's, not the chapter's: the editor remounts on
-  // every switch (its key is the chapter id), and a hook that lived inside
-  // it would unmount with it — cleanup firing, a refused body dying with
-  // its ref — on each switch. Here the body's lifetime spans switches: the
-  // editor shows `status` beside the text and feeds `schedule` on update;
-  // `flush` is the page's own handle on what has not reached the server.
-  const { status, schedule, flush, discard } = useAutosave(current?.id ?? null, remember);
-
-  // The document the writer holds: title beside body, one draft — the
-  // autosave's unit of work. It belongs to the open chapter, and the
-  // selection's change is its reset, done in render (the state-adjust
-  // pattern) so the new chapter's first paint already carries its own
-  // name: an effect would paint the old book's title over the new chapter
-  // for a frame. Every schedule — the editor's body, the runhead's title —
-  // passes through one wrapper, so the state and the pending save can
-  // never disagree: `remember` patches the row from the whole draft, and a
-  // stale half would patch a regression.
-  const [held, setHeld] = useState<{ id: string | null; draft: DocumentDraft }>({
-    id: null,
-    draft: { title: "", body: "" },
-  });
-  const currentId = current?.id ?? null;
-  if (held.id !== currentId) {
-    setHeld({
-      id: currentId,
-      draft: { title: current?.title ?? "", body: current?.body ?? "" },
-    });
-  }
-  const draft = held.draft;
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
-  const scheduleDraft = useCallback(
-    (next: DocumentDraft, changed: keyof DocumentDraft) => {
-      setHeld((previous) => ({ ...previous, draft: next }));
-      schedule(next, changed);
-    },
-    [schedule],
-  );
-  /** The runhead's title keystrokes: the draft's body is whatever the page
-   *  last held, so the rename rides beside — never over — the text. */
-  const changeTitle = useCallback(
-    (value: string) => scheduleDraft({ ...draftRef.current, title: value }, "title"),
-    [scheduleDraft],
-  );
-
-  // The page's one opinion about unsaved text, shared by every guard: a body
-  // waiting for its debounce, one on the wire, or one that did not land.
-  // `saving` counts — a request that never answers loses the text just as
-  // surely as one that was refused.
-  const unsaved = unsavedStatus(status);
-  // The guards ask at the moment they run, not at the render that registered
-  // them: a navigation starts after the keystroke, not before it.
-  const unsavedNow = useRef(unsaved);
-  unsavedNow.current = unsaved;
-
-  // Every way out of the chapter — the rail, the docks and their panel
-  // state, history's back and forward, the shell's links, and whatever
-  // jump lands here later — is a router navigation, and this is the one
-  // place they all pass. While text is unsaved the gate flushes first;
-  // only a flush that did not land asks, and a dismissed ask keeps the
-  // work. The destination does not matter, because the body does: anything
-  // the router would move away from the editor is worth the same question.
-  // An accepted ask does not drop the body here, either: a panel toggle
-  // would wipe a refused write while the editor stayed mounted — the
-  // notice retracting, the next leave asking nothing — so the body is
-  // cleared only where the chapter really changes (the effect below) or
-  // the page really goes (the autosave's own teardown).
-  // `enableBeforeUnload` is the same question for the tab close, which has
-  // no navigation to intercept.
-  //
-  // The ask itself is the shell's dialog (F21), not window.confirm: the
-  // page's own clothes, focus contained while it stands, and the two
-  // answers as the two buttons the question names. The blocker awaits the
-  // answer as a promise; Escape and an outside click are RAC dismissals,
-  // which land in `onOpenChange` as a "stay". `guardBusy` stands only
-  // once the ask stands — it is set after a flush has failed, not while
-  // it runs — so two navigations inside the flush window are last-wins
-  // by design: the second ask replaces the first.
-  useBlocker({
-    shouldBlockFn: async () => {
-      if (!unsavedNow.current) return false;
-      if (guardBusy.current) return true;
-      const outcome = await flush();
-      if (outcome !== "failed") return false;
-      guardBusy.current = true;
-      const leave = await new Promise<boolean>((resolve) => {
-        guardAnswer.current = resolve;
-        setGuardOpen(true);
-      });
-      return !leave;
-    },
-    enableBeforeUnload: () => unsavedNow.current,
-  });
-
-  // Reset the save story only after the chapter selection actually changes.
-  // Creation can fail after a confirmed leave; until it succeeds, the old
-  // chapter's failed body must still be protected by every leave guard.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: semantic key — `current?.id` is the deliberate re-run key (a chapter change drops the old draft); `discard` is stable and cannot carry the key alone.
-  useEffect(() => {
-    discard();
-  }, [current?.id, discard]);
-
-  // Panels yield to focus before their own URL state: at depth 1 the rail is
-  // hidden whatever ?rail says, and its toggles hide with it — they would be
-  // no-ops while focus suppresses the panel. The page's own header goes at
-  // depth 2: chrome-free means only the writing surface remains. The dock
-  // panel yields the same way; its tab survives one step longer, because at
-  // depth 1 closing the dock is still a real state change, and the tab is
-  // the dock's way back.
-  const showRail = focus === 0 && !collapsed;
-  const openDock = activeDock !== undefined && focus === 0 ? activeDock : null;
-
-  // The depth-2 hint (F23): one line that offers Esc back, shown once at the
-  // deepest step and retracted after a few seconds — it is a message, not
-  // chrome. The retraction is a clean unmount, not an opacity fade: a hint
-  // caught mid-fade is a contrast the a11y floor could sample and fail, and
-  // a message that is simply gone cannot break any state it is read in.
-  const [hintShown, setHintShown] = useState(false);
-  useEffect(() => {
-    if (focus !== 2) {
-      setHintShown(false);
-      return;
-    }
-    setHintShown(true);
-    const timer = window.setTimeout(() => setHintShown(false), 4200);
-    return () => window.clearTimeout(timer);
-  }, [focus]);
-
-  // The rail's roving walk (F20): the current row is the one tab stop, and
-  // Up/Down move the focus along the rows. The walk moves focus only — the
-  // chapter changes when a row is activated, never when it is walked past —
-  // but the tab stop follows the focus while the walk lasts (APG): walk
-  // away and one Tab returns to the row the user was on, not the row they
-  // had selected. Activating a row hands the tab stop back to the selection.
-  const railListRef = useRef<HTMLUListElement | null>(null);
-  const [walkedIndex, setWalkedIndex] = useState<number | null>(null);
-  const walkRail = useCallback((event: ReactKeyboardEvent, index: number) => {
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-    event.preventDefault();
-    const rows = railListRef.current?.querySelectorAll<HTMLButtonElement>("button");
-    if (!rows) return;
-    const next = event.key === "ArrowDown" ? index + 1 : index - 1;
-    if (next < 0 || next >= rows.length) return;
-    setWalkedIndex(next);
-    rows[next]?.focus();
-  }, []);
-
-  // The rail's reorder (WP6): Alt+↑/↓ on the focused row and a desktop
-  // drag both end in one PUT of the whole rail. The arrangement is
-  // written into the cache optimistically — the rail is the new order at
-  // once, each row keeping its own updated_at (an arrangement is not a
-  // write) — and any failure restores the list the ask replaced beside a
-  // named notice. A 409 alone also refetches the key: the book's whole
-  // changed in another tab, and the server's arrangement is the truth the
-  // cache lacks. The shelf is asked for only on success, through the
-  // mutation's own `onSuccess`.
-  const reorder = useReorderChapters(novelId);
-  const [orderFailed, setOrderFailed] = useState(false);
-  // The tail of the reorder queue, the autosave's own pattern: never
-  // rejects, so one failed ask cannot eat the moves queued behind it.
-  // Serialization is the promise "survives a reload" keeps under key
-  // repeat — two arrangements in flight at once can commit inverted, the
-  // server holding the earlier permutation while the rail shows the last.
-  const writes = useRef<Promise<unknown>>(Promise.resolve());
-  // The rail's filter (Task 12): `null` is "no filter", the one state in
-  // which a reorder is unambiguous — the guard Task 11 left behind. The
-  // field's value arrives whole; a blank (trimmed-empty) answer is no
-  // question at all and stores as `null`, so a cleared field and an
-  // untouched one mean the same thing to every guard that reads this.
-  const [railFilter, setRailFilter] = useState<string | null>(null);
-
-  // The rail shows the question's answers: the rows whose rendered label —
-  // the title, or the localized number an untitled row wears — contains the
-  // needle, under the same normalization the palette searches by (one
-  // definition, `lib/search.ts`). A filter is a view, never the book: the
-  // cache and the editor keep every row, and the walk below indexes into
-  // this list because this list is what rendered. The locale is a
-  // dependency in its own right: `t` is a plain function whose identity
-  // never changes, and the label it renders changes with the language — a
-  // standing question is re-asked when the rows change their words, not
-  // replayed against the previous language's answers.
-  const locale = activeLocale();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: semantic key — `t` is a stable function whose output changes with the language, so `locale` stands in as the re-run key (see the comment above).
-  const visibleChapters = useMemo(() => {
-    if (railFilter === null) return chapters;
-    const needle = normalize(railFilter.trim());
-    return chapters.filter((chapter) =>
-      normalize(
-        chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 }),
-      ).includes(needle),
-    );
-  }, [chapters, railFilter, locale]);
-
-  // The open chapter's slot in that visible list: -1 when no chapter is
-  // open, or when the filter hides the one that is — either way the rail's
-  // first visible row takes the tab stop, so the list is never unreachable
-  // by keyboard while a filter stands.
-  const activeVisibleIndex = visibleChapters.findIndex((chapter) => chapter.id === active);
-
-  // The filter dies where the book it filtered ends. Another book's rows —
-  // the palette's jump keeps this page mounted, and one book's question
-  // must not hide the next book's chapters — and a book whose length
-  // changed, which is every create (the rail's own button clears above;
-  // the palette's command lands here, through its invalidation) and every
-  // delete: both end in a chapter the rail must show, and the row the
-  // address names is never hidden by a stale question.
-  const filteredBook = useRef(novelId);
-  const bookLength = useRef(chapters.length);
-  useEffect(() => {
-    if (novelId === filteredBook.current && chapters.length === bookLength.current) return;
-    filteredBook.current = novelId;
-    bookLength.current = chapters.length;
-    // The walk ends with the question: whatever row it stood on belongs to
-    // a list that no longer exists, and a stale index would leave the
-    // shortened rail without a tab stop.
-    setWalkedIndex(null);
-    setRailFilter(null);
-  }, [novelId, chapters.length]);
-
-  /** Move one chapter one step: the keyboard's Alt+↑/↓ path, and the
-   *  address Task 10's menu items call. The ends are no-ops — nothing
-   *  moves, nothing is asked. */
-  async function move(chapterId: string, delta: -1 | 1): Promise<void> {
-    if (railFilter !== null) return;
-    const rows = queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]);
-    if (!rows) return;
-    const from = rows.findIndex((chapter) => chapter.id === chapterId);
-    const to = from + delta;
-    if (from < 0 || to < 0 || to >= rows.length) return;
-    await moveTo(chapterId, to);
-  }
-
-  /** Move one chapter to an index: the drag path's landing, and move's
-   *  engine. Both reads are the cache's, not the render's list — two
-   *  moves before a re-render must not compute the second from the
-   *  first's before — and the first read doubles as the snapshot a
-   *  failure restores. */
-  async function moveTo(chapterId: string, index: number): Promise<void> {
-    if (railFilter !== null) return;
-    const previous = queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]);
-    if (!previous) return;
-    const from = previous.findIndex((chapter) => chapter.id === chapterId);
-    if (from < 0 || from === index || index < 0 || index >= previous.length) return;
-    const moved = previous[from];
-    const without = previous.filter((chapter) => chapter.id !== chapterId);
-    const next = [...without.slice(0, index), moved, ...without.slice(index)].map(
-      (chapter, position) => ({ ...chapter, position }),
-    );
-    // A plain list tells AT nothing about a reordering: every move is
-    // announced with the row's name — the one it wore as the move began,
-    // the name the keystroke or the grab was aimed at — and the position
-    // it holds now, out of the book's total.
-    announce(
-      t("chapters.moved", {
-        title: moved.title || t("chapters.defaultTitle", { n: moved.position + 1 }),
-        n: index + 1,
-        m: next.length,
-      }),
-    );
-    // The optimistic write: the rail and the cache agree at once, the
-    // numbering rewritten to the arrangement the rows now stand in.
-    // `setQueryData` runs the value through structural sharing and
-    // answers with the object the cache actually stored — never the
-    // `next` we passed — so the identity guard below compares against
-    // the RETURN: the one reference a later read can still find there.
-    const written = queryClient.setQueryData<Array<Chapter>>(
-      ["chapters", novelId],
-      next,
-    );
-    setOrderFailed(false);
-    // The ask waits its turn: one arrangement on the wire at a time,
-    // chained on the queue's tail. This move's promise (`ask`) can
-    // reject into its own handler; the tail cannot, or a later keystroke
-    // would queue behind a failure and never fly.
-    const ask = writes.current.then(() =>
-      reorder.mutateAsync(next.map((chapter) => chapter.id)),
-    );
-    writes.current = ask.catch(() => undefined);
-    try {
-      await ask;
-    } catch (failure) {
-      // Restore only what is still this move's to restore: the cache
-      // must hold the very object this move's write stored, or a later
-      // move's optimistic order — newer than this snapshot — would be
-      // clobbered by an earlier failure. The notice still names the
-      // refusal either way. A 409 asks the key to refetch, the server's
-      // order arriving through the same door every list does; a
-      // transport failure asks for nothing — the service is not
-      // answering, and a second ask would only name a refresh failure
-      // beside work that stays.
-      if (queryClient.getQueryData<Array<Chapter>>(["chapters", novelId]) === written) {
-        queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], previous);
-      }
-      setOrderFailed(true);
-      if ((failure as { status?: number }).status === 409) {
-        void queryClient.invalidateQueries({ queryKey: ["chapters", novelId] });
-      }
-    }
-  }
-
-  // The desktop drag's state. The dragged id rides component state, not
-  // `dataTransfer`: the DOM test drives the events alone, and no drop
-  // reads data some other surface would have to write. `dropIndex` is
-  // the marker's truth — which slot the drop would land at — read by the
-  // render, not by the drop itself (the slot's own handler knows its
-  // index; the state would be one event behind it).
-  const dragId = useRef<string | null>(null);
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
-
   // The runhead's menu (D3's narrowing): the open chapter's actions live
   // in its runhead, and the two that need more than a keystroke — rename,
   // delete — open the dialogs that own them. The rail keeps its plain
@@ -788,8 +198,8 @@ export function NovelPage() {
       // so the leave guards protect them and the next debounce carries
       // them to a chapter that still lives. A clean chapter stays clean.
       if (isOpen && hadUnsaved) {
-        schedule(held.draft, "title");
-        schedule(held.draft, "body");
+        schedule(draft, "title");
+        schedule(draft, "body");
       }
       // The refusal is the dialog's to name; nothing moved, and the
       // neighbour this run computed is still only a computation.
@@ -822,22 +232,6 @@ export function NovelPage() {
     select(neighbour.id);
     return true;
   }
-
-  /** The rename dialog's answer: the runhead's input (and the page's held
-   *  draft) take the server's title at once, while the autosave's pending
-   *  slot keeps whatever fields it was holding — the title was never
-   *  dirtied by the dialog, so the pending flush carries the body only
-   *  and the rename survives it (Task 9's contract). */
-  const renamed = useCallback(
-    (title: string) => {
-      setHeld((previous) =>
-        previous.id === current?.id
-          ? { ...previous, draft: { ...previous.draft, title } }
-          : previous,
-      );
-    },
-    [current?.id],
-  );
 
   // F22's choice: below the workbench breakpoint the rail and the dock stay
   // overlays — the viewport floor pins covering, never squeezing — so they
@@ -1212,7 +606,7 @@ export function NovelPage() {
                     title={draft.title}
                     onTitleChange={changeTitle}
                     status={status}
-                    schedule={scheduleDraft}
+                    schedule={schedule}
                     proposal={offer ?? undefined}
                     onProposalResolve={resolveOffer}
                     bookTitle={novelQuery.data?.title}
@@ -1339,7 +733,7 @@ export function NovelPage() {
             chapter={current}
             open={renameOpen}
             onOpenChange={setRenameOpen}
-            onRenamed={renamed}
+            onRenamed={rename}
           />
           <ChapterDeleteDialog
             novelId={novelId}
