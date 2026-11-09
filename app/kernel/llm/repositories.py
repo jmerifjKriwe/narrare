@@ -52,7 +52,12 @@ class ProviderRepository(ScopedRepository[LLMProvider]):
         return provider
 
     async def delete(self, provider: LLMProvider) -> None:
-        """Remove the provider; its profiles cascade at the database."""
+        """Remove the provider.
+
+        The FK is RESTRICT: a model still pointed here refuses the delete
+        at the flush — the delete guard's atomic backstop (the router maps
+        the refusal to the same 409 the guard names the models with).
+        """
         await self.session.delete(provider)
         await self.session.flush()
 

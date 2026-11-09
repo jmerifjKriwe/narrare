@@ -109,11 +109,12 @@ class ProviderProfile(UserOwned):
     name: Mapped[str] = mapped_column(String(120))
     # The provider row this profile points at — its endpoint and key. NOT
     # NULL since the revision that dropped the duplicated columns: a model
-    # without a provider is not a configuration. A deleted provider cascades
-    # here at the database, and what a task then resolves is the resolver's
-    # story.
+    # without a provider is not a configuration. The FK is RESTRICT: the
+    # delete guard answers first with the named 409, and the database is
+    # the atomic backstop behind it — a pointer that slipped past the guard
+    # refuses the delete, it never cascades away.
     provider_id: Mapped[UUID] = mapped_column(
-        Uuid, ForeignKey("llm_providers.id", ondelete="CASCADE")
+        Uuid, ForeignKey("llm_providers.id", ondelete="RESTRICT")
     )
     model: Mapped[str | None] = mapped_column(String(200))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -164,6 +165,12 @@ class LlmCall(UserOwned):
     """One provider call: what was asked, what came back, what it cost to wait."""
 
     __tablename__ = "llm_calls"
+    # The newest-row read behind the settings page's failure mark asks
+    # exactly this slice: user, model, newest first — the index is its
+    # shape, so the audit's growth never turns the mark into a scan.
+    __table_args__ = (
+        Index("ix_llm_calls_user_id_profile_id_created_at", "user_id", "profile_id", "created_at"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     # No FK on purpose: a log row outlives its novel (plan §3.4).

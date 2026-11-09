@@ -263,6 +263,47 @@ async def test_deleting_a_provider_without_models_removes_the_row(client: AsyncC
     assert (await client.get("/api/settings/providers")).json() == []
 
 
+async def test_a_delete_the_guard_cannot_see_still_refuses_as_a_409(
+    client: AsyncClient,
+) -> None:
+    """The RESTRICT backstop: a model pointer the guard cannot see refuses too.
+
+    The delete guard counts the *user's* models; a model row of another
+    user pointing at this provider — unstoreable through the write gate,
+    which is why only a direct insert can plant it — is invisible to that
+    count. The FK's RESTRICT is the atomic backstop: the delete dies at the
+    database and the route answers the same 409 the guard gives. Before the
+    backstop this delete was a 204 that cascaded the stranger's model away.
+    """
+    provider = await _create(client)
+    stranger = uuid4()
+    async with Session() as session:
+        await session.execute(
+            text("INSERT INTO users (id, created_at) VALUES (:id, now())"), {"id": stranger}
+        )
+        await session.execute(
+            text(
+                "INSERT INTO provider_profiles (id, user_id, name, provider_id, is_default,"
+                " created_at, updated_at)"
+                " VALUES (:id, :user_id, 'Fremd', :provider_id, false, now(), now())"
+            ),
+            {"id": uuid4(), "user_id": stranger, "provider_id": provider["id"]},
+        )
+        await session.commit()
+
+    refused = await client.delete(f"/api/settings/providers/{provider['id']}")
+
+    assert refused.status_code == 409, refused.text
+    assert "models" in refused.json()["detail"]
+    # The pointer is intact: nothing cascaded away behind the refusal.
+    async with Session() as session:
+        still_there = await session.scalar(
+            text("SELECT count(*) FROM provider_profiles WHERE user_id = :user"),
+            {"user": stranger},
+        )
+    assert still_there == 1
+
+
 async def test_a_half_configured_provider_is_refused_with_named_fields(
     client: AsyncClient,
 ) -> None:

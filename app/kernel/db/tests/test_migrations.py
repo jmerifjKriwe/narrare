@@ -212,6 +212,40 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     assert initially_deferred is True
 
 
+async def test_the_provider_fk_restricts_and_the_marks_index_sits(url: str) -> None:
+    """The replayed history carries the delete backstop and the marks' index.
+
+    The models-vs-replay gate above compares names and columns; the FK's
+    delete action and an index's presence are the properties a diff can
+    miss, so the same gate pins them by catalog query — the
+    deferrable-positions pin is the precedent. RESTRICT is the delete
+    guard's atomic backstop (a cascade would silently drop a task's model
+    behind a 204), and the index is exactly the newest-row read behind the
+    settings page's failure mark: user, model, newest first.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            delete_action: str | None = await connection.scalar(
+                text(
+                    "SELECT confdeltype FROM pg_constraint "
+                    "WHERE conname = 'fk_provider_profiles_provider_id_llm_providers'"
+                )
+            )
+            marks_indexes: int | None = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM pg_indexes "
+                    "WHERE indexname = 'ix_llm_calls_user_id_profile_id_created_at'"
+                )
+            )
+    finally:
+        await engine.dispose()
+    assert delete_action == b"r"  # pg_constraint's code for RESTRICT (a bytea char)
+    assert marks_indexes == 1
+
+
 # The snapshot the gate below loads: the release schema, checked in. Produced
 # once by replaying the history to head on a scratch database — gate D3.2
 # proves migrated == models, so the dump is the models' schema by

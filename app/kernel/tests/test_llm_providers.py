@@ -10,6 +10,7 @@ proves itself narrowed to its owner the way every ``ScopedRepository`` must.
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.kernel.db.base import Base
 from app.kernel.db.session import Session
@@ -84,16 +85,28 @@ async def test_a_provider_is_created_under_its_owner() -> None:
 
 
 @pytest.mark.usefixtures("owner")
-async def test_deleting_a_provider_cascades_its_profiles() -> None:
-    """Verify the foreign key takes the provider's profiles with it."""
+async def test_deleting_a_provider_models_point_at_is_refused_at_the_database() -> None:
+    """The provider FK is RESTRICT: the delete guard's atomic backstop.
+
+    The settings service's guard answers the named 409 first; behind it the
+    database is the last word — a model pointer the guard cannot see
+    refuses the delete with an IntegrityError instead of cascading away
+    silently. The pointer and the provider both outlive the refused delete.
+    """
     async with Session() as session:
         providers = ProviderRepository(session, OWNER)
         profiles = ProfileRepository(session, OWNER)
-        provider = await providers.create(name="Doomed", kind="fake")
+        provider = await providers.create(name="Kept", kind="fake")
         profile = await profiles.create(name="Points at it", provider_id=provider.id)
-        await providers.delete(provider)
         await session.commit()
-        profile_id = profile.id
+        # The ids ride the assert below; the rollback expires the rows.
+        provider_id, profile_id = provider.id, profile.id
+        # The repository's delete flushes the DELETE — that is where the
+        # RESTRICT refuses; the commit after it never runs.
+        with pytest.raises(IntegrityError):
+            await providers.delete(provider)
+        await session.rollback()
 
     async with Session() as session:
-        assert await ProfileRepository(session, OWNER).get(profile_id) is None
+        assert await ProfileRepository(session, OWNER).get(profile_id) is not None
+        assert await ProviderRepository(session, OWNER).get(provider_id) is not None

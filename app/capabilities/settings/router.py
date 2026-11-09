@@ -10,8 +10,10 @@ because the test ran. The routes are named for what they hold:
 
 The provider routes speak the same dialect: a missing provider is 404, the
 gate's refusals are 422s naming their fields, a delete a model still points
-at is a 409 naming the models, a key store that cannot take or produce a key
-is a 503, and a discovery that cannot reach its endpoint is a 502.
+at is a 409 naming the models — the service guard answers first, the FK's
+RESTRICT is the atomic backstop behind it and maps to the same 409 —, a key
+store that cannot take or produce a key is a 503, and a discovery that
+cannot reach its endpoint is a 502.
 """
 
 from logging import getLogger
@@ -19,6 +21,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.settings.models_service import (
@@ -279,6 +282,14 @@ async def delete_provider(provider_id: UUID, service: ProviderServiceDep) -> Non
         await service.delete(provider_id)
     except (ProviderNotFoundError, ProviderHasModelsError, NoKeyStoreError) as error:
         raise _provider_errors(error) from None
+    except IntegrityError:
+        # The FK's RESTRICT is the guard's atomic backstop: a model pointer
+        # the guard could not see refused the delete at the database. The
+        # answer is the same 409 the guard gives — no cascade ever drops a
+        # task's model behind a 204.
+        raise HTTPException(
+            status_code=409, detail="the provider still has models pointed at it"
+        ) from None
 
 
 @router.get("/providers/{provider_id}/models", response_model=list[str])

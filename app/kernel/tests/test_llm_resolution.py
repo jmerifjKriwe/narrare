@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 import pytest
 from cryptography.fernet import Fernet
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.db.session import Session
@@ -183,33 +184,34 @@ async def test_a_deleted_models_assignment_falls_back_to_the_default() -> None:
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_a_deleted_provider_takes_its_models_off_the_cascade() -> None:
-    """A model whose provider row is gone serves nothing — the next tier does.
+async def test_a_delete_models_point_at_is_refused_and_the_assignment_survives() -> None:
+    """The RESTRICT backstop keeps the assigned pair intact.
 
-    The database cascades a provider's models away, so a dangling pointer
-    cannot exist through the writers; the fall-through is the resolver's
-    answer to the row that got here anyway, never a crash.
+    The old cascade took a provider's models — and with them the task's
+    assignment — off the table in one delete; the delete is refused now,
+    and what the task pointed at keeps serving. The fall-through for a
+    model that is really gone is the deleted-assignment test above.
     """
     async with Session() as session:
         providers = ProviderRepository(session, OWNER)
-        doomed_provider = await providers.create(name="Doomed provider", kind="fake")
-        doomed = await ProfileRepository(session, OWNER).create(
-            name="Doomed", provider_id=doomed_provider.id, model="doomed-model"
+        kept_provider = await providers.create(name="Kept provider", kind="fake")
+        serving = await ProfileRepository(session, OWNER).create(
+            name="Serving", provider_id=kept_provider.id, model="serving-model"
         )
-        default = await _fake_profile(
-            session, OWNER, name="Default", model="default-model", is_default=True
-        )
+        await _fake_profile(session, OWNER, name="Default", model="default-model", is_default=True)
         assignments = AssignmentRepository(session, OWNER)
-        await assignments.set("chat.ask", doomed.id)
-        await session.commit()
-        await providers.delete(doomed_provider)  # cascades the model, not the assignment
+        await assignments.set("chat.ask", serving.id)
         await session.commit()
 
-    # The assignment now names a profile that no longer exists: the tier
-    # falls through, past the empty default tier check — the default is
-    # still there, and it serves.
+        # The id rides the assert below; the rollback expires the row.
+        serving_id = serving.id
+        # The delete flushes the DELETE: that is where RESTRICT refuses.
+        with pytest.raises(IntegrityError):
+            await providers.delete(kept_provider)
+        await session.rollback()
+
     resolved = await _resolve(OWNER, "chat.ask")
-    assert (resolved.profile_id, resolved.model) == (default.id, "default-model")
+    assert (resolved.profile_id, resolved.model) == (serving_id, "serving-model")
 
 
 @pytest.mark.usefixtures("empty_tables")
