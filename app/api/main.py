@@ -9,10 +9,13 @@ web server in production, and the reason the catch-all is guarded: an unknown
 turning into HTML the browser parses as JavaScript.
 """
 
+import json
+import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from importlib import import_module
-from logging import INFO, basicConfig, getLogger
+from logging import INFO, Formatter, basicConfig, getLogger
 from os import environ
 from os.path import isfile, realpath, sep
 from pathlib import Path
@@ -35,10 +38,32 @@ if TYPE_CHECKING:
 CAPABILITIES = Path(__file__).resolve().parent.parent / "capabilities"
 DEFAULT_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 
+
 # Uvicorn configures its own loggers, not the root one, so the kernel's startup
 # line about the configured providers would be dropped as an INFO record without
-# this. One handler, installed once, for the app's own logger.
-basicConfig(level=INFO)
+# this. One handler, installed once, for the app's own logger. JSON formatting
+# keeps the records machine-readable for log aggregation and the llm_calls audit.
+class _JsonFormatter(Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "ts": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exc"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonFormatter())
+_logger = getLogger("narrare")
+_logger.handlers = [_handler]
+_logger.setLevel(INFO)
+_logger.propagate = False
+# Keep the root logger aligned for any code that logs through it directly.
+basicConfig(level=INFO, handlers=[_handler])
 
 
 def _job_handlers() -> dict[str, JobHandler]:
@@ -152,6 +177,10 @@ def create_app(dist: Path | None = None) -> FastAPI:
     # route, which every capability's UI shares (spec §12.1 keeps capability
     # folders self-contained; this route belongs to no capability).
     app.include_router(jobs_router)
+
+    @app.get("/api/health", include_in_schema=False)
+    async def health() -> dict[str, str]:
+        return {"status": "ok", "version": __version__}
 
     shell = dist if dist is not None else Path(environ.get("NARRE_WEB_DIST", str(DEFAULT_DIST)))
     if (shell / "index.html").is_file():

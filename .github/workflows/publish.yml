@@ -26,16 +26,17 @@ on:
         description: The release tag to publish (for example v0.3.0).
         required: true
 
-permissions:
-  contents: write
-  packages: write
-# nosemgrep
-  id-token: write
-  attestations: write
+permissions: {}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+# nosemgrep
+      id-token: write
+      attestations: write
     # Required reviewers: a promotion is an approval, like the artefact gates.
     environment: release
     timeout-minutes: 20
@@ -110,6 +111,20 @@ jobs:
             --tag "$IMAGE:$MAJOR_MINOR" \
             --tag "$IMAGE:latest" \
             "$SOURCE"
+
+      - name: Install Cosign (keyless signing)
+        if: steps.tested.outputs.found == 'true'
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021d69364f41 # v3.8.2
+
+      - name: Sign the promoted image (keyless, Sigstore)
+        if: steps.tested.outputs.found == 'true'
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          digest=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{.Manifest.Digest}}')
+          cosign sign --yes "$IMAGE@$digest"
 
       - name: Record the digest and the size in the release
         if: steps.tested.outputs.found == 'true'
