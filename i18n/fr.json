@@ -7,6 +7,7 @@
   "commands.openWissenDock": "Ouvrir le dock Savoir",
   "dirty.confirmLeave": "Ce formulaire contient des modifications non enregistrées. Quitter quand même ?",
   "docs.table.capability": "Fonction",
+  "docs.table.nav": "Navigation",
   "docs.table.needs": "Nécessite",
   "docs.table.path": "Chemin",
   "jobs.done.check-consistency": "{count, plural, one {# incohérence trouvée} other {# incohérences trouvées}}",

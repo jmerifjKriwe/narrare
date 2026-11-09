@@ -8,33 +8,33 @@ documentation grows around this index, never inside it.
 
 ## English
 
-| Capability | Path | Needs |
-| --- | --- | --- |
-| Chat | /chat | an embedding model, a text model |
-| Knowledge | /knowledge | an embedding model |
-| Prompts | /settings/prompts | — |
-| Settings | /settings | — |
-| Welcome to Narrare | /setup | — |
-| Novels | / | a text model |
+| Capability | Path | Navigation | Needs |
+| --- | --- | --- | --- |
+| Chat | /chat | ✓ | an embedding model, a text model |
+| Knowledge | /knowledge | ✓ | an embedding model |
+| Prompts | /settings/prompts | — | — |
+| Settings | /settings | — | — |
+| Welcome to Narrare | /setup | — | — |
+| Novels | / | — | a text model |
 
 ## Deutsch
 
-| Funktion | Pfad | Benötigt |
-| --- | --- | --- |
-| Chat | /chat | ein Embedding-Modell, ein Textmodell |
-| Wissen | /knowledge | ein Embedding-Modell |
-| Prompts | /settings/prompts | — |
-| Einstellungen | /settings | — |
-| Willkommen bei Narrare | /setup | — |
-| Romane | / | ein Textmodell |
+| Funktion | Pfad | Navigation | Benötigt |
+| --- | --- | --- | --- |
+| Chat | /chat | ✓ | ein Embedding-Modell, ein Textmodell |
+| Wissen | /knowledge | ✓ | ein Embedding-Modell |
+| Prompts | /settings/prompts | — | — |
+| Einstellungen | /settings | — | — |
+| Willkommen bei Narrare | /setup | — | — |
+| Romane | / | — | ein Textmodell |
 
 ## Français
 
-| Fonction | Chemin | Nécessite |
-| --- | --- | --- |
-| Discussion | /chat | un modèle d'embeddings, un modèle de texte |
-| Savoir | /knowledge | un modèle d'embeddings |
-| Prompts | /settings/prompts | — |
-| Paramètres | /settings | — |
-| Bienvenue dans Narrare | /setup | — |
-| Romans | / | un modèle de texte |
+| Fonction | Chemin | Navigation | Nécessite |
+| --- | --- | --- | --- |
+| Discussion | /chat | ✓ | un modèle d'embeddings, un modèle de texte |
+| Savoir | /knowledge | ✓ | un modèle d'embeddings |
+| Prompts | /settings/prompts | — | — |
+| Paramètres | /settings | — | — |
+| Bienvenue dans Narrare | /setup | — | — |
+| Romans | / | — | un modèle de texte |
