@@ -19,7 +19,14 @@ LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 def main() -> int:
     broken: list[str] = []
     for md in ROOT.rglob("*.md"):
-        if any(part in {".venv", "node_modules", "web/dist"} for part in md.parts):
+        if any(part in {".venv", "node_modules", "web/dist", ".agents"} for part in md.parts):
+            continue
+        # Archived v1 feature docs carry stale ADR references by design.
+        if "docs" in md.parts and "features" in md.parts:
+            continue
+        # Historical design records: links are relative to their original
+        # location and are not maintained.
+        if "docs" in md.parts and "superpowers" in md.parts:
             continue
         text = md.read_text(encoding="utf-8", errors="replace")
         for match in LINK_RE.finditer(text):
