@@ -63,8 +63,11 @@ describe("StreamError's sentence", () => {
     expect(disclosure!.hasAttribute("open")).toBe(false); // closed until the reader opens it
     unmount();
 
-    // No detail in the frame, no disclosure at all.
-    render(<StreamError failure={{ code: "key-unavailable" }} />);
-    expect(container.querySelector("details")).toBeNull();
+    // No detail in the frame, no disclosure at all — this render's own
+    // container, not the unmount-emptied first one.
+    const { container: second } = render(
+      <StreamError failure={{ code: "key-unavailable" }} />,
+    );
+    expect(second.querySelector("details")).toBeNull();
   });
 });

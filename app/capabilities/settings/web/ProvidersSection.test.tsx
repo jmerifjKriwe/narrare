@@ -465,8 +465,9 @@ describe("model discovery on the row", () => {
   it("stacks the label above the chips, and a chip wraps its own id", async () => {
     // A vendor id can be longer than a 360 px screen: the chip carries
     // `max-w-full break-all` so the id breaks inside its button instead of
-    // pushing the panel wider, and the Notice stacks (`flex-col
-    // items-start` beats its own flex row) so the label stands above.
+    // pushing the panel wider, and the Notice stacks — `flex-col` with the
+    // important-suffix `items-start!`, so the stack never depends on the
+    // stylesheet's utility order.
     api.GET.mockResolvedValue({ data: ["vendor-max"], response: ok() });
     render(
       <ProvidersSection
@@ -481,7 +482,7 @@ describe("model discovery on the row", () => {
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
     const notice = await screen.findByRole("status");
     expect(notice.className).toContain("flex-col");
-    expect(notice.className).toContain("items-start");
+    expect(notice.className).toContain("items-start!");
 
     const chip = screen.getByRole("button", { name: "vendor-max" });
     expect(chip.className).toContain("max-w-full");

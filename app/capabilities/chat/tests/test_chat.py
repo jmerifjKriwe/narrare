@@ -396,6 +396,9 @@ async def test_a_dead_provider_ends_the_answer_with_its_coded_frame(
         response = await client.post("/api/chat/ask", json={"question": "Wo war der Leuchtturm?"})
 
     assert response.status_code == 200
+    # The coded frame, byte for byte — and exactly once: one dead answer is
+    # one ending, and a second frame would mean the reader sees two failures.
+    assert response.text.count("event: error") == 1
     assert response.text.endswith(frame)
     assert "event: done" not in response.text
 

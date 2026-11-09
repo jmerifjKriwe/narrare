@@ -388,10 +388,12 @@ export function ProvidersSection({
                   ) : (
                     // The ids, each one a pick: pressing it hands the id to
                     // the model form, pointed at this provider. The label
-                    // stacks above the chips (`flex-col items-start` beats
-                    // the Notice's own row), and a chip wraps its id within
-                    // itself — a long one cannot push past a 360 px screen.
-                    <Notice tone="quiet" live="status" className="mt-2 flex-col items-start">
+                    // stacks above the chips — `items-start!` is the
+                    // important suffix, so the Notice's own `items-center`
+                    // loses regardless of the stylesheet's utility order —
+                    // and a chip wraps its id within itself: a long one
+                    // cannot push past a 360 px screen.
+                    <Notice tone="quiet" live="status" className="mt-2 flex-col items-start!">
                       <span className="block text-label text-muted">
                         {t("settings.providers.models")}
                       </span>

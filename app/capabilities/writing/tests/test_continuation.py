@@ -315,7 +315,10 @@ async def test_a_provider_that_dies_mid_stream_ends_with_its_coded_frame(
 
     assert response.status_code == 200
     assert _deltas(response.text) == ["Halb"]  # what arrived, arrived
-    assert response.text.endswith(frame)  # the coded frame, byte for byte
+    # The coded frame, byte for byte — and exactly once: one dead stream is
+    # one ending, and a second frame would mean the reader sees two failures.
+    assert response.text.count("event: error") == 1
+    assert response.text.endswith(frame)
     assert "event: done" not in response.text
 
 
