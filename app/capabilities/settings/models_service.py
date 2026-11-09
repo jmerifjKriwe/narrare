@@ -455,17 +455,21 @@ class ModelService:
     async def _last_failure(self, profile_id: UUID) -> tuple[str | None, datetime | None]:
         """The newest audit row of the model, flattened only when it failed.
 
-        One newest-first query per model, user-scoped like every read here.
-        The row speaks about the *last* call, so a success after a failure
-        is no mark: an ``ok`` row (and a model never called) both answer
-        with the empty pair.
+        One newest-first query per model, user-scoped like every read here —
+        and three columns of it (``status``, ``error_code``, ``created_at``),
+        never the whole row: prompt and response are up to 64 KB each of
+        text no mark reads. The row speaks about the *last* call, so a
+        success after a failure is no mark: an ``ok`` row (and a model never
+        called) both answer with the empty pair.
         """
-        newest = await self.session.scalar(
-            select(LlmCall)
-            .where(LlmCall.user_id == self.user_id, LlmCall.profile_id == profile_id)
-            .order_by(LlmCall.created_at.desc())
-            .limit(1)
-        )
+        newest = (
+            await self.session.execute(
+                select(LlmCall.status, LlmCall.error_code, LlmCall.created_at)
+                .where(LlmCall.user_id == self.user_id, LlmCall.profile_id == profile_id)
+                .order_by(LlmCall.created_at.desc())
+                .limit(1)
+            )
+        ).first()
         if newest is None or newest.status != ERROR:
             return None, None
         return newest.error_code, newest.created_at

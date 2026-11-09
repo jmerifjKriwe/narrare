@@ -457,7 +457,7 @@ describe("the save-time warnings", () => {
     );
   });
 
-  it("stay silent while the typed model is in the loaded list", async () => {
+  it("stay silent while the typed model is in the loaded list, catalogued or not", async () => {
     renderSections(
       [VENDORED_PROVIDER],
       PRESETS,
@@ -465,7 +465,7 @@ describe("the save-time warnings", () => {
       () => {},
       {
         [VENDORED_PROVIDER.id]: {
-          ids: ["glm-5.3"],
+          ids: ["glm-5.3", "live-only-model"],
           fetchedAt: new Date("2026-11-08T12:00:00Z"),
         },
       },
@@ -476,9 +476,46 @@ describe("the save-time warnings", () => {
       VENDORED_PROVIDER.id,
     );
     await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+
+    // In the loaded list and in the catalog: both warnings quiet.
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "glm-5.3");
+    expect(screen.queryByText(t("settings.profiles.warnNotInList"))).toBeNull();
+    expect(screen.queryByText(t("settings.profiles.warnNoCatalogEntry"))).toBeNull();
+
+    // In the loaded list only: the loaded list alone silences the
+    // not-in-list warning (the catalog warning still speaks, correctly).
+    const model = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    await userEvent.clear(model);
+    await userEvent.type(model, "live-only-model");
+    expect(screen.queryByText(t("settings.profiles.warnNotInList"))).toBeNull();
+    expect(screen.getByText(t("settings.profiles.warnNoCatalogEntry"))).toBeTruthy();
+  });
+
+  it("warn when the loaded list dropped a model the catalog still lists", async () => {
+    renderSections(
+      [VENDORED_PROVIDER],
+      PRESETS,
+      null,
+      () => {},
+      {
+        [VENDORED_PROVIDER.id]: {
+          ids: ["glm-5.3-flash"],
+          fetchedAt: new Date("2026-11-08T12:00:00Z"),
+        },
+      },
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      VENDORED_PROVIDER.id,
+    );
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    // Catalogued still — the catalog warning must stay quiet — but the
+    // freshly loaded list no longer carries it: the exact case the
+    // feature exists for, and the loaded list decides.
     await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "glm-5.3");
 
-    expect(screen.queryByText(t("settings.profiles.warnNotInList"))).toBeNull();
+    expect(screen.getByText(t("settings.profiles.warnNotInList"))).toBeTruthy();
     expect(screen.queryByText(t("settings.profiles.warnNoCatalogEntry"))).toBeNull();
   });
 
@@ -560,8 +597,12 @@ describe("the model row's marks", () => {
   });
 
   it("mark nothing on a clean, catalogued model the loaded list carries", () => {
+    // Keyed by the model's own provider: the row looks its list up by
+    // provider_id, so this test only exercises the absence check if the
+    // map answers for *that* provider — with the model string carried, the
+    // negative assertions below are earned, not vacuous.
     renderRow([DEFAULT_MODEL], {
-      [VENDORED_PROVIDER.id]: { ids: ["glm-5.3-flash"], fetchedAt: FETCHED_AT },
+      [DEFAULT_MODEL.provider_id]: { ids: ["glm-5.3-flash"], fetchedAt: FETCHED_AT },
     });
 
     expect(screen.queryByText(t("settings.profiles.markNoPrice"))).toBeNull();

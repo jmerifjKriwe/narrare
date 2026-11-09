@@ -183,14 +183,17 @@ export function ModelsSection({
   const suggestions = [...new Set([...vendorModels, ...(liveList?.ids ?? [])])];
   // The save-time warnings, composed from local facts only — nothing here
   // asks the vendor, on save or ever. An empty model field warns about
-  // nothing; a model absent from the merged list warns only where a list
-  // was actually loaded, and the catalog warning only where the catalog
-  // actually has a vocabulary for this vendor (a vendor it does not carry
-  // could still be priced by another tier — the saved row's mark is the
-  // authority there, so the form stays silent rather than guessing).
+  // nothing; the not-in-list warning keys on the *loaded list alone*, so a
+  // model the catalog still carries but the fresh list dropped — the exact
+  // case the warning exists for — still speaks (the merged datalist is a
+  // suggestion vocabulary, not the provider's word on what it serves); and
+  // the catalog warning only fires where the catalog actually has a
+  // vocabulary for this vendor (a vendor it does not carry could still be
+  // priced by another tier — the saved row's mark is the authority there,
+  // so the form stays silent rather than guessing).
   const typedModel = form.model.trim();
   const notInLoadedList =
-    liveList !== undefined && typedModel !== "" && !suggestions.includes(typedModel);
+    liveList !== undefined && typedModel !== "" && !liveList.ids.includes(typedModel);
   const noCatalogEntry = vendorPreset !== null && typedModel !== "" && !vendorModels.includes(typedModel);
 
   /** One form field's change, by its key in the form state. */
