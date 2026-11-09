@@ -286,6 +286,9 @@ def test_the_pages_fit_and_the_panels_cover(page: Page, stack: Stack, width: int
     # which is the dock's whole state.
     if width == 360:
         page.goto(f"{novel_url}/knowledge")
+        # The deep link remounts the workbench: waiting for the dock alone
+        # lets the fit probe run before the editor is back in the DOM.
+        expect(page.locator(PROSE)).to_be_visible()
     else:
         page.get_by_role("button", name=DOCK_TAB, exact=True).click()
     expect(page.locator(DOCK)).to_be_visible()

@@ -42,6 +42,15 @@ KIND_NAMES = {
     13: "variable",
 }
 
+# How long the first ``textDocument/publishDiagnostics`` may take. It is a
+# readiness signal, not a deadline for the work: pyright analyzes the
+# workspace asynchronously after ``initialized``/``didOpen``, and an
+# ``incomingCalls`` asked before its binding pass finishes comes back null —
+# a silent "0 callers" that reads like an answer. The signal normally
+# arrives in well under a second; the bound only keeps a broken server from
+# hanging the tool.
+READY_TIMEOUT = 15.0
+
 
 class Position(TypedDict):
     line: int
@@ -98,6 +107,9 @@ class LanguageServer:
             stderr=subprocess.PIPE,
         )
         self._messages: queue.Queue[dict[str, Any] | None] = queue.Queue()
+        # Responses that arrived while waiting for a notification, kept for
+        # the request that will claim them (see ``wait_for``).
+        self._pending: deque[dict[str, Any]] = deque()
         # The last stderr lines are the only explanation a crash leaves behind.
         self._stderr: deque[str] = deque(maxlen=8)
         self._next_id = 1
@@ -184,15 +196,18 @@ class LanguageServer:
         self._send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
         deadline = time.monotonic() + timeout
         while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError(f"pyright did not answer {method} within {timeout:.0f}s")
-            try:
-                message = self._messages.get(timeout=remaining)
-            except queue.Empty:
-                raise TimeoutError(
-                    f"pyright did not answer {method} within {timeout:.0f}s"
-                ) from None
+            if self._pending:
+                message = self._pending.popleft()
+            else:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(f"pyright did not answer {method} within {timeout:.0f}s")
+                try:
+                    message = self._messages.get(timeout=remaining)
+                except queue.Empty:
+                    raise TimeoutError(
+                        f"pyright did not answer {method} within {timeout:.0f}s"
+                    ) from None
             if message is None:
                 raise self._failure(method)
             if message.get("id") != request_id:
@@ -201,6 +216,28 @@ class LanguageServer:
             if error:
                 raise RuntimeError(str(error.get("message", error)))
             return message.get("result")
+
+    def wait_for(self, method: str, timeout: float) -> None:
+        """Block until the server sends `method`, failing on EOF or timeout.
+
+        Frames that arrive first are not dropped: a response is parked in
+        ``_pending`` for the request that will claim it.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(f"pyright did not send {method} within {timeout:.0f}s")
+            try:
+                message = self._messages.get(timeout=remaining)
+            except queue.Empty:
+                raise TimeoutError(f"pyright did not send {method} within {timeout:.0f}s") from None
+            if message is None:
+                raise self._failure(method)
+            if message.get("method") == method:
+                return
+            if "id" in message:
+                self._pending.append(message)
 
     def close(self) -> None:
         """Terminate and reap the language server, then release its pipes."""
@@ -368,6 +405,10 @@ def main(argv: list[str]) -> int:
                 }
             },
         )
+        # Readiness, not a fixed sleep: an incomingCalls asked before
+        # pyright's analysis reaches this file is answered null, which reads
+        # as "0 callers". The first diagnostics is the signal it has.
+        server.wait_for("textDocument/publishDiagnostics", timeout=READY_TIMEOUT)
         position = position_for(source, line_index, symbol)
         items = cast(
             "list[CallHierarchyItem]",

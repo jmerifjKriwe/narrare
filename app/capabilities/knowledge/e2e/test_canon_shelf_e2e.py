@@ -12,7 +12,6 @@ back to the shelf — the cache-preserving kind — must find the hero
 naming the book that was just written in.
 """
 
-from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
@@ -20,6 +19,7 @@ import pytest
 from playwright.sync_api import Locator, Page, expect
 
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
@@ -68,16 +68,9 @@ def _seed_entities(novel_title: str) -> None:
             f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id}
         )
         enqueued.raise_for_status()
-        # The worker rides the API process: poll the row it settles.
-        for _ in range(120):
-            job = api.get(f"/api/jobs/{enqueued.json()['job_id']}")
-            job.raise_for_status()
-            if job.json()["status"] in ("done", "failed"):
-                break
-            sleep(0.25)
-        else:
-            pytest.fail("the seeded extraction never settled")
-        assert job.json()["status"] == "done"
+        # The worker rides the API process: wait for the row it settles.
+        job = wait_for_job(api, enqueued.json()["job_id"])
+        assert job["status"] == "done"
         suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
         suggestions.raise_for_status()
         assert len(suggestions.json()) == 5

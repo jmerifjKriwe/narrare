@@ -213,8 +213,9 @@ def test_depth_two_hides_the_frame_and_retracts_its_hint(page: Page, stack: Stac
     expect(page.get_by_text(re.compile(r"Wörter"))).to_have_count(0)
     hint = page.get_by_text("Esc zeigt die Leiste wieder")
     expect(hint).to_be_visible()
-    page.wait_for_timeout(4_800)
-    expect(hint).to_have_count(0)
+    # The hint retracts on its own clock; poll for the retraction instead of
+    # sleeping its whole window and then asking once.
+    expect(hint).to_have_count(0, timeout=8_000)
 
     # The retracted state must leave a whole page behind: no orphaned hint,
     # no contrast the floor trips over, the keyboard still on the surface.

@@ -34,6 +34,11 @@ if TYPE_CHECKING:
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 
+# How long a settled navigation is watched for a late write. The address is
+# already correct; this window is the negative half — the chapter param must
+# never appear afterwards — so it is observed, not awaited.
+LATE_WRITE_WINDOW_MS = 300
+
 # The stack's own database (e2e/conftest.py), named per run: the same
 # process, the same minted name — the conftest's stack and this module's
 # row reads land on one database whatever run named it.
@@ -419,7 +424,7 @@ def test_a_bare_arrival_opens_the_last_touched_chapter_and_writes_nothing(
     expect(page.locator(".ProseMirror")).not_to_contain_text("Kalter Wind.")
     expect(page).to_have_url(re.compile(r"^(?!.*chapter=).*$"))
     # No late write either: the param never appears once the page settled.
-    page.wait_for_timeout(300)
+    page.wait_for_timeout(LATE_WRITE_WINDOW_MS)
     assert "chapter=" not in page.url
 
     # The dock reads the same fallback the editor opened: extraction offers
