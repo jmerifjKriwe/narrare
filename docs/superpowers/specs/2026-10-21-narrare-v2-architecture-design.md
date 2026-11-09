@@ -257,7 +257,7 @@ direct push is covered by the nightly; the nightly runs every capability.
 `release-please` runs separately. The wall clock is the longest capability suite —
 the suites run side by side, the aggregator waits on them in seconds.
 
-**`justfile` budgets 24 public recipes:**
+**`justfile` budgets 24 public recipes.** It carries 27: `check-generated`, `test-frontend-changed` and `fuzz` are the three additions §2's governance counters record. The list below is the 24 the architecture targets.
 
 ```text
 dev, dev-api, dev-web, dev-services, dev-services-stop, dev-setup,
