@@ -199,8 +199,9 @@ Generated files carry a
 OpenAPI, there is no capability field for it at all.
 
 New capability: one folder, its facts file, prompt, code, tests, `e2e/`. New
-provider: one profile row in `/settings`, plus an adapter and one `PROFILE_KINDS`
-value only if it is a new API shape (ADR-102).
+provider: one provider row in `/settings` whose models hang off it, plus an
+adapter and one `PROVIDER_KINDS` value only if it is a new API shape (ADR-102,
+amended 2026-11-09).
 New capability *field*: a change to the generator and every reading view — which is
 why fields are added rarely and removed readily.
 

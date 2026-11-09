@@ -99,8 +99,8 @@ model therefore reads as a Narrare bug. That changes here:
   which are just as mute today. Writing and chat keep sending one spelling.
 - **The surface says what to do.** The editor and the chat panel localise the
   code: *"Der Anbieter bedient »GLM 5.3« nicht mehr. Wähle unter Einstellungen →
-  Modelle ein anderes."* with the settings link. An unclassified failure keeps
-  today's text: we do not guess.
+  Modelle ein anderes."* with the settings link. An unclassified failure names
+  no cause — one neutral sentence (`errors.unknown`) answers for both surfaces.
 - **Settings shows the state of every model**, from the cheapest available
   facts, and never deletes anything by itself:
   - *Preis unbekannt* — the catalog has no entry for the id.
