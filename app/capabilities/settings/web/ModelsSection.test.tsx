@@ -322,6 +322,35 @@ describe("the model form's inputs", () => {
   });
 });
 
+describe("a save whose request cannot be sent", () => {
+  it("names a create that never reaches the service", async () => {
+    api.POST.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderSections();
+
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      PROVIDER.id,
+    );
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "glm-5.3-flash");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.create") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorSave"));
+  });
+
+  it("names an edit that never reaches the service", async () => {
+    api.PATCH.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderSections();
+
+    await userEvent.click(screen.getAllByRole("button", { name: t("settings.profiles.edit") })[0]);
+    await userEvent.click(screen.getByRole("button", { name: t("settings.profiles.save") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.profiles.errorSave"));
+  });
+});
+
 describe("the model input's datalist", () => {
   it("suggests the chosen provider's vendor models, with the catalog's date", async () => {
     renderSections([VENDORED_PROVIDER]);

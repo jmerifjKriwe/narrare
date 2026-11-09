@@ -230,23 +230,55 @@ export function ModelsSection({
     event.preventDefault();
     if (form.name.trim() === "" || form.providerId === "" || form.model.trim() === "") return;
     if (editing === null) {
-      const { response } = await client.POST("/api/settings/models", {
+      try {
+        const { response } = await client.POST("/api/settings/models", {
+          body: {
+            name: form.name.trim(),
+            provider_id: form.providerId,
+            model: form.model.trim(),
+            ...(optionalNumber(form.contextWindow) === undefined
+              ? {}
+              : { context_window: optionalNumber(form.contextWindow) }),
+            ...(optionalNumber(form.maxOutput) === undefined
+              ? {}
+              : { max_output_tokens: optionalNumber(form.maxOutput) }),
+            ...(optionalNumber(form.temperature) === undefined
+              ? {}
+              : { temperature: optionalNumber(form.temperature) }),
+            ...(optionalNumber(form.timeout) === undefined
+              ? {}
+              : { request_timeout: optionalNumber(form.timeout) }),
+          },
+        });
+        if (!response.ok) {
+          setSaveFailed(true);
+          return;
+        }
+        resetForm();
+        await reload();
+        return;
+      } catch {
+        // A rejected fetch has no response to inspect: the page still says
+        // so, in the same place a server-reachable failure appears.
+        setSaveFailed(true);
+        return;
+      }
+    }
+    // An edit sends every column explicitly: an emptied field clears it
+    // (present nulls clear), which is what a form full of values means —
+    // the tuning columns included, or a cleared value would silently keep
+    // governing every request.
+    try {
+      const { response } = await client.PATCH("/api/settings/models/{model_id}", {
+        params: { path: { model_id: editing.id } },
         body: {
           name: form.name.trim(),
           provider_id: form.providerId,
           model: form.model.trim(),
-          ...(optionalNumber(form.contextWindow) === undefined
-            ? {}
-            : { context_window: optionalNumber(form.contextWindow) }),
-          ...(optionalNumber(form.maxOutput) === undefined
-            ? {}
-            : { max_output_tokens: optionalNumber(form.maxOutput) }),
-          ...(optionalNumber(form.temperature) === undefined
-            ? {}
-            : { temperature: optionalNumber(form.temperature) }),
-          ...(optionalNumber(form.timeout) === undefined
-            ? {}
-            : { request_timeout: optionalNumber(form.timeout) }),
+          context_window: tuned(form.contextWindow),
+          max_output_tokens: tuned(form.maxOutput),
+          temperature: tuned(form.temperature),
+          request_timeout: tuned(form.timeout),
         },
       });
       if (!response.ok) {
@@ -255,30 +287,11 @@ export function ModelsSection({
       }
       resetForm();
       await reload();
-      return;
-    }
-    // An edit sends every column explicitly: an emptied field clears it
-    // (present nulls clear), which is what a form full of values means —
-    // the tuning columns included, or a cleared value would silently keep
-    // governing every request.
-    const { response } = await client.PATCH("/api/settings/models/{model_id}", {
-      params: { path: { model_id: editing.id } },
-      body: {
-        name: form.name.trim(),
-        provider_id: form.providerId,
-        model: form.model.trim(),
-        context_window: tuned(form.contextWindow),
-        max_output_tokens: tuned(form.maxOutput),
-        temperature: tuned(form.temperature),
-        request_timeout: tuned(form.timeout),
-      },
-    });
-    if (!response.ok) {
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
       setSaveFailed(true);
-      return;
     }
-    resetForm();
-    await reload();
   }
 
   async function makeDefault(model: Model): Promise<void> {

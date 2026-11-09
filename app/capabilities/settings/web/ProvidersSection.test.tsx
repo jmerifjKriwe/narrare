@@ -153,7 +153,6 @@ describe("the provider form's inputs", () => {
       t("settings.providers.nameLabel"),
       t("settings.providers.baseUrlLabel"),
       t("settings.providers.modelsUrlLabel"),
-      t("settings.providers.vendorLabel"),
     ]) {
       const input = screen.getByLabelText(label);
       expect(input.getAttribute("spellcheck")).toBe("false");
@@ -168,16 +167,26 @@ describe("the provider form's inputs", () => {
 });
 
 describe("the kind select", () => {
-  it("offers the server's three kinds, anthropic under its catalog label", () => {
+  it("offers the two remote kinds, anthropic under its catalog label — the fake is seeded, never typed", () => {
     renderSection();
 
     const kind = screen.getByLabelText(t("settings.providers.kindLabel")) as HTMLSelectElement;
     const options = Array.from(kind.options).map((option) => option.textContent);
     expect(options).toEqual([
-      t("settings.providers.kind.fake"),
       t("settings.providers.kind.openai-chat"),
       t("settings.providers.kind.anthropic"),
     ]);
+    // The create starts at the first of them: no form state ever holds a
+    // fake — that kind is the kernel's boundary stand-in, seeded by the
+    // tooling, not a configuration a user writes.
+    expect(kind.value).toBe("openai-chat");
+  });
+
+  it("still renders a stored fake row's label — the row keeps its kind", () => {
+    render(<Harness providers={[{ ...PROVIDER, kind: "fake", base_url: null }]} />);
+
+    const row = screen.getByRole("listitem");
+    expect(row.textContent).toContain(t("settings.providers.kind.fake"));
   });
 });
 
@@ -208,7 +217,7 @@ describe("the preset select", () => {
     expect(screen.queryByLabelText(t("settings.providers.presetLabel"))).toBeNull();
   });
 
-  it("fills name, kind, base URL, models URL and vendor, and clears a typed key", async () => {
+  it("fills name, kind, base URL and models URL, and clears a typed key", async () => {
     renderSection();
 
     // A key typed for one endpoint must never survive the fill: the choice
@@ -234,9 +243,6 @@ describe("the preset select", () => {
     expect(
       (screen.getByLabelText(t("settings.providers.modelsUrlLabel")) as HTMLInputElement).value,
     ).toBe("");
-    expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
-      "zai-coding-plan",
-    );
 
     // And nothing of the cleared key reaches the request either.
     api.POST.mockResolvedValue({
@@ -288,12 +294,27 @@ describe("the preset select", () => {
           name: "Mein Z.ai",
           kind: "openai-chat",
           base_url: "https://api.z.ai/api/coding/paas/v4",
-          vendor: "zai-coding-plan",
+          vendor: "zai-coding-plan", // the preset's, riding the body — no field shows it
         }),
       }),
     );
     const body = api.POST.mock.calls[0][1].body as Record<string, string>;
     expect(body.api_key).toBeUndefined(); // cleared, and never typed: nothing sent
+  });
+
+  it("sends no vendor for a custom provider — none is a field, none is stored", async () => {
+    api.POST.mockResolvedValue({
+      data: { ...PROVIDER, id: "22222222-2222-2222-2222-222222222222" },
+      response: new Response(null, { status: 201 }),
+    });
+    renderSection();
+
+    const name = screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement;
+    await userEvent.type(name, "Eigen");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+
+    const body = api.POST.mock.calls[0][1].body as Record<string, string>;
+    expect(body.vendor).toBeUndefined();
   });
 
   it("speaks the preset's note while the one that owes it is chosen", async () => {
@@ -339,9 +360,6 @@ describe("the preset select", () => {
     );
     expect(screen.queryByText(t("settings.providers.errorSave"))).toBeNull();
     expect((screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value).toBe(
-      "",
-    );
-    expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
       "",
     );
   });
@@ -406,11 +424,8 @@ describe("the preset select", () => {
     expect((screen.getByLabelText(t("settings.providers.nameLabel")) as HTMLInputElement).value).toBe(
       "",
     );
-    expect((screen.getByLabelText(t("settings.providers.vendorLabel")) as HTMLInputElement).value).toBe(
-      "",
-    );
     expect((screen.getByLabelText(t("settings.providers.kindLabel")) as HTMLSelectElement).value).toBe(
-      "fake",
+      "openai-chat",
     );
   });
 });
@@ -471,6 +486,30 @@ describe("a provider the server refuses to delete", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(t("settings.providers.errorDelete"));
+  });
+});
+
+describe("a save whose request cannot be sent", () => {
+  it("names a create that never reaches the service", async () => {
+    api.POST.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderSection();
+
+    await userEvent.type(screen.getByLabelText(t("settings.providers.nameLabel")), "Neu");
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.create") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.providers.errorSave"));
+  });
+
+  it("names an edit that never reaches the service", async () => {
+    api.PATCH.mockRejectedValue(new TypeError("Failed to fetch"));
+    renderSection();
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.edit") }));
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.save") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("settings.providers.errorSave"));
   });
 });
 

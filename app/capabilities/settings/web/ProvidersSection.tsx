@@ -25,8 +25,10 @@ export type Preset = components["schemas"]["PresetRead"];
  */
 export type ModelSeed = { providerId: string; model: string; token: number };
 
-/** The kinds the form offers; the server's provider vocabulary is exactly these three. */
-export const KINDS: readonly string[] = ["fake", "openai-chat", "anthropic"];
+/** The kinds the create form offers; the fake is seeded, never typed — it is
+ * the kernel's boundary stand-in, not a configuration a user writes. Existing
+ * fake rows still render their label via KIND_LABELS. */
+export const KINDS: readonly string[] = ["openai-chat", "anthropic"];
 
 export const KIND_LABELS: Record<string, MessageKey> = {
   fake: "settings.providers.kind.fake",
@@ -52,22 +54,22 @@ export type Guard = {
   ask: () => Promise<boolean>;
 };
 
-/** One text field of the provider form, as the input holds it. */
+/** One text field of the provider form, as the input holds it. The vendor is
+ * not a field: it rides in from the chosen preset and the form shows nothing
+ * about it — a typo there is a mispriced model, so it is not editable. */
 type FormState = {
   name: string;
   kind: string;
   baseUrl: string;
   modelsUrl: string;
-  vendor: string;
   apiKey: string;
 };
 
 const EMPTY_FORM: FormState = {
   name: "",
-  kind: "fake",
+  kind: "openai-chat",
   baseUrl: "",
   modelsUrl: "",
-  vendor: "",
   apiKey: "",
 };
 
@@ -78,7 +80,6 @@ function formOf(provider: Provider): FormState {
     kind: provider.kind,
     baseUrl: provider.base_url ?? "",
     modelsUrl: provider.models_url ?? "",
-    vendor: provider.vendor ?? "",
     // The key is never prefilled: no read carries it, and the field means
     // "replace", with emptiness meaning "keep" (the hint below says so).
     apiKey: "",
@@ -95,7 +96,9 @@ function formOf(provider: Provider): FormState {
  * and clears the key, so a known vendor is one click from "no providers
  * yet". Every filled field stays editable, and "Custom provider" — the
  * blank form — is the default. The select speaks only while creating: an
- * edit is what the provider already is.
+ * edit is what the provider already is. The vendor is the preset's, sent
+ * with the create and shown nowhere in the form — a custom provider carries
+ * none, and an existing row keeps its own through every edit.
  *
  * "Load models" asks the provider's own list URL and shows the ids it
  * answered with; picking one hands it to the model form, the same ear the
@@ -172,8 +175,8 @@ export function ProvidersSection({
   function resetForm(): void {
     setEditing(null);
     setPresetId("");
-    setForm({ ...EMPTY_FORM, kind: "fake" });
-    setSnapshot({ ...EMPTY_FORM, kind: "fake" });
+    setForm({ ...EMPTY_FORM });
+    setSnapshot({ ...EMPTY_FORM });
     setSaveFailed(false);
   }
 
@@ -195,19 +198,21 @@ export function ProvidersSection({
     setPresetId(id);
     const chosen = presets?.find((preset) => preset.id === id) ?? null;
     if (chosen === null) {
-      setForm({ ...EMPTY_FORM, kind: "fake" });
-      setSnapshot({ ...EMPTY_FORM, kind: "fake" });
+      setForm({ ...EMPTY_FORM });
+      setSnapshot({ ...EMPTY_FORM });
       // The blank form is a fresh start too: a failed save before the
       // choice was the old attempt's failure, not this one's.
       setSaveFailed(false);
       return;
     }
+    // The preset's vendor is not a form field — it rides in the create's
+    // body from the choice itself (see submit) and nothing on the form
+    // shows it.
     const filled: FormState = {
       name: chosen.label,
       kind: chosen.kind,
       baseUrl: chosen.base_url,
       modelsUrl: chosen.models_url ?? "",
-      vendor: chosen.vendor,
       // A preset never carries a key over: the field the choice clears.
       apiKey: "",
     };
@@ -226,53 +231,69 @@ export function ProvidersSection({
     const apiKey = form.apiKey.trim() === "" ? {} : { api_key: form.apiKey.trim() };
     // The preset the create rode in on: its model becomes the model form's
     // seed, once, when the provider is stored. Captured before resetForm
-    // clears the choice.
+    // clears the choice. The vendor rides the same way — the preset's, in
+    // the body, no field on the form; a custom provider carries none.
     const presetModel = editing === null ? (chosenPreset?.model ?? null) : null;
+    const presetVendor =
+      editing === null && chosenPreset !== null ? { vendor: chosenPreset.vendor } : {};
     if (editing === null) {
-      const { data, response } = await client.POST("/api/settings/providers", {
-        body: {
-          name: form.name.trim(),
-          kind: form.kind,
-          ...(form.baseUrl.trim() === "" ? {} : { base_url: form.baseUrl.trim() }),
-          ...(form.modelsUrl.trim() === "" ? {} : { models_url: form.modelsUrl.trim() }),
-          ...(form.vendor.trim() === "" ? {} : { vendor: form.vendor.trim() }),
-          ...apiKey,
-        },
-      });
-      if (!response.ok || data === undefined) {
+      try {
+        const { data, response } = await client.POST("/api/settings/providers", {
+          body: {
+            name: form.name.trim(),
+            kind: form.kind,
+            ...(form.baseUrl.trim() === "" ? {} : { base_url: form.baseUrl.trim() }),
+            ...(form.modelsUrl.trim() === "" ? {} : { models_url: form.modelsUrl.trim() }),
+            ...presetVendor,
+            ...apiKey,
+          },
+        });
+        if (!response.ok || data === undefined) {
+          setSaveFailed(true);
+          return;
+        }
+        // The one response that carries the full key becomes the one box that
+        // shows it; dismissed, it never exists again anywhere.
+        if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
+        // The created provider is the model form's next subject: it names
+        // itself so the form can point at it, with the preset's model as the
+        // suggestion. A failed save emits nothing — nothing was stored.
+        if (presetModel !== null) onModelSeed(data.id, presetModel);
+        resetForm();
+        await reload();
+      } catch {
+        // A rejected fetch has no response to inspect: the page still says
+        // so, in the same place a server-reachable failure appears.
         setSaveFailed(true);
-        return;
       }
-      // The one response that carries the full key becomes the one box that
-      // shows it; dismissed, it never exists again anywhere.
-      if (data.api_key) setCreated({ name: data.name, apiKey: data.api_key });
-      // The created provider is the model form's next subject: it names
-      // itself so the form can point at it, with the preset's model as the
-      // suggestion. A failed save emits nothing — nothing was stored.
-      if (presetModel !== null) onModelSeed(data.id, presetModel);
-      resetForm();
-      await reload();
       return;
     }
     // An edit sends every column explicitly: an emptied field clears it
     // (present nulls clear), which is what a form full of values means —
-    // or a cleared endpoint would silently keep governing every call.
-    const { response } = await client.PATCH("/api/settings/providers/{provider_id}", {
-      params: { path: { provider_id: editing.id } },
-      body: {
-        name: form.name.trim(),
-        base_url: form.baseUrl.trim() === "" ? null : form.baseUrl.trim(),
-        models_url: form.modelsUrl.trim() === "" ? null : form.modelsUrl.trim(),
-        vendor: form.vendor.trim() === "" ? null : form.vendor.trim(),
-        ...apiKey,
-      },
-    });
-    if (!response.ok) {
+    // or a cleared endpoint would silently keep governing every call. The
+    // vendor is no column of this form: the patch omits it, so every stored
+    // row keeps its own.
+    try {
+      const { response } = await client.PATCH("/api/settings/providers/{provider_id}", {
+        params: { path: { provider_id: editing.id } },
+        body: {
+          name: form.name.trim(),
+          base_url: form.baseUrl.trim() === "" ? null : form.baseUrl.trim(),
+          models_url: form.modelsUrl.trim() === "" ? null : form.modelsUrl.trim(),
+          ...apiKey,
+        },
+      });
+      if (!response.ok) {
+        setSaveFailed(true);
+        return;
+      }
+      resetForm();
+      await reload();
+    } catch {
+      // A rejected fetch has no response to inspect: the page still says so,
+      // in the same place a server-reachable failure appears.
       setSaveFailed(true);
-      return;
     }
-    resetForm();
-    await reload();
   }
 
   async function remove(provider: Provider): Promise<void> {
@@ -488,14 +509,6 @@ export function ProvidersSection({
           <Input
             value={form.modelsUrl}
             onChange={(event) => set("modelsUrl", event.target.value)}
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </Field>
-        <Field label={t("settings.providers.vendorLabel")} className={LABEL_ROW}>
-          <Input
-            value={form.vendor}
-            onChange={(event) => set("vendor", event.target.value)}
             spellCheck={false}
             autoComplete="off"
           />
