@@ -104,6 +104,28 @@ describe("ICU message format", () => {
     expect(new IntlMessageFormat(english, "en").format({ count: 1 })).toBe("1 chapter");
     expect(new IntlMessageFormat(english, "en").format({ count: 0 })).toBe("0 chapters");
   });
+
+  it("carries the settings link exactly once in every error sentence", () => {
+    // The surfaces split the formatted sentence around the link's words to
+    // make them the link — a dropped or repeated {link} placeholder would
+    // leave an unlinked sentence, or split at the wrong occurrence. Every
+    // errors.* sentence (but the link's own key and the disclosure label,
+    // which carry none) formats to exactly one occurrence, in every locale.
+    for (const candidate of locales) {
+      const linkWords = catalogs[candidate]["errors.link"];
+      const sentences = Object.entries(catalogs[candidate]).filter(
+        ([key]) => key.startsWith("errors.") && key !== "errors.link" && key !== "errors.details",
+      );
+      expect(sentences.length).toBeGreaterThan(0);
+      for (const [key, message] of sentences) {
+        const formatted = String(
+          new IntlMessageFormat(message, candidate).format({ link: linkWords, model: "M" }),
+        );
+        const occurrences = formatted.split(linkWords).length - 1;
+        expect(occurrences, `${candidate}/${key}`).toBe(1);
+      }
+    }
+  });
 });
 
 describe("the formal register", () => {

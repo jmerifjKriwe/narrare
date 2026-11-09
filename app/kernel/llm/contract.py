@@ -2,7 +2,9 @@
 
 One method streams the completion. The other two let the kernel report what a
 configured entry is and what it still needs, so a half-configured real provider
-fails at startup instead of with the first prompt.
+fails at startup instead of with the first prompt. The two typed failures — a
+missing model, a refused credential — are what a refusal a user can act on
+becomes; every other endpoint failure propagates unclassified.
 """
 
 from collections.abc import AsyncIterator  # noqa: TC003
@@ -80,6 +82,56 @@ DONE = Done()
 
 
 type CompletionEvent = Delta | Usage | Done
+
+
+class ModelNotFoundError(RuntimeError):
+    """The endpoint answered "no such model": the configured name does not exist there.
+
+    ``model`` carries the asked-for string, so a message can name the row to
+    fix. Both adapters raise it — the openai-chat adapter from the SDK's 404,
+    the anthropic adapter from the wire's 404/``not_found_error`` — so the
+    surfaces above name the mistake without knowing which vendor refused.
+    Anything else an endpoint says stays an unclassified exception; the error
+    frames (plan Task 8) are where codes become user-facing messages.
+    """
+
+    def __init__(self, model: str) -> None:
+        super().__init__(f"the endpoint does not serve the model {model!r}")
+        self.model = model
+
+
+class ProviderAuthError(RuntimeError):
+    """The endpoint refused the credential: the key is missing, wrong or expired.
+
+    Both adapters raise it — the openai-chat adapter from the SDK's
+    ``AuthenticationError``, the anthropic adapter from a 401 or the wire's
+    ``authentication_error`` — so a refusal reads the same whichever vendor
+    produced it.
+    """
+
+
+ERROR_MODEL_NOT_FOUND = "model-not-found"
+ERROR_PROVIDER_AUTH = "provider-auth"
+ERROR_UNKNOWN = "unknown"
+"""The wire codes an error frame can carry: the two typed failures, and
+everything else. The strings are the surfaces' localization keys' subjects —
+``errors.modelNotFound`` and friends pick the sentence from one of these —
+so renaming one is a cross-tree change, kernel and web together."""
+
+
+def error_code(failure: BaseException) -> str:
+    """The wire code a stream failure becomes: one of the three, never prose.
+
+    The two typed failures map to their codes; anything else — an endpoint
+    answering the wrong shape, a wire that died mid-frame — is unclassified
+    by contract, so it rides as ``unknown`` and the surfaces say the one
+    generic sentence.
+    """
+    if isinstance(failure, ModelNotFoundError):
+        return ERROR_MODEL_NOT_FOUND
+    if isinstance(failure, ProviderAuthError):
+        return ERROR_PROVIDER_AUTH
+    return ERROR_UNKNOWN
 
 
 class TextProvider(Protocol):

@@ -4,8 +4,10 @@ import { usePageTitle } from "@shell/lib/pageTitle";
 import { ProvidersPanel } from "./ProvidersPanel";
 
 /**
- * The provider cluster's page: the profiles with their keys and tuning, and
- * the tasks they serve — the whole provider surface, on a page of its own.
+ * The provider cluster's page: the providers (the saved endpoints), the
+ * models that hang off them (which provider serves which model string, and
+ * how it is tuned), and the tasks those models serve — the whole provider
+ * surface, on a page of its own.
  */
 export function ProviderPage() {
   const t = useTranslation();

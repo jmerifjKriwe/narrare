@@ -43,7 +43,7 @@ from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import ERROR_FRAME, FinalizingStreamingResponse, error_events
+from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events, failure_frame
 from app.kernel.prompts import PromptRenderError
 from app.kernel.secrets import KeyUnavailableError
 
@@ -110,9 +110,12 @@ async def _continuation_events(
         async for event in events:
             if isinstance(event, Delta):
                 yield f"data: {json.dumps({'delta': event.text})}\n\n"
-    except Exception:
+    except Exception as failure:
         logger.exception("continuation stream failed")
-        yield ERROR_FRAME
+        # The coded frame — what the surfaces translate: the failure's wire
+        # code, the model a missing one names, the detail behind the reader's
+        # disclosure. One spelling for both routers.
+        yield failure_frame(failure)
     else:
         yield "event: done\ndata: {}\n\n"
     finally:
@@ -476,18 +479,18 @@ async def continue_chapter(
     """Stream a continuation for an owned chapter; return HTTP 404 when it is not found."""
     # Resolution reads the user's profiles on the request's own session, so it
     # must run before the connection goes back. A profile whose key its tier
-    # can no longer produce ends the stream with the error frame a dead
+    # can no longer produce ends the stream with the coded error frame a dead
     # provider gets — no call ran, so no audit row.
     try:
         resolved = await resolve_provider(service.session, user_id, "writing.continuation")
     except KeyUnavailableError:
         logger.exception("continuation provider resolution failed")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("key-unavailable"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The builder sizes its slices from the resolved facts; a pair whose output
     # reserve fills the window refused there — mapped like the lost key above:
-    # the one error frame, no provider call, no audit row. A prompt the
+    # the one coded error frame, no provider call, no audit row. A prompt the
     # effective chain refuses (an override whose frame cannot hold its budget)
     # is mapped the same way, refused by name and never truncated.
     try:
@@ -502,12 +505,12 @@ async def continue_chapter(
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     except PromptRenderError:
         logger.exception("continuation prompt refused")
         return FinalizingStreamingResponse(
-            error_events(), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
         )
     # The audit names the novel, so read its id before the response starts,
     # while the request's session is still open — one scalar, scoped to the

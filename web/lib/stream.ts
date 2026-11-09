@@ -4,16 +4,26 @@ export type Source = {
   text: string;
 };
 
+/** What a dead stream's frame carries: the machine code the surfaces
+ * translate, the model a missing one names, and the provider's own message —
+ * the detail a reader opens, never the sentence they read. */
+export type StreamFailure = {
+  code?: string;
+  model?: string;
+  detail?: string;
+};
+
 export type Frame = {
   delta?: string;
   sources?: Source[];
-  error?: string;
+  error?: StreamFailure;
 };
 
 /** Read a text/event-stream response and yield its parsed frames, in order.
  * An `event:` line names the frame's kind: the routers end a dead provider
- * with `event: error`, and the reader must carry that into the frame.
- * Frames end at two LF characters; an incomplete trailing frame is ignored.
+ * with `event: error`, and the reader must carry that into the frame — with
+ * the payload's code and facts, so the surfaces can say what to do. Frames
+ * end at two LF characters; an incomplete trailing frame is ignored.
  * A missing body yields nothing. Invalid JSON and stream read errors propagate;
  * an error event is yielded as a frame rather than thrown.
  */
@@ -44,9 +54,10 @@ export async function* readFrames(response: Response): AsyncGenerator<Frame> {
       const parsed = (data.length === 0 ? {} : JSON.parse(data.join("\n"))) as Frame;
       // The failure lives in the event, not the payload: a reader that
       // dropped `event:` parsed this frame to `{}`, and a truncation looked
-      // like a clean end of the stream.
-      if (event === "error") parsed.error ??= "stream failed";
-      yield parsed;
+      // like a clean end of the stream. The payload rides along as the
+      // failure's facts — an empty one reads as the unknown code below.
+      if (event === "error") yield { error: parsed as StreamFailure };
+      else yield parsed;
       boundary = buffer.indexOf("\n\n");
     }
   }

@@ -11,7 +11,7 @@
  */
 import "./chatApiServer";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 
@@ -89,10 +89,37 @@ describe("ChatPanel's in-flight ask", () => {
     // The wire dies mid-answer. The panel must say failed — and settle.
     chatServer.asks[0]!.break();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chat.error")),
+      expect(screen.getByRole("alert").textContent).toContain(
+        t("errors.unknown", { link: t("errors.link") }),
+      ),
     );
     const askButton = screen.getByRole("button", { name: t("chat.ask") }) as HTMLButtonElement;
     await waitFor(() => expect(askButton.disabled).toBe(false)); // the finally ran
+  });
+
+  it("says what to do when the provider stopped serving the model", { timeout: 10_000 }, async () => {
+    // The router's own coded frame, byte for byte (chat/router.py): the
+    // sentence is picked from the payload's code — the model named, the
+    // settings door linked inside the sentence.
+    chatServer.answerWith = `data: ${JSON.stringify({ delta: "Eine halbe Antwort" })}\n\n`
+      + "event: error\ndata: "
+      + '{"code": "model-not-found", "model": "glm-5.3"}\n\n';
+    render(<ChatPanel />);
+    const user = userEvent.setup();
+    await user.type(
+      await screen.findByLabelText(t("chat.questionLabel")),
+      "Wo war der Leuchtturm?",
+    );
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      t("errors.modelNotFound", { model: "glm-5.3", link: t("errors.link") }),
+    );
+    const link = within(alert).getByRole("link", { name: t("errors.link") });
+    expect(link.getAttribute("href")).toBe("/settings/provider");
+    // The frame carried no detail, so no disclosure at all.
+    expect(alert.querySelector("details")).toBeNull();
   });
 
   it("supersedes a mid-stream ask: the old socket tears down, the new one keeps its unmount abort", { timeout: 10_000 }, async () => {

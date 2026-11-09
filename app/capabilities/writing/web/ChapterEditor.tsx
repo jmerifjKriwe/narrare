@@ -5,11 +5,11 @@ import { announce } from "@shell/lib/announce";
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { SaveIndicator, type DocumentDraft, type SaveStatus } from "@shell/lib/save";
-import { readFrames } from "@shell/lib/stream";
+import { readFrames, type StreamFailure } from "@shell/lib/stream";
 import { countWords } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
 import { MarkdownEditor } from "@shell/ui/markdown-editor";
-import { Notice } from "@shell/ui/Notice";
+import { StreamError } from "@shell/ui/StreamError";
 import type { Editor } from "@tiptap/core";
 
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
@@ -78,7 +78,10 @@ export function ChapterEditor({
 }) {
   const t = useTranslation();
   const [continuing, setContinuing] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // The failure the stream or its request died with, when one did: the
+  // payload the error frame carried — its code picks the sentence. Empty for
+  // the request-level failures (a refusal, a cut wire): they carry no frame.
+  const [failure, setFailure] = useState<StreamFailure | null>(null);
   // What this component's own stream has proposed so far.
   const [streamed, setStreamed] = useState<string | null>(null);
   // The frame's live count: the shared rule applied to the document as it
@@ -187,7 +190,7 @@ export function ChapterEditor({
     const controller = new AbortController();
     continueAbort.current = controller;
     setContinuing(true);
-    setFailed(false);
+    setFailure(null);
     try {
       // parseAs "stream": the frames are read from the body while they arrive,
       // so the client must not buffer the response first.
@@ -200,7 +203,7 @@ export function ChapterEditor({
         },
       );
       if (!response.ok) {
-        setFailed(true);
+        setFailure({});
         // The refusal is the stream's own story only while no offer from
         // outside owns the ghost on screen — that offer did not fail, and
         // the alert above already names the refused request either way.
@@ -214,10 +217,11 @@ export function ChapterEditor({
         // the feed the same way.
         if (mine !== run.current || controller.signal.aborted) return;
         // An error frame replaces the done frame: the provider died, and a
-        // silent end would look like a finished continuation. The failure
-        // is announced as what it is — the user did not discard anything.
+        // silent end would look like a finished continuation. The frame's
+        // payload — code, model, detail — is what the notice speaks; the
+        // failure is announced as what it is, the user did not discard.
         if (frame.error) {
-          setFailed(true);
+          setFailure(frame.error);
           setStreamed(null);
           // The ghost this failure may speak of is the stream's own only
           // while no offer owns the screen: the offer still showing is
@@ -237,7 +241,7 @@ export function ChapterEditor({
       // editor must name, exactly like a refusal; the abort of a departed
       // editor is the user's doing, and there is no editor left to tell.
       if (!controller.signal.aborted) {
-        setFailed(true);
+        setFailure({});
         if (offered.current === undefined) announce(t("editor.ghostFailed"));
       }
     } finally {
@@ -301,11 +305,7 @@ export function ChapterEditor({
           {t("chapters.continue")}
         </Button>
       </div>
-      {failed ? (
-        <Notice tone="danger" live="alert" className="mb-4">
-          {t("chapters.continueError")}
-        </Notice>
-      ) : null}
+      {failure ? <StreamError failure={failure} className="mb-4" /> : null}
       {/* The writing surface is a card (F18): the focus ring sits on its
           edge, 16 px from the glyphs, instead of flush on them. The 1 px
           edge plus the 15 px pad is that 16 px; a 16 px pad would eat 2 px

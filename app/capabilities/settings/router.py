@@ -1,11 +1,19 @@
 """HTTP surface for the settings. Parses, delegates, returns; no logic here.
 
-The profile routes translate the service's closed error vocabulary into the
-HTTP one: a missing profile is 404, the gate's refusals are 422s naming their
-fields, the default guard and a create or default swap that lost the race are
-409s, a key store that cannot take or produce a key is a 503, and a discovery that
-cannot reach its endpoint is a 502. A failed connection *test* is none of
-these — it is the 200 that carries the failure, because the test ran.
+The model routes translate the service's closed error vocabulary into the
+HTTP one: a missing model is 404, the gate's refusals are 422s naming their
+fields (a ``provider_id`` that is not the user's among them), the default
+guard and a create or default swap that lost the race are 409s, and a failed
+connection *test* is none of these — it is the 200 that carries the failure,
+because the test ran. The routes are named for what they hold:
+``/api/settings/models``.
+
+The provider routes speak the same dialect: a missing provider is 404, the
+gate's refusals are 422s naming their fields, a delete a model still points
+at is a 409 naming the models — the service guard answers first, the FK's
+RESTRICT is the atomic backstop behind it and maps to the same 409 —, a key
+store that cannot take or produce a key is a 503, and a discovery that
+cannot reach its endpoint is a 502.
 """
 
 from logging import getLogger
@@ -13,24 +21,36 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.capabilities.settings.profiles_service import (
+from app.capabilities.settings.models_service import (
     DefaultProfileError,
     DefaultProfileRaceError,
-    NoEndpointError,
+    ModelService,
+    ModelState,
     ProfileNotFoundError,
     ProfileRefusedError,
-    ProfileService,
+)
+from app.capabilities.settings.providers_service import (
+    NoEndpointError,
+    ProviderHasModelsError,
+    ProviderNotFoundError,
+    ProviderRefusedError,
+    ProviderService,
 )
 from app.capabilities.settings.schemas import (
     AssignmentRead,
     AssignmentUpdate,
-    ProfileCreate,
-    ProfileCreated,
-    ProfileRead,
-    ProfileTestResult,
-    ProfileUpdate,
+    ModelCreate,
+    ModelRead,
+    ModelTestResult,
+    ModelUpdate,
+    PresetRead,
+    ProviderCreate,
+    ProviderCreated,
+    ProviderRead,
+    ProviderUpdate,
     SettingsRead,
     SettingsThemeRead,
     SettingsThemeUpdate,
@@ -40,7 +60,7 @@ from app.capabilities.settings.schemas import (
 from app.capabilities.settings.service import SettingsService
 from app.kernel.auth import SetupRequiredError, current_user_id
 from app.kernel.db.session import get_session
-from app.kernel.llm.models import ProviderProfile
+from app.kernel.llm.models import LLMProvider, ProviderProfile
 from app.kernel.secrets import KeyUnavailableError, NoKeyStoreError
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -58,33 +78,56 @@ def _service(session: SessionDep, user_id: UserDep) -> SettingsService:
 ServiceDep = Annotated[SettingsService, Depends(_service)]
 
 
-def _profiles(session: SessionDep, user_id: UserDep) -> ProfileService:
-    return ProfileService(session, user_id)
+def _models(session: SessionDep, user_id: UserDep) -> ModelService:
+    return ModelService(session, user_id)
 
 
-ProfileServiceDep = Annotated[ProfileService, Depends(_profiles)]
+ModelServiceDep = Annotated[ModelService, Depends(_models)]
 
 
-def _masked(profile: ProviderProfile) -> ProfileRead:
-    """The row as every read shows it: the mask, never the key."""
-    return ProfileRead(
+def _providers(session: SessionDep, user_id: UserDep) -> ProviderService:
+    return ProviderService(session, user_id)
+
+
+ProviderServiceDep = Annotated[ProviderService, Depends(_providers)]
+
+
+def _masked(profile: ProviderProfile, provider_name: str, state: ModelState) -> ModelRead:
+    """The model as every read shows it: its provider named, no key anywhere,
+    and the state fields the page's marks speak from."""
+    return ModelRead(
         id=profile.id,
         name=profile.name,
-        kind=profile.kind,
-        base_url=profile.base_url,
-        model=profile.model,
-        api_key_mask=f"sk-…{profile.api_key_hint}" if profile.api_key_hint else None,
+        provider_id=profile.provider_id,
+        provider_name=provider_name,
+        model=profile.model or "",
         is_default=profile.is_default,
         context_window=profile.context_window,
         max_output_tokens=profile.max_output_tokens,
         temperature=profile.temperature,
         request_timeout=profile.request_timeout,
+        in_catalog=state.in_catalog,
+        last_error_code=state.last_error_code,
+        last_error_at=state.last_error_at,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )
 
 
-def _refusal(error: ProfileRefusedError) -> HTTPException:
+def _provider_masked(provider: LLMProvider) -> ProviderRead:
+    """The provider row as every read shows it: the mask, never the key."""
+    return ProviderRead(
+        id=provider.id,
+        name=provider.name,
+        kind=provider.kind,
+        base_url=provider.base_url,
+        models_url=provider.models_url,
+        vendor=provider.vendor,
+        api_key_mask=f"sk-…{provider.api_key_hint}" if provider.api_key_hint else None,
+    )
+
+
+def _refusal(error: ProfileRefusedError | ProviderRefusedError) -> HTTPException:
     """The gate's refusal as a 422 naming each missing or refused field."""
     return HTTPException(
         status_code=422,
@@ -96,14 +139,23 @@ def _refusal(error: ProfileRefusedError) -> HTTPException:
 
 
 def _profile_errors(error: Exception) -> HTTPException:
-    """The service vocabulary's mapping, shared by every profile route."""
+    """The service vocabulary's mapping, shared by every model route."""
     if isinstance(error, ProfileNotFoundError):
         return HTTPException(status_code=404, detail="profile not found")
     if isinstance(error, ProfileRefusedError):
         return _refusal(error)
-    if isinstance(error, DefaultProfileError | NoEndpointError):
+    if isinstance(error, DefaultProfileError | DefaultProfileRaceError):
         return HTTPException(status_code=409, detail=str(error))
-    if isinstance(error, DefaultProfileRaceError):
+    return HTTPException(status_code=500, detail=str(error))
+
+
+def _provider_errors(error: Exception) -> HTTPException:
+    """The provider service vocabulary's mapping, shared by every provider route."""
+    if isinstance(error, ProviderNotFoundError):
+        return HTTPException(status_code=404, detail="provider not found")
+    if isinstance(error, ProviderRefusedError):
+        return _refusal(error)
+    if isinstance(error, ProviderHasModelsError | NoEndpointError):
         return HTTPException(status_code=409, detail=str(error))
     if isinstance(error, NoKeyStoreError):
         return HTTPException(status_code=503, detail=str(error))
@@ -133,80 +185,131 @@ async def update_theme(payload: SettingsThemeUpdate, service: ServiceDep) -> Set
     return SettingsThemeRead(theme=theme)
 
 
-@router.get("/profiles", response_model=list[ProfileRead])
-async def list_profiles(service: ProfileServiceDep) -> list[ProfileRead]:
-    """The user's profiles, the default first; every key read shows the mask."""
-    return [_masked(profile) for profile in await service.list()]
+@router.get("/models", response_model=list[ModelRead])
+async def list_models(service: ModelServiceDep) -> list[ModelRead]:
+    """The user's models, the default first; every read names its provider."""
+    pairs = await service.list()
+    states = await service.states(pairs)
+    return [_masked(profile, provider.name, states[profile.id]) for profile, provider in pairs]
 
 
-@router.post("/profiles", response_model=ProfileCreated, status_code=201)
-async def create_profile(payload: ProfileCreate, service: ProfileServiceDep) -> ProfileCreated:
-    """Store one profile; the first becomes the default; the full key returns once."""
+@router.post("/models", response_model=ModelRead, status_code=201)
+async def create_model(payload: ModelCreate, service: ModelServiceDep) -> ModelRead:
+    """Store one model under one of the user's providers; the first is the default."""
     try:
-        profile, api_key = await service.create(payload)
-    except ProfileRefusedError as error:
+        profile, provider = await service.create(payload)
+    except (ProfileRefusedError, DefaultProfileRaceError) as error:
+        raise _profile_errors(error) from None
+    return _masked(profile, provider.name, await service.state(profile, provider))
+
+
+@router.patch("/models/{model_id}", response_model=ModelRead)
+async def update_model(model_id: UUID, payload: ModelUpdate, service: ModelServiceDep) -> ModelRead:
+    """Apply the patch; the provider and the model string can both move."""
+    try:
+        profile, provider = await service.update(model_id, payload)
+    except (ProfileNotFoundError, ProfileRefusedError, DefaultProfileRaceError) as error:
+        raise _profile_errors(error) from None
+    return _masked(profile, provider.name, await service.state(profile, provider))
+
+
+@router.delete("/models/{model_id}", status_code=204)
+async def delete_model(model_id: UUID, service: ModelServiceDep) -> None:
+    """Delete a non-default model; its assignments cascade with it."""
+    try:
+        await service.delete(model_id)
+    except (ProfileNotFoundError, DefaultProfileError) as error:
+        raise _profile_errors(error) from None
+
+
+@router.post("/models/{model_id}/test", response_model=ModelTestResult)
+async def test_model(model_id: UUID, service: ModelServiceDep) -> ModelTestResult:
+    """One cheap completion through the model's provider, audited as settings.test."""
+    try:
+        result = await service.test(model_id)
+    except ProfileNotFoundError:
+        raise HTTPException(status_code=404, detail="profile not found") from None
+    return ModelTestResult(ok=result.ok, error=result.error, latency_ms=result.latency_ms)
+
+
+@router.get("/providers", response_model=list[ProviderRead])
+async def list_providers(service: ProviderServiceDep) -> list[ProviderRead]:
+    """The user's providers, by name; every key read shows the mask."""
+    return [_provider_masked(provider) for provider in await service.list()]
+
+
+@router.get("/presets", response_model=list[PresetRead])
+async def list_presets(service: ProviderServiceDep) -> list[PresetRead]:
+    """The nine provider presets with their catalog model ids and the date.
+
+    The create form's one read. No user rows sit behind it, so there is no
+    per-user error vocabulary — the one way it can fail is a damaged
+    snapshot: a bad manual refresh raises :class:`CatalogError` through the
+    catalog join and surfaces as a 500, the same loud failure every other
+    catalog reader owes.
+    """
+    return service.presets()
+
+
+@router.post("/providers", response_model=ProviderCreated, status_code=201)
+async def create_provider(payload: ProviderCreate, service: ProviderServiceDep) -> ProviderCreated:
+    """Store one provider endpoint; the full key returns once."""
+    try:
+        provider, api_key = await service.create(payload)
+    except ProviderRefusedError as error:
         raise _refusal(error) from None
-    except DefaultProfileRaceError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from None
     except NoKeyStoreError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
-    return ProfileCreated(**_masked(profile).model_dump(), api_key=api_key)
+    return ProviderCreated(**_provider_masked(provider).model_dump(), api_key=api_key)
 
 
-@router.patch("/profiles/{profile_id}", response_model=ProfileRead)
-async def update_profile(
-    profile_id: UUID, payload: ProfileUpdate, service: ProfileServiceDep
-) -> ProfileRead:
+@router.patch("/providers/{provider_id}", response_model=ProviderRead)
+async def update_provider(
+    provider_id: UUID, payload: ProviderUpdate, service: ProviderServiceDep
+) -> ProviderRead:
     """Apply the patch; an empty ``api_key`` keeps the stored one."""
     try:
-        profile = await service.update(profile_id, payload)
-    except (
-        ProfileNotFoundError,
-        ProfileRefusedError,
-        DefaultProfileRaceError,
-        NoKeyStoreError,
-    ) as error:
-        raise _profile_errors(error) from None
-    return _masked(profile)
+        provider = await service.update(provider_id, payload)
+    except (ProviderNotFoundError, ProviderRefusedError, NoKeyStoreError) as error:
+        raise _provider_errors(error) from None
+    return _provider_masked(provider)
 
 
-@router.delete("/profiles/{profile_id}", status_code=204)
-async def delete_profile(profile_id: UUID, service: ProfileServiceDep) -> None:
-    """Delete a non-default profile; its assignments cascade with it."""
+@router.delete("/providers/{provider_id}", status_code=204)
+async def delete_provider(provider_id: UUID, service: ProviderServiceDep) -> None:
+    """Delete a provider no model points at; the guard names the models otherwise."""
     try:
-        await service.delete(profile_id)
-    except (ProfileNotFoundError, DefaultProfileError, NoKeyStoreError) as error:
-        raise _profile_errors(error) from None
+        await service.delete(provider_id)
+    except (ProviderNotFoundError, ProviderHasModelsError, NoKeyStoreError) as error:
+        raise _provider_errors(error) from None
+    except IntegrityError:
+        # The FK's RESTRICT is the guard's atomic backstop: a model pointer
+        # the guard could not see refused the delete at the database. The
+        # answer is the same 409 the guard gives — no cascade ever drops a
+        # task's model behind a 204.
+        raise HTTPException(
+            status_code=409, detail="the provider still has models pointed at it"
+        ) from None
 
 
-@router.post("/profiles/{profile_id}/test", response_model=ProfileTestResult)
-async def test_profile(profile_id: UUID, service: ProfileServiceDep) -> ProfileTestResult:
-    """One cheap completion against the profile's endpoint, audited as settings.test."""
+@router.get("/providers/{provider_id}/models", response_model=list[str])
+async def list_provider_models(provider_id: UUID, service: ProviderServiceDep) -> list[str]:
+    """Model discovery against the provider's endpoint."""
     try:
-        result = await service.test(profile_id)
-    except ProfileNotFoundError:
-        raise HTTPException(status_code=404, detail="profile not found") from None
-    return ProfileTestResult(ok=result.ok, error=result.error, latency_ms=result.latency_ms)
-
-
-@router.get("/profiles/{profile_id}/models", response_model=list[str])
-async def list_profile_models(profile_id: UUID, service: ProfileServiceDep) -> list[str]:
-    """Model discovery against the profile's endpoint."""
-    try:
-        return await service.discover(profile_id)
-    except ProfileNotFoundError:
-        raise HTTPException(status_code=404, detail="profile not found") from None
+        return await service.discover(provider_id)
+    except ProviderNotFoundError:
+        raise HTTPException(status_code=404, detail="provider not found") from None
     except NoEndpointError as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
     except KeyUnavailableError as error:
         raise HTTPException(status_code=502, detail=str(error)) from None
     except Exception:
-        logger.exception("model discovery failed for profile %s", profile_id)
+        logger.exception("model discovery failed for provider %s", provider_id)
         raise HTTPException(status_code=502, detail="model discovery failed") from None
 
 
 @router.get("/assignments", response_model=list[AssignmentRead])
-async def list_assignments(service: ProfileServiceDep) -> list[AssignmentRead]:
+async def list_assignments(service: ModelServiceDep) -> list[AssignmentRead]:
     """Every task assignment of the user's, ordered by task key."""
     return [
         AssignmentRead(task_key=assignment.task_key, profile_id=assignment.profile_id)
@@ -218,9 +321,9 @@ async def list_assignments(service: ProfileServiceDep) -> list[AssignmentRead]:
 async def put_assignment(
     task_key: Annotated[str, Path(min_length=1)],
     payload: AssignmentUpdate,
-    service: ProfileServiceDep,
+    service: ModelServiceDep,
 ) -> AssignmentRead:
-    """Point the task at a profile, or clear it with ``profile_id: null``.
+    """Point the task at a model, or clear it with ``profile_id: null``.
 
     Any non-empty task key is accepted — unknown keys are forward-compatible.
     """
@@ -234,11 +337,11 @@ async def put_assignment(
 
 
 @router.get("/tasks", response_model=list[TaskEffectiveRead])
-async def list_tasks(service: ProfileServiceDep) -> list[TaskEffectiveRead]:
+async def list_tasks(service: ModelServiceDep) -> list[TaskEffectiveRead]:
     """The effective provider per known task key, for the page's task list.
 
     Reads only: each row is the resolution cascade's answer, never a write
-    and never an audit row. A profile whose key its tier can no longer
+    and never an audit row. A provider whose key its tier can no longer
     produce fails the read by name — 502, as discovery maps the same class —
     so a lost key is never a bare 500.
     """

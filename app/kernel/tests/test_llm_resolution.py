@@ -1,12 +1,15 @@
 """The resolution cascade: which provider serves one task for one user.
 
 Five tiers, first hit wins: the task's own assignment, an assignment standing
-in for the task's capability segment, the user's default profile, the
-environment (``NARRE_LLM_PROVIDER``, semantics unchanged), the fake. The
-resolved structure is also the audit's fact sheet — kind, model, profile id,
-and the numeric tunables the profile stored or the catalog knows — so the
-per-call row names the configuration that served it, and a profile whose key
-its tier can no longer produce refuses by name before any call runs.
+in for the task's capability segment, the user's default model, the
+environment (``NARRE_LLM_PROVIDER``, semantics unchanged), the fake. A model
+resolves through its provider: the model row names the provider and the model
+string, the provider row carries kind, endpoint, key and vendor. The resolved
+structure is also the audit's fact sheet — kind, model, profile id, and the
+numeric tunables the model stored or the catalog knows under the provider's
+vendor — so the per-call row names the configuration that served it, and a
+provider whose key its tier can no longer produce refuses by name before any
+call runs.
 """
 
 from collections.abc import AsyncIterator  # noqa: TC003
@@ -15,19 +18,22 @@ from uuid import UUID, uuid4
 import pytest
 from cryptography.fernet import Fernet
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.llm import catalog
+from app.kernel.llm.anthropic_messages import AnthropicMessagesProvider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.catalog import ModelInfo
 from app.kernel.llm.contract import DONE, CompletionEvent, CompletionRequest, Delta, Usage
 from app.kernel.llm.fake import FakeProvider
 from app.kernel.llm.models import ProviderProfile  # noqa: TC001  the helper's return annotation
 from app.kernel.llm.openai_chat import OpenAIChatProvider
-from app.kernel.llm.profiles import AssignmentRepository, ProfileRepository
+from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import (
+    ANTHROPIC_DEFAULT_BASE_URL,
     KNOWN_TASK_KEYS,
     ResolvedProvider,
     environment_provider,
@@ -38,6 +44,7 @@ from app.kernel.secrets import KeyUnavailableError, save_key
 OWNER = uuid4()
 OTHER = uuid4()
 REMOTE = "https://api.vendor.example/v1"
+LOCAL = "http://127.0.0.1:9/v1"
 
 ACME = ModelInfo(
     context_window=100_000,
@@ -68,11 +75,20 @@ async def _fake_profile(
     max_output_tokens: int | None = None,
     temperature: float | None = None,
     request_timeout: float | None = None,
+    vendor: str | None = None,
 ) -> ProviderProfile:
-    """One fake profile of the user's, through the repository, uncommitted."""
+    """One fake model of the user's, with its own fake provider, uncommitted.
+
+    A model never travels without its provider row: the write gate refuses a
+    model whose provider is not the user's, so the tests seed the pair the
+    way the surface stores it.
+    """
+    provider = await ProviderRepository(session, user_id).create(
+        name=name, kind="fake", vendor=vendor
+    )
     return await ProfileRepository(session, user_id).create(
         name=name,
-        kind="fake",
+        provider_id=provider.id,
         model=model,
         is_default=is_default,
         context_window=context_window,
@@ -148,8 +164,8 @@ async def test_the_bare_key_and_other_segments_never_stand_in() -> None:
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_a_deleted_profiles_assignment_falls_back_to_the_default() -> None:
-    """Deleting an assigned non-default profile drops its tasks down the cascade."""
+async def test_a_deleted_models_assignment_falls_back_to_the_default() -> None:
+    """Deleting an assigned non-default model drops its tasks down the cascade."""
     async with Session() as session:
         default = await _fake_profile(
             session, OWNER, name="Default", model="default-model", is_default=True
@@ -158,8 +174,8 @@ async def test_a_deleted_profiles_assignment_falls_back_to_the_default() -> None
         assignments = AssignmentRepository(session, OWNER)
         await assignments.set("chat.ask", doomed.id)
         await session.commit()
-        # The database cascades the assignment with the profile (Task 1's
-        # pin); the resolver must then fall through without a sound.
+        # The database cascades the assignment with the model (Task 1's pin);
+        # the resolver must then fall through without a sound.
         await ProfileRepository(session, OWNER).delete(doomed)
         await session.commit()
 
@@ -167,8 +183,39 @@ async def test_a_deleted_profiles_assignment_falls_back_to_the_default() -> None
     assert (resolved.profile_id, resolved.model) == (default.id, "default-model")
 
 
+@pytest.mark.usefixtures("two_users")
+async def test_a_delete_models_point_at_is_refused_and_the_assignment_survives() -> None:
+    """The RESTRICT backstop keeps the assigned pair intact.
+
+    The old cascade took a provider's models — and with them the task's
+    assignment — off the table in one delete; the delete is refused now,
+    and what the task pointed at keeps serving. The fall-through for a
+    model that is really gone is the deleted-assignment test above.
+    """
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        kept_provider = await providers.create(name="Kept provider", kind="fake")
+        serving = await ProfileRepository(session, OWNER).create(
+            name="Serving", provider_id=kept_provider.id, model="serving-model"
+        )
+        await _fake_profile(session, OWNER, name="Default", model="default-model", is_default=True)
+        assignments = AssignmentRepository(session, OWNER)
+        await assignments.set("chat.ask", serving.id)
+        await session.commit()
+
+        # The id rides the assert below; the rollback expires the row.
+        serving_id = serving.id
+        # The delete flushes the DELETE: that is where RESTRICT refuses.
+        with pytest.raises(IntegrityError):
+            await providers.delete(kept_provider)
+        await session.rollback()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert (resolved.profile_id, resolved.model) == (serving_id, "serving-model")
+
+
 @pytest.mark.usefixtures("empty_tables")
-async def test_without_profiles_the_environment_tier_serves(
+async def test_without_models_the_environment_tier_serves(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``openai-compatible`` resolves as the alias it is: kind openai-chat, env facts."""
@@ -189,10 +236,10 @@ async def test_without_profiles_the_environment_tier_serves(
 
 
 @pytest.mark.usefixtures("empty_tables")
-async def test_without_profiles_and_environment_the_fake_serves(
+async def test_without_models_and_environment_the_fake_serves(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """No profiles and no NARRE_LLM_PROVIDER: the fake keeps a fresh clone answering."""
+    """No models and no NARRE_LLM_PROVIDER: the fake keeps a fresh clone answering."""
     monkeypatch.delenv("NARRE_LLM_PROVIDER", raising=False)
 
     resolved = await _resolve(OWNER, "writing.continuation")
@@ -236,7 +283,7 @@ async def test_two_users_with_different_defaults_resolve_to_their_own() -> None:
 
 @pytest.mark.usefixtures("two_users")
 async def test_a_fake_profile_carries_its_model_through() -> None:
-    """A fake profile's model is free text: ignored for answering, carried to the facts."""
+    """A fake model's string is free text: ignored for answering, carried to the facts."""
     async with Session() as session:
         profile = await _fake_profile(
             session, OWNER, name="Ghost", model="ghost-writer", is_default=True
@@ -251,18 +298,78 @@ async def test_a_fake_profile_carries_its_model_through() -> None:
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_an_openai_chat_profile_resolves_its_endpoint_and_key(
+async def test_a_model_resolves_through_its_provider() -> None:
+    """The model's provider carries kind, endpoint and vendor — the model only names it.
+
+    The model row says which provider serves and what to ask it for; the
+    provider row says how. The catalog prices the model under the provider's
+    vendor (``opencode-go/glm-5.3-flash``), so the resolved fact sheet is the
+    vendored one, not a guess from the bare model string.
+    """
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(
+            name="P", kind="openai-chat", base_url=LOCAL, vendor="opencode-go"
+        )
+        await ProfileRepository(session, OWNER).create(
+            name="M", provider_id=provider.id, model="glm-5.3-flash"
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.kind == "openai-chat"
+    assert resolved.base_url == LOCAL
+    assert isinstance(resolved.provider, OpenAIChatProvider)
+    assert resolved.info is not None
+    assert resolved.info.context_window == 1_000_000
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_the_same_model_is_priced_per_provider() -> None:
+    """Two providers serving one model price it under their own vendor tier.
+
+    The catalog keys its fact sheets by ``vendor/model``, and the vendor tier
+    is the first lookup — so the identical model string carries different
+    windows per provider. OpenRouter spells this model with its own path
+    segment (``openrouter/z-ai/glm-5.3-flash``), which is the id its users
+    type; opencode's flat id needs no segment.
+    """
+    async with Session() as session:
+        opencode_model = await _fake_profile(
+            session, OWNER, name="Opencode", model="glm-5.3-flash", vendor="opencode"
+        )
+        openrouter_model = await _fake_profile(
+            session, OWNER, name="Openrouter", model="z-ai/glm-5.3-flash", vendor="openrouter"
+        )
+        assignments = AssignmentRepository(session, OWNER)
+        await assignments.set("chat.ask", opencode_model.id)
+        await assignments.set("knowledge.extract-entities", openrouter_model.id)
+        await session.commit()
+
+    opencode_resolved = await _resolve(OWNER, "chat.ask")
+    openrouter_resolved = await _resolve(OWNER, "knowledge.extract-entities")
+    assert opencode_resolved.info is not None
+    assert openrouter_resolved.info is not None
+    assert opencode_resolved.info.context_window == 1_000_000
+    assert openrouter_resolved.info.context_window == 1_048_576
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_openai_chat_model_resolves_its_endpoint_and_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The profile's endpoint serves, and its key loads from the tier that stored it."""
+    """The provider's endpoint serves, and its key loads from the tier that stored it."""
     monkeypatch.setenv("NARRE_KEYRING", "off")
     monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        profile = await profiles.create(
-            name="Hosted", kind="openai-chat", base_url=REMOTE, model="acme/turbo-3"
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Hosted", kind="openai-chat", base_url=REMOTE)
+        await providers.update(provider, api_key=save_key(provider.id, "sk-provider"))
+        profile = await ProfileRepository(session, OWNER).create(
+            name="Hosted model",
+            provider_id=provider.id,
+            model="acme/turbo-3",
         )
-        await profiles.update(profile, api_key=save_key(profile.id, "sk-profile"))
         await session.commit()
 
     resolved = await _resolve(OWNER, "chat.ask")
@@ -272,8 +379,62 @@ async def test_an_openai_chat_profile_resolves_its_endpoint_and_key(
         "acme/turbo-3",
         REMOTE,
     )
-    assert resolved.api_key == "sk-profile"
+    assert resolved.api_key == "sk-provider"
     assert isinstance(resolved.provider, OpenAIChatProvider)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_anthropic_model_resolves_its_endpoint_and_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The anthropic branch builds its adapter from the same rows openai-chat uses."""
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Anthropic", kind="anthropic", base_url=REMOTE)
+        await providers.update(provider, api_key=save_key(provider.id, "sk-ant-provider"))
+        profile = await ProfileRepository(session, OWNER).create(
+            name="Claude", provider_id=provider.id, model="claude-sonnet-4-5"
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert resolved.profile_id == profile.id
+    assert (resolved.kind, resolved.model, resolved.base_url) == (
+        "anthropic",
+        "claude-sonnet-4-5",
+        REMOTE,
+    )
+    assert resolved.api_key == "sk-ant-provider"
+    assert isinstance(resolved.provider, AnthropicMessagesProvider)
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_an_anthropic_row_without_an_endpoint_names_the_vendor_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A base-url-less anthropic row still resolves — to the Messages wire's home.
+
+    The settings gate refuses the endpoint-less write, so the row is reachable
+    only by repair SQL; resolution answers with the vendor default the same
+    way an endpoint-less openai-chat row would answer with OpenAI's.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Anthropic", kind="anthropic")
+        await providers.update(provider, api_key=save_key(provider.id, "sk-ant-default"))
+        await ProfileRepository(session, OWNER).create(
+            name="Claude", provider_id=provider.id, model="claude-sonnet-4-5"
+        )
+        await session.commit()
+
+    resolved = await _resolve(OWNER, "chat.ask")
+    assert isinstance(resolved.provider, AnthropicMessagesProvider)
+    assert resolved.base_url == ANTHROPIC_DEFAULT_BASE_URL
+    assert resolved.api_key == "sk-ant-default"
 
 
 @pytest.mark.usefixtures("two_users")
@@ -290,11 +451,14 @@ async def test_the_resolved_repr_never_carries_the_api_key(
     monkeypatch.setenv("NARRE_KEYRING", "off")
     monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
     async with Session() as session:
-        profiles = ProfileRepository(session, OWNER)
-        profile = await profiles.create(
-            name="Hosted", kind="openai-chat", base_url=REMOTE, model="acme/turbo-3"
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(name="Hosted", kind="openai-chat", base_url=REMOTE)
+        await providers.update(provider, api_key=save_key(provider.id, "sk-never-repr"))
+        await ProfileRepository(session, OWNER).create(
+            name="Hosted model",
+            provider_id=provider.id,
+            model="acme/turbo-3",
         )
-        await profiles.update(profile, api_key=save_key(profile.id, "sk-never-repr"))
         await session.commit()
 
     resolved = await _resolve(OWNER, "chat.ask")
@@ -309,7 +473,7 @@ async def test_the_resolved_repr_never_carries_the_api_key(
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_a_local_openai_chat_profile_without_a_key_resolves_keyless() -> None:
+async def test_a_local_openai_chat_model_without_a_key_resolves_keyless() -> None:
     """The settings gate allows a local endpoint without a key; none is loaded.
 
     An empty ``api_key`` column normally names the keyring tier; without a
@@ -317,11 +481,12 @@ async def test_a_local_openai_chat_profile_without_a_key_resolves_keyless() -> N
     one — the adapter sends no Authorization header without a key.
     """
     async with Session() as session:
+        providers = ProviderRepository(session, OWNER)
+        provider = await providers.create(
+            name="Lokal", kind="openai-chat", base_url="http://127.0.0.1:11434/v1"
+        )
         await ProfileRepository(session, OWNER).create(
-            name="Lokal",
-            kind="openai-chat",
-            base_url="http://127.0.0.1:11434/v1",
-            model="llama3",
+            name="Lokal model", provider_id=provider.id, model="llama3"
         )
         await session.commit()
 
@@ -333,32 +498,36 @@ async def test_a_local_openai_chat_profile_without_a_key_resolves_keyless() -> N
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_a_profile_whose_key_is_lost_refuses_by_name(
+async def test_a_provider_whose_key_is_lost_refuses_by_name(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """KeyUnavailableError propagates out of resolution, naming the profile id."""
+    """KeyUnavailableError propagates out of resolution, naming the provider id."""
     monkeypatch.setenv("NARRE_KEYRING", "off")
     monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
     async with Session() as session:
-        profile = await ProfileRepository(session, OWNER).create(
+        provider = await ProviderRepository(session, OWNER).create(
             name="Broken",
             kind="openai-chat",
             base_url=REMOTE,
-            model="acme/turbo-3",
             # Ciphertext another NARRE_SECRET_KEY made: undecryptable on purpose.
             api_key="gAAAAABlindtext-not-what-this-key-encrypted",
         )
+        await ProfileRepository(session, OWNER).create(
+            name="Broken model",
+            provider_id=provider.id,
+            model="acme/turbo-3",
+        )
         await session.commit()
 
-    with pytest.raises(KeyUnavailableError, match=str(profile.id)):
+    with pytest.raises(KeyUnavailableError, match=str(provider.id)):
         await _resolve(OWNER, "chat.ask")
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_the_resolver_merges_the_catalogs_tunables_with_the_profiles(
+async def test_the_resolver_merges_the_catalogs_tunables_with_the_models(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The profile's columns win; the catalog's fill the unset; unknown stays None."""
+    """The model's columns win; the catalog's fill the unset; unknown stays None."""
     monkeypatch.setattr(catalog, "load_catalog", lambda: {"acme/turbo-3": ACME})
     async with Session() as session:
         await _fake_profile(
@@ -393,12 +562,12 @@ async def test_the_resolver_merges_the_catalogs_tunables_with_the_profiles(
 
 
 @pytest.mark.usefixtures("two_users")
-async def test_the_resolved_info_is_the_one_merge_of_catalog_and_profile(
+async def test_the_resolved_info_is_the_one_merge_of_catalog_and_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The carrier prices the call from its own facts; no consumer re-merges.
 
-    A profile's stored windows override the catalog's; a catalog-only model
+    A model's stored windows override the catalog's; a catalog-only model
     takes both from the catalog; an id no tier reaches carries no info at
     all. The audit and the job handlers read ``resolved.info``, so these are
     the facts their rows price with.
@@ -444,10 +613,10 @@ async def test_the_resolved_info_is_the_one_merge_of_catalog_and_profile(
 
 @pytest.mark.usefixtures("two_users")
 async def test_stored_tunables_survive_an_uncatalogued_model() -> None:
-    """Merge edge: on a model no tier reaches, the profile's stored values stand.
+    """Merge edge: on a model no tier reaches, the model's stored values stand.
 
     The catalog contributes nothing here, so the stored columns are the only
-    source — a profile whose numbers came from its user keeps them instead of
+    source — a model whose numbers came from its user keeps them instead of
     collapsing to NULL with the unknown model.
     """
     async with Session() as session:

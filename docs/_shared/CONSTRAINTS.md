@@ -10,7 +10,7 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
    never imports another capability; shared domain lives in `app/kernel/`.
 2. **A capability is done only with a green E2E** that drives the real UI, the real
    backend and the real database. The only permitted fake is the LLM provider at
-   its boundary: a provider profile of kind `fake`, chosen by configuration, never
+   its boundary: a provider row of kind `fake`, chosen by configuration, never
    a test branch.
 3. **No side effect in the request path** beyond the request's own transaction.
 4. **Every user-owned row carries `user_id`**; data access goes through the scoped
@@ -33,10 +33,11 @@ budget — is the [v2 architecture spec](../superpowers/specs/2026-10-21-narrare
 - Imports point one way: `api → capabilities → kernel`. A capability reaches the
   shell through `@shell/*` — the shared UI lives there; the shell reaches a
   capability only through the generated tables.
-- A provider is a profile row (`fake` or `openai-chat`), assigned per user and task
-  in `/settings`. A new vendor on that API shape needs no code; a new API shape is
-  an adapter plus one `PROFILE_KINDS` value. Keys and their two storage tiers are
-  decided in [ADR-102](../architecture/decisions/ADR-102-provider-profiles-and-key-storage.md).
+- A provider is a row (`llm_providers`: endpoint, API shape, vendor, key); models
+  hang off it (`provider_profiles`), assigned per user and task in `/settings`. A
+  new vendor on a known API shape needs no code; a new API shape is an adapter
+  plus one `PROVIDER_KINDS` value. Keys and their two storage tiers are decided
+  in [ADR-102](../architecture/decisions/ADR-102-provider-profiles-and-key-storage.md).
 - A second data store, a global store or a migration tool crosses a boundary and
   needs the product owner's explicit approval (spec §8). The migration tool's
   approval exists: it is recorded in

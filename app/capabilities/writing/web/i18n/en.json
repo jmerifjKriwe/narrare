@@ -3,7 +3,6 @@
   "chapters.actionsFor": "Actions for {title}",
   "chapters.cancel": "Cancel",
   "chapters.continue": "Continue writing",
-  "chapters.continueError": "The continuation failed.",
   "chapters.defaultTitle": "Chapter {n}",
   "chapters.delete": "Delete",
   "chapters.deleteBody": "Delete {title}? This cannot be undone.",

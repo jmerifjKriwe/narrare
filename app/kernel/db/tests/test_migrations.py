@@ -212,6 +212,40 @@ async def test_empty_database_migrated_equals_the_models(url: str) -> None:
     assert initially_deferred is True
 
 
+async def test_the_provider_fk_restricts_and_the_marks_index_sits(url: str) -> None:
+    """The replayed history carries the delete backstop and the marks' index.
+
+    The models-vs-replay gate above compares names and columns; the FK's
+    delete action and an index's presence are the properties a diff can
+    miss, so the same gate pins them by catalog query — the
+    deferrable-positions pin is the precedent. RESTRICT is the delete
+    guard's atomic backstop (a cascade would silently drop a task's model
+    behind a 204), and the index is exactly the newest-row read behind the
+    settings page's failure mark: user, model, newest first.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            delete_action: str | None = await connection.scalar(
+                text(
+                    "SELECT confdeltype FROM pg_constraint "
+                    "WHERE conname = 'fk_provider_profiles_provider_id_llm_providers'"
+                )
+            )
+            marks_indexes: int | None = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM pg_indexes "
+                    "WHERE indexname = 'ix_llm_calls_user_id_profile_id_created_at'"
+                )
+            )
+    finally:
+        await engine.dispose()
+    assert delete_action == b"r"  # pg_constraint's code for RESTRICT (a bytea char)
+    assert marks_indexes == 1
+
+
 # The snapshot the gate below loads: the release schema, checked in. Produced
 # once by replaying the history to head on a scratch database — gate D3.2
 # proves migrated == models, so the dump is the models' schema by
@@ -335,6 +369,157 @@ async def test_release_snapshot_upgrades_without_losing_prose(url: str) -> None:
     assert novel_title == title
     assert await _models_diff(url) == []  # the stamped schema is still the models'
     assert await _version_row(url) == head_revision()
+
+
+# ---------------------------------------------------------------------------
+# A data-carrying replay: the provider step's backfill
+# ---------------------------------------------------------------------------
+
+PROVIDER_STEP_PREDECESSOR = "1da751030eab"
+"""The revision before the provider step, named as the replay's first stop.
+
+A hardcoded id reads better here than a walk of the script directory: what
+the test is about is exactly what lies between the two upgrades, and history
+growing above the provider step does not change that. The second upgrade to
+head replays the provider step for real — and anything honest that lands
+between the two revisions later on, which is the point of replaying to head
+rather than to the provider revision alone.
+"""
+
+
+async def test_the_provider_step_gives_every_profile_a_provider(url: str) -> None:
+    """The provider backfill is 1:1: the profile's own id becomes the provider's.
+
+    The gate replays real history over real rows — the shape an upgraded
+    deployment has: upgrade to the revision before the provider step, insert
+    profiles the old way (no ``provider_id`` column yet) for two different
+    users, upgrade to head. Each profile then gets exactly one provider
+    carrying its own endpoint and key, and points at it by its own id — the
+    mapping that keeps the stored key material (the ciphertext column, and
+    the keychain plaintext keyed by that id) valid from either side. The
+    second user is the point: a backfill that copied only the first user's
+    rows — or mixed the two users' rows up — must fail here, because the
+    NOT NULL pointer and the user_id both come out per profile, not per table.
+    """
+    await drop_every_table(url)
+    await asyncio.to_thread(command.upgrade, alembic_config(url), PROVIDER_STEP_PREDECESSOR)
+
+    first_user, first_profile = uuid4(), uuid4()
+    second_user, second_profile = uuid4(), uuid4()
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as connection:
+            for user_id in (first_user, second_user):
+                await connection.execute(
+                    text("INSERT INTO users (id, created_at) VALUES (:id, now())"),
+                    {"id": user_id},
+                )
+            for user_id, profile_id, name, base_url, hint in (
+                (
+                    first_user,
+                    first_profile,
+                    "OpenCode Go",
+                    "https://opencode.ai/inference/go/openai/v1",
+                    "1234",
+                ),
+                (
+                    second_user,
+                    second_profile,
+                    "Zweite Stelle",
+                    "https://zweit.example/v1",
+                    "abcd",
+                ),
+            ):
+                await connection.execute(
+                    text(
+                        "INSERT INTO provider_profiles (id, user_id, name, kind, base_url, "
+                        "api_key, api_key_hint, is_default, created_at, updated_at) "
+                        "VALUES (:id, :user_id, :name, :kind, :base_url, :api_key, :api_key_hint, "
+                        "true, now(), now())"
+                    ),
+                    {
+                        "id": profile_id,
+                        "user_id": user_id,
+                        "name": name,
+                        "kind": "openai-chat",
+                        "base_url": base_url,
+                        "api_key": f"gAAAA-ciphertext-{hint}",
+                        "api_key_hint": hint,
+                    },
+                )
+    finally:
+        await engine.dispose()
+
+    await asyncio.to_thread(command.upgrade, alembic_config(url), "head")
+
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as connection:
+            providers: int | None = await connection.scalar(
+                text("SELECT count(*) FROM llm_providers")
+            )
+            rows = (
+                await connection.execute(
+                    text(
+                        "SELECT p.id, p.user_id, p.provider_id, p.name,"
+                        " v.id, v.user_id, v.name, v.kind, v.base_url,"
+                        " v.models_url, v.vendor, v.api_key, v.api_key_hint"
+                        " FROM provider_profiles p JOIN llm_providers v ON v.id = p.provider_id"
+                        " ORDER BY p.name"
+                    )
+                )
+            ).all()
+    finally:
+        await engine.dispose()
+
+    # Two profiles in, two providers out — no orphans, no copies, no NULLs.
+    assert providers == 2
+    assert len(rows) == 2
+    facts: dict[str, tuple[str, str, str, str]] = {}
+    for (
+        profile_id,
+        profile_user_id,
+        linked_provider_id,
+        profile_name,
+        provider_id_column,
+        provider_user_id,
+        provider_name,
+        provider_kind,
+        provider_base_url,
+        provider_models_url,
+        provider_vendor,
+        provider_api_key,
+        provider_api_key_hint,
+    ) in rows:
+        assert linked_provider_id == profile_id  # the profile's own id — nothing guessed
+        assert provider_id_column == profile_id
+        assert (provider_user_id, provider_name, provider_kind) == (
+            profile_user_id,
+            profile_name,
+            "openai-chat",
+        )
+        assert provider_models_url is None and provider_vendor is None
+        # Keyed by the profile's name: per-user copying, named for the two
+        # rows — each profile's facts land on its own provider under its own
+        # user; a partial or crossed backfill mismatches right here.
+        facts[str(profile_name)] = (
+            str(profile_user_id),
+            str(provider_base_url),
+            str(provider_api_key),
+            str(provider_api_key_hint),
+        )
+    assert facts["OpenCode Go"] == (
+        str(first_user),
+        "https://opencode.ai/inference/go/openai/v1",
+        "gAAAA-ciphertext-1234",
+        "1234",
+    )
+    assert facts["Zweite Stelle"] == (
+        str(second_user),
+        "https://zweit.example/v1",
+        "gAAAA-ciphertext-abcd",
+        "abcd",
+    )
 
 
 # ---------------------------------------------------------------------------

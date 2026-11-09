@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -222,29 +222,50 @@ def _open_settings(page: Page) -> None:
     expect(page).to_have_url(f"{BASE}/settings/provider")
 
 
-def _create_profile_and_assign(page: Page, name: str, context_window: str) -> None:
-    """Create one fake profile through the form, then hand it the task.
+def _seed_fake_provider(page: Page, name: str) -> str:
+    """Seed a fake provider through the API, its id returned.
 
-    The window is the field's whole point here; the output cap stays empty,
-    so the kernel default 1024 applies (D7: every unset limit falls back on
-    its own). The assignment is the select's label option, waited out until
-    the PUT's refetch moves the control — the same wait the settings flow
-    uses before it leaves the page.
+    The create form offers no fake: the kind is the kernel's boundary
+    stand-in, not a configuration a user writes, so the row arrives the
+    way every other client arrives — the same API the pages themselves
+    speak to. Called before the settings page mounts, the reads the forms
+    load already carry the row.
     """
-    _open_settings(page)
-    page.get_by_label("Name", exact=True).fill(name)
-    # Scoped to main: the label wraps its select, so its text runs "Art
-    # Fake (deterministisch, …)" — a substring match, which the rail's
-    # Startseite link (outside main) would also answer.
-    page.get_by_role("main").get_by_label("Art").select_option(
-        label="Fake (deterministisch, ohne Netzwerk)"
+    response = page.request.post(
+        f"{API_URL}/api/settings/providers",
+        data={"name": name, "kind": "fake"},
     )
-    page.get_by_label("Modell").fill(f"modell-{name.split()[-1].lower()}")
-    page.get_by_label("Kontextfenster (Tokens)").fill(context_window)
-    page.get_by_role("button", name="Profil hinzufügen").click()
-    expect(page.get_by_role("listitem").filter(has_text=name)).to_be_visible()
+    assert response.ok, response.text()
+    return str(response.json()["id"])
+
+
+def _create_profile_and_assign(page: Page, name: str, context_window: str) -> None:
+    """Create one fake provider (seeded through the API) and its model through
+    the forms, hand the task to it.
+
+    The fake is not a form choice any more — the kernel's boundary stand-in
+    is seeded through the API before the page mounts, so the Anbieter
+    select already carries the row. The model goes in under it through the
+    Modelle form; the window is the field's whole point here; the output
+    cap stays empty, so the kernel default 1024 applies (D7: every unset
+    limit falls back on its own). The assignment is the select's composed
+    option — the pair a task points at, "{provider} · {model}" — waited
+    out until the PUT's refetch moves the control, the same wait the
+    settings flow uses before it leaves the page.
+    """
+    model = f"modell-{name.split()[-1].lower()}"
+    _seed_fake_provider(page, name)
+    _open_settings(page)
+    models = page.get_by_role("region", name="Modelle", exact=True)
+    models.get_by_label("Name", exact=True).fill(name)
+    models.get_by_label("Anbieter").select_option(label=name)
+    models.get_by_label("Modell", exact=True).fill(model)
+    models.get_by_label("Kontextfenster (Tokens)").fill(context_window)
+    models.get_by_role("button", name="Modell hinzufügen").click()
+    expect(models.get_by_role("listitem").filter(has_text=name)).to_be_visible()
+
     continuation = page.get_by_label("Weiterschreiben")
-    continuation.select_option(label=name)
+    continuation.select_option(label=f"{name} · {model}")
     expect(continuation).not_to_have_value("")
 
 
@@ -423,9 +444,13 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
 
     page.get_by_role("button", name="Weiterschreiben").click()
 
-    # The refusal is the stream's one error frame, named where the button
-    # sits. No ghost ever appears, and the typed text is all the editor owns.
-    expect(page.get_by_role("alert")).to_contain_text("Die Fortsetzung ist fehlgeschlagen.")
+    # The refusal is the stream's one coded error frame, named where the
+    # button sits: the prompt-refused sentence, with the settings door linked
+    # inside it. No ghost ever appears, and the typed text is all the editor
+    # owns.
+    expect(page.get_by_role("alert")).to_contain_text(
+        "Die Anfrage wurde abgelehnt, bevor sie das Modell erreichte."
+    )
     expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
     expect(page.locator(".ProseMirror")).to_contain_text("Die stille Boje lag im Schilf.")
     expect(page.locator(".ProseMirror")).not_to_contain_text("Der Nebel")

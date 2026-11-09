@@ -58,8 +58,8 @@ def test_position_lands_inside_the_name_not_on_async() -> None:
 
 
 def test_line_target_picks_the_declared_name() -> None:
-    path, symbol, line = parse_target([f"{ROOT}/app/kernel/llm/profiles.py:26"])
-    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "", 26)
+    path, symbol, line = parse_target([f"{ROOT}/app/kernel/llm/repositories.py:26"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/repositories.py", "", 26)
 
 
 def test_a_line_target_resolves_to_the_declared_name_not_to_async() -> None:
@@ -69,13 +69,13 @@ def test_a_line_target_resolves_to_the_declared_name_not_to_async() -> None:
 
 
 def test_symbol_target_needs_no_line() -> None:
-    path, symbol, line = parse_target(["app/kernel/llm/profiles.py", "ordered"])
-    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "ordered", None)
+    path, symbol, line = parse_target(["app/kernel/llm/repositories.py", "ordered"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/repositories.py", "ordered", None)
 
 
 def test_a_target_without_a_symbol_or_a_line_is_refused() -> None:
     with pytest.raises(ValueError, match="symbol name or an explicit path:line"):
-        parse_target(["app/kernel/llm/profiles.py"])
+        parse_target(["app/kernel/llm/repositories.py"])
 
 
 def test_a_missing_file_is_named() -> None:
@@ -83,7 +83,9 @@ def test_a_missing_file_is_named() -> None:
         parse_target(["gibtsnicht.py", "ordered"])
 
 
-@pytest.mark.parametrize("target", ["app/kernel/llm/profiles.py", "app/kernel/llm/profiles.py:26"])
+@pytest.mark.parametrize(
+    "target", ["app/kernel/llm/repositories.py", "app/kernel/llm/repositories.py:26"]
+)
 def test_surplus_arguments_are_refused_before_starting_pyright(
     target: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -92,8 +94,8 @@ def test_surplus_arguments_are_refused_before_starting_pyright(
 
 
 def test_a_line_target_still_accepts_an_explicit_symbol() -> None:
-    path, symbol, line = parse_target(["app/kernel/llm/profiles.py:26", "ordered"])
-    assert (path, symbol, line) == (ROOT / "app/kernel/llm/profiles.py", "ordered", 26)
+    path, symbol, line = parse_target(["app/kernel/llm/repositories.py:26", "ordered"])
+    assert (path, symbol, line) == (ROOT / "app/kernel/llm/repositories.py", "ordered", 26)
 
 
 @pytest.mark.parametrize("explicit_symbol", [False, True])
@@ -101,11 +103,20 @@ def test_line_queries_report_the_async_methods_actual_callers(
     explicit_symbol: bool, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Exercise line conversion and cursor placement against the real Pyright server."""
-    path = ROOT / "app/kernel/llm/profiles.py"
+    path = ROOT / "app/kernel/llm/repositories.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
+    # The file declares two ``ordered`` methods since providers arrived; the
+    # profile repository's is the one with callers, and the caller assertion
+    # below needs a called method — a 0-callers answer would prove nothing
+    # about the report.
+    profile_repository = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name == "ProfileRepository"
+    )
     line = next(
         node.lineno
-        for node in ast.walk(tree)
+        for node in ast.walk(profile_repository)
         if isinstance(node, ast.AsyncFunctionDef) and node.name == "ordered"
     )
     args = [f"{path}:{line}"]
@@ -113,8 +124,8 @@ def test_line_queries_report_the_async_methods_actual_callers(
         args.append("ordered")
     assert main(args) == 0
     output = capsys.readouterr().out
-    assert f"ordered — app/kernel/llm/profiles.py:{line} (method)" in output
-    assert "app/capabilities/settings/profiles_service.py:" in output
+    assert f"ordered — app/kernel/llm/repositories.py:{line} (method)" in output
+    assert "app/capabilities/settings/models_service.py:" in output
 
 
 @pytest.mark.parametrize(
@@ -284,7 +295,7 @@ def test_main_waits_for_readiness_before_asking_for_callers(
 
 
 def test_call_sites_are_deduped_and_graded() -> None:
-    uri = f"file://{ROOT}/app/capabilities/settings/profiles_service.py"
+    uri = f"file://{ROOT}/app/capabilities/settings/models_service.py"
     test_uri = f"file://{ROOT}/app/kernel/tests/test_llm_profiles.py"
     result = cast(
         "list[IncomingCall]",
@@ -305,7 +316,7 @@ def test_call_sites_are_deduped_and_graded() -> None:
         ],
     )
     assert collect_calls(result) == [
-        CallSite("app/capabilities/settings/profiles_service.py", 113, "list"),
+        CallSite("app/capabilities/settings/models_service.py", 113, "list"),
         CallSite("app/kernel/tests/test_llm_profiles.py", 134, "test_ordered"),
     ]
     assert [site.is_test for site in collect_calls(result)] == [False, True]
@@ -364,7 +375,7 @@ def test_a_record_without_a_range_falls_back_to_the_callers_own_selection() -> N
 
 def test_the_surplus_argument_is_named() -> None:
     with pytest.raises(ValueError, match="typo"):
-        parse_target(["app/kernel/llm/profiles.py", "ordered", "typo"])
+        parse_target(["app/kernel/llm/repositories.py", "ordered", "typo"])
 
 
 def test_no_call_records_means_no_callers() -> None:

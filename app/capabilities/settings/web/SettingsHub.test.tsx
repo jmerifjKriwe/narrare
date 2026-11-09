@@ -60,7 +60,9 @@ beforeEach(() => {
   window.scrollTo = () => {};
   api.GET.mockImplementation(async (path: string) => {
     switch (path) {
-      case "/api/settings/profiles":
+      case "/api/settings/providers":
+        return { data: [], response: ok() };
+      case "/api/settings/models":
         return { data: [], response: ok() };
       case "/api/settings/assignments":
         return { data: [], response: ok() };
@@ -139,8 +141,9 @@ describe("the settings area", () => {
     await userEvent.click(within(card).getByRole("link"));
 
     // The provider surface mounted: its panel answered the mount's reads
-    // with the empty list — and the hub gave way, it did not sit beside it.
-    expect(await screen.findByText(t("settings.profiles.empty"))).toBeTruthy();
+    // with the empty lists — and the hub gave way, it did not sit beside it.
+    expect(await screen.findByText(t("settings.providers.empty"))).toBeTruthy();
+    expect(screen.getByText(t("settings.profiles.empty"))).toBeTruthy();
     expect(
       screen.queryByText(t("settings.clusterLanguage.description")),
     ).toBeNull();

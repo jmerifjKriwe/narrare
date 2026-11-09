@@ -22,7 +22,7 @@
  */
 import "./editorApiServer";
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
@@ -115,9 +115,25 @@ function streamOf(...frames: (object | string)[]): string {
 }
 
 /** How a dead provider ends the stream: the router's own error frame, byte
- * for byte (writing/router.py) — `event: error` with an empty payload, not
- * a `data:` shape no endpoint emits. */
-const PROVIDER_DIED = "event: error\ndata: {}\n\n";
+ * for byte (writing/router.py) — `event: error` with the unclassified code
+ * and the provider's message, not a `data:` shape no endpoint emits. */
+const PROVIDER_DIED =
+  'event: error\ndata: {"code": "unknown", "detail": "the provider died"}\n\n';
+
+/** The generic sentence any failure without an actionable code speaks: the
+ * unknown frame's, the refused request's, the cut wire's — always with the
+ * settings door inside. */
+function continueFailed(): string {
+  return t("errors.unknown", { link: t("errors.link") });
+}
+
+/** How the missing model ends the stream: the coded frame, byte for byte —
+ * the code the sentence is picked from, the model it names, the provider's
+ * message behind the disclosure. */
+const MODEL_GONE =
+  "event: error\ndata: "
+  + '{"code": "model-not-found", "model": "glm-5.3",'
+  + ' "detail": "the endpoint does not serve the model \'glm-5.3\'"}\n\n';
 
 // jsdom lays out nothing: Element geometry reports zeros, but Range geometry
 // is simply missing — and ProseMirror reads Range rects whenever it scrolls
@@ -646,13 +662,35 @@ describe("ChapterEditor's ghost text", () => {
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
     // The error frame replaces the done frame: nothing of the suggestion
-    // remains, the failure is on screen — and the announcement names the
-    // failure. It does not claim the user discarded anything: only the
-    // user's own Esc may say that.
+    // remains, the failure is on screen — the generic sentence, the frame's
+    // code saying nothing actionable. The announcement names the failure;
+    // it does not claim the user discarded anything: only the user's own
+    // Esc may say that.
     await waitFor(() => expect(document.querySelector(".ghost")).toBeNull());
-    expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError"));
+    expect(screen.getByRole("alert").textContent).toContain(continueFailed());
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     expect(announcementsOf(t("editor.ghostDiscarded"))).toBe(before.discarded);
+  });
+
+  it("says what to do when the provider stopped serving the model", { timeout: 10_000 }, async () => {
+    editorServer.continueWith = streamOf({ delta: "Ein Anfang," }, MODEL_GONE);
+    render(<Harness chapterId={CHAPTER} body="" />);
+    const user = await focusEditor();
+    await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
+
+    // The frame's code picks the sentence: it names the model, points at the
+    // settings with the link inside the sentence, and keeps the provider's
+    // own message behind the disclosure — technical detail, never the
+    // headline the reader is meant to act on.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      t("errors.modelNotFound", { model: "glm-5.3", link: t("errors.link") }),
+    );
+    const link = within(alert).getByRole("link", { name: t("errors.link") });
+    expect(link.getAttribute("href")).toBe("/settings/provider");
+    const disclosure = alert.querySelector("details");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure!.textContent).toContain("the endpoint does not serve the model");
   });
 
   it("announces a refused continuation as a failure", { timeout: 10_000 }, async () => {
@@ -666,7 +704,7 @@ describe("ChapterEditor's ghost text", () => {
     // failure is the truth of the click the user just made — the alert
     // shows it, and the announcement says it instead of nothing.
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+      expect(screen.getByRole("alert").textContent).toContain(continueFailed()),
     );
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
   });
@@ -689,7 +727,7 @@ describe("ChapterEditor's ghost text", () => {
     // about a ghost that is not on screen. The alert still names the
     // refused request — that one is the user's.
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+      expect(screen.getByRole("alert").textContent).toContain(continueFailed()),
     );
     expect(screen.getByText("Das Angebot bleibt.")).toBeTruthy();
     expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed);
@@ -738,7 +776,7 @@ describe("ChapterEditor's ghost text", () => {
     await user.click(screen.getByRole("button", { name: t("chapters.continue") }));
 
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain(t("chapters.continueError")),
+      expect(screen.getByRole("alert").textContent).toContain(continueFailed()),
     );
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     const button = screen.getByRole("button", { name: t("chapters.continue") }) as HTMLButtonElement;
