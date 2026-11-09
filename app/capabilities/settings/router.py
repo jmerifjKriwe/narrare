@@ -25,6 +25,7 @@ from app.capabilities.settings.models_service import (
     DefaultProfileError,
     DefaultProfileRaceError,
     ModelService,
+    ModelState,
     ProfileNotFoundError,
     ProfileRefusedError,
 )
@@ -88,8 +89,9 @@ def _providers(session: SessionDep, user_id: UserDep) -> ProviderService:
 ProviderServiceDep = Annotated[ProviderService, Depends(_providers)]
 
 
-def _masked(profile: ProviderProfile, provider_name: str) -> ModelRead:
-    """The model as every read shows it: its provider named, no key anywhere."""
+def _masked(profile: ProviderProfile, provider_name: str, state: ModelState) -> ModelRead:
+    """The model as every read shows it: its provider named, no key anywhere,
+    and the state fields the page's marks speak from."""
     return ModelRead(
         id=profile.id,
         name=profile.name,
@@ -101,6 +103,9 @@ def _masked(profile: ProviderProfile, provider_name: str) -> ModelRead:
         max_output_tokens=profile.max_output_tokens,
         temperature=profile.temperature,
         request_timeout=profile.request_timeout,
+        in_catalog=state.in_catalog,
+        last_error_code=state.last_error_code,
+        last_error_at=state.last_error_at,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )
@@ -180,7 +185,9 @@ async def update_theme(payload: SettingsThemeUpdate, service: ServiceDep) -> Set
 @router.get("/models", response_model=list[ModelRead])
 async def list_models(service: ModelServiceDep) -> list[ModelRead]:
     """The user's models, the default first; every read names its provider."""
-    return [_masked(profile, provider.name) for profile, provider in await service.list()]
+    pairs = await service.list()
+    states = await service.states(pairs)
+    return [_masked(profile, provider.name, states[profile.id]) for profile, provider in pairs]
 
 
 @router.post("/models", response_model=ModelRead, status_code=201)
@@ -190,7 +197,7 @@ async def create_model(payload: ModelCreate, service: ModelServiceDep) -> ModelR
         profile, provider = await service.create(payload)
     except (ProfileRefusedError, DefaultProfileRaceError) as error:
         raise _profile_errors(error) from None
-    return _masked(profile, provider.name)
+    return _masked(profile, provider.name, await service.state(profile, provider))
 
 
 @router.patch("/models/{model_id}", response_model=ModelRead)
@@ -200,7 +207,7 @@ async def update_model(model_id: UUID, payload: ModelUpdate, service: ModelServi
         profile, provider = await service.update(model_id, payload)
     except (ProfileNotFoundError, ProfileRefusedError, DefaultProfileRaceError) as error:
         raise _profile_errors(error) from None
-    return _masked(profile, provider.name)
+    return _masked(profile, provider.name, await service.state(profile, provider))
 
 
 @router.delete("/models/{model_id}", status_code=204)

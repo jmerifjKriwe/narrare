@@ -16,6 +16,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
 
 vi.mock("@shell/lib/api/client", () => ({
   client: {
@@ -30,8 +31,12 @@ vi.mock("@shell/lib/api/client", () => ({
 import { client } from "@shell/lib/api/client";
 
 import { ModelsSection } from "./ModelsSection";
+import type { LiveLists } from "./ModelState";
 import { TasksSection, labelOf } from "./TasksSection";
 import type { Provider } from "./ProvidersSection";
+import type { components } from "@shell/lib/api/schema";
+
+type Model = components["schemas"]["ModelRead"];
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -97,6 +102,9 @@ const DEFAULT_MODEL = {
   max_output_tokens: null,
   temperature: null,
   request_timeout: null,
+  in_catalog: true,
+  last_error_code: null,
+  last_error_at: null,
   created_at: "2026-11-08T10:00:00Z",
   updated_at: "2026-11-08T10:00:00Z",
 };
@@ -141,6 +149,7 @@ function renderSections(
   presets: typeof PRESETS | null = PRESETS,
   modelSeed: Seed | null = null,
   onDirty: (value: boolean) => void = () => {},
+  discovered: LiveLists = {},
 ): ReturnType<typeof render> {
   return render(
     <>
@@ -152,12 +161,14 @@ function renderSections(
         guard={NO_GUARD}
         onDirty={onDirty}
         modelSeed={modelSeed}
+        discovered={discovered}
       />
       <TasksSection
         models={[DEFAULT_MODEL, SECOND_MODEL]}
         assignments={[]}
         tasks={TASKS}
         reload={async () => {}}
+        discovered={discovered}
       />
     </>,
   );
@@ -170,6 +181,7 @@ function rerenderSections(
   presets: typeof PRESETS | null,
   modelSeed: Seed | null,
   onDirty: (value: boolean) => void = () => {},
+  discovered: LiveLists = {},
 ): void {
   ui.rerender(
     <>
@@ -181,12 +193,14 @@ function rerenderSections(
         guard={NO_GUARD}
         onDirty={onDirty}
         modelSeed={modelSeed}
+        discovered={discovered}
       />
       <TasksSection
         models={[DEFAULT_MODEL, SECOND_MODEL]}
         assignments={[]}
         tasks={TASKS}
         reload={async () => {}}
+        discovered={discovered}
       />
     </>,
   );
@@ -371,6 +385,238 @@ describe("the model input's datalist", () => {
 
     expect(screen.getByText(t("settings.profiles.catalogDateUnknown"))).toBeTruthy();
     expect(screen.queryByText(t("settings.profiles.catalogDated", { date: "2026-10-27" }))).toBeNull();
+  });
+
+  it("merges the live list into the suggestions, catalog first, without duplicates", async () => {
+    renderSections(
+      [VENDORED_PROVIDER],
+      PRESETS,
+      null,
+      () => {},
+      {
+        [VENDORED_PROVIDER.id]: {
+          ids: ["live-model", "glm-5.3"],
+          fetchedAt: new Date("2026-11-08T12:00:00Z"),
+        },
+      },
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      VENDORED_PROVIDER.id,
+    );
+    const input = screen.getByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
+    const datalist = document.getElementById(input.getAttribute("list") as string);
+    const suggested = Array.from(datalist?.querySelectorAll("option") ?? []).map(
+      (option) => option.value,
+    );
+    expect(suggested).toEqual(["glm-5.3", "glm-5.3-flash", "glm-5.3-turbo", "live-model"]);
+  });
+});
+
+describe("the save-time warnings", () => {
+  it("warn about a model absent from the loaded list and unknown to the catalog, and save anyway", async () => {
+    api.POST.mockResolvedValue({ data: DEFAULT_MODEL, response: new Response(null, { status: 201 }) });
+    renderSections(
+      [VENDORED_PROVIDER],
+      PRESETS,
+      null,
+      () => {},
+      {
+        [VENDORED_PROVIDER.id]: {
+          ids: ["glm-5.3"],
+          fetchedAt: new Date("2026-11-08T12:00:00Z"),
+        },
+      },
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      VENDORED_PROVIDER.id,
+    );
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "brand-new");
+
+    // Both local facts speak: the just-loaded list does not carry it, and
+    // the catalog has no entry — the price will be unknown.
+    expect(screen.getByText(t("settings.profiles.warnNotInList"))).toBeTruthy();
+    expect(screen.getByText(t("settings.profiles.warnNoCatalogEntry"))).toBeTruthy();
+
+    // The warning informs the save, it does not block it: no dialog, the
+    // button stays enabled, and the request carries the typed model.
+    const save = screen.getByRole("button", {
+      name: t("settings.profiles.create"),
+    }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    await userEvent.click(save);
+    expect(api.POST).toHaveBeenCalledWith(
+      "/api/settings/models",
+      expect.objectContaining({
+        body: expect.objectContaining({ model: "brand-new" }),
+      }),
+    );
+  });
+
+  it("stay silent while the typed model is in the loaded list", async () => {
+    renderSections(
+      [VENDORED_PROVIDER],
+      PRESETS,
+      null,
+      () => {},
+      {
+        [VENDORED_PROVIDER.id]: {
+          ids: ["glm-5.3"],
+          fetchedAt: new Date("2026-11-08T12:00:00Z"),
+        },
+      },
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      VENDORED_PROVIDER.id,
+    );
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "glm-5.3");
+
+    expect(screen.queryByText(t("settings.profiles.warnNotInList"))).toBeNull();
+    expect(screen.queryByText(t("settings.profiles.warnNoCatalogEntry"))).toBeNull();
+  });
+
+  it("claim nothing the page cannot know: no loaded list, no catalog vocabulary", async () => {
+    renderSections([PROVIDER]);
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(t("settings.profiles.providerLabel")),
+      PROVIDER.id,
+    );
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.nameLabel")), "Neu");
+    await userEvent.type(screen.getByLabelText(t("settings.profiles.modelLabel")), "my-own");
+
+    // No live list was fetched (nothing to be absent from) and the provider
+    // names no vendor with a catalog list (the page would be guessing) —
+    // the saved row's marks are the authority there.
+    expect(screen.queryByText(t("settings.profiles.warnNotInList"))).toBeNull();
+    expect(screen.queryByText(t("settings.profiles.warnNoCatalogEntry"))).toBeNull();
+  });
+});
+
+describe("the model row's marks", () => {
+  const FETCHED_AT = new Date("2026-11-08T12:00:00Z");
+  const FAILED_AT = "2026-11-08T12:30:00Z";
+  const MARKED_MODEL = {
+    ...DEFAULT_MODEL,
+    id: "66666666-6666-6666-6666-666666666666",
+    name: "Marked",
+    provider_id: VENDORED_PROVIDER.id,
+    model: "brand-new",
+    in_catalog: false,
+    last_error_code: "model-not-found",
+    last_error_at: FAILED_AT,
+  };
+
+  /** The stamp the component prints: the same formatter, so the expected
+   * mark text is exact without hardcoding a locale's date layout. */
+  function stampOf(moment: Date): string {
+    return new Intl.DateTimeFormat(activeLocale(), {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(moment);
+  }
+
+  function renderRow(models: Model[], discovered: LiveLists = {}): void {
+    render(
+      <ModelsSection
+        providers={[VENDORED_PROVIDER]}
+        presets={PRESETS}
+        models={models}
+        reload={async () => {}}
+        guard={NO_GUARD}
+        onDirty={() => {}}
+        modelSeed={null}
+        discovered={discovered}
+      />,
+    );
+  }
+
+  it("mark an unknown price, an absence from the loaded list, and a failed last call", () => {
+    renderRow([MARKED_MODEL], {
+      [VENDORED_PROVIDER.id]: { ids: ["glm-5.3"], fetchedAt: FETCHED_AT },
+    });
+
+    // The model row is the list item that carries the row's own name; the
+    // marks render as list items inside it. A missing row fails the first
+    // contain below.
+    const row = screen.getByText("Marked").closest("li");
+    expect(row?.textContent).toContain(t("settings.profiles.markNoPrice"));
+    expect(row?.textContent).toContain(
+      t("settings.profiles.markNotOffered", { date: stampOf(FETCHED_AT) }),
+    );
+    expect(row?.textContent).toContain(
+      t("settings.profiles.markLastFailed", {
+        code: t("settings.profiles.errorCode.model-not-found"),
+        date: stampOf(new Date(FAILED_AT)),
+      }),
+    );
+  });
+
+  it("mark nothing on a clean, catalogued model the loaded list carries", () => {
+    renderRow([DEFAULT_MODEL], {
+      [VENDORED_PROVIDER.id]: { ids: ["glm-5.3-flash"], fetchedAt: FETCHED_AT },
+    });
+
+    expect(screen.queryByText(t("settings.profiles.markNoPrice"))).toBeNull();
+    expect(screen.queryByText(/Not in the current offer/)).toBeNull();
+    expect(screen.queryByText(/Last call failed/)).toBeNull();
+  });
+
+  it("name an unnamed failure as the generic cause", () => {
+    renderRow([{ ...MARKED_MODEL, last_error_code: null }]);
+
+    expect(screen.getByText(/Unknown cause/)).toBeTruthy();
+  });
+});
+
+describe("the task rows' marks", () => {
+  const FETCHED_AT = new Date("2026-11-08T12:00:00Z");
+
+  it("mark the serving model the same way, joined by profile_id", () => {
+    renderSections([PROVIDER], PRESETS, null, () => {}, {
+      [PROVIDER.id]: { ids: ["some-other-model"], fetchedAt: FETCHED_AT },
+    });
+
+    // writing.continuation is served by DEFAULT_MODEL ("glm-5.3-flash"),
+    // absent from the loaded list: the same mark the model row shows.
+    const region = screen.getByRole("region", { name: t("settings.assignments") });
+    expect(region.textContent).toContain(
+      t("settings.profiles.markNotOffered", {
+        date: new Intl.DateTimeFormat(activeLocale(), {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(FETCHED_AT),
+      }),
+    );
+  });
+
+  it("carry a serving model's failed last call onto the task row", () => {
+    render(
+      <TasksSection
+        models={[{ ...DEFAULT_MODEL, last_error_code: "provider-auth", last_error_at: "2026-11-08T12:30:00Z" }]}
+        assignments={[]}
+        tasks={[
+          {
+            task_key: "writing.continuation",
+            profile_id: DEFAULT_MODEL.id,
+            profile_name: "Default",
+            kind: "fake",
+            assignable: true,
+          },
+        ]}
+        reload={async () => {}}
+        discovered={{}}
+      />,
+    );
+
+    expect(screen.getByText(/API key refused/)).toBeTruthy();
   });
 });
 

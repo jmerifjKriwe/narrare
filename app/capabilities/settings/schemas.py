@@ -101,7 +101,12 @@ class ModelUpdate(BaseModel):
 class ModelRead(BaseModel):
     """A model as every read shows it: its provider named, no key anywhere.
 
-    The key and its mask live on the provider; the model carries none.
+    The key and its mask live on the provider; the model carries none. The
+    three state fields are the settings row's marks, read-only facts:
+    ``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`
+    with the provider's vendor — no second lookup path), and the
+    ``last_error_*`` pair is the model's newest audit row, kept only when that
+    call failed, so a later success clears the mark.
     """
 
     id: UUID
@@ -114,6 +119,9 @@ class ModelRead(BaseModel):
     max_output_tokens: int | None
     temperature: float | None
     request_timeout: float | None
+    in_catalog: bool
+    last_error_code: str | None
+    last_error_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

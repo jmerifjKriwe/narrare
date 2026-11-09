@@ -1500,7 +1500,12 @@ export interface components {
          * ModelRead
          * @description A model as every read shows it: its provider named, no key anywhere.
          *
-         *     The key and its mask live on the provider; the model carries none.
+         *     The key and its mask live on the provider; the model carries none. The
+         *     three state fields are the settings row's marks, read-only facts:
+         *     ``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`
+         *     with the provider's vendor — no second lookup path), and the
+         *     ``last_error_*`` pair is the model's newest audit row, kept only when that
+         *     call failed, so a later success clears the mark.
          */
         ModelRead: {
             /** Context Window */
@@ -1515,8 +1520,14 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** In Catalog */
+            in_catalog: boolean;
             /** Is Default */
             is_default: boolean;
+            /** Last Error At */
+            last_error_at: string | null;
+            /** Last Error Code */
+            last_error_code: string | null;
             /** Max Output Tokens */
             max_output_tokens: number | null;
             /** Model */

@@ -18,16 +18,19 @@ session the way every audited stream's does.
 
 from collections.abc import Sequence  # noqa: TC003
 from dataclasses import dataclass
+from datetime import datetime  # noqa: TC003  the state's field annotation
 from time import monotonic
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003  the service's parameter annotations name it
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.llm.audit import audited_stream
+from app.kernel.llm.catalog import effective_info
 from app.kernel.llm.contract import CompletionRequest
-from app.kernel.llm.models import LLMProvider, ProviderProfile, TaskAssignment  # noqa: TC001
+from app.kernel.llm.models import ERROR, LlmCall, LLMProvider, ProviderProfile, TaskAssignment
 from app.kernel.llm.repositories import AssignmentRepository, ProfileRepository, ProviderRepository
 from app.kernel.llm.resolution import (
     AUDIT_ONLY_TASK_KEYS,
@@ -74,6 +77,23 @@ class TestResult:
     ok: bool
     error: str | None
     latency_ms: int
+
+
+@dataclass(frozen=True)
+class ModelState:
+    """What the settings row's marks say about one model, beyond its columns.
+
+    ``in_catalog`` is the resolution-side lookup's own answer — the same
+    :func:`app.kernel.llm.catalog.effective_info` tiers a generation prices
+    with — so the page never derives a second truth about what the catalog
+    carries. ``last_error_code`` and ``last_error_at`` are the model's newest
+    audit row's, present only when that call failed: a later success clears
+    the mark, because the mark speaks about the *last* call, not the worst.
+    """
+
+    in_catalog: bool
+    last_error_code: str | None
+    last_error_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -313,6 +333,41 @@ class ModelService:
             )
         return TestResult(ok=True, error=None, latency_ms=round((monotonic() - started) * 1000))
 
+    async def state(self, profile: ProviderProfile, provider: LLMProvider) -> ModelState:
+        """One model's marks: whether the catalog prices it, and its last failure.
+
+        The single-read shape of :meth:`states` — a create or update answers
+        with the same fields the list shows, so no read ever carries a
+        half-filled row.
+        """
+        last_error_code, last_error_at = await self._last_failure(profile.id)
+        return ModelState(
+            in_catalog=self._in_catalog(profile, provider),
+            last_error_code=last_error_code,
+            last_error_at=last_error_at,
+        )
+
+    async def states(
+        self, pairs: Sequence[tuple[ProviderProfile, LLMProvider]]
+    ) -> dict[UUID, ModelState]:
+        """Every listed model's marks, for the settings page's three marks.
+
+        The list is small, so the failure read is one newest-first query per
+        model instead of a window-function join — the same answer, at a
+        shape the catalog lookup can ride beside. Reads only: neither the
+        catalog tier nor the audit query writes, and the page's marks are
+        never stored anywhere.
+        """
+        states: dict[UUID, ModelState] = {}
+        for profile, provider in pairs:
+            last_error_code, last_error_at = await self._last_failure(profile.id)
+            states[profile.id] = ModelState(
+                in_catalog=self._in_catalog(profile, provider),
+                last_error_code=last_error_code,
+                last_error_at=last_error_at,
+            )
+        return states
+
     async def assignments(self) -> Sequence[TaskAssignment]:
         """Every assignment of the user's, ordered by task key."""
         return await self._assignments().list_all()
@@ -377,6 +432,43 @@ class ModelService:
         assignment = await assignments.set(task_key, profile.id)
         await self.session.commit()
         return assignment
+
+    def _in_catalog(self, profile: ProviderProfile, provider: LLMProvider) -> bool:
+        """Whether a catalog tier reaches this model — the resolution lookup itself.
+
+        The same :func:`effective_info` call the resolver's merge makes, with
+        the same arguments (the provider's vendor, the row's two stored
+        windows), so the settings mark can never disagree with what a call
+        is priced by. There is one lookup in the kernel; this is it, not a
+        second path.
+        """
+        return (
+            effective_info(
+                profile.model or "",
+                vendor=provider.vendor,
+                profile_context_window=profile.context_window,
+                profile_max_output_tokens=profile.max_output_tokens,
+            )
+            is not None
+        )
+
+    async def _last_failure(self, profile_id: UUID) -> tuple[str | None, datetime | None]:
+        """The newest audit row of the model, flattened only when it failed.
+
+        One newest-first query per model, user-scoped like every read here.
+        The row speaks about the *last* call, so a success after a failure
+        is no mark: an ``ok`` row (and a model never called) both answer
+        with the empty pair.
+        """
+        newest = await self.session.scalar(
+            select(LlmCall)
+            .where(LlmCall.user_id == self.user_id, LlmCall.profile_id == profile_id)
+            .order_by(LlmCall.created_at.desc())
+            .limit(1)
+        )
+        if newest is None or newest.status != ERROR:
+            return None, None
+        return newest.error_code, newest.created_at
 
     async def _provider_of(self, provider_id: UUID) -> LLMProvider:
         """The user's provider a model write names, or the named refusal.

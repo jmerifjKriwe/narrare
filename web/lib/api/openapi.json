@@ -991,7 +991,7 @@
         "type": "object"
       },
       "ModelRead": {
-        "description": "A model as every read shows it: its provider named, no key anywhere.\n\nThe key and its mask live on the provider; the model carries none.",
+        "description": "A model as every read shows it: its provider named, no key anywhere.\n\nThe key and its mask live on the provider; the model carries none. The\nthree state fields are the settings row's marks, read-only facts:\n``in_catalog`` is the resolution lookup's own answer (:func:`effective_info`\nwith the provider's vendor — no second lookup path), and the\n``last_error_*`` pair is the model's newest audit row, kept only when that\ncall failed, so a later success clears the mark.",
         "properties": {
           "context_window": {
             "anyOf": [
@@ -1014,9 +1014,36 @@
             "title": "Id",
             "type": "string"
           },
+          "in_catalog": {
+            "title": "In Catalog",
+            "type": "boolean"
+          },
           "is_default": {
             "title": "Is Default",
             "type": "boolean"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code"
           },
           "max_output_tokens": {
             "anyOf": [
@@ -1085,6 +1112,9 @@
           "max_output_tokens",
           "temperature",
           "request_timeout",
+          "in_catalog",
+          "last_error_code",
+          "last_error_at",
           "created_at",
           "updated_at"
         ],

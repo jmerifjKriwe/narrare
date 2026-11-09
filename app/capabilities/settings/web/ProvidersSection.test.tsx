@@ -14,6 +14,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 import { t } from "@shell/lib/i18n";
 
@@ -29,7 +30,8 @@ vi.mock("@shell/lib/api/client", () => ({
 
 import { client } from "@shell/lib/api/client";
 
-import { ProvidersSection } from "./ProvidersSection";
+import { ProvidersSection, type Provider } from "./ProvidersSection";
+import type { LiveLists } from "./ModelState";
 
 /** The client's methods as plain mocks; the real client's generics stay out. */
 const api = client as unknown as Record<
@@ -89,6 +91,36 @@ const PRESETS = [
 
 const NO_GUARD = { dirty: false, ask: async () => true };
 
+/**
+ * The section as the panel mounts it: the live lists live above the
+ * section, so the discovery tests need the same loop the panel runs — the
+ * section reports an outcome, the parent stores it, the rerender reads it
+ * back. A stateless render could never show a stored list.
+ */
+function Harness({
+  providers = [PROVIDER],
+  onModelSeed = () => {},
+}: {
+  providers?: Provider[];
+  onModelSeed?: (providerId: string, model: string) => void;
+}) {
+  const [discovered, setDiscovered] = useState<LiveLists>({});
+  return (
+    <ProvidersSection
+      providers={providers}
+      presets={PRESETS}
+      reload={async () => {}}
+      guard={NO_GUARD}
+      onDirty={() => {}}
+      onModelSeed={onModelSeed}
+      discovered={discovered}
+      onDiscovered={(providerId, result) =>
+        setDiscovered((current) => ({ ...current, [providerId]: result }))
+      }
+    />
+  );
+}
+
 function renderSection(presets: typeof PRESETS | null = PRESETS): void {
   render(
     <ProvidersSection
@@ -98,6 +130,8 @@ function renderSection(presets: typeof PRESETS | null = PRESETS): void {
       guard={NO_GUARD}
       onDirty={() => {}}
       onModelSeed={() => {}}
+      discovered={{}}
+      onDiscovered={() => {}}
     />,
   );
 }
@@ -326,6 +360,8 @@ describe("the preset select", () => {
         guard={NO_GUARD}
         onDirty={() => {}}
         onModelSeed={onModelSeed}
+        discovered={{}}
+        onDiscovered={() => {}}
       />,
     );
 
@@ -439,8 +475,8 @@ describe("a provider the server refuses to delete", () => {
 });
 
 describe("model discovery on the row", () => {
-  it("lists the ids, and a picked one is handed to the model form", async () => {
-    const onModelSeed = vi.fn();
+  it("reports the ids with their fetch moment to the panel, or the failure", async () => {
+    const onDiscovered = vi.fn();
     api.GET.mockResolvedValue({ data: ["vendor-max", "vendor-mini"], response: ok() });
     render(
       <ProvidersSection
@@ -449,9 +485,30 @@ describe("model discovery on the row", () => {
         reload={async () => {}}
         guard={NO_GUARD}
         onDirty={() => {}}
-        onModelSeed={onModelSeed}
+        onModelSeed={() => {}}
+        discovered={{}}
+        onDiscovered={onDiscovered}
       />,
     );
+
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
+
+    // The outcome lands above the section, timestamped — the marks in the
+    // models and tasks sections name this moment.
+    expect(onDiscovered).toHaveBeenCalledWith(PROVIDER.id, {
+      ids: ["vendor-max", "vendor-mini"],
+      fetchedAt: expect.any(Date),
+    });
+
+    api.GET.mockRejectedValue(new TypeError("Failed to fetch"));
+    await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
+    expect(onDiscovered).toHaveBeenLastCalledWith(PROVIDER.id, "failed");
+  });
+
+  it("lists the ids, and a picked one is handed to the model form", async () => {
+    const onModelSeed = vi.fn();
+    api.GET.mockResolvedValue({ data: ["vendor-max", "vendor-mini"], response: ok() });
+    render(<Harness onModelSeed={onModelSeed} />);
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
     expect(await screen.findByText(t("settings.providers.models"))).toBeTruthy();
@@ -469,16 +526,7 @@ describe("model discovery on the row", () => {
     // important-suffix `items-start!`, so the stack never depends on the
     // stylesheet's utility order.
     api.GET.mockResolvedValue({ data: ["vendor-max"], response: ok() });
-    render(
-      <ProvidersSection
-        providers={[PROVIDER]}
-        presets={PRESETS}
-        reload={async () => {}}
-        guard={NO_GUARD}
-        onDirty={() => {}}
-        onModelSeed={() => {}}
-      />,
-    );
+    render(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
     const notice = await screen.findByRole("status");
     expect(notice.className).toContain("flex-col");
@@ -491,16 +539,7 @@ describe("model discovery on the row", () => {
 
   it("says there are none when the endpoint lists no models", async () => {
     api.GET.mockResolvedValue({ data: [], response: ok() });
-    render(
-      <ProvidersSection
-        providers={[PROVIDER]}
-        presets={PRESETS}
-        reload={async () => {}}
-        guard={NO_GUARD}
-        onDirty={() => {}}
-        onModelSeed={() => {}}
-      />,
-    );
+    render(<Harness />);
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
     const notice = await screen.findByRole("status");
@@ -510,16 +549,7 @@ describe("model discovery on the row", () => {
   });
 
   it("offers discovery on the anthropic kind too — its wire answers a list", () => {
-    render(
-      <ProvidersSection
-        providers={[{ ...PROVIDER, kind: "anthropic" }]}
-        presets={PRESETS}
-        reload={async () => {}}
-        guard={NO_GUARD}
-        onDirty={() => {}}
-        onModelSeed={() => {}}
-      />,
-    );
+    render(<Harness providers={[{ ...PROVIDER, kind: "anthropic" }]} />);
 
     expect(
       screen.getByRole("button", { name: t("settings.providers.discover") }),
@@ -527,16 +557,7 @@ describe("model discovery on the row", () => {
   });
 
   it("offers no discovery on a fake — there is no endpoint to ask", () => {
-    render(
-      <ProvidersSection
-        providers={[{ ...PROVIDER, kind: "fake", base_url: null }]}
-        presets={PRESETS}
-        reload={async () => {}}
-        guard={NO_GUARD}
-        onDirty={() => {}}
-        onModelSeed={() => {}}
-      />,
-    );
+    render(<Harness providers={[{ ...PROVIDER, kind: "fake", base_url: null }]} />);
 
     expect(screen.queryByRole("button", { name: t("settings.providers.discover") })).toBeNull();
   });
@@ -546,7 +567,7 @@ describe("model discovery on the row", () => {
       error: { detail: "model discovery failed" },
       response: new Response(null, { status: 502 }),
     });
-    renderSection();
+    render(<Harness />);
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
 
@@ -556,7 +577,7 @@ describe("model discovery on the row", () => {
 
   it("names a discovery that never reaches the service", async () => {
     api.GET.mockRejectedValue(new TypeError("Failed to fetch"));
-    renderSection();
+    render(<Harness />);
 
     await userEvent.click(screen.getByRole("button", { name: t("settings.providers.discover") }));
 
@@ -576,6 +597,8 @@ describe("the dirty form", () => {
         guard={{ dirty: true, ask }}
         onDirty={() => {}}
         onModelSeed={() => {}}
+        discovered={{}}
+        onDiscovered={() => {}}
       />,
     );
 

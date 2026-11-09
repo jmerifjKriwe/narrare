@@ -12,6 +12,7 @@ import { Notice } from "@shell/ui/Notice";
 
 import { ModelsSection } from "./ModelsSection";
 import { ProvidersSection, type Guard, type ModelSeed, type Provider } from "./ProvidersSection";
+import type { LiveList, LiveLists } from "./ModelState";
 import { TasksSection } from "./TasksSection";
 
 type Model = components["schemas"]["ModelRead"];
@@ -25,9 +26,10 @@ type Preset = components["schemas"]["PresetRead"];
  * model string, and how it is tuned), and the tasks (which model serves
  * which task key). The panel owns what the sections share — the mount's
  * five reads (the presets among them: both forms pick from the same
- * catalog), the load failure with its retry, and the one leave guard for
- * both forms — so a section stays a form and a list, and the page keeps one
- * dialog, one ask, and one place that says "the load failed".
+ * catalog), the live lists discovery answers with, the load failure with
+ * its retry, and the one leave guard for both forms — so a section stays a
+ * form and a list, and the page keeps one dialog, one ask, and one place
+ * that says "the load failed".
  */
 export function ProvidersPanel() {
   const t = useTranslation();
@@ -139,6 +141,18 @@ export function ProvidersPanel() {
     setModelSeed({ providerId, model, token: seedToken.current });
   }, []);
 
+  // The live lists the providers section's "Load models" answers with, one
+  // per provider, kept here so all three sections see the same session
+  // facts: the providers section renders its ids, the models section merges
+  // them into the form's datalist and marks a saved model absent from one,
+  // the tasks section marks the serving model the same way. Session state
+  // only — nothing is stored, and nothing exists before the user pressed
+  // the button.
+  const [discovered, setDiscovered] = useState<LiveLists>({});
+  const onDiscovered = useCallback((providerId: string, result: LiveList | "failed") => {
+    setDiscovered((current) => ({ ...current, [providerId]: result }));
+  }, []);
+
   // The third door: a route change with a dirty form asks too. The blocker
   // mounts only where a router exists, so the panel stays renderable alone.
   const router = useRouter({ warn: false });
@@ -181,6 +195,8 @@ export function ProvidersPanel() {
         guard={guard}
         onDirty={onProviderDirty}
         onModelSeed={onModelSeed}
+        discovered={discovered}
+        onDiscovered={onDiscovered}
       />
       <ModelsSection
         providers={providers}
@@ -190,12 +206,14 @@ export function ProvidersPanel() {
         guard={guard}
         onDirty={onModelDirty}
         modelSeed={modelSeed}
+        discovered={discovered}
       />
       <TasksSection
         models={models}
         assignments={assignments}
         tasks={tasks}
         reload={reload}
+        discovered={discovered}
       />
 
       {router ? <LeaveBlocker dirty={dirty} ask={askToLeave} /> : null}

@@ -7,6 +7,7 @@ import { Field, Select } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 
 import { KIND_LABELS, LABEL_ROW } from "./ProvidersSection";
+import { liveListOf, ModelMarks, type LiveLists } from "./ModelState";
 
 type Model = components["schemas"]["ModelRead"];
 type Assignment = components["schemas"]["AssignmentRead"];
@@ -49,11 +50,15 @@ export function TasksSection({
   assignments,
   tasks,
   reload,
+  discovered,
 }: {
   models: Model[] | null;
   assignments: Assignment[];
   tasks: TaskEffective[];
   reload: () => Promise<void>;
+  /** The session's live lists, kept by the panel: the serving model's
+   *  absence mark rides the same facts the models section marks with. */
+  discovered: LiveLists;
 }) {
   const t = useTranslation();
   const [failure, setFailure] = useState(false);
@@ -137,6 +142,16 @@ export function TasksSection({
               >
                 {effective}
               </p>
+              {serving !== undefined ? (
+                // The serving model's own marks ride the task row: the same
+                // three facts, joined by profile_id — a task served by a
+                // model the provider dropped is marked here too. The marks
+                // sit in the control's column, the way the caption above
+                // does.
+                <div className="col-start-2 min-w-0">
+                  <ModelMarks model={serving} live={liveListOf(discovered, serving.provider_id)} />
+                </div>
+              ) : null}
             </Field>
           );
         })}

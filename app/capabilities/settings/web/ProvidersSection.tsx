@@ -10,6 +10,8 @@ import { Panel } from "@shell/ui/Panel";
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
 
+import type { LiveList, LiveLists } from "./ModelState";
+
 export type Provider = components["schemas"]["ProviderRead"];
 export type Preset = components["schemas"]["PresetRead"];
 
@@ -97,7 +99,9 @@ function formOf(provider: Provider): FormState {
  *
  * "Load models" asks the provider's own list URL and shows the ids it
  * answered with; picking one hands it to the model form, the same ear the
- * preset-created provider speaks into.
+ * preset-created provider speaks into. The answers live above the section —
+ * the panel owns them, because the models and tasks sections read the same
+ * lists for their marks; this section only asks and reports.
  *
  * The section's one filled primary is the form's save (L1); every other
  * control is a bordered equal. The states speak through `Notice`: the empty
@@ -110,6 +114,8 @@ export function ProvidersSection({
   guard,
   onDirty,
   onModelSeed,
+  discovered,
+  onDiscovered,
 }: {
   providers: Provider[] | null;
   presets: Preset[] | null;
@@ -118,6 +124,10 @@ export function ProvidersSection({
   onDirty: (dirty: boolean) => void;
   /** The panel's ear: the model form is pointed at a provider and a model. */
   onModelSeed: (providerId: string, model: string) => void;
+  /** The session's live lists, kept by the panel; this section renders them. */
+  discovered: LiveLists;
+  /** The panel's other ear: a discovery's outcome lands there, timestamped. */
+  onDiscovered: (providerId: string, result: LiveList | "failed") => void;
 }) {
   const t = useTranslation();
   const [editing, setEditing] = useState<Provider | null>(null);
@@ -131,7 +141,6 @@ export function ProvidersSection({
   const [created, setCreated] = useState<{ name: string; apiKey: string } | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [deleteRefused, setDeleteRefused] = useState<"in-use" | "other" | null>(null);
-  const [models, setModels] = useState<Record<string, string[] | "failed">>({});
   // The stored-key hint's and the preset note's ids: wired to their controls
   // by hand, because both belong to the control's column of the grid row
   // (Field's own hint would land under the label).
@@ -292,16 +301,17 @@ export function ProvidersSection({
       const { data, response } = await client.GET("/api/settings/providers/{provider_id}/models", {
         params: { path: { provider_id: provider.id } },
       });
-      // The outcome is data on the row either way: the ids, or the failure
-      // the page can name while the endpoint cannot be asked.
-      setModels((current) => ({
-        ...current,
-        [provider.id]: response.ok ? (data ?? []) : "failed",
-      }));
+      // The outcome is data on the row either way: the ids with the moment
+      // they were fetched (the timestamp the marks name), or the failure the
+      // page can name while the endpoint cannot be asked.
+      onDiscovered(
+        provider.id,
+        response.ok ? { ids: data ?? [], fetchedAt: new Date() } : "failed",
+      );
     } catch {
       // A rejected fetch has no response to inspect: the page still says so,
       // in the same place a server-reachable failure appears.
-      setModels((current) => ({ ...current, [provider.id]: "failed" }));
+      onDiscovered(provider.id, "failed");
     }
   }
 
@@ -347,7 +357,7 @@ export function ProvidersSection({
         <Panel dense className="mt-3">
           <ul className="flex flex-col">
             {providers.map((provider) => {
-              const discovered = models[provider.id];
+              const discoveredList = discovered[provider.id];
               return (
                 <li
                   key={provider.id}
@@ -377,11 +387,11 @@ export function ProvidersSection({
                       {t("settings.providers.delete")}
                     </Button>
                   </div>
-                  {discovered === undefined ? null : discovered === "failed" ? (
+                  {discoveredList === undefined ? null : discoveredList === "failed" ? (
                     <Notice tone="warning" live="status" className="mt-2">
                       {t("settings.providers.errorModels")}
                     </Notice>
-                  ) : discovered.length === 0 ? (
+                  ) : discoveredList.ids.length === 0 ? (
                     <Notice tone="quiet" live="status" className="mt-2">
                       {t("settings.providers.modelsEmpty")}
                     </Notice>
@@ -398,7 +408,7 @@ export function ProvidersSection({
                         {t("settings.providers.models")}
                       </span>
                       <ul className="mt-1 flex flex-wrap gap-1.5">
-                        {discovered.map((id) => (
+                        {discoveredList.ids.map((id) => (
                           <li key={id}>
                             <Button
                               size="sm"

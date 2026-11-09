@@ -10,6 +10,7 @@ import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 
 import { LABEL_ROW, type Guard, type ModelSeed, type Preset, type Provider } from "./ProvidersSection";
+import { liveListOf, ModelMarks, type LiveLists } from "./ModelState";
 
 type Model = components["schemas"]["ModelRead"];
 type ModelTestResult = components["schemas"]["ModelTestResult"];
@@ -73,9 +74,17 @@ function tuned(value: string): number | null {
  * the form offers no endpoint and no key, because the model carries none.
  *
  * The model input speaks its vendor's vocabulary: a `<datalist>` fed from
- * the chosen provider's preset models, with free text untouched — a model
- * the catalog does not know still saves. The list names the catalog's date
+ * the chosen provider's preset models, merged with the provider's live list
+ * when one was fetched this session, with free text untouched — a model the
+ * catalog does not know still saves. The list names the catalog's date
  * beside it, honestly unknown when the snapshot names none.
+ *
+ * The rows and the save speak the model's state from the page's own facts,
+ * never by asking the vendor: a row marks an unknown price, an absence from
+ * a live list fetched this session, and a failed last call; the form warns
+ * before saving what the merged list and the catalog do not know — a
+ * visible warning beside a save that stays enabled, because the warning's
+ * job is to inform the save, not to prevent it.
  *
  * The section's one filled primary is the form's save (L1); every other
  * control is a bordered equal. The states speak through `Notice`: the empty
@@ -89,6 +98,7 @@ export function ModelsSection({
   guard,
   onDirty,
   modelSeed,
+  discovered,
 }: {
   providers: Provider[] | null;
   presets: Preset[] | null;
@@ -100,6 +110,9 @@ export function ModelsSection({
    *  provider's model, or a discovery id the user picked — handed over once;
    *  `null` is none yet. */
   modelSeed: ModelSeed | null;
+  /** The session's live lists, kept by the panel: the datalist's second
+   *  source and the absence mark's fact. */
+  discovered: LiveLists;
 }) {
   const t = useTranslation();
   const [editing, setEditing] = useState<Model | null>(null);
@@ -161,6 +174,24 @@ export function ModelsSection({
       ? (presets?.find((preset) => preset.vendor === chosenProvider.vendor) ?? null)
       : null;
   const vendorModels = vendorPreset?.models ?? [];
+  // The provider's live list, when one was fetched this session and the
+  // endpoint answered: the datalist's second source and the save warning's
+  // "list you just loaded".
+  const liveList = liveListOf(discovered, chosenProvider?.id);
+  // The datalist's whole vocabulary: the catalog's ids first, the live list's
+  // unseen ones after — one merge, no duplicates, free text untouched.
+  const suggestions = [...new Set([...vendorModels, ...(liveList?.ids ?? [])])];
+  // The save-time warnings, composed from local facts only — nothing here
+  // asks the vendor, on save or ever. An empty model field warns about
+  // nothing; a model absent from the merged list warns only where a list
+  // was actually loaded, and the catalog warning only where the catalog
+  // actually has a vocabulary for this vendor (a vendor it does not carry
+  // could still be priced by another tier — the saved row's mark is the
+  // authority there, so the form stays silent rather than guessing).
+  const typedModel = form.model.trim();
+  const notInLoadedList =
+    liveList !== undefined && typedModel !== "" && !suggestions.includes(typedModel);
+  const noCatalogEntry = vendorPreset !== null && typedModel !== "" && !vendorModels.includes(typedModel);
 
   /** One form field's change, by its key in the form state. */
   function set<K extends keyof FormState>(key: K, value: string): void {
@@ -353,6 +384,7 @@ export function ModelsSection({
                     {" · "}
                     {model.model}
                   </p>
+                  <ModelMarks model={model} live={liveListOf(discovered, model.provider_id)} />
                   <div className="mt-2 flex flex-wrap gap-2">
                     {!model.is_default ? (
                       <Button variant="secondary" onClick={() => void makeDefault(model)}>
@@ -422,10 +454,10 @@ export function ModelsSection({
             list={modelListId}
             aria-describedby={vendorModels.length === 0 ? undefined : catalogDateId}
           />
-          {/* The vendor's catalog vocabulary, suggested — never required:
-              free text survives, and an empty list is simply empty. */}
+          {/* The merged vocabulary, suggested — never required: free text
+              survives, and an empty list is simply empty. */}
           <datalist id={modelListId}>
-            {vendorModels.map((model) => (
+            {suggestions.map((model) => (
               <option key={model} value={model} />
             ))}
           </datalist>
@@ -472,6 +504,17 @@ export function ModelsSection({
             onChange={(event) => set("timeout", event.target.value)}
           />
         </Field>
+        {(notInLoadedList || noCatalogEntry) && (
+          // The save-time warnings, visible beside a save that stays enabled:
+          // the reader is told what the price will be and what the loaded
+          // list did not carry, then decides. Silent on purpose — a warning
+          // that re-announces itself on every keystroke is noise, not
+          // information.
+          <Notice tone="warning" className="mt-2 flex-col items-start! gap-1">
+            {notInLoadedList ? <p>{t("settings.profiles.warnNotInList")}</p> : null}
+            {noCatalogEntry ? <p>{t("settings.profiles.warnNoCatalogEntry")}</p> : null}
+          </Notice>
+        )}
         <div className="mt-2 flex items-center gap-2">
           {/* The save is this section's one filled primary (L1); the
               cancel beside it is a bordered equal. */}

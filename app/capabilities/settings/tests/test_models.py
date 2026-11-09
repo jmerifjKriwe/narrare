@@ -21,6 +21,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
+import app.kernel.llm.catalog as catalog
 from app.api.main import app
 from app.capabilities.settings.models_service import (
     DefaultProfileRaceError,
@@ -30,7 +31,9 @@ from app.capabilities.settings.schemas import ModelCreate, ModelUpdate
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
-from app.kernel.llm.models import ProviderProfile
+from app.kernel.llm.audit import record_call
+from app.kernel.llm.catalog import ModelInfo
+from app.kernel.llm.models import ERROR, ProviderProfile
 from app.kernel.llm.repositories import ProfileRepository, ProviderRepository
 from app.kernel.testing.vendor import chat_vendor
 
@@ -801,3 +804,106 @@ async def test_a_missing_model_is_a_404_on_every_named_route(client: AsyncClient
     ):
         response = await client.request(method, path, json={} if method == "PATCH" else None)
         assert response.status_code == 404, (method, response.text)
+
+
+ACME = ModelInfo(
+    context_window=100_000,
+    max_output_tokens=4_096,
+    input_price_per_mtok=3.0,
+    output_price_per_mtok=15.0,
+    supports_json_schema=True,
+    supports_tools=True,
+    supports_vision=False,
+)
+"""One synthetic catalog entry, the resolution tests' fixture shape."""
+
+
+async def _audit_call(
+    session: AsyncSession,
+    *,
+    profile_id: str | UUID,
+    error_code: str | None,
+) -> None:
+    """One audit row for the model, landed the way the audit's own writer does.
+
+    ``error_code=None`` with ``status="ok"`` is the clean call; a code always
+    rides an ``error`` row. The write commits here, the way a finished stream's
+    finalizer would.
+    """
+    await record_call(
+        session,
+        user_id=LOCAL_USER_ID,
+        task_key="writing.continuation",
+        provider_kind="fake",
+        model="vendor-mini",
+        latency_ms=5,
+        status="ok" if error_code is None else ERROR,
+        prompt_text="p",
+        response_text="",
+        error=None if error_code is None else "boom",
+        error_code=error_code,
+        profile_id=UUID(str(profile_id)),
+    )
+    await session.commit()
+
+
+async def test_a_model_reports_its_last_failure(client: AsyncClient) -> None:
+    """The newest failed call names its code and its date on the list row."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    async with Session() as session:
+        await _audit_call(session, profile_id=str(model["id"]), error_code="model-not-found")
+
+    row = next(
+        entry
+        for entry in (await client.get("/api/settings/models")).json()
+        if entry["id"] == model["id"]
+    )
+    assert row["last_error_code"] == "model-not-found"
+    assert row["last_error_at"] is not None
+
+
+async def test_a_clean_call_after_a_failure_clears_the_mark(client: AsyncClient) -> None:
+    """The newest call decides: a success after a failure means no failure mark."""
+    provider = await _create_provider(client)
+    model = await _create(client, str(provider["id"]))
+    async with Session() as session:
+        await _audit_call(session, profile_id=str(model["id"]), error_code="provider-auth")
+        await _audit_call(session, profile_id=str(model["id"]), error_code=None)
+
+    row = next(
+        entry
+        for entry in (await client.get("/api/settings/models")).json()
+        if entry["id"] == model["id"]
+    )
+    assert row["last_error_code"] is None
+    assert row["last_error_at"] is None
+
+
+async def test_the_model_read_names_whether_the_catalog_prices_it(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``in_catalog`` is the resolution lookup's own answer, on every read.
+
+    The same ``effective_info`` tiers decide — never a second lookup path —
+    and the list read writes nothing: the audit table it queries keeps its
+    row count exactly.
+    """
+    monkeypatch.setattr(catalog, "load_catalog", lambda: {"acme/mini": ACME})
+    acme = await _create_provider(client, vendor="acme")
+    known = await _create(client, str(acme["id"]), "Known", model="mini")
+    stranger = await _create_provider(client, name="Stranger", vendor="other")
+    # No tier reaches "mini-xl": not this vendor's, not the bare, not folded.
+    unknown = await _create(client, str(stranger["id"]), "Unknown", model="mini-xl")
+
+    assert known["in_catalog"] is True
+    assert unknown["in_catalog"] is False
+
+    async with Session() as session:
+        before = await session.scalar(text("SELECT count(*) FROM llm_calls"))
+    listed = (await client.get("/api/settings/models")).json()
+    async with Session() as session:
+        after = await session.scalar(text("SELECT count(*) FROM llm_calls"))
+    assert before == after == 0
+    flags = {entry["name"]: entry["in_catalog"] for entry in listed}
+    assert flags == {"Known": True, "Unknown": False}
