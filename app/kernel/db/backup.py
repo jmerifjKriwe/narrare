@@ -125,6 +125,150 @@ def _libpq_url(database_url: str) -> str:
     return f"{stem}?{urlencode(query, quote_via=quote)}"
 
 
+def _run_dump(
+    command_line: list[str],
+    partial: Path,
+    *,
+    timeout: float,
+    file: Path,
+    file_existed_before: bool,
+) -> subprocess.CompletedProcess[bytes]:
+    """Run the dump command with its stdout streaming into the sink."""
+    try:
+        sink = partial.open("wb")
+    except OSError as exc:
+        raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
+    try:
+        with sink:
+            try:
+                # nosemgrep -- audit rule; NARRE_BACKUP_COMMAND is operator config
+                result = subprocess.run(  # noqa: S603  # nosec B603
+                    # nosemgrep -- tainted-env rule anchors on the argument
+                    command_line,
+                    stdout=sink,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                    timeout=timeout,
+                )
+            except subprocess.TimeoutExpired as exc:
+                # The stalled run's leftovers go the way every failed
+                # run's leftovers go: gone (the name is unique per
+                # run; this file was never pre-existing).
+                if not file_existed_before:
+                    file.unlink(missing_ok=True)
+                raise BackupFailed(
+                    f"{command_line[0]} did not finish within {timeout:g}s "
+                    f"(NARRE_BACKUP_TIMEOUT); a dump that stalls — or sits at a "
+                    "password prompt — is killed here instead of blocking startup"
+                ) from exc
+            except OSError as exc:
+                raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
+    except OSError as exc:
+        # The close flushes what run() streamed — ENOSPC and EIO surface
+        # there, not inside run(); they are the write's failure, not the
+        # command's. A --file target the command managed to fill under
+        # those conditions is not trusted either: the run failed, and a
+        # failed run leaves nothing that looks like a dump.
+        if not file_existed_before:
+            file.unlink(missing_ok=True)
+        raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
+    if result.returncode != 0:
+        stderr = result.stderr.decode(errors="replace").strip()
+        # A failed pg_dump --file run leaves its (zero-byte) target
+        # behind; it must not survive as a dump, and must not evict a
+        # restorable one from retention. Only this run's leftover goes.
+        if not file_existed_before:
+            file.unlink(missing_ok=True)
+        raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
+    return result
+
+
+async def _accept_dump(
+    artifact: Path,
+    *,
+    command_line: list[str],
+    timeout: float,
+    file: Path,
+    file_existed_before: bool,
+) -> None:
+    """Accept the artifact the run left, or refuse it as no restorable copy.
+
+    The first probe is cheap: the ``PGDMP`` magic, which refuses the prose
+    a command wrote into ``{file}`` (``pg_dump`` without
+    ``--format=custom``) without paying for a subprocess. The second is the
+    proof: ``pg_restore --list`` reads the archive's table of contents with
+    the toolchain the restore itself needs, so a truncated or corrupt
+    archive — the magic on five intact bytes, a cut TOC behind them — is
+    refused where the magic alone passed it (CodeRabbit round 3,
+    2026-11-01).
+    """
+    with artifact.open("rb") as probe:
+        magic = probe.read(5)
+    if magic != b"PGDMP":
+        # The refused artifact goes the way every failed run's leftover
+        # goes: gone — unless it pre-existed (the name is unique per
+        # run; it never does).
+        if not file_existed_before:
+            file.unlink(missing_ok=True)
+        raise BackupFailed(
+            f"{command_line[0]} produced neither a dump file nor output a pg_restore could read"
+        )
+    try:
+        listing = await asyncio.to_thread(
+            subprocess.run,
+            ["pg_restore", "--list", str(artifact)],
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        # A probe failure cleans like a probe refusal: an unproven
+        # dump is not left looking like one.
+        if not file_existed_before:
+            file.unlink(missing_ok=True)
+        raise BackupFailed(
+            f"pg_restore did not finish within {timeout:g}s "
+            "(NARRE_BACKUP_TIMEOUT); an unreadable dump is not accepted"
+        ) from exc
+    except OSError as exc:
+        if not file_existed_before:
+            file.unlink(missing_ok=True)
+        raise BackupFailed(
+            f"pg_restore could not be run: {exc}; install postgresql-client "
+            "so the dump can be checked"
+        ) from exc
+    if listing.returncode != 0:
+        # The refusal's cleanup is the magic probe's: the finally takes
+        # the partial, and a --file target the command filled is
+        # unlinked here — nothing survives that looks like a dump.
+        if not file_existed_before:
+            file.unlink(missing_ok=True)
+        stderr = listing.stderr.decode(errors="replace").strip()
+        raise BackupFailed(
+            "the dump is unreadable — truncated or corrupt (pg_restore --list "
+            f"exited {listing.returncode}: {stderr or 'no message'}); nothing "
+            "migrates without a restorable copy"
+        )
+
+
+def _retain_dumps(directory: Path, database: str, file: Path, keep: int) -> None:
+    """Keep the newest ``keep`` dumps of this database; evict the rest."""
+    # Only this database's dumps count: the filename prefix carries the
+    # database, and another stack's dumps sharing the directory are not
+    # eviction victims (CodeRabbit round 1, 2026-11-01).
+    dumps = sorted(
+        (
+            path
+            for path in directory.glob("*.dump")
+            if path != file and path.name.startswith(f"{database}-")
+        ),
+        key=lambda path: (path.stat().st_mtime, path.name),
+        reverse=True,
+    )
+    for stale in dumps[keep - 1 :]:
+        stale.unlink()
+
+
 async def dump_database(database_url: str, directory: Path, *, keep: int = 3) -> Path:
     """Dump one database into ``directory``; return the dump's path.
 
@@ -178,131 +322,30 @@ async def dump_database(database_url: str, directory: Path, *, keep: int = 3) ->
         # The acceptance probe's pg_restore runs under the same budget.
         timeout = _backup_timeout()
 
-        def _dump() -> None:
-            try:
-                sink = partial.open("wb")
-            except OSError as exc:
-                raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
-            try:
-                with sink:
-                    try:
-                        # nosemgrep -- audit rule; NARRE_BACKUP_COMMAND is operator config
-                        result = subprocess.run(  # noqa: S603  # nosec B603
-                            # nosemgrep -- tainted-env rule anchors on the argument
-                            command_line,
-                            stdout=sink,
-                            stderr=subprocess.PIPE,
-                            check=False,
-                            timeout=timeout,
-                        )
-                    except subprocess.TimeoutExpired as exc:
-                        # The stalled run's leftovers go the way every failed
-                        # run's leftovers go: gone (the name is unique per
-                        # run; this file was never pre-existing).
-                        if not file_existed_before:
-                            file.unlink(missing_ok=True)
-                        raise BackupFailed(
-                            f"{command_line[0]} did not finish within {timeout:g}s "
-                            f"(NARRE_BACKUP_TIMEOUT); a dump that stalls — or sits at a "
-                            "password prompt — is killed here instead of blocking startup"
-                        ) from exc
-                    except OSError as exc:
-                        raise BackupFailed(f"{command_line[0]} could not be run: {exc}") from exc
-            except OSError as exc:
-                # The close flushes what run() streamed — ENOSPC and EIO surface
-                # there, not inside run(); they are the write's failure, not the
-                # command's. A --file target the command managed to fill under
-                # those conditions is not trusted either: the run failed, and a
-                # failed run leaves nothing that looks like a dump.
-                if not file_existed_before:
-                    file.unlink(missing_ok=True)
-                raise BackupFailed(f"could not write the dump to {partial}: {exc}") from exc
-            if result.returncode != 0:
-                stderr = result.stderr.decode(errors="replace").strip()
-                # A failed pg_dump --file run leaves its (zero-byte) target
-                # behind; it must not survive as a dump, and must not evict a
-                # restorable one from retention. Only this run's leftover goes.
-                if not file_existed_before:
-                    file.unlink(missing_ok=True)
-                raise BackupFailed(stderr or f"{command_line[0]} exited {result.returncode}")
-
-        await asyncio.to_thread(_dump)
-        # Acceptance is two probes on whichever artifact the run left — the
-        # --file form's own target, or the stdout partial when no file
-        # appeared. The first is cheap: the ``PGDMP`` magic, which refuses
-        # the prose a command wrote into ``{file}`` (``pg_dump`` without
-        # ``--format=custom``) without paying for a subprocess. The second
-        # is the proof: ``pg_restore --list`` reads the archive's table of
-        # contents with the toolchain the restore itself needs, so a
-        # truncated or corrupt archive — the magic on five intact bytes, a
-        # cut TOC behind them — is refused where the magic alone passed it
-        # (CodeRabbit round 3, 2026-11-01).
+        await asyncio.to_thread(
+            _run_dump,
+            command_line,
+            partial,
+            timeout=timeout,
+            file=file,
+            file_existed_before=file_existed_before,
+        )
+        # Acceptance runs two probes on whichever artifact the run left —
+        # the --file form's own target, or the stdout partial when no file
+        # appeared.
         artifact = file if file.exists() and file.stat().st_size > 0 else partial
-        with artifact.open("rb") as probe:
-            magic = probe.read(5)
-        if magic != b"PGDMP":
-            # The refused artifact goes the way every failed run's leftover
-            # goes: gone — unless it pre-existed (the name is unique per
-            # run; it never does).
-            if not file_existed_before:
-                file.unlink(missing_ok=True)
-            raise BackupFailed(
-                f"{command_line[0]} produced neither a dump file nor output a pg_restore could read"
-            )
-        try:
-            listing = await asyncio.to_thread(
-                subprocess.run,
-                ["pg_restore", "--list", str(artifact)],
-                capture_output=True,
-                check=False,
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as exc:
-            # A probe failure cleans like a probe refusal: an unproven
-            # dump is not left looking like one.
-            if not file_existed_before:
-                file.unlink(missing_ok=True)
-            raise BackupFailed(
-                f"pg_restore did not finish within {timeout:g}s "
-                "(NARRE_BACKUP_TIMEOUT); an unreadable dump is not accepted"
-            ) from exc
-        except OSError as exc:
-            if not file_existed_before:
-                file.unlink(missing_ok=True)
-            raise BackupFailed(
-                f"pg_restore could not be run: {exc}; install postgresql-client "
-                "so the dump can be checked"
-            ) from exc
-        if listing.returncode != 0:
-            # The refusal's cleanup is the magic probe's: the finally takes
-            # the partial, and a --file target the command filled is
-            # unlinked here — nothing survives that looks like a dump.
-            if not file_existed_before:
-                file.unlink(missing_ok=True)
-            stderr = listing.stderr.decode(errors="replace").strip()
-            raise BackupFailed(
-                "the dump is unreadable — truncated or corrupt (pg_restore --list "
-                f"exited {listing.returncode}: {stderr or 'no message'}); nothing "
-                "migrates without a restorable copy"
-            )
+        await _accept_dump(
+            artifact,
+            command_line=command_line,
+            timeout=timeout,
+            file=file,
+            file_existed_before=file_existed_before,
+        )
         if artifact is partial:
             replace(partial, file)
 
         # Retention, on both paths — the --file form's dump ages just the same.
-        # Only this database's dumps count: the filename prefix carries the
-        # database, and another stack's dumps sharing the directory are not
-        # eviction victims (CodeRabbit round 1, 2026-11-01).
-        dumps = sorted(
-            (
-                path
-                for path in directory.glob("*.dump")
-                if path != file and path.name.startswith(f"{database}-")
-            ),
-            key=lambda path: (path.stat().st_mtime, path.name),
-            reverse=True,
-        )
-        for stale in dumps[keep - 1 :]:
-            stale.unlink()
+        _retain_dumps(directory, database, file, keep)
         return file
     finally:
         partial.unlink(missing_ok=True)
