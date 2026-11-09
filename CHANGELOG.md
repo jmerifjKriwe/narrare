@@ -20,6 +20,92 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
+## [0.4.0](https://github.com/jmerifjKriwe/narrare/compare/v0.3.1...v0.4.0) (2026-11-09)
+
+
+### ✨ Features
+
+* **api:** emit structured JSON logs and add a health endpoint ([e912da4](https://github.com/jmerifjKriwe/narrare/commit/e912da44a48b363a9664f7350f10796900c8303b))
+* **i18n:** a formal register for German and French ([9f51cb7](https://github.com/jmerifjKriwe/narrare/commit/9f51cb7e68eeed1d50fb68c24ed1ca75ad8a69b0))
+* **i18n:** carry the browser's regional variant into formatting ([2f44ac1](https://github.com/jmerifjKriwe/narrare/commit/2f44ac1f788c3cd4077ec2a4e9682885f08a9399))
+* **kernel:** a native Anthropic Messages adapter ([4b43ef1](https://github.com/jmerifjKriwe/narrare/commit/4b43ef1790ac9399c1cdcdae9d60f9b4f9a79b0b))
+* **kernel:** give provider profiles a provider row ([28f6484](https://github.com/jmerifjKriwe/narrare/commit/28f6484863b9762e73702fc4f8f0be84c105fd40))
+* **knowledge:** the documents list says what it holds and can delete ([dc4a9ec](https://github.com/jmerifjKriwe/narrare/commit/dc4a9ec873e30c6703114ddf49d5cd11d8130bc8))
+* **settings:** a model shows whether it still works ([e690741](https://github.com/jmerifjKriwe/narrare/commit/e690741212d60023e8751c3739bde37a2afa715b))
+* **settings:** a providers resource with its own gate ([ec6f93a](https://github.com/jmerifjKriwe/narrare/commit/ec6f93a0f74f55d3de8045936a2cefcc0ddfd4da))
+* **settings:** models hang off a provider ([6b0c35c](https://github.com/jmerifjKriwe/narrare/commit/6b0c35cc969dbb5549536fc77111710489fb6591))
+* **settings:** providers come from presets, models from the catalog ([63647c5](https://github.com/jmerifjKriwe/narrare/commit/63647c55a172634de5162a05444a6c8a22940b81))
+* **tooling:** add merge driver for JSON catalogs ([0433688](https://github.com/jmerifjKriwe/narrare/commit/0433688e64fa6d495b832a6ac46c9f7f3c548a99))
+* **tooling:** wire merge drivers for JSON and generated files ([9bd75ad](https://github.com/jmerifjKriwe/narrare/commit/9bd75ad4a7ccd2eff4222d886ae562ef3d5475b8))
+* **writing:** a book's details are editable and its deletion is warned ([4881bbd](https://github.com/jmerifjKriwe/narrare/commit/4881bbda82766c60e128aa43c6ef2f96197b2be2))
+* **writing:** chapters and novels can be renamed, arranged and deleted ([b06bdc6](https://github.com/jmerifjKriwe/narrare/commit/b06bdc6e447e9147eab6abd7f0b76ab75023284e))
+
+
+### 🐛 Bug Fixes
+
+* address Codacy review findings ([be9b16f](https://github.com/jmerifjKriwe/narrare/commit/be9b16f12f8466348ac8d80da0af30bcf6d18218))
+* **ci:** restrict publish token scopes and sign images with Sigstore ([d0ac12b](https://github.com/jmerifjKriwe/narrare/commit/d0ac12bd86f853b0cea67acfb4acd78e8f00311c))
+* **db:** a reload can no longer re-mint the run's test databases ([3925eb6](https://github.com/jmerifjKriwe/narrare/commit/3925eb6e2d08259de1bf62dbe8eb4a0873ad671f))
+* **db:** the provider pointer restricts; the model marks' audit query gets its index ([b178937](https://github.com/jmerifjKriwe/narrare/commit/b1789374243687c7c54d8847a924a8cbcfd979fa))
+* **i18n:** make the formal register real in French and close the review gaps ([1467b7b](https://github.com/jmerifjKriwe/narrare/commit/1467b7bf5674a80910e186f540225d5a5d84d5bb))
+* **i18n:** one chapter is, one chapter are not ([81a9aaf](https://github.com/jmerifjKriwe/narrare/commit/81a9aaf7dc46c9da5c935f0fbe4ee405a77b0970))
+* **i18n:** the Z.ai Coding Plan note states the real restriction ([c19b1aa](https://github.com/jmerifjKriwe/narrare/commit/c19b1aad3c8feadd685fe2a8be470acc2bf702dd))
+* **kernel:** a stream failure names its cause ([7063eec](https://github.com/jmerifjKriwe/narrare/commit/7063eecaab6b965a395b1c8d5f3a5653362edf4c))
+* **kernel:** odd error bodies no longer mask the provider's status ([6645e09](https://github.com/jmerifjKriwe/narrare/commit/6645e0942826d1e86edd0a887d0638bc7e8daf17))
+* **knowledge:** a document's facts fit a phone, and a megabyte is a megabyte ([1eca207](https://github.com/jmerifjKriwe/narrare/commit/1eca207670ba1f10bb75cf0c24d9229b4c76f58d))
+* **knowledge:** a one-line document row keeps its height ([9777d8a](https://github.com/jmerifjKriwe/narrare/commit/9777d8a0001d5e4dd91dd8e0368a453813e0a7ff))
+* **knowledge:** the canon shelf suite asks the stack where it lives ([2cfe0de](https://github.com/jmerifjKriwe/narrare/commit/2cfe0de911b18e673af99dbe599a6963c6f38df4))
+* **knowledge:** the dock answers to an English address ([8e58a0e](https://github.com/jmerifjKriwe/narrare/commit/8e58a0effd41499d7b7958d205fbdfb1a334d9fb))
+* **prompts/e2e:** retry the continuation audit read instead of assuming the row exists ([2486ea1](https://github.com/jmerifjKriwe/narrare/commit/2486ea188812737296afa7b534e3575fdb5a2582))
+* **settings:** a code-less error row is not the model's failure mark ([13a23ac](https://github.com/jmerifjKriwe/narrare/commit/13a23acac7c247eecdfdfba599b428b718d0e2c9))
+* **settings:** a created provider offers its model as a clean start ([4142773](https://github.com/jmerifjKriwe/narrare/commit/4142773d7692c8d4b648588f1dcd320e30e0d57e))
+* **settings:** a dangling provider cannot crash the models list ([d79dc88](https://github.com/jmerifjKriwe/narrare/commit/d79dc88247aefdf57e1cf9e801c01edeb720d830))
+* **settings:** a preset states its model and its key field starts clean ([ce94cb2](https://github.com/jmerifjKriwe/narrare/commit/ce94cb243c26b1b30a55c39699b24a515c57f679))
+* **settings:** a preset suggestion never swallows typed work ([8fa9720](https://github.com/jmerifjKriwe/narrare/commit/8fa9720d706146e749b5525dbe553f6d281ab1a3))
+* **settings:** a refused delete keeps the key ([599f2d4](https://github.com/jmerifjKriwe/narrare/commit/599f2d468ddc983d1a38f9f567b819910f60fbfd))
+* **settings:** discovery asks the provider's own list url ([ad17c9a](https://github.com/jmerifjKriwe/narrare/commit/ad17c9a47653d6e1d8f2211cf1775e86cb8b4f4f))
+* **settings:** discovery keeps the key to the endpoint's exact origin ([bb87f1f](https://github.com/jmerifjKriwe/narrare/commit/bb87f1f73c92af038a44bddadbd9a145d45a4275))
+* **settings:** discovery names an empty list and keeps long ids inside the panel ([05b4b4b](https://github.com/jmerifjKriwe/narrare/commit/05b4b4bfecdfe69f81f5184b9255f11ae24ec856))
+* **settings:** the dropped-model warning reads the loaded list ([6772dcf](https://github.com/jmerifjKriwe/narrare/commit/6772dcf2f52297989e7d2d6bf9e2d5edfcf84ca7))
+* **settings:** the edit names a stored kind the form no longer offers ([be354b8](https://github.com/jmerifjKriwe/narrare/commit/be354b828897a434c8637bd81debcfdcef24109b))
+* **settings:** the provider form loses the fake kind and the vendor field ([edaac0b](https://github.com/jmerifjKriwe/narrare/commit/edaac0bce0b9e2126355a3066aa54474a8e6ead8))
+* **shell:** keep the area hue in the CSS variable ([edf37a4](https://github.com/jmerifjKriwe/narrare/commit/edf37a48a1e7ac88170d4c2a1da154cfcabeaf63))
+* **shell:** the rail's area hue stays visible ([ac3e24c](https://github.com/jmerifjKriwe/narrare/commit/ac3e24c7b088a33ab475e1f019fdae5a2461f105))
+* **ui:** keep the bar's quick switch to one row ([717afb4](https://github.com/jmerifjKriwe/narrare/commit/717afb4fb2a53fc9de5206fd92c576f78cb78a1b))
+* **web:** a lost service shows the page's failure, not silence ([3a3baeb](https://github.com/jmerifjKriwe/narrare/commit/3a3baebe1d11e7ee13505148dc1015b5ae7a49c7))
+* **writing:** a refused move is named wherever the move was made ([086c8f2](https://github.com/jmerifjKriwe/narrare/commit/086c8f2c68b385bf2e673001f78dc0cb2319d00f))
+* **writing:** a saving chapter takes the book's lock first, like every writer of its rows ([6b86581](https://github.com/jmerifjKriwe/narrare/commit/6b86581d83f4e733b017ce32a810842077716555))
+* **writing:** the details form's honest marks, and a delete dialog that says its numbers ([049885c](https://github.com/jmerifjKriwe/narrare/commit/049885c5fb253fbf927b4ce5f19152ad0ffdc762))
+* **writing:** the filter follows the language, the width, and the keyboard ([4caf30f](https://github.com/jmerifjKriwe/narrare/commit/4caf30fc50c537f3624f8d7426f849a2aa5b0109))
+
+
+### 📚 Documentation
+
+* add plans and specs for D15+A3 and E18 ([34a4647](https://github.com/jmerifjKriwe/narrare/commit/34a4647eb4f3f583be9337a793954ef66e24cf78))
+* **architecture:** date the workflow map's snapshot 2026-11-09 ([9f24d6d](https://github.com/jmerifjKriwe/narrare/commit/9f24d6d227286a5f69b8422355185df520ca24d7))
+* **architecture:** name the three carried recipes in the §6 budget ([d0e9d72](https://github.com/jmerifjKriwe/narrare/commit/d0e9d729696f589dd3bba64ffe46625a02538f9f))
+* **architecture:** record the mutation sweep, the recipe count and the as-built state ([06b9cc2](https://github.com/jmerifjKriwe/narrare/commit/06b9cc254938633f3f69a2a6edbf903985d7e67a))
+* **architecture:** the records name the provider row and its models ([694cd8e](https://github.com/jmerifjKriwe/narrare/commit/694cd8eac5488bfa2b1d25c3b5d17c25fd867ab8))
+* **follow-ups:** the provider-presets wave's index row ([f4cece1](https://github.com/jmerifjKriwe/narrare/commit/f4cece191edce45845b1dcd18b327701d115b920))
+* plan the parallel-work optimizations ([c2841ff](https://github.com/jmerifjKriwe/narrare/commit/c2841ffac2531b30cfcc09d7fe0b0137c66a04f6))
+* **plan:** add the architecture-audit fix plan ([340fac2](https://github.com/jmerifjKriwe/narrare/commit/340fac2274707dab114c7610ad227804a6831ada))
+* **pr:** the template names the merged catalogs ([97fd774](https://github.com/jmerifjKriwe/narrare/commit/97fd7749361f57e36c5e888ec5848871be9f56e1))
+* record the complexity seam refactor design and plan ([66362d4](https://github.com/jmerifjKriwe/narrare/commit/66362d41aa182bbdd48a6624af72adbd1a6ba1ab))
+* record the parallel-work plan's deviations ([2722b7f](https://github.com/jmerifjKriwe/narrare/commit/2722b7fcdaff72d6e1f6cb7b2ea427d42a21c493))
+* **security:** document the threat model ([0c04e27](https://github.com/jmerifjKriwe/narrare/commit/0c04e276c37ac688f23013babac1ccae49125cbc))
+* **settings:** the model service has no singular read ([2b8f035](https://github.com/jmerifjKriwe/narrare/commit/2b8f03557e5d030a57112586c4b6258324e1587a))
+* **settings:** the plan's downgrade wording follows ADR-103 ([835e2d6](https://github.com/jmerifjKriwe/narrare/commit/835e2d6472a215e025c05aadc2db78383507ea93))
+* **settings:** the snapshot is dated; sorted keys hid it from a first-bytes look ([199d9e6](https://github.com/jmerifjKriwe/narrare/commit/199d9e655eb36e2ab9dfbd99296396c2878fd2a7))
+* the plan records the workspace leaf module ([6ce45a4](https://github.com/jmerifjKriwe/narrare/commit/6ce45a4e7ab863318f9a43d0858f81163d53fd5f))
+* the plural rule now says other is ICU's fallback instead of claiming every locale category is written; the ownership rule names the namespace, not the consumer. ([1467b7b](https://github.com/jmerifjKriwe/narrare/commit/1467b7bf5674a80910e186f540225d5a5d84d5bb))
+* the provider-split record completed, the stale kernel docstrings told ([ec1d9dd](https://github.com/jmerifjKriwe/narrare/commit/ec1d9dd7c08bef08d14d9c687b5a8449763093da))
+* the pull request title is plain language ([af80285](https://github.com/jmerifjKriwe/narrare/commit/af80285177de06b17905eb7ddd6c7006863eede9))
+* the spec says what shipped ([c03c210](https://github.com/jmerifjKriwe/narrare/commit/c03c21073fa586abe5a45b010fd2a70fb7e68403))
+* **web:** correct the client's shell comment ([15a3f52](https://github.com/jmerifjKriwe/narrare/commit/15a3f52b1c69049d17167965bd2dda7af8a2b1f2))
+* **writing:** the wave report carries the final review and the runhead's place ([289cc43](https://github.com/jmerifjKriwe/narrare/commit/289cc43601867944f685f81c493b4a5af14b2f16))
+* **writing:** the wave report cites its sources and counts its children ([a3f1c51](https://github.com/jmerifjKriwe/narrare/commit/a3f1c51bc02b60230b239a232d7149949f2efd81))
+* **writing:** WP6's report and the French pass ([31272a1](https://github.com/jmerifjKriwe/narrare/commit/31272a1e92a62929c6f74e9bcda9405f72069fd2))
+
 ## [0.3.1](https://github.com/jmerifjKriwe/narrare/compare/v0.3.0...v0.3.1) (2026-11-06)
 
 
