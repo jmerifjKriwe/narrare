@@ -93,6 +93,18 @@ Corrections and notes:
   corrected 21; the justfile actually carried 23 without `test-cov`, and the
   GitHub platform work (2026-11-05) added `test-cov` — §6 lists 24 since
   2026-11-05, and both targets here were aligned to it at the same time.
+- **Governance counters: hooks 11, check scripts 4, recipes 27 (2026-11-09).**
+  Three targets are exceeded without a recorded deviation, unlike the CI-jobs
+  deviation above. Each addition names a failure that has occurred:
+  `scripts/check_commit_msg.py` (release-please grammar, duplicate lines in
+  v0.3.0/v0.3.1), `scripts/check_doc_links.py` (stale links),
+  `scripts/check_pins.py` (tool pins Dependabot cannot see), plus the
+  pre-push hooks `uv-lock`, `pyright-full`, `pytest`, `web-tests-full` and
+  `check-generated`, `fuzz`, `test-frontend-changed`. The target values stay
+  (≤ 10 / ≤ 3 / 24) as the standard; the deviation is recorded here rather
+  than by removing hooks that name real failures. Reconcile on the next
+  governance pass — either document each addition's failure or fold it into
+  an existing hook.
 - **LOC: 322k, not 318k.** Measured over Python, TypeScript and TSX in `apps/` and
   `packages/`, tests included. The old value is stale, not wrong in method.
 - **Provider surfaces: the 15 → 1 consolidation is already banked** (ADR-099). One
