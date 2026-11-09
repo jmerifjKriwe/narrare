@@ -276,7 +276,7 @@ export function ModelsSection({
           provider_id: form.providerId,
           model: form.model.trim(),
           context_window: tuned(form.contextWindow),
-          max_output_tokens: tuned(form.maxOutput),
+          max_output_tokens: tuned(form.maxOutput), // nosemgrep: hard-coded-tokens — a wire field name, not a secret
           temperature: tuned(form.temperature),
           request_timeout: tuned(form.timeout),
         },
