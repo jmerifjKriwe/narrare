@@ -1,4 +1,3 @@
-import { ModalOverlay, Modal, Dialog as RacDialog } from "react-aria-components";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 
@@ -11,6 +10,7 @@ import { docks } from "../lib/generated/docks";
 import { useTranslation } from "../lib/i18n";
 import { isMac } from "../lib/platform";
 import { useChaptersQuery, useEntitiesQuery, useNovelsQuery } from "../lib/query";
+import { OverlayDialog } from "../ui/Dialog";
 import { Row } from "../ui/Row";
 
 /** The loader a command hands to the modal slot, exactly as the contract has it. */
@@ -445,85 +445,83 @@ export function Palette({
 
   return (
     <>
-      <ModalOverlay
+      <OverlayDialog
         isOpen={open}
-        isDismissable
         onOpenChange={(next) => {
           if (!next) onOpenChange(false);
         }}
-        className="fixed inset-0 z-40 overflow-y-auto bg-scrim p-4"
+        overlayClassName="fixed inset-0 z-40 overflow-y-auto bg-scrim p-4"
+        modalClassName="mx-auto mt-[10vh] mb-8 w-full max-w-xl overflow-hidden rounded-lg border border-border bg-card shadow-overlay"
+        dialogClassName="flex flex-col outline-none"
+        dialogAriaLabel={t("palette.aria")}
       >
-        <Modal className="mx-auto mt-[10vh] mb-8 w-full max-w-xl overflow-hidden rounded-lg border border-border bg-card shadow-overlay">
-          <RacDialog aria-label={t("palette.aria")} className="flex flex-col outline-none">
-            <div className="border-b border-border">
-              {/* A plain input: the palette's search labels itself
-                  (aria-label) and owns its walk, so it needs no field
-                  wrapper — the primitives' Field is for labelled form
-                  controls, this is the one question the palette asks. */}
-              <input
-                ref={searchRef}
-                aria-label={t("palette.searchLabel")}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={onSearchKeyDown}
-                placeholder={t("palette.searchLabel")}
-                className="w-full bg-transparent px-4 py-3 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus placeholder:text-muted"
-              />
-            </div>
-            <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
-              {novelId !== null ? (
-                <>
-                  <ChaptersGroup
-                    novelId={novelId}
-                    query={query}
-                    onCount={(count) => report("chapters", count)}
-                    onRowKeyDown={onRowKeyDown}
-                    onJump={jumpToChapter}
-                  />
-                  <EntitiesGroup
-                    novelId={novelId}
-                    query={query}
-                    onCount={(count) => report("entities", count)}
-                    onRowKeyDown={onRowKeyDown}
-                    onJump={jumpToEntity}
-                  />
-                </>
-              ) : (
-                <NovelsGroup
-                  query={query}
-                  onCount={(count) => report("novels", count)}
-                  onRowKeyDown={onRowKeyDown}
-                  onJump={jumpToNovel}
-                />
-              )}
-              <PagesGroup
+        <div className="border-b border-border">
+          {/* A plain input: the palette's search labels itself
+              (aria-label) and owns its walk, so it needs no field
+              wrapper — the primitives' Field is for labelled form
+              controls, this is the one question the palette asks. */}
+          <input
+            ref={searchRef}
+            aria-label={t("palette.searchLabel")}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder={t("palette.searchLabel")}
+            className="w-full bg-transparent px-4 py-3 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus placeholder:text-muted"
+          />
+        </div>
+        <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
+          {novelId !== null ? (
+            <>
+              <ChaptersGroup
                 novelId={novelId}
                 query={query}
-                onCount={(count) => report("pages", count)}
+                onCount={(count) => report("chapters", count)}
                 onRowKeyDown={onRowKeyDown}
-                onOpen={openPage}
+                onJump={jumpToChapter}
               />
-              <CommandsGroup
+              <EntitiesGroup
+                novelId={novelId}
                 query={query}
-                ctx={ctx}
-                onCount={(count) => report("commands", count)}
+                onCount={(count) => report("entities", count)}
                 onRowKeyDown={onRowKeyDown}
-                onClose={() => onOpenChange(false)}
+                onJump={jumpToEntity}
               />
-              {nothing ? (
-                <p className="px-3 py-6 text-center text-body text-muted">
-                  {t("palette.noResults")}
-                </p>
-              ) : null}
-            </div>
-            {/* §11's row: the focus shortcuts are named here and nowhere
-                else — the palette is the one place the keyboard's map lives. */}
-            <p className="border-t border-border px-4 py-2 text-meta text-muted">
-              {t("workspace.shortcutHints", { key: paletteKey })}
+            </>
+          ) : (
+            <NovelsGroup
+              query={query}
+              onCount={(count) => report("novels", count)}
+              onRowKeyDown={onRowKeyDown}
+              onJump={jumpToNovel}
+            />
+          )}
+          <PagesGroup
+            novelId={novelId}
+            query={query}
+            onCount={(count) => report("pages", count)}
+            onRowKeyDown={onRowKeyDown}
+            onOpen={openPage}
+          />
+          <CommandsGroup
+            query={query}
+            ctx={ctx}
+            onCount={(count) => report("commands", count)}
+            onRowKeyDown={onRowKeyDown}
+            onClose={() => onOpenChange(false)}
+          />
+          {nothing ? (
+            <p className="px-3 py-6 text-center text-body text-muted">
+              {t("palette.noResults")}
             </p>
-          </RacDialog>
-        </Modal>
-      </ModalOverlay>
+          ) : null}
+        </div>
+        {/* §11's row: the focus shortcuts are named here and nowhere
+            else — the palette is the one place the keyboard's map lives. */}
+        <p className="border-t border-border px-4 py-2 text-meta text-muted">
+          {t("workspace.shortcutHints", { key: paletteKey })}
+        </p>
+      </OverlayDialog>
       {ModalComponent !== null ? (
         <Suspense fallback={null}>
           <ModalComponent />
