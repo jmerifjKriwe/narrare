@@ -40,6 +40,7 @@ export function ProvidersPanel() {
   const [presets, setPresets] = useState<Preset[] | null>(null);
   const [failure, setFailure] = useState<MessageKey | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once load — `reload` is a component-scope function re-created every render, so listing it would re-run this effect every render.
   useEffect(() => {
     // All five views load on mount: the task selects and their effective
     // lines display out of these lists, so a fresh visit must show the
