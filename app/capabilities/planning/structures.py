@@ -35,12 +35,6 @@ def _even_stages(keys: list[str]) -> tuple[StageDef, ...]:
     )
 
 
-def _even_twelfths(keys: list[str]) -> tuple[StageDef, ...]:
-    """Twelve contiguous stages, each one twelfth of the story."""
-    assert len(keys) == 12
-    return _even_stages(keys)
-
-
 STRUCTURES: dict[str, tuple[StageDef, ...]] = {
     "three-act": (
         StageDef(key="setup", title_key="storyboard.stage.setup", from_ratio=0.0, to_ratio=0.25),
@@ -57,7 +51,7 @@ STRUCTURES: dict[str, tuple[StageDef, ...]] = {
             to_ratio=1.0,
         ),
     ),
-    "heros-journey": _even_twelfths(
+    "heros-journey": _even_stages(
         [
             "ordinary-world",
             "call-to-adventure",
