@@ -986,7 +986,8 @@ export function DesignGallery() {
             <Notice tone="quiet">
               StoryboardPage: die gebaute Canvas mit Phasenspalten, einer
               verschobenen Karte und einer Strukturvorschau — gebauter Stand,
-              kein Entwurf.
+              kein Entwurf. Die Sync-Wörter sind eine Momentaufnahme und dürfen
+              von der Live-Seite abweichen, ohne ein Fehler zu sein.
             </Notice>
           </div>
         </div>
