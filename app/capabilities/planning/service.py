@@ -73,7 +73,11 @@ class PlanningService:
         A known id updates, an id from another chapter is a 422, a doubled
         id is a 422, an absent id deletes, and positions renumber 1..N by
         payload order. Every refusal lands before any write, so a refused
-        PUT leaves the aggregate exactly as the refetch found it. Raise
+        PUT leaves the aggregate exactly as the refetch found it. The PUT
+        replaces the chapter's whole scene list, so two concurrent saves
+        resolve last-writer-wins on positions and fields; there is no
+        field-level merge and no optimistic-concurrency version check in
+        this slice. Raise
         NotFoundError for an absent or unowned chapter.
         """
         await self._require_user()
