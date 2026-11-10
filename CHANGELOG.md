@@ -20,6 +20,59 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
+## [0.5.0](https://github.com/jmerifjKriwe/narrare/compare/v0.4.0...v0.5.0) (2026-11-10)
+
+
+### ✨ Features
+
+* **knowledge:** chapter-aware palette extraction and entity graph canvas ([f3b8220](https://github.com/jmerifjKriwe/narrare/commit/f3b8220f802787a50777efe2e240e49eb2286e3d))
+* **knowledge:** deterministic graph layout ([9eff275](https://github.com/jmerifjKriwe/narrare/commit/9eff275cc3e39843b649384dda43285ea9d21c6c))
+* **knowledge:** list a novel's relations ([408a410](https://github.com/jmerifjKriwe/narrare/commit/408a410925f9c87bb2e6f6d8cb7c3d963076dae3))
+* **knowledge:** the dock shows an entity's neighborhood ([7d3362c](https://github.com/jmerifjKriwe/narrare/commit/7d3362c06e01ee8fb06067f2bd7a8970f6af7def))
+* **knowledge:** the entity graph as a full-page canvas ([75540bd](https://github.com/jmerifjKriwe/narrare/commit/75540bd8931c34d3f8ec9c56a266b90c6db177c0))
+* **knowledge:** the graph pans and zooms ([a801ead](https://github.com/jmerifjKriwe/narrare/commit/a801ead6ff23e41d120a150315e718e95c34f764))
+* **planning:** chapters drag onto a stage ([8200d48](https://github.com/jmerifjKriwe/narrare/commit/8200d4888e6e3d982acf45f6a44ed24f05e3d8a0))
+* **planning:** five structures to plan against ([5695ca0](https://github.com/jmerifjKriwe/narrare/commit/5695ca05881e2c024c6ca661b91d2a5d9d72695e))
+* **planning:** scene plans dock beside the editor ([e820f6d](https://github.com/jmerifjKriwe/narrare/commit/e820f6d06cc4f1d6f11778b58b0654e02aca2594))
+* **planning:** scene-plan substrate ([1731bbd](https://github.com/jmerifjKriwe/narrare/commit/1731bbda6092ccedb1f6158539079b3e557f0d83))
+* **planning:** storyboard canvas with stages and remap preview ([55c256b](https://github.com/jmerifjKriwe/narrare/commit/55c256bb50a9334a2dc3481c04cde08d3ac4e99d))
+* **planning:** storyboard substrate and read API ([c131340](https://github.com/jmerifjKriwe/narrare/commit/c1313407606aedb9dc7cd6f205279800e856ccc5))
+* **planning:** the story's shape as a proportion canvas ([42ac8f4](https://github.com/jmerifjKriwe/narrare/commit/42ac8f4d95f3557fe4d369c96fca24831d1cbdfc))
+* **planning:** timeline events substrate and CRUD ([79fe008](https://github.com/jmerifjKriwe/narrare/commit/79fe0082926ec329806ca2a1110cf2a03e0d1639))
+* **planning:** timeline landing canvas under a Planen area ([8fb41dd](https://github.com/jmerifjKriwe/narrare/commit/8fb41dd8d6419a075ee13ebafb70beaadc23d1c2))
+* **settings:** every shortcut in one place ([ca66a2b](https://github.com/jmerifjKriwe/narrare/commit/ca66a2b1c3e13df1c5252de12f17900cd9fa1dcf))
+* **ui:** gallery-backed design norm, conversational docks, palette commands ([b84baf6](https://github.com/jmerifjKriwe/narrare/commit/b84baf6f0b90252f2bb5752a9084feeed3003341))
+* **writing:** slash opens the command palette ([25ba0d5](https://github.com/jmerifjKriwe/narrare/commit/25ba0d5953f58db6aafa67dd24368bf660292abf))
+
+
+### 🐛 Bug Fixes
+
+* **knowledge:** palette extraction targets the chapter being edited ([ddfe1d9](https://github.com/jmerifjKriwe/narrare/commit/ddfe1d9c3b10e13d74885d0361138fba9e5e4697))
+* **knowledge:** self-loop relations render as a loop glyph ([d097d06](https://github.com/jmerifjKriwe/narrare/commit/d097d067511b8298523dd0f33b72b0796960a2a9))
+* **knowledge:** the graph retries each read on its own ([31282c2](https://github.com/jmerifjKriwe/narrare/commit/31282c29d9991a1b0271c0a6e90d8baefcb46d93))
+* **knowledge:** the graph view resets per novel and ignores sideways wheel ([3863aaa](https://github.com/jmerifjKriwe/narrare/commit/3863aaa07f96321645fcaf358c869808181ec275))
+* **knowledge:** the lens is named once ([d36e57a](https://github.com/jmerifjKriwe/narrare/commit/d36e57a2956790055cee2c077e1568e38428af40))
+* **planning:** remap preview resolves the effective current stage ([05aebdd](https://github.com/jmerifjKriwe/narrare/commit/05aebdd9622190d87fdc5f0f93f28e69163b0e92))
+* **planning:** stale stage assignments degrade to suggestion ([f4b1d5f](https://github.com/jmerifjKriwe/narrare/commit/f4b1d5f4e5903847f50ba180998539e8431a7354))
+* **planning:** suggestions use chapter count, not max position ([dd9d08f](https://github.com/jmerifjKriwe/narrare/commit/dd9d08f918b161efcda84b49282d696938cea7b5))
+* **planning:** the dock resets per chapter and names its id contract ([d69347b](https://github.com/jmerifjKriwe/narrare/commit/d69347bc5acf520b6a7c7c79d045d5171f64e248))
+* **planning:** the structure bands show their width ([3c34f67](https://github.com/jmerifjKriwe/narrare/commit/3c34f6781351995fd4021ed4907286363524d279))
+* **planning:** timeline canvas uses the shared canvas edge ([784d6bd](https://github.com/jmerifjKriwe/narrare/commit/784d6bdb1f868c4a7a3af0d62aa53d3fc32cde04))
+* **writing:** the chapter menu names the platform's reorder keys ([9538122](https://github.com/jmerifjKriwe/narrare/commit/9538122857314d7cb2da992019e9c2f32dc2ec20))
+
+
+### 📚 Documentation
+
+* **agents:** UI work goes through subagents with explicit models ([81b2368](https://github.com/jmerifjKriwe/narrare/commit/81b2368a928ff57789e04d74e0517d6220d3b8d2))
+* **knowledge:** the palette dialog takes its chapter as a prop ([da1de9b](https://github.com/jmerifjKriwe/narrare/commit/da1de9b0d5e5d0071e456fd86a6fb62769fd67c3))
+* **screenshots:** every frame after the navigation pass ([27898c1](https://github.com/jmerifjKriwe/narrare/commit/27898c1d25e5535ff7128d0daf25feaa4f2fbe99))
+* **screenshots:** every frame on the current shell ([13c997b](https://github.com/jmerifjKriwe/narrare/commit/13c997ba8389a303edc0f8a092dd4f0d221e9805))
+* **screenshots:** the graph canvas pinned in both themes ([b3479df](https://github.com/jmerifjKriwe/narrare/commit/b3479df2a2e386b6b6d8821f3af058ca747f87b5))
+* **screenshots:** the planning dock pinned ([36ef001](https://github.com/jmerifjKriwe/narrare/commit/36ef001babea64a45dc750bbf78f222316512e66))
+* **screenshots:** the storyboard canvas pinned in both themes ([5b06404](https://github.com/jmerifjKriwe/narrare/commit/5b0640450832e82dc7bfc5f380d12832226e06ce))
+* **screenshots:** the timeline canvas pinned in both themes ([2611e50](https://github.com/jmerifjKriwe/narrare/commit/2611e50137cf836eaf2c5651abf17a004ab9b995))
+* **slice:** the graph slice plan joins the branch ([78a6b1d](https://github.com/jmerifjKriwe/narrare/commit/78a6b1d1d6475dad4c2ef1a6cd4a08d2d587cce0))
+
 ## [0.4.0](https://github.com/jmerifjKriwe/narrare/compare/v0.3.1...v0.4.0) (2026-11-09)
 
 
