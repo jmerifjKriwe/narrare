@@ -100,7 +100,7 @@ describe("NeighborhoodLens selection", () => {
     expect(
       await screen.findByText("Select an entity in the list to see its neighborhood."),
     ).toBeTruthy();
-    expect(screen.queryByRole("group", { name: "Neighborhood" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Neighborhood" })).toBeNull();
   });
 
   it("a stale id degrades to the empty state and leaves the address", async () => {
@@ -112,7 +112,7 @@ describe("NeighborhoodLens selection", () => {
     expect(
       await screen.findByText("Select an entity in the list to see its neighborhood."),
     ).toBeTruthy();
-    expect(screen.queryByRole("group", { name: "Neighborhood" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Neighborhood" })).toBeNull();
     await waitFor(() =>
       expect(
         (router.state.location.search as { entity?: string }).entity,
@@ -134,7 +134,7 @@ describe("NeighborhoodLens graph", () => {
     // outgoing edge, one incoming, both touching Mira.
     expect(await screen.findByText("Haus")).toBeTruthy();
     expect(await screen.findByText("Leuchtturm")).toBeTruthy();
-    const canvas = await screen.findByRole("group", { name: "Neighborhood" });
+    const canvas = await screen.findByRole("region", { name: "Neighborhood" });
     expect(canvas.querySelectorAll("line")).toHaveLength(2);
     // The selected node is marked, the neighbors are plain buttons.
     expect(screen.getByRole("button", { name: "Mira" }).getAttribute("aria-pressed")).toBe(
@@ -157,7 +157,7 @@ describe("NeighborhoodLens graph", () => {
     renderLens("/novels/novel/knowledge?entity=e-mira");
 
     expect(await screen.findByText("Mira has no relations yet.")).toBeTruthy();
-    const canvas = await screen.findByRole("group", { name: "Neighborhood" });
+    const canvas = await screen.findByRole("region", { name: "Neighborhood" });
     expect(canvas.querySelectorAll("line")).toHaveLength(0);
     expect(screen.getByRole("button", { name: "Mira" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Haus" })).toBeNull();

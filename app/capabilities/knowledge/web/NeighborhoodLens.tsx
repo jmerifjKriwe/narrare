@@ -184,7 +184,6 @@ function NeighborhoodGraph({
     <section aria-label={t("knowledge.dockViewNeighborhood")} className="mt-2">
       <svg
         role="group"
-        aria-label={t("knowledge.dockViewNeighborhood")}
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         className="mt-2 h-auto w-full rounded-[var(--radius)] border border-rule bg-card"
       >
