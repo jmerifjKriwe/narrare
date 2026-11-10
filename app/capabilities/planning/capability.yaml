@@ -5,4 +5,4 @@ id: planning
 title: planning.heading # i18n key; add it to web/i18n/<locale>.json for every catalog
 path: /planning
 needs: []
-nav: false
+nav: true # listed in the home page navigation

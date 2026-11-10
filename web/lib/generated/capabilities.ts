@@ -7,6 +7,7 @@ import { catalogs } from "./catalogs";
 export const nav = [
   { id: "chat", path: "/chat", titleKey: "chat.heading" },
   { id: "knowledge", path: "/knowledge", titleKey: "knowledge.heading" },
+  { id: "planning", path: "/planning", titleKey: "planning.heading" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   path: string;

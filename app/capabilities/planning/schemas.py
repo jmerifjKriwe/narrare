@@ -62,3 +62,52 @@ class SceneAggregateRead(BaseModel):
     chapter_id: UUID
     scenes: list[SceneRead]
     version_updated_at: datetime
+
+
+class TimelineEventCreate(BaseModel):
+    """The POST body: one event on the novel's timeline.
+
+    The body carries no timestamps: those are the server's own. ``position``
+    is the manual order (null leaves the event unordered, listed last);
+    ``date_label`` is the optional free-text date; ``character_names`` are
+    free-text names for now — no KB linkage in this slice.
+    """
+
+    title: str = Field(min_length=1, max_length=500)
+    description: str = ""
+    chapter_id: UUID | None = None
+    position: int | None = None
+    date_label: str = Field(default="", max_length=200)
+    character_names: list[str] = Field(default_factory=list[str])
+
+
+class TimelineEventUpdate(BaseModel):
+    """The PUT body: only the fields present are the change.
+
+    A carried ``null`` clears ``chapter_id`` or ``position``; an absent
+    field leaves it alone. Every other field is non-nullable — a carried
+    null is a 422 at the boundary, never a NOT NULL violation on write.
+    A blank title is refused, never stored.
+    """
+
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    description: str = ""
+    chapter_id: UUID | None = None
+    position: int | None = None
+    date_label: str = Field(default="", max_length=200)
+    character_names: list[str] = Field(default_factory=list[str])
+
+
+class TimelineEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    novel_id: UUID
+    chapter_id: UUID | None
+    title: str
+    description: str
+    position: int | None
+    date_label: str
+    character_names: list[str]
+    created_at: datetime
+    updated_at: datetime

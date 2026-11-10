@@ -2701,6 +2701,204 @@
         "title": "TaskEffectiveRead",
         "type": "object"
       },
+      "TimelineEventCreate": {
+        "description": "The POST body: one event on the novel's timeline.\n\nThe body carries no timestamps: those are the server's own. ``position``\nis the manual order (null leaves the event unordered, listed last);\n``date_label`` is the optional free-text date; ``character_names`` are\nfree-text names for now — no KB linkage in this slice.",
+        "properties": {
+          "chapter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "character_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Character Names",
+            "type": "array"
+          },
+          "date_label": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Date Label",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "TimelineEventCreate",
+        "type": "object"
+      },
+      "TimelineEventRead": {
+        "properties": {
+          "chapter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "character_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Character Names",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "date_label": {
+            "title": "Date Label",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "novel_id",
+          "chapter_id",
+          "title",
+          "description",
+          "position",
+          "date_label",
+          "character_names",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TimelineEventRead",
+        "type": "object"
+      },
+      "TimelineEventUpdate": {
+        "description": "The PUT body: only the fields present are the change.\n\nA carried ``null`` clears ``chapter_id`` or ``position``; an absent\nfield leaves it alone. Every other field is non-nullable — a carried\nnull is a 422 at the boundary, never a NOT NULL violation on write.\nA blank title is refused, never stored.",
+        "properties": {
+          "chapter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "character_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Character Names",
+            "type": "array"
+          },
+          "date_label": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Date Label",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "TimelineEventUpdate",
+        "type": "object"
+      },
       "ValidationBody": {
         "description": "The framework's own 422 body, mirrored for the union beside the\nrefusal — FastAPI builds its schema from a dict, so nothing imports.",
         "properties": {
@@ -4097,6 +4295,347 @@
           }
         },
         "summary": "Save Scenes",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/planning/novels/{novel_id}/timeline-events": {
+      "get": {
+        "description": "List the novel's events in manual order, unordered rows last.\n\nRaise HTTP 404 for an absent or unowned novel.",
+        "operationId": "list_timeline_events_api_planning_novels__novel_id__timeline_events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TimelineEventRead"
+                  },
+                  "title": "Response List Timeline Events Api Planning Novels  Novel Id  Timeline Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Timeline Events",
+        "tags": [
+          "planning"
+        ]
+      },
+      "post": {
+        "description": "Create one event on the novel's timeline and return it.\n\nRaise HTTP 404 for an absent or unowned novel — a foreign novel reads as\nmissing, never as an oracle — HTTP 409 without the setup-created user,\nor HTTP 422 for a blank title or a chapter link the novel does not hold.",
+        "operationId": "create_timeline_event_api_planning_novels__novel_id__timeline_events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelineEventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineEventRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "A refused event, named in `detail`"
+          }
+        },
+        "summary": "Create Timeline Event",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/planning/novels/{novel_id}/timeline-events/{event_id}": {
+      "delete": {
+        "description": "Delete one event of the novel; raise HTTP 404 for an absent or\nunowned event or novel.",
+        "operationId": "delete_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Event not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Timeline Event",
+        "tags": [
+          "planning"
+        ]
+      },
+      "get": {
+        "description": "Return one event of the novel; raise HTTP 404 when it, the novel, or\nthe ownership is missing.",
+        "operationId": "get_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineEventRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Event not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Timeline Event",
+        "tags": [
+          "planning"
+        ]
+      },
+      "put": {
+        "description": "Edit the carried fields of one event and return it.\n\nA carried ``null`` clears the chapter link or the position; an absent\nfield leaves it alone. Raise HTTP 404 for an absent or unowned event or\nnovel, or HTTP 422 for a blank title or a chapter link the novel does\nnot hold.",
+        "operationId": "update_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelineEventUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineEventRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Event not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "A refused event, named in `detail`"
+          }
+        },
+        "summary": "Update Timeline Event",
         "tags": [
           "planning"
         ]

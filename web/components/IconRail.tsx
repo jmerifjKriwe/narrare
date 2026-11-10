@@ -33,7 +33,7 @@ type RailActiveOptions = ComponentProps<typeof Link>["activeOptions"];
 /** The area's identity hue: an identity mark on the icon, never a fill, a
  *  text colour, a cover or a notice. A capability adds its `--area-<id>`
  *  token in `globals.css`; without one the foreground ink is the fallback.
- *  The four existing hues are measured ≥ 3:1 against `--panel` in both
+ *  The five existing hues are measured ≥ 3:1 against `--panel` in both
  *  themes. */
 /** One destination: an icon link in the button's icon-variant paint. */
 function RailLink({

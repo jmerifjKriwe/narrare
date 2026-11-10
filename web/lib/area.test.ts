@@ -7,6 +7,7 @@ describe("AREA_ICON", () => {
       writing: "text-area-writing",
       knowledge: "text-area-knowledge",
       chat: "text-area-chat",
+      planning: "text-area-planning",
       settings: "text-area-settings",
     });
   });

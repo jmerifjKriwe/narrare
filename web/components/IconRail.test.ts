@@ -6,9 +6,15 @@ import { AREA_ICON } from "@shell/lib/area";
 import { areaStyle } from "./IconRail";
 
 describe("the rail's area hues", () => {
-  it("maps the four areas to four distinct utilities", () => {
-    expect(Object.keys(AREA_ICON).sort()).toEqual(["chat", "knowledge", "settings", "writing"]);
-    expect(new Set(Object.values(AREA_ICON)).size).toBe(4);
+  it("maps the five areas to five distinct utilities", () => {
+    expect(Object.keys(AREA_ICON).sort()).toEqual([
+      "chat",
+      "knowledge",
+      "planning",
+      "settings",
+      "writing",
+    ]);
+    expect(new Set(Object.values(AREA_ICON)).size).toBe(5);
   });
 
   it("applies the hue to the icon's span", () => {
@@ -24,9 +30,9 @@ describe("the rail's area hues", () => {
     });
   });
 
-  it("keeps a token for each of the four existing areas", () => {
+  it("keeps a token for each of the five existing areas", () => {
     const css = readFileSync(new URL("../globals.css", import.meta.url), "utf8");
-    for (const area of ["writing", "knowledge", "chat", "settings"]) {
+    for (const area of ["writing", "knowledge", "chat", "planning", "settings"]) {
       expect(css).toContain(`--area-${area}:`);
     }
   });

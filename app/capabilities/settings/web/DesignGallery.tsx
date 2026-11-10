@@ -37,7 +37,8 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  * The "Specimens" section pins the landed dock and palette states on the
  * real primitives — a conversation turn with its source chips, the
  * consistency card, the wrapped entity row, the palette dialog's button
- * row, the planning scene list — inert specimens, never embeds: no handlers, no fetches, no modal
+ * row, the planning scene list, the built timeline canvas — inert specimens,
+ * never embeds: no handlers, no fetches, no modal
  * shell. The subsection headings and source notes are documentation in
  * the record's language (German, like the draft titles), the same in
  * every locale; only the section heading itself comes from the catalog.
@@ -765,6 +766,94 @@ export function DesignGallery() {
             <Notice tone="quiet">
               GraphPage: die gebaute Canvas mit gewähltem Knoten und
               Blick — gebauter Stand, kein Entwurf.
+            </Notice>
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">
+            Timeline-Canvas · Planen (gebauter Stand)
+          </h3>
+          {/* The canvas as PlanningPage renders it, pinned small: the view
+              switch with its pressed mark, then the events in the server's
+              own order — each row with its position, its words, the date
+              garnish, the characters and the chapter where they belong. The
+              undated row renders its position instead of a date, never an
+              empty slot. Inert: the switch never switches, the row actions
+              are plain buttons — the modal shell cannot stand inline in a
+              gallery, so no dialog opens here. The Target draft above keeps
+              its ENTWURF stamp as the fork record; this block never wears
+              it — gebauter Stand, not a draft. */}
+          <section aria-label={t("planning.heading")} className="mt-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" aria-pressed="true">
+                {t("planning.viewChrono")}
+              </Button>
+              <Button variant="secondary" size="sm" aria-pressed="false">
+                {t("planning.viewByChapter")}
+              </Button>
+            </div>
+            <ul className="mt-2 flex flex-col">
+              <li>
+                <Row
+                  as="div"
+                  role="group"
+                  aria-label="Das Signal"
+                  flush
+                  className="h-auto flex-col items-stretch gap-1 py-2"
+                >
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="shrink-0 text-label text-muted">#1</span>
+                    <span className="min-w-0 flex-1 text-body font-semibold">Das Signal</span>
+                    <span className="shrink-0 text-label text-muted">Im Frühling</span>
+                  </div>
+                  <p className="text-body text-muted">
+                    Maya erreicht die Station; das Signal ist noch ein Gerücht.
+                  </p>
+                  <p className="text-label text-muted">Maya Chen, ARIA</p>
+                  <p className="text-label text-muted">Ankunft</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" size="sm">
+                      {t("planning.edit")}
+                    </Button>
+                    <Button variant="secondary" size="sm">
+                      {t("planning.delete")}
+                    </Button>
+                  </div>
+                </Row>
+              </li>
+              <li>
+                <Row
+                  as="div"
+                  role="group"
+                  aria-label="Der stille Winter"
+                  flush
+                  className="h-auto flex-col items-stretch gap-1 py-2"
+                >
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="shrink-0 text-label text-muted">
+                      {t("planning.unordered")}
+                    </span>
+                    <span className="min-w-0 flex-1 text-body font-semibold">Der stille Winter</span>
+                  </div>
+                  <p className="text-body text-muted">
+                    Drei Jahre fehlen; niemand spricht über den Winter.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" size="sm">
+                      {t("planning.edit")}
+                    </Button>
+                    <Button variant="secondary" size="sm">
+                      {t("planning.delete")}
+                    </Button>
+                  </div>
+                </Row>
+              </li>
+            </ul>
+          </section>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              PlanningPage: die gebaute Canvas mit Sicht-Schalter, Datums-Garnitur
+              und Figuren — gebauter Stand, kein Entwurf.
             </Notice>
           </div>
         </div>

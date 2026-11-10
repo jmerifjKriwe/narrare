@@ -12,7 +12,7 @@ documentation grows around this index, never inside it.
 | --- | --- | --- | --- |
 | Chat | /chat | ✓ | an embedding model, a text model |
 | Knowledge | /knowledge | ✓ | an embedding model |
-| Planning | /planning | — | — |
+| Planning | /planning | ✓ | — |
 | Prompts | /settings/prompts | — | — |
 | Settings | /settings | — | — |
 | Welcome to Narrare | /setup | — | — |
@@ -24,7 +24,7 @@ documentation grows around this index, never inside it.
 | --- | --- | --- | --- |
 | Chat | /chat | ✓ | ein Embedding-Modell, ein Textmodell |
 | Wissen | /knowledge | ✓ | ein Embedding-Modell |
-| Planung | /planning | — | — |
+| Planung | /planning | ✓ | — |
 | Prompts | /settings/prompts | — | — |
 | Einstellungen | /settings | — | — |
 | Willkommen bei Narrare | /setup | — | — |
@@ -36,7 +36,7 @@ documentation grows around this index, never inside it.
 | --- | --- | --- | --- |
 | Discussion | /chat | ✓ | un modèle d'embeddings, un modèle de texte |
 | Savoir | /knowledge | ✓ | un modèle d'embeddings |
-| Planification | /planning | — | — |
+| Planification | /planning | ✓ | — |
 | Prompts | /settings/prompts | — | — |
 | Paramètres | /settings | — | — |
 | Bienvenue dans Narrare | /setup | — | — |
