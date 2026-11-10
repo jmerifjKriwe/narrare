@@ -25,17 +25,19 @@ import { useSettleJob } from "./useSettleJob";
  */
 export function ExtractionJobDialog({
   novelId,
+  chapterId = null,
   isOpen,
   onOpenChange,
 }: {
   novelId: string;
+  chapterId?: string | null;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const t = useTranslation();
   return (
     <Dialog title={t("knowledge.extractionHeading")} isOpen={isOpen} onOpenChange={onOpenChange}>
-      {(close) => <ExtractionForm novelId={novelId} close={close} />}
+      {(close) => <ExtractionForm novelId={novelId} chapterId={chapterId} close={close} />}
     </Dialog>
   );
 }
@@ -61,14 +63,29 @@ export function ConsistencyCheckDialog({
 
 /** Mounted fresh on every open: the job, the refusal and the busy flag are
  *  this dialog's own, never a previous one's leftovers. */
-function ExtractionForm({ novelId, close }: { novelId: string; close: () => void }) {
+function ExtractionForm({
+  novelId,
+  chapterId: chapterProp,
+  close,
+}: {
+  novelId: string;
+  chapterId: string | null;
+  close: () => void;
+}) {
   const t = useTranslation();
-  // The chapter is the editor's: the panel reads the workspace's chapter
-  // param first and falls back to the last chapter written in — the dialog
-  // has no route param of its own, so it stands on the fallback alone, the
-  // same cached list the workbench already asked for.
+  // The chapter is the editor's: the palette hands the one its route carried
+  // when the row ran, and without one — the row from a param-less address —
+  // the dialog stands on the same fallback the dock panel stands on, the
+  // last chapter written in from the same cached list the workbench already
+  // asked for. Same precedence as the dock: the prop first, then the fallback.
   const chapters = useChaptersQuery(novelId);
-  const chapterId = activeChapterFallback(chapters.data ?? []);
+  const chapterId = chapterProp ?? activeChapterFallback(chapters.data ?? []);
+  // The target the dialog names: the row the id resolves to, unnamed chapters
+  // under the rail's own placeholder — the same words the palette's chapter
+  // rows wear.
+  const chapter = (chapters.data ?? []).find((row) => row.id === chapterId) ?? null;
+  const title =
+    chapter === null ? null : chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
   const [jobId, setJobId] = useState<string | null>(null);
   const [enqueueFailed, setEnqueueFailed] = useState(false);
   const job = useJobQuery(jobId);
@@ -104,9 +121,14 @@ function ExtractionForm({ novelId, close }: { novelId: string; close: () => void
       {chapterId === null ? (
         <p className="text-body text-muted">{t("knowledge.noActiveChapter")}</p>
       ) : (
-        <Button variant="primary" onClick={() => void extract()} disabled={busy}>
-          {t("knowledge.extractChapter")}
-        </Button>
+        <>
+          {title === null ? null : (
+            <p className="text-body text-muted">{t("knowledge.extractionTarget", { title })}</p>
+          )}
+          <Button variant="primary" onClick={() => void extract()} disabled={busy}>
+            {t("knowledge.extractChapter")}
+          </Button>
+        </>
       )}
       {enqueueFailed ? (
         <Notice tone="danger" live="alert">

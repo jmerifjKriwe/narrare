@@ -55,6 +55,7 @@
   "knowledge.extractChapter": "Search this chapter",
   "knowledge.extractionError": "The extraction could not be started.",
   "knowledge.extractionHeading": "Extraction",
+  "knowledge.extractionTarget": "Extracting from {title}.",
   "knowledge.fileLabel": "Document",
   "knowledge.filterAllTags": "All tags",
   "knowledge.filterAllTypes": "All types",

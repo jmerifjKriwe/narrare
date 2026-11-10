@@ -55,6 +55,7 @@
   "knowledge.extractChapter": "Dieses Kapitel durchsuchen",
   "knowledge.extractionError": "Die Durchsuchung konnte nicht gestartet werden.",
   "knowledge.extractionHeading": "Extraktion",
+  "knowledge.extractionTarget": "Wird durchsucht: {title}.",
   "knowledge.fileLabel": "Dokument",
   "knowledge.filterAllTags": "Alle Tags",
   "knowledge.filterAllTypes": "Alle Typen",

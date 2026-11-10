@@ -8,6 +8,7 @@ here the lane answers). Both flows end on the accessibility floor with the
 done row on screen.
 """
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import httpx
@@ -37,12 +38,13 @@ CONTRADICTING_BODIES = (
 )
 
 
-def _seed_chapter(client: httpx.Client, novel_id: str, body: str) -> None:
-    """One chapter through the API, written and saved — what the jobs read."""
-    chapter = client.post(f"{API}/api/writing/novels/{novel_id}/chapters", json={"title": ""})
+def _seed_chapter(client: httpx.Client, novel_id: str, body: str, title: str = "") -> str:
+    """One chapter through the API, written and saved — what the jobs read; returns its id."""
+    chapter = client.post(f"{API}/api/writing/novels/{novel_id}/chapters", json={"title": title})
     chapter.raise_for_status()
     written = client.put(f"{API}/api/writing/chapters/{chapter.json()['id']}", json={"body": body})
     written.raise_for_status()
+    return str(chapter.json()["id"])
 
 
 def _seed_novel(client: httpx.Client, title: str, bodies: tuple[str, ...]) -> str:
@@ -79,6 +81,44 @@ def test_palette_runs_extraction_to_done(page: Page, stack: Stack) -> None:
     _run_palette_command(page, "Entitäten aus Kapitel", "Entitäten aus Kapitel extrahieren")
     dialog = page.get_by_role("dialog", name="Extraktion")
     expect(dialog).to_be_visible()
+    trigger = dialog.get_by_role("button", name="Dieses Kapitel durchsuchen")
+    trigger.click()
+    expect(trigger).to_be_disabled()
+    status = dialog.locator("[data-job-status]")
+    expect(status).to_be_visible()
+    expect(status).to_have_attribute("data-job-status", "done", timeout=60_000)
+    expect(trigger).to_be_enabled()
+    assert_accessible(page)
+
+
+def test_palette_extraction_names_the_shown_chapter(page: Page, stack: Stack) -> None:
+    """The palette's extraction names the chapter the workspace shows, not the fallback.
+
+    Two titled chapters make the last-touched fallback differ from the open
+    one: the workspace opens on the first chapter's address, the palette row
+    runs, and the dialog names the first chapter — the same precedence the
+    dock panel keeps. The trigger then runs that chapter's lane to done.
+    """
+    with httpx.Client(timeout=30) as client:
+        novel = client.post(f"{API}/api/writing/novels", json={"title": "Die gezeigte Wahl"})
+        novel.raise_for_status()
+        novel_id = str(novel.json()["id"])
+        shown_id = _seed_chapter(client, novel_id, CHAPTER_BODY, title="Erste Spur")
+        latest_id = _seed_chapter(client, novel_id, CHAPTER_BODY, title="Zweite Spur")
+        rows = client.get(f"{API}/api/writing/novels/{novel_id}/chapters")
+        rows.raise_for_status()
+        # The seeding order must leave the shown chapter off the fallback, or
+        # the naming assertion below would pass vacuously.
+        newest = max(rows.json(), key=lambda row: datetime.fromisoformat(row["updated_at"]))
+        assert str(newest["id"]) == latest_id != shown_id
+    page.goto(f"{BASE}/novels/{novel_id}?chapter={shown_id}")
+    expect(page.get_by_role("heading", name="Die gezeigte Wahl")).to_be_visible()
+
+    _run_palette_command(page, "Entitäten aus Kapitel", "Entitäten aus Kapitel extrahieren")
+    dialog = page.get_by_role("dialog", name="Extraktion")
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_text("Erste Spur")).to_be_visible()
+    expect(dialog.get_by_text("Zweite Spur")).to_have_count(0)
     trigger = dialog.get_by_role("button", name="Dieses Kapitel durchsuchen")
     trigger.click()
     expect(trigger).to_be_disabled()
