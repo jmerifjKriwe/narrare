@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "@shell/lib/api/client";
+import { structures } from "@shell/lib/generated/structures";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 import { CHAPTER_LIMIT, StoryboardPage, readStoryboard } from "./StoryboardPage";
@@ -530,6 +531,69 @@ describe("StoryboardPage remap", () => {
     expect(applied.body).toEqual({ structure_id: "heros-journey", confirm: true });
     // The canvas re-reads onto the new structure's columns.
     expect(await screen.findByRole("heading", { name: "Ordinary world" })).toBeTruthy();
+  });
+});
+
+describe("StoryboardPage structure switcher", () => {
+  it("offers one option per generated registry row", async () => {
+    // The generated registry is the contract: a new structure appears in
+    // the switcher by existing, with no page change. The length pins the
+    // current registry so adding one is a deliberate test edit, not drift.
+    expect(structures.map((row) => row.id).sort()).toEqual(
+      ["five-act", "heros-journey", "save-the-cat", "seven-point", "three-act"],
+    );
+    mockApi();
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await screen.findByRole("group", { name: "Ankunft" });
+    await user.click(screen.getByRole("button", { name: "Preview structure change" }));
+    const dialog = await screen.findByRole("dialog");
+    const group = within(dialog).getByRole("group", { name: "Structure" });
+
+    expect(within(group).getAllByRole("button")).toHaveLength(structures.length);
+    for (const name of [
+      "Three acts",
+      "Hero's journey",
+      "Save the cat",
+      "Five acts",
+      "Seven points",
+    ]) {
+      expect(within(group).getByRole("button", { name })).toBeTruthy();
+    }
+  });
+
+  it("previews a save-the-cat mapping from the backend's own stage keys", async () => {
+    mockApi();
+    api.POST.mockImplementationOnce(async () => ({
+      data: {
+        novel_id: NOVEL_ID,
+        structure_id: "save-the-cat",
+        confirmed: false,
+        mapping: [
+          { chapter_id: CHAPTER_A, from_stage: "setup", to_stage: "catalyst" },
+          { chapter_id: CHAPTER_B, from_stage: "confrontation", to_stage: "fun-and-games" },
+        ],
+      },
+      response: { ok: true },
+    }));
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await screen.findByRole("group", { name: "Ankunft" });
+    await user.click(screen.getByRole("button", { name: "Preview structure change" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save the cat" }));
+
+    // The before/after names come from the mapping the backend returned,
+    // not from a list the page holds: unknown keys would render raw.
+    expect(await within(dialog).findByText(/Setup → Catalyst/)).toBeTruthy();
+    expect(within(dialog).getByText(/Confrontation → Fun and games/)).toBeTruthy();
+    const [, preview] = api.POST.mock.calls[0] as [
+      string,
+      { body: { structure_id: string; confirm: boolean } },
+    ];
+    expect(preview.body).toEqual({ structure_id: "save-the-cat", confirm: false });
   });
 });
 

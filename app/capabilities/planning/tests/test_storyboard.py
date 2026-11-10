@@ -297,7 +297,7 @@ async def test_unknown_structure_is_422_and_writes_nothing() -> None:
         before = (await client.get(_storyboard(novel_id))).json()
 
         refused = await client.post(
-            _remap(novel_id), json={"structure_id": "save-the-cat", "confirm": True}
+            _remap(novel_id), json={"structure_id": "three-moods", "confirm": True}
         )
 
         assert refused.status_code == 422

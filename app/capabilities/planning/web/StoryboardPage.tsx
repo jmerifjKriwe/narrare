@@ -6,7 +6,8 @@ import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
-import { t as translate, useTranslation, type MessageKey } from "@shell/lib/i18n";
+import { structures } from "@shell/lib/generated/structures";
+import { t as translate, useTranslation } from "@shell/lib/i18n";
 import { usePageTitle } from "@shell/lib/pageTitle";
 import { useNovelsQuery } from "@shell/lib/query";
 import { ActionMenu } from "@shell/ui/Menu";
@@ -23,9 +24,6 @@ type Remap = components["schemas"]["RemapRead"];
  *  states its size beside the slice it shows, and the rest stays one
  *  query away. */
 export const CHAPTER_LIMIT = 200;
-
-/** The structures the switcher offers, in the backend registry's own ids. */
-const STRUCTURES = ["three-act", "heros-journey"] as const;
 
 /**
  * The seam the canvas reads through: the page renders only what this
@@ -397,13 +395,12 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
   );
 }
 
-/** The structure's name: the catalog's when it holds one, the id else. */
+/** The structure's name: the generated registry's title key when it holds
+ *  the id, the raw id else — a structure the generator has not seen yet
+ *  still renders instead of crashing the canvas. */
 function structureName(t: typeof translate, structureId: string): string {
-  const key = `storyboard.structure.${structureId}`;
-  if (structureId === "three-act" || structureId === "heros-journey") {
-    return t(key as MessageKey);
-  }
-  return structureId;
+  const row = structures.find((entry) => entry.id === structureId);
+  return row === undefined ? structureId : t(row.titleKey);
 }
 
 /** The drag payload's wire type: the card's id and the column it stands in. */
@@ -664,14 +661,14 @@ function RemapForm({
   return (
     <div className="mt-4 flex flex-col gap-3">
       <div className="flex flex-wrap gap-2" role="group" aria-label={t("storyboard.structure")}>
-        {STRUCTURES.map((structureId) => (
+        {structures.map((structure) => (
           <Button
-            key={structureId}
+            key={structure.id}
             variant="secondary"
-            aria-pressed={target === structureId || (target === null && structureId === board.structure_id)}
-            onClick={() => void choose(structureId)}
+            aria-pressed={target === structure.id || (target === null && structure.id === board.structure_id)}
+            onClick={() => void choose(structure.id)}
           >
-            {structureName(t, structureId)}
+            {structureName(t, structure.id)}
           </Button>
         ))}
       </div>
