@@ -152,6 +152,38 @@ describe("NeighborhoodLens graph", () => {
     );
   });
 
+  it("a selection switch unmounts the old graph instead of reusing its canvas", async () => {
+    mockNovel(
+      [mira, haus, turm],
+      [relation("r-1", "e-mira", "e-haus"), relation("r-2", "e-haus", "e-turm")],
+    );
+    renderLens("/novels/novel/knowledge?entity=e-mira");
+    const user = userEvent.setup();
+
+    // Both neighborhoods land in the cache: the switches below read
+    // synchronously, so a reused canvas would survive them.
+    await screen.findByRole("button", { name: "Mira" });
+    await user.click(screen.getByRole("button", { name: "Haus" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Haus" }).getAttribute("aria-pressed")).toBe(
+        "true",
+      ),
+    );
+    const before = screen.getByRole("region", { name: "Neighborhood" });
+    await user.click(screen.getByRole("button", { name: "Mira" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Mira" }).getAttribute("aria-pressed")).toBe(
+        "true",
+      ),
+    );
+    // The switch remounted the graph keyed by the selection: the old
+    // canvas is gone from the document, never a hybrid frame carrying the
+    // previous neighborhood while the new answer lands.
+    const after = screen.getByRole("region", { name: "Neighborhood" });
+    expect(after).not.toBe(before);
+    expect(before.isConnected).toBe(false);
+  });
+
   it("renders the entity alone and says so when it has no relations", async () => {
     mockNovel([mira, haus], []);
     renderLens("/novels/novel/knowledge?entity=e-mira");

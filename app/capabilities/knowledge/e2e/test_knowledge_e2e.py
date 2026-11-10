@@ -366,16 +366,19 @@ def test_one_documents_row_keeps_its_height_and_fits_a_phone(
     assert_accessible(page)
 
 
-def _seed_graph_novel() -> tuple[str, str, str]:
+def _seed_graph_novel(title: str = "Die graphische Bucht") -> tuple[str, str, str]:
     """A novel with two accepted entities joined by one edge, through the API.
 
     The entities enter the world the only way they can — the extraction
     job over a real chapter, and the review's accept — and the edge rides
     the real relation create. Returns the novel's id and the two entity
-    names, the words the canvas must then show.
+    names, the words the canvas must then show. The title is a parameter
+    so two graph tests sharing the module's database never file the same
+    book twice — the picker names novels by title, and a duplicate would
+    trip its strict lookup.
     """
     with httpx.Client(base_url=API_URL, timeout=30) as api:
-        novel = api.post("/api/writing/novels", json={"title": "Die graphische Bucht"})
+        novel = api.post("/api/writing/novels", json={"title": title})
         novel.raise_for_status()
         novel_id = novel.json()["id"]
         chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
@@ -453,6 +456,61 @@ def test_the_graph_canvas_shows_two_entities_and_their_edge(page: Page, stack: S
     # document face alone cannot fail — width only, the page's own
     # vertical scroll stays allowed by design. The +1 is sub-pixel
     # rounding, the viewport floor's own tolerance.
+    main = page.evaluate(
+        "() => { const main = document.getElementById('main');"
+        " return main === null ? null :"
+        " { scroll: main.scrollWidth, client: main.clientWidth }; }"
+    )
+    assert main is not None
+    assert main["scroll"] <= main["client"] + 1
+
+    assert_accessible(page)
+
+
+def test_the_graph_canvas_zooms_and_resets(page: Page, stack: Stack) -> None:
+    """The canvas pans and zooms without losing the graph.
+
+    Zooming in narrows the rendered viewBox around a stable centre; the
+    reset restores the fitted view in one action. The three controls are
+    real buttons with catalog labels — wheel and drag are extras, never
+    the only way. At a desk's 1280 px the toolbar and canvas still own
+    the page without widening it.
+    """
+    novel_id, first, _second = _seed_graph_novel("Die gezoomte Bucht")
+
+    page.goto(f"{WEB_URL}/knowledge/graph?novel={novel_id}")
+    canvas = page.get_by_role("group", name="Entitätengraph")
+    expect(canvas).to_be_visible()
+    fit = canvas.get_attribute("viewBox")
+    assert fit is not None
+    fit_parts = [float(part) for part in fit.split()]
+    assert len(fit_parts) == 4
+
+    # Selection first, at the fitted view where every node is clickable.
+    page.get_by_role("button", name=first).click()
+    detail = page.get_by_role("region", name=first)
+    expect(detail).to_be_visible()
+
+    page.get_by_role("button", name="Vergrößern").click()
+    zoomed = canvas.get_attribute("viewBox")
+    assert zoomed is not None
+    zoomed_parts = [float(part) for part in zoomed.split()]
+    assert zoomed != fit
+    assert zoomed_parts[2] < fit_parts[2]
+    assert zoomed_parts[3] < fit_parts[3]
+    # The visible centre stays put: the zoom is centred, not cornered.
+    assert (zoomed_parts[0] + zoomed_parts[2] / 2) == pytest.approx(fit_parts[0] + fit_parts[2] / 2)
+    assert (zoomed_parts[1] + zoomed_parts[3] / 2) == pytest.approx(fit_parts[1] + fit_parts[3] / 2)
+
+    # The selection survives the zoom: the detail stands, still doorless.
+    expect(detail).to_be_visible()
+    expect(detail.get_by_role("button")).to_have_count(0)
+
+    page.get_by_role("button", name="Ansicht zurücksetzen").click()
+    expect(canvas).to_have_attribute("viewBox", fit)
+
+    page.set_viewport_size({"width": 1280, "height": 800})
+    assert page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth") <= 0
     main = page.evaluate(
         "() => { const main = document.getElementById('main');"
         " return main === null ? null :"

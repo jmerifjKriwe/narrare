@@ -24,7 +24,7 @@ const entity = (id: string, type: string, tags: string[] = []) => ({
   created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
 });
 
-function renderPanel() {
+function renderPanel(entry = "/novels/novel/knowledge") {
   const novel = createRoute({
     getParentRoute: () => rootRoute,
     path: "/novels/$id",
@@ -38,11 +38,11 @@ function renderPanel() {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([novel.addChildren([knowledge])]),
-    history: createMemoryHistory({ initialEntries: ["/novels/novel/knowledge"] }),
+    history: createMemoryHistory({ initialEntries: [entry] }),
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
-  return queryClient;
+  return { queryClient, router };
 }
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -56,7 +56,7 @@ describe("EntitiesPanel filters", () => {
       return { data: filtered, response: { ok: true } };
     });
     api.POST.mockResolvedValue({ data: [], response: { ok: true } });
-    const queryClient = renderPanel();
+    const { queryClient } = renderPanel();
     const user = userEvent.setup();
 
     await screen.findByText("Aster");
@@ -79,6 +79,25 @@ describe("EntitiesPanel filters", () => {
     // standing would still narrow it out.
     expect(await screen.findByText("Harbor")).toBeTruthy();
     expect(screen.queryByText("No results")).toBeNull();
+  });
+});
+
+describe("EntitiesPanel dead selection", () => {
+  it("clears a dead ?entity= from the address, like the lens", async () => {
+    // The shared cleanup's contract from the list's side: the novel's rows
+    // arrive, the unknown id matches nothing, and the address loses it —
+    // no selection, never an error.
+    api.GET.mockImplementation(async (path: string) => {
+      if (path.includes("relations")) return { data: [], response: { ok: true } };
+      return { data: [entity("Aster", "character")], response: { ok: true } };
+    });
+    api.POST.mockResolvedValue({ data: [], response: { ok: true } });
+    const { router } = renderPanel("/novels/novel/knowledge?entity=dead-id");
+
+    await screen.findByText("Aster");
+    await waitFor(() =>
+      expect((router.state.location.search as { entity?: string }).entity).toBeUndefined(),
+    );
   });
 });
 

@@ -6,11 +6,12 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "@shell/lib/api/client";
+import { structures } from "@shell/lib/generated/structures";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
 import { CHAPTER_LIMIT, StoryboardPage, readStoryboard } from "./StoryboardPage";
@@ -18,6 +19,34 @@ import { CHAPTER_LIMIT, StoryboardPage, readStoryboard } from "./StoryboardPage"
 vi.mock("@shell/lib/api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
 }));
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  const useQuery = (...args: Array<unknown>) => {
+    // Test-only delegation: the wrapper runs in the component's own render
+    // exactly where the real hook would, and only swaps the storyboard
+    // read's refetch.
+    const result = (
+      actual.useQuery as unknown as (...call: Array<unknown>) => Record<string, unknown>
+    )(...args);
+    const options = args[0] as { queryKey?: unknown } | undefined;
+    if (
+      rejectStoryboardRefetch &&
+      Array.isArray(options?.queryKey) &&
+      options.queryKey[1] === "storyboard"
+    ) {
+      return { ...result, refetch: () => Promise.reject(new Error("refetch down")) };
+    }
+    return result;
+  };
+  return { ...actual, useQuery: useQuery as unknown as typeof actual.useQuery };
+});
+
+/** Rejects the storyboard read's refetch while set. The observer's own
+ *  refetch swallows query failures (`.catch(noop)` without throwOnError),
+ *  so a failing GET resolves and can never exercise the post-success
+ *  `finally` — the pin rejects the refetch itself instead. */
+let rejectStoryboardRefetch = false;
 
 const api = client as unknown as {
   GET: ReturnType<typeof vi.fn>;
@@ -226,6 +255,7 @@ afterEach(() => {
   queryClient.clear();
   resetBoard();
   liveNovels = [novel(NOVEL_ID, "Die geplante Bucht")];
+  rejectStoryboardRefetch = false;
 });
 
 describe("readStoryboard", () => {
@@ -323,6 +353,155 @@ describe("StoryboardPage move", () => {
   });
 });
 
+describe("StoryboardPage drag and drop", () => {
+  /** A stand-in for the DataTransfer jsdom does not implement. */
+  function dataTransfer() {
+    const store = new Map<string, string>();
+    return {
+      setData(type: string, value: string) {
+        store.set(type, value);
+      },
+      getData(type: string) {
+        return store.get(type) ?? "";
+      },
+      effectAllowed: "move",
+      dropEffect: "move",
+    };
+  }
+
+  function dragCard(card: HTMLElement) {
+    const bag = dataTransfer();
+    fireEvent.dragStart(card, { dataTransfer: bag });
+    return bag;
+  }
+
+  it("drops the card onto another stage through the same move path", async () => {
+    mockApi();
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+
+    const card = await screen.findByRole("group", { name: "Ankunft" });
+    expect(card.getAttribute("draggable")).toBe("true");
+    const bag = dragCard(card);
+    const target = await screen.findByRole("region", { name: "Confrontation" });
+    fireEvent.dragOver(target, { dataTransfer: bag });
+    // The column under the pointer names itself as the drop target.
+    expect(target.getAttribute("data-drop-active")).toBe("true");
+    fireEvent.drop(target, { dataTransfer: bag });
+
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+    const [, options] = api.PUT.mock.calls[0] as [
+      string,
+      { body: { stage_key: string }; params: { path: { chapter_id: string } } },
+    ];
+    expect(options.body.stage_key).toBe("confrontation");
+    const column = await screen.findByRole("region", { name: "Confrontation" });
+    expect(within(column).getByRole("group", { name: "Ankunft" })).toBeTruthy();
+  });
+
+  it("sends no request when the card lands on its own column", async () => {
+    mockApi();
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+
+    const card = await screen.findByRole("group", { name: "Ankunft" });
+    const bag = dragCard(card);
+    const home = await screen.findByRole("region", { name: "Setup" });
+    fireEvent.dragOver(home, { dataTransfer: bag });
+    fireEvent.drop(home, { dataTransfer: bag });
+
+    await waitFor(() => expect(home.getAttribute("data-drop-active")).toBe(null));
+    expect(api.PUT).not.toHaveBeenCalled();
+  });
+
+  it("snaps a refused drop back and names the retry", async () => {
+    mockApi();
+    api.PUT.mockResolvedValueOnce({
+      data: undefined,
+      error: { detail: "chapter the novel does not hold" },
+      response: { ok: false, status: 422 },
+    });
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+
+    const card = await screen.findByRole("group", { name: "Ankunft" });
+    const bag = dragCard(card);
+    const target = await screen.findByRole("region", { name: "Confrontation" });
+    fireEvent.drop(target, { dataTransfer: bag });
+
+    // The refusal names itself where the retry sits, and the card snaps
+    // back to the column the server still holds it in.
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Saving failed: chapter the novel does not hold");
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+    const home = await screen.findByRole("region", { name: "Setup" });
+    expect(within(home).getByRole("group", { name: "Ankunft" })).toBeTruthy();
+  });
+
+  it("disables dragging while a save is in flight", async () => {
+    mockApi();
+    let release!: (value: unknown) => void;
+    api.PUT.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+
+    const card = await screen.findByRole("group", { name: "Ankunft" });
+    fireEvent.drop(await screen.findByRole("region", { name: "Confrontation" }), {
+      dataTransfer: dragCard(card),
+    });
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+    // While the PUT is out the cards stop being draggable, and a second
+    // drop lands nowhere. The optimistic move remounts the card in its new
+    // column, so the test re-queries instead of holding the stale node.
+    const flying = await screen.findByRole("group", { name: "Ankunft" });
+    await waitFor(() => expect(flying.getAttribute("draggable")).toBe("false"));
+    fireEvent.drop(await screen.findByRole("region", { name: "Resolution" }), {
+      dataTransfer: dragCard(card),
+    });
+    release({ data: undefined, response: { ok: true } });
+    await waitFor(() => expect(card.getAttribute("draggable")).toBe("true"));
+    expect(api.PUT).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears pending when the post-success refetch rejects", async () => {
+    mockApi();
+    rejectStoryboardRefetch = true;
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    const card = await screen.findByRole("group", { name: "Ankunft" });
+    await user.click(within(card).getByRole("button", { name: "Move Ankunft to another stage" }));
+    await user.click(screen.getByRole("menuitem", { name: "Confrontation" }));
+
+    await waitFor(() => expect(api.PUT).toHaveBeenCalledTimes(1));
+    // The refetch rejected behind the move: the board still stands on its
+    // cached answer, and the card is draggable again — pending never stuck.
+    const back = await screen.findByRole("group", { name: "Ankunft" });
+    await waitFor(() => expect(back.getAttribute("draggable")).toBe("true"));
+  });
+
+  it("clears the highlight when the drag ends without a drop", async () => {
+    mockApi();
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+
+    const card = await screen.findByRole("group", { name: "Ankunft" });
+    const bag = dataTransfer();
+    bag.dropEffect = "none";
+    fireEvent.dragStart(card, { dataTransfer: bag });
+    const target = await screen.findByRole("region", { name: "Confrontation" });
+    fireEvent.dragOver(target, { dataTransfer: bag });
+    expect(target.getAttribute("data-drop-active")).toBe("true");
+    // Esc, or a drop outside after re-enter without leave: the drag ends on
+    // the card and no drop follows — the ring still goes out.
+    fireEvent.dragEnd(card, { dataTransfer: bag });
+    expect(target.getAttribute("data-drop-active")).toBe(null);
+    expect(bag.dropEffect).toBe("move");
+    expect(api.PUT).not.toHaveBeenCalled();
+  });
+
+});
+
 describe("StoryboardPage remap", () => {
   it("previews the mapping before applying it", async () => {
     mockApi();
@@ -352,6 +531,69 @@ describe("StoryboardPage remap", () => {
     expect(applied.body).toEqual({ structure_id: "heros-journey", confirm: true });
     // The canvas re-reads onto the new structure's columns.
     expect(await screen.findByRole("heading", { name: "Ordinary world" })).toBeTruthy();
+  });
+});
+
+describe("StoryboardPage structure switcher", () => {
+  it("offers one option per generated registry row", async () => {
+    // The generated registry is the contract: a new structure appears in
+    // the switcher by existing, with no page change. The length pins the
+    // current registry so adding one is a deliberate test edit, not drift.
+    expect(structures.map((row) => row.id).sort()).toEqual(
+      ["five-act", "heros-journey", "save-the-cat", "seven-point", "three-act"],
+    );
+    mockApi();
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await screen.findByRole("group", { name: "Ankunft" });
+    await user.click(screen.getByRole("button", { name: "Preview structure change" }));
+    const dialog = await screen.findByRole("dialog");
+    const group = within(dialog).getByRole("group", { name: "Structure" });
+
+    expect(within(group).getAllByRole("button")).toHaveLength(structures.length);
+    for (const name of [
+      "Three acts",
+      "Hero's journey",
+      "Save the cat",
+      "Five acts",
+      "Seven points",
+    ]) {
+      expect(within(group).getByRole("button", { name })).toBeTruthy();
+    }
+  });
+
+  it("previews a save-the-cat mapping from the backend's own stage keys", async () => {
+    mockApi();
+    api.POST.mockImplementationOnce(async () => ({
+      data: {
+        novel_id: NOVEL_ID,
+        structure_id: "save-the-cat",
+        confirmed: false,
+        mapping: [
+          { chapter_id: CHAPTER_A, from_stage: "setup", to_stage: "catalyst" },
+          { chapter_id: CHAPTER_B, from_stage: "confrontation", to_stage: "fun-and-games" },
+        ],
+      },
+      response: { ok: true },
+    }));
+    renderPage(`/planning/storyboard?novel=${NOVEL_ID}`);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await screen.findByRole("group", { name: "Ankunft" });
+    await user.click(screen.getByRole("button", { name: "Preview structure change" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save the cat" }));
+
+    // The before/after names come from the mapping the backend returned,
+    // not from a list the page holds: unknown keys would render raw.
+    expect(await within(dialog).findByText(/Setup → Catalyst/)).toBeTruthy();
+    expect(within(dialog).getByText(/Confrontation → Fun and games/)).toBeTruthy();
+    const [, preview] = api.POST.mock.calls[0] as [
+      string,
+      { body: { structure_id: string; confirm: boolean } },
+    ];
+    expect(preview.body).toEqual({ structure_id: "save-the-cat", confirm: false });
   });
 });
 

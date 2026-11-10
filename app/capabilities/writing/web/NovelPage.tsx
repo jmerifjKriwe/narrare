@@ -5,6 +5,7 @@ import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { queryClient, useDeleteChapter } from "@shell/lib/query";
 import { unsavedStatus } from "@shell/lib/save";
+import { shortcutKeycap } from "@shell/lib/shortcuts";
 import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 
@@ -259,7 +260,7 @@ export function NovelPage() {
 
       {focus === 2 && hintShown ? (
         <p role="status" className="mt-4 text-center text-meta text-muted">
-          {t("workspace.focusHint")}
+          {t("workspace.focusHint", { key: shortcutKeycap("workspace.stepBack") })}
         </p>
       ) : null}
 

@@ -21,14 +21,15 @@ class StageDef:
     to_ratio: float
 
 
-def _even_twelfths(keys: list[str]) -> tuple[StageDef, ...]:
-    """Twelve contiguous stages, each one twelfth of the story."""
+def _even_stages(keys: list[str]) -> tuple[StageDef, ...]:
+    """Contiguous stages tiling the unit interval, one share per key."""
+    count = len(keys)
     return tuple(
         StageDef(
             key=key,
             title_key=f"storyboard.stage.{key}",
-            from_ratio=index / 12,
-            to_ratio=(index + 1) / 12,
+            from_ratio=index / count,
+            to_ratio=(index + 1) / count,
         )
         for index, key in enumerate(keys)
     )
@@ -50,7 +51,7 @@ STRUCTURES: dict[str, tuple[StageDef, ...]] = {
             to_ratio=1.0,
         ),
     ),
-    "heros-journey": _even_twelfths(
+    "heros-journey": _even_stages(
         [
             "ordinary-world",
             "call-to-adventure",
@@ -64,6 +65,45 @@ STRUCTURES: dict[str, tuple[StageDef, ...]] = {
             "road-back",
             "resurrection",
             "return",
+        ]
+    ),
+    "save-the-cat": _even_stages(
+        [
+            "opening-image",
+            "theme-stated",
+            "set-up",
+            "catalyst",
+            "debate",
+            "break-into-two",
+            "b-story",
+            "fun-and-games",
+            "midpoint",
+            "bad-guys-close-in",
+            "all-is-lost",
+            "dark-night-of-the-soul",
+            "break-into-three",
+            "finale",
+            "final-image",
+        ]
+    ),
+    "five-act": _even_stages(
+        [
+            "exposition",
+            "rising-action",
+            "climax",
+            "falling-action",
+            "resolution",
+        ]
+    ),
+    "seven-point": _even_stages(
+        [
+            "hook",
+            "plot-turn-1",
+            "pinch-point-1",
+            "midpoint",
+            "pinch-point-2",
+            "plot-turn-2",
+            "resolution",
         ]
     ),
 }

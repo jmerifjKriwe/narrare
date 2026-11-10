@@ -13,6 +13,7 @@ import { StreamError } from "@shell/ui/StreamError";
 import type { Editor } from "@tiptap/core";
 
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
+import { slashPalette } from "./slashPalette";
 
 /**
  * Edit a chapter, with proposals kept as ghost text until accepted. Saving is
@@ -136,8 +137,10 @@ export function ChapterEditor({
   };
 
   // Ghost text rides the shared editor as an extra extension; nothing about
-  // the ghost contract changes with the storage format.
-  const extensions = useMemo(() => [ghostText(handlers)], []);
+  // the ghost contract changes with the storage format. The slash door rides
+  // beside it: `/` in an empty paragraph opens the palette, anywhere else it
+  // stays a literal slash.
+  const extensions = useMemo(() => [ghostText(handlers), slashPalette()], []);
 
   // The two proposal sources: the prop (the bus drives the same contract) and
   // this component's own stream. The prop wins when it has an opinion.

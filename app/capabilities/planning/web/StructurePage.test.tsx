@@ -189,6 +189,59 @@ describe("StructurePage bands", () => {
     expect(resolution.getAttribute("style")).toContain("25%");
   });
 
+  it("renders twelve hero's-journey bands at a narrow width with no sideways overflow", async () => {
+    // The widest structure at a phone's width: twelve bands must still
+    // stand, each with its share of the bar — jsdom pins the structure
+    // (flex strip at full width, bands that shrink and clip), pixels belong
+    // to the E2E's scrollWidth idiom.
+    const keys = [
+      "ordinary-world",
+      "call-to-adventure",
+      "refusal",
+      "mentor",
+      "threshold",
+      "tests-allies-enemies",
+      "approach",
+      "ordeal",
+      "reward",
+      "road-back",
+      "resurrection",
+      "return",
+    ];
+    liveBoard = {
+      novel_id: NOVEL_ID,
+      structure_id: "heros-journey",
+      stages: keys.map((key, index) => {
+        const from = index / keys.length;
+        return stage(
+          `hero-${key}`,
+          `storyboard.stage.${key}`,
+          from,
+          from + 1 / keys.length,
+          // One chapter keeps the canvas out of its empty state; the other
+          // eleven bands stand empty, as a started novel's tail does.
+          index === 0
+            ? [chapterEntry("chapter-a", "Ankunft", { position: 0, stage_key: key })]
+            : [],
+        );
+      }),
+    };
+    mockApi();
+    renderPage(`/planning/structure?novel=${NOVEL_ID}`);
+
+    const bands = await screen.findAllByRole("region");
+    expect(bands).toHaveLength(12);
+    for (const band of bands) {
+      expect(band.getAttribute("style")).toContain("8.333");
+      expect(band.className).toContain("min-w-0");
+      expect(band.className).toContain("overflow-hidden");
+    }
+    const strip = bands[0].parentElement;
+    expect(strip?.className).toContain("flex");
+    expect(strip?.className).toContain("w-full");
+    liveBoard = makeBoard();
+  });
+
   it("orders the chapters inside their band by position", async () => {
     mockApi();
     renderPage(`/planning/structure?novel=${NOVEL_ID}`);

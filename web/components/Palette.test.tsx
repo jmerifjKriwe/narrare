@@ -31,7 +31,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { client } from "../lib/api/client";
 import { t } from "../lib/i18n";
 import { applyLocale } from "../lib/locale";
+import { requestPaletteOpen } from "../lib/palette";
 import { queryClient } from "../lib/query";
+import { shortcutKeycap } from "../lib/shortcuts";
 import { rootRoute } from "../routes/__root";
 
 vi.mock("../lib/api/client", () => ({
@@ -221,10 +223,15 @@ describe("the palette's keyboard contract", () => {
 
     await openPalette();
     const dialog = screen.getByRole("dialog");
-    // The shortcuts are named here, in one place — the §11 row. The keycap
-    // is the platform's own name, so the row is read as its parts.
-    expect(dialog.textContent).toContain("palette");
-    expect(dialog.textContent).toMatch(/⌘K|Ctrl K|Strg K/);
+    // The footer names the workspace's keys through the registry: the
+    // keycaps it shows are the registry's answer, not literals in a row.
+    expect(dialog.textContent).toContain(
+      t("workspace.shortcutHints", {
+        focus: shortcutKeycap("workspace.focusDeeper"),
+        back: shortcutKeycap("workspace.stepBack"),
+        palette: shortcutKeycap("palette.toggle"),
+      }),
+    );
 
     // Ctrl+K is the same key on the other platforms, and it closes again —
     // every close returns the focus, so the next press is captured from the
@@ -454,6 +461,26 @@ describe("the deep links", () => {
     );
     expect(router.state.location.pathname).toBe(`/novels/${NOVEL_ID}`);
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("the slash door", () => {
+  it("prefills the field with '/' and lists the actions, not the empty truth", async () => {
+    mockWorkspace();
+    renderAt(`/novels/${NOVEL_ID}`);
+    // The shell mounts behind the locale gate; the skip link's presence
+    // says the shell — and its slash listener — is there.
+    const banner = await screen.findByRole("banner");
+    await within(banner).findByRole("link", { name: t("shell.skipToContent") });
+    // The ask arrives the way the editor asks it.
+    requestPaletteOpen("/");
+    const input = await searchBox();
+    expect(input.value).toBe("/");
+    // The visible result is the action list: the slash is the door, not
+    // the needle — the commands still list, and no empty truth shows.
+    expect(await paletteRow(t("commands.newChapter"))).toBeTruthy();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByText(t("palette.noResults"))).toBeNull();
   });
 });
 

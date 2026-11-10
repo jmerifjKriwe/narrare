@@ -8,8 +8,8 @@ import { nav } from "../lib/generated/capabilities";
 import { commands } from "../lib/generated/commands";
 import { docks } from "../lib/generated/docks";
 import { useTranslation } from "../lib/i18n";
-import { isMac } from "../lib/platform";
 import { useChaptersQuery, useEntitiesQuery, useNovelsQuery } from "../lib/query";
+import { shortcutKeycap } from "../lib/shortcuts";
 import { OverlayDialog } from "../ui/Dialog";
 import { Row } from "../ui/Row";
 
@@ -297,14 +297,20 @@ function CommandsGroup({
 export function Palette({
   open,
   onOpenChange,
+  initialQuery = "",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The query the field opens prefilled with: ⌘K asks with nothing, the
+   *  editor's slash door with `/`. Read once per open, never live — the
+   *  field is the user's from the first keystroke. */
+  initialQuery?: string;
 }) {
   const t = useTranslation();
   const navigate = useNavigate();
-  // The keycap is the platform's own name for the key that opens this.
-  const paletteKey = t(isMac() ? "shell.paletteKeyMac" : "shell.paletteKeyOther");
+  // The footer names the workspace's keys through the registry — one map
+  // for the whole app, rendered in full in the settings cluster. The keycap
+  // is the platform's own name for the key that opens this.
   // The novel the active route carries, read tolerantly: outside a
   // workspace this is undefined, and Novels takes the first two groups'
   // places.
@@ -334,18 +340,31 @@ export function Palette({
   // React Aria's focus scope restores for its triggers; the palette has no
   // trigger — the key is its opener — so the return is the palette's own.
   const opener = useRef<HTMLElement | null>(null);
+  // The opener's ask arrives with the open — the slash door's `/`, nothing
+  // for the key — so the open transition is what reads it; a change while
+  // open is the user's typing, never a new ask. `wasOpen` pins the
+  // transition: `initialQuery` stays out of the dependency re-read on
+  // purpose.
+  const wasOpen = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initialQuery is the open's question, not a live value — re-reading it mid-open would clobber the user's typing.
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       opener.current = document.activeElement as HTMLElement | null;
-      setQuery("");
+      setQuery(initialQuery);
       setCounts({});
-    } else {
+    } else if (!open && wasOpen.current) {
       opener.current?.focus();
       opener.current = null;
     }
+    wasOpen.current = open;
   }, [open]);
+  // The slash is the door, not the needle: a leading `/` opens the action
+  // list, and what follows it filters — `/` alone shows everything the
+  // context offers. The field keeps the raw text; only the matching reads
+  // past the prefix.
+  const effectiveQuery = query.startsWith("/") ? query.slice(1) : query;
   const shown = Object.values(counts).reduce((sum, count) => sum + count, 0);
-  const nothing = query.trim() !== "" && shown === 0;
+  const nothing = effectiveQuery.trim() !== "" && shown === 0;
 
   // The modal slot the commands share. The palette steps aside when one
   // runs; the slot keeps a fresh key per open, so the same dialog can be
@@ -480,14 +499,14 @@ export function Palette({
             <>
               <ChaptersGroup
                 novelId={novelId}
-                query={query}
+                query={effectiveQuery}
                 onCount={(count) => report("chapters", count)}
                 onRowKeyDown={onRowKeyDown}
                 onJump={jumpToChapter}
               />
               <EntitiesGroup
                 novelId={novelId}
-                query={query}
+                query={effectiveQuery}
                 onCount={(count) => report("entities", count)}
                 onRowKeyDown={onRowKeyDown}
                 onJump={jumpToEntity}
@@ -495,7 +514,7 @@ export function Palette({
             </>
           ) : (
             <NovelsGroup
-              query={query}
+              query={effectiveQuery}
               onCount={(count) => report("novels", count)}
               onRowKeyDown={onRowKeyDown}
               onJump={jumpToNovel}
@@ -503,13 +522,13 @@ export function Palette({
           )}
           <PagesGroup
             novelId={novelId}
-            query={query}
+            query={effectiveQuery}
             onCount={(count) => report("pages", count)}
             onRowKeyDown={onRowKeyDown}
             onOpen={openPage}
           />
           <CommandsGroup
-            query={query}
+            query={effectiveQuery}
             ctx={ctx}
             onCount={(count) => report("commands", count)}
             onRowKeyDown={onRowKeyDown}
@@ -521,10 +540,15 @@ export function Palette({
             </p>
           ) : null}
         </div>
-        {/* §11's row: the focus shortcuts are named here and nowhere
-            else — the palette is the one place the keyboard's map lives. */}
+        {/* §11's row: the focus shortcuts are named here — the palette is
+            where the keyboard's map is looked for; the whole map lives in
+            the settings cluster, read from the same registry. */}
         <p className="border-t border-border px-4 py-2 text-meta text-muted">
-          {t("workspace.shortcutHints", { key: paletteKey })}
+          {t("workspace.shortcutHints", {
+            focus: shortcutKeycap("workspace.focusDeeper"),
+            back: shortcutKeycap("workspace.stepBack"),
+            palette: shortcutKeycap("palette.toggle"),
+          })}
         </p>
       </OverlayDialog>
       {ModalComponent !== null ? (

@@ -141,8 +141,8 @@
   "shelf.report.relationsCreated": "{count, plural, one {# Beziehung wurde angelegt} other {# Beziehungen wurden angelegt}}",
   "shelf.report.relationsUnchanged": "{count, plural, one {# Beziehung bestand bereits} other {# Beziehungen bestanden bereits}}",
   "workspace.dockToggle": "Docks",
-  "workspace.focusHint": "Esc zeigt die Leiste wieder",
+  "workspace.focusHint": "{key} zeigt die Leiste wieder",
   "workspace.focusToggle": "Fokus",
   "workspace.railToggle": "Kapitelleiste",
-  "workspace.shortcutHints": "F9 Fokus · Esc zurück oder verwerfen · {key} Palette"
+  "workspace.shortcutHints": "{focus} Fokus · {back} zurück oder verwerfen · {palette} Palette"
 }

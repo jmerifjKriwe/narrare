@@ -7,6 +7,7 @@ import { TopBar } from "../components/TopBar";
 import { IconRail } from "../components/IconRail";
 import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
+import { PALETTE_OPEN_EVENT, type PaletteOpenDetail } from "../lib/palette";
 import { PageTitleProvider, applyBaseTitle, usePageTitle } from "../lib/pageTitle";
 import { useSettingsQuery } from "../lib/query";
 import { adoptServerTheme } from "../lib/theme";
@@ -82,10 +83,15 @@ function Shell() {
   // workbench's own shortcuts make. ⌘K toggles, so the same press that
   // opened it closes it again.
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // The query the open prefills the field with: nothing for the key, `/`
+  // for the editor's slash door. Read once per open, never live — the
+  // field is the user's from the first keystroke.
+  const [paletteQuery, setPaletteQuery] = useState("");
 
   /** The bar's chip opens what the key opens, under the same refusal. */
   function openPalette(): void {
     if (!paletteCanOpen()) return;
+    setPaletteQuery("");
     setPaletteOpen(true);
   }
 
@@ -95,6 +101,10 @@ function Shell() {
       if (event.defaultPrevented) return;
       if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "K")) {
         event.preventDefault();
+        // The key asks with no query: whatever the last open prefilled is
+        // not this open's question. Resetting on close too is harmless —
+        // the palette reads the query once per open, never live.
+        setPaletteQuery("");
         setPaletteOpen((value) => {
           // Opening over a live dialog would stack a second focus trap on
           // the first: typing would drive a page the dialog shadows, and
@@ -114,6 +124,22 @@ function Shell() {
     };
     window.addEventListener("keydown", onKeydown);
     return () => window.removeEventListener("keydown", onKeydown);
+  }, []);
+
+  // The editor's slash door: one event, one listener, beside the key
+  // above — the shell stays the palette's only opener, and the refusal is
+  // the same: over a live dialog the ask dies, like ⌘K. `paletteOpen`
+  // itself stays the one state above; this signal carries no state of its
+  // own, only the query the open prefills.
+  useEffect(() => {
+    const onSlashDoor = (event: Event) => {
+      if (!paletteCanOpen()) return;
+      const detail = (event as CustomEvent<PaletteOpenDetail>).detail;
+      setPaletteQuery(detail?.query ?? "");
+      setPaletteOpen(true);
+    };
+    window.addEventListener(PALETTE_OPEN_EVENT, onSlashDoor);
+    return () => window.removeEventListener(PALETTE_OPEN_EVENT, onSlashDoor);
   }, []);
 
   if (!ready) return null;
@@ -159,7 +185,7 @@ function Shell() {
         </div>
         {/* The keyboard surface, mounted with the shell: one instance, every
             route, and its ⌘K listener above. */}
-        <Palette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        <Palette open={paletteOpen} onOpenChange={setPaletteOpen} initialQuery={paletteQuery} />
       </div>
     </PageTitleProvider>
   );

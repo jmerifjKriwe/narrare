@@ -1,6 +1,7 @@
 import type { Chapter } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import type { DocumentDraft, SaveStatus } from "@shell/lib/save";
+import { shortcutKeycap } from "@shell/lib/shortcuts";
 import { Button } from "@shell/ui/Button";
 import { ActionMenu } from "@shell/ui/Menu";
 import { Notice } from "@shell/ui/Notice";
@@ -166,17 +167,19 @@ export function EditorColumn({
                         id: "moveUp",
                         // The ends are their own no-ops, offered but
                         // disabled: the shortcut the hint names is the
-                        // rail's own Alt+↑ (D6), discoverable exactly
-                        // where the action lives. A filter disables
-                        // the move wherever the row sits — a filtered
-                        // list has no unambiguous neighbour — and the
-                        // label itself says why, so the reason travels
-                        // with the item to readers and screens alike.
+                        // rail's own reorder key from the shell registry
+                        // (D6), discoverable exactly where the action
+                        // lives — the platform's own keycap, not a
+                        // literal. A filter disables the move wherever
+                        // the row sits — a filtered list has no
+                        // unambiguous neighbour — and the label itself
+                        // says why, so the reason travels with the item
+                        // to readers and screens alike.
                         label:
                           railFilter === null
                             ? t("chapters.moveUp")
                             : t("chapters.moveUpFiltered"),
-                        shortcut: "Alt+↑",
+                        shortcut: shortcutKeycap("rail.moveUp"),
                         disabled: railFilter !== null || currentIndex <= 0,
                         onSelect: () => void onMove(current.id, -1),
                       },
@@ -186,7 +189,7 @@ export function EditorColumn({
                           railFilter === null
                             ? t("chapters.moveDown")
                             : t("chapters.moveDownFiltered"),
-                        shortcut: "Alt+↓",
+                        shortcut: shortcutKeycap("rail.moveDown"),
                         disabled:
                           railFilter !== null || currentIndex >= chapterTotal - 1,
                         onSelect: () => void onMove(current.id, 1),

@@ -127,6 +127,44 @@ def test_a_move_through_the_menu_persists_across_a_reload(page: Page, stack: Sta
     assert_accessible(page)
 
 
+def test_a_drag_onto_another_stage_persists_across_a_reload(page: Page, stack: Stack) -> None:
+    novel_id, _ = _seed_board("Die gezogene Bucht")
+    page.goto(f"{WEB_URL}/planning/storyboard?novel={novel_id}")
+
+    card = page.get_by_role("group", name="Ankunft")
+    expect(card).to_be_visible()
+    auflösung = page.get_by_role("region", name="Auflösung")
+    card_handle = card.element_handle()
+    target_handle = auflösung.element_handle()
+    assert card_handle is not None and target_handle is not None
+    # Playwright's mouse-driven drag_to cannot carry an HTML5 DataTransfer,
+    # so the drop rides the synthetic dragstart/dragover/drop sequence the
+    # columns listen for — the dragstart handler fills the bag itself.
+    page.evaluate(
+        """([dragged, target]) => {
+            const bag = new DataTransfer();
+            dragged.dispatchEvent(
+                new DragEvent("dragstart", { dataTransfer: bag, bubbles: true, cancelable: true }),
+            );
+            target.dispatchEvent(
+                new DragEvent("dragover", { dataTransfer: bag, bubbles: true, cancelable: true }),
+            );
+            target.dispatchEvent(
+                new DragEvent("drop", { dataTransfer: bag, bubbles: true, cancelable: true }),
+            );
+        }""",
+        [card_handle, target_handle],
+    )
+
+    # The card stands in its new column, and the server kept the move.
+    expect(auflösung.get_by_role("group", name="Ankunft")).to_be_visible()
+    page.reload()
+    moved = page.get_by_role("region", name="Auflösung")
+    expect(moved.get_by_role("group", name="Ankunft")).to_be_visible()
+
+    assert_accessible(page)
+
+
 def test_the_remap_preview_confirms_onto_new_stages(page: Page, stack: Stack) -> None:
     novel_id, _ = _seed_board("Die umgestellte Bucht")
     page.goto(f"{WEB_URL}/planning/storyboard?novel={novel_id}")

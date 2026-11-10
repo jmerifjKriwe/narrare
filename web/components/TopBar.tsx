@@ -3,7 +3,7 @@ import { workspaceRouteId } from "../lib/generated/workspace";
 
 import { useTranslation } from "../lib/i18n";
 import { usePageTitleValue } from "../lib/pageTitle";
-import { isMac } from "../lib/platform";
+import { shortcutKeycap } from "../lib/shortcuts";
 import { buttonClass } from "../ui/Button";
 import { Icon } from "../ui/icons";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -18,10 +18,10 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
  */
 export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const t = useTranslation();
-  // The keycap is the platform's own name for the palette's key: a Mac shows
+  // The keycap is the registry's answer for the palette's key: a Mac shows
   // ⌘K, everywhere else the control key. The chip is the palette's pointer
   // door, so it says what it opens and refuses while a dialog holds the stage.
-  const paletteKey = t(isMac() ? "shell.paletteKeyMac" : "shell.paletteKeyOther");
+  const paletteKey = shortcutKeycap("palette.toggle");
   // The page's published name (the page-title stack's top, P8): the tab
   // wears `<page> — Narrare`, the bar wears the page's half. A page that
   // has not named itself leaves the place empty — an unnamed page is not

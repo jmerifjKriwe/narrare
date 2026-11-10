@@ -28,6 +28,12 @@ export const CLUSTERS = [
     titleKey: "settings.clusterProvider",
     descriptionKey: "settings.clusterProvider.description",
   },
+  {
+    id: "shortcuts",
+    path: "/settings/shortcuts",
+    titleKey: "settings.clusterShortcuts",
+    descriptionKey: "settings.clusterShortcuts.description",
+  },
 ] as const;
 
 /**

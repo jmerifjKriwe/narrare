@@ -135,9 +135,9 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
     # Hauptnavigation by its name.
     nav = page.get_by_role("navigation", name="Einstellungen")
     links = nav.get_by_role("link")
-    # The area's three clusters plus every registry row (prompts contributes
+    # The area's four clusters plus every registry row (prompts contributes
     # its page; a new cluster appears here with no edit to the layout).
-    expect(links).to_have_count(4)
+    expect(links).to_have_count(5)
 
     # The nav is a column: 200 px wide, the rows stacked one under the next,
     # each the row's 28 px control height — not a run of shrink-wrapped
@@ -145,9 +145,9 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
     nav_box = nav.bounding_box()
     assert nav_box is not None
     assert nav_box["width"] == 200
-    rows = [links.nth(index).bounding_box() for index in range(4)]
+    rows = [links.nth(index).bounding_box() for index in range(5)]
     boxes = [box for box in rows if box is not None]
-    assert len(boxes) == 4
+    assert len(boxes) == 5
     for earlier, later in itertools.pairwise(boxes):
         assert earlier["y"] < later["y"]
     for box in boxes:
@@ -161,7 +161,7 @@ def test_the_frame_lists_rows_and_keeps_its_columns(page: Page, stack: Stack) ->
     # auto-places its fragment children into the grid, and from the second
     # section on they land in the nav's own cell (measured x=180 w=200),
     # which is the regression this pin exists to catch.
-    for name in ("Sprache", "Darstellung", "Anbieter", "Prompts"):
+    for name in ("Sprache", "Darstellung", "Anbieter", "Tastenkürzel", "Prompts"):
         region_box = page.get_by_role("region", name=name).bounding_box()
         assert region_box is not None
         assert region_box["x"] >= nav_box["x"] + nav_box["width"]
@@ -193,6 +193,14 @@ def test_every_settings_page_names_itself_and_marks_its_cluster(page: Page, stac
     expect(page).to_have_title("Darstellung — Narrare")
     expect(
         page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Darstellung")
+    ).to_have_attribute("aria-current", "page")
+
+    page.goto(f"{WEB_URL}/settings/shortcuts")
+    expect(page).to_have_title("Tastenkürzel — Narrare")
+    expect(
+        page.get_by_role("navigation", name="Einstellungen").get_by_role(
+            "link", name="Tastenkürzel"
+        )
     ).to_have_attribute("aria-current", "page")
 
     assert_accessible(page)

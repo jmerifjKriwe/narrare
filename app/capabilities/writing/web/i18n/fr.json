@@ -141,8 +141,8 @@
   "shelf.report.relationsCreated": "{count, plural, one {# relation a été créée} other {# relations ont été créées}}",
   "shelf.report.relationsUnchanged": "{count, plural, one {# relation existait déjà} other {# relations existaient déjà}}",
   "workspace.dockToggle": "Docks",
-  "workspace.focusHint": "Échap remontre la liste",
+  "workspace.focusHint": "{key} remontre la liste",
   "workspace.focusToggle": "Focus",
   "workspace.railToggle": "Liste des chapitres",
-  "workspace.shortcutHints": "F9 focus · Esc reculer ou annuler · {key} palette"
+  "workspace.shortcutHints": "{focus} focus · {back} reculer ou annuler · {palette} palette"
 }

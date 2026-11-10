@@ -30,6 +30,7 @@ import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
+import { PALETTE_OPEN_EVENT } from "@shell/lib/palette";
 import {
   useAutosave,
   unsavedStatus,
@@ -781,6 +782,49 @@ describe("ChapterEditor's ghost text", () => {
     await waitFor(() => expect(announcementsOf(t("editor.ghostFailed"))).toBe(before.failed + 1));
     const button = screen.getByRole("button", { name: t("chapters.continue") }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false)); // the finally ran
+  });
+});
+
+describe("ChapterEditor's slash door", () => {
+  it("opens the palette with '/' from an empty paragraph and inserts nothing", async () => {
+    // The seam the shell listens on: the editor asks, the shell opens — the
+    // test stands in for the shell's listener.
+    const seen: string[] = [];
+    const onRequest = (event: Event) => {
+      seen.push((event as CustomEvent<{ query: string }>).detail.query);
+    };
+    window.addEventListener(PALETTE_OPEN_EVENT, onRequest);
+    try {
+      render(<Harness chapterId={CHAPTER} body="" />);
+      const user = await focusEditor();
+      // The new chapter's body is empty: the caret sits in an empty paragraph.
+      await user.keyboard("/");
+      expect(seen).toEqual(["/"]);
+      // The slash opened the palette; it must not remain in the prose, and
+      // with no document change no save may leave the page.
+      expect(documentText()).toBe("");
+      expect(editorServer.requests).toEqual([]);
+    } finally {
+      window.removeEventListener(PALETTE_OPEN_EVENT, onRequest);
+    }
+  });
+
+  it("types a literal slash mid-sentence and asks for nothing", async () => {
+    const seen: string[] = [];
+    const onRequest = (event: Event) => {
+      seen.push((event as CustomEvent<{ query: string }>).detail.query);
+    };
+    window.addEventListener(PALETTE_OPEN_EVENT, onRequest);
+    try {
+      render(<Harness chapterId={CHAPTER} body="Anfang." />);
+      const user = await focusEditor();
+      // Into the sentence, not at an empty paragraph: the slash is text.
+      await user.keyboard("{ArrowRight}{ArrowRight}/");
+      expect(seen).toEqual([]);
+      expect(documentText()).toContain("/");
+    } finally {
+      window.removeEventListener(PALETTE_OPEN_EVENT, onRequest);
+    }
   });
 });
 
