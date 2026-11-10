@@ -60,6 +60,20 @@ describe("DesignGallery", () => {
     expect(screen.getByRole("button", { name: "Check the whole book" })).toBeTruthy();
   });
 
+  it("pins the planning dock specimen", () => {
+    cleanup();
+    render(<DesignGallery />);
+    expect(screen.getByRole("heading", { name: /Szenenliste/ })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Ankommen" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Lücke" })).toBeTruthy();
+    expect(screen.getByText("Planned")).toBeTruthy();
+    expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Advance to In progress" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Advance to Complete" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save scenes" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add scene" })).toBeTruthy();
+  });
+
   it("pins the built graph-canvas specimen beside the Target draft", () => {
     cleanup();
     render(<DesignGallery />);

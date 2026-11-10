@@ -37,7 +37,7 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  * The "Specimens" section pins the landed dock and palette states on the
  * real primitives — a conversation turn with its source chips, the
  * consistency card, the wrapped entity row, the palette dialog's button
- * row — inert specimens, never embeds: no handlers, no fetches, no modal
+ * row, the planning scene list — inert specimens, never embeds: no handlers, no fetches, no modal
  * shell. The subsection headings and source notes are documentation in
  * the record's language (German, like the draft titles), the same in
  * every locale; only the section heading itself comes from the catalog.
@@ -603,6 +603,69 @@ export function DesignGallery() {
               ConsistencyCheckDialog: die Paletten-Zeile
               Ganzes-Buch-prüfen öffnet diesen Dialog; ruhend ist er
               Auslöser neben Abbruch.
+            </Notice>
+          </div>
+        </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">Szenenliste · Planen-Dock</h3>
+          {/* The dock's built state: the chapter's scenes in order, each row
+              with its title and status beside the advance it offers, one
+              save for the whole list beside the add. Inert: no status
+              advances, nothing saves, nothing is added. */}
+          <section aria-label={t("planning.panelHeading")} className="mt-2">
+            <ul className="flex flex-col">
+              <li>
+                <Row
+                  as="div"
+                  role="group"
+                  aria-label="Ankommen"
+                  flush
+                  className="h-auto min-h-7 flex-col items-stretch gap-1 py-2"
+                >
+                  <span className="text-body">Ankommen</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-label text-muted">
+                      {t("planning.status.planned")}
+                    </span>
+                    <Button variant="secondary" size="sm">
+                      {t("planning.advanceStatus", {
+                        status: t("planning.status.in_progress"),
+                      })}
+                    </Button>
+                  </div>
+                </Row>
+              </li>
+              <li>
+                <Row
+                  as="div"
+                  role="group"
+                  aria-label="Lücke"
+                  flush
+                  className="h-auto min-h-7 flex-col items-stretch gap-1 py-2"
+                >
+                  <span className="text-body">Lücke</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-label text-muted">
+                      {t("planning.status.in_progress")}
+                    </span>
+                    <Button variant="secondary" size="sm">
+                      {t("planning.advanceStatus", {
+                        status: t("planning.status.complete"),
+                      })}
+                    </Button>
+                  </div>
+                </Row>
+              </li>
+            </ul>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button variant="primary">{t("planning.save")}</Button>
+              <Button variant="secondary">{t("planning.addScene")}</Button>
+            </div>
+          </section>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              SceneDock: Zeilen zeigen Status und Weiter-Schalten;
+              Titel-Eingabe und Verschieben/Löschen sind hier ausgelassen.
             </Notice>
           </div>
         </div>

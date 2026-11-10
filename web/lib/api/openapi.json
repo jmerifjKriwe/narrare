@@ -1459,6 +1459,20 @@
         "title": "NovelUpdate",
         "type": "object"
       },
+      "PlanningErrorRead": {
+        "description": "The JSON body for a missing chapter aggregate or a refused PUT.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "PlanningErrorRead",
+        "type": "object"
+      },
       "PresetRead": {
         "description": "One provider preset as the create form reads it, with the catalog join.\n\nThe preset is the kernel table's row — label, model and vendor are the\nvendors' proper spellings, data rather than catalog text. ``models`` is\nthe vendor's catalog vocabulary, bare and sorted, the model picker's\nlist; a vendor the catalog does not carry joins to an empty list and the\nform still saves free text. ``snapshot_date`` is the catalog's own date,\n``None`` when the snapshot names none — the picker's honesty mark rides\nthis response, so the form needs no second call.",
         "properties": {
@@ -2182,6 +2196,167 @@
           "created_at"
         ],
         "title": "RelationRead",
+        "type": "object"
+      },
+      "SceneAggregateRead": {
+        "description": "The chapter's scenes in position order, with the version the dock\ncompares its snapshot against: the chapter's own stamp, touched by\nevery aggregate write.",
+        "properties": {
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SceneRead"
+            },
+            "title": "Scenes",
+            "type": "array"
+          },
+          "version_updated_at": {
+            "format": "date-time",
+            "title": "Version Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "scenes",
+          "version_updated_at"
+        ],
+        "title": "SceneAggregateRead",
+        "type": "object"
+      },
+      "SceneAggregateUpdate": {
+        "description": "The PUT body: the chapter's whole scene list, in its new order.",
+        "properties": {
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SceneUpsert"
+            },
+            "title": "Scenes",
+            "type": "array"
+          }
+        },
+        "title": "SceneAggregateUpdate",
+        "type": "object"
+      },
+      "SceneRead": {
+        "properties": {
+          "beats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Beats",
+            "type": "array"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "conflict": {
+            "title": "Conflict",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "resolution": {
+            "title": "Resolution",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_id",
+          "position",
+          "title",
+          "purpose",
+          "conflict",
+          "resolution",
+          "beats",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SceneRead",
+        "type": "object"
+      },
+      "SceneUpsert": {
+        "description": "One scene of the PUT aggregate, by stable id.\n\nNew scenes carry client-generated ids — the diff treats an id the\nchapter does not know and nobody else owns as a creation. The body\ncarries no timestamps: those are the server's own.",
+        "properties": {
+          "beats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Beats",
+            "type": "array"
+          },
+          "conflict": {
+            "default": "",
+            "title": "Conflict",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "purpose": {
+            "default": "",
+            "title": "Purpose",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "",
+            "title": "Resolution",
+            "type": "string"
+          },
+          "status": {
+            "default": "planned",
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "SceneUpsert",
         "type": "object"
       },
       "SearchHit": {
@@ -3778,6 +3953,152 @@
         "summary": "Discard Suggestion",
         "tags": [
           "knowledge"
+        ]
+      }
+    },
+    "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes": {
+      "get": {
+        "description": "Read the chapter's scenes in position order, with the version stamp.\n\nNo auto-create: a chapter without plans answers with an empty list.\nRaise HTTP 404 for an absent or unowned chapter — a foreign novel reads\nas missing, never as an oracle.",
+        "operationId": "read_scenes_api_planning_novels__novel_id__chapters__chapter_id__scenes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneAggregateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Scenes",
+        "tags": [
+          "planning"
+        ]
+      },
+      "put": {
+        "description": "Diff the chapter's whole scene list by stable id and return the result.\n\nA known id updates, an id from another chapter is a 422, a doubled id is\na 422 before any write, an absent id deletes, and positions renumber 1..N\nby payload order. Raise HTTP 404 for an absent or unowned chapter, or HTTP\n409 when setup has not created the owning user.",
+        "operationId": "save_scenes_api_planning_novels__novel_id__chapters__chapter_id__scenes_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneAggregateUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneAggregateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Chapter not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "A refused aggregate, named in `detail`"
+          }
+        },
+        "summary": "Save Scenes",
+        "tags": [
+          "planning"
         ]
       }
     },

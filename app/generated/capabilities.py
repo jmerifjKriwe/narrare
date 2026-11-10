@@ -24,6 +24,10 @@ CAPABILITIES: tuple[Capability, ...] = (
         needs=("embeddings",),
     ),
     Capability(
+        id="planning",
+        needs=(),
+    ),
+    Capability(
         id="prompts",
         needs=(),
     ),

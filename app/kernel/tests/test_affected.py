@@ -247,7 +247,7 @@ def test_a_capability_dir_without_e2e_is_not_a_suite():
     assert resolve(["app/capabilities/notes/x.py"]).capabilities is None
 
 
-def test_the_real_checkout_discovers_its_six_suites(
+def test_the_real_checkout_discovers_its_seven_suites(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """The one test where the checkout's own directories are the subject: a
@@ -260,6 +260,7 @@ def test_the_real_checkout_discovers_its_six_suites(
     assert known_capabilities() == {
         "chat",
         "knowledge",
+        "planning",
         "prompts",
         "settings",
         "setup",

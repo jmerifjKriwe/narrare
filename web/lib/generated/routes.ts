@@ -20,6 +20,7 @@
 // mirroring the dock convention one level down in the URL space.
 import { routes as chat, dockRoutes as chatDocks } from "../../../app/capabilities/chat/web/routes";
 import { routes as knowledge, dockRoutes as knowledgeDocks } from "../../../app/capabilities/knowledge/web/routes";
+import { routes as planning, dockRoutes as planningDocks } from "../../../app/capabilities/planning/web/routes";
 import { routes as prompts, settingsRoutes as promptsSettings } from "../../../app/capabilities/prompts/web/routes";
 import { routes as settings, settingsRoute } from "../../../app/capabilities/settings/web/routes";
 import { routes as setup } from "../../../app/capabilities/setup/web/routes";
@@ -27,12 +28,14 @@ import { routes as writing, workspaceRoute } from "../../../app/capabilities/wri
 
 const chatDockRoutes = chatDocks.map((dock) => dock(workspaceRoute));
 const knowledgeDockRoutes = knowledgeDocks.map((dock) => dock(workspaceRoute));
+const planningDockRoutes = planningDocks.map((dock) => dock(workspaceRoute));
 
 const promptsSettingsRoutes = promptsSettings.map((page) => page(settingsRoute));
 
 export const capabilityRoutes = [
   ...chat,
   ...knowledge,
+  ...planning,
   ...prompts,
   ...settings,
   ...setup,
@@ -43,6 +46,7 @@ export const capabilityRoutes = [
   // in the table before the dock routes parented at it.
   ...chatDockRoutes,
   ...knowledgeDockRoutes,
+  ...planningDockRoutes,
   //
   // Settings children come after every capability's own routes: the
   // router initializes a route from its parent, so the settings route
