@@ -40,7 +40,7 @@ export const commands = [
       ctx.openModal(async () => {
         const m = await import("./JobDialogs");
         return {
-          // The slot mounts a props-free component: the dialog reads the
+          // The slot mounts the dialog with its novel and chapter as props — the
           // chapter the route carried when the row ran — falling back to
           // the last chapter written in without one, the same precedence
           // the dock panel keeps — and mounts already open, the palette
