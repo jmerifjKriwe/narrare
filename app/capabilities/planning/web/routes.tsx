@@ -26,6 +26,17 @@ const StructurePage = lazy(async () => {
   return { default: page.StructurePage };
 });
 
+// One normaliser for the `?novel=` search param, shared by the three
+// canvases: a non-empty string is kept, anything else yields {} so the
+// param is absent.
+function novelSearch(search: { novel?: unknown }): { novel?: string } {
+  return {
+    ...(typeof search.novel === "string" && search.novel !== ""
+      ? { novel: search.novel }
+      : {}),
+  };
+}
+
 // The landing canvas: the novel's timeline as a full page under the Planen
 // rail entry. The novel arrives as `?novel=` (the graph's sibling: tolerant
 // in, absent means the picker); the dock's routes below parent at the
@@ -34,13 +45,7 @@ const planningRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/planning",
   component: PlanningPage,
-  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
-    return {
-      ...(typeof search.novel === "string" && search.novel !== ""
-        ? { novel: search.novel }
-        : {}),
-    };
-  },
+  validateSearch: novelSearch,
 });
 
 // The storyboard canvas: the novel's chapters as cards in one column per
@@ -53,13 +58,7 @@ const storyboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/planning/storyboard",
   component: StoryboardPage,
-  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
-    return {
-      ...(typeof search.novel === "string" && search.novel !== ""
-        ? { novel: search.novel }
-        : {}),
-    };
-  },
+  validateSearch: novelSearch,
 });
 
 // The structure canvas: the novel's story as one proportion bar — a band
@@ -70,13 +69,7 @@ const structureRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/planning/structure",
   component: StructurePage,
-  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
-    return {
-      ...(typeof search.novel === "string" && search.novel !== ""
-        ? { novel: search.novel }
-        : {}),
-    };
-  },
+  validateSearch: novelSearch,
 });
 
 // The dock convention: routes for another capability's workspace, created as
