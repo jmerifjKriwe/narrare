@@ -1,4 +1,5 @@
-"""Scene-plan aggregates and timeline-event CRUD: one read, one write each."""
+"""The storyboard: structure-aware chapter grouping with sync, plus the
+scene-plan and timeline-event aggregates behind it."""
 
 from datetime import UTC, datetime
 from uuid import UUID  # noqa: TC003
@@ -6,16 +7,37 @@ from uuid import UUID  # noqa: TC003
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.planning.models import SCENE_STATUSES, ScenePlan, TimelineEvent
-from app.capabilities.planning.repository import ScenePlanRepository, TimelineEventRepository
+from app.capabilities.planning.models import (
+    SCENE_STATUSES,
+    ChapterStage,
+    ScenePlan,
+    TimelineEvent,
+)
+from app.capabilities.planning.repository import (
+    ScenePlanRepository,
+    StoryboardRepository,
+    TimelineEventRepository,
+)
 from app.capabilities.planning.schemas import (
+    RemapEntry,
+    RemapRead,
     SceneAggregateRead,
     SceneAggregateUpdate,
     SceneRead,
     SceneUpsert,
+    StoryboardChapterRead,
+    StoryboardRead,
+    StoryboardStageRead,
     TimelineEventCreate,
     TimelineEventRead,
     TimelineEventUpdate,
+)
+from app.capabilities.planning.structures import (
+    DEFAULT_STRUCTURE_ID,
+    StageDef,
+    UnknownStructureError,
+    require_structure,
+    suggest_stage,
 )
 from app.kernel.auth import SetupRequiredError
 from app.kernel.contracts.models import Chapter, Novel, User
@@ -35,12 +57,20 @@ class TimelineRefusedError(ValueError):
     link that is absent, foreign, or filed under another novel."""
 
 
+class StoryboardRefusedError(ValueError):
+    """A storyboard write the refetch-compare law refuses: a chapter id the
+    novel does not hold, a stage key outside the current structure, or a
+    structure id outside the registry — each names its reason, and a refused
+    write leaves the aggregate exactly as the refetch found it."""
+
+
 class PlanningService:
     def __init__(self, session: AsyncSession, user_id: UUID) -> None:
         self.session = session
         self.user_id = user_id
         self.scenes = ScenePlanRepository(session, user_id)
         self.events = TimelineEventRepository(session, user_id)
+        self.storyboard = StoryboardRepository(session, user_id)
 
     async def _require_user(self) -> None:
         """Writes belong to a user that setup created; without one there is
@@ -272,3 +302,226 @@ class PlanningService:
         await self._require_user()
         await self.events.delete(await self._require_event(novel_id, event_id))
         await self.session.commit()
+
+    async def _require_storyboard_novel(self, novel_id: UUID) -> Novel:
+        """The novel when it is ours; NotFoundError for an absent or unowned
+        novel — a foreign novel reads as missing, never as an oracle."""
+        novel = await self.storyboard.require_novel(novel_id)
+        if novel is None:
+            raise NotFoundError
+        return novel
+
+    async def _storyboard_structure(self, novel_id: UUID) -> tuple[str, tuple[StageDef, ...]]:
+        """The novel's structure id and stages: the stored choice, or the
+        default when the writer never remapped. A suggestion is computed,
+        never persisted, so this read writes nothing."""
+        settings = await self.storyboard.get_settings(novel_id)
+        structure_id = settings.story_structure if settings is not None else DEFAULT_STRUCTURE_ID
+        return structure_id, require_structure(structure_id)
+
+    @staticmethod
+    def _suggested_key(stages: tuple[StageDef, ...], position: int, last_position: int) -> str:
+        """The position-ratio suggestion: the first stage whose range
+        contains position over the last position — the first stage for a
+        single-chapter novel, whose denominator would otherwise be zero."""
+        return suggest_stage(stages, position / max(1, last_position)).key
+
+    @staticmethod
+    def _sync_status(
+        scenes: list[ScenePlan], words: int, assigned: str | None, suggested: str
+    ) -> str:
+        """The chapter's sync, first match wins: no scenes and no words is
+        empty; scenes without words are planned; a hand-set stage off the
+        suggestion is deviated; complete scenes plus words are completed;
+        everything aligned but in progress is on track."""
+        if not scenes and words == 0:
+            return "empty"
+        if scenes and words == 0:
+            return "planned"
+        if assigned is not None and assigned != suggested:
+            return "deviated"
+        if scenes and all(scene.status == "complete" for scene in scenes) and words > 0:
+            return "completed"
+        return "on_track"
+
+    def _chapter_entry(
+        self,
+        chapter: Chapter,
+        stage_key: str,
+        source: str,
+        words: int,
+        scenes: list[ScenePlan],
+        suggested: str,
+        assigned: str | None,
+    ) -> StoryboardChapterRead:
+        """One chapter's storyboard row: the effective stage, where the stage
+        came from, and the sync the rule above computes."""
+        return StoryboardChapterRead(
+            chapter_id=chapter.id,
+            title=chapter.title,
+            position=chapter.position,
+            word_count=words,
+            sync_status=self._sync_status(scenes, words, assigned, suggested),
+            assignment_source=source,
+            stage_key=stage_key,
+        )
+
+    async def _chapter_entries(
+        self,
+        chapters: list[Chapter],
+        stages: tuple[StageDef, ...],
+        assignments: dict[UUID, ChapterStage],
+        words: dict[UUID, int],
+        scenes: dict[UUID, list[ScenePlan]],
+    ) -> list[StoryboardChapterRead]:
+        """Every chapter's row under one structure: assigned stages win, the
+        suggestion fills the rest."""
+        last_position = max([chapter.position for chapter in chapters], default=0)
+        entries: list[StoryboardChapterRead] = []
+        for chapter in chapters:
+            suggested = self._suggested_key(stages, chapter.position, last_position)
+            assigned = assignments.get(chapter.id)
+            if assigned is None:
+                entries.append(
+                    self._chapter_entry(
+                        chapter,
+                        suggested,
+                        "suggested",
+                        words.get(chapter.id, 0),
+                        scenes.get(chapter.id, []),
+                        suggested,
+                        None,
+                    )
+                )
+            else:
+                entries.append(
+                    self._chapter_entry(
+                        chapter,
+                        assigned.stage_key,
+                        "assigned",
+                        words.get(chapter.id, 0),
+                        scenes.get(chapter.id, []),
+                        suggested,
+                        assigned.stage_key,
+                    )
+                )
+        return entries
+
+    async def get_storyboard(self, novel_id: UUID) -> StoryboardRead:
+        """Assemble the novel's storyboard: the structure and its staged chapters.
+
+        Reads only — assignments and the structure choice are stored rows,
+        suggestions are computed. Raise NotFoundError for an absent or
+        unowned novel.
+        """
+        await self._require_storyboard_novel(novel_id)
+        structure_id, stages = await self._storyboard_structure(novel_id)
+        chapters = list(await self.storyboard.list_chapters(novel_id))
+        assignments = await self.storyboard.assignments_for_chapters(
+            [chapter.id for chapter in chapters]
+        )
+        words = await self.storyboard.word_counts(novel_id)
+        plans = await self.scenes.list_for_chapters([chapter.id for chapter in chapters])
+        by_chapter: dict[UUID, list[ScenePlan]] = {}
+        for plan in plans:
+            by_chapter.setdefault(plan.chapter_id, []).append(plan)
+        entries = await self._chapter_entries(chapters, stages, assignments, words, by_chapter)
+        by_stage: dict[str, list[StoryboardChapterRead]] = {stage.key: [] for stage in stages}
+        for entry in entries:
+            by_stage[entry.stage_key].append(entry)
+        return StoryboardRead(
+            novel_id=novel_id,
+            structure_id=structure_id,
+            stages=[
+                StoryboardStageRead(
+                    key=stage.key,
+                    title_key=stage.title_key,
+                    **{"from": stage.from_ratio, "to": stage.to_ratio},
+                    chapters=by_stage[stage.key],
+                )
+                for stage in stages
+            ],
+        )
+
+    async def set_chapter_stage(
+        self, novel_id: UUID, chapter_id: UUID, stage_key: str
+    ) -> StoryboardChapterRead:
+        """Move one chapter to a stage of the novel's current structure.
+
+        Raise NotFoundError for an absent or unowned novel, or
+        StoryboardRefusedError for a chapter id the novel does not hold or
+        a stage key outside the current structure — a refused PUT writes
+        nothing at all.
+        """
+        await self._require_user()
+        await self._require_storyboard_novel(novel_id)
+        chapters = list(await self.storyboard.list_chapters(novel_id))
+        chapter = next((row for row in chapters if row.id == chapter_id), None)
+        if chapter is None:
+            raise StoryboardRefusedError(f"unknown chapter id: {chapter_id}")
+        _, stages = await self._storyboard_structure(novel_id)
+        if stage_key not in {stage.key for stage in stages}:
+            raise StoryboardRefusedError(f"unknown stage: {stage_key}")
+        await self.storyboard.save_assignment(chapter_id, stage_key)
+        await self.session.commit()
+        last_position = max([row.position for row in chapters], default=0)
+        suggested = self._suggested_key(stages, chapter.position, last_position)
+        words = await self.storyboard.word_counts(novel_id)
+        plans = list(await self.scenes.list_for_chapter(chapter.id))
+        return self._chapter_entry(
+            chapter,
+            stage_key,
+            "assigned",
+            words.get(chapter.id, 0),
+            plans,
+            suggested,
+            stage_key,
+        )
+
+    async def remap_storyboard(self, novel_id: UUID, structure_id: str, confirm: bool) -> RemapRead:
+        """Preview or apply the structure change.
+
+        The mapping carries every chapter from its current effective stage
+        to the target structure's suggestion. A preview writes nothing; a
+        confirm writes the assignments plus the novel setting in one
+        transaction — exactly the previewed mapping. Raise NotFoundError
+        for an absent or unowned novel, SetupRequiredError for a confirm
+        without the setup-created user, or StoryboardRefusedError for a
+        structure id outside the registry.
+        """
+        try:
+            target = require_structure(structure_id)
+        except UnknownStructureError as error:
+            raise StoryboardRefusedError(str(error)) from None
+        if confirm:
+            await self._require_user()
+        await self._require_storyboard_novel(novel_id)
+        _, current = await self._storyboard_structure(novel_id)
+        chapters = list(await self.storyboard.list_chapters(novel_id))
+        assignments = await self.storyboard.assignments_for_chapters(
+            [chapter.id for chapter in chapters]
+        )
+        last_position = max([chapter.position for chapter in chapters], default=0)
+        mapping = [
+            RemapEntry(
+                chapter_id=chapter.id,
+                from_stage=(
+                    assignments[chapter.id].stage_key
+                    if chapter.id in assignments
+                    else self._suggested_key(current, chapter.position, last_position)
+                ),
+                to_stage=self._suggested_key(target, chapter.position, last_position),
+            )
+            for chapter in chapters
+        ]
+        if confirm:
+            await self.storyboard.save_settings(novel_id, structure_id)
+            for entry in mapping:
+                await self.storyboard.save_assignment(entry.chapter_id, entry.to_stage)
+            await self.session.commit()
+        return RemapRead(
+            novel_id=novel_id,
+            structure_id=structure_id,
+            confirmed=confirm,
+            mapping=mapping,
+        )

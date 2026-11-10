@@ -506,6 +506,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/planning/novels/{novel_id}/chapters/{chapter_id}/stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Chapter Stage
+         * @description Move one chapter to a stage of the novel's current structure and
+         *     return the assignment.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel, HTTP 409 without the
+         *     setup-created user, or HTTP 422 for a chapter id the novel does not
+         *     hold or a stage key outside the current structure — a refused PUT
+         *     writes nothing at all.
+         */
+        put: operations["set_chapter_stage_api_planning_novels__novel_id__chapters__chapter_id__stage_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/planning/novels/{novel_id}/remap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remap Storyboard
+         * @description Preview or apply the structure change.
+         *
+         *     ``confirm: false`` returns the mapping without writing a row;
+         *     ``confirm: true`` writes the assignments plus the novel setting in one
+         *     transaction — exactly the previewed mapping. Raise HTTP 404 for an
+         *     absent or unowned novel, HTTP 409 for a confirm without the
+         *     setup-created user, or HTTP 422 for a structure id outside the
+         *     registry.
+         */
+        post: operations["remap_storyboard_api_planning_novels__novel_id__remap_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/planning/novels/{novel_id}/storyboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Storyboard
+         * @description Assemble the novel's storyboard: the structure and its staged chapters.
+         *
+         *     Reads only — suggested stages are computed, never persisted. Raise
+         *     HTTP 404 for an absent or unowned novel — a foreign novel reads as
+         *     missing, never as an oracle.
+         */
+        get: operations["read_storyboard_api_planning_novels__novel_id__storyboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/planning/novels/{novel_id}/timeline-events": {
         parameters: {
             query?: never;
@@ -2097,6 +2174,57 @@ export interface components {
             to_entity_id: string;
         };
         /**
+         * RemapEntry
+         * @description One chapter's move: the stage it stands in now, and the one the
+         *     target structure suggests.
+         */
+        RemapEntry: {
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /** From Stage */
+            from_stage: string;
+            /** To Stage */
+            to_stage: string;
+        };
+        /**
+         * RemapRead
+         * @description The remap answer: the target structure, whether it was applied, and
+         *     the per-chapter mapping — preview and confirm agree chapter by chapter.
+         */
+        RemapRead: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Mapping */
+            mapping: components["schemas"]["RemapEntry"][];
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Structure Id */
+            structure_id: string;
+        };
+        /**
+         * RemapRequest
+         * @description The remap body: the target structure, and whether to apply it.
+         *
+         *     ``confirm: false`` previews the mapping without writing a row;
+         *     ``confirm: true`` writes the assignments plus the novel setting in one
+         *     transaction — exactly the previewed mapping.
+         */
+        RemapRequest: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
+            /** Structure Id */
+            structure_id: string;
+        };
+        /**
          * SceneAggregateRead
          * @description The chapter's scenes in position order, with the version the dock
          *     compares its snapshot against: the chapter's own stamp, touched by
@@ -2284,6 +2412,75 @@ export interface components {
             relation_type: string;
             /** Target Name */
             target_name: string;
+        };
+        /**
+         * StageAssignmentUpdate
+         * @description The PUT body: the chapter's new stage, a key of the current structure.
+         *     The body carries no timestamps: those are the server's own.
+         */
+        StageAssignmentUpdate: {
+            /** Stage Key */
+            stage_key: string;
+        };
+        /**
+         * StoryboardChapterRead
+         * @description One chapter in its storyboard column: the effective stage, where the
+         *     stage came from, and how closely the writing follows the plan.
+         *
+         *     ``assignment_source`` is ``assigned`` when the writer set the stage by
+         *     hand, ``suggested`` when the column is the position-ratio suggestion —
+         *     a suggestion is computed, never persisted. ``sync_status`` is one of
+         *     ``empty | planned | deviated | completed | on_track``.
+         */
+        StoryboardChapterRead: {
+            /** Assignment Source */
+            assignment_source: string;
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /** Position */
+            position: number;
+            /** Stage Key */
+            stage_key: string;
+            /** Sync Status */
+            sync_status: string;
+            /** Title */
+            title: string;
+            /** Word Count */
+            word_count: number;
+        };
+        /**
+         * StoryboardRead
+         * @description The novel's whole storyboard: the structure and its staged chapters.
+         */
+        StoryboardRead: {
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Stages */
+            stages: components["schemas"]["StoryboardStageRead"][];
+            /** Structure Id */
+            structure_id: string;
+        };
+        /**
+         * StoryboardStageRead
+         * @description One storyboard column with the chapters standing in it.
+         */
+        StoryboardStageRead: {
+            /** Chapters */
+            chapters?: components["schemas"]["StoryboardChapterRead"][];
+            /** From */
+            from: number;
+            /** Key */
+            key: string;
+            /** Title Key */
+            title_key: string;
+            /** To */
+            to: number;
         };
         /** SuggestionRead */
         SuggestionRead: {
@@ -3337,6 +3534,153 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+        };
+    };
+    set_chapter_stage_api_planning_novels__novel_id__chapters__chapter_id__stage_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StageAssignmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryboardChapterRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description A refused stage, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+        };
+    };
+    remap_storyboard_api_planning_novels__novel_id__remap_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemapRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemapRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description A refused remap, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+        };
+    };
+    read_storyboard_api_planning_novels__novel_id__storyboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryboardRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

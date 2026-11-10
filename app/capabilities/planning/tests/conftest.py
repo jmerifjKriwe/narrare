@@ -29,7 +29,10 @@ async def empty_tables() -> None:
 
     async with Session() as session:
         await session.execute(
-            text("TRUNCATE scene_plans, timeline_events, novels, chapters, users CASCADE")
+            text(
+                "TRUNCATE scene_plans, timeline_events, chapter_stages,"
+                " planning_novel_settings, novels, chapters, users CASCADE"
+            )
         )
         # The local user exists: these tests exercise a set-up instance.
         session.add(User(id=LOCAL_USER_ID))
