@@ -140,8 +140,10 @@ function NovelGraph({ novelId }: { novelId: string }) {
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
 
   async function retry() {
-    await entities.refetch();
-    await relations.refetch();
+    // The two reads fail independently: a rejecting entities refetch must
+    // not keep the relations retry from going out, so both re-ask
+    // together instead of awaiting one after the other.
+    await Promise.allSettled([entities.refetch(), relations.refetch()]);
   }
 
   if (entities.isPending || relations.isPending) {
