@@ -61,16 +61,22 @@
 - [ ] **Step 4: E2E** — knowledge suite: seed 2 entities + 1 relation, select one, switch to Nachbarschaft, both names visible + cross-link carries the novel; German labels.
 - [ ] **Step 5: Gates + commit** — component tests, typecheck, `just test-e2e knowledge`; commit `feat(knowledge): the dock shows an entity's neighborhood` + real `User-visible:` + trailer.
 
-### Task 2: The backend-blocked remainder, written down
+### Task 2: Gallery nits (pre-triaged, both deferred from the storyboard slice)
+
+- [ ] **Step 1: Failing test first** — widen the `ENTWURF`-freedom assertion from the specimen's own `div` to the gallery section that contains both the Target drafts and the specimens (today it can never see the drafts, so it passes vacuously).
+- [ ] **Step 2: Implement** — add ONE clarifying line in the storyboard specimen block: the specimen's sync wording may legitimately differ from the live page's ("On track" vs "Planned") without being a bug. German, matching the draft-documentation convention. No other gallery change.
+- [ ] **Step 3: Gates + commit** — gallery test, `pnpm --dir=web typecheck`, `just check`; commit `chore(gallery): name the specimen-vs-shot wording` (hidden type, no `User-visible:`).
+
+### Task 3: The backend-blocked remainder, written down
 
 - [ ] **Step 1: Inventory** — every atlas row still unimplemented after Tasks 0–1, plus the cross-cutting deferrals (hybrid KB refs, scene AI, storyboard DnD/AI-remap/extra structures, timeline AI/ages/consistency, graph pan/zoom, stats/costs, series, shortcuts config, consistency rules, external sync, worldbuilding, multi-draft/co-author/unblock/voice/context/plot-check/dialog-coach/research docks, command-only rows needing LLM).
 - [ ] **Step 2: Write** `docs/superpowers/specs/2026-11-10-ui-command-fokus-backlog-design.md`: one table row per family with atlas slot (P-number), what exists today, the missing backend contract (endpoints/tables in prose), the UI shape already decided, the entry point, and the one decision a later planning session must make first. Mark anything already covered by an existing endpoint as "no backend needed — schedule freely".
 - [ ] **Step 3: Verify by reading** — every atlas row from §5.7 appears exactly once (done, backlog, or out-of-atlas), and no row claims work that Tasks 0–1 just delivered.
 - [ ] **Step 4: Commit** — `chore(docs): the atlas remainder and what each item needs` (hidden type, no `User-visible:`). Report, no code.
 
-### Task 3: Re-shoot all frames
+### Task 4: Re-shoot all frames
 
-Depends on Tasks 0–2.
+Depends on Tasks 0–3.
 
 - [ ] **Step 1: Re-shoot** — run the screenshot script (ephemeral stack; 8100/3200 if needed). If the new canvases deserve their own shots, add them following the established chosen-dark pattern.
 - [ ] **Step 2: Triage every rewrite** — keep only real content changes (5-icon rail, new canvases, new specimens); revert pure noise with `git checkout -- <file>`; justify each decision in the report.
