@@ -450,6 +450,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Scenes
+         * @description Read the chapter's scenes in position order, with the version stamp.
+         *
+         *     No auto-create: a chapter without plans answers with an empty list.
+         *     Raise HTTP 404 for an absent or unowned chapter — a foreign novel reads
+         *     as missing, never as an oracle.
+         */
+        get: operations["read_scenes_api_planning_novels__novel_id__chapters__chapter_id__scenes_get"];
+        /**
+         * Save Scenes
+         * @description Diff the chapter's whole scene list by stable id and return the result.
+         *
+         *     A known id updates, an id from another chapter is a 422, a doubled id is
+         *     a 422 before any write, an absent id deletes, and positions renumber 1..N
+         *     by payload order. Raise HTTP 404 for an absent or unowned chapter, or HTTP
+         *     409 when setup has not created the owning user.
+         */
+        put: operations["save_scenes_api_planning_novels__novel_id__chapters__chapter_id__scenes_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/prompts": {
         parameters: {
             query?: never;
@@ -1664,6 +1697,14 @@ export interface components {
             title?: string | null;
         };
         /**
+         * PlanningErrorRead
+         * @description The JSON body for a missing chapter aggregate or a refused PUT.
+         */
+        PlanningErrorRead: {
+            /** Detail */
+            detail: string;
+        };
+        /**
          * PresetRead
          * @description One provider preset as the create form reads it, with the catalog join.
          *
@@ -1966,6 +2007,110 @@ export interface components {
              * Format: uuid
              */
             to_entity_id: string;
+        };
+        /**
+         * SceneAggregateRead
+         * @description The chapter's scenes in position order, with the version the dock
+         *     compares its snapshot against: the chapter's own stamp, touched by
+         *     every aggregate write.
+         */
+        SceneAggregateRead: {
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /** Scenes */
+            scenes: components["schemas"]["SceneRead"][];
+            /**
+             * Version Updated At
+             * Format: date-time
+             */
+            version_updated_at: string;
+        };
+        /**
+         * SceneAggregateUpdate
+         * @description The PUT body: the chapter's whole scene list, in its new order.
+         */
+        SceneAggregateUpdate: {
+            /** Scenes */
+            scenes?: components["schemas"]["SceneUpsert"][];
+        };
+        /** SceneRead */
+        SceneRead: {
+            /** Beats */
+            beats: string[];
+            /**
+             * Chapter Id
+             * Format: uuid
+             */
+            chapter_id: string;
+            /** Conflict */
+            conflict: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Purpose */
+            purpose: string;
+            /** Resolution */
+            resolution: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SceneUpsert
+         * @description One scene of the PUT aggregate, by stable id.
+         *
+         *     New scenes carry client-generated ids — the diff treats an id the
+         *     chapter does not know and nobody else owns as a creation. The body
+         *     carries no timestamps: those are the server's own.
+         */
+        SceneUpsert: {
+            /** Beats */
+            beats?: string[];
+            /**
+             * Conflict
+             * @default
+             */
+            conflict: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Purpose
+             * @default
+             */
+            purpose: string;
+            /**
+             * Resolution
+             * @default
+             */
+            resolution: string;
+            /**
+             * Status
+             * @default planned
+             */
+            status: string;
+            /** Title */
+            title: string;
         };
         /** SearchHit */
         SearchHit: {
@@ -2885,6 +3030,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_scenes_api_planning_novels__novel_id__chapters__chapter_id__scenes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneAggregateRead"];
+                };
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_scenes_api_planning_novels__novel_id__chapters__chapter_id__scenes_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SceneAggregateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneAggregateRead"];
+                };
+            };
+            /** @description Chapter not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description A refused aggregate, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
                 };
             };
         };

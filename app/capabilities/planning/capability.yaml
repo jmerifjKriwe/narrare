@@ -1,0 +1,8 @@
+# Facts only (spec §4): every field is read by at least two generated views —
+# app/generated/capabilities.py, web/lib/generated/capabilities.ts and
+# docs/user/INDEX.md. Behaviour, schemas and prompts never go here.
+id: planning
+title: planning.heading # i18n key; add it to web/i18n/<locale>.json for every catalog
+path: /planning
+needs: []
+nav: false
