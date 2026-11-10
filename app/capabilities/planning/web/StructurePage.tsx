@@ -309,7 +309,7 @@ function StageBand({
     <section
       aria-labelledby={`${headingId}-band`}
       style={{ width: `${share}%` }}
-      className="min-w-0 overflow-hidden"
+      className="min-w-0 overflow-hidden border-t border-rule bg-soft px-3 py-2"
     >
       <h2 id={`${headingId}-band`} className="truncate text-label font-semibold text-muted">
         {stageName(t, stage.title_key, stage.key)}
