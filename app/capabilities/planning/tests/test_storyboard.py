@@ -343,6 +343,45 @@ async def test_stale_assignment_degrades_to_suggestion() -> None:
         assert chapters["Ankunft"]["assignment_source"] == "suggested"
 
 
+async def test_suggestions_use_chapter_count_not_max_position() -> None:
+    """Gappy positions after deletes must not skew the suggestion ratio.
+
+    Three chapters at positions 0, 1, 5: the count-based ratio for the
+    middle chapter is 1 / max(1, 3 - 1) = 0.5 (confrontation), while the
+    max-position denominator would give 1 / 5 = 0.2 (setup).
+    """
+    from uuid import UUID as _UUID
+
+    async with _client() as client:
+        novel_id = await _novel(client)
+        eins = await _chapter(client, novel_id, "Eins")
+        zwei = await _chapter(client, novel_id, "Zwei")
+        drei = await _chapter(client, novel_id, "Drei")
+
+        async with Session() as session:
+            for chapter_id, position in ((eins, 0), (zwei, 1), (drei, 5)):
+                chapter = await session.get(Chapter, _UUID(chapter_id))
+                assert chapter is not None
+                chapter.position = position
+            await session.commit()
+
+        body = (await client.get(_storyboard(novel_id))).json()
+
+        assert body["stages"] and body["structure_id"] == "three-act"
+        chapters = _chapters_by_title(body)
+        assert chapters["Eins"]["stage_key"] == "setup"
+        assert chapters["Zwei"]["stage_key"] == "confrontation"
+        assert chapters["Drei"]["stage_key"] == "resolution"
+
+        preview = await client.post(
+            _remap(novel_id), json={"structure_id": "heros-journey", "confirm": False}
+        )
+
+        assert preview.status_code == 200
+        to_stage = {entry["chapter_id"]: entry["to_stage"] for entry in preview.json()["mapping"]}
+        assert to_stage[zwei] == "tests-allies-enemies"
+
+
 async def test_remap_preview_from_stage_uses_effective_current_stage() -> None:
     """A stale stored assignment must not leak into the remap preview.
 

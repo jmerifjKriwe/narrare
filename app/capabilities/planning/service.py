@@ -322,7 +322,7 @@ class PlanningService:
     @staticmethod
     def _suggested_key(stages: tuple[StageDef, ...], position: int, last_position: int) -> str:
         """The position-ratio suggestion: the first stage whose range
-        contains position over the last position — the first stage for a
+        contains position over the chapter-count denominator — one for a
         single-chapter novel, whose denominator would otherwise be zero."""
         return suggest_stage(stages, position / max(1, last_position)).key
 
@@ -391,10 +391,10 @@ class PlanningService:
         suggestion fills the rest — including a stored assignment naming a
         stage outside the current structure, which degrades to the
         suggestion instead of raising."""
-        last_position = max([chapter.position for chapter in chapters], default=0)
+        denominator = max(1, len(chapters) - 1)
         entries: list[StoryboardChapterRead] = []
         for chapter in chapters:
-            suggested = self._suggested_key(stages, chapter.position, last_position)
+            suggested = self._suggested_key(stages, chapter.position, denominator)
             assigned = assignments.get(chapter.id)
             effective = self._effective_stage_key(stages, assigned, suggested)
             if assigned is not None and effective == assigned.stage_key:
@@ -480,8 +480,8 @@ class PlanningService:
             raise StoryboardRefusedError(f"unknown stage: {stage_key}")
         await self.storyboard.save_assignment(chapter_id, stage_key)
         await self.session.commit()
-        last_position = max([row.position for row in chapters], default=0)
-        suggested = self._suggested_key(stages, chapter.position, last_position)
+        denominator = max(1, len(chapters) - 1)
+        suggested = self._suggested_key(stages, chapter.position, denominator)
         words = await self.storyboard.word_counts(novel_id)
         plans = list(await self.scenes.list_for_chapter(chapter.id))
         return self._chapter_entry(
@@ -517,16 +517,16 @@ class PlanningService:
         assignments = await self.storyboard.assignments_for_chapters(
             [chapter.id for chapter in chapters]
         )
-        last_position = max([chapter.position for chapter in chapters], default=0)
+        denominator = max(1, len(chapters) - 1)
         mapping = [
             RemapEntry(
                 chapter_id=chapter.id,
                 from_stage=self._effective_stage_key(
                     current,
                     assignments.get(chapter.id),
-                    self._suggested_key(current, chapter.position, last_position),
+                    self._suggested_key(current, chapter.position, denominator),
                 ),
-                to_stage=self._suggested_key(target, chapter.position, last_position),
+                to_stage=self._suggested_key(target, chapter.position, denominator),
             )
             for chapter in chapters
         ]
