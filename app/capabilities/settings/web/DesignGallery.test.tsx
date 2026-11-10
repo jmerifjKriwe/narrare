@@ -60,6 +60,18 @@ describe("DesignGallery", () => {
     expect(screen.getByRole("button", { name: "Check the whole book" })).toBeTruthy();
   });
 
+  it("pins the planning dock specimen", () => {
+    cleanup();
+    render(<DesignGallery />);
+    expect(screen.getByRole("heading", { name: /Szenenliste/ })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Ankommen" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Lücke" })).toBeTruthy();
+    expect(screen.getByText("Planned")).toBeTruthy();
+    expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save scenes" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add scene" })).toBeTruthy();
+  });
+
   it("clamps a 120-character cover title", () => {
     const { container } = render(<DesignGallery />);
     const tile = container.querySelector('[data-cover-tone][data-long-title]');
