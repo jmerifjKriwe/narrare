@@ -375,13 +375,16 @@ class PlanningService:
         scenes: dict[UUID, list[ScenePlan]],
     ) -> list[StoryboardChapterRead]:
         """Every chapter's row under one structure: assigned stages win, the
-        suggestion fills the rest."""
+        suggestion fills the rest — including a stored assignment naming a
+        stage outside the current structure, which degrades to the
+        suggestion instead of raising."""
         last_position = max([chapter.position for chapter in chapters], default=0)
+        valid_keys = {stage.key for stage in stages}
         entries: list[StoryboardChapterRead] = []
         for chapter in chapters:
             suggested = self._suggested_key(stages, chapter.position, last_position)
             assigned = assignments.get(chapter.id)
-            if assigned is None:
+            if assigned is None or assigned.stage_key not in valid_keys:
                 entries.append(
                     self._chapter_entry(
                         chapter,

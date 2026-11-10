@@ -307,6 +307,42 @@ async def test_unknown_structure_is_422_and_writes_nothing() -> None:
         assert await _stored_settings_rows() == 0
 
 
+async def test_stale_assignment_degrades_to_suggestion() -> None:
+    """A stored stage outside the current structure degrades to the suggestion.
+
+    PUT validates against structure A, then the novel setting moves to B
+    underneath the stored row — the read must render the chapter under its
+    suggested stage with source suggested, HTTP 200, never a 500.
+    """
+    from uuid import UUID as _UUID
+
+    async with _client() as client:
+        novel_id = await _novel(client)
+        chapter_id = await _chapter(client, novel_id, "Ankunft")
+
+        moved = await client.put(_stage(novel_id, chapter_id), json={"stage_key": "resolution"})
+        assert moved.status_code == 200
+
+        async with Session() as session:
+            session.add(
+                PlanningNovelSettings(
+                    user_id=LOCAL_USER_ID,
+                    novel_id=_UUID(novel_id),
+                    story_structure="heros-journey",
+                )
+            )
+            await session.commit()
+
+        response = await client.get(_storyboard(novel_id))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["structure_id"] == "heros-journey"
+        chapters = _chapters_by_title(body)
+        assert chapters["Ankunft"]["stage_key"] == "ordinary-world"
+        assert chapters["Ankunft"]["assignment_source"] == "suggested"
+
+
 async def test_writes_before_setup_are_409_and_reads_are_404() -> None:
     from sqlalchemy import delete
 
