@@ -1,11 +1,12 @@
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { Entity } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { useEntitiesQuery, useEntityRelationsQuery } from "@shell/lib/query";
 import { Notice } from "@shell/ui/Notice";
 
+import { useDeadEntityCleanup } from "./entitySelection";
 import { layoutGraph } from "./graphLayout";
 
 // The lens's own box: the dock's column is narrow, so the canvas is small —
@@ -54,11 +55,7 @@ export function NeighborhoodLens() {
   // selection above stayed empty, and the dead value leaves the address —
   // the list's cleanup, mirrored so the lens standing alone (the list
   // unmounted) degrades the same way instead of keeping the dead id.
-  useEffect(() => {
-    if (entityParam === undefined || entities.data === undefined) return;
-    if (entities.data.some((entity) => entity.id === entityParam)) return;
-    select(null);
-  }, [entityParam, entities.data, select]);
+  useDeadEntityCleanup({ rows: entities.data, entityParam, select });
 
   if (entities.isPending) {
     return (
@@ -90,7 +87,15 @@ export function NeighborhoodLens() {
       </Notice>
     );
   }
-  return <NeighborhoodGraph novelId={novelId} selected={selected} rows={rows} onSelect={select} />;
+  return (
+    <NeighborhoodGraph
+      key={selected.id}
+      novelId={novelId}
+      selected={selected}
+      rows={rows}
+      onSelect={select}
+    />
+  );
 }
 
 /** The selected entity's hop-1 graph: the entity, its neighbors, their edges. */

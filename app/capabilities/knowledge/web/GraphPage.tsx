@@ -1,5 +1,5 @@
 import { Link, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Entity, Relation } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
@@ -218,7 +218,6 @@ function NovelGraph({ novelId }: { novelId: string }) {
   const entities = useEntitiesQuery(novelId);
   const relations = useNovelRelationsQuery(novelId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const svgRef = useRef<SVGSVGElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
 
   const rows = useMemo(() => entities.data ?? [], [entities.data]);
@@ -240,6 +239,15 @@ function NovelGraph({ novelId }: { novelId: string }) {
   const byId = useMemo(() => new Map(rows.map((entity) => [entity.id, entity])), [rows]);
   const byNodeId = useMemo(() => new Map(layout.nodes.map((node) => [node.id, node])), [layout.nodes]);
   const [view, setView] = useState<GraphView>(() => fitGraphView(layout.width, layout.height));
+  // A new novel is a new canvas: the zoom the last one ended at never
+  // carries over. Keyed on the novel id alone — resetting on every render
+  // would steal the zoom the wheel and the buttons just set. The body reads
+  // no novel value (the fit is the same window), so the dep is the reset
+  // trigger, not a read.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the novel id is the reset trigger by design, not a value the body reads.
+  useEffect(() => {
+    setView(fitGraphView(VIEWPORT.width, VIEWPORT.height));
+  }, [novelId]);
   // The rendered window: the layout's coordinates, narrowed or widened
   // around the view's centre. Nodes keep their layout positions, so
   // selection, rings and glyphs never learn the view exists.
@@ -254,34 +262,44 @@ function NovelGraph({ novelId }: { novelId: string }) {
   // is one fixed box inside a page that scrolls from everywhere else, so
   // the wheel here navigates the graph instead of nudging the page. The
   // listener is native and non-passive so the page truly stays put.
-  useEffect(() => {
-    const svg = svgRef.current;
+  //
+  // It attaches through the canvas's own ref callback, not an effect keyed
+  // on viewport constants: on a cold load the canvas mounts only after the
+  // reads resolve, when a constant-dep effect has long since run against
+  // no element and never runs again. The ref fires with the mounted
+  // element, the handler ref always calls through to the latest render's
+  // handler, and the state update is functional — so the closure never
+  // goes stale and the listener never re-registers.
+  const layoutSizeRef = useRef(layout);
+  layoutSizeRef.current = layout;
+  const wheelHandlerRef = useRef<(event: WheelEvent, svg: SVGSVGElement) => void>(() => {});
+  wheelHandlerRef.current = (event, svg) => {
+    // A sideways scroll carries no vertical delta: not a zoom, and the
+    // gesture stays the page's — preventing it would trap the trackpad
+    // over the canvas (deltaY == 0 used to read as zoom-out).
+    if (event.deltaY === 0) return;
+    event.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const anchor =
+      rect.width > 0 && rect.height > 0
+        ? {
+            fx: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+            fy: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+          }
+        : { fx: 0.5, fy: 0.5 };
+    const { width, height } = layoutSizeRef.current;
+    setView((current) =>
+      zoomGraphView(current, width, height, event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, anchor),
+    );
+  };
+  const attachWheel = useCallback((svg: SVGSVGElement | null) => {
     if (svg === null) return;
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const rect = svg.getBoundingClientRect();
-      const anchor =
-        rect.width > 0 && rect.height > 0
-          ? {
-              fx: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
-              fy: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
-            }
-          : { fx: 0.5, fy: 0.5 };
-      setView((current) =>
-        zoomGraphView(
-          current,
-          layout.width,
-          layout.height,
-          event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP,
-          anchor,
-        ),
-      );
-    };
+    const onWheel = (event: WheelEvent) => wheelHandlerRef.current(event, svg);
     svg.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       svg.removeEventListener("wheel", onWheel);
     };
-  }, [layout.width, layout.height]);
+  }, []);
   // A selection the answer no longer holds is no selection: the dead id
   // leaves with the refetch that dropped it, like the dock's dead param.
   const selected = selectedId === null ? null : (byId.get(selectedId) ?? null);
@@ -364,7 +382,7 @@ function NovelGraph({ novelId }: { novelId: string }) {
         </Button>
       </div>
       <svg
-        ref={svgRef}
+        ref={attachWheel}
         role="group"
         aria-label={t("knowledge.graphHeading")}
         viewBox={viewBox}

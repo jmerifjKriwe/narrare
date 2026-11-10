@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -33,7 +33,7 @@ const edge = {
   created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
 };
 
-function renderGraph(search: string) {
+function renderGraph(search: string, queryClient?: QueryClient) {
   const route = createRoute({
     getParentRoute: () => rootRoute,
     path: "/knowledge/graph",
@@ -46,8 +46,9 @@ function renderGraph(search: string) {
     routeTree: rootRoute.addChildren([route]),
     history: createMemoryHistory({ initialEntries: [`/knowledge/graph${search}`] }),
   });
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+  const client = queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+  return router;
 }
 
 function mockNovel() {
@@ -164,6 +165,55 @@ describe("GraphPage pan and zoom", () => {
     expect(reset).toBe(document.activeElement);
     await user.keyboard("{Enter}");
     expect(viewBoxOf(canvas)).toEqual(fit);
+  });
+
+  it("a wheel turn zooms on a cold mount: the listener rides with the canvas", async () => {
+    mockNovel();
+    // A fresh client is the cold load: nothing cached, the canvas appears
+    // only after the reads resolve — the wheel listener must still be there.
+    renderGraph("?novel=novel-1");
+    const canvas = await screen.findByRole("group", { name: "Entity graph" });
+    const fit = viewBoxOf(canvas);
+    expect(fit).toEqual([0, 0, 960, 600]);
+
+    fireEvent.wheel(canvas, { deltaX: 0, deltaY: -120 });
+    const zoomed = viewBoxOf(canvas);
+    expect(zoomed[2]).toBeLessThan(fit[2]);
+    expect(zoomed[3]).toBeLessThan(fit[3]);
+  });
+
+  it("a sideways scroll leaves the zoom alone and keeps the gesture", async () => {
+    mockNovel();
+    // Cold mount, like the wheel test above: no warmed cache, the canvas
+    // appears after the reads resolve and the listener rides with it.
+    renderGraph("?novel=novel-1");
+    const canvas = await screen.findByRole("group", { name: "Entity graph" });
+    const fit = viewBoxOf(canvas);
+    // A horizontal trackpad scroll carries no vertical delta: the canvas must
+    // not read it as zoom-out, and the gesture stays unprevented so the
+    // page (or the trackpad's own sideways scroll) can have it.
+    const sideways = fireEvent.wheel(canvas, { deltaX: 24, deltaY: 0 });
+    expect(sideways).toBe(true);
+    expect(viewBoxOf(canvas)).toEqual(fit);
+    // The control: a real vertical turn still zooms (up zooms in).
+    fireEvent.wheel(canvas, { deltaX: 0, deltaY: -120 });
+    expect(viewBoxOf(canvas)[2]).toBeLessThan(fit[2]);
+  });
+
+  it("switching novels resets the view to fit instead of keeping the old zoom", async () => {
+    mockNovel();
+    const router = renderGraph("?novel=novel-1");
+    const user = userEvent.setup();
+    const canvas = await screen.findByRole("group", { name: "Entity graph" });
+    await user.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(viewBoxOf(canvas)[2]).toBeLessThan(960);
+
+    await act(async () => {
+      await router.navigate({ to: "/knowledge/graph", search: { novel: "novel-2" } });
+    });
+    // The new novel's canvas: same data shape, the fitted window again.
+    const next = await screen.findByRole("group", { name: "Entity graph" });
+    expect(viewBoxOf(next)).toEqual([0, 0, 960, 600]);
   });
 
   it("selection still works after zoom", async () => {

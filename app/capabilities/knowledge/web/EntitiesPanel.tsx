@@ -13,6 +13,7 @@ import { GridList } from "@shell/ui/GridList";
 import { Notice } from "@shell/ui/Notice";
 
 import { EntityDetail } from "./EntityDetail";
+import { useDeadEntityCleanup } from "./entitySelection";
 import { TYPE_KEYS, entityTypeLabel } from "./entityTypes";
 
 /** The novel's entities: searched and filtered against the server,
@@ -99,11 +100,7 @@ export function EntitiesPanel() {
   // a replace, so the cleanup is not a history step. Waiting for the rows
   // before judging keeps a just-selected address alive: the param is never
   // judged against an answer that has not landed.
-  useEffect(() => {
-    if (entityParam === undefined || all.data === undefined) return;
-    if (all.data.some((entity) => entity.id === entityParam)) return;
-    select(null);
-  }, [entityParam, all.data, select]);
+  useDeadEntityCleanup({ rows: all.data, entityParam, select });
 
   // The box's second tier: the same words, asked of the semantic search
   // (debounced, in the hook) while they are in the box at all.
