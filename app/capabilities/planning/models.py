@@ -89,3 +89,54 @@ class TimelineEvent(UserOwned):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+
+
+class PlanningNovelSettings(UserOwned):
+    """The storyboard's per-novel choice: which structure lays the chapters out.
+
+    One row per novel — ``novel_id`` is the primary key, so the setting is
+    replaced, never doubled. Deleting the novel takes its setting along;
+    the structure id names a key of the structures registry, defaulting to
+    three-act until the writer picks another through the remap confirm.
+    """
+
+    __tablename__ = "planning_novel_settings"
+
+    novel_id: Mapped[UUID] = mapped_column(
+        ForeignKey("novels.id", ondelete="CASCADE"), primary_key=True
+    )
+    story_structure: Mapped[str] = mapped_column(String(32), default="three-act")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class ChapterStage(UserOwned):
+    """One writer-set stage assignment: the chapter's manual storyboard column.
+
+    One row per chapter — ``chapter_id`` is the primary key, so moving a
+    chapter rewrites its row. A chapter without a row shows its suggested
+    stage instead; the suggestion is computed, never persisted. Deleting
+    the chapter takes its assignment along. ``stage_key`` names a stage of
+    the novel's current structure; the timestamps stay the server's own.
+    """
+
+    __tablename__ = "chapter_stages"
+
+    chapter_id: Mapped[UUID] = mapped_column(
+        ForeignKey("chapters.id", ondelete="CASCADE"), primary_key=True
+    )
+    stage_key: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

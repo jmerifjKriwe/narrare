@@ -111,3 +111,80 @@ class TimelineEventRead(BaseModel):
     character_names: list[str]
     created_at: datetime
     updated_at: datetime
+
+
+class StoryboardChapterRead(BaseModel):
+    """One chapter in its storyboard column: the effective stage, where the
+    stage came from, and how closely the writing follows the plan.
+
+    ``assignment_source`` is ``assigned`` when the writer set the stage by
+    hand, ``suggested`` when the column is the position-ratio suggestion —
+    a suggestion is computed, never persisted. ``sync_status`` is one of
+    ``empty | planned | deviated | completed | on_track``.
+    """
+
+    chapter_id: UUID
+    title: str
+    position: int
+    word_count: int
+    sync_status: str
+    assignment_source: str
+    stage_key: str
+
+
+class StoryboardStageRead(BaseModel):
+    """One storyboard column with the chapters standing in it."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    key: str
+    title_key: str
+    from_ratio: float = Field(alias="from")
+    to_ratio: float = Field(alias="to")
+    chapters: list[StoryboardChapterRead] = Field(default_factory=list[StoryboardChapterRead])
+
+
+class StoryboardRead(BaseModel):
+    """The novel's whole storyboard: the structure and its staged chapters."""
+
+    novel_id: UUID
+    structure_id: str
+    stages: list[StoryboardStageRead]
+
+
+class StageAssignmentUpdate(BaseModel):
+    """The PUT body: the chapter's new stage, a key of the current structure.
+    The body carries no timestamps: those are the server's own."""
+
+    stage_key: str = Field(min_length=1, max_length=64)
+
+
+class RemapRequest(BaseModel):
+    """The remap body: the target structure, and whether to apply it.
+
+    ``confirm: false`` previews the mapping without writing a row;
+    ``confirm: true`` writes the assignments plus the novel setting in one
+    transaction — exactly the previewed mapping.
+    """
+
+    structure_id: str = Field(min_length=1, max_length=32)
+    confirm: bool = False
+
+
+class RemapEntry(BaseModel):
+    """One chapter's move: the stage it stands in now, and the one the
+    target structure suggests."""
+
+    chapter_id: UUID
+    from_stage: str
+    to_stage: str
+
+
+class RemapRead(BaseModel):
+    """The remap answer: the target structure, whether it was applied, and
+    the per-chapter mapping — preview and confirm agree chapter by chapter."""
+
+    novel_id: UUID
+    structure_id: str
+    confirmed: bool
+    mapping: list[RemapEntry]

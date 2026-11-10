@@ -16,6 +16,11 @@ const SceneDock = lazy(async () => {
   return { default: panel.SceneDock };
 });
 
+const StoryboardPage = lazy(async () => {
+  const page = await import("./StoryboardPage");
+  return { default: page.StoryboardPage };
+});
+
 // The landing canvas: the novel's timeline as a full page under the Planen
 // rail entry. The novel arrives as `?novel=` (the graph's sibling: tolerant
 // in, absent means the picker); the dock's routes below parent at the
@@ -24,6 +29,25 @@ const planningRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/planning",
   component: PlanningPage,
+  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
+    return {
+      ...(typeof search.novel === "string" && search.novel !== ""
+        ? { novel: search.novel }
+        : {}),
+    };
+  },
+});
+
+// The storyboard canvas: the novel's chapters as cards in one column per
+// stage of its structure, beside the timeline under the same rail entry.
+// The novel arrives as `?novel=` (the timeline's sibling: tolerant in,
+// absent means the picker); the canvas door lives on the timeline landing
+// alone — neither the shelf nor the rail links here, the atlas names the
+// timeline as the one door to its sibling canvas.
+const storyboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/planning/storyboard",
+  component: StoryboardPage,
   validateSearch: (search: { novel?: unknown }): { novel?: string } => {
     return {
       ...(typeof search.novel === "string" && search.novel !== ""
@@ -59,4 +83,4 @@ export const dockRoutes = [
 // The route const stands on its own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [planningRoute] as const;
+export const routes = [planningRoute, storyboardRoute] as const;

@@ -857,6 +857,139 @@ export function DesignGallery() {
             </Notice>
           </div>
         </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">
+            Storyboard-Canvas · Planen (gebauter Stand)
+          </h3>
+          {/* The canvas as StoryboardPage renders it, pinned small: the
+              structure with its switch trigger, then one column per stage —
+              each card with its title, its size and its sync badge beside
+              the one move it offers — and one remap row naming a chapter's
+              before and after. The moved card stands in its new column:
+              Ankunft belongs to the first stage and was moved to the last.
+              Positions are fixed by hand, never computed, so no layout
+              logic is copied here. Inert: the switch never switches, the
+              move is a plain button — no menu opens, no dialog opens here.
+              The Target draft above keeps its ENTWURF stamp as the fork
+              record; this block never wears it — gebauter Stand, not a
+              draft. */}
+          <section aria-label={t("storyboard.heading")} className="mt-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-label text-muted">{t("storyboard.structure")}</span>
+              <span className="font-semibold text-body">{t("storyboard.structure.three-act")}</span>
+              <Button variant="secondary" size="sm">
+                {t("storyboard.previewChange")}
+              </Button>
+            </div>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <div>
+                <h4 className="text-label font-semibold text-muted">
+                  {t("storyboard.stage.setup")}
+                </h4>
+                <ul className="mt-1 flex flex-col gap-2">
+                  <li>
+                    <Row
+                      as="div"
+                      role="group"
+                      aria-label="Abreise"
+                      flush
+                      className="h-auto flex-col items-stretch gap-1 py-2"
+                    >
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="min-w-0 flex-1 text-body font-semibold">Abreise</span>
+                        <span className="shrink-0 text-label text-muted">
+                          {t("storyboard.words", { count: 0 })}
+                        </span>
+                        <span className="shrink-0 text-label text-muted">
+                          {t("storyboard.sync.empty")}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="secondary" size="sm">
+                          {t("storyboard.move")}
+                        </Button>
+                      </div>
+                    </Row>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-label font-semibold text-muted">
+                  {t("storyboard.stage.confrontation")}
+                </h4>
+                <ul className="mt-1 flex flex-col gap-2">
+                  <li>
+                    <Row
+                      as="div"
+                      role="group"
+                      aria-label="Heimkehr"
+                      flush
+                      className="h-auto flex-col items-stretch gap-1 py-2"
+                    >
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="min-w-0 flex-1 text-body font-semibold">Heimkehr</span>
+                        <span className="shrink-0 text-label text-muted">
+                          {t("storyboard.words", { count: 4 })}
+                        </span>
+                        <span className="shrink-0 text-label text-muted">
+                          {t("storyboard.sync.completed")}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="secondary" size="sm">
+                          {t("storyboard.move")}
+                        </Button>
+                      </div>
+                    </Row>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-label font-semibold text-muted">
+                  {t("storyboard.stage.resolution")}
+                </h4>
+                <ul className="mt-1 flex flex-col gap-2">
+                  <li>
+                    <Row
+                      as="div"
+                      role="group"
+                      aria-label="Ankunft"
+                      flush
+                      className="h-auto flex-col items-stretch gap-1 py-2"
+                    >
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="min-w-0 flex-1 text-body font-semibold">Ankunft</span>
+                        <span className="shrink-0 text-label text-muted">
+                          {t("storyboard.words", { count: 0 })}
+                        </span>
+                        <span className="shrink-0 text-label text-muted">
+                          {t("storyboard.sync.on_track")}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="secondary" size="sm">
+                          {t("storyboard.move")}
+                        </Button>
+                      </div>
+                    </Row>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <ul className="mt-2 flex flex-col gap-1">
+              <li className="text-body">
+                Abreise: {t("storyboard.stage.setup")} → {t("storyboard.stage.ordinary-world")}
+              </li>
+            </ul>
+          </section>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              StoryboardPage: die gebaute Canvas mit Phasenspalten, einer
+              verschobenen Karte und einer Strukturvorschau — gebauter Stand,
+              kein Entwurf.
+            </Notice>
+          </div>
+        </div>
       </section>
     </div>
   );

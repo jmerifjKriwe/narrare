@@ -118,6 +118,25 @@ describe("DesignGallery", () => {
     expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2);
   });
 
+  it("pins the built storyboard-canvas specimen beside the Target draft", () => {
+    cleanup();
+    render(<DesignGallery />);
+    // The specimen's own heading names the built state — the Target draft
+    // above keeps the ENTWURF stamp as the fork record, the specimen never
+    // wears it.
+    const heading = screen.getByRole("heading", { name: /Storyboard-Canvas/ });
+    expect(heading.textContent).toMatch(/gebaut/);
+    const block = heading.parentElement as HTMLElement;
+    expect(block.textContent).not.toMatch(/ENTWURF/);
+    // Stage columns miniaturized: the moved card stands in its new column,
+    // with its size and sync badge beside the move it offers.
+    expect(screen.getByRole("group", { name: "Ankunft" })).toBeTruthy();
+    expect(block.textContent).toMatch(/words/);
+    expect(screen.getByRole("button", { name: "Preview structure change" })).toBeTruthy();
+    // One remap row: the chapter's before and after in one line.
+    expect(block.textContent).toMatch(/→/);
+  });
+
   it("clamps a 120-character cover title", () => {
     const { container } = render(<DesignGallery />);
     const tile = container.querySelector('[data-cover-tone][data-long-title]');

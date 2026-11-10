@@ -1,4 +1,4 @@
-"""HTTP surface for scene plans and timeline events. Parses, delegates, returns; no logic here."""
+"""HTTP surface for plans, events and the storyboard. Parses, delegates, returns; no logic here."""
 
 from typing import Annotated
 from uuid import UUID
@@ -8,8 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.capabilities.planning.schemas import (
     PlanningErrorRead,
+    RemapRead,
+    RemapRequest,
     SceneAggregateRead,
     SceneAggregateUpdate,
+    StageAssignmentUpdate,
+    StoryboardChapterRead,
+    StoryboardRead,
     TimelineEventCreate,
     TimelineEventRead,
     TimelineEventUpdate,
@@ -18,6 +23,7 @@ from app.capabilities.planning.service import (
     NotFoundError,
     PlanningService,
     SceneRefusedError,
+    StoryboardRefusedError,
     TimelineRefusedError,
 )
 from app.kernel.auth import SetupRequiredError, current_user_id
@@ -191,3 +197,80 @@ async def delete_timeline_event(novel_id: UUID, event_id: UUID, service: Service
         raise HTTPException(status_code=404, detail="timeline event not found") from None
     except SetupRequiredError:
         raise HTTPException(status_code=409, detail="setup required") from None
+
+
+@router.get(
+    "/novels/{novel_id}/storyboard",
+    response_model=StoryboardRead,
+    responses={404: {"model": PlanningErrorRead, "description": "Novel not found"}},
+)
+async def read_storyboard(novel_id: UUID, service: ServiceDep) -> StoryboardRead:
+    """Assemble the novel's storyboard: the structure and its staged chapters.
+
+    Reads only — suggested stages are computed, never persisted. Raise
+    HTTP 404 for an absent or unowned novel — a foreign novel reads as
+    missing, never as an oracle.
+    """
+    try:
+        return await service.get_storyboard(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+
+
+@router.put(
+    "/novels/{novel_id}/chapters/{chapter_id}/stage",
+    response_model=StoryboardChapterRead,
+    responses={
+        404: {"model": PlanningErrorRead, "description": "Novel not found"},
+        409: {"model": PlanningErrorRead, "description": "Setup required"},
+        422: {"model": PlanningErrorRead, "description": "A refused stage, named in `detail`"},
+    },
+)
+async def set_chapter_stage(
+    novel_id: UUID, chapter_id: UUID, payload: StageAssignmentUpdate, service: ServiceDep
+) -> StoryboardChapterRead:
+    """Move one chapter to a stage of the novel's current structure and
+    return the assignment.
+
+    Raise HTTP 404 for an absent or unowned novel, HTTP 409 without the
+    setup-created user, or HTTP 422 for a chapter id the novel does not
+    hold or a stage key outside the current structure — a refused PUT
+    writes nothing at all.
+    """
+    try:
+        return await service.set_chapter_stage(novel_id, chapter_id, payload.stage_key)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    except StoryboardRefusedError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+
+
+@router.post(
+    "/novels/{novel_id}/remap",
+    response_model=RemapRead,
+    responses={
+        404: {"model": PlanningErrorRead, "description": "Novel not found"},
+        409: {"model": PlanningErrorRead, "description": "Setup required"},
+        422: {"model": PlanningErrorRead, "description": "A refused remap, named in `detail`"},
+    },
+)
+async def remap_storyboard(novel_id: UUID, payload: RemapRequest, service: ServiceDep) -> RemapRead:
+    """Preview or apply the structure change.
+
+    ``confirm: false`` returns the mapping without writing a row;
+    ``confirm: true`` writes the assignments plus the novel setting in one
+    transaction — exactly the previewed mapping. Raise HTTP 404 for an
+    absent or unowned novel, HTTP 409 for a confirm without the
+    setup-created user, or HTTP 422 for a structure id outside the
+    registry.
+    """
+    try:
+        return await service.remap_storyboard(novel_id, payload.structure_id, payload.confirm)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    except SetupRequiredError:
+        raise HTTPException(status_code=409, detail="setup required") from None
+    except StoryboardRefusedError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None

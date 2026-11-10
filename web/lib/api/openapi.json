@@ -2198,6 +2198,85 @@
         "title": "RelationRead",
         "type": "object"
       },
+      "RemapEntry": {
+        "description": "One chapter's move: the stage it stands in now, and the one the\ntarget structure suggests.",
+        "properties": {
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "from_stage": {
+            "title": "From Stage",
+            "type": "string"
+          },
+          "to_stage": {
+            "title": "To Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "from_stage",
+          "to_stage"
+        ],
+        "title": "RemapEntry",
+        "type": "object"
+      },
+      "RemapRead": {
+        "description": "The remap answer: the target structure, whether it was applied, and\nthe per-chapter mapping — preview and confirm agree chapter by chapter.",
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "mapping": {
+            "items": {
+              "$ref": "#/components/schemas/RemapEntry"
+            },
+            "title": "Mapping",
+            "type": "array"
+          },
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "structure_id": {
+            "title": "Structure Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "novel_id",
+          "structure_id",
+          "confirmed",
+          "mapping"
+        ],
+        "title": "RemapRead",
+        "type": "object"
+      },
+      "RemapRequest": {
+        "description": "The remap body: the target structure, and whether to apply it.\n\n``confirm: false`` previews the mapping without writing a row;\n``confirm: true`` writes the assignments plus the novel setting in one\ntransaction — exactly the previewed mapping.",
+        "properties": {
+          "confirm": {
+            "default": false,
+            "title": "Confirm",
+            "type": "boolean"
+          },
+          "structure_id": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Structure Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "structure_id"
+        ],
+        "title": "RemapRequest",
+        "type": "object"
+      },
       "SceneAggregateRead": {
         "description": "The chapter's scenes in position order, with the version the dock\ncompares its snapshot against: the chapter's own stamp, touched by\nevery aggregate write.",
         "properties": {
@@ -2583,6 +2662,131 @@
           "relation_type"
         ],
         "title": "SkippedRelationRead",
+        "type": "object"
+      },
+      "StageAssignmentUpdate": {
+        "description": "The PUT body: the chapter's new stage, a key of the current structure.\nThe body carries no timestamps: those are the server's own.",
+        "properties": {
+          "stage_key": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Stage Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage_key"
+        ],
+        "title": "StageAssignmentUpdate",
+        "type": "object"
+      },
+      "StoryboardChapterRead": {
+        "description": "One chapter in its storyboard column: the effective stage, where the\nstage came from, and how closely the writing follows the plan.\n\n``assignment_source`` is ``assigned`` when the writer set the stage by\nhand, ``suggested`` when the column is the position-ratio suggestion —\na suggestion is computed, never persisted. ``sync_status`` is one of\n``empty | planned | deviated | completed | on_track``.",
+        "properties": {
+          "assignment_source": {
+            "title": "Assignment Source",
+            "type": "string"
+          },
+          "chapter_id": {
+            "format": "uuid",
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "stage_key": {
+            "title": "Stage Key",
+            "type": "string"
+          },
+          "sync_status": {
+            "title": "Sync Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "title",
+          "position",
+          "word_count",
+          "sync_status",
+          "assignment_source",
+          "stage_key"
+        ],
+        "title": "StoryboardChapterRead",
+        "type": "object"
+      },
+      "StoryboardRead": {
+        "description": "The novel's whole storyboard: the structure and its staged chapters.",
+        "properties": {
+          "novel_id": {
+            "format": "uuid",
+            "title": "Novel Id",
+            "type": "string"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardStageRead"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "structure_id": {
+            "title": "Structure Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "novel_id",
+          "structure_id",
+          "stages"
+        ],
+        "title": "StoryboardRead",
+        "type": "object"
+      },
+      "StoryboardStageRead": {
+        "description": "One storyboard column with the chapters standing in it.",
+        "properties": {
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardChapterRead"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
+          "from": {
+            "title": "From",
+            "type": "number"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title_key": {
+            "title": "Title Key",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "title_key",
+          "from",
+          "to"
+        ],
+        "title": "StoryboardStageRead",
         "type": "object"
       },
       "SuggestionRead": {
@@ -4295,6 +4499,218 @@
           }
         },
         "summary": "Save Scenes",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/planning/novels/{novel_id}/chapters/{chapter_id}/stage": {
+      "put": {
+        "description": "Move one chapter to a stage of the novel's current structure and\nreturn the assignment.\n\nRaise HTTP 404 for an absent or unowned novel, HTTP 409 without the\nsetup-created user, or HTTP 422 for a chapter id the novel does not\nhold or a stage key outside the current structure — a refused PUT\nwrites nothing at all.",
+        "operationId": "set_chapter_stage_api_planning_novels__novel_id__chapters__chapter_id__stage_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageAssignmentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryboardChapterRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "A refused stage, named in `detail`"
+          }
+        },
+        "summary": "Set Chapter Stage",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/planning/novels/{novel_id}/remap": {
+      "post": {
+        "description": "Preview or apply the structure change.\n\n``confirm: false`` returns the mapping without writing a row;\n``confirm: true`` writes the assignments plus the novel setting in one\ntransaction — exactly the previewed mapping. Raise HTTP 404 for an\nabsent or unowned novel, HTTP 409 for a confirm without the\nsetup-created user, or HTTP 422 for a structure id outside the\nregistry.",
+        "operationId": "remap_storyboard_api_planning_novels__novel_id__remap_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemapRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Setup required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "A refused remap, named in `detail`"
+          }
+        },
+        "summary": "Remap Storyboard",
+        "tags": [
+          "planning"
+        ]
+      }
+    },
+    "/api/planning/novels/{novel_id}/storyboard": {
+      "get": {
+        "description": "Assemble the novel's storyboard: the structure and its staged chapters.\n\nReads only — suggested stages are computed, never persisted. Raise\nHTTP 404 for an absent or unowned novel — a foreign novel reads as\nmissing, never as an oracle.",
+        "operationId": "read_storyboard_api_planning_novels__novel_id__storyboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryboardRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanningErrorRead"
+                }
+              }
+            },
+            "description": "Novel not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Storyboard",
         "tags": [
           "planning"
         ]
