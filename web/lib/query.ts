@@ -446,6 +446,29 @@ export function useEntityRelationsQuery(entityId: string): UseQueryResult<Relati
   });
 }
 
+/**
+ * The novel's whole edge set, both directions, oldest first — the graph
+ * canvas's read of the relations. The key carries the novel beside the
+ * per-entity `["knowledge", "relations", entityId]` keys, so the edge
+ * mutations' `["knowledge", "relations"]` prefix invalidation keeps this
+ * cache honest too — an edge always has two ends, and the canvas holds
+ * them all. No existing hook fits: the per-entity read would ask once
+ * per node (N+1) where this endpoint answers once.
+ */
+export function useNovelRelationsQuery(novelId: string): UseQueryResult<Relation[]> {
+  return useQuery({
+    queryKey: ["knowledge", "relations", "novel", novelId],
+    queryFn: async () => {
+      const { data, response } = await client.GET(
+        "/api/knowledge/novels/{novel_id}/relations",
+        { params: { path: { novel_id: novelId } } },
+      );
+      if (!response.ok) throw new Error(`novel relations unavailable: ${response.status}`);
+      return data ?? [];
+    },
+  });
+}
+
 /** The input of a relation add: the edge's end, its type, an optional note.
  *  A `null` note is the no-note state — an empty or whitespace note is
  *  dropped before the create (the field is sent absent), never stored as a

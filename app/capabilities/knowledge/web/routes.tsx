@@ -15,10 +15,33 @@ const KnowledgeDock = lazy(async () => {
   return { default: panel.KnowledgeDock };
 });
 
+// The graph canvas: the novel's entities and relations as one readable,
+// selectable SVG page. The novel arrives as `?novel=` — tolerant in, the
+// dock's `?entity=` sibling: an absent or empty value is the picker, not
+// an error, and a value the read does not return degrades to the empty
+// state where the dock's dead id would clean the address.
+const KnowledgeGraph = lazy(async () => {
+  const page = await import("./GraphPage");
+  return { default: page.GraphPage };
+});
+
 const knowledgeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/knowledge",
   component: KnowledgePage,
+});
+
+const knowledgeGraphRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/knowledge/graph",
+  component: KnowledgeGraph,
+  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
+    return {
+      ...(typeof search.novel === "string" && search.novel !== ""
+        ? { novel: search.novel }
+        : {}),
+    };
+  },
 });
 
 // The dock convention: routes for another capability's workspace, created as
@@ -67,4 +90,4 @@ export const dockRoutes = [
 // The route const stands on its own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [knowledgeRoute] as const;
+export const routes = [knowledgeRoute, knowledgeGraphRoute] as const;

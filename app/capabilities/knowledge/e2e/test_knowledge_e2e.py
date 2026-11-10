@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 from playwright.sync_api import Page, expect
 from sqlalchemy import text
@@ -26,6 +27,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
 
@@ -360,5 +362,103 @@ def test_one_documents_row_keeps_its_height_and_fits_a_phone(
 
     page.set_viewport_size({"width": 360, "height": 720})
     assert_page_fits(page)
+
+    assert_accessible(page)
+
+
+def _seed_graph_novel() -> tuple[str, str, str]:
+    """A novel with two accepted entities joined by one edge, through the API.
+
+    The entities enter the world the only way they can — the extraction
+    job over a real chapter, and the review's accept — and the edge rides
+    the real relation create. Returns the novel's id and the two entity
+    names, the words the canvas must then show.
+    """
+    with httpx.Client(base_url=API_URL, timeout=30) as api:
+        novel = api.post("/api/writing/novels", json={"title": "Die graphische Bucht"})
+        novel.raise_for_status()
+        novel_id = novel.json()["id"]
+        chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
+        chapter.raise_for_status()
+        chapter_id = chapter.json()["id"]
+        saved = api.put(
+            f"/api/writing/chapters/{chapter_id}",
+            json={"body": "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."},
+        )
+        saved.raise_for_status()
+        enqueued = api.post(
+            f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id}
+        )
+        enqueued.raise_for_status()
+        job = wait_for_job(api, enqueued.json()["job_id"])
+        assert job["status"] == "done"
+        suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
+        suggestions.raise_for_status()
+        assert len(suggestions.json()) >= 2
+        first = api.post(f"/api/knowledge/suggestions/{suggestions.json()[0]['id']}/accept")
+        first.raise_for_status()
+        second = api.post(f"/api/knowledge/suggestions/{suggestions.json()[1]['id']}/accept")
+        second.raise_for_status()
+        listed = api.get(f"/api/knowledge/novels/{novel_id}/entities")
+        listed.raise_for_status()
+        names = [row["name"] for row in listed.json()]
+        assert len(names) == 2
+        edge = api.post(
+            f"/api/knowledge/entities/{listed.json()[0]['id']}/relations",
+            json={"to_entity_id": listed.json()[1]["id"], "relation_type": "friend_of"},
+        )
+        edge.raise_for_status()
+    return novel_id, names[0], names[1]
+
+
+def test_the_graph_canvas_shows_two_entities_and_their_edge(page: Page, stack: Stack) -> None:
+    """The full-page canvas: two nodes, the line between them, the detail.
+
+    The entry rides the knowledge page's own link — no novel is named
+    there, so the canvas first asks which book to draw and then draws
+    exactly what the seed filed: both names on the canvas, the one edge
+    as its line, the whole novel accounted for in the showing note. A
+    click selects: the detail reads the entity's words and the edge in
+    German, and the only door out names the dock — the canvas never
+    writes. At a desk's 1280 px the canvas owns the page without widening
+    it: no horizontal scrollbar on the document.
+    """
+    novel_id, first, second = _seed_graph_novel()
+
+    page.goto(f"{WEB_URL}/knowledge")
+    page.get_by_role("link", name="Im Graphen öffnen").click()
+    expect(page).to_have_url(re.compile(r"/knowledge/graph"))
+    # No novel named yet: the canvas asks which book, it does not guess.
+    page.get_by_role("link", name="Die graphische Bucht").click()
+    expect(page).to_have_url(f"{WEB_URL}/knowledge/graph?novel={novel_id}")
+
+    expect(page.get_by_role("heading", name="Entitätengraph")).to_be_visible()
+    expect(page.get_by_role("button", name=first)).to_be_visible()
+    expect(page.get_by_role("button", name=second)).to_be_visible()
+    expect(page.locator("svg line")).to_have_count(1)
+    expect(page.get_by_text("Zeigt 2 von 2 Entitäten · 1 von 1 Beziehungen")).to_be_visible()
+
+    page.get_by_role("button", name=first).click()
+    detail = page.get_by_role("region", name=first)
+    expect(detail).to_contain_text(f"{second} · Befreundet mit")
+    expect(detail.get_by_role("link", name="Im Dock bearbeiten")).to_have_attribute(
+        "href", re.compile(r"/novels/.+/knowledge\?entity=.+")
+    )
+    expect(detail.get_by_role("button")).to_have_count(0)
+
+    page.set_viewport_size({"width": 1280, "height": 800})
+    assert page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth") <= 0
+    # The shell scrolls inside #main (P8): a canvas wider than the page
+    # would scroll there while the document stays viewport-wide, so the
+    # document face alone cannot fail — width only, the page's own
+    # vertical scroll stays allowed by design. The +1 is sub-pixel
+    # rounding, the viewport floor's own tolerance.
+    main = page.evaluate(
+        "() => { const main = document.getElementById('main');"
+        " return main === null ? null :"
+        " { scroll: main.scrollWidth, client: main.clientWidth }; }"
+    )
+    assert main is not None
+    assert main["scroll"] <= main["client"] + 1
 
     assert_accessible(page)
