@@ -100,6 +100,8 @@ SHOTS = (
     "09-design-dark.png",
     "10-graph.png",
     "11-graph-dark.png",
+    "12-timeline.png",
+    "13-timeline-dark.png",
 )
 
 
@@ -259,6 +261,46 @@ def _seed_graph(api: httpx.Client) -> tuple[str, str, str]:
     )
     edge.raise_for_status()
     return novel_id, names[0], names[1]
+
+
+def _seed_timeline(api: httpx.Client) -> str:
+    """A novel with chapters and events, through the API.
+
+    The events enter the world the way a writer would place them — through
+    the real create — one dated with characters and a chapter, one ordered
+    but undated, one unordered and chapterless. Returns the novel's id, the
+    timeline canvas's ``?novel=`` parameter. Mirrors the planning E2E's
+    seed; the screenshots stack runs the same fake providers.
+    """
+    novel = api.post("/api/writing/novels", json={"title": "Die geplante Bucht"})
+    novel.raise_for_status()
+    novel_id = str(novel.json()["id"])
+    chapter_ids: list[str] = []
+    for title in ("Ankunft", "Abreise"):
+        chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": title})
+        chapter.raise_for_status()
+        chapter_ids.append(str(chapter.json()["id"]))
+    events: tuple[dict[str, object], ...] = (
+        {
+            "title": "Anfang",
+            "description": "Maya erreicht die Station; das Signal ist noch ein Gerücht.",
+            "date_label": "Im Frühling",
+            "character_names": ["Maya Chen", "ARIA"],
+            "chapter_id": chapter_ids[0],
+            "position": 1,
+        },
+        {
+            "title": "Mitte",
+            "description": "Der Konzern nennt es einen Unfall.",
+            "chapter_id": chapter_ids[1],
+            "position": 2,
+        },
+        {"title": "Ausklang", "description": "Drei Jahre fehlen."},
+    )
+    for payload in events:
+        created = api.post(f"/api/planning/novels/{novel_id}/timeline-events", json=payload)
+        created.raise_for_status()
+    return novel_id
 
 
 def _capture(
@@ -449,6 +491,28 @@ def _capture(
     page.get_by_role("button", name=first).click()
     expect(page.get_by_role("region", name=first)).to_be_visible()
     shot(SHOTS[10])
+
+    # 12. The timeline canvas in the default light: the novel's events in
+    #     the writer's own order — the dated row with its garnish, its
+    #     characters and its chapter, the unordered row with its position
+    #     instead of a date — the canvas owns the page, shot at the shared
+    #     viewport.
+    api.patch("/api/settings/theme", json={"theme": None})
+    timeline_novel = _seed_timeline(api)
+    page.goto(f"{WEB}/planning?novel={timeline_novel}")
+    expect(page.get_by_role("group", name="Anfang")).to_be_visible()
+    expect(page.get_by_text("Im Frühling")).to_be_visible()
+    expect(page.get_by_text("Unordered")).to_be_visible()
+    shot(SHOTS[11])
+
+    # 13. The same canvas in the reader's chosen dark, proven against a
+    #     light OS — the rows and the garnish stay readable.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/planning?novel={timeline_novel}")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    expect(page.get_by_role("group", name="Anfang")).to_be_visible()
+    expect(page.get_by_text("Im Frühling")).to_be_visible()
+    shot(SHOTS[12])
 
     api.patch("/api/settings/theme", json={"theme": None})
     return written

@@ -94,6 +94,30 @@ describe("DesignGallery", () => {
     expect(block.textContent).toMatch(/Figur/);
   });
 
+  it("pins the built timeline-canvas specimen beside the Target draft", () => {
+    cleanup();
+    render(<DesignGallery />);
+    // The specimen's own heading names the built state — the Target draft
+    // above keeps the ENTWURF stamp as the fork record, the specimen never
+    // wears it.
+    const heading = screen.getByRole("heading", { name: /Timeline-Canvas/ });
+    expect(heading.textContent).toMatch(/gebaut/);
+    const block = heading.parentElement as HTMLElement;
+    expect(block.textContent).not.toMatch(/ENTWURF/);
+    // The dated row carries its garnish, characters and chapter; the
+    // undated row renders its position instead of a date.
+    expect(screen.getByRole("group", { name: "Das Signal" })).toBeTruthy();
+    expect(block.textContent).toMatch(/#1/);
+    expect(block.textContent).toMatch(/Im Frühling/);
+    expect(block.textContent).toMatch(/Maya Chen/);
+    expect(screen.getByRole("group", { name: "Der stille Winter" })).toBeTruthy();
+    expect(block.textContent).toMatch(/Unordered/);
+    // The view switch and the row actions stand inert: pressed marks and
+    // plain buttons, no dialogs, no handlers.
+    expect(screen.getByRole("button", { name: "Chronological" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2);
+  });
+
   it("clamps a 120-character cover title", () => {
     const { container } = render(<DesignGallery />);
     const tile = container.querySelector('[data-cover-tone][data-long-title]');
