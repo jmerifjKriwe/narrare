@@ -86,9 +86,18 @@ group, so review never faces a wall of commits at the end.
 
 ## Git
 
-`--no-verify` and force push are forbidden. Conventional commits; `feat`/`fix` need a
-real `User-visible:` line that the task provides. Nothing is committed before the
-review is green. A commit made through an agent ends with the trailer
+`--no-verify` and force push are forbidden. Conventional commits. The types that
+reach the release notes — `feat`, `fix`, `perf`, `docs` — need a real
+`User-visible:` line that the task provides; the commit-message hook refuses a
+missing or placeholder value (`none`, `n/a`, `-`, `nothing`, `tbd`). Work no user
+can observe — internal production code, tooling, CI, tests, dependencies, plans,
+specs, follow-ups, process — uses a hidden type: `chore`, `refactor`, `test`,
+`ci`, `build` or `style`. Development documentation is `chore(docs)`; only
+documentation a user reads is `docs`. Scopes that name development work (`ci`,
+`tooling`, `tests`, `e2e`, `gates`, `repo`, `deps`, `hooks`, `plan`, `process`,
+`follow-ups`) belong under a hidden type even when the change is a feature or a
+fix to that tooling. Nothing is committed before the review is
+green. A commit made through an agent ends with the trailer
 `Assisted-by: OpenCode (<model>)`, added with `git commit --trailer`; author and
 committer stay the human.
 

@@ -61,17 +61,33 @@ format:
 feat(core): add prompt cascade resolution
 
 User-visible: Prompt cascades can be resolved per project.
+
 fix(api): resolve session timeout on idle
+
+User-visible: An idle session no longer times out mid-save.
+
 docs: update deployment guide
+
+User-visible: The deployment guide names the container ports.
+
 chore(deps): bump ruff to 0.15
 ```
 
-The type drives the auto-generated changelog and semantic versioning. `feat`
-and `fix` land in the user-facing changelog and bump the version, so both must
-state what a user can now do: a `User-visible:` line in the commit body. Work no
-user can observe — including internal production code — goes under
-`chore(<scope>): …`. The `User-visible:` rule and the scope convention live in
-[`AGENTS.md`](AGENTS.md) and are checked in review.
+The type drives the auto-generated changelog and semantic versioning. The types
+that land in the release notes — `feat`, `fix`, `perf` and `docs` — must state
+what a user can now do or read: a real `User-visible:` line in the commit body.
+The commit-message hook refuses a missing line and a placeholder value (`none`,
+`n/a`, `-`, `nothing`, `tbd`); whether a sentence is honest stays review's call.
+
+Work no user can observe — including internal production code, tooling, CI,
+tests, dependencies, plans, specs, follow-ups and process — uses a hidden type:
+`chore`, `refactor`, `test`, `ci`, `build` or `style`. A development document is
+`chore(docs): …`; only documentation a user reads is `docs: …`. The same rule
+applies to scopes that name development work (`ci`, `tooling`, `tests`, `e2e`,
+`gates`, `repo`, `deps`, `hooks`, `plan`, `process`, `follow-ups`): they belong
+under a hidden type even when the change is a feature or a fix to that tooling.
+
+The scope convention lives in [`AGENTS.md`](AGENTS.md) and is checked in review.
 
 ## Internationalization (i18n)
 
@@ -210,7 +226,8 @@ History liest.
 3. **PR checklist:**
    - [ ] `just check` passes (lint + types)
    - [ ] Tests pass (`just test`, `just test-frontend`, and the capability E2E)
-   - [ ] Conventional commit, and a `User-visible:` line for `feat` and `fix`
+   - [ ] Conventional commit, and a real `User-visible:` line for `feat`, `fix`,
+     `perf` and `docs` (development-only work uses a hidden type)
    - [ ] No bypass of the hooks was used for any commit
 4. CI runs on every PR and on every push to `main`: lint and types, the
    integration tests and the web build. The E2E runs on the PR — in parallel

@@ -98,9 +98,9 @@ Corrections and notes:
   (`web` runs the typecheck and the changed tests), so ten stand where eleven
   did, inside ≤ 10. The check-script target is met: `check_doc_links.py` is
   deleted because no gate called it; `check_secrets.py` (the secret scan),
-  `check_commit_msg.py` (release-please grammar, duplicate lines in
-  v0.3.0/v0.3.1) and `check_pins.py` (tool pins Dependabot cannot see)
-  remain, each naming a failure that has occurred.
+  `check_commit_msg.py` (release-please grammar and the user-visible marker,
+  duplicate lines in v0.3.0/v0.3.1) and `check_pins.py` (tool pins Dependabot
+  cannot see) remain, each naming a failure that has occurred.
   Recipes 27 is the one remaining deviation from the 24 target — the three
   names are `check-generated`, `test-frontend-changed` and `fuzz` — and the
   deviation stays recorded here; the target values (≤ 10 / ≤ 3 / 24) remain

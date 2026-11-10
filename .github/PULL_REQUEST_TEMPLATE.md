@@ -22,7 +22,8 @@
 
 ## Commit standard
 
-- [ ] Conventional commit; a `feat` or `fix` carries a real `User-visible:` line
+- [ ] Conventional commit; `feat`, `fix`, `perf` and `docs` carry a real `User-visible:` line
+- [ ] Development-only work uses a hidden type (`chore`, `refactor`, `test`, `ci`, `build`, `style`); `chore(docs)` for development documents, `docs` for user documentation
 - [ ] No `--no-verify` and no force push
 
 ## Boundaries
