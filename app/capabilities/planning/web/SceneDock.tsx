@@ -101,11 +101,40 @@ export function SceneDock() {
   const chapterId = chapterParam ?? activeChapterFallback(chapters.data ?? []);
   const headingId = useId();
 
+  if (chapterId === null) {
+    return (
+      <section aria-labelledby={headingId}>
+        <h3 id={headingId} className="text-body font-semibold">
+          {t("planning.panelHeading")}
+        </h3>
+        <Notice tone="quiet" live="status" className="mt-2">
+          {chapters.isPending ? t("planning.loading") : t("planning.noActiveChapter")}
+        </Notice>
+      </section>
+    );
+  }
+  // The chapter owns the held rows: a switch remounts the list below, so
+  // the previous chapter's edits can never stand in for the next
+  // chapter's scenes — not even for a frame. The guard lives inside,
+  // beside the dirt it watches, so a dirty list still asks first.
+  return <SceneList key={chapterId} novelId={novelId} chapterId={chapterId} headingId={headingId} />;
+}
+
+/** The chapter's scene list: the held draft beside the server's answer. */
+function SceneList({
+  novelId,
+  chapterId,
+  headingId,
+}: {
+  novelId: string;
+  chapterId: string;
+  headingId: string;
+}) {
+  const t = useTranslation();
+
   const scenesQuery = useQuery({
     queryKey: ["planning", "scenes", novelId, chapterId],
-    enabled: chapterId !== null,
     queryFn: async () => {
-      if (chapterId === null) throw new Error("no chapter to plan");
       const { data, response } = await client.GET(
         "/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
         { params: { path: { novel_id: novelId, chapter_id: chapterId } } },
@@ -119,19 +148,11 @@ export function SceneDock() {
 
   // The held draft beside the server's answer: null is clean, an array is
   // edited — compared field by field, so an edit undone is clean again.
-  // The chapter owns the held rows: a switch resets them, and the guard
-  // below stands in front of every switch while they are dirty.
-  const [held, setHeld] = useState<{ chapter: string | null; rows: SceneDraft[] | null }>({
-    chapter: null,
-    rows: null,
-  });
-  if (held.chapter !== chapterId) {
-    setHeld({ chapter: chapterId, rows: null });
-  }
+  // The remount above owns the reset: held starts clean for every chapter.
+  const [held, setHeld] = useState<SceneDraft[] | null>(null);
   const serverRows = scenesQuery.data?.scenes.map(toDraft) ?? null;
-  const rows = held.rows ?? serverRows ?? [];
-  const dirty =
-    held.rows !== null && (serverRows === null || !sameScenes(held.rows, serverRows));
+  const rows = held ?? serverRows ?? [];
+  const dirty = held !== null && (serverRows === null || !sameScenes(held, serverRows));
 
   const [savePending, setSavePending] = useState(false);
   const [saveFailed, setSaveFailed] = useState<string | null>(null);
@@ -160,12 +181,12 @@ export function SceneDock() {
 
   function replace(next: SceneDraft[]): void {
     setSaveFailed(null);
-    setHeld({ chapter: chapterId, rows: next });
+    setHeld(next);
   }
 
   /** Persist the whole list in its shown order; the refused save names itself. */
   async function save(): Promise<void> {
-    if (chapterId === null || !dirty || savePending) return;
+    if (!dirty || savePending) return;
     setSavePending(true);
     setSaveFailed(null);
     try {
@@ -226,11 +247,7 @@ export function SceneDock() {
       <h3 id={headingId} className="text-body font-semibold">
         {t("planning.panelHeading")}
       </h3>
-      {chapterId === null ? (
-        <Notice tone="quiet" live="status" className="mt-2">
-          {chapters.isPending ? t("planning.loading") : t("planning.noActiveChapter")}
-        </Notice>
-      ) : scenesQuery.isPending ? (
+      {scenesQuery.isPending ? (
         <Notice tone="quiet" live="status" className="mt-2">
           {t("planning.loading")}
         </Notice>

@@ -70,10 +70,12 @@ class PlanningService:
     ) -> SceneAggregateRead:
         """Diff the whole aggregate by stable scene id and commit once.
 
-        A known id updates, an id from another chapter is a 422, a doubled
-        id is a 422, an absent id deletes, and positions renumber 1..N by
-        payload order. Every refusal lands before any write, so a refused
-        PUT leaves the aggregate exactly as the refetch found it. The PUT
+        A known id updates; an id no row owns is an addition — the client
+        mints the UUID and the PUT inserts it, with no claim step first. An
+        id one of the user's other chapters owns is a 422, and a doubled id
+        in one payload is a 422 before any write, so a refused PUT leaves
+        the aggregate exactly as the refetch found it. An absent id deletes,
+        and positions renumber 1..N by payload order. The PUT
         replaces the chapter's whole scene list, so two concurrent saves
         resolve last-writer-wins on positions and fields; there is no
         field-level merge and no optimistic-concurrency version check in

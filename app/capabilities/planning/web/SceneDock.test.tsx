@@ -228,6 +228,70 @@ describe("SceneDock dirty model", () => {
   });
 });
 
+describe("SceneDock chapter switch", () => {
+  const CHAPTER_2 = "chapter-2";
+
+  function chapterRow(id: string) {
+    return {
+      id,
+      novel_id: NOVEL_ID,
+      title: id === CHAPTER_2 ? "Zweites" : "Ankunft",
+      body: "",
+      position: 0,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+    };
+  }
+
+  function sceneIn(chapterId: string, id: string, title: string) {
+    return { ...scene(id, title), chapter_id: chapterId };
+  }
+
+  function mockTwoChapters() {
+    api.GET.mockImplementation(
+      async (path: string, options?: { params?: { path?: { chapter_id?: string } } }) => {
+        if (typeof path === "string" && path.includes("/planning/")) {
+          const chapterId = options?.params?.path?.chapter_id;
+          const scenes =
+            chapterId === CHAPTER_2 ? [sceneIn(CHAPTER_2, "t1", "Zweite")] : [scene("s1", "Anfang")];
+          return {
+            data: {
+              chapter_id: chapterId,
+              scenes,
+              version_updated_at: "2026-01-02T00:00:00Z",
+            },
+            response: { ok: true },
+          };
+        }
+        return { data: [chapterRow(CHAPTER_ID), chapterRow(CHAPTER_2)], response: { ok: true } };
+      },
+    );
+  }
+
+  it("asks before a chapter switch, then shows the next chapter without the old edits", async () => {
+    mockTwoChapters();
+    const router = renderDock();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    const first = await screen.findByRole("group", { name: "Anfang" });
+    await user.type(within(first).getByRole("textbox", { name: "Title of scene 1" }), "!");
+
+    // The chapter switch is a navigation too: the dirty dock asks first.
+    await act(async () => {
+      void router.history.push(`/novels/${NOVEL_ID}/planning?chapter=${CHAPTER_2}`);
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Unsaved text" });
+    await user.click(within(dialog).getByRole("button", { name: "Leave anyway" }));
+
+    // The next chapter's scenes arrive, and the previous chapter's edited
+    // row never stands in for them. jsdom never commits the stale
+    // intermediate frame, so this pins the reset rather than catching it.
+    expect(await screen.findByRole("group", { name: "Zweite" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Anfang!" })).toBeNull();
+    expect(screen.queryByText("Unsaved changes.")).toBeNull();
+  });
+});
+
 describe("SceneDock leave guard", () => {
   it("asks before a navigation throws away unsaved scenes", async () => {
     mockAggregate([scene("s1", "Anfang")]);
