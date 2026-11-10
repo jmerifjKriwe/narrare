@@ -68,7 +68,7 @@ export function PlanningPage() {
   const current = novelId === "" ? undefined : novelId;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-[1200px] px-4 py-10">
       <h1 className="text-title font-semibold tracking-tight">{t("planning.heading")}</h1>
       {current === undefined ? <NovelPicker /> : <NovelTimeline novelId={current} />}
     </div>
