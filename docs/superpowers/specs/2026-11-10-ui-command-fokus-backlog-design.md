@@ -39,13 +39,41 @@ verified via `grep` in these files; everything else is stated as a prose contrac
   Manuscript export (`POST …/export`) and import (`POST …/import`) in
   `writing/router.py`. Consistency dock (`ChecksPanel.tsx`).
 
+## Closed by the frontend-only pass (2026-11-10)
+
+Built on this branch, verified in code, so the rows below no longer list
+them as open:
+
+- **Graph pan/zoom with reset and clamped view** (`GraphPage.tsx`:
+  `clampGraphView` keeps every node inside the viewport, one action resets
+  to the full view).
+- **Storyboard drag & drop** (`StoryboardPage.tsx`: cards drag onto another
+  stage column and write through the existing `PUT …/stage`; a refused move
+  snaps the card back).
+- **Slash door into the palette** (`slashPalette.ts`, `Palette.tsx`: typing
+  `/` in an empty paragraph opens the palette with `/` prefilled — a door
+  into the palette, not a second menu; anywhere else `/` stays a normal
+  character).
+- **Shortcut registry + read-only Shortcuts cluster** (`web/lib/shortcuts.ts`
+  lists only bindings verified against their listeners; the settings cluster
+  renders them read-only and states that remapping is not on offer).
+- **Storyboard remap preview + Apply confirm dialog** (`StoryboardPage.tsx`:
+  `RemapForm` in a `Dialog` previews via `POST …/remap` with `confirm: false`
+  and applies with `confirm: true`; a refused remap surfaces, then retries).
+- **Three additional structure adapters** — `save-the-cat`, `five-act`, and
+  `seven-point` join `three-act` and `heros-journey` in
+  `app/capabilities/planning/structures.py` (five structures total). The
+  storyboard/structure view is registry-driven via the generated
+  `web/lib/generated/structures.ts` (`just generate` regenerates it), so a
+  sixth structure is a registry entry plus `just generate`.
+
 ## Planning area (nav area "Planen", landing: timeline)
 
 | Family (IDs) | Atlas slot (P-no.) | Exists today | What is missing (backend contract in prose) | UI shape (decided) | Entry point | First decision of the next planning |
 |---|---|---|---|---|---|---|
 | Timeline (PLAN-004) | Nav-area landing canvas (P1) | Event CRUD and timeline canvas exist. | AI extraction (read time expressions from chapters, propose them as events), character age (birth dates on KB entities + age computation), temporal consistency check. Spec: `docs/features/planning/PLAN-004-timeline.md` and `PLAN-004-architecture.md` (which foresee exactly this foundation). | Canvas stays, findings land as a list beside it; no second slot. | Timeline canvas (`/planning`). | Extraction contract first: proposal table (analogous to KB suggestions with accept/discard) or direct event creation? |
-| Storyboard (PLAN-005) | Canvas route under planning | Read API, stage assignment (`PUT …/stage`), remap with preview (`POST …/remap`), canvas exist. | **No backend needed — freely plannable:** drag-and-drop writes to the existing `PUT …/stage`; AI remap runs via the existing `POST …/remap`. Only frontend is open (DnD interaction, remap confirmation dialog). | Card grid full width, no dock. | Timeline landing (only door to the sibling canvas). | DnD semantics: save immediately or collective confirmation per column? |
-| Story structure (PLAN-003) | Canvas route under planning | Structure canvas (proportion bars, reading) and registry (`planning/structures.py`, default `three-act`) exist. | **No backend needed — freely plannable:** further structures are registry entries (pure configuration, no migration). Structure switching runs via the existing `POST …/remap`. | Spatial act/chapter visualisation, no reading beside the text. | Storyboard canvas (cross-link) and command line. | Which structures belong in the registry (fixed set vs. user-defined)? |
+| Storyboard (PLAN-005) | Canvas route under planning | Read API, stage assignment (`PUT …/stage`), remap with preview (`POST …/remap`), canvas, drag & drop (cards onto stage columns), and the remap preview + Apply confirm dialog (`RemapForm` in a `Dialog` in `StoryboardPage.tsx`: `confirm: false` preview, `confirm: true` apply) exist. | **Partly backend-open:** AI remap (content-aware mapping from chapter summaries, per the PLAN-005 spec) runs nowhere — the service maps by position ratio and the dialog surfaces no AI signal. The preview + Apply confirm dialog itself is built, not open. | Card grid full width, no dock. | Timeline landing (only door to the sibling canvas). | AI remap: automatic when summary coverage suffices or explicit opt-in? |
+| Story structure (PLAN-003) | Canvas route under planning | Structure canvas (proportion bars, reading) and registry (`planning/structures.py`, default `three-act`) exist — five structures total (`three-act`, `heros-journey`, `save-the-cat`, `five-act`, `seven-point`), and the view is registry-driven via the generated `web/lib/generated/structures.ts`. | **No backend needed — freely plannable:** a sixth structure is a registry entry plus `just generate` (pure configuration, no migration). Follow-up: `app/capabilities/planning/web/stageNames.ts` keeps a hand-maintained stage-key list parallel to the backend registry — a sixth structure would render raw keys there; consider generating it or deriving it from `structures.ts`. Structure switching runs via the existing `POST …/remap`. | Spatial act/chapter visualisation, no reading beside the text. | Storyboard canvas (cross-link) and command line. | Which structures belong in the registry (fixed set vs. user-defined)? |
 | Scene planning (PLAN-001) | Dock tab "Planen" (switcher, P2) | Scene CRUD (`GET`/`PUT scenes`) and `SceneDock.tsx` (draft/hold/save) exist. | AI drafting and refinement: endpoints that propose a scene breakdown from chapter + KB context, or revise a scene on instruction; draft as proposal, saving stays explicit. Spec: `docs/features/planning/PLAN-001-scene-planning.md` (names the service, contract, router, and prompt files of the v1 planning). | Dock beside the editor, editor stays visible. | Planning dock on the workspace. | Proposal storage: scene drafts as their own proposal table or as non-binding draft in dock state (nothing persisted until save)? |
 | Gap analysis (PLAN-002) | Dock tab "Planen" (switcher) | Nothing (no endpoint, no table). | Finding run: endpoint deriving missing transitions, unresolved threads, unused entities, and time jumps from manuscript + timeline events + KB, plus finding storage with status (open/discarded/fixed). Spec: `docs/features/planning/PLAN-002-gap-analysis.md`. | Finding list beside the text, no surface. | Planning dock (switcher entry) and command line. | Share the finding model with CONS-001 findings or own table (different lifetime: plan vs. fact)? |
 | Character arc (PLAN-006) | Dock tab "Planen" (switcher, P3) | Nothing (no endpoint, no table). | Arc session: endpoint generating a multi-phase arc (phases, turning points, relationships, inner conflict) from start/target state + KB character, plus storage for saved arcs per character. Spec: `docs/features/planning/PLAN-006-character-arc.md`. | Dock reading beside the manuscript; comparison via command into the same tab. | Planning dock (switcher entry). | Persist arcs (own table per character) or prompt session without storage (new each time)? |
@@ -96,7 +124,7 @@ names, or sessions (verified via `grep` in `writing/router.py` +
 | Workflows (WRITE-013) | Command-only | Jobs building block (`/api/jobs/{job_id}`) exists. | Multi-step runs as command sequences with `JobStatus`; no new backend, only orchestration per workflow. | No surface, status via `JobStatus`. | Palette. | First workflow as template (which one?), rest follows the template without planning. |
 | Inline suggestions (WRITE-007) | Command-only | Nothing (ghost-text rendering is also missing, but that is frontend). | Proposal run: ghost text for the cursor position from manuscript + KB context (latency-critical, streaming). | Surface is the editor itself. | Editor (automatic/shortcut). | Latency budget and cancellation semantics before the contract. |
 | Rewrite (WRITE-004) | Command-only | Nothing. | Rewrite run: passage + instruction → proposal with diff (hunk accept/discard, pattern from §5.5). | Transient + diff, no dock. | Palette / editor selection. | Proposal transient or storable as draft variant (bridge to WRITE-008)? |
-| Slash commands | Command-only | Mechanics exist (palette + `commands.ts` register). | **No backend needed — freely plannable** for the alias mechanics itself; each target action needs its own family contract (see above). | Editor aliases for palette actions, no menu. | Editor (`/`). | Alias catalogue: which actions get aliases (all or curated)? |
+| Slash commands | Command-only | Mechanics exist (palette + `commands.ts` register). **Built:** the slash door — typing `/` in an empty paragraph opens the palette with `/` prefilled. | The alias mechanics need no backend — the slash door is built (a door into the palette, not a second menu); each target action needs its own family contract (see above). | Slash is the door into the palette, not a second menu. | Editor (`/`). | Alias catalogue: which actions get aliases (all or curated)? |
 | Prompt history | Command-only | Jobs API exists; prompts CRUD + diff exist. | Run history per prompt (which run, which input, rerun): storage + query, jobs table as building block. | List in the palette, no surface. | Palette (rerun row). | History as its own table or fixed part of jobs storage? |
 | Title suggestions (ASSIST-002) | Command-only | Nothing. | One-shot list + adopt (smallest LLM contract: input manuscript context, output N titles). | Transient, adopting inserts. | Palette. | Template contract for all one-shot lists (titles, names): define once, use twice. |
 | Name generator (GEN-001) | Command-only | Nothing. | Like titles: one-shot list + adopt. | Transient. | Palette. | See titles (shared contract). |
@@ -108,7 +136,7 @@ names, or sessions (verified via `grep` in `writing/router.py` +
 
 | Family (IDs) | Atlas slot (P-no.) | Exists today | What is missing (backend contract in prose) | UI shape (decided) | Entry point | First decision of the next planning |
 |---|---|---|---|---|---|---|
-| Knowledge graph (KB-008) | Canvas route under knowledge | Full-graph canvas (`GraphPage.tsx`) + graph CRUD (entities, relations, proposals, extraction) exist. | Only frontend remainder: pan/zoom and large graphs (layout/clustering) — **no backend needed, freely plannable**. Cross-cutting note: hybrid KB references (vector + keyword) as retrieval improvement concern `POST /search`, but are a later contract addition, not a blocker. | Full page, no dock. | Knowledge entry (rail). | Display budget: from which node count is clustering applied (binding number)? |
+| Knowledge graph (KB-008) | Canvas route under knowledge | Full-graph canvas (`GraphPage.tsx`) + graph CRUD (entities, relations, proposals, extraction) exist. Pan/zoom built (clamped view, one-action reset). | Frontend remainder: large graphs (layout/clustering) — decision: no clustering until a real novel exceeds the node cap. Cross-cutting note: hybrid KB references (vector + keyword) as retrieval improvement concern `POST /search`, but are a later contract addition, not a blocker. | Full page, no dock. | Knowledge entry (rail). | Display budget: from which node count is clustering applied (binding number)? |
 | Editor graph (KB-010) | Dock tab "Wissen" (switcher, P12) | Neighbourhood lens (`NeighborhoodLens.tsx`) on `GET /entities/{id}/relations` — this slice. | Done except polish; cross-link "Im Graphen öffnen" exists as decision, verify implementation. | Local lens beside the selection. | Knowledge dock. | None — accept as built, rest as normal bugs. |
 | Worldbuilding (KB-006) | Dock tab "Wissen" (switcher) | Entity CRUD exists as storage building block; no guided creation. | Guided creation session: questions → entity drafts → adoption into entity table (`POST` entity endpoints present as building block). | Conversational, not spatial. | Knowledge dock (switcher). | Question catalogue as prompt library (then "no backend needed") or own session storage? |
 | KB merge (KB-009) | Dock tab "Wissen" (switcher, P13) | **Built:** `POST /entities/{entity_id}/merge` + `MergeEntityDialog.tsx`. | Nothing open. | Pair decision beside the entries. | Knowledge dock. | None — done, no planning subject. |
@@ -118,7 +146,7 @@ names, or sessions (verified via `grep` in `writing/router.py` +
 | Family (IDs) | Atlas slot (P-no.) | Exists today | What is missing (backend contract in prose) | UI shape (decided) | Entry point | First decision of the next planning |
 |---|---|---|---|---|---|---|
 | Consistency rules (CONS-002) | Settings cluster (P14) | Rule checker (CONS-001: job + findings + dock) exists; rules themselves do not (no rule endpoint in `knowledge/router.py`). | Rule CRUD: rule table (pattern, severity, on/off) + integration into the checker run. Spec: `docs/features/consistency/CONS-002-rules.md`. | Rule CRUD with toggles is configuration. | Settings hub (own cluster). | Rule language: free-text patterns or structured conditions (fixes table schema)? |
-| Shortcuts (SET-004) | Settings cluster | Keyboard guidance of the palette exists; no shortcut management. | **No backend needed — freely plannable:** UI-driven management, storage in local settings (as the spec foresees: `docs/features/settings/SET-004-shortcuts.md`). | Configuration beside the other clusters. | Settings hub (own cluster). | Canonical action list (which actions get IDs)? |
+| Shortcuts (SET-004) | Settings cluster | Keyboard guidance of the palette exists. **Built:** the shortcut registry (only bindings verified against their listeners) and the read-only Shortcuts cluster — remapping is explicitly NOT available. | Rebinding is the open remainder and needs a backend-shaped contract: one dispatcher for every listener site + conflict resolution + where the override lives (as the spec foresees: `docs/features/settings/SET-004-shortcuts.md`). | Configuration beside the other clusters. | Settings hub (own cluster). | Rebinding first: one dispatcher for every listener site, conflict resolution, or override storage? |
 | Prompt UX (PROMPT-001..003 + custom UX) | Settings cluster | Homed: prompts CRUD + diff (`prompts` capability, `settingsPages` row). | Nothing fundamental; custom-UX parts (own variables, preview) as extension of the existing contract. | No rebuild, atlas confirms. | Settings hub (prompts cluster). | Which custom-UX parts in v1 (variables first)? |
 | External sync (IO-003) | Settings cluster (P15) | Nothing. | Sync contract: target configuration (credentials/schedules, cluster page) + "sync now" run as job with progress. Spec: `docs/features/io/IO-003-sync.md`. | Configuration with home; sync button on the cluster page. | Settings hub (own cluster). | First sync target (one provider as template)? |
 | Manuscript export (IO-001) | Command-only | **Backend present:** `POST …/export` in `writing/router.py`. | **No backend needed — freely plannable:** one-shot job + `JobStatus` + download as palette action. Spec: `docs/features/io/IO-001-export.md`. | No surface. | Palette. | Export formats v1 (which formats, which options)? |
@@ -167,7 +195,8 @@ Three items unlock the most atlas rows — in this order:
    the canvas is a reading aggregation of existing building blocks. Unlocks:
    SERIES-001..004 and the series canvas as entry point.
 
-After that, the "no backend needed" rows (export/import commands,
-storyboard DnD, shortcuts, graph pan/zoom, extra structures, slash aliases)
+After that, the remaining "no backend needed" rows (export/import commands)
 are free frontend planning with no backend dependency — they can run in parallel
-once capacity exists and need no further backend planning.
+once capacity exists and need no further backend planning. Storyboard DnD,
+the shortcuts registry and cluster, graph pan/zoom, extra structures, and
+slash aliases are built — see "Closed by the frontend-only pass" above.
