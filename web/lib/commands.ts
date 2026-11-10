@@ -26,6 +26,8 @@ export type CommandContext = {
   navigate: NavigateFn;
   /** The novel the active route carries, else null — the dock rows gate on it. */
   novelId: string | null;
+  /** The chapter the active route carries, else null — the rows pass it on. */
+  chapterId: string | null;
   /** Opens the shell's modal slot; the capability hands the lazy loader. */
   openModal: (load: () => Promise<{ default: ComponentType }>) => void;
 };

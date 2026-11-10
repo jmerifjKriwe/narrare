@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { matchesAllLocales, matchesAnyText, type Command, type CommandContext } from "../lib/commands";
 import { nav } from "../lib/generated/capabilities";
@@ -310,6 +310,11 @@ export function Palette({
   // places.
   const workspace = useParams({ from: "/novels/$id", shouldThrow: false });
   const novelId = workspace?.id ?? null;
+  // The chapter the workspace address carries, read as tolerantly as the
+  // novel: outside a workspace there is none, and the dialog falls back on
+  // its own — the same precedence the dock panel keeps.
+  const workspaceSearch = useSearch({ from: "/novels/$id", shouldThrow: false });
+  const chapterId = workspaceSearch?.chapter ?? null;
 
   // The groups report their filtered sizes; their sum decides the one
   // "nothing matches" line. Reporting settles after the render that shows
@@ -360,7 +365,7 @@ export function Palette({
     [modal],
   );
 
-  const ctx: CommandContext = { navigate, novelId, openModal };
+  const ctx: CommandContext = { navigate, novelId, chapterId, openModal };
 
   const jumpToChapter = useCallback(
     (chapterId: string) => {

@@ -312,6 +312,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/novels/{novel_id}/relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Novel Relations
+         * @description The novel's whole relation set, oldest first — the graph canvas's one
+         *     read call instead of a per-entity fan-out.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel.
+         */
+        get: operations["list_novel_relations_api_knowledge_novels__novel_id__relations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/novels/{novel_id}/suggestions": {
         parameters: {
             query?: never;
@@ -2809,6 +2832,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FindingRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_novel_relations_api_knowledge_novels__novel_id__relations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationRead"][];
                 };
             };
             /** @description Validation Error */

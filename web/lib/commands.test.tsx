@@ -12,6 +12,7 @@
  * pinned with the German word an English UI must still find, with the
  * trimmed query, and with a query no rendering carries.
  */
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -19,14 +20,16 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { client } from "./api/client";
 import { type Command, type CommandContext, matchesAllLocales } from "./commands";
 import { catalogs, locales } from "./generated/catalogs";
 import { commands } from "./generated/commands";
+import { t } from "./i18n";
 import { applyLocale } from "./locale";
+import { queryClient } from "./query";
 
 // The client's methods as plain mocks: the rows here navigate, and the
 // new-chapter row POSTs — the request's answer is the mock's, the
@@ -35,7 +38,7 @@ vi.mock("./api/client", () => ({
   client: { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), PUT: vi.fn(), DELETE: vi.fn() },
 }));
 
-const api = client as unknown as Record<"POST", ReturnType<typeof vi.fn>>;
+const api = client as unknown as Record<"GET" | "POST", ReturnType<typeof vi.fn>>;
 const POSTED_CHAPTER = { id: "71bfa163-2c8f-4a6f-9e07-6f5f2c8d1b63" };
 // A chapter the workspace already held when the dock command ran — not the
 // POST's fresh row, so the pin cannot pass by coincidence.
@@ -78,15 +81,16 @@ function makeRouter(initialEntry = "/") {
 
 // The context the shell would hand a row: the router's own navigate (it is
 // typed `NavigateFn`, the same shape the contract carries), the novel under
-// test, and a modal slot the navigation rows never touch.
+// test, the chapter the route carries, and a modal slot the navigation rows
+// never touch.
 function contextFor(router: ReturnType<typeof makeRouter>, novelId: string | null): CommandContext {
-  return { navigate: router.navigate, novelId, openModal: () => {} };
+  return { navigate: router.navigate, novelId, chapterId: null, openModal: () => {} };
 }
 
 // A context for the `enabled` table, which reads only the novel: the other
 // slots are stubs a reading never calls.
 function enabledContext(novelId: string | null): CommandContext {
-  return { navigate: async () => {}, novelId, openModal: () => {} };
+  return { navigate: async () => {}, novelId, chapterId: null, openModal: () => {} };
 }
 
 afterEach(cleanup);
@@ -210,6 +214,58 @@ describe("the generated commands", () => {
     expect(navigate).not.toHaveBeenCalled();
     expect(router.state.location.pathname).toBe("/");
     navigate.mockRestore();
+  });
+
+  it("run-extraction hands the route's chapter to the dialog, which names it", async () => {
+    // The middle link of the palette's targeting: the row carries the
+    // chapter the route held when it ran into the dialog's prop, and the
+    // dialog names that chapter — not the last-touched fallback. The
+    // chapters answer with the handed one older, so a fallback leak would
+    // name the other row.
+    const shown = {
+      id: "11111111-1111-4111-8111-111111111111",
+      novel_id: "7",
+      title: "Die stille Kammer",
+      position: 0,
+      body: "Mira betrat das alte Haus am See.",
+      created_at: "2026-10-30T09:00:00Z",
+      updated_at: "2026-10-30T09:00:00Z",
+    };
+    const touched = {
+      ...shown,
+      id: "22222222-2222-4222-8222-222222222222",
+      title: "Die laute Halle",
+      position: 1,
+      updated_at: "2026-10-30T10:00:00Z",
+    };
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters")
+        return { data: [shown, touched], response: new Response(null, { status: 200 }) };
+      throw new Error(`unexpected GET ${path}`);
+    });
+    const row = rows.find((command) => command.id === "run-extraction");
+    if (!row) throw new Error("run-extraction missing from the aggregation");
+    let captured: Parameters<CommandContext["openModal"]>[0] | undefined;
+    row.run({
+      navigate: async () => {},
+      novelId: "7",
+      chapterId: shown.id,
+      openModal: (load) => {
+        captured = load;
+      },
+    });
+    if (!captured) throw new Error("run-extraction opened no dialog");
+    const loaded = await captured();
+    const Dialog = loaded.default;
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Dialog />
+      </QueryClientProvider>,
+    );
+    expect(
+      await screen.findByText(t("knowledge.extractionTarget", { title: shown.title })),
+    ).toBeTruthy();
+    queryClient.clear();
   });
 });
 

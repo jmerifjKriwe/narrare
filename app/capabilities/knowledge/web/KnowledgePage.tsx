@@ -368,6 +368,17 @@ export function KnowledgePage() {
           {t("nav.back")}
         </Link>
       </p>
+      {/* The canvas door: the novel's entities and relations as one
+          selectable page — the dock lens it complements arrives in its
+          own slice, this link is the hub's. */}
+      <p className="mt-2 text-body text-muted">
+        <Link
+          to="/knowledge/graph"
+          className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {t("knowledge.graphOpenLink")}
+        </Link>
+      </p>
 
       {/* The ask: one field, one submit — the page's only search. */}
       <form onSubmit={search} className="mt-6 flex flex-col gap-2">

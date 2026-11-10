@@ -669,6 +669,105 @@ export function DesignGallery() {
             </Notice>
           </div>
         </div>
+        <div className="mt-3">
+          <h3 className="text-body font-semibold">
+            Graph-Canvas · Wissen (gebauter Stand)
+          </h3>
+          {/* The canvas as GraphPage renders it, pinned small: the same
+              shapes — one SVG, nodes as circles with their names, edges as
+              lines, the selected node in the focus fill with its glance
+              below — positions fixed by hand, never computed, so no layout
+              logic is copied here. Inert: the nodes are plain groups, no
+              buttons, no selection, no link out; the glance is the dock
+              door's words without the door. The Target draft above keeps
+              its ENTWURF stamp as the fork record; this block never wears
+              it — gebauter Stand, not a draft. */}
+          <div className="mt-2">
+            <svg
+              role="group"
+              aria-label="Graph specimen"
+              viewBox="0 0 320 200"
+              className="h-auto w-full rounded-[var(--radius)] border border-rule bg-card"
+            >
+              <line x1={80} y1={76} x2={236} y2={60} stroke="var(--rule)" strokeWidth={1.5} />
+              <line x1={80} y1={76} x2={160} y2={146} stroke="var(--rule)" strokeWidth={1.5} />
+              <g>
+                <circle
+                  cx={80}
+                  cy={76}
+                  r={14}
+                  fill="var(--panel)"
+                  stroke="var(--foreground)"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={80}
+                  y={104}
+                  textAnchor="middle"
+                  aria-hidden="true"
+                  // Labels wear the foreground token like the canvas's own:
+                  // SVG text defaults to black, which dies on the dark card.
+                  fill="var(--foreground)"
+                >
+                  Maya Chen
+                </text>
+              </g>
+              <g>
+                <circle
+                  cx={236}
+                  cy={60}
+                  r={14}
+                  fill="var(--focus)"
+                  stroke="var(--foreground)"
+                  strokeWidth={3}
+                />
+                <text
+                  x={236}
+                  y={88}
+                  textAnchor="middle"
+                  aria-hidden="true"
+                  fill="var(--foreground)"
+                >
+                  ARIA
+                </text>
+              </g>
+              <g>
+                <circle
+                  cx={160}
+                  cy={146}
+                  r={14}
+                  fill="var(--panel)"
+                  stroke="var(--foreground)"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={160}
+                  y={174}
+                  textAnchor="middle"
+                  aria-hidden="true"
+                  fill="var(--foreground)"
+                >
+                  Horizon Station
+                </text>
+              </g>
+            </svg>
+          </div>
+          <div className="mt-2">
+            <Panel>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-emph font-semibold">ARIA</p>
+                <span className="rounded-full bg-panel px-2 py-0.5 text-label">Figur</span>
+              </div>
+              <p className="mt-2 text-body text-muted">Maya Chen · Kollegin von</p>
+            </Panel>
+          </div>
+          <div className="mt-2">
+            <Notice tone="quiet">
+              GraphPage: die gebaute Canvas mit gewähltem Knoten und
+              Blick — gebauter Stand, kein Entwurf.
+            </Notice>
+          </div>
+        </div>
       </section>
     </div>
   );
