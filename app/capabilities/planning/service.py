@@ -1,4 +1,4 @@
-"""Scene-plan aggregates: one read, one whole-aggregate diff-sync write."""
+"""Scene-plan aggregates and timeline-event CRUD: one read, one write each."""
 
 from datetime import UTC, datetime
 from uuid import UUID  # noqa: TC003
@@ -6,16 +6,19 @@ from uuid import UUID  # noqa: TC003
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.capabilities.planning.models import SCENE_STATUSES, ScenePlan
-from app.capabilities.planning.repository import ScenePlanRepository
+from app.capabilities.planning.models import SCENE_STATUSES, ScenePlan, TimelineEvent
+from app.capabilities.planning.repository import ScenePlanRepository, TimelineEventRepository
 from app.capabilities.planning.schemas import (
     SceneAggregateRead,
     SceneAggregateUpdate,
     SceneRead,
     SceneUpsert,
+    TimelineEventCreate,
+    TimelineEventRead,
+    TimelineEventUpdate,
 )
 from app.kernel.auth import SetupRequiredError
-from app.kernel.contracts.models import Chapter, User
+from app.kernel.contracts.models import Chapter, Novel, User
 
 
 class NotFoundError(Exception):
@@ -27,11 +30,17 @@ class SceneRefusedError(ValueError):
     or a status outside the lifecycle."""
 
 
+class TimelineRefusedError(ValueError):
+    """An event write the timeline law refuses: a blank title, or a chapter
+    link that is absent, foreign, or filed under another novel."""
+
+
 class PlanningService:
     def __init__(self, session: AsyncSession, user_id: UUID) -> None:
         self.session = session
         self.user_id = user_id
         self.scenes = ScenePlanRepository(session, user_id)
+        self.events = TimelineEventRepository(session, user_id)
 
     async def _require_user(self) -> None:
         """Writes belong to a user that setup created; without one there is
@@ -150,3 +159,116 @@ class PlanningService:
             "status": upsert.status,
             "position": position,
         }
+
+    async def _require_novel(self, novel_id: UUID) -> Novel:
+        """The novel when it is ours; NotFoundError for an absent or unowned
+        novel — a foreign novel reads as missing, never as an oracle."""
+        novel = await self.events.require_novel(novel_id)
+        if novel is None:
+            raise NotFoundError
+        return novel
+
+    async def _require_event(self, novel_id: UUID, event_id: UUID) -> TimelineEvent:
+        """The event when it is ours and the novel's; NotFoundError for an
+        absent id, a foreign novel, or an event filed under another novel."""
+        await self._require_novel(novel_id)
+        event = await self.events.get_for_novel(novel_id, event_id)
+        if event is None:
+            raise NotFoundError
+        return event
+
+    async def _chapter_or_refuse(self, novel_id: UUID, chapter_id: UUID | None) -> None:
+        """Rule out a chapter link the novel does not hold before any write."""
+        if chapter_id is None:
+            return
+        if await self.events.require_chapter(novel_id, chapter_id) is None:
+            raise TimelineRefusedError(f"unknown chapter id: {chapter_id}")
+
+    @staticmethod
+    def _titled_or_refuse(title: str | None) -> str:
+        """The stored title: trimmed, and never blank — spaces are not a name,
+        the chapters' rule. The schema's min_length refuses the empty string;
+        this refuses the whitespace-only one."""
+        if title is None:
+            raise TimelineRefusedError("title must not be blank")
+        trimmed = title.strip()
+        if not trimmed:
+            raise TimelineRefusedError("title must not be blank")
+        return trimmed
+
+    async def create_timeline_event(
+        self, novel_id: UUID, payload: TimelineEventCreate
+    ) -> TimelineEventRead:
+        """Commit one event on the novel's timeline and return it.
+
+        Raise NotFoundError for an absent or unowned novel,
+        SetupRequiredError without the setup-created user, or
+        TimelineRefusedError for a blank title or a chapter link the novel
+        does not hold.
+        """
+        await self._require_user()
+        await self._require_novel(novel_id)
+        await self._chapter_or_refuse(novel_id, payload.chapter_id)
+        event = await self.events.create(
+            novel_id,
+            {
+                "title": self._titled_or_refuse(payload.title),
+                "description": payload.description,
+                "chapter_id": payload.chapter_id,
+                "position": payload.position,
+                "date_label": payload.date_label.strip(),
+                "character_names": list(payload.character_names),
+            },
+        )
+        await self.session.commit()
+        return TimelineEventRead.model_validate(event)
+
+    async def list_timeline_events(self, novel_id: UUID) -> list[TimelineEventRead]:
+        """The novel's events in manual order, unordered rows last.
+
+        Raise NotFoundError for an absent or unowned novel. Reads need no
+        owner: without one the novel is missing, not refused.
+        """
+        await self._require_novel(novel_id)
+        return [
+            TimelineEventRead.model_validate(event)
+            for event in await self.events.list_for_novel(novel_id)
+        ]
+
+    async def get_timeline_event(self, novel_id: UUID, event_id: UUID) -> TimelineEventRead:
+        """Return one owned event of the novel; raise NotFoundError when the
+        event, the novel, or the ownership is missing."""
+        return TimelineEventRead.model_validate(await self._require_event(novel_id, event_id))
+
+    async def update_timeline_event(
+        self, novel_id: UUID, event_id: UUID, payload: TimelineEventUpdate
+    ) -> TimelineEventRead:
+        """Commit the carried fields and return the event.
+
+        Only the fields the body carries change; a carried ``null`` clears
+        ``chapter_id`` or ``position`` — every other field is non-nullable,
+        so a null there never reaches this method (the schema answers 422).
+        Raise NotFoundError for an absent or unowned event or novel, or
+        TimelineRefusedError for a blank title or a chapter link the novel
+        does not hold.
+        """
+        await self._require_user()
+        event = await self._require_event(novel_id, event_id)
+        carried = payload.model_dump(exclude_unset=True)
+        if "title" in carried:
+            carried["title"] = self._titled_or_refuse(carried["title"])
+        if "date_label" in carried:
+            carried["date_label"] = carried["date_label"].strip()
+        if "character_names" in carried:
+            carried["character_names"] = list(carried["character_names"])
+        await self._chapter_or_refuse(novel_id, carried.get("chapter_id"))
+        event = await self.events.save(event, carried)
+        await self.session.commit()
+        return TimelineEventRead.model_validate(event)
+
+    async def delete_timeline_event(self, novel_id: UUID, event_id: UUID) -> None:
+        """Delete one owned event of the novel; raise NotFoundError for an
+        absent or unowned event or novel."""
+        await self._require_user()
+        await self.events.delete(await self._require_event(novel_id, event_id))
+        await self.session.commit()

@@ -506,6 +506,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/planning/novels/{novel_id}/timeline-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Timeline Events
+         * @description List the novel's events in manual order, unordered rows last.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel.
+         */
+        get: operations["list_timeline_events_api_planning_novels__novel_id__timeline_events_get"];
+        put?: never;
+        /**
+         * Create Timeline Event
+         * @description Create one event on the novel's timeline and return it.
+         *
+         *     Raise HTTP 404 for an absent or unowned novel — a foreign novel reads as
+         *     missing, never as an oracle — HTTP 409 without the setup-created user,
+         *     or HTTP 422 for a blank title or a chapter link the novel does not hold.
+         */
+        post: operations["create_timeline_event_api_planning_novels__novel_id__timeline_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/planning/novels/{novel_id}/timeline-events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Timeline Event
+         * @description Return one event of the novel; raise HTTP 404 when it, the novel, or
+         *     the ownership is missing.
+         */
+        get: operations["get_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__get"];
+        /**
+         * Update Timeline Event
+         * @description Edit the carried fields of one event and return it.
+         *
+         *     A carried ``null`` clears the chapter link or the position; an absent
+         *     field leaves it alone. Raise HTTP 404 for an absent or unowned event or
+         *     novel, or HTTP 422 for a blank title or a chapter link the novel does
+         *     not hold.
+         */
+        put: operations["update_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__put"];
+        post?: never;
+        /**
+         * Delete Timeline Event
+         * @description Delete one event of the novel; raise HTTP 404 for an absent or
+         *     unowned event or novel.
+         */
+        delete: operations["delete_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/prompts": {
         parameters: {
             query?: never;
@@ -2277,6 +2342,99 @@ export interface components {
             task_key: string;
         };
         /**
+         * TimelineEventCreate
+         * @description The POST body: one event on the novel's timeline.
+         *
+         *     The body carries no timestamps: those are the server's own. ``position``
+         *     is the manual order (null leaves the event unordered, listed last);
+         *     ``date_label`` is the optional free-text date; ``character_names`` are
+         *     free-text names for now — no KB linkage in this slice.
+         */
+        TimelineEventCreate: {
+            /** Chapter Id */
+            chapter_id?: string | null;
+            /** Character Names */
+            character_names?: string[];
+            /**
+             * Date Label
+             * @default
+             */
+            date_label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Position */
+            position?: number | null;
+            /** Title */
+            title: string;
+        };
+        /** TimelineEventRead */
+        TimelineEventRead: {
+            /** Chapter Id */
+            chapter_id: string | null;
+            /** Character Names */
+            character_names: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Date Label */
+            date_label: string;
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Novel Id
+             * Format: uuid
+             */
+            novel_id: string;
+            /** Position */
+            position: number | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * TimelineEventUpdate
+         * @description The PUT body: only the fields present are the change.
+         *
+         *     A carried ``null`` clears ``chapter_id`` or ``position``; an absent
+         *     field leaves it alone. Every other field is non-nullable — a carried
+         *     null is a 422 at the boundary, never a NOT NULL violation on write.
+         *     A blank title is refused, never stored.
+         */
+        TimelineEventUpdate: {
+            /** Chapter Id */
+            chapter_id?: string | null;
+            /** Character Names */
+            character_names?: string[];
+            /**
+             * Date Label
+             * @default
+             */
+            date_label: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Position */
+            position?: number | null;
+            /** Title */
+            title?: string | null;
+        };
+        /**
          * ValidationBody
          * @description The framework's own 422 body, mirrored for the union beside the
          *     refusal — FastAPI builds its schema from a dict, so nothing imports.
@@ -3179,6 +3337,242 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+        };
+    };
+    list_timeline_events_api_planning_novels__novel_id__timeline_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventRead"][];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_timeline_event_api_planning_novels__novel_id__timeline_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimelineEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventRead"];
+                };
+            };
+            /** @description Novel not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description A refused event, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+        };
+    };
+    get_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventRead"];
+                };
+            };
+            /** @description Event not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimelineEventUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventRead"];
+                };
+            };
+            /** @description Event not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description A refused event, named in `detail` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+        };
+    };
+    delete_timeline_event_api_planning_novels__novel_id__timeline_events__event_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                novel_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Event not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Setup required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanningErrorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

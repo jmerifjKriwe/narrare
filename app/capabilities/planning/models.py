@@ -10,7 +10,7 @@ dock will read and write, nothing more.
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -47,6 +47,40 @@ class ScenePlan(UserOwned):
     beats: Mapped[list[str]] = mapped_column(JSONB, default=list)
     # One of SCENE_STATUSES.
     status: Mapped[str] = mapped_column(String(16), default="planned")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class TimelineEvent(UserOwned):
+    """One hand-placed event on a novel's timeline, in the writer's own order.
+
+    ``position`` is the event's manual order on the canvas; null means
+    unordered — the list answers those rows last. ``date_label`` is the
+    optional free-text date ("im dritten Jahr"), never parsed. ``chapter_id``
+    is the optional chapter link: deleting the chapter unlinks the event
+    (SET NULL), deleting the novel takes its events along. Character refs
+    are free-text names for now — KB linkage, AI extraction, consistency
+    and ages are deliberate follow-ups, not this slice.
+    """
+
+    __tablename__ = "timeline_events"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    novel_id: Mapped[UUID] = mapped_column(ForeignKey("novels.id", ondelete="CASCADE"), index=True)
+    chapter_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("chapters.id", ondelete="SET NULL"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(500))
+    description: Mapped[str] = mapped_column(Text, default="")
+    position: Mapped[int | None] = mapped_column(Integer)
+    date_label: Mapped[str] = mapped_column(String(200), default="")
+    character_names: Mapped[list[str]] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
