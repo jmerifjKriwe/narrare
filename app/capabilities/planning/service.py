@@ -327,6 +327,19 @@ class PlanningService:
         return suggest_stage(stages, position / max(1, last_position)).key
 
     @staticmethod
+    def _effective_stage_key(
+        stages: tuple[StageDef, ...],
+        assigned: ChapterStage | None,
+        suggested: str,
+    ) -> str:
+        """The stage the canvas shows: the stored assignment when it names
+        a stage of the current structure, otherwise the suggestion — a
+        stored key from another structure degrades instead of raising."""
+        if assigned is not None and assigned.stage_key in {stage.key for stage in stages}:
+            return assigned.stage_key
+        return suggested
+
+    @staticmethod
     def _sync_status(
         scenes: list[ScenePlan], words: int, assigned: str | None, suggested: str
     ) -> str:
@@ -379,24 +392,12 @@ class PlanningService:
         stage outside the current structure, which degrades to the
         suggestion instead of raising."""
         last_position = max([chapter.position for chapter in chapters], default=0)
-        valid_keys = {stage.key for stage in stages}
         entries: list[StoryboardChapterRead] = []
         for chapter in chapters:
             suggested = self._suggested_key(stages, chapter.position, last_position)
             assigned = assignments.get(chapter.id)
-            if assigned is None or assigned.stage_key not in valid_keys:
-                entries.append(
-                    self._chapter_entry(
-                        chapter,
-                        suggested,
-                        "suggested",
-                        words.get(chapter.id, 0),
-                        scenes.get(chapter.id, []),
-                        suggested,
-                        None,
-                    )
-                )
-            else:
+            effective = self._effective_stage_key(stages, assigned, suggested)
+            if assigned is not None and effective == assigned.stage_key:
                 entries.append(
                     self._chapter_entry(
                         chapter,
@@ -406,6 +407,18 @@ class PlanningService:
                         scenes.get(chapter.id, []),
                         suggested,
                         assigned.stage_key,
+                    )
+                )
+            else:
+                entries.append(
+                    self._chapter_entry(
+                        chapter,
+                        suggested,
+                        "suggested",
+                        words.get(chapter.id, 0),
+                        scenes.get(chapter.id, []),
+                        suggested,
+                        None,
                     )
                 )
         return entries
@@ -508,10 +521,10 @@ class PlanningService:
         mapping = [
             RemapEntry(
                 chapter_id=chapter.id,
-                from_stage=(
-                    assignments[chapter.id].stage_key
-                    if chapter.id in assignments
-                    else self._suggested_key(current, chapter.position, last_position)
+                from_stage=self._effective_stage_key(
+                    current,
+                    assignments.get(chapter.id),
+                    self._suggested_key(current, chapter.position, last_position),
                 ),
                 to_stage=self._suggested_key(target, chapter.position, last_position),
             )

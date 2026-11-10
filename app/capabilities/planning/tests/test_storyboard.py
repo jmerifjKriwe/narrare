@@ -343,6 +343,40 @@ async def test_stale_assignment_degrades_to_suggestion() -> None:
         assert chapters["Ankunft"]["assignment_source"] == "suggested"
 
 
+async def test_remap_preview_from_stage_uses_effective_current_stage() -> None:
+    """A stale stored assignment must not leak into the remap preview.
+
+    PUT validates against structure A, then the novel setting moves to B
+    underneath the stored row — the preview's from_stage must name the
+    stage the canvas actually shows (the suggestion), never the stale key.
+    """
+    from uuid import UUID as _UUID
+
+    async with _client() as client:
+        novel_id = await _novel(client)
+        chapter_id = await _chapter(client, novel_id, "Ankunft")
+
+        moved = await client.put(_stage(novel_id, chapter_id), json={"stage_key": "resolution"})
+        assert moved.status_code == 200
+
+        async with Session() as session:
+            session.add(
+                PlanningNovelSettings(
+                    user_id=LOCAL_USER_ID,
+                    novel_id=_UUID(novel_id),
+                    story_structure="heros-journey",
+                )
+            )
+            await session.commit()
+
+        preview = await client.post(
+            _remap(novel_id), json={"structure_id": "three-act", "confirm": False}
+        )
+
+        assert preview.status_code == 200
+        assert preview.json()["mapping"][0]["from_stage"] == "ordinary-world"
+
+
 async def test_writes_before_setup_are_409_and_reads_are_404() -> None:
     from sqlalchemy import delete
 
