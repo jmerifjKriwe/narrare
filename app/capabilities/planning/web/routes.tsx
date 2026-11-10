@@ -21,6 +21,11 @@ const StoryboardPage = lazy(async () => {
   return { default: page.StoryboardPage };
 });
 
+const StructurePage = lazy(async () => {
+  const page = await import("./StructurePage");
+  return { default: page.StructurePage };
+});
+
 // The landing canvas: the novel's timeline as a full page under the Planen
 // rail entry. The novel arrives as `?novel=` (the graph's sibling: tolerant
 // in, absent means the picker); the dock's routes below parent at the
@@ -57,6 +62,23 @@ const storyboardRoute = createRoute({
   },
 });
 
+// The structure canvas: the novel's story as one proportion bar — a band
+// per stage, each band as wide as its share of the story, the chapters
+// standing inside their band. Read-only beside the storyboard under the
+// same rail entry; the novel arrives as `?novel=` like its siblings.
+const structureRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/planning/structure",
+  component: StructurePage,
+  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
+    return {
+      ...(typeof search.novel === "string" && search.novel !== ""
+        ? { novel: search.novel }
+        : {}),
+    };
+  },
+});
+
 // The dock convention: routes for another capability's workspace, created as
 // factories — this file never imports the workspace route (capabilities
 // never import each other); the generated table (web/lib/generated/routes.ts)
@@ -83,4 +105,4 @@ export const dockRoutes = [
 // The route const stands on its own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [planningRoute, storyboardRoute] as const;
+export const routes = [planningRoute, storyboardRoute, structureRoute] as const;

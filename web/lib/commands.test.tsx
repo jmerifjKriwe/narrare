@@ -72,6 +72,11 @@ function makeRouter(initialEntry = "/") {
       path: "/novels/$id/knowledge",
       component: () => <p>knowledge</p>,
     }),
+    createRoute({
+      getParentRoute: () => root,
+      path: "/planning/structure",
+      component: () => <p>structure</p>,
+    }),
   ];
   return createRouter({
     routeTree: root.addChildren(tree),
@@ -126,6 +131,7 @@ describe("the generated commands", () => {
     "open-knowledge-dock": { novel: true, bare: false },
     "run-extraction": { novel: true, bare: false },
     "run-consistency-check": { novel: true, bare: false },
+    "open-structure": { novel: true, bare: true },
   };
 
   it("are enabled exactly where the table says, at both novelId states", () => {
@@ -160,6 +166,7 @@ describe("the generated commands", () => {
     "open-knowledge-dock": { novelId: "7", path: "/novels/7/knowledge" },
     "run-extraction": { novelId: "7", path: "/" },
     "run-consistency-check": { novelId: "7", path: "/" },
+    "open-structure": { novelId: null, path: "/planning/structure" },
   };
 
   it("navigate to their destination through a real router", async () => {

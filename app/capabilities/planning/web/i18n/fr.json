@@ -1,4 +1,5 @@
 {
+  "commands.openStructure": "Ouvrir la structure",
   "planning.addEvent": "Ajouter un événement",
   "planning.addScene": "Ajouter une scène",
   "planning.advanceStatus": "Passer à {status}",
@@ -28,6 +29,7 @@
   "planning.noChapter": "Aucun chapitre",
   "planning.noNovels": "Aucun roman pour l’instant. Créez-en un d’abord sous « Tous les romans ».",
   "planning.openStoryboard": "Ouvrir le storyboard",
+  "planning.openStructure": "Ouvrir la structure",
   "planning.panelHeading": "Plans de scènes",
   "planning.pickNovel": "Choisissez un roman pour planifier sa chronologie.",
   "planning.positionLabel": "Position (facultatif)",
@@ -88,5 +90,12 @@
   "storyboard.sync.empty": "Vide",
   "storyboard.sync.on_track": "En bonne voie",
   "storyboard.sync.planned": "Planifié",
-  "storyboard.words": "{count, plural, one {# mot} other {# mots}}"
+  "storyboard.words": "{count, plural, one {# mot} other {# mots}}",
+  "structure.heading": "Structure",
+  "structure.loadFailed": "La structure n'a pas pu être chargée. Le service local est-il en cours d'exécution ?",
+  "structure.loading": "Chargement de la structure…",
+  "structure.noChapters": "Aucun chapitre pour l'instant. Écrivez le premier dans l'espace de travail, ou ouvrez le storyboard pour les disposer.",
+  "structure.novelMissing": "Ce roman n'existe pas.",
+  "structure.pickNovel": "Choisissez un roman dont vous voulez voir la structure en proportions.",
+  "structure.summary": "{chapters, plural, one {# chapitre} other {# chapitres}} · {words, plural, one {# mot} other {# mots}} · {deviations, plural, one {# déviation} other {# déviations}}"
 }

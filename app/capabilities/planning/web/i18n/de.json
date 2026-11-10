@@ -1,4 +1,5 @@
 {
+  "commands.openStructure": "Struktur öffnen",
   "planning.addEvent": "Ereignis hinzufügen",
   "planning.addScene": "Szene hinzufügen",
   "planning.advanceStatus": "Weiter zu {status}",
@@ -28,6 +29,7 @@
   "planning.noChapter": "Kein Kapitel",
   "planning.noNovels": "Noch keine Romane. Lege zuerst einen unter „Alle Romane“ an.",
   "planning.openStoryboard": "Storyboard öffnen",
+  "planning.openStructure": "Struktur öffnen",
   "planning.panelHeading": "Szenenpläne",
   "planning.pickNovel": "Wähle einen Roman, dessen Zeitachse du planen willst.",
   "planning.positionLabel": "Position (optional)",
@@ -88,5 +90,12 @@
   "storyboard.sync.empty": "Leer",
   "storyboard.sync.on_track": "Auf Kurs",
   "storyboard.sync.planned": "Geplant",
-  "storyboard.words": "{count, plural, one {# Wort} other {# Wörter}}"
+  "storyboard.words": "{count, plural, one {# Wort} other {# Wörter}}",
+  "structure.heading": "Struktur",
+  "structure.loadFailed": "Die Struktur konnte nicht geladen werden. Läuft der lokale Dienst?",
+  "structure.loading": "Die Struktur wird geladen…",
+  "structure.noChapters": "Noch keine Kapitel. Schreibe im Arbeitsbereich das erste, oder öffne das Storyboard, um sie aufzustellen.",
+  "structure.novelMissing": "Diesen Roman gibt es nicht.",
+  "structure.pickNovel": "Wähle einen Roman, dessen Struktur du als Anteile sehen willst.",
+  "structure.summary": "{chapters, plural, one {# Kapitel} other {# Kapitel}} · {words, plural, one {# Wort} other {# Wörter}} · {deviations, plural, one {# Abweichung} other {# Abweichungen}}"
 }

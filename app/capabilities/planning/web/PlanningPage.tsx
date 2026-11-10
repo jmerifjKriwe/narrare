@@ -210,6 +210,15 @@ function NovelTimeline({ novelId }: { novelId: string }) {
           >
             {t("planning.openStoryboard")}
           </Link>
+          {/* The second canvas door: the structure proportions this novel's
+              story as one bar, the novel riding along the same way. */}
+          <Link
+            to="/planning/structure"
+            search={{ novel: novelId }}
+            className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            {t("planning.openStructure")}
+          </Link>
         </p>
         {/* The honest empty: no events is a fact the service confirmed,
             and the next step stands beside it as the page's one primary. */}
@@ -249,6 +258,15 @@ function NovelTimeline({ novelId }: { novelId: string }) {
           className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >
           {t("planning.openStoryboard")}
+        </Link>
+        {/* The second canvas door: the structure proportions this novel's
+            story as one bar, the novel riding along the same way. */}
+        <Link
+          to="/planning/structure"
+          search={{ novel: novelId }}
+          className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {t("planning.openStructure")}
         </Link>
       </p>
       <div className="mt-6 flex flex-wrap items-center gap-2">

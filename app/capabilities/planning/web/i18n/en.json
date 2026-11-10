@@ -1,4 +1,5 @@
 {
+  "commands.openStructure": "Open structure",
   "planning.addEvent": "Add event",
   "planning.addScene": "Add scene",
   "planning.advanceStatus": "Advance to {status}",
@@ -28,6 +29,7 @@
   "planning.noChapter": "No chapter",
   "planning.noNovels": "No novels yet. Create one under All novels first.",
   "planning.openStoryboard": "Open storyboard",
+  "planning.openStructure": "Open structure",
   "planning.panelHeading": "Scene plans",
   "planning.pickNovel": "Choose a novel to plan its timeline.",
   "planning.positionLabel": "Position (optional)",
@@ -88,5 +90,12 @@
   "storyboard.sync.empty": "Empty",
   "storyboard.sync.on_track": "On track",
   "storyboard.sync.planned": "Planned",
-  "storyboard.words": "{count, plural, one {# word} other {# words}}"
+  "storyboard.words": "{count, plural, one {# word} other {# words}}",
+  "structure.heading": "Structure",
+  "structure.loadFailed": "The structure could not be loaded. Is the local service running?",
+  "structure.loading": "Loading the structure…",
+  "structure.noChapters": "No chapters yet. Write the first one in the workspace, or open the storyboard to lay them out.",
+  "structure.novelMissing": "This novel does not exist.",
+  "structure.pickNovel": "Choose a novel whose structure you want to see as proportions.",
+  "structure.summary": "{chapters, plural, one {# chapter} other {# chapters}} · {words, plural, one {# word} other {# words}} · {deviations, plural, one {# deviation} other {# deviations}}"
 }
