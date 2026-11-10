@@ -2,7 +2,7 @@ import { createElement, useState } from "react";
 
 import { client } from "@shell/lib/api/client";
 import type { Command } from "@shell/lib/commands";
-import { queryClient, useNovelQuery } from "@shell/lib/query";
+import { queryClient, useNovelQuery, useNovelsQuery } from "@shell/lib/query";
 
 // The capability's palette rows: data only — no component imports, except
 // inside `run`'s dynamic `import()`. The shell's generated registry
@@ -59,6 +59,35 @@ export const commands = [
       })();
     },
     enabled: (ctx) => ctx.novelId !== null,
+  },
+  {
+    id: "import-novel",
+    titleKey: "commands.importNovel",
+    run: (ctx) => {
+      // No novel needed: the dialog targets a new novel or one picked from
+      // the shelf's own list — the shelf's header button opens this same
+      // dialog novel-less, so the palette row may stand anywhere.
+      ctx.openModal(async () => {
+        const m = await import("./InterchangeDialogs");
+        return {
+          // The slot mounts a props-free component: this one reads the
+          // shelf's list through Query (the shelf already asked for it on
+          // its own page; on any other route this read fills the cache)
+          // and mounts the import dialog already open — the palette row
+          // was the press. Closing it unmounts the overlay; the slot's
+          // next open is a fresh mount.
+          default: function ImportNovelFromPalette() {
+            const novelsQuery = useNovelsQuery();
+            const [open, setOpen] = useState(true);
+            return createElement(m.ImportArchiveDialog, {
+              novels: novelsQuery.data ?? [],
+              isOpen: open,
+              onOpenChange: setOpen,
+            });
+          },
+        };
+      });
+    },
   },
   {
     id: "export-novel",

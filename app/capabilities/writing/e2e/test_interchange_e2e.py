@@ -480,3 +480,26 @@ def test_non_empty_export_target_refused(page: Page, stack: Stack, tmp_path: Pat
     # Nothing was written over: the first backup still carries the archive.
     assert (backup / "metadata.json").is_file()
     assert len(list((backup / "kb").glob("*.md"))) == DEMO_ENTITIES
+
+
+def test_palette_opens_the_import_dialog(page: Page, stack: Stack) -> None:
+    """The palette's import row opens the shelf's dialog, form side up.
+
+    The row stands anywhere — the shelf, the workspace — because the dialog
+    targets a new novel or one picked from the list, never the route's book.
+    The run ends where the shelf's own opener ends: the form, not a silent
+    no-op, and the floor holds while the dialog stands.
+    """
+    page.goto(BASE + "/")
+    page.keyboard.press("Control+k")
+    palette = page.get_by_role("dialog", name="Befehlspalette")
+    expect(palette).to_be_visible()
+    palette.get_by_role("textbox").fill("Roman import")
+    palette.get_by_role("group", name="Befehle").get_by_role(
+        "button", name="Roman importieren"
+    ).click()
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_label("Archivpfad")).to_be_visible()
+    assert_accessible(page)
+    page.keyboard.press("Escape")
+    expect(page.get_by_role("dialog")).to_have_count(0)

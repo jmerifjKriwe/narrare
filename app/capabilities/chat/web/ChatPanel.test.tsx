@@ -29,6 +29,7 @@ afterEach(() => {
   chatServer.asks.length = 0;
   chatServer.hold = false;
   chatServer.answerWith = null;
+  chatServer.failWith = null;
 });
 
 describe("ChatPanel's in-flight ask", () => {
@@ -158,6 +159,12 @@ describe("ChatPanel's in-flight ask", () => {
         ),
       ),
     ]);
+    // The superseded turn keeps its partial answer beside the new one: the
+    // turn list replaces nothing, so both halves stay on screen — the new
+    // answer below the old, in ask order.
+    const turns = container.querySelectorAll("[data-turn]");
+    expect(turns).toHaveLength(2);
+    expect(turns[0]!.textContent).toContain("Erste halbe Antwort");
     await waitFor(() => expect(answer.textContent).toContain("Zweite halbe Antwort"));
     expect(chatServer.asks).toHaveLength(2);
 
@@ -175,5 +182,102 @@ describe("ChatPanel's in-flight ask", () => {
         ),
       ),
     ]);
+  });
+});
+
+describe("ChatPanel's conversation", () => {
+  it("renders turns in order: each question first, then its answer", { timeout: 10_000 }, async () => {
+    const { container } = render(<ChatPanel />);
+    const user = userEvent.setup();
+    const field = await screen.findByLabelText(t("chat.questionLabel"));
+
+    chatServer.answerWith = `data: ${JSON.stringify({ delta: "Der Leuchtturm stand hinter der Düne." })}\n\n`;
+    await user.type(field, "Wo war der Leuchtturm?");
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+    await waitFor(() => expect(container.querySelectorAll("[data-turn]")).toHaveLength(1));
+
+    chatServer.answerWith = `data: ${JSON.stringify({ delta: "Der Hafen schlief." })}\n\n`;
+    await user.clear(field);
+    await user.type(field, "Wo lag der Hafen?");
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+    await waitFor(() => expect(container.querySelectorAll("[data-turn]")).toHaveLength(2));
+
+    // The turns stand in ask order, and each turn reads question-first:
+    // the question precedes the answer it was asked for.
+    const turns = container.querySelectorAll("[data-turn]");
+    const first = turns[0]!.textContent ?? "";
+    const second = turns[1]!.textContent ?? "";
+    expect(first).toContain("Wo war der Leuchtturm?");
+    expect(first.indexOf("Wo war der Leuchtturm?")).toBeLessThan(
+      first.indexOf("Der Leuchtturm stand hinter der Düne."),
+    );
+    expect(second).toContain("Wo lag der Hafen?");
+    expect(second.indexOf("Wo lag der Hafen?")).toBeLessThan(second.indexOf("Der Hafen schlief."));
+  });
+
+  it("renders sources as chips carrying the document title", { timeout: 10_000 }, async () => {
+    render(<ChatPanel />);
+    const user = userEvent.setup();
+    chatServer.answerWith =
+      `data: ${JSON.stringify({ delta: "Der Leuchtturm stand hinter der Düne." })}\n\n` +
+      `data: ${JSON.stringify({ sources: [{ chunk_id: "c1", document_title: "Notizen", text: "Der Leuchtturm war seit Jahren dunkel." }] })}\n\n`;
+    await user.type(await screen.findByLabelText(t("chat.questionLabel")), "Wo war der Leuchtturm?");
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+
+    // The citation is a chip wearing the document's title — not a bare
+    // string — and the quoted passage stays behind the toggle until asked.
+    const chip = await screen.findByRole("button", { name: "Notizen" });
+    expect(chip.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Der Leuchtturm war seit Jahren dunkel.")).toBeNull();
+    await user.click(chip);
+    expect(chip.getAttribute("aria-expanded")).toBe("true");
+    // The passage renders only once its chip opens: presence is the pin —
+    // the suite wears no jest-dom visibility matchers.
+    const passage = screen.getByText("Der Leuchtturm war seit Jahren dunkel.");
+    expect(passage.textContent).toContain("dunkel.");
+  });
+
+  it("shows the ask's progress while it streams", { timeout: 10_000 }, async () => {
+    const { container } = render(<ChatPanel />);
+    const user = userEvent.setup();
+    chatServer.answerWith = `data: ${JSON.stringify({ delta: "Der Leuchtturm stand hinter der Düne." })}\n\n`;
+    chatServer.hold = true; // the answer stays open: it is mid-stream, not done
+    await user.type(await screen.findByLabelText(t("chat.questionLabel")), "Wo war der Leuchtturm?");
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+
+    // The in-flight ask is a running job: the "Läuft…" line, no bar — the
+    // stream reports no share, only movement. The status carries no
+    // accessible name (live-region roles prohibit naming), so the text is
+    // read off the element, the suite's own alert pattern.
+    const progress = await screen.findByRole("status");
+    expect(progress.textContent).toContain(t("jobs.running"));
+    expect(progress.getAttribute("data-job-status")).toBe("running");
+
+    chatServer.asks[0]!.finish();
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    const answer = screen.getByRole("region", { name: t("chat.answerLabel") });
+    expect(answer.textContent).toContain("Der Leuchtturm stand hinter der Düne.");
+    expect(container.querySelectorAll("[data-turn]")).toHaveLength(1);
+  });
+
+  it("a refused ask renders a Notice with a retry that re-asks", { timeout: 10_000 }, async () => {
+    render(<ChatPanel />);
+    const user = userEvent.setup();
+    chatServer.failWith = 500; // the ask is refused, like a dead provider
+    await user.type(await screen.findByLabelText(t("chat.questionLabel")), "Wo war der Leuchtturm?");
+    await user.click(screen.getByRole("button", { name: t("chat.ask") }));
+
+    // The refusal is a Notice with a way back — not a dead end.
+    await screen.findByRole("alert");
+    const retry = await screen.findByRole("button", { name: t("settings.retry") });
+    chatServer.answerWith = `data: ${JSON.stringify({ delta: "Der Leuchtturm stand hinter der Düne." })}\n\n`;
+    await user.click(retry);
+
+    const answer = screen.getByRole("region", { name: t("chat.answerLabel") });
+    await waitFor(() =>
+      expect(answer.textContent).toContain("Der Leuchtturm stand hinter der Düne."),
+    );
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(chatServer.asks).toHaveLength(2);
   });
 });

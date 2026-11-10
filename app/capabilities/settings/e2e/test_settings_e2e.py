@@ -272,3 +272,17 @@ def test_a_forced_theme_ignores_the_system(page: Page, stack: Stack) -> None:
     assert page.evaluate("getComputedStyle(document.body).backgroundColor") == light
 
     page.request.patch(f"{API_URL}{THEME_PATCH}", data={"theme": None})
+
+
+def test_the_design_gallery_serves_its_four_sections(page: Page, stack: Stack) -> None:
+    page.goto(f"{WEB_URL}/design")
+    expect(page.get_by_role("heading", name="Design-Galerie")).to_be_visible()
+    for name in ["Tokens", "Type", "Controls", "Surfaces"]:
+        expect(page.get_by_role("heading", name=name)).to_be_visible()
+
+
+def test_the_design_gallery_serves_the_target_section(page: Page, stack: Stack) -> None:
+    page.goto(f"{WEB_URL}/design")
+    expect(page.get_by_role("heading", name="Zielzustand")).to_be_visible()
+    for name in ["Timeline-Landing", "Szenen-Outline", "Graph-Linse", "Paletten-Zeile"]:
+        expect(page.get_by_role("heading", name=name)).to_be_visible()

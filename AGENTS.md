@@ -68,6 +68,22 @@ behind), its extractor found 0 of 3 dependency-injected callers, and its tool
 schemas cost about 4.5k tokens of every session whether used or not. Do not add
 a mandatory rule or gate for tooling of this kind (the governance budget, spec §8).
 
+## Frontend & UI
+
+UI and frontend work is implemented and reviewed by subagents
+(superpowers:subagent-driven-development), never inline in the coordinating
+session: one implementer per task, one reviewer per task, one whole-branch
+review at the end. Every dispatch names its implementer and reviewer models
+explicitly — an omitted model silently inherits the session's most capable one
+and defeats the purpose. The coordinator picks the concrete models at dispatch
+time; the standing preference below is the default until the owner changes it.
+
+Standing preference (2026-11-09, owner decision): implementer and reviewer run
+`opencode-go/muse-spark-1.3-contributor`.
+
+Keep the PR updated while the work continues: push after every green task
+group, so review never faces a wall of commits at the end.
+
 ## Git
 
 `--no-verify` and force push are forbidden. Conventional commits; `feat`/`fix` need a

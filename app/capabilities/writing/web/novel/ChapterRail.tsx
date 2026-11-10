@@ -184,6 +184,8 @@ export function ChapterRail({
                   if (chapter.id === active) return;
                   select(chapter.id);
                 }}
+                /* h-7 is the single-line control height: a wrapped title grows the row past it (the hits' `h-auto` precedent) instead of painting over the next row. */
+                className="h-auto min-h-7"
               >
                 {/* The separator is visible text, not only label:
                     axe requires the visible words to be part of the
@@ -192,7 +194,8 @@ export function ChapterRail({
                     and the count into one number. The count stays
                     foreground — muted on the selected row's wash is
                     below AA, the exact case the Row's own docs name. */}
-                <span className="min-w-0 flex-1 truncate">
+                {/* Wrap, never clamp: a 60-char title needs three lines in this rail, so a two-line clamp would still ellipsize exactly the titles this fixes. */}
+                <span className="min-w-0 flex-1 break-words">
                   {title}{" "}
                 </span>
                 <span className="shrink-0 text-meta tabular-nums">

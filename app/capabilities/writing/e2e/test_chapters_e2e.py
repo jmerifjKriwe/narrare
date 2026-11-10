@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
-from app.kernel.testing.stack import WEB_URL
+from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
 from app.kernel.testing.workbench import new_chapter
 
@@ -79,6 +79,63 @@ def _create_book(page: Page, title: str) -> None:
     page.get_by_role("button", name="Anlegen").click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
+
+
+def _seed_novel(page: Page, title: str) -> str:
+    """Create a novel through the API, the way a second device would.
+
+    The chapter rail under test needs a title no click-path produces, so
+    the book (and below, its chapter) arrive over the wire — the same
+    seeding shape `test_novels_e2e.py` owns. This file has no seeding
+    helper of its own; its flows create default-titled chapters by click.
+    """
+    response = page.request.post(f"{API_URL}/api/writing/novels", data={"title": title})
+    assert response.ok, response.text()
+    novel = response.json()
+    assert isinstance(novel["id"], str)
+    return novel["id"]
+
+
+def _seed_chapter(page: Page, novel_id: str, title: str) -> None:
+    """Create a chapter carrying exactly this title through the API."""
+    response = page.request.post(
+        f"{API_URL}/api/writing/novels/{novel_id}/chapters",
+        data={"title": title},
+    )
+    assert response.ok, response.text()
+
+
+def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> None:
+    """A title longer than the 224 px rail wraps instead of truncating: the
+    whole title stays inside the title span's own box, and the grown row
+    pushes the next row down instead of painting over it."""
+    novel_id = _seed_novel(page, "Die Leseliste")
+    long_title = "Die Nacht, in der der Nebel über die Deiche kroch und dort blieb"
+    assert len(long_title) >= 60
+    _seed_chapter(page, novel_id, long_title)
+    _seed_chapter(page, novel_id, "Der kurze Weg")
+
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
+    rail = page.get_by_role("complementary")
+    row = rail.get_by_role("button", name=re.compile(r"^Die Nacht, in der der Nebel"))
+    expect(row).to_be_visible()
+    title_span = row.locator("span").first
+    overflow = title_span.evaluate("element => element.scrollWidth - element.clientWidth")
+    assert overflow <= 1
+
+    # The wrapped title grows its own row: the first row's bottom stays at
+    # or above the second row's top — whichever height utility the cascade
+    # keeps, wrapped lines must never paint over the next row. (The rail
+    # also holds the "Neues Kapitel" button, so the rows are read from the
+    # list, not the whole complementary.)
+    rows = rail.get_by_role("list").get_by_role("button")
+    expect(rows).to_have_count(2)
+    first_box = rows.nth(0).bounding_box()
+    second_box = rows.nth(1).bounding_box()
+    assert first_box is not None and second_box is not None
+    assert first_box["y"] + first_box["height"] <= second_box["y"] + 1
+
+    assert_accessible(page)
 
 
 def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:

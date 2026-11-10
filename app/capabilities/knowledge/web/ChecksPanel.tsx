@@ -1,10 +1,9 @@
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { announce } from "@shell/lib/announce";
 import { useTranslation } from "@shell/lib/i18n";
 import {
-  queryClient,
   useAcknowledgeFinding,
   useDismissFinding,
   useEnqueueCheck,
@@ -14,7 +13,9 @@ import {
 import { Button } from "@shell/ui/Button";
 import { JobStatus } from "@shell/ui/JobStatus";
 import { Notice } from "@shell/ui/Notice";
-import { ProposalCard } from "@shell/ui/ProposalCard";
+import { Panel } from "@shell/ui/Panel";
+
+import { useSettleJob } from "./useSettleJob";
 
 /** The whole-novel consistency check and its review: the check runs as a
  *  durable job on the same lane the chapter-scoped extraction rides — the
@@ -33,28 +34,17 @@ export function ChecksPanel() {
   const dismiss = useDismissFinding(novelId);
   const headingId = useId();
 
-  // The settled job decides the queue: the row turning done or failed is
-  // the moment the findings exist (or provably will not), so that is when
-  // the pending queue refetches — the poll publishes its own finding.
-  const settled = job.data?.status === "done" || job.data?.status === "failed";
-  useEffect(() => {
-    if (!settled) return;
-    void queryClient.invalidateQueries({ queryKey: ["knowledge", "findings", novelId] });
-  }, [settled, novelId]);
-
-  // The poll can fail like any fetch: the service going down under an
-  // outstanding job leaves the row's answer missing. A missing answer is
-  // an error, not a promise of movement — the queued/running row promised
-  // progress, and an unanswered poll must not wear that promise.
-  const pollFailed = jobId !== null && job.isError;
-
-  // One check at a time: the trigger stays closed while its enqueue POST
-  // is in flight or the job it filed is still outstanding, because a
-  // second click would stack a duplicate job and a duplicate review queue
-  // behind the first — the extraction's single-shot rule, unchanged. The
-  // same three things hand the button back: a settled row, a poll that
-  // met the dead service, a refused enqueue.
-  const busy = enqueue.isPending || (jobId !== null && !settled && !pollFailed);
+  // The settle beat is the shared hook's: the settled row refetches the
+  // pending findings, the dead poll reopens the trigger — the extraction's
+  // single-shot rule, unchanged.
+  const { busy, pollFailed } = useSettleJob({
+    jobId,
+    status: job.data?.status,
+    pollError: job.isError,
+    enqueuePending: enqueue.isPending,
+    novelId,
+    queue: "findings",
+  });
 
   /** Enqueue a check and select its job for polling, or expose the enqueue failure. */
   async function check() {
@@ -106,9 +96,11 @@ export function ChecksPanel() {
       ) : null}
       {/* The findings queue outlives the job that filled it: a dock
           reopened later still owes the writer the decisions, so the cards
-          render from the query, not from the job's lifecycle. The card is
-          the review's own surface (P17's to restyle): consumed as it
-          stands, with the finding's decisions as its buttons. */}
+          render from the query, not from the job's lifecycle. A finding is
+          the dock's own surface (P17's to restyle): the Panel holds the
+          finding as its heading and the evidence beneath it, and the two
+          decisions stand on shell Buttons — the pair is two equals, neither
+          fills a primary (L1), and both stay always visible. */}
       {findings.isError ? (
         // The queue's own outage, named apart from the dock's other
         // failures: the findings, the suggestions and the entity list can
@@ -120,25 +112,44 @@ export function ChecksPanel() {
         </Notice>
       ) : (
         (findings.data ?? []).map((finding) => (
-          <ProposalCard
+          // The labelled section is the card's name for assistive tech:
+          // "Consistency finding: <summary>" — one named region per
+          // contradiction, so sibling findings tell apart in a region
+          // list the bare title could never separate.
+          <section
             key={finding.id}
-            titleKey="knowledge.findingTitle"
-            body={finding.detail ?? ""}
-            onAccept={() => {
-              void acknowledge
-                .mutateAsync(finding.id)
-                .then(() => announce(t("knowledge.findingAcknowledged")))
-                .catch(() => undefined);
-            }}
-            onDiscard={() => {
-              void dismiss
-                .mutateAsync(finding.id)
-                .then(() => announce(t("knowledge.findingDismissed")))
-                .catch(() => undefined);
-            }}
+            aria-label={`${t("knowledge.findingTitle")}: ${finding.summary}`}
+            className="mt-4"
           >
-            <p className="mt-2 text-body font-medium">{finding.summary}</p>
-          </ProposalCard>
+            <Panel>
+              <h4 className="text-emph font-semibold">{finding.summary}</h4>
+              <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-muted">
+                {finding.detail ?? ""}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  onClick={() => {
+                    void acknowledge
+                      .mutateAsync(finding.id)
+                      .then(() => announce(t("knowledge.findingAcknowledged")))
+                      .catch(() => undefined);
+                  }}
+                >
+                  {t("proposal.accept")}
+                </Button>
+                <Button
+                  onClick={() => {
+                    void dismiss
+                      .mutateAsync(finding.id)
+                      .then(() => announce(t("knowledge.findingDismissed")))
+                      .catch(() => undefined);
+                  }}
+                >
+                  {t("proposal.discard")}
+                </Button>
+              </div>
+            </Panel>
+          </section>
         ))
       )}
     </section>

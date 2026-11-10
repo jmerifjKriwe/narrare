@@ -28,6 +28,7 @@ novel — there is no editor to haunt, so there must be no ghost on return.
 """
 
 import re
+import threading
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
@@ -60,7 +61,9 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
     page.get_by_role("button", name="Fragen").click()
 
     expect(page.get_by_role("region", name="Antwort")).to_contain_text(PASSAGE)
-    expect(page.get_by_role("region", name="Quellen")).to_contain_text("Notizen")
+    # The citation is a chip wearing the document's title — the chip, not a
+    # row, is what the answer's sources render as.
+    expect(page.get_by_role("button", name="Notizen", exact=True)).to_be_visible()
 
     # L1 on the standalone page (R46): with answer and sources on screen,
     # /chat answers exactly one filled primary — the ask itself.
@@ -71,16 +74,16 @@ def test_answer_quotes_the_uploaded_passage(page: Page, stack: Stack, tmp_path: 
     assert_accessible(page)
 
 
-def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: Path) -> None:
-    """R48's hover ink, probed where axe cannot look: a hover washes the
-    row in `--soft`, and the muted snippet under the title must restore
-    foreground there — muted on `--soft` is below AA, so the hover's
-    answer is the ink, not a darker grey. The row is the Row div inside
-    its list item (the li carries no paint), so the probe measures that.
-    The document here carries its own passage (PROBE_PASSAGE): the
-    module's database is shared, and identical passages tie in the
-    sources ranking — a fifth competitor would shuffle which uploads the
-    other tests find."""
+def test_a_source_chip_quotes_its_passage(page: Page, stack: Stack, tmp_path: Path) -> None:
+    """The citation behind the chip: a chip toggle opens the quoted passage.
+
+    The sources are chips now, not rows — each chip wears the cited
+    document's title, and the passage stays behind the toggle until asked.
+    The old hover-ink probe has nothing to hold onto: chips are buttons,
+    not hover-washed rows. The document here carries its own passage
+    (PROBE_PASSAGE): the module's database is shared, and identical
+    passages tie in the sources ranking — a fifth competitor would shuffle
+    which uploads the other tests find."""
     source = tmp_path / "quellnotizen.txt"
     source.write_text(PROBE_PASSAGE, encoding="utf-8")
 
@@ -96,23 +99,21 @@ def test_a_hovered_source_restores_the_ink(page: Page, stack: Stack, tmp_path: P
     page.goto(f"{WEB_URL}/chat")
     page.get_by_label("Frage").fill("Wo blüht der Garten?")
     page.get_by_role("button", name="Fragen").click()
-    region = page.get_by_role("region", name="Quellen")
-    row = region.get_by_role("listitem").first.locator("div.group")
-    snippet = row.locator("span.text-muted")
-    title = row.locator("span.text-label")
-    expect(snippet).to_be_visible()
+    region = page.get_by_role("region", name="Antwort")
+    expect(region).to_contain_text(PROBE_PASSAGE)
 
-    rest_color = snippet.evaluate("el => getComputedStyle(el).color")
-    rest_bg = row.evaluate("el => getComputedStyle(el).backgroundColor")
-
-    row.hover()
-    hover_color = snippet.evaluate("el => getComputedStyle(el).color")
-    hover_bg = row.evaluate("el => getComputedStyle(el).backgroundColor")
-    ink = title.evaluate("el => getComputedStyle(el).color")
-
-    assert hover_bg != rest_bg, "the row did not wash in on hover"
-    assert hover_color == ink, "the hovered snippet kept its muted ink"
-    assert rest_color != ink, "the resting snippet was not muted to begin with"
+    # The chip is the passage's only handle on screen: closed, the quoted
+    # text is nowhere in the chip's own item — the answer above quotes it,
+    # so nothing hides — and opening the chip quotes it again, underneath.
+    chip = region.get_by_role("button", name="Quellnotizen", exact=True)
+    expect(chip).to_have_attribute("aria-expanded", "false")
+    # The chip's own item — the button's list item, not the turn around it
+    # (the turn quotes the passage in its answer, so it always contains it).
+    item = chip.locator("xpath=..")
+    expect(item.get_by_text(PROBE_PASSAGE)).to_have_count(0)
+    chip.click()
+    expect(chip).to_have_attribute("aria-expanded", "true")
+    expect(item.get_by_text(PROBE_PASSAGE)).to_be_visible()
 
     assert_accessible(page)
 
@@ -143,8 +144,9 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     # capability's folder — bg-primary exists on other pages — so
     # whitespace-pre-wrap is the chat page's own second half: if the moved
     # file was not a source, the rule is absent and the computed style is
-    # the browser's default ("normal").
-    answer = page.get_by_role("region", name="Antwort").locator("p").first
+    # the browser's default ("normal"). The answer is found by its quoted
+    # text — the turn's first paragraph is the question, not the answer.
+    answer = page.get_by_role("region", name="Antwort").get_by_text(PASSAGE)
     assert answer.evaluate("el => getComputedStyle(el).whiteSpace") == "pre-wrap"
 
     # §8.7's chat row, at the narrowest page width (the dock's 384 px is
@@ -167,19 +169,11 @@ def test_chat_styling_survives_the_move(page: Page, stack: Stack, tmp_path: Path
     ).to_have_count(1)
     expect(announcer).not_to_contain_text("Leuchtturm")
 
-    # The sources are a real list — assistive tech hears how many — and the
-    # rules between rows survive: every non-final row computes a 1 px bottom
-    # rule, only the last one yields (0 px).
-    rows = page.get_by_role("region", name="Quellen").get_by_role("listitem")
-    expect(rows.first).to_be_visible()
-    count = rows.count()
-    assert count >= 2
-    widths = [
-        rows.nth(index).evaluate("el => getComputedStyle(el.firstElementChild).borderBottomWidth")
-        for index in range(count)
-    ]
-    assert all(width == "1px" for width in widths[:-1])
-    assert widths[-1] == "0px"
+    # The sources are chips, not rows: each cited document is a toggle
+    # chip wearing its title — one per upload quoted above.
+    region = page.get_by_role("region", name="Antwort")
+    expect(region.get_by_role("button", name="Stylistik", exact=True)).to_be_visible()
+    expect(region.get_by_role("button", name="Randnotiz", exact=True)).to_be_visible()
 
     assert_accessible(page)
 
@@ -197,10 +191,15 @@ def test_conversation_survives_a_locale_switch(page: Page, stack: Stack, tmp_pat
         # The top bar's select switches the shell's language. The English
         # region names prove the switch landed; the passage still in them
         # proves the lazy capability page was re-rendered, not remounted —
-        # a remount would drop the answer the user is reading.
+        # a remount would drop the answer the user is reading. The source
+        # chip keeps its document title across the switch: titles are data.
         page.get_by_role("banner").locator('select[name="locale"]').select_option("en")
         expect(page.get_by_role("region", name="Answer")).to_contain_text(PASSAGE)
-        expect(page.get_by_role("region", name="Sources")).to_contain_text("Sprachwechsel")
+        expect(
+            page.get_by_role("region", name="Answer").get_by_role(
+                "button", name="Sprachwechsel", exact=True
+            )
+        ).to_be_visible()
 
         assert_accessible(page)
     finally:
@@ -295,8 +294,63 @@ def test_dock_answers_beside_the_editor(page: Page, stack: Stack, tmp_path: Path
     dock.get_by_label("Frage").fill("Wo war der Leuchtturm?")
     dock.get_by_role("button", name="Fragen").click()
     expect(dock.get_by_role("region", name="Antwort")).to_contain_text(PASSAGE)
-    expect(dock.get_by_role("region", name="Quellen")).to_contain_text("Docknotizen")
+    expect(dock.get_by_role("button", name="Docknotizen", exact=True)).to_be_visible()
     expect(editor).to_contain_text("Text beim Plaudern.")
+
+    assert_accessible(page)
+
+
+def test_dock_conversation_quotes_and_cites(page: Page, stack: Stack, tmp_path: Path) -> None:
+    """The dock answers as a conversation: the ask streams behind a
+    progress line, and the turn that lands reads question-first with the
+    cited document as its chip.
+
+    The ask's own request is held open while the progress shows — the
+    answer is too fast to catch otherwise — then released, so the turn
+    and its chip still come from the real stack, nothing canned. The
+    holdings are this test's own: its passage, question and title touch
+    no other test's retrieval."""
+    passage = "Der Hafenmeister zählte die einlaufenden Boote."
+    title = "Hafengespräch"
+    question = "Was zählte der Hafenmeister?"
+    source = tmp_path / "hafen.txt"
+    source.write_text(passage, encoding="utf-8")
+
+    page.goto(f"{WEB_URL}/knowledge")
+    page.get_by_role("button", name="+ Dokument").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Dokument").set_input_files(str(source))
+    dialog.get_by_label("Titel (optional)").fill(title)
+    dialog.get_by_role("button", name="Hochladen").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    expect(page.get_by_text(title, exact=True)).to_be_visible()
+
+    _open_workspace(page, f"Die {title}")
+
+    page.get_by_role("button", name="Chat", exact=True).click()
+    dock = page.get_by_role("complementary", name="Chat")
+    expect(dock).to_be_visible()
+
+    # The progress shows while the ask is still on the wire: the route is
+    # held until the assertion lands, then released to the real backend.
+    proceed = threading.Event()
+    page.route("**/api/chat/ask", lambda route: (proceed.wait(timeout=30), route.continue_()))
+    try:
+        dock.get_by_label("Frage").fill(question)
+        dock.get_by_role("button", name="Fragen").click()
+        expect(dock.get_by_role("status").filter(has_text="Läuft")).to_be_visible()
+    finally:
+        proceed.set()
+
+    # The turn that lands reads question-first, and the cited document
+    # rides along as its chip.
+    turn = dock.locator("[data-turn]").filter(has_text=question)
+    expect(turn).to_contain_text(passage)
+    expect(dock.get_by_role("button", name=title, exact=True)).to_be_visible()
+    order = turn.evaluate("el => el.textContent")
+    assert order.index(question) < order.index(passage)
+
+    page.unroute("**/api/chat/ask")
 
     assert_accessible(page)
 
@@ -417,6 +471,7 @@ def _ask_in_dock(page: Page, tmp_path: Path, title: str, passage: str, question:
     dock.get_by_label("Frage").fill(question)
     dock.get_by_role("button", name="Fragen").click()
     expect(dock.get_by_role("region", name="Antwort")).to_contain_text(passage)
+    expect(dock.get_by_role("button", name=title, exact=True)).to_be_visible()
 
 
 def test_an_answer_becomes_a_ghost_the_editor_decides(

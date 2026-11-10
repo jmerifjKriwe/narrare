@@ -95,6 +95,8 @@ SHOTS = (
     "05-shelf.png",
     "06-shelf-dark.png",
     "07-workspace-dark.png",
+    "08-design.png",
+    "09-design-dark.png",
 )
 
 
@@ -234,6 +236,33 @@ def _capture(
         written.append(path)
         print(f"wrote {path}")
 
+    def gallery_height() -> int:
+        """Tall enough for the whole gallery in one frame.
+
+        The shell is exactly one viewport tall and `main` owns the page
+        scroll, so a capture at the shared 1600x1000 would stop at the
+        fold: the viewport grows by the scroller's overflow for these two
+        frames, then returns to the shared size.
+        """
+        return int(
+            page.evaluate(
+                """() => {
+                    const main = document.querySelector("main");
+                    if (!main) return document.documentElement.scrollHeight;
+                    return Math.ceil(
+                        main.scrollHeight + (window.innerHeight - main.clientHeight),
+                    );
+                }"""
+            )
+        )
+
+    def gallery_shot(name: str) -> None:
+        page.set_viewport_size({"width": 1600, "height": gallery_height()})
+        try:
+            shot(name)
+        finally:
+            page.set_viewport_size({"width": 1600, "height": 1000})
+
     # 1. The workspace, a chapter open, a suggestion waiting and uncommitted.
     page.goto(f"{WEB}/novels/{novel_id}")
     page.get_by_role("complementary", name="Chapters").get_by_role(
@@ -271,7 +300,7 @@ def _capture(
     vendor.set_answer(CHAT_ANSWER)
     dock.get_by_label("Question").fill(QUESTION)
     dock.get_by_role("button", name="Ask").click()
-    expect(dock.get_by_role("region", name="Sources")).to_contain_text(
+    expect(dock.get_by_role("region", name="Answer")).to_contain_text(
         "Horizon Station — cast and places"
     )
     # The answer is offered to the editor as a variant; the offer is not what
@@ -330,6 +359,24 @@ def _capture(
     page.goto(f"{WEB}/novels/{novel_id}")
     expect(page.locator(".ProseMirror")).to_be_visible()
     shot(SHOTS[6])
+
+    # 8. The design gallery in the default light: every primitive and token
+    #    plus the Target drafts and the dock-and-palette specimens on one
+    #    page, outside the settings hub's nav.
+    #    Full page — the claim is the six sections together, not one viewport
+    #    of them.
+    api.patch("/api/settings/theme", json={"theme": None})
+    page.goto(f"{WEB}/design")
+    expect(page.get_by_role("heading", name="Design gallery")).to_be_visible()
+    gallery_shot(SHOTS[7])
+
+    # 9. The same gallery in the reader's chosen dark, proven against a
+    #    light OS like the shelf's dark frame.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/design")
+    expect(page.get_by_role("heading", name="Design gallery")).to_be_visible()
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    gallery_shot(SHOTS[8])
 
     api.patch("/api/settings/theme", json={"theme": None})
     return written
