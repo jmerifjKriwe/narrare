@@ -68,6 +68,8 @@ describe("DesignGallery", () => {
     expect(screen.getByRole("group", { name: "Lücke" })).toBeTruthy();
     expect(screen.getByText("Planned")).toBeTruthy();
     expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Advance to In progress" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Advance to Complete" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save scenes" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add scene" })).toBeTruthy();
   });

@@ -664,8 +664,8 @@ export function DesignGallery() {
           </section>
           <div className="mt-2">
             <Notice tone="quiet">
-              SceneDock: die Szenen des Kapitels in Reihenfolge mit Status;
-              eine Speicherung gilt der ganzen Liste.
+              SceneDock: Zeilen zeigen Status und Weiter-Schalten;
+              Titel-Eingabe und Verschieben/Löschen sind hier ausgelassen.
             </Notice>
           </div>
         </div>
