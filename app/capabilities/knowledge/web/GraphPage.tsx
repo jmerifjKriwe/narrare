@@ -195,6 +195,23 @@ function NovelGraph({ novelId }: { novelId: string }) {
           const from = byNodeId.get(edge.from);
           const to = byNodeId.get(edge.to);
           if (from === undefined || to === undefined) return null;
+          // Self-loop: from === to would collapse a line to zero length, so a small loop glyph stands in.
+          if (edge.from === edge.to) {
+            return (
+              <circle
+                key={edge.id}
+                data-testid="self-loop"
+                aria-hidden="true"
+                pointer-events="none"
+                cx={from.x + NODE_RADIUS}
+                cy={from.y - NODE_RADIUS}
+                r={10}
+                fill="none"
+                stroke="var(--rule)"
+                strokeWidth={1.5}
+              />
+            );
+          }
           return (
             <line
               key={edge.id}

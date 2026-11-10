@@ -140,6 +140,29 @@ describe("GraphPage canvas", () => {
     await waitFor(() => expect(screen.queryByText("Mira")).toBeTruthy());
   });
 
+  it("a self-loop relation renders as a loop glyph, not a zero-length line", async () => {
+    const loop = {
+      id: "r-loop", novel_id: "novel-1", from_entity_id: "e-mira", to_entity_id: "e-mira",
+      relation_type: "friend_of", note: null,
+      created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+    };
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels") return { data: [], response: { ok: true } };
+      if (path.includes("/entities")) return { data: [mira], response: { ok: true } };
+      if (path.includes("/relations")) return { data: [loop], response: { ok: true } };
+      throw new Error(`unexpected GET ${path}`);
+    });
+    renderGraph("?novel=novel-1");
+    const canvas = await screen.findByRole("group", { name: "Entity graph" });
+    // The loop glyph stands in for the edge: no zero-length line remains.
+    expect(canvas.querySelectorAll("line")).toHaveLength(0);
+    const glyph = canvas.querySelector('[data-testid="self-loop"]');
+    expect(glyph).toBeTruthy();
+    // Pure decoration: clicks pass through to the node button, screen readers use the node + detail.
+    expect(glyph?.getAttribute("pointer-events")).toBe("none");
+    expect(glyph?.getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("without a novel it offers the novels instead of guessing one", async () => {
     api.GET.mockImplementation(async (path: string) => {
       if (path === "/api/writing/novels") {
