@@ -125,6 +125,18 @@ export function layoutGraph(
   const innerHeight = Math.max(1, height - padding * 2);
   const random = mulberry32(seed);
 
+  // The drawn node's own half-width on the canvas (the page's r=18
+  // circle) plus the keyboard's outline twin (2 px ring on a 2 px
+  // offset): centers keep this clear of every rail, so no circle and no
+  // ring ever clips — a center exactly on the rail reads as half a node.
+  // (Labels sit centered on their node; past this margin only a name
+  // wider than twice the margin still touches a rail — the canvas's own
+  // text, not the layout's promise.) Degenerate viewports narrower than
+  // two margins collapse the rails to the middle instead of inverting.
+  const NODE_MARGIN = 24;
+  const railX = Math.min(NODE_MARGIN, width / 2);
+  const railY = Math.min(NODE_MARGIN, height / 2);
+
   const nodes: GraphNode[] = [];
   types.forEach((type, band) => {
     const members = kept.filter((entity) => entity.type === type);
@@ -138,12 +150,12 @@ export function layoutGraph(
           ? padding + innerHeight / 2
           : padding + (innerHeight * row) / (members.length - 1);
       // The jitter stays inside half the cell margin: with one member the
-      // cell is the whole band, so clamp to a fixed ±10 box instead.
+      // cell is the whole band, so clamp to a fixed ±20 box instead.
       const spanX = types.length === 1 ? 20 : innerWidth / (types.length - 1) / 2 - 4;
       const spanY = members.length === 1 ? 20 : innerHeight / (members.length - 1) / 2 - 4;
       const clamp = (span: number): number => Math.max(0, Math.min(span, innerWidth / 2 - 1, innerHeight / 2 - 1));
-      const x = Math.min(Math.max(bandX + (random() - 0.5) * 2 * clamp(spanX), 0), width);
-      const y = Math.min(Math.max(rowY + (random() - 0.5) * 2 * clamp(spanY), 0), height);
+      const x = Math.min(Math.max(bandX + (random() - 0.5) * 2 * clamp(spanX), railX), width - railX);
+      const y = Math.min(Math.max(rowY + (random() - 0.5) * 2 * clamp(spanY), railY), height - railY);
       nodes.push({ id: entity.id, name: entity.name, type: entity.type, x, y });
     });
   });

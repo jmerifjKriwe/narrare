@@ -60,6 +60,26 @@ describe("DesignGallery", () => {
     expect(screen.getByRole("button", { name: "Check the whole book" })).toBeTruthy();
   });
 
+  it("pins the built graph-canvas specimen beside the Target draft", () => {
+    cleanup();
+    render(<DesignGallery />);
+    // The specimen's own heading names the built state — the Target draft
+    // above keeps the ENTWURF stamp as the fork record, the specimen never
+    // wears it.
+    const heading = screen.getByRole("heading", { name: /Graph-Canvas/ });
+    expect(heading.textContent).toMatch(/gebaut/);
+    const block = heading.parentElement as HTMLElement;
+    expect(block.textContent).not.toMatch(/ENTWURF/);
+    // The mini canvas: three named nodes, two drawn edges, one selected.
+    expect(block.textContent).toMatch(/Maya Chen/);
+    expect(block.textContent).toMatch(/Horizon Station/);
+    const canvas = block.querySelector("svg");
+    expect(canvas).not.toBeNull();
+    expect(canvas?.querySelectorAll("line")).toHaveLength(2);
+    // The selected node's glance: its type chip and the edge in words.
+    expect(block.textContent).toMatch(/Figur/);
+  });
+
   it("clamps a 120-character cover title", () => {
     const { container } = render(<DesignGallery />);
     const tile = container.querySelector('[data-cover-tone][data-long-title]');

@@ -237,7 +237,16 @@ function NovelGraph({ novelId }: { novelId: string }) {
                 stroke="var(--foreground)"
                 strokeWidth={active ? 3 : 1.5}
               />
-              <text x={node.x} y={node.y + NODE_RADIUS + 14} textAnchor="middle" aria-hidden="true">
+              <text
+                x={node.x}
+                y={node.y + NODE_RADIUS + 14}
+                textAnchor="middle"
+                aria-hidden="true"
+                // The label's own ink: SVG text defaults to black, which
+                // reads on the light card but dies on the dark one — the
+                // token resolves in both, like the circle's own paint.
+                fill="var(--foreground)"
+              >
                 {node.name}
               </text>
             </g>

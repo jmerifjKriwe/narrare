@@ -40,11 +40,43 @@ describe("layoutGraph determinism", () => {
   it("keeps every node inside the viewport box", () => {
     const graph = layoutGraph(entities, relations, VIEW);
     expect(graph.nodes).toHaveLength(5);
+    // The shipped boundary is the rail margin, not the box edge: centers
+    // keep the drawn node plus its focus ring clear (see NODE_MARGIN).
     for (const node of graph.nodes) {
-      expect(node.x).toBeGreaterThanOrEqual(0);
-      expect(node.x).toBeLessThanOrEqual(VIEW.width);
-      expect(node.y).toBeGreaterThanOrEqual(0);
-      expect(node.y).toBeLessThanOrEqual(VIEW.height);
+      expect(node.x).toBeGreaterThanOrEqual(24);
+      expect(node.x).toBeLessThanOrEqual(VIEW.width - 24);
+      expect(node.y).toBeGreaterThanOrEqual(24);
+      expect(node.y).toBeLessThanOrEqual(VIEW.height - 24);
+    }
+  });
+
+  it("keeps node centers a full drawn radius off the rails", () => {
+    // The two-node, two-type canvas: the seeded jitter's first draw lands
+    // past the edge band's room, and the old [0, width] clamp left that
+    // center exactly on the rail — half the circle and its name clipped
+    // in the screenshots. Centers keep the shipped 24 px rail margin
+    // (r=18 circle + focus ring), pinned exactly, not just the radius.
+    const graph = layoutGraph(
+      [
+        { id: "e-mira", name: "Mira", type: "character" },
+        { id: "e-haus", name: "Haus", type: "location" },
+      ],
+      [
+        {
+          id: "r-1",
+          from_entity_id: "e-mira",
+          to_entity_id: "e-haus",
+          relation_type: "friend_of",
+        },
+      ],
+      VIEW,
+    );
+    expect(graph.nodes).toHaveLength(2);
+    for (const node of graph.nodes) {
+      expect(node.x).toBeGreaterThanOrEqual(24);
+      expect(node.x).toBeLessThanOrEqual(VIEW.width - 24);
+      expect(node.y).toBeGreaterThanOrEqual(24);
+      expect(node.y).toBeLessThanOrEqual(VIEW.height - 24);
     }
   });
 
@@ -90,10 +122,12 @@ describe("layoutGraph edge cases", () => {
     const [solo] = graph.nodes;
     expect(Number.isFinite(solo.x)).toBe(true);
     expect(Number.isFinite(solo.y)).toBe(true);
-    expect(solo.x).toBeGreaterThanOrEqual(0);
-    expect(solo.x).toBeLessThanOrEqual(VIEW.width);
-    expect(solo.y).toBeGreaterThanOrEqual(0);
-    expect(solo.y).toBeLessThanOrEqual(VIEW.height);
+    // A lone node owns the whole band: midpoint ±20 jitter, always far from
+    // any rail, so no margin applies — pin the centered behavior instead.
+    expect(solo.x).toBeGreaterThanOrEqual(380);
+    expect(solo.x).toBeLessThanOrEqual(420);
+    expect(solo.y).toBeGreaterThanOrEqual(280);
+    expect(solo.y).toBeLessThanOrEqual(320);
   });
 
   it("emits a self-loop edge with from equal to to when the node is present", () => {
