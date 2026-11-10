@@ -30,6 +30,11 @@ const ProviderPage = lazy(async () => {
   return { default: page.ProviderPage };
 });
 
+const ShortcutsPage = lazy(async () => {
+  const page = await import("./ShortcutsPage");
+  return { default: page.ShortcutsPage };
+});
+
 const DesignGallery = lazy(async () => {
   const page = await import("./DesignGallery");
   return { default: page.DesignGallery };
@@ -68,6 +73,12 @@ const providerRoute = createRoute({
   component: ProviderPage,
 });
 
+const shortcutsRoute = createRoute({
+  getParentRoute: () => settingsLayoutRoute,
+  path: "shortcuts",
+  component: ShortcutsPage,
+});
+
 // The living gallery: root-parented, outside the settings hub's clusters and
 // nav — reachable by URL for gates and reviewers, invisible in the product.
 const designRoute = createRoute({
@@ -95,5 +106,6 @@ export const routes = [
   languageRoute,
   appearanceRoute,
   providerRoute,
+  shortcutsRoute,
   designRoute,
 ] as const;

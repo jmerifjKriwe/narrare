@@ -97,6 +97,7 @@ describe("the settings area", () => {
       "/settings/language",
       "/settings/appearance",
       "/settings/provider",
+      "/settings/shortcuts",
       "/settings/prompts",
     ]);
   });
@@ -125,6 +126,14 @@ describe("the settings area", () => {
     expect(within(provider).getByText(t("settings.clusterProvider.description"))).toBeTruthy();
     expect(within(provider).getByRole("link").getAttribute("href")).toBe(
       "/settings/provider",
+    );
+
+    const shortcuts = screen.getByRole("region", { name: t("settings.clusterShortcuts") });
+    expect(
+      within(shortcuts).getByText(t("settings.clusterShortcuts.description")),
+    ).toBeTruthy();
+    expect(within(shortcuts).getByRole("link").getAttribute("href")).toBe(
+      "/settings/shortcuts",
     );
 
     // A contributed row carries no description: the title is the whole

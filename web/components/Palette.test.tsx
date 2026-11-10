@@ -32,6 +32,7 @@ import { client } from "../lib/api/client";
 import { t } from "../lib/i18n";
 import { applyLocale } from "../lib/locale";
 import { queryClient } from "../lib/query";
+import { shortcutKeycap } from "../lib/shortcuts";
 import { rootRoute } from "../routes/__root";
 
 vi.mock("../lib/api/client", () => ({
@@ -221,10 +222,15 @@ describe("the palette's keyboard contract", () => {
 
     await openPalette();
     const dialog = screen.getByRole("dialog");
-    // The shortcuts are named here, in one place — the §11 row. The keycap
-    // is the platform's own name, so the row is read as its parts.
-    expect(dialog.textContent).toContain("palette");
-    expect(dialog.textContent).toMatch(/⌘K|Ctrl K|Strg K/);
+    // The footer names the workspace's keys through the registry: the
+    // keycaps it shows are the registry's answer, not literals in a row.
+    expect(dialog.textContent).toContain(
+      t("workspace.shortcutHints", {
+        focus: shortcutKeycap("workspace.focusDeeper"),
+        back: shortcutKeycap("workspace.stepBack"),
+        palette: shortcutKeycap("palette.toggle"),
+      }),
+    );
 
     // Ctrl+K is the same key on the other platforms, and it closes again —
     // every close returns the focus, so the next press is captured from the
