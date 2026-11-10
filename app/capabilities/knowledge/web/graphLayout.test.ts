@@ -67,6 +67,85 @@ describe("layoutGraph determinism", () => {
   });
 });
 
+describe("layoutGraph edge cases", () => {
+  it("maps empty input to empty nodes/edges with zero totals", () => {
+    const graph = layoutGraph([], [], VIEW);
+    expect(graph.nodes).toEqual([]);
+    expect(graph.edges).toEqual([]);
+    expect(graph.totalNodes).toBe(0);
+    expect(graph.totalEdges).toBe(0);
+    expect(graph.shownNodes).toBe(0);
+    expect(graph.shownEdges).toBe(0);
+  });
+
+  it("places a single node of a single type, finite and inside the viewport", () => {
+    const graph = layoutGraph(
+      [{ id: "e-solo", name: "Solo", type: "character" }],
+      [],
+      VIEW,
+    );
+    expect(graph.nodes).toHaveLength(1);
+    expect(graph.edges).toEqual([]);
+    expect(graph.totalNodes).toBe(1);
+    const [solo] = graph.nodes;
+    expect(Number.isFinite(solo.x)).toBe(true);
+    expect(Number.isFinite(solo.y)).toBe(true);
+    expect(solo.x).toBeGreaterThanOrEqual(0);
+    expect(solo.x).toBeLessThanOrEqual(VIEW.width);
+    expect(solo.y).toBeGreaterThanOrEqual(0);
+    expect(solo.y).toBeLessThanOrEqual(VIEW.height);
+  });
+
+  it("emits a self-loop edge with from equal to to when the node is present", () => {
+    const graph = layoutGraph(
+      [{ id: "e-solo", name: "Solo", type: "character" }],
+      [
+        {
+          id: "r-loop",
+          from_entity_id: "e-solo",
+          to_entity_id: "e-solo",
+          relation_type: "reflects_on",
+        },
+      ],
+      VIEW,
+    );
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0].from).toBe("e-solo");
+    expect(graph.edges[0].to).toBe("e-solo");
+  });
+
+  it("drops genuinely dangling refs while keeping edges whose ends exist", () => {
+    const graph = layoutGraph(
+      entities,
+      [
+        ...relations,
+        {
+        id: "r-ghost",
+        from_entity_id: "e-a",
+        to_entity_id: "e-never-there",
+        relation_type: "haunts",
+      },
+      {
+        id: "r-phantom",
+        from_entity_id: "e-no-such",
+        to_entity_id: "e-also-missing",
+          relation_type: "haunts",
+        },
+      ],
+      VIEW,
+    );
+    expect(graph.edges.map((edge) => edge.id)).not.toContain("r-ghost");
+    expect(graph.edges.map((edge) => edge.id)).not.toContain("r-phantom");
+    expect(graph.totalEdges).toBe(relations.length + 2);
+    expect(graph.shownEdges).toBe(relations.length);
+    const ids = new Set(graph.nodes.map((n) => n.id));
+    for (const edge of graph.edges) {
+      expect(ids.has(edge.from)).toBe(true);
+      expect(ids.has(edge.to)).toBe(true);
+    }
+  });
+});
+
 describe("layoutGraph truncation", () => {
   it("caps nodes and edges and reports the totals for the showing note", () => {
     const graph = layoutGraph(entities, relations, VIEW, { maxNodes: 3, maxEdges: 2 });
