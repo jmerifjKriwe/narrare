@@ -40,6 +40,7 @@ import { t } from "@shell/lib/i18n";
 import { activeLocale, applyLocale } from "@shell/lib/locale";
 import { queryClient } from "@shell/lib/query";
 import { DELAY_MS } from "@shell/lib/save";
+import { shortcutKeycap } from "@shell/lib/shortcuts";
 import { rootRoute } from "@shell/routes/__root";
 
 vi.mock("@shell/lib/api/client", () => ({
@@ -1266,8 +1267,8 @@ describe("the runhead's action menu", () => {
     // `aria-keyshortcuts` — the accessible name is the label alone.
     const up = screen.getByRole("menuitem", { name: t("chapters.moveUp") });
     const down = screen.getByRole("menuitem", { name: t("chapters.moveDown") });
-    expect(up.textContent).toContain("Alt+↑");
-    expect(down.textContent).toContain("Alt+↓");
+    expect(up.textContent).toContain(shortcutKeycap("rail.moveUp"));
+    expect(down.textContent).toContain(shortcutKeycap("rail.moveDown"));
     // A middle chapter can move both ways: neither item is disabled.
     expect(up.getAttribute("aria-disabled")).not.toBe("true");
     expect(down.getAttribute("aria-disabled")).not.toBe("true");
