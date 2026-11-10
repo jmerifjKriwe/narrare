@@ -194,12 +194,21 @@ function NovelTimeline({ novelId }: { novelId: string }) {
   if (events.length === 0) {
     return (
       <>
-        <p className="mt-2 text-body text-muted">
+        <p className="mt-2 flex flex-wrap gap-x-4 text-body text-muted">
           <Link
             to="/planning"
             className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
           >
             {t("planning.changeNovel")}
+          </Link>
+          {/* The canvas door: the storyboard lays this novel's chapters
+              out by stage, and the novel rides along as `?novel=`. */}
+          <Link
+            to="/planning/storyboard"
+            search={{ novel: novelId }}
+            className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            {t("planning.openStoryboard")}
           </Link>
         </p>
         {/* The honest empty: no events is a fact the service confirmed,
@@ -225,12 +234,21 @@ function NovelTimeline({ novelId }: { novelId: string }) {
   const shown = events.slice(0, EVENT_LIMIT);
   return (
     <>
-      <p className="mt-2 text-body text-muted">
+      <p className="mt-2 flex flex-wrap gap-x-4 text-body text-muted">
         <Link
           to="/planning"
           className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >
           {t("planning.changeNovel")}
+        </Link>
+        {/* The canvas door: the storyboard lays this novel's chapters
+            out by stage, and the novel rides along as `?novel=`. */}
+        <Link
+          to="/planning/storyboard"
+          search={{ novel: novelId }}
+          className="underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {t("planning.openStoryboard")}
         </Link>
       </p>
       <div className="mt-6 flex flex-wrap items-center gap-2">
