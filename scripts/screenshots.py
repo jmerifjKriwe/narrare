@@ -107,6 +107,8 @@ SHOTS = (
     "15-storyboard-dark.png",
     "16-structure.png",
     "17-structure-dark.png",
+    "18-shortcuts.png",
+    "19-shortcuts-dark.png",
 )
 
 
@@ -595,6 +597,26 @@ def _capture(
     expect(page.get_by_role("heading", name="Structure", exact=True)).to_be_visible()
     expect(page.get_by_text("Resolution")).to_be_visible()
     shot(SHOTS[16])
+
+    # 18. The shortcuts cluster in the default light: the settings area's
+    #     frame with the cluster in its nav, and the registry rendered
+    #     read-only — one row per binding, grouped by the scope it applies
+    #     in, each with the platform's own keycap.
+    api.patch("/api/settings/theme", json={"theme": None})
+    page.goto(f"{WEB}/settings/shortcuts")
+    expect(page.get_by_role("heading", name="Shortcuts", exact=True)).to_be_visible()
+    expect(page.get_by_text("Everywhere")).to_be_visible()
+    expect(page.get_by_text("Open the command palette")).to_be_visible()
+    shot(SHOTS[17])
+
+    # 19. The same cluster in the reader's chosen dark, proven against a
+    #     light OS — the rows and the keycaps stay readable.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/settings/shortcuts")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    expect(page.get_by_role("heading", name="Shortcuts", exact=True)).to_be_visible()
+    expect(page.get_by_text("Open the command palette")).to_be_visible()
+    shot(SHOTS[18])
 
     api.patch("/api/settings/theme", json={"theme": None})
     return written
