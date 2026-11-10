@@ -182,6 +182,11 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
   // the override — the card snaps back to the server's column — beside
   // the Notice that carries the retry.
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  // A move in flight: cards stop being draggable and a second drop lands
+  // nowhere, so one chapter never carries two PUTs at once.
+  const [pending, setPending] = useState(false);
+  // The column under the pointer during a drag, for the visible drop target.
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [failed, setFailed] = useState<{
     chapterId: string;
     stageKey: string;
@@ -193,6 +198,8 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
   }
 
   async function moveChapter(chapterId: string, stageKey: string): Promise<void> {
+    if (pending) return;
+    setPending(true);
     setOverrides((previous) => ({ ...previous, [chapterId]: stageKey }));
     setFailed(null);
     try {
@@ -211,6 +218,7 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
           stageKey,
           detail: refusalDetail(answer.error) ?? t("planning.saveOffline"),
         });
+        setPending(false);
         return;
       }
     } catch {
@@ -222,6 +230,7 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
         return next;
       });
       setFailed({ chapterId, stageKey, detail: t("planning.saveOffline") });
+      setPending(false);
       return;
     }
     // The write moved the server's truth: the override lifts and the
@@ -231,7 +240,29 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
       delete next[chapterId];
       return next;
     });
-    await reload();
+    try {
+      await reload();
+    } catch {
+      // A refetch that rejects carries no error state of its own — the read
+      // it tried to repeat keeps its cached answer — and every moveChapter
+      // caller voids the move, so the rejection would leak as an unhandled
+      // rejection. It ends here instead. Pending still clears below: the
+      // canvas never wedges on a failed re-read.
+    } finally {
+      // A refetch that rejects must not wedge the canvas: pending clears
+      // whether the re-read lands or not (the query's own error state
+      // carries the failure to the retry beside it).
+      setPending(false);
+    }
+  }
+
+  // A drop's half of the one move path: the menu calls moveChapter, and so
+  // does this — same optimistic override, same rollback, same Notice. A
+  // drop onto the card's own column is a no-op, never a request.
+  function dropChapterOnto(targetKey: string, chapterId: string, sourceKey: string): void {
+    setDropTarget(null);
+    if (pending || sourceKey === targetKey) return;
+    void moveChapter(chapterId, targetKey);
   }
 
   if (boardQuery.isPending) {
@@ -349,7 +380,11 @@ function NovelStoryboard({ novelId }: { novelId: string }) {
               (entry) => (overrides[entry.chapter_id] ?? entry.stage_key) === column.key,
             )}
             stages={board.stages}
+            pending={pending}
+            isDropTarget={dropTarget === column.key}
+            onHighlightStage={setDropTarget}
             onMove={moveChapter}
+            onDropChapter={dropChapterOnto}
           />
         ))}
       </div>
@@ -371,25 +406,78 @@ function structureName(t: typeof translate, structureId: string): string {
   return structureId;
 }
 
+/** The drag payload's wire type: the card's id and the column it stands in. */
+const DRAG_MIME = "application/x-storyboard-chapter";
+
+/** What a drop carries, or null when the gesture brought no chapter. */
+function readDragPayload(transfer: DataTransfer | null): {
+  chapterId: string;
+  stageKey: string;
+} | null {
+  if (transfer === null) return null;
+  const raw =
+    transfer.getData(DRAG_MIME) !== ""
+      ? transfer.getData(DRAG_MIME)
+      : transfer.getData("text/plain");
+  if (raw === "") return null;
+  try {
+    const parsed = JSON.parse(raw) as { chapterId?: unknown; stageKey?: unknown };
+    if (typeof parsed.chapterId !== "string" || typeof parsed.stageKey !== "string") return null;
+    return { chapterId: parsed.chapterId, stageKey: parsed.stageKey };
+  } catch {
+    return null;
+  }
+}
+
 /** One stage's column: the chapters standing in it, in aggregate order. */
 function StageColumn({
   column,
   novelId,
   entries,
   stages,
+  pending,
+  isDropTarget,
+  onHighlightStage,
   onMove,
+  onDropChapter,
 }: {
   column: StoryboardStage;
   novelId: string;
   entries: StoryboardChapter[];
   stages: StoryboardStage[];
+  pending: boolean;
+  isDropTarget: boolean;
+  onHighlightStage: (stageKey: string | null) => void;
   onMove: (chapterId: string, stageKey: string) => Promise<void>;
+  onDropChapter: (targetKey: string, chapterId: string, sourceKey: string) => void;
 }) {
   const t = useTranslation();
   const headingId = useId();
 
   return (
-    <section aria-labelledby={`${headingId}-stage`} className="min-w-0">
+    <section
+      aria-labelledby={`${headingId}-stage`}
+      className={`min-w-0${isDropTarget ? " rounded ring-2 ring-focus" : ""}`}
+      data-drop-active={isDropTarget ? "true" : undefined}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        if (!pending) onHighlightStage(column.key);
+      }}
+      onDragLeave={() => onHighlightStage(null)}
+      // A cancelled drag (Esc, or a drop outside after re-enter without
+      // leave) never fires leave or drop: the end clears the ring instead.
+      onDragEnd={() => onHighlightStage(null)}
+      onDrop={(event) => {
+        event.preventDefault();
+        const payload = readDragPayload(event.dataTransfer);
+        if (payload === null) {
+          onHighlightStage(null);
+          return;
+        }
+        onDropChapter(column.key, payload.chapterId, payload.stageKey);
+      }}
+    >
       <h2 id={`${headingId}-stage`} className="text-label font-semibold text-muted">
         {stageName(t, column.title_key, column.key)}
       </h2>
@@ -397,7 +485,15 @@ function StageColumn({
         <ul className="mt-1 flex flex-col gap-2">
           {entries.map((entry) => (
             <li key={entry.chapter_id}>
-              <ChapterCard entry={entry} novelId={novelId} stages={stages} onMove={onMove} />
+              <ChapterCard
+                entry={entry}
+                novelId={novelId}
+                stageKey={column.key}
+                stages={stages}
+                pending={pending}
+                onMove={onMove}
+                onClearHighlight={() => onHighlightStage(null)}
+              />
             </li>
           ))}
         </ul>
@@ -410,13 +506,22 @@ function StageColumn({
 function ChapterCard({
   entry,
   novelId,
+  stageKey,
   stages,
+  pending,
   onMove,
+  onClearHighlight,
 }: {
   entry: StoryboardChapter;
   novelId: string;
+  /** The column the card stands in: the drag payload's source. */
+  stageKey: string;
   stages: StoryboardStage[];
+  /** A move in flight: the card stops being draggable until it lands. */
+  pending: boolean;
   onMove: (chapterId: string, stageKey: string) => Promise<void>;
+  /** The drag is over (dropped or cancelled): the column ring goes out. */
+  onClearHighlight: () => void;
 }) {
   const t = useTranslation();
   const name = entry.title.trim() === "" ? t("planning.untitledChapter") : entry.title;
@@ -428,6 +533,19 @@ function ChapterCard({
       aria-label={name}
       flush
       className="h-auto flex-col items-stretch gap-1 py-2"
+      draggable={!pending}
+      onDragStart={(event) => {
+        // A drag that carries nothing is not a move: guard the bag the
+        // way the drop side guards its read.
+        const transfer: DataTransfer | null | undefined = event.dataTransfer;
+        if (transfer == null) return;
+        transfer.setData(
+          DRAG_MIME,
+          JSON.stringify({ chapterId: entry.chapter_id, stageKey }),
+        );
+        transfer.effectAllowed = "move";
+      }}
+      onDragEnd={onClearHighlight}
     >
       <div className="flex flex-wrap items-baseline gap-x-2">
         {/* The card's title is a navigation, never an action: a Link to
@@ -447,10 +565,11 @@ function ChapterCard({
         <span className="shrink-0 text-label text-muted">{syncLabel(t, entry.sync_status)}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {/* Moving is a menu, not a drag: pointer dragging of cards is a
-            recorded follow-up (the canvas slice owns the read; dragging
-            needs its own pointer contract and announcement story), so each
-            card carries the whole stage list as its one move control. */}
+        {/* Moving is a menu first: each card carries the whole stage list
+            as its one move control, and the menu stays the keyboard path.
+            Pointer dragging is the second path onto the same move — a drop
+            calls the same moveChapter, with the same optimistic update and
+            the same rollback and retry. */}
         <ActionMenu
           label={t("storyboard.move")}
           triggerAriaLabel={t("storyboard.moveFor", { title: name })}
