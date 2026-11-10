@@ -1,4 +1,4 @@
-/** The four areas and the one utility each may wear: an identity mark on
+/** The five areas and the one utility each may wear: an identity mark on
  *  the icon, never a fill, a text colour, a cover or a notice. The hues are
  *  measured ≥ 3:1 against `--panel` in both themes. The map lives here, beside
  *  the tokens — worn only on rail icons and the gallery's rail-icon-sized
@@ -7,5 +7,6 @@ export const AREA_ICON = {
   writing: "text-area-writing",
   knowledge: "text-area-knowledge",
   chat: "text-area-chat",
+  planning: "text-area-planning",
   settings: "text-area-settings",
 } as const;
