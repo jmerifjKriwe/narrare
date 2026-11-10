@@ -334,6 +334,20 @@ async def delete_entity(entity_id: UUID, service: ServiceDep) -> None:
         raise HTTPException(status_code=404, detail="entity not found") from None
 
 
+@router.get("/novels/{novel_id}/relations", response_model=list[RelationRead])
+async def list_novel_relations(novel_id: UUID, service: ServiceDep) -> list[RelationRead]:
+    """The novel's whole relation set, oldest first — the graph canvas's one
+    read call instead of a per-entity fan-out.
+
+    Raise HTTP 404 for an absent or unowned novel.
+    """
+    try:
+        relations = await service.novel_relations(novel_id)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="novel not found") from None
+    return [RelationRead.model_validate(relation) for relation in relations]
+
+
 @router.get("/entities/{entity_id}/relations", response_model=list[RelationRead])
 async def list_relations(entity_id: UUID, service: ServiceDep) -> list[RelationRead]:
     """The entity's relations, both directions, oldest first.
