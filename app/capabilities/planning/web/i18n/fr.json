@@ -1,3 +1,24 @@
 {
-  "planning.heading": "Planification"
+  "planning.addScene": "Ajouter une scène",
+  "planning.advanceStatus": "Passer à {status}",
+  "planning.deleteScene": "Supprimer la scène",
+  "planning.dockTitle": "Scènes",
+  "planning.empty": "Aucune scène pour l'instant. Ajoutez la première ci-dessous.",
+  "planning.heading": "Planification",
+  "planning.loadFailed": "Impossible de charger les scènes. Le service local est-il démarré ?",
+  "planning.loading": "Chargement des scènes…",
+  "planning.moveDown": "Descendre",
+  "planning.moveUp": "Monter",
+  "planning.noActiveChapter": "Aucun chapitre n'est ouvert dans l'éditeur.",
+  "planning.panelHeading": "Plans de scènes",
+  "planning.retry": "Réessayer",
+  "planning.save": "Enregistrer les scènes",
+  "planning.saveFailed": "Échec de l'enregistrement : {detail}",
+  "planning.saveOffline": "Le service local est-il démarré ?",
+  "planning.status.complete": "Terminée",
+  "planning.status.in_progress": "En cours",
+  "planning.status.planned": "Planifiée",
+  "planning.titleFor": "Titre de la scène {n}",
+  "planning.unsavedChanges": "Modifications non enregistrées.",
+  "planning.untitledScene": "Scène sans titre"
 }
