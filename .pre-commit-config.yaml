@@ -57,9 +57,10 @@ repos:
         files: (^web/|^app/capabilities/.*/web/|^i18n/)
         stages: [pre-commit]
 
-      # Only the subject grammar: release-please reads the type, and a subject
-      # it cannot parse is lost from the changelog. Whether a `User-visible:`
-      # line is real stays review's call (CONTRIBUTING).
+      # The subject grammar, and a real `User-visible:` line for the types that
+      # reach the release notes (feat, fix, perf, docs): release-please reads
+      # the type, and a subject it cannot parse is lost from the changelog.
+      # Whether a line is an honest sentence stays review's call (CONTRIBUTING).
       - id: commit-message
         name: Commit message
         entry: python3 scripts/check_commit_msg.py
