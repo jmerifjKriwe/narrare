@@ -297,9 +297,14 @@ function CommandsGroup({
 export function Palette({
   open,
   onOpenChange,
+  initialQuery = "",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The query the field opens prefilled with: ⌘K asks with nothing, the
+   *  editor's slash door with `/`. Read once per open, never live — the
+   *  field is the user's from the first keystroke. */
+  initialQuery?: string;
 }) {
   const t = useTranslation();
   const navigate = useNavigate();
@@ -335,18 +340,31 @@ export function Palette({
   // React Aria's focus scope restores for its triggers; the palette has no
   // trigger — the key is its opener — so the return is the palette's own.
   const opener = useRef<HTMLElement | null>(null);
+  // The opener's ask arrives with the open — the slash door's `/`, nothing
+  // for the key — so the open transition is what reads it; a change while
+  // open is the user's typing, never a new ask. `wasOpen` pins the
+  // transition: `initialQuery` stays out of the dependency re-read on
+  // purpose.
+  const wasOpen = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initialQuery is the open's question, not a live value — re-reading it mid-open would clobber the user's typing.
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       opener.current = document.activeElement as HTMLElement | null;
-      setQuery("");
+      setQuery(initialQuery);
       setCounts({});
-    } else {
+    } else if (!open && wasOpen.current) {
       opener.current?.focus();
       opener.current = null;
     }
+    wasOpen.current = open;
   }, [open]);
+  // The slash is the door, not the needle: a leading `/` opens the action
+  // list, and what follows it filters — `/` alone shows everything the
+  // context offers. The field keeps the raw text; only the matching reads
+  // past the prefix.
+  const effectiveQuery = query.startsWith("/") ? query.slice(1) : query;
   const shown = Object.values(counts).reduce((sum, count) => sum + count, 0);
-  const nothing = query.trim() !== "" && shown === 0;
+  const nothing = effectiveQuery.trim() !== "" && shown === 0;
 
   // The modal slot the commands share. The palette steps aside when one
   // runs; the slot keeps a fresh key per open, so the same dialog can be
@@ -481,14 +499,14 @@ export function Palette({
             <>
               <ChaptersGroup
                 novelId={novelId}
-                query={query}
+                query={effectiveQuery}
                 onCount={(count) => report("chapters", count)}
                 onRowKeyDown={onRowKeyDown}
                 onJump={jumpToChapter}
               />
               <EntitiesGroup
                 novelId={novelId}
-                query={query}
+                query={effectiveQuery}
                 onCount={(count) => report("entities", count)}
                 onRowKeyDown={onRowKeyDown}
                 onJump={jumpToEntity}
@@ -496,7 +514,7 @@ export function Palette({
             </>
           ) : (
             <NovelsGroup
-              query={query}
+              query={effectiveQuery}
               onCount={(count) => report("novels", count)}
               onRowKeyDown={onRowKeyDown}
               onJump={jumpToNovel}
@@ -504,13 +522,13 @@ export function Palette({
           )}
           <PagesGroup
             novelId={novelId}
-            query={query}
+            query={effectiveQuery}
             onCount={(count) => report("pages", count)}
             onRowKeyDown={onRowKeyDown}
             onOpen={openPage}
           />
           <CommandsGroup
-            query={query}
+            query={effectiveQuery}
             ctx={ctx}
             onCount={(count) => report("commands", count)}
             onRowKeyDown={onRowKeyDown}
