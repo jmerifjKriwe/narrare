@@ -23,6 +23,7 @@ import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import httpx
 from playwright.sync_api import FloatRect, expect, sync_playwright
@@ -102,6 +103,8 @@ SHOTS = (
     "11-graph-dark.png",
     "12-timeline.png",
     "13-timeline-dark.png",
+    "14-storyboard.png",
+    "15-storyboard-dark.png",
 )
 
 
@@ -300,6 +303,39 @@ def _seed_timeline(api: httpx.Client) -> str:
     for payload in events:
         created = api.post(f"/api/planning/novels/{novel_id}/timeline-events", json=payload)
         created.raise_for_status()
+    return novel_id
+
+
+def _seed_storyboard(api: httpx.Client) -> str:
+    """A novel with chapters wearing three different sync badges, through the API.
+
+    The scenes enter the world the way a writer would place them — through
+    the real save — and the prose rides the real chapter update, so the
+    word count reads above zero. Returns the novel's id, the storyboard
+    canvas's ``?novel=`` parameter. Mirrors the storyboard E2E's seed.
+    """
+    novel = api.post("/api/writing/novels", json={"title": "Die aufgestellte Bucht"})
+    novel.raise_for_status()
+    novel_id = str(novel.json()["id"])
+    chapter_ids: list[str] = []
+    for title in ("Ankunft", "Abreise", "Heimkehr"):
+        chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": title})
+        chapter.raise_for_status()
+        chapter_ids.append(str(chapter.json()["id"]))
+    ankunft, _, heimkehr = chapter_ids
+    for chapter_id, scenes in (
+        (ankunft, [{"id": str(uuid4()), "title": "Sturm", "status": "planned"}]),
+        (heimkehr, [{"id": str(uuid4()), "title": "Rückblick", "status": "complete"}]),
+    ):
+        saved = api.put(
+            f"/api/planning/novels/{novel_id}/chapters/{chapter_id}/scenes",
+            json={"scenes": scenes},
+        )
+        saved.raise_for_status()
+    updated = api.put(
+        f"/api/writing/chapters/{heimkehr}", json={"body": "Erste Worte im Manuskript."}
+    )
+    updated.raise_for_status()
     return novel_id
 
 
@@ -513,6 +549,27 @@ def _capture(
     expect(page.get_by_role("group", name="Anfang")).to_be_visible()
     expect(page.get_by_text("Im Frühling")).to_be_visible()
     shot(SHOTS[12])
+
+    # 14. The storyboard canvas in the default light: the novel's chapters
+    #     as cards in the columns of its structure — each card with its
+    #     size and its sync badge — the canvas owns the page, shot at the
+    #     shared viewport.
+    api.patch("/api/settings/theme", json={"theme": None})
+    storyboard_novel = _seed_storyboard(api)
+    page.goto(f"{WEB}/planning/storyboard?novel={storyboard_novel}")
+    expect(page.get_by_role("group", name="Ankunft")).to_be_visible()
+    expect(page.get_by_text("Resolution")).to_be_visible()
+    expect(page.get_by_text("4 words")).to_be_visible()
+    shot(SHOTS[13])
+
+    # 15. The same canvas in the reader's chosen dark, proven against a
+    #     light OS — the columns, the cards and the badges stay readable.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/planning/storyboard?novel={storyboard_novel}")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    expect(page.get_by_role("group", name="Ankunft")).to_be_visible()
+    expect(page.get_by_text("Resolution")).to_be_visible()
+    shot(SHOTS[14])
 
     api.patch("/api/settings/theme", json={"theme": None})
     return written
