@@ -3426,6 +3426,54 @@
         ]
       }
     },
+    "/api/knowledge/novels/{novel_id}/relations": {
+      "get": {
+        "description": "The novel's whole relation set, oldest first — the graph canvas's one\nread call instead of a per-entity fan-out.\n\nRaise HTTP 404 for an absent or unowned novel.",
+        "operationId": "list_novel_relations_api_knowledge_novels__novel_id__relations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "novel_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Novel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RelationRead"
+                  },
+                  "title": "Response List Novel Relations Api Knowledge Novels  Novel Id  Relations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Novel Relations",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/knowledge/novels/{novel_id}/suggestions": {
       "get": {
         "description": "The novel's suggestions in one review state; pending is the queue.\n\nReturn them oldest first; raise HTTP 404 for an absent or unowned novel.",

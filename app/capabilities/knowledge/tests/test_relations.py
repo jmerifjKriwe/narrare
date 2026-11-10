@@ -477,6 +477,53 @@ async def test_another_users_relation_is_absent() -> None:
     assert row.note is None  # the refusals wrote nothing
 
 
+async def test_a_novel_lists_its_whole_relation_set() -> None:
+    """The graph canvas's read path: one call for the novel's whole edge set.
+
+    Two entities and one edge in this novel, plus another novel's own
+    entities and edge as noise — the answer is exactly this novel's edge.
+    An unknown novel is the scoped absence's 404, like every novel list.
+    """
+    novel, [mira, haus] = await _seed("Mira", "Haus")
+    async with Session() as session:
+        other_novel = Novel(user_id=LOCAL_USER_ID, title="Anderer Roman")
+        session.add(other_novel)
+        await session.flush()
+        others = [
+            Entity(user_id=LOCAL_USER_ID, novel_id=other_novel.id, name=name, type="character")
+            for name in ("Fremde Mira", "Fremdes Haus")
+        ]
+        session.add_all(others)
+        await session.flush()
+        noise = EntityRelation(
+            user_id=LOCAL_USER_ID,
+            from_entity_id=others[0].id,
+            to_entity_id=others[1].id,
+            relation_type="kennt",
+        )
+        session.add(noise)
+        await session.commit()
+    async with _client() as client:
+        created = await client.post(
+            f"/api/knowledge/entities/{mira.id}/relations",
+            json={"to_entity_id": str(haus.id), "relation_type": "lebt_in"},
+        )
+        assert created.status_code == 201
+        edge = created.json()
+
+        listed = await client.get(f"/api/knowledge/novels/{novel.id}/relations")
+        assert listed.status_code == 200
+        assert [row["id"] for row in listed.json()] == [edge["id"]]
+
+        # the other novel's edge is not in this novel's answer, nor vice versa
+        other_listed = await client.get(f"/api/knowledge/novels/{other_novel.id}/relations")
+        assert other_listed.status_code == 200
+        assert [row["id"] for row in other_listed.json()] == [str(noise.id)]
+
+        unknown = await client.get(f"/api/knowledge/novels/{uuid4()}/relations")
+        assert unknown.status_code == 404
+
+
 async def test_a_merge_blocks_a_concurrent_edge_write_and_refuses_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

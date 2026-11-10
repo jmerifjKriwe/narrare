@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 import httpx
 from playwright.sync_api import FloatRect, expect, sync_playwright
 
+from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_PORT, WEB_PORT, run_stack
 from app.kernel.testing.vendor import chat_vendor
 
@@ -97,6 +98,8 @@ SHOTS = (
     "07-workspace-dark.png",
     "08-design.png",
     "09-design-dark.png",
+    "10-graph.png",
+    "11-graph-dark.png",
 )
 
 
@@ -213,6 +216,49 @@ def _route_model(api: httpx.Client, vendor: ChatVendor) -> None:
     ):
         assigned = api.put(f"/api/settings/assignments/{task}", json={"profile_id": profile_id})
         assigned.raise_for_status()
+
+
+def _seed_graph(api: httpx.Client) -> tuple[str, str, str]:
+    """A novel with two accepted entities joined by one edge, through the API.
+
+    The entities enter the world the only way they can — the extraction
+    job over a real chapter, and the review's accept — and the edge rides
+    the real relation create. Returns the novel's id and the two entity
+    names, the words the canvas must then show. Mirrors the knowledge E2E's
+    graph seed; the screenshots stack runs the same fake providers.
+    """
+    novel = api.post("/api/writing/novels", json={"title": "Die graphische Bucht"})
+    novel.raise_for_status()
+    novel_id = str(novel.json()["id"])
+    chapter = api.post(f"/api/writing/novels/{novel_id}/chapters", json={"title": "Ankunft"})
+    chapter.raise_for_status()
+    chapter_id = str(chapter.json()["id"])
+    saved = api.put(
+        f"/api/writing/chapters/{chapter_id}",
+        json={"body": "Mira betrat das alte Haus am See. Draußen schwieg der Leuchtturm."},
+    )
+    saved.raise_for_status()
+    enqueued = api.post(f"/api/knowledge/extraction/{novel_id}", json={"chapter_id": chapter_id})
+    enqueued.raise_for_status()
+    job = wait_for_job(api, enqueued.json()["job_id"])
+    assert job["status"] == "done", f"the extraction job ended {job['status']}"
+    suggestions = api.get(f"/api/knowledge/novels/{novel_id}/suggestions")
+    suggestions.raise_for_status()
+    assert len(suggestions.json()) >= 2
+    first = api.post(f"/api/knowledge/suggestions/{suggestions.json()[0]['id']}/accept")
+    first.raise_for_status()
+    second = api.post(f"/api/knowledge/suggestions/{suggestions.json()[1]['id']}/accept")
+    second.raise_for_status()
+    listed = api.get(f"/api/knowledge/novels/{novel_id}/entities")
+    listed.raise_for_status()
+    names = [str(row["name"]) for row in listed.json()]
+    assert len(names) == 2
+    edge = api.post(
+        f"/api/knowledge/entities/{listed.json()[0]['id']}/relations",
+        json={"to_entity_id": listed.json()[1]["id"], "relation_type": "friend_of"},
+    )
+    edge.raise_for_status()
+    return novel_id, names[0], names[1]
 
 
 def _capture(
@@ -377,6 +423,32 @@ def _capture(
     expect(page.get_by_role("heading", name="Design gallery")).to_be_visible()
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
     gallery_shot(SHOTS[8])
+
+    # 10. The graph canvas in the default light: the novel's entities as
+    #     named nodes, the one relation as the line between them, and the
+    #     selected node's glance below — the canvas owns the page, shot at
+    #     the shared viewport.
+    api.patch("/api/settings/theme", json={"theme": None})
+    graph_novel, first, second = _seed_graph(api)
+    page.goto(f"{WEB}/knowledge/graph?novel={graph_novel}")
+    expect(page.get_by_role("button", name=first)).to_be_visible()
+    expect(page.get_by_role("button", name=second)).to_be_visible()
+    expect(page.locator("svg line")).to_have_count(1)
+    page.get_by_role("button", name=first).click()
+    expect(page.get_by_role("region", name=first)).to_be_visible()
+    shot(SHOTS[9])
+
+    # 11. The same canvas in the reader's chosen dark, proven against a
+    #     light OS — the tokens resolve, the selection keeps its focus
+    #     fill, the glance stays readable.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/knowledge/graph?novel={graph_novel}")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    expect(page.get_by_role("button", name=first)).to_be_visible()
+    expect(page.locator("svg line")).to_have_count(1)
+    page.get_by_role("button", name=first).click()
+    expect(page.get_by_role("region", name=first)).to_be_visible()
+    shot(SHOTS[10])
 
     api.patch("/api/settings/theme", json={"theme": None})
     return written

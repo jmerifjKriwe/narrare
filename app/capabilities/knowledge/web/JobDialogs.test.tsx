@@ -58,10 +58,10 @@ function refused(status: number) {
   return { data: undefined, response: { ok: false, status } };
 }
 
-function renderExtraction() {
+function renderExtraction(chapterId?: string | null) {
   render(
     <QueryClientProvider client={queryClient}>
-      <ExtractionJobDialog novelId={NOVEL_ID} isOpen onOpenChange={() => {}} />
+      <ExtractionJobDialog novelId={NOVEL_ID} chapterId={chapterId ?? null} isOpen onOpenChange={() => {}} />
     </QueryClientProvider>,
   );
 }
@@ -138,6 +138,82 @@ describe("the palette's extraction dialog", () => {
       screen.queryByRole("button", { name: t("knowledge.extractChapter") }),
     ).toBeNull();
     expect(api.POST).not.toHaveBeenCalled();
+  });
+});
+
+describe("the palette's extraction dialog targets the edited chapter", () => {
+  // Two chapters where the fallback (last written in) is NOT the handed one:
+  // the dialog must stand on the prop, the trigger and the named line alike.
+  const OLDER = {
+    id: "11111111-1111-4111-8111-111111111111",
+    novel_id: NOVEL_ID,
+    title: "Die stille Kammer",
+    position: 0,
+    body: "Mira betrat das alte Haus am See.",
+    created_at: "2026-10-30T09:00:00Z",
+    updated_at: "2026-10-30T09:00:00Z",
+  };
+  const NEWER = {
+    id: "22222222-2222-4222-8222-222222222222",
+    novel_id: NOVEL_ID,
+    title: "Die laute Halle",
+    position: 1,
+    body: "Tom folgte ihr durch den dunklen Gang.",
+    created_at: "2026-10-30T10:00:00Z",
+    updated_at: "2026-10-30T10:00:00Z",
+  };
+
+  function mockTwoChapters() {
+    api.GET.mockImplementation(async (path: string) => {
+      if (path === "/api/writing/novels/{novel_id}/chapters") return ok([OLDER, NEWER]);
+      if (path === "/api/jobs/{job_id}")
+        return ok({
+          id: JOB_ID,
+          kind: "extract-entities",
+          status: "done",
+          progress: 100,
+          result: { suggestions: 1 },
+        });
+      throw new Error(`unexpected GET ${path}`);
+    });
+    api.POST.mockResolvedValue(ok({ job_id: JOB_ID }, 202));
+  }
+
+  it("prefers the handed chapter over the fallback — the trigger and the named line agree", async () => {
+    mockTwoChapters();
+    renderExtraction(OLDER.id);
+
+    // The dialog names the handed chapter, not the last-touched one.
+    expect(
+      await screen.findByText(t("knowledge.extractionTarget", { title: OLDER.title })),
+    ).toBeTruthy();
+    await userEvent.click(
+      await screen.findByRole("button", { name: t("knowledge.extractChapter") }),
+    );
+    await waitFor(() => {
+      expect(api.POST).toHaveBeenCalledWith("/api/knowledge/extraction/{novel_id}", {
+        params: { path: { novel_id: NOVEL_ID } },
+        body: { chapter_id: OLDER.id },
+      });
+    });
+  });
+
+  it("falls back to the last-touched chapter without a handed one", async () => {
+    mockTwoChapters();
+    renderExtraction(null);
+
+    expect(
+      await screen.findByText(t("knowledge.extractionTarget", { title: NEWER.title })),
+    ).toBeTruthy();
+    await userEvent.click(
+      await screen.findByRole("button", { name: t("knowledge.extractChapter") }),
+    );
+    await waitFor(() => {
+      expect(api.POST).toHaveBeenCalledWith("/api/knowledge/extraction/{novel_id}", {
+        params: { path: { novel_id: NOVEL_ID } },
+        body: { chapter_id: NEWER.id },
+      });
+    });
   });
 });
 

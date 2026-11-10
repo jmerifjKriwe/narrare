@@ -36,18 +36,22 @@ export const commands = [
     run: (ctx) => {
       if (ctx.novelId === null) return;
       const novelId = ctx.novelId;
+      const chapterId = ctx.chapterId;
       ctx.openModal(async () => {
         const m = await import("./JobDialogs");
         return {
-          // The slot mounts a props-free component: the dialog reads the
-          // chapter list through Query (the workbench already asked for it)
-          // and mounts already open — the palette row was the press.
+          // The slot mounts the dialog with its novel and chapter as props — the
+          // chapter the route carried when the row ran — falling back to
+          // the last chapter written in without one, the same precedence
+          // the dock panel keeps — and mounts already open, the palette
+          // row having been the press.
           // Closing it unmounts the overlay; the slot's next open is a
           // fresh mount.
           default: function ExtractionJobFromPalette() {
             const [open, setOpen] = useState(true);
             return createElement(m.ExtractionJobDialog, {
               novelId,
+              chapterId,
               isOpen: open,
               onOpenChange: setOpen,
             });

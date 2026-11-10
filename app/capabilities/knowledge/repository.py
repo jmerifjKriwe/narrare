@@ -273,6 +273,27 @@ class RelationRepository(ScopedRepository[EntityRelation]):
         )
         return result.all()
 
+    async def list_for_novel(self, novel_id: UUID) -> Sequence[EntityRelation]:
+        """The novel's whole edge set, oldest first.
+
+        An edge joins one story (the create path enforces it, a merge
+        cannot cross novels), so matching either end against this novel's
+        entities is the union of the novel's entities' relations — the
+        graph canvas's read path, without the client's N+1 fan-out.
+        """
+        entity_ids = select(Entity.id).where(
+            Entity.novel_id == novel_id, Entity.user_id == self.user_id
+        )
+        result = await self.session.scalars(
+            self.query()
+            .where(
+                (EntityRelation.from_entity_id.in_(entity_ids))
+                | (EntityRelation.to_entity_id.in_(entity_ids))
+            )
+            .order_by(EntityRelation.created_at)
+        )
+        return result.all()
+
     async def edge(
         self, from_entity_id: UUID, to_entity_id: UUID, relation_type: str
     ) -> EntityRelation | None:

@@ -571,6 +571,14 @@ class KnowledgeService:
         await touch_novel(self.session, self.user_id, entity.novel_id)
         await self.session.commit()
 
+    async def novel_relations(self, novel_id: UUID) -> Sequence[EntityRelation]:
+        """The novel's whole edge set, oldest first.
+
+        Raise NotFoundError for an absent or unowned novel.
+        """
+        await self._own_novel(novel_id)
+        return await self.relations.list_for_novel(novel_id)
+
     async def entity_relations(self, entity_id: UUID) -> Sequence[EntityRelation]:
         """The entity's edges, both directions, oldest first.
 
