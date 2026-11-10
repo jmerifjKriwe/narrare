@@ -21,6 +21,22 @@ const StoryboardPage = lazy(async () => {
   return { default: page.StoryboardPage };
 });
 
+const StructurePage = lazy(async () => {
+  const page = await import("./StructurePage");
+  return { default: page.StructurePage };
+});
+
+// One normaliser for the `?novel=` search param, shared by the three
+// canvases: a non-empty string is kept, anything else yields {} so the
+// param is absent.
+function novelSearch(search: { novel?: unknown }): { novel?: string } {
+  return {
+    ...(typeof search.novel === "string" && search.novel !== ""
+      ? { novel: search.novel }
+      : {}),
+  };
+}
+
 // The landing canvas: the novel's timeline as a full page under the Planen
 // rail entry. The novel arrives as `?novel=` (the graph's sibling: tolerant
 // in, absent means the picker); the dock's routes below parent at the
@@ -29,13 +45,7 @@ const planningRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/planning",
   component: PlanningPage,
-  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
-    return {
-      ...(typeof search.novel === "string" && search.novel !== ""
-        ? { novel: search.novel }
-        : {}),
-    };
-  },
+  validateSearch: novelSearch,
 });
 
 // The storyboard canvas: the novel's chapters as cards in one column per
@@ -48,13 +58,18 @@ const storyboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/planning/storyboard",
   component: StoryboardPage,
-  validateSearch: (search: { novel?: unknown }): { novel?: string } => {
-    return {
-      ...(typeof search.novel === "string" && search.novel !== ""
-        ? { novel: search.novel }
-        : {}),
-    };
-  },
+  validateSearch: novelSearch,
+});
+
+// The structure canvas: the novel's story as one proportion bar — a band
+// per stage, each band as wide as its share of the story, the chapters
+// standing inside their band. Read-only beside the storyboard under the
+// same rail entry; the novel arrives as `?novel=` like its siblings.
+const structureRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/planning/structure",
+  component: StructurePage,
+  validateSearch: novelSearch,
 });
 
 // The dock convention: routes for another capability's workspace, created as
@@ -83,4 +98,4 @@ export const dockRoutes = [
 // The route const stands on its own on purpose: a contextual type here
 // (a `Route[]` annotation or satisfies) degrades createRoute's inference to
 // `any` paths, and with it the router's checked `to=` props.
-export const routes = [planningRoute, storyboardRoute] as const;
+export const routes = [planningRoute, storyboardRoute, structureRoute] as const;

@@ -105,6 +105,8 @@ SHOTS = (
     "13-timeline-dark.png",
     "14-storyboard.png",
     "15-storyboard-dark.png",
+    "16-structure.png",
+    "17-structure-dark.png",
 )
 
 
@@ -570,6 +572,29 @@ def _capture(
     expect(page.get_by_role("group", name="Ankunft")).to_be_visible()
     expect(page.get_by_text("Resolution")).to_be_visible()
     shot(SHOTS[14])
+
+    # 16. The structure canvas in the default light: the novel's story as
+    #     one proportion bar — a band per stage, each band as wide as its
+    #     share of the story, the chapters standing inside their band with
+    #     their size — the canvas owns the page, shot at the shared
+    #     viewport. It reads the storyboard aggregate, so the storyboard
+    #     seed serves both frames; the heading proves the page, the stage
+    #     and the word count prove the bar.
+    api.patch("/api/settings/theme", json={"theme": None})
+    page.goto(f"{WEB}/planning/structure?novel={storyboard_novel}")
+    expect(page.get_by_role("heading", name="Structure", exact=True)).to_be_visible()
+    expect(page.get_by_text("Resolution")).to_be_visible()
+    expect(page.get_by_text("3 chapters · 4 words · 0 deviations", exact=True)).to_be_visible()
+    shot(SHOTS[15])
+
+    # 17. The same canvas in the reader's chosen dark, proven against a
+    #     light OS — the bands, the marks and the summary stay readable.
+    api.patch("/api/settings/theme", json={"theme": "dark"})
+    page.goto(f"{WEB}/planning/structure?novel={storyboard_novel}")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    expect(page.get_by_role("heading", name="Structure", exact=True)).to_be_visible()
+    expect(page.get_by_text("Resolution")).to_be_visible()
+    shot(SHOTS[16])
 
     api.patch("/api/settings/theme", json={"theme": None})
     return written

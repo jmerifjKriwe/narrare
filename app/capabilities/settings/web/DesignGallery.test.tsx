@@ -127,7 +127,16 @@ describe("DesignGallery", () => {
     const heading = screen.getByRole("heading", { name: /Storyboard-Canvas/ });
     expect(heading.textContent).toMatch(/gebaut/);
     const block = heading.parentElement as HTMLElement;
-    expect(block.textContent).not.toMatch(/ENTWURF/);
+    // Honest scope: the gallery root holds both the Target drafts and the
+    // specimens, so the presence check proves the matcher sees the stamps
+    // the freedom check below must not find among the specimens. The
+    // freedom scope is the whole Specimens section, not the widest
+    // (document) scope and not the specimen's own div, which could never
+    // see the drafts and passed vacuously.
+    const gallery = heading.closest("div.mx-auto") as HTMLElement;
+    expect(gallery.textContent).toMatch(/ENTWURF/);
+    const specimens = heading.closest("section") as HTMLElement;
+    expect(specimens.textContent).not.toMatch(/ENTWURF/);
     // Stage columns miniaturized: the moved card stands in its new column,
     // with its size and sync badge beside the move it offers.
     expect(screen.getByRole("group", { name: "Ankunft" })).toBeTruthy();

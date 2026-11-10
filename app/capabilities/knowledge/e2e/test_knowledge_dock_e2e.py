@@ -1635,3 +1635,54 @@ def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack)
     expect(dock.get_by_role("region", name="Haus")).to_be_visible()
 
     assert_accessible(page)
+
+
+def test_the_dock_lens_shows_the_entity_neighborhood(page: Page, stack: Stack) -> None:
+    """The lens beside the list: the selected entity's local graph.
+
+    The switcher above the stacking offers Liste and Nachbarschaft — no new
+    dock tab. Selecting an entity and switching to the lens shows its hop-1
+    neighborhood on a small canvas: both names, the edge between them. The
+    selection rides the same `?entity=` address the list writes, and the
+    cross-link carries the novel to the full `/knowledge/graph` canvas.
+    """
+    novel_id = _seed_entities("Die benachbarte Bucht")
+    # Exactly two entities: the seeded review filed five, so three leave
+    # through the API — the lens below shows what the novel holds, no more.
+    mira = _entity_id(novel_id, "Mira")
+    haus = _entity_id(novel_id, "Haus")
+    with httpx.Client(base_url=API, timeout=30) as api:
+        for name in ("See", "Draußen", "Leuchtturm"):
+            deleted = api.delete(f"/api/knowledge/entities/{_entity_id(novel_id, name)}")
+            deleted.raise_for_status()
+        linked = api.post(
+            f"/api/knowledge/entities/{mira}/relations",
+            json={"to_entity_id": haus, "relation_type": "related_to"},
+        )
+        linked.raise_for_status()
+
+    page.goto(f"{WEB_URL}/novels/{novel_id}")
+    expect(page.get_by_role("heading", name="Die benachbarte Bucht")).to_be_visible()
+    page.get_by_role("button", name="Wissen", exact=True).click()
+    dock = page.get_by_role("complementary", name="Wissen")
+    expect(dock).to_be_visible()
+    entities = dock.get_by_role("region", name="Entitäten")
+    expect(_row_named(entities, "Mira")).to_be_visible()
+
+    # Select Mira, then switch the dock from the list to the lens.
+    _row_named(entities, "Mira").click()
+    expect(dock.get_by_role("region", name="Mira")).to_be_visible()
+    dock.get_by_role("button", name="Nachbarschaft").click()
+    lens = dock.get_by_role("region", name="Nachbarschaft")
+    expect(lens).to_be_visible()
+
+    # Hop-1: both names stand on the canvas, joined by the one edge.
+    expect(lens.get_by_text("Mira", exact=True)).to_be_visible()
+    expect(lens.get_by_text("Haus", exact=True)).to_be_visible()
+    expect(lens.locator("line")).to_have_count(1)
+
+    # The cross-link carries the novel to the full canvas.
+    link = lens.get_by_role("link", name="Im Graphen öffnen")
+    expect(link).to_have_attribute("href", f"/knowledge/graph?novel={novel_id}")
+
+    assert_accessible(page)

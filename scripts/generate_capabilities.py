@@ -855,7 +855,7 @@ def typescript_settings_pages(root: Path) -> str:
 # Writing leads (the editor's own commands first), then the app-wide
 # surfaces. A command module outside this order stops generation instead of
 # silently sliding to the end of the aggregation.
-COMMAND_ORDER = ("writing", "settings", "prompts", "knowledge")
+COMMAND_ORDER = ("writing", "settings", "prompts", "knowledge", "planning")
 
 
 def scan_commands(root: Path) -> tuple[str, ...]:
@@ -915,7 +915,7 @@ def typescript_commands(root: Path) -> str:
         " app/capabilities/*/web/commands.ts(x) — DO NOT EDIT.\n"
         "// The command registry: one import per capability that owns a\n"
         "// commands module, aggregated in the palette's pinned row order\n"
-        "// (writing, settings, prompts, knowledge — COMMAND_ORDER in\n"
+        "// (writing, settings, prompts, knowledge, planning — COMMAND_ORDER in\n"
         "// scripts/generate_capabilities.py). A new command appears by\n"
         "// existing; a capability outside the pinned order stops generation\n"
         "// instead of appending to it.\n"
