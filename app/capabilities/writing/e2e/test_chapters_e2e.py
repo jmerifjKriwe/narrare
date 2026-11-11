@@ -368,13 +368,28 @@ def test_the_latest_touched_chapter_opens_first(page: Page, stack: Stack) -> Non
     new_chapter(page)
     editor = page.locator(".ProseMirror")
     editor.click()
-    page.keyboard.type("Kalter Wind.")
+    # The debounce's PUT is the fact the badge announces; waiting for the wire
+    # first keeps the badge's own 5 s window from having to cover a loaded
+    # runner's autosave (#448).
+    with page.expect_response(
+        lambda response: (
+            "/api/writing/chapters/" in response.url and response.request.method == "PUT"
+        )
+    ) as first_saved:
+        page.keyboard.type("Kalter Wind.")
+    assert first_saved.value.ok
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
     # The second chapter is not just created later — it is written in later.
     new_chapter(page)
     page.locator(".ProseMirror").click()
-    page.keyboard.type("Springflut.")
+    with page.expect_response(
+        lambda response: (
+            "/api/writing/chapters/" in response.url and response.request.method == "PUT"
+        )
+    ) as second_saved:
+        page.keyboard.type("Springflut.")
+    assert second_saved.value.ok
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
     # The reload opens the chapter last written in, not the first one.
