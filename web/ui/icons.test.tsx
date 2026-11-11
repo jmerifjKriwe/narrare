@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The icon set's contract, pinned as records rather than single samples:
- * `icons` carries exactly the eighteen names (the wave's whole vocabulary
+ * `icons` carries exactly the forty-one names (the wave's whole vocabulary
  * — a name that drifts in or out breaks a P9 consumer), and every one of
  * them renders through `Icon` as the same hidden 16×16 svg — stroked in
  * the ink around it, filled with nothing, sized by `size` alone. The
@@ -13,8 +13,17 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { Icon, icons, type IconName } from "./icons";
 
-/** The eighteen names, verbatim: the set is exactly this and no more. */
-const EIGHTEEN = [
+/**
+ * The forty-one names, verbatim: the set is exactly this and no more.
+ *
+ * The first eighteen are the app's own vocabulary (the library, the
+ * editor, the knowledge base, the chat, the settings, the shell's
+ * rails and their marks). The twenty-three that follow are the drafted
+ * concepts the Literary Modernism screens introduce — deviation #1
+ * (spec §6.9): the drafts speak in Material Symbols, the app keeps its
+ * own hand-drawn faces, and a Material name pins only the *concept*.
+ */
+const THE_SET = [
   "books",
   "write",
   "knowledge",
@@ -33,6 +42,30 @@ const EIGHTEEN = [
   "chevronDown",
   "selectChevron",
   "planning",
+  // The drafted concepts.
+  "autoStories",
+  "bookmarkCollection",
+  "checkCircle",
+  "clock",
+  "editNote",
+  "foggy",
+  "globe",
+  "gridView",
+  "historyEdu",
+  "house",
+  "hub",
+  "inkHighlighter",
+  "insights",
+  "localFire",
+  "menuBook",
+  "moreHoriz",
+  "person",
+  "radar",
+  "schema",
+  "theme",
+  "tune",
+  "viewList",
+  "waves",
 ] as const satisfies readonly IconName[];
 
 /** Every attribute a rendered glyph carries, with its pinned value at the default size. */
@@ -233,13 +266,13 @@ function geometryValues(svg: SVGSVGElement): number[] {
 afterEach(cleanup);
 
 describe("icons", () => {
-  it("carries exactly the eighteen names of the set, verbatim", () => {
-    expect(Object.keys(icons).sort()).toEqual([...EIGHTEEN].sort());
+  it("carries exactly the forty-one names of the set, verbatim", () => {
+    expect(Object.keys(icons).sort()).toEqual([...THE_SET].sort());
   });
 
   it("renders every name as the same hidden 16×16 stroked svg", () => {
-    expect(Object.fromEntries(EIGHTEEN.map((name) => [name, contractOf(name)]))).toEqual(
-      Object.fromEntries(EIGHTEEN.map((name) => [name, SVG_CONTRACT])),
+    expect(Object.fromEntries(THE_SET.map((name) => [name, contractOf(name)]))).toEqual(
+      Object.fromEntries(THE_SET.map((name) => [name, SVG_CONTRACT])),
     );
   });
 
@@ -250,7 +283,7 @@ describe("icons", () => {
   it("draws every glyph as geometry, never as text or a fill", () => {
     // Shape first: a glyph with no drawing element renders as empty space.
     expect(
-      EIGHTEEN.filter(
+      THE_SET.filter(
         (name) =>
           svgOf(name).querySelector(
             "path, circle, ellipse, line, polyline, polygon, rect",
@@ -258,9 +291,9 @@ describe("icons", () => {
       ),
     ).toEqual([]);
     // Then the bans: no glyph may write its metaphor, and any fill there is must be none.
-    expect(EIGHTEEN.filter((name) => svgOf(name).querySelector("text") !== null)).toEqual([]);
+    expect(THE_SET.filter((name) => svgOf(name).querySelector("text") !== null)).toEqual([]);
     expect(
-      EIGHTEEN.filter((name) =>
+      THE_SET.filter((name) =>
         [...svgOf(name).querySelectorAll("[fill]")].some(
           (element) => element.getAttribute("fill") !== "none",
         ),
@@ -268,17 +301,17 @@ describe("icons", () => {
     ).toEqual([]);
   });
 
-  it("keeps all eighteen drawings distinct — cross dismisses, close folds a panel", () => {
+  it("keeps all forty-one drawings distinct — cross dismisses, close folds a panel", () => {
     // cross and close must never converge on the same ✕: a dismissal drops
     // content, a close folds a panel away — and no two names may share a drawing.
-    expect(new Set(EIGHTEEN.map((name) => JSON.stringify(icons[name]))).size).toBe(18);
+    expect(new Set(THE_SET.map((name) => JSON.stringify(icons[name]))).size).toBe(41);
     expect(icons.close).not.toEqual(icons.cross);
   });
 
   it("draws every glyph with real ink — no empty path, no degenerate shape", () => {
     // An empty `d` passes the shape query above while drawing nothing, and
     // a zero radius draws nothing either: the pin is the data, not the query.
-    for (const name of EIGHTEEN) {
+    for (const name of THE_SET) {
       const shapes = [...svgOf(name).querySelectorAll("path, circle, ellipse")];
       expect(shapes.length, name).toBeGreaterThan(0);
       for (const shape of shapes) {
@@ -304,7 +337,7 @@ describe("icons", () => {
     // doc states — the bound a 1.5-wide stroke may not leave. A hair of
     // tolerance absorbs float jitter in the derived ink (centre ± radius),
     // not off-grid ink: real drift moves by tenths, not by 1e-9.
-    for (const name of EIGHTEEN) {
+    for (const name of THE_SET) {
       const values = geometryValues(svgOf(name));
       expect(values.length, `${name}: scanned no geometry`).toBeGreaterThan(0);
       for (const value of values) {
