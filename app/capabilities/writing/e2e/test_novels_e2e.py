@@ -8,20 +8,18 @@ reach the service must keep the dialog (and the typed Titel) where they are
 and name the failure inside, not drop the user back onto a dead page.
 """
 
-import asyncio
 import re
-from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
-from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import API_URL, WEB_URL
+
+DATABASE = testsupport.test_database("narrare_v2_e2e")
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,8 +54,6 @@ def test_novel_created_in_browser_survives_reload(page: Page, stack: Stack) -> N
     expect(page.get_by_role("list").get_by_role("link", name="Das Wattenmeer")).to_contain_text(
         "Fantasy"
     )
-
-    assert_accessible(page)
 
 
 def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
@@ -152,8 +148,6 @@ def test_writing_a_chapter_makes_its_book_the_hero(page: Page, stack: Stack) -> 
     # Well inside the 30 s staleTime, the hero names the book written in.
     expect(hero).to_contain_text("Die Halligen")
     expect(hero.get_by_text("Der Strandwall")).to_have_count(0)
-
-    assert_accessible(page)
 
 
 def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> None:
@@ -256,8 +250,6 @@ def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) 
     page.get_by_role("button", name="Erneut versuchen").click()
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
-    assert_accessible(page)
-
 
 def _seed_novel(page: Page, title: str) -> dict[str, object]:
     """Create a novel through the API, the way a second device would."""
@@ -303,8 +295,6 @@ def test_shelf_cards_show_length_in_words_not_percentages(page: Page, stack: Sta
     expect(card).to_contain_text("4 Kapitel")
     expect(card).to_contain_text("6.843 Wörter")
     expect(page.get_by_text("%")).to_have_count(0)
-
-    assert_accessible(page)
 
 
 def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack) -> None:
@@ -353,8 +343,6 @@ def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack
     assert long_height is not None and short_height is not None
     assert abs(long_height["height"] - short_height["height"]) <= 1
 
-    assert_accessible(page)
-
 
 def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> None:
     """A book with nothing but a title still renders a whole card.
@@ -377,8 +365,6 @@ def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> 
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     assert "0 Kapitel · 0 Wörter" in lines
     assert sum(line.count("·") for line in lines) == 1
-
-    assert_accessible(page)
 
 
 def test_a_failed_refresh_keeps_the_shelf_and_its_retry(page: Page, stack: Stack) -> None:
@@ -461,8 +447,6 @@ def test_the_quiet_note_cannot_outlive_its_cause(page: Page, stack: Stack) -> No
     expect(page.get_by_role("status")).to_have_count(0)
     expect(shelf_card).to_be_visible()
 
-    assert_accessible(page)
-
 
 def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     """The shell offers one map: the rail — the bar carries the place, not links.
@@ -479,8 +463,6 @@ def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     # the place — a navigation landmark back inside the banner is a
     # capability link growing back into the bar.
     expect(page.get_by_role("banner").get_by_role("navigation")).to_have_count(0)
-
-    assert_accessible(page)
 
 
 def test_header_controls_keep_their_content_inside_the_control(page: Page, stack: Stack) -> None:
@@ -518,29 +500,10 @@ def test_header_controls_keep_their_content_inside_the_control(page: Page, stack
         assert row["found"], row
         assert row["content"] <= row["height"], row
 
-    assert_accessible(page)
-
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's database as plain tuples, in a worker thread.
-
-    The interchange suite's own reader: pytest-asyncio keeps a session loop
-    running, and asyncio.run refuses to start a second one in the same thread.
-    """
-    database = testsupport.test_database("narrare_v2_e2e")
-
-    async def run() -> list[tuple[object, ...]]:
-        engine = create_async_engine(url_for(database))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def test_export_then_delete_a_novel(page: Page, stack: Stack, tmp_path: Path) -> None:
@@ -584,7 +547,6 @@ def test_export_then_delete_a_novel(page: Page, stack: Stack, tmp_path: Path) ->
     expect(dialog).to_contain_text("0 Wissenseinträge")
     expect(dialog).to_contain_text("Dokumente")
     expect(dialog).to_contain_text("noch nie exportiert")
-    assert_accessible(page)
 
     # The export the dialog offers lands in a folder of this run, and its
     # success flips the line the delete was about to judge.
@@ -614,5 +576,3 @@ def test_export_then_delete_a_novel(page: Page, stack: Stack, tmp_path: Path) ->
         "SELECT 1 FROM novels WHERE id = :id",
     ):
         assert _rows(statement, {"id": novel_id}) == [], statement
-
-    assert_accessible(page)

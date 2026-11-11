@@ -8,19 +8,15 @@ but the novel. Every run starts on an uninstalled instance
 (``e2e/conftest.py`` empties the database before each test).
 """
 
-import asyncio
 import re
-from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Page, expect
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
-from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import WEB_URL
 
 if TYPE_CHECKING:
@@ -42,25 +38,8 @@ DEMO_RELATION_COUNT = 3
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's database as plain tuples, in a worker thread.
-
-    pytest-asyncio keeps a session loop running, and asyncio.run refuses to
-    start a second one in the same thread.
-    """
-
-    async def run() -> list[tuple[object, ...]]:
-        """Ask a fresh async engine; the dispose lands even on a failed query."""
-        engine = create_async_engine(url_for(DATABASE))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def test_a_fresh_database_opens_on_setup(page: Page, stack: Stack) -> None:

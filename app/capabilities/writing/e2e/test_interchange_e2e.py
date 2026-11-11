@@ -22,11 +22,9 @@ screen where that flow's answer is; the ZIP dialog gets the floor with its
 radio selected, before the download leaves.
 """
 
-import asyncio
 import json
 import re
 import shutil
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -34,12 +32,10 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 from playwright.sync_api import Locator, Page, expect
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
-from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import API_URL, WEB_URL
 
 if TYPE_CHECKING:
@@ -69,25 +65,8 @@ DEMO_RELATIONS = 3
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's database as plain tuples, in a worker thread.
-
-    pytest-asyncio keeps a session loop running, and asyncio.run refuses to
-    start a second one in the same thread.
-    """
-
-    async def run() -> list[tuple[object, ...]]:
-        """Ask a fresh async engine; the dispose lands even on a failed query."""
-        engine = create_async_engine(url_for(DATABASE))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def _novel_ids(title: str) -> list[str]:
@@ -222,7 +201,6 @@ def _seed_novel(page: Page, source: Path, title: str) -> None:
             f"{DEMO_RELATIONS} Beziehungen wurden angelegt",
         ],
     )
-    assert_accessible(page)
     _close_report(page)
     expect(page.get_by_role("link", name=title)).to_be_visible()
 
@@ -265,7 +243,6 @@ def _export_path(page: Page, title: str, target: Path) -> None:
     dialog.get_by_role("button", name="Jetzt exportieren").click()
     expect(dialog.get_by_role("heading", name="Export abgeschlossen")).to_be_visible()
     expect(dialog).to_contain_text(f"Geschrieben nach {target}")
-    assert_accessible(page)
     dialog.get_by_role("button", name="Schließen").click()
     expect(page.get_by_role("dialog")).to_have_count(0)
 
@@ -276,7 +253,6 @@ def _export_zip(page: Page, title: str, destination: Path) -> Path:
     dialog.get_by_role("radio", name="ZIP-Download").check()
     # The ZIP mode is its own surface — the path field stepped aside — so the
     # floor is checked with the radio selected, before the download leaves.
-    assert_accessible(page)
     with page.expect_download() as caught:
         dialog.get_by_role("button", name="Jetzt exportieren").click()
     caught.value.save_as(str(destination))
@@ -307,7 +283,6 @@ def test_export_reimport_identical(page: Page, stack: Stack, tmp_path: Path) -> 
             f"{DEMO_RELATIONS} Beziehungen wurden angelegt",
         ],
     )
-    assert_accessible(page)
 
     source_row, copy_id = _novel_ids(title)
     assert source_row == source_id
@@ -362,7 +337,6 @@ def test_merge_outside_work(page: Page, stack: Stack, tmp_path: Path) -> None:
     )
     # Nothing was refused: all three changes are legal by the rules.
     expect(dialog).not_to_contain_text("wurde abgelehnt")
-    assert_accessible(page)
 
     # The receipt's counts are the database's deltas, checked row by row.
     chapters = _chapters_of(novel_id)

@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.vendor import chat_vendor
 from app.kernel.testing.viewport import assert_page_fits
@@ -58,24 +59,8 @@ TASKS = "Aufgaben"
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's own database, as plain tuples.
-
-    Runs in a worker thread: pytest-asyncio keeps a session loop running, and
-    asyncio.run refuses to start a second one in the same thread.
-    """
-
-    async def run() -> list[tuple[object, ...]]:
-        engine = create_async_engine(url_for(DATABASE))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def _run(statement: str, params: dict[str, object] | None = None) -> None:
