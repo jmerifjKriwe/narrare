@@ -10,12 +10,12 @@ from collections.abc import Iterator  # noqa: TC003
 import pytest
 
 from app.kernel.db import testsupport
-from app.kernel.testing.stack import Stack, run_stack
+from app.kernel.testing.stack import Stack, acquire_stack
 
 DATABASE = testsupport.test_database("narrare_v2_chat_e2e")
 
 
 @pytest.fixture(scope="module")
 def stack() -> Iterator[Stack]:
-    with run_stack(database=DATABASE, seed_user=True) as running:
-        yield running
+    running = acquire_stack("chat", database=DATABASE, seed_user=True)
+    yield running
