@@ -173,7 +173,11 @@ def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> No
     expect(page.get_by_label("Titel")).to_be_visible()
 
     # Escape is the dialog's own way out, and the trigger — the element the
-    # keyboard came from — is where focus must land again.
+    # keyboard came from — is where focus must land again. The modal takes the
+    # focus when it mounts; a key sent before that reaches a document that is
+    # not listening yet (the flake in #775), so wait for the focus, not the
+    # paint.
+    page.wait_for_function("""() => document.activeElement?.closest('[role="dialog"]') !== null""")
     page.keyboard.press("Escape")
     expect(dialog).to_have_count(0)
     expect(page.get_by_role("button", name="Neues Buch")).to_be_focused()

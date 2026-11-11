@@ -103,16 +103,16 @@ jobs:
               browser.new_page().goto("data:text/html,ok")
               browser.close()
           PY
-      # The matrix runs the same recipe the local gate runs. Two workers, like
-      # the local default: the capability suites are browser-latency bound, and
-      # three on a 4-vCPU runner made timing-sensitive layout and focus
-      # assertions flake (issue #775). Raise it there once those assertions wait
-      # for the fact they measure.
+      # The matrix runs the same recipe the local gate runs. Three workers fit
+      # the 4-vCPU runner (two just leave it idle), now that the layout- and
+      # focus-reading assertions wait for the fact they measure instead of the
+      # paint that precedes it (#775). Two is the local default: this host has
+      # half the runner's RAM.
       - name: E2E
         env:
           # Indirection for zizmor's template-injection audit: the capability
           # name reaches the shell as an env value, never as an expanded
           # expression in the command line.
           CAPABILITY: ${{ inputs.capability }}
-          NARRE_E2E_WORKERS: "2"
+          NARRE_E2E_WORKERS: "3"
         run: just test-e2e "$CAPABILITY"
