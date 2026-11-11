@@ -114,7 +114,7 @@ jobs:
 
       - name: Install Cosign (keyless signing)
         if: steps.tested.outputs.found == 'true'
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021d69364f41 # v3.8.2
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
 
       - name: Sign the promoted image (keyless, Sigstore)
         if: steps.tested.outputs.found == 'true'

@@ -57,8 +57,11 @@ Three named, deliberate shapes a reader should not "fix":
   `scripts/check_pins.py` and reported monthly by `pins.yml` in one
   `ci/tool-pins` issue: actionlint's version comment **and** its image
   digest, zizmor's `version:` input, the Codecov CLI, `pip-audit`, and the
-  Postgres image digest. The check is advisory; a pin it cannot read or an
-  upstream it cannot reach reddens the run rather than passing.
+  Postgres image digest. The same monthly run now also resolves every
+  `owner/repo@<sha>` action pin against the GitHub API, so a SHA that never
+  existed (a typo, a fabricated pin) reddens the run instead of waiting for
+  the next release to notice. The check is advisory; a pin it cannot read or
+  an upstream it cannot reach reddens the run rather than passing.
   Dependabot's `github-actions` updater reads `.github/workflows/**` only
   (dependabot-core#6949), so a second entry names `/.github/actions/*` and
   keeps the composite's five pins current too.
@@ -91,7 +94,8 @@ repeat them: a second copy is a second thing to drift.
 
 ## `scripts/affected.py` — who owes which suite
 
-One resolver, called by `ci.yml`'s `changes` job (PR: `--base origin/main`,
+One resolver, called by `ci.yml`'s `changes` job (PR: `--base <payload base
+SHA>`, falling back to `origin/main` only when the payload SHA is absent;
 push to main: `--none`, dispatch: `--all`) and by the nightly gate
 (`--all`). Fail-open throughout: an unreadable range answers *every* suite,
 never none; an unrecognized path owes every suite — an unknown change is a

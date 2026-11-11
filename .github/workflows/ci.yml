@@ -95,11 +95,29 @@ jobs:
           # only; on a pull_request_review it is empty, which made every
           # approval look like a non-release PR.
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          # Payload SHAs, not the checked-out merge ref: `origin/main` can
+          # already contain the PR by the time this job runs (an approval that
+          # lands seconds before the merge), which empties `origin/main...HEAD`
+          # and makes a release PR look like it changed nothing. The payload
+          # SHAs are the PR's own base and head, independent of main's tip.
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_REPO: ${{ github.repository }}
         run: |
           if [ "$EVENT" = pull_request ] || [ "$EVENT" = pull_request_review ]; then
-            git fetch origin main
-            mode="--base origin/main"
+            # Prefer the PR's own base SHA over origin/main: origin/main can
+            # already contain the PR by the time this job runs (approval that
+            # lands seconds before the merge), which empties the range.
+            base_sha="${PR_BASE_SHA:-}"
+            if [ -n "$base_sha" ] && ! git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "$base_sha" 2>/dev/null || true
+            fi
+            if [ -n "$base_sha" ] && git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
+              mode="--base $base_sha"
+            else
+              git fetch origin main
+              mode="--base origin/main"
+            fi
           elif [ "$EVENT" = push ]; then
             # A push to main owes nothing, and that is safe: the `push:` trigger
             # above fires for `branches: [main]` only, so what it pushes is a
@@ -117,11 +135,70 @@ jobs:
           # the script; the script itself still requires every changed path
           # to be one.
           release_pr=""
+          is_release_branch=0
           if { [ "$EVENT" = pull_request ] || [ "$EVENT" = pull_request_review ]; } \
             && [ "$PR_HEAD_REPO" = "$BASE_REPO" ] \
-            && [ "$PR_HEAD_REF" = "release-please--branches--main--components--narrare" ] \
-            && [ -n "$(git diff --name-only origin/main...HEAD)" ]; then
-            release_pr="--release-pr"
+            && [ "$PR_HEAD_REF" = "release-please--branches--main--components--narrare" ]; then
+            is_release_branch=1
+          fi
+          if [ "$is_release_branch" = 1 ]; then
+            # Judge the release PR by its own base..head, not by origin/main...HEAD:
+            # origin/main may already contain the merge, which empties that range.
+            rbase="${PR_BASE_SHA:-}"
+            rhead="${PR_HEAD_SHA:-}"
+            if [ -z "$rbase" ] || [ -z "$rhead" ]; then
+              rbase="origin/main"; rhead="HEAD"
+              git fetch origin main 2>/dev/null || true
+            fi
+            if ! git cat-file -e "${rbase}^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "$rbase" 2>/dev/null || true
+            fi
+            if ! git cat-file -e "${rhead}^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "$rhead" 2>/dev/null || true
+            fi
+            if ! git cat-file -e "${rbase}^{commit}" 2>/dev/null || ! git cat-file -e "${rhead}^{commit}" 2>/dev/null; then
+              echo "::error::release PR could not resolve base=$rbase head=$rhead; refusing to guess"
+              exit 1
+            fi
+            verdict=$(python3 - "$rbase" "$rhead" <<'PY'
+          import importlib.util, subprocess, sys
+          base, head = sys.argv[1], sys.argv[2]
+          try:
+              paths = subprocess.check_output(
+                  ["git", "diff", "--name-only", "--no-renames", f"{base}...{head}"],
+                  text=True, stderr=subprocess.DEVNULL,
+              ).split()
+          except subprocess.CalledProcessError:
+              print("ERROR")
+              sys.exit(0)
+          spec = importlib.util.spec_from_file_location("affected", "scripts/affected.py")
+          m = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          if not paths:
+              print("EMPTY")
+          elif all(p in m.RELEASE for p in paths):
+              print("RELEASE")
+          else:
+              print("NOTRELEASE")
+          PY
+            )
+            case "$verdict" in
+              EMPTY)
+                echo "::error::release PR produced an empty change set (base=$rbase head=$rhead); refusing to judge as 'nothing changed'"
+                exit 1
+                ;;
+              RELEASE)
+                release_pr="--release-pr"
+                ;;
+              ERROR)
+                echo "::error::could not read the release PR diff (base=$rbase head=$rhead)"
+                exit 1
+                ;;
+              *)
+                echo "::error::unexpected release-PR verdict '$verdict' (base=$rbase head=$rhead)"
+                exit 1
+                ;;
+            esac
           fi
           # The runner's python3, before any uv sync: the resolver is stdlib
           # only. A resolver that cannot name a range answers with every
