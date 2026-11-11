@@ -37,17 +37,28 @@ describe("tableClass", () => {
 describe("tableHeadCellClass", () => {
   it("carries exactly the pinned string per alignment and density", () => {
     expect(tableHeadCellClass("left", false)).toBe(
-      "h-[26px] px-3 text-left text-meta uppercase tracking-[0.1em] text-muted",
+      "h-[26px] px-3 text-left text-meta font-semibold uppercase tracking-[0.1em] text-muted",
     );
     expect(tableHeadCellClass("right", false)).toBe(
-      "h-[26px] px-3 text-right tabular-nums text-meta uppercase tracking-[0.1em] text-muted",
+      "h-[26px] px-3 text-right tabular-nums text-meta font-semibold uppercase tracking-[0.1em] text-muted",
     );
     expect(tableHeadCellClass("left", true)).toBe(
-      "h-[26px] px-2.5 text-left text-meta uppercase tracking-[0.1em] text-muted",
+      "h-[26px] px-2.5 text-left text-meta font-semibold uppercase tracking-[0.1em] text-muted",
     );
     expect(tableHeadCellClass("right", true)).toBe(
-      "h-[26px] px-2.5 text-right tabular-nums text-meta uppercase tracking-[0.1em] text-muted",
+      "h-[26px] px-2.5 text-right tabular-nums text-meta font-semibold uppercase tracking-[0.1em] text-muted",
     );
+  });
+
+  it("keeps the header's weight the cell's own, not the browser's bold", () => {
+    // The meta step carries the scale's 400, and the browser's
+    // `th { font-weight: bold }` is no contract — the cell says what it is.
+    // Drop this and the header cells lose their weight silently.
+    for (const align of ["left", "right"] as const) {
+      for (const dense of [false, true]) {
+        expect(tableHeadCellClass(align, dense)).toContain("font-semibold");
+      }
+    }
   });
 
   it("defaults to the regular left-aligned cell — the pinned string itself", () => {
