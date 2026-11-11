@@ -5,9 +5,16 @@ product runs; only the LLM provider will ever be replaced, and only at its own
 boundary.
 
 Each capability's ``e2e/conftest.py`` wraps :func:`run_stack` in a module-scoped
-fixture. Module scope matters: a session-scoped stack would outlive the module
-and keep the stack's configured ports bound while the next capability starts
-its own.
+fixture. The API and its database are what the module scope is for: the API
+serves one database, and the next capability's schema rebuild must not reach a
+server the module before it still drives. The web server is the exception — it
+is stateless and the slowest piece to start, so one Vite process serves every
+stack in a pytest process (:func:`stop_shared_web` ends it at session teardown).
+
+Under ``pytest-xdist`` every worker is a process of its own, so each owns one
+shared Vite and one port pair: the configured pair moved by
+``WORKER_PORT_SPACING`` per worker (``-n 2`` gives gw0 8000/3100 and gw1
+8010/3110).
 
 ``NARRE_E2E_ATTACH`` points the same suites at an instance that is already
 running — the container image, which serves the shell and the API on one origin
@@ -54,13 +61,49 @@ restored row stays decryptable across runs), never so that it hides anything.
 
 # Ports and shutdown grace are configuration: a second stack, or a busy port on
 # this machine, must not need a code edit. The defaults are the ones the docs use.
-API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000"))
-WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100"))
+
+
+def _worker_index() -> int:
+    """This process's pytest-xdist worker number, or 0 without xdist.
+
+    ``pytest-xdist`` names each worker ``gw0``, ``gw1``, … in its environment;
+    the controller and a serial run have no such variable.
+    """
+    worker = environ.get("PYTEST_XDIST_WORKER", "")
+    if not worker:
+        return 0
+    if not worker.startswith("gw") or not worker[2:].isdigit():
+        raise RuntimeError(f"PYTEST_XDIST_WORKER={worker!r} is not a worker name like 'gw0'")
+    return int(worker[2:])
+
+
+WORKER_PORT_SPACING = 10
+"""How far apart two workers' port pairs sit.
+
+Ten, not one: the pair stays recognisable (8000/3100, 8010/3110, …) and a
+neighbouring port another service happens to hold is less likely to be in the
+way.
+"""
+
+_WORKER_INDEX = _worker_index()
+
+API_PORT = int(environ.get("NARRE_E2E_API_PORT", "8000")) + _WORKER_INDEX * WORKER_PORT_SPACING
+WEB_PORT = int(environ.get("NARRE_E2E_WEB_PORT", "3100")) + _WORKER_INDEX * WORKER_PORT_SPACING
 
 _ATTACH_URL = environ.get("NARRE_E2E_ATTACH", "").strip().rstrip("/")
 
 ATTACH = bool(_ATTACH_URL)
 """A running instance to drive instead of spawning one; empty means spawn."""
+
+if ATTACH and _WORKER_INDEX > 0:
+    # An attached instance has one origin and one database, and no stack of
+    # its own to give a worker — parallel workers would race in that one
+    # database. Fail at import, before a test reports a phantom pass.
+    raise RuntimeError(
+        "NARRE_E2E_ATTACH drives one instance and one database; it runs"
+        " serially. Run the suite with -n 0 (`just test-e2e` does this for an"
+        " attached run)."
+    )
 
 # One origin when attached, as the image serves it: the shell and the API answer
 # on the same port, so a suite that named two would test a shape the product
@@ -230,6 +273,75 @@ def _stop(process: subprocess.Popen[bytes]) -> None:
         log_file.close()
 
 
+def _web_environment() -> dict[str, str]:
+    """The dev server's environment, with this worker's ports pinned.
+
+    ``os.environ`` still holds the pair the run was started with; under
+    ``pytest-xdist`` the worker's pair is shifted (see ``API_PORT``), and a
+    forwarded stale value would bind the port the neighbour already owns.
+    The cache flag is the stack's contract (#634) and cannot be switched off.
+    """
+    return {
+        **os.environ,
+        "NARRE_E2E_API_PORT": str(API_PORT),
+        "NARRE_E2E_WEB_PORT": str(WEB_PORT),
+        "NARRE_E2E_NO_HTTP_CACHE": "1",
+    }
+
+
+def _spawn_web() -> subprocess.Popen[bytes]:
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        raise RuntimeError("pnpm is not on PATH")
+    _fd, _ = tempfile.mkstemp(prefix="narrare-web-")
+    log_file = os.fdopen(_fd, "w+b")
+    proc = subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
+        [pnpm, "dev"],
+        cwd=ROOT / "web",
+        env=_web_environment(),
+        start_new_session=True,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+    )
+    proc._log_file = log_file  # type: ignore[attr-defined]
+    return proc
+
+
+_shared_web: subprocess.Popen[bytes] | None = None
+
+
+def _shared_web_process() -> subprocess.Popen[bytes]:
+    """The one Vite dev server this pytest process drives, started on demand.
+
+    Restarting a stack must not restart it: the dev server carries no state a
+    test asserts on, and every capability module after the first would
+    otherwise pay Vite's cold start again. :func:`stop_shared_web` is its only
+    stopper, called once by the session teardown.
+    """
+    global _shared_web
+    if _shared_web is not None and _shared_web.poll() is None:
+        return _shared_web
+    if _shared_web is not None:
+        # A server that died: ``_stop`` skips the signal (the process is gone)
+        # and closes its log descriptor, which the replacement would leak.
+        _stop(_shared_web)
+        _shared_web = None
+    _wait_for_free_port(WEB_PORT)
+    process = _spawn_web()
+    _wait_for(WEB_URL, process=process)
+    _shared_web = process
+    return process
+
+
+def stop_shared_web() -> None:
+    """End the shared dev server, if one was started."""
+    global _shared_web
+    if _shared_web is None:
+        return
+    _stop(_shared_web)
+    _shared_web = None
+
+
 @dataclass
 class Stack:
     """The running pieces, so a test can take one down and bring it back.
@@ -243,6 +355,8 @@ class Stack:
     # None when this stack is attached to a running instance: there is no
     # process to signal, and saying so beats a TypeError from a None.
     api: subprocess.Popen[bytes] | None
+    # Shared across every stack in this pytest process; the session teardown
+    # ends it (``stop_shared_web``), never one module's end.
     web: subprocess.Popen[bytes] | None
 
     def stop_api(self) -> None:
@@ -310,7 +424,6 @@ def run_stack(
         return
 
     _wait_for_free_port(API_PORT)
-    _wait_for_free_port(WEB_PORT)
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_prepare, database, seed_user).result()
 
@@ -319,21 +432,14 @@ def run_stack(
     # tier runs under this test key (never a developer's real OS keychain) and
     # the cache flag stays on, so no capability can bring the 304s back.
     environment = _environment(database, env)
-    pnpm = shutil.which("pnpm")
-    if pnpm is None:
-        raise RuntimeError("pnpm is not on PATH")
     api_process = _spawn_api(environment)
-    _fd2, _ = tempfile.mkstemp(prefix="narrare-web-")
-    web_log = os.fdopen(_fd2, "w+b")
-    web_process = subprocess.Popen(  # noqa: S603  fixed argument list, resolved path
-        [pnpm, "dev"],
-        cwd=ROOT / "web",
-        env=environment,
-        start_new_session=True,
-        stdout=web_log,
-        stderr=subprocess.STDOUT,
-    )
-    web_process._log_file = web_log  # type: ignore[attr-defined]
+    try:
+        web_process = _shared_web_process()
+    except BaseException:
+        # A dev server that would not start must not leave the API it was meant
+        # to serve behind.
+        _stop(api_process)
+        raise
     stack = Stack(environment=environment, api=api_process, web=web_process)
     try:
         _wait_for(f"{API_URL}/openapi.json", process=api_process)
@@ -343,7 +449,7 @@ def run_stack(
         # pnpm runs its server in a child process; kill the whole group or the
         # port stays bound after the test run. A test may have stopped the API
         # itself and failed before bringing it back: skip what is already gone.
-        if stack.web is not None:  # None only on an attached stack
-            _stop(stack.web)
+        # The web server is shared across the process (see ``stop_shared_web``)
+        # and outlives this module on purpose.
         if stack.api is not None:
             _stop(stack.api)

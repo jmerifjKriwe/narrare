@@ -1,7 +1,8 @@
 """Full stack for the chat E2E: own database, real API, real web app.
 
-Module scope: the stack must be gone before the next capability's stack binds the
-same ports.
+Module scope: the API and its database must be gone before the next capability's
+stack binds the same API port. The web server is the exception — one Vite process
+serves every stack in a pytest process (see ``app/kernel/testing/stack.py``).
 """
 
 from collections.abc import Iterator  # noqa: TC003
