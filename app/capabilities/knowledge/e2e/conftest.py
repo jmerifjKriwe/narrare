@@ -1,8 +1,8 @@
 """Full stack for the knowledge E2E: own database, real API, real web app.
 
-The embedding provider is the real openai-compatible strategy pointed at a local
-stand-in whose width a test can flip — that is the one boundary a fake may hold
-(spec §Testing), and flipping the width is how the browser test changes models.
+Hebel 2: stack acquired once per worker and reused across knowledge modules.
+The embeddings stand-in is also cached per worker so its base URL stays stable
+for the API process's lifetime.
 """
 
 import asyncio
@@ -15,19 +15,29 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
-from app.kernel.testing.stack import Stack, run_stack
+from app.kernel.testing.stack import Stack, acquire_stack
 from app.kernel.testing.vendor import EmbeddingsVendor, embeddings_vendor
 
 DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
 
+# Worker-process-wide cache of the embeddings stand-in (see Hebel 2).
+_VENDOR: EmbeddingsVendor | None = None
+
+
+def _vendor() -> EmbeddingsVendor:
+    global _VENDOR
+    if _VENDOR is None:
+        ctx = embeddings_vendor()
+        _VENDOR = ctx.__enter__()  # type: ignore[union-attr]
+        # keep context alive for process lifetime
+        import atexit
+
+        atexit.register(ctx.__exit__, None, None, None)
+    return _VENDOR
+
 
 def _truncate() -> None:
-    """Runs in a worker thread: pytest-asyncio keeps a session loop running."""
-
     async def run() -> None:
-        # `url_for`, not a spelled-out address: the stack the suite runs on
-        # is the one the environment chose (NARRE_TEST_DATABASE_URL), and a
-        # second checkout's truncate must not land on the first one's server.
         engine = create_async_engine(url_for(DATABASE))
         async with engine.begin() as connection:
             await connection.execute(text("TRUNCATE chunks, documents CASCADE"))
@@ -38,13 +48,13 @@ def _truncate() -> None:
 
 @pytest.fixture(scope="module")
 def vendor() -> Iterator[EmbeddingsVendor]:
-    with embeddings_vendor() as stand_in:
-        yield stand_in
+    yield _vendor()
 
 
 @pytest.fixture(scope="module")
 def stack(vendor: EmbeddingsVendor) -> Iterator[Stack]:
-    with run_stack(
+    running = acquire_stack(
+        "knowledge",
         database=DATABASE,
         seed_user=True,
         env={
@@ -52,17 +62,12 @@ def stack(vendor: EmbeddingsVendor) -> Iterator[Stack]:
             "NARRE_EMBEDDING_BASE_URL": f"{vendor.base_url}/v1",
             "NARRE_EMBEDDING_MODEL": "stand-in-model",
         },
-    ) as running:
-        yield running
+    )
+    yield running
 
 
 @pytest.fixture(autouse=True)
 def clean_corpus(vendor: EmbeddingsVendor) -> Iterator[None]:
-    """Every test starts from an empty knowledge base at the vendor's width.
-
-    The stack and the vendor live for the whole module; without this, one test's
-    documents and width change would decide whether the next one passes.
-    """
     vendor.set_width(384)
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_truncate).result()
