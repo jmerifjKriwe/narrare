@@ -25,7 +25,7 @@ describe("Dialog's trigger paint", () => {
       </Dialog>,
     );
     const trigger = screen.getByRole("button", { name: "Öffnen" });
-    expect(trigger.className).toContain(buttonClass("secondary", "md"));
+    expect(trigger.className).toContain(buttonClass("secondary", "sm"));
   });
 
   it("wears the primary only when the caller passes it", () => {
@@ -35,7 +35,7 @@ describe("Dialog's trigger paint", () => {
       </Dialog>,
     );
     const trigger = screen.getByRole("button", { name: "Öffnen" });
-    expect(trigger.className).toContain(buttonClass("primary", "md"));
+    expect(trigger.className).toContain(buttonClass("primary", "sm"));
   });
 });
 

@@ -74,7 +74,7 @@ export function ActionMenu({
     <MenuTrigger>
       <Button
         aria-label={triggerAriaLabel}
-        className={`${buttonClass("secondary", "md")} inline-flex items-center gap-1`}
+        className={`${buttonClass("secondary", "sm")} inline-flex items-center gap-1`}
       >
         {label}
         <Icon name="chevronDown" />

@@ -151,10 +151,13 @@ export function DesignGallery() {
         <h2 id="design-controls-heading" className="text-emph font-semibold">
           {t("design.controls")}
         </h2>
+        {/* Every paint the primitive wears, one row: the destructive one is
+            here so the diagnostic ink has a home that is reviewed. */}
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="primary">{t("proposal.accept")}</Button>
           <Button variant="secondary">{t("proposal.discard")}</Button>
           <Button variant="ghost">{t("settings.retry")}</Button>
+          <Button variant="destructive">{t("knowledge.delete")}</Button>
         </div>
         <div className="mt-3 max-w-64">
           <Field label={t("settings.appearance.themeLabel")} hint={t("settings.appearance.hint")}>

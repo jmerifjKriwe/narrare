@@ -59,7 +59,7 @@ function RailLink({
        * plainly appended class would not — the cascade, not the class
        * string's order, decides. The icon's own span carries the area hue,
        * a direct declaration the link's inherited ink cannot override. */
-      className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
+      className={`${buttonClass("icon", "sm")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
       <span style={areaStyle(area)}>
         <Icon name={icon} />
@@ -109,9 +109,10 @@ export function IconRail() {
     >
       <nav
         aria-label={t("shell.navAria")}
-        /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
-           icon variant's px-2.5), and 48 − 2×6 = 36 exactly — the pill sits
-           inside the rail's rhythm instead of overhanging the padding. */
+        /* p-1.5, not p-2: the entry's icon cell runs 28 px wide (16 px glyph
+           + the icon variant's p-1.5), and 48 − 2×6 = 36 leaves the 8 px gap
+           and nothing more — the label column collapses to zero in the closed
+           rail and only earns its width in the 168 px hover. */
         /* inset-y-0, not h-screen: the rail fills the row beneath the bar — a
            viewport-tall rail there would start 53 px down and end 53 px under
            the fold, hiding the anchored Settings and scrolling the page that

@@ -86,7 +86,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           <Link
             to="/settings"
             aria-label={t("shell.settings")}
-            className={buttonClass("icon", "md")}
+            className={buttonClass("icon", "sm")}
           >
             <Icon name="settings" />
           </Link>

@@ -716,7 +716,7 @@ export function NovelsPage() {
                   <Link
                     to="/novels/$id"
                     params={{ id: hero.id }}
-                    className={`${buttonClass("secondary", "md")} inline-flex self-start items-center justify-center no-underline sm:self-auto`}
+                    className={`${buttonClass("secondary", "sm")} inline-flex self-start items-center justify-center no-underline sm:self-auto`}
                   >
                     {t("chapters.continue")}
                   </Link>
