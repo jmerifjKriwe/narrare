@@ -37,7 +37,7 @@ carries uv, Python, the locked sync, pnpm, Node and just, one place for the
 versions — with `python: false` and `node: false` for the jobs that need
 only the other half (`frontend` and `build` take no Python).
 
-Two named, deliberate shapes a reader should not "fix":
+Three named, deliberate shapes a reader should not "fix":
 
 - **The `./` vs `$/` trade.** Every internal `uses:` is written
   `./.github/...` with a `zizmor: ignore[self-repository]` comment. zizmor
@@ -62,6 +62,18 @@ Two named, deliberate shapes a reader should not "fix":
   Dependabot's `github-actions` updater reads `.github/workflows/**` only
   (dependabot-core#6949), so a second entry names `/.github/actions/*` and
   keeps the composite's five pins current too.
+  The `pnpm` image digest is not in that list: it comes from ghcr, where
+  `check_pins.py` cannot ask (its registry client speaks Docker Hub, and
+  `pnpm/pnpm` has no tag there), so it moves by hand — tag and
+  `package.json`'s `packageManager` together, because pnpm otherwise follows
+  `packageManager` into the registry and the pin becomes decoration.
+- **The upgrade smoke's files, not pipes.** `container-external` writes each
+  API answer to `/tmp` and parses it from there. Piping `curl` into `python3`
+  reads the same and costs the same, but Scorecard's `downloadThenRun` audit
+  flags every `curl … | <interpreter>` without looking at the URL — it read
+  the three local-container calls as unpinned downloads (alerts #18–#20).
+  Keep the steps apart; a pipe there re-opens them and drops
+  Pinned-Dependencies below 10.
 
 ## `ci-required` — the required-check aggregator
 
