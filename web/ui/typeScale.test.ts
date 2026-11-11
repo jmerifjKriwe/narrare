@@ -4,15 +4,87 @@
  * the same measurement in the suite, so a `text-lg` cannot ride in unnoticed
  * (#544, #573). Only `className="…"` literals are read — the shape §11
  * measures; `className={…}` templates are outside it on purpose.
+ *
+ * The steps themselves are measured against the design's table (spec §6.3):
+ * the size, the leading each token carries, the weight and the tracking where
+ * the norm names one — the prose's two chapter headings with them.
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, relative } from "node:path";
+import { compile } from "tailwindcss";
 import { describe, expect, it } from "vitest";
 
 const WEB = new URL("..", import.meta.url).pathname;
 const REPO = new URL("../..", import.meta.url).pathname;
+const resolveModule = createRequire(import.meta.url);
+const STYLESHEET = readFileSync(join(WEB, "globals.css"), "utf8");
+/**
+ * The stylesheet without its comments — the rules and the tokens, nothing
+ * else. A comment only when it opens a line: the `@source` path carries a
+ * `/*` of its own, inside a string.
+ */
+const CSS = STYLESHEET.replace(/^\s*\/\*[\s\S]*?\*\//gm, "");
 const OFF_SCALE = /^text-(sm|base|lg|xl|2xl|3xl)$/;
 const CLASS = /className="([^"]*)"/g;
+
+/**
+ * The scale's steps, as the design names them (spec §6.3): the size in rem,
+ * the leading as the ratio its token states, and the weight and the tracking
+ * where the norm names one. The eyebrow is the design's micro-label — 11 px
+ * on 16 px, weight 600, tracked 0.08 em; its uppercase rides with the usage,
+ * because Tailwind's theme namespace carries no text-transform.
+ */
+const SCALE: Record<string, { size: string; leading: string; weight?: string; tracking?: string }> = {
+  eyebrow: { size: "0.6875rem", leading: "1.45", weight: "600", tracking: "0.08em" },
+  meta: { size: "0.75rem", leading: "1.42" },
+  label: { size: "0.8125rem", leading: "1.38" },
+  body: { size: "0.875rem", leading: "1.57" },
+  emph: { size: "0.9375rem", leading: "1.47" },
+  title: { size: "1.25rem", leading: "1.3" },
+  hero: { size: "1.75rem", leading: "1.14", weight: "700" },
+};
+
+/** A token's value in the stylesheet. */
+function token(name: string): string | null {
+  return new RegExp(`--${name}:\\s*([^;]+);`).exec(CSS)?.[1].trim() ?? null;
+}
+
+/**
+ * The declarations of one rule, found by its exact selector list — the
+ * stylesheet's own text, so a rule that moves is still the rule that is read.
+ */
+function rule(...selectors: string[]): Record<string, string> {
+  for (const match of CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const found = match[1].split(",").map((part) => part.trim().replace(/\s+/g, " "));
+    if (found.length !== selectors.length) continue;
+    if (!selectors.every((selector, at) => found[at] === selector)) continue;
+    const declarations: Record<string, string> = {};
+    for (const declaration of match[2].matchAll(/([\w-]+):\s*([^;]+);/g)) {
+      declarations[declaration[1]] = declaration[2].replace(/\s+/g, " ").trim();
+    }
+    return declarations;
+  }
+  throw new Error(`globals.css has no rule for ${selectors.join(", ")}`);
+}
+
+/**
+ * The stylesheet as Tailwind compiles it: the tokens' own utilities, so a step
+ * the design names is checked where it is used. Compiled once, on demand.
+ */
+let compiled: Promise<string> | null = null;
+function compileCss(): Promise<string> {
+  compiled ??= compile(STYLESHEET, {
+    base: WEB,
+    loadStylesheet: async (id: string) => {
+      const path = resolveModule.resolve(`${id}/index.css`);
+      return { path, base: dirname(path), content: readFileSync(path, "utf8") };
+    },
+  }).then((compiler) =>
+    compiler.build(["text-eyebrow", "text-hero", "tabular-nums", "uppercase"]),
+  );
+  return compiled;
+}
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -35,8 +107,8 @@ describe("the type scale's census", () => {
     for (const file of scanned) {
       for (const [, value] of readFileSync(file, "utf8").matchAll(CLASS)) {
         seen += 1;
-        for (const token of value.split(/\s+/)) {
-          if (OFF_SCALE.test(token)) offences.push(`${relative(REPO, file)}: ${token}`);
+        for (const utility of value.split(/\s+/)) {
+          if (OFF_SCALE.test(utility)) offences.push(`${relative(REPO, file)}: ${utility}`);
         }
       }
     }
@@ -97,9 +169,15 @@ describe("the area hues", () => {
       ["web/ui/field.tsx", 'className="border-area-planning"'],
     ];
     const page = join(REPO, "app/capabilities/writing/web/NovelsPage.tsx");
+    const shell = join(REPO, "web/components/TopBar.tsx");
     const wrong: string[] = [];
     for (const source of allowed) {
+      // Admitted in the area's own page…
       if (offences(page, source).length > 0) wrong.push(`refused: ${source}`);
+      // …and refused in the shell's chrome, where the same hue is an
+      // offence. Without this second half the first is vacuous: the page's
+      // path is allowlisted, so any source would pass there.
+      if (offences(shell, source).length === 0) wrong.push(`admitted in the shell: ${source}`);
     }
     for (const [file, source] of refused) {
       if (offences(join(REPO, file), source).length === 0) wrong.push(`admitted: ${source}`);
@@ -109,21 +187,100 @@ describe("the area hues", () => {
 });
 
 describe("the scale's steps", () => {
-  it("reads 12 / 13 / 14 / 15 / 20 / 28", () => {
-    const css = readFileSync(join(WEB, "globals.css"), "utf8");
-    const step = (name: string) =>
-      new RegExp(`--text-${name}: ([\\d.]+)rem;`).exec(css)?.[1] ?? null;
-    expect(
-      Object.fromEntries(
-        ["meta", "label", "body", "emph", "title", "hero"].map((name) => [name, step(name)]),
-      ),
-    ).toEqual({
-      meta: "0.75",
-      label: "0.8125",
-      body: "0.875",
-      emph: "0.9375",
-      title: "1.25",
-      hero: "1.75",
-    });
+  it("reads 11 / 12 / 13 / 14 / 15 / 20 / 28 with the design's leading", () => {
+    const wrong: string[] = [];
+    for (const [name, step] of Object.entries(SCALE)) {
+      const size = token(`text-${name}`);
+      if (size !== step.size) wrong.push(`--text-${name}: ${size} ≠ ${step.size}`);
+      const leading = token(`text-${name}--line-height`);
+      if (leading !== step.leading) {
+        wrong.push(`--text-${name}--line-height: ${leading} ≠ ${step.leading}`);
+      }
+      if (step.weight !== undefined) {
+        const weight = token(`text-${name}--font-weight`);
+        if (weight !== step.weight) wrong.push(`--text-${name}--font-weight: ${weight} ≠ ${step.weight}`);
+      }
+      if (step.tracking !== undefined) {
+        const tracking = token(`text-${name}--letter-spacing`);
+        if (tracking !== step.tracking) {
+          wrong.push(`--text-${name}--letter-spacing: ${tracking} ≠ ${step.tracking}`);
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("carries no step outside the census", () => {
+    // The theme's size tokens are the scale: a step the design does not name
+    // is an off-scale utility waiting for a call site.
+    const declared = [...CSS.matchAll(/--text-([a-z][a-z0-9]*):/g)].map((match) => match[1]);
+    expect(declared.sort()).toEqual(Object.keys(SCALE).sort());
+  });
+});
+
+describe("the prose's own headings", () => {
+  it("lands the chapter headings on 26/34 and 21/28 px", () => {
+    // The manuscript's body is 18 px; the rhythm rules are in `em`, so a
+    // heading's size is its em step over the body and its leading the norm's
+    // pair over the heading's own size.
+    const body = Number(rule(".ProseMirror")["font-size"].replace("rem", "")) * 16;
+    const wrong: string[] = [];
+    for (const [selector, size, leading] of [
+      [".ProseMirror h1", 26, 34],
+      [".ProseMirror h2", 21, 28],
+    ] as const) {
+      const declarations = rule(selector);
+      const measuredSize = Number(declarations["font-size"].replace("em", "")) * body;
+      const measuredLeading = Number(declarations["line-height"]) * measuredSize;
+      if (Math.round(measuredSize) !== size) {
+        wrong.push(`${selector}: ${measuredSize.toFixed(2)}px ≠ ${size}px`);
+      }
+      if (Math.round(measuredLeading) !== leading) {
+        wrong.push(`${selector}: ${measuredLeading.toFixed(2)}px ≠ ${leading}px`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("keeps the headings on the serif's own 600", () => {
+    const shared = rule(
+      ".ProseMirror h1",
+      ".ProseMirror h2",
+      ".ProseMirror h3",
+      ".ProseMirror h4",
+      ".ProseMirror h5",
+      ".ProseMirror h6",
+    );
+    expect(shared["font-weight"]).toBe("600");
+  });
+});
+
+describe("the scale's utilities", () => {
+  it("compiles the eyebrow to the drafted step", async () => {
+    const css = await compileCss();
+    const eyebrow = css.match(/\.text-eyebrow\s*\{([^}]*)\}/)?.[1] ?? "";
+    // 11 px, the norm's 16 px leading, weight 600 and 0.08 em of tracking.
+    expect(eyebrow).toMatch(/font-size:\s*0\.6875rem/);
+    expect(eyebrow).toMatch(/line-height:[^;]*1\.45/);
+    expect(eyebrow).toMatch(/font-weight:[^;]*600/);
+    expect(eyebrow).toMatch(/letter-spacing:[^;]*0\.08em/);
+  });
+
+  it("keeps the hero on the real 700 cut", async () => {
+    const css = await compileCss();
+    const hero = css.match(/\.text-hero\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(hero).toMatch(/font-size:\s*1\.75rem/);
+    expect(hero).toMatch(/line-height:[^;]*1\.14/);
+    expect(hero).toMatch(/font-weight:[^;]*700/);
+  });
+
+  it("has Tailwind's own tabular figures, so no custom utility is needed", async () => {
+    const css = await compileCss();
+    const tabular = css.match(/\.tabular-nums\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(tabular).toMatch(/font-variant-numeric/);
+    expect(tabular).toMatch(/tabular-nums/);
+    // The eyebrow's uppercase rides with the usage, so the transform has to
+    // be Tailwind's own.
+    expect(css).toMatch(/\.uppercase\s*\{[^}]*text-transform:\s*uppercase/);
   });
 });
