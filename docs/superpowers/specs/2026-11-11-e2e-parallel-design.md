@@ -62,7 +62,12 @@ over:
   the module-body ceiling #634 belongs to.
 
 Three is therefore CI-only once #776 names its cause; this host has half the
-runner's RAM and drowned in navigation timeouts even earlier.
+runner's RAM and drowned in navigation timeouts even earlier. Two is not free
+either: two workers OOM-killed `chrome-headless` on this nine-gigabyte host
+while other sessions held five to six gigabytes. The recipe therefore takes two
+workers only when `MemAvailable` is at least 6 GB and one below that; an explicit
+`NARRE_E2E_WORKERS`, the second argument, and the attached-run rule still win,
+and CI exports its own value.
 
 - Ports: a worker's pair is the configured pair moved by `WORKER_PORT_SPACING`
   (ten) per worker. `stack.py` derives it from `PYTEST_XDIST_WORKER` at import,
