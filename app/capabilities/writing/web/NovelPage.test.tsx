@@ -618,9 +618,11 @@ describe("the palette's novel jump", () => {
 
     // The other book's own last-touched chapter is selected — the new
     // book's choice, not the first book's row carried across, and not
-    // nothing.
-    await waitFor(() =>
-      expect(chapterRow(1).getAttribute("aria-current")).toBe("true"),
+    // nothing. The flip rides the second book's read; the 1 s library
+    // default is not a budget a loaded runner can meet (#536).
+    await waitFor(
+      () => expect(chapterRow(1).getAttribute("aria-current")).toBe("true"),
+      { timeout: 5_000 },
     );
     expect(document.querySelector(".ProseMirror")?.textContent).toBe("Anderer Anfang.");
     expect(screen.getByRole("heading", { name: OTHER_NOVEL.title })).toBeTruthy();

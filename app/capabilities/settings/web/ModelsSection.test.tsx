@@ -999,7 +999,7 @@ describe("the mount's reads through the panel", () => {
     // model as the editable starting value. The select's value lands with
     // the reload's rerender, so it is awaited — a slow mock must not flake.
     const input = await screen.findByLabelText(t("settings.profiles.modelLabel")) as HTMLInputElement;
-    expect(input.value).toBe("glm-5.3");
+    await waitFor(() => expect(input.value).toBe("glm-5.3"));
     const providerSelect = screen.getByLabelText(
       t("settings.profiles.providerLabel"),
     ) as HTMLSelectElement;
