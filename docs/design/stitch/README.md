@@ -40,6 +40,9 @@ Documents from the same project are under [`documents/`](documents/):
 - [`midnight-ink-swatches.html`](documents/midnight-ink-swatches.html) — the S0
   round's dark token reference card (area hues and state colours, with contrast
   figures).
+- [`midnight-ink-surface-ladder.html`](documents/midnight-ink-surface-ladder.html)
+  — the second S0 card: the dark surface ladder, outline pair, secondary pairs
+  and inverse pairs.
 
 ## Screens
 

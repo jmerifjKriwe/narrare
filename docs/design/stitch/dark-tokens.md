@@ -55,3 +55,28 @@ it does not, the token card fills the gap; the dark shelf is the composition ref
 Task 12's side-by-side, whose dark leg may therefore show accent hue deltas until the card
 values are re-rendered. If the owner prefers the shelf's renderings as the norm, one edit
 round on the card settles it.*
+
+## Surface ladder and the remaining pairs (gap closed 2026-11-11)
+
+From the second S0 card [`documents/midnight-ink-surface-ladder.html`](documents/midnight-ink-surface-ladder.html)
+(`02ac2aa7825f4faeb76e353a7fad2b9d`), measured here:
+
+| Token | Dark | Note | Measured |
+|---|---|---|---|
+| `--surface-container-lowest` | `#100E0A` | deepest step (-6) |  |
+| `--surface-container-low` | `#191611` | -2 |  |
+| `--surface-container` | `#211F1A` | 0 — equals `--card` |  |
+| `--surface-container-high` | `#27241E` | +2 |  |
+| `--surface-container-highest` | `#2E2A23` | +4 |  |
+| `--surface-variant` | `#3A352C` | +6 |  |
+| `--outline` | `#564E43` | hairline precision | 2.25:1 vs canvas |
+| `--outline-variant` | `#3D372E` | subtle hairline / rules | 1.56:1 vs canvas |
+| `--secondary` | `#D7A892` | warm terracotta-rose fill | 7.29:1 with on-secondary |
+| `--on-secondary` | `#3B1C10` |  |  |
+| `--secondary-container` | `#47291D` | muted leather brown | 9.91:1 with on-secondary-container |
+| `--on-secondary-container` | `#FED8CA` |  |  |
+| `--inverse-surface` | `#EDE0D4` | inverse pair is light in dark mode | 12.71:1 with on-inverse-surface |
+| `--on-inverse-surface` | `#211F1A` |  |  |
+| `--inverse-primary` | `#743B1F` | the light primary on inverse ground | 6.79:1 vs inverse-surface |
+
+Light counterparts remain DESIGN.md's named values (screen-wins applies per §6.2).
