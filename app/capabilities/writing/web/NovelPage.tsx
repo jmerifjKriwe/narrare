@@ -291,8 +291,8 @@ export function NovelPage() {
       {/* The workbench: the rail beside the editor, so writing never scrolls
           past the chapter list. The container is one width in both states
           (F25) — 1200, the shelf's own, so the bar, the shelf and this page
-          share one left edge: rail 224, column 592, dock 352, so the card's
-          576 and the 16 px gap it leaves the ring fit with no slack to
+          share one left edge: rail 224, column 608, dock 336, so the card's
+          576 and the 16 px it leaves the ring fit with no slack to
           spare. The frame stays while the book
           loads or fails — the toolbar and the docks are independent of the
           book's row, and a dock's own outage story must stay reachable.

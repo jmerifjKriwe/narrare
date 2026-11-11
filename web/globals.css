@@ -26,60 +26,122 @@
    * light page and dark on a dark one. Without it a dark page kept a white
    * scrollbar and a white option list. */
   color-scheme: light dark;
-  --background: light-dark(oklch(0.965 0.008 85), oklch(0.19 0.01 85));
-  --foreground: light-dark(oklch(0.25 0.01 85), oklch(0.9 0.005 85));
-  /* Secondary text sits on the page ground everywhere, so it keeps AA on
-   * the deepened ground: 0.55 measured 4.39:1 there, under the 4.5 the
-   * suite's axe gate demands. */
-  --muted: light-dark(oklch(0.53 0.01 85), oklch(0.62 0.01 85));
-  --card: light-dark(oklch(1 0 0), oklch(0.24 0.01 85));
-  /* Quiet surfaces between the page and a card: the top bar today, rails and
-   * docks later. Raised, but not raised enough to be a card. */
-  --panel: light-dark(oklch(0.99 0.004 85), oklch(0.215 0.01 85));
+
+  /* The page ground: the parchment the book is printed on, and the ink on
+   * it. */
+  --background: light-dark(#F6F3ED, #16140F);
+  --foreground: light-dark(#1E1B16, #DFDEDA);
+  /* Secondary text rides the page ground and the card above it, so it keeps
+   * AA on both: 4.80:1 on the ground and 5.05:1 on the card in the light
+   * half, 5.07:1 and 4.53:1 in the dark one. The numbers live in
+   * `web/ui/tokens.test.ts`, where a drift fails a test instead of a
+   * review. */
+  --muted: light-dark(#6E6B65, #89867F);
+  /* The chrome: the rail, the top bar, the dock. Flat panels above the
+   * page, bound by a hairline. */
+  --panel: light-dark(#FDFCF9, #1C1914);
+  /* The working surface: the shelf's cards, the editor's sheet. The drafted
+   * screens set their cards on the parchment surface `#FFF8F2` rather than
+   * on DESIGN.md's `bg-card-light`; the screen wins (spec §6.2). */
+  --card: light-dark(#FFF8F2, #211F1A);
   /* The wash under selection and hover: weight 600 on top marks the chosen
    * row, so a selection never needs a filled primary block. */
-  --soft: light-dark(oklch(0.94 0.012 85), oklch(0.28 0.012 85));
-  --border: light-dark(oklch(0.9 0.006 85), oklch(0.32 0.01 85));
+  --soft: light-dark(#EFEBE2, #2C2922);
+  --border: light-dark(#E0DEDA, #35332D);
   /* Separators inside content — table rows, list rows, panel headers. Edges
    * keep --border; a row is never edged with it. */
-  --rule: light-dark(oklch(0.94 0.008 85), oklch(0.3 0.01 85));
-  --primary: light-dark(oklch(0.42 0.09 45), oklch(0.72 0.1 60));
-  --primary-foreground: light-dark(oklch(0.98 0.005 85), oklch(0.2 0.02 60));
-  /* Two radii, no others: controls (buttons, fields, rows) and the surfaces
-   * that hold them (cards, panels, dialogs). Pills stay reserved for filter
-   * pills and avatars. */
-  --radius: 4px;
-  --radius-lg: 8px;
-  /* The keyboard's pointer: primary's family one step brighter, so the ring
-   * reads against text, surfaces and both themes. */
-  --focus: light-dark(oklch(0.48 0.11 45), oklch(0.8 0.11 60));
+  --rule: light-dark(#EEEBE5, #302D28);
+  /* The one action's colour: deep terracotta sepia in the light half,
+   * luminous amber in the dark one. It reads 7.94:1 on the light ground and
+   * 7.23:1 on the dark one. */
+  --primary: light-dark(#743B1F, #D39562);
+  --primary-foreground: light-dark(#FAF8F5, #1D140D);
+  /* The keyboard's pointer: amber in both halves, so the ring reads against
+   * text, surfaces and both themes (6.18:1 on the light ground, 9.64:1 on
+   * the dark one). */
+  --focus: light-dark(#8F4622, #F2AD73);
+
+  /* The surface ladder: the steps between the canvas and the card, so a
+   * composition translates without literal hexes (spec §6.2). The light half
+   * is DESIGN.md's own; the dark half is the measured ladder in
+   * `docs/design/stitch/dark-tokens.md`, where the surface is the card's
+   * ground. */
+  --surface: light-dark(#FFF8F2, #211F1A);
+  --surface-container-lowest: light-dark(#FFFFFF, #100E0A);
+  --surface-container-low: light-dark(#FAF2EA, #191611);
+  --surface-container: light-dark(#F4EDE4, #211F1A);
+  --surface-container-high: light-dark(#EEE7DF, #27241E);
+  --surface-container-highest: light-dark(#E9E1D9, #2E2A23);
+  --surface-variant: light-dark(#E9E1D9, #3A352C);
+  /* The hairlines: the visible edge and the quiet one inside it. */
+  --outline: light-dark(#86736C, #564E43);
+  --outline-variant: light-dark(#D8C2B9, #3D372E);
+
+  /* The second voice: the warm terracotta-rose the design keeps for the
+   * surfaces that are not the one action — the selected row's wash, the
+   * shelf's secondary control. */
+  --secondary: light-dark(#74584E, #D7A892);
+  --secondary-foreground: light-dark(#FFFFFF, #3B1C10);
+  --secondary-container: light-dark(#FED8CA, #47291D);
+  --secondary-container-foreground: light-dark(#795C52, #FED8CA);
+
+  /* The inverse pair: the ground a floating surface dims the page with, and
+   * the ink that rides on it. The pair flips with the theme — in the dark
+   * half the inverse ground is the light one. */
+  --inverse-surface: light-dark(#33302B, #EDE0D4);
+  --inverse-foreground: light-dark(#F7F0E7, #211F1A);
+  --inverse-primary: light-dark(#FFB695, #743B1F);
+
+  /* The diagnostic states, reserved for consistency checks, diffs and
+   * validation alerts — never for a control's fill. */
+  --success: light-dark(#21763C, #52D47E);
+  --warning: light-dark(#9A6100, #E5A84B);
+  --danger: light-dark(#AC3031, #F27474);
+
+  /* The five areas' identity marks: an icon, an eyebrow label, a sparkline,
+   * a progress fill, a status pill's text — an accent inside the area's own
+   * surfaces, never a control's fill. Each clears 3:1 on the panel and on
+   * the card in both halves. */
+  --area-writing: light-dark(#914F2F, #D88D68);
+  --area-knowledge: light-dark(#606127, #B4B65B);
+  --area-chat: light-dark(#3A637B, #72A5C3);
+  --area-planning: light-dark(#834D7E, #C686C0);
+  --area-settings: light-dark(#5A5549, #ABA391);
+
   /* The book object's own grounds and inks: a cover is an object surface,
-   * not an action, and in dark mode its sepia must stay quieter than the one
-   * primary button. `light-dark()` starts resolving when the theme sets
-   * `color-scheme`; until then the light pair is what applies. */
-  --cover-pale-ground: light-dark(oklch(0.94 0.008 85), oklch(0.30 0.012 85));
-  --cover-pale-ink: light-dark(oklch(0.25 0.01 85), oklch(0.90 0.005 85));
-  --cover-sepia-ground: light-dark(oklch(0.42 0.09 45), oklch(0.44 0.06 45));
-  --cover-sepia-ink: light-dark(oklch(0.98 0.005 85), oklch(0.96 0.01 85));
-  --cover-ink-ground: light-dark(oklch(0.25 0.01 85), oklch(0.16 0.01 85));
-  --cover-ink-ink: light-dark(oklch(0.98 0.005 85), oklch(0.90 0.005 85));
-  /* The five areas' identity marks: navigation icons and nothing else. A
-   * hue never fills a control, colours text, or lands on a cover/notice. */
-  --area-writing: light-dark(oklch(0.50 0.10 45), oklch(0.78 0.08 45));
-  --area-knowledge: light-dark(oklch(0.48 0.08 110), oklch(0.76 0.07 110));
-  --area-chat: light-dark(oklch(0.48 0.06 235), oklch(0.76 0.05 235));
-  --area-settings: light-dark(oklch(0.45 0.02 85), oklch(0.74 0.02 85));
-  /* Planning's mark is the timeline's magenta: hue 330 stands apart from
-   * the amber/green/blue/neutral four, and the pair mirrors the writing
-   * shape — measured 6.15:1 (light) and 8.46:1 (dark) vs --panel, ≥3:1. */
-  --area-planning: light-dark(oklch(0.50 0.10 330), oklch(0.78 0.08 330));
-  --success: light-dark(oklch(0.5 0.12 150), oklch(0.68 0.13 150));
-  /* Darkened from 0.6 for AA (P5 fix round, R19): warning text is
-   * Notice's voice, and it must clear 4.5:1 on the surfaces a notice
-   * rides — 0.54 measures 4.64:1 on the ground, 5.14:1 on the card.
-   * Dark mode already cleared. */
-  --warning: light-dark(oklch(0.54 0.13 75), oklch(0.78 0.13 80));
-  --danger: light-dark(oklch(0.5 0.16 25), oklch(0.68 0.15 25));
+   * not an action. The inks are the cover's own and do not change with the
+   * theme; the grounds are raised where the midnight canvas would swallow
+   * them (gap G-2's answer, the dark shelf's own render). */
+  --cover-pale: light-dark(#EEEBE5, #E8E2D7);
+  --cover-pale-ink: light-dark(#1E1B16, #24211C);
+  --cover-sepia: light-dark(#743B1F, #5D2F17);
+  --cover-sepia-ink: #FFF8F2;
+  --cover-ink: light-dark(#24211C, #181512);
+  --cover-ink-ink: light-dark(#FFF8F2, #DFDEDA);
+  --cover-slate: light-dark(#3A637B, #284457);
+  --cover-slate-ink: #FFF8F2;
+
+  /* The shape ladder (spec §6.4): a control is never rounded like the
+   * surface that holds it, so each step carries its role's name —
+   * `rounded-[var(--radius-control)]`, `rounded-[var(--radius-surface)]`.
+   * Pills stay reserved for filter pills, badges and avatars. The two
+   * legacy names below alias the ladder's lower steps until the call sites
+   * move onto the role names. */
+  --radius-sm: 4px;
+  --radius-control: 8px;
+  --radius-surface: 12px;
+  --radius: var(--radius-sm);
+  --radius-lg: var(--radius-control);
+
+  /* Tier 2's ambient shadow: the card's own depth, warm ink in the light
+   * half and plain black in the dark one (spec §6.4, DESIGN.md's tiers).
+   * `light-dark()` carries a colour, so it carries the shadow's colour; the
+   * second layer is the light half's ambient wash and paints nothing in the
+   * dark one, where the design's shadow is a single layer. */
+  --shadow-card:
+    0 1px 3px 0 light-dark(rgba(44, 24, 16, 0.05), rgba(0, 0, 0, 0.35)),
+    0 1px 2px -1px light-dark(rgba(44, 24, 16, 0.03), transparent);
+
   /* The overlay pair: what a surface floating above the page dims it with,
    * and the shadow such a raised surface casts. Theme-constant on purpose —
    * a black scrim reads on light and dark pages alike. The dialog is the
@@ -145,12 +207,32 @@ body {
   --color-rule: var(--rule);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-cover-pale: var(--cover-pale-ground);
+  /* The ladder's own names, so a composition reads `bg-surface-container-high`
+   * instead of a literal hex. */
+  --color-surface: var(--surface);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-container: var(--secondary-container);
+  --color-secondary-container-foreground: var(--secondary-container-foreground);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-inverse-primary: var(--inverse-primary);
+  --color-cover-pale: var(--cover-pale);
   --color-cover-pale-ink: var(--cover-pale-ink);
-  --color-cover-sepia: var(--cover-sepia-ground);
+  --color-cover-sepia: var(--cover-sepia);
   --color-cover-sepia-ink: var(--cover-sepia-ink);
-  --color-cover-ink: var(--cover-ink-ground);
+  --color-cover-ink: var(--cover-ink);
   --color-cover-ink-ink: var(--cover-ink-ink);
+  --color-cover-slate: var(--cover-slate);
+  --color-cover-slate-ink: var(--cover-slate-ink);
   --color-area-writing: var(--area-writing);
   --color-area-knowledge: var(--area-knowledge);
   --color-area-chat: var(--area-chat);
@@ -165,10 +247,6 @@ body {
   /* The theme's sans IS the UI voice: every `text-*` step and every element
    * without a family of its own speaks in Plus Jakarta Sans. */
   --font-sans: var(--font-ui);
-  /* The shape names its role, not its size: a control is never rounded like
-   * the surface that holds it. */
-  --radius-control: var(--radius);
-  --radius-surface: var(--radius-lg);
   /* The six steps carry their leading on the token, so a size is never
    * paired with an ad-hoc leading somewhere else. */
   --text-meta: 0.75rem;
@@ -220,12 +298,14 @@ body {
  * The design's scale needs all four: 400 the body word, 500 the label,
  * 600 the title and the eyebrow, 700 the hero.
  *
- * Two subsets per voice, latin and latin-ext, because the app's German
- * and French catalogs carry letters the base Latin does not (ā, ş, ș, ż,
- * ě and their kin). Each face declares the range it owns, so a browser
- * fetches the extended cut only when a text actually needs it. The
- * tabular figures (tnum) stay in the cut, so the counters and the word
- * counts can hold their width instead of jittering as they change.
+ * Two subsets per voice, latin and latin-ext: the shell's own catalogs —
+ * German and French — stay inside Latin-1, but the manuscripts it holds do
+ * not. The letters of Turkish, Romanian, Polish and Czech (ş, ș, ż, ě and
+ * their kin) live in the extended range, and a manuscript may hold them.
+ * Each face declares the range it owns, so a browser fetches the extended
+ * cut only when a text actually needs it. The tabular figures (tnum) stay
+ * in the cut, so the counters and the word counts can hold their width
+ * instead of jittering as they change.
  */
 @font-face {
   font-family: "Plus Jakarta Sans";

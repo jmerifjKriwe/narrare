@@ -47,16 +47,64 @@ describe("the type scale's census", () => {
 });
 
 describe("the area hues", () => {
-  it("stay in the rail", () => {
-    const offences = scanned
-      // lib/area.ts is the map's home, beside the tokens; the rail only wears it.
-      .filter((file) => !file.endsWith("components/IconRail.tsx") && !file.endsWith("lib/area.ts"))
-      .flatMap((file) =>
-        [...readFileSync(file, "utf8").matchAll(/\b(?:text|bg|border)-area-[a-z]+\b/g)].map(
-          (match) => `${relative(REPO, file)}: ${match[0]}`,
-        ),
-      );
-    expect(offences).toEqual([]);
+  /**
+   * An area hue is an identity accent inside its own area's surfaces (O-2):
+   * the rail's icon, an eyebrow label, a sparkline, a progress fill, a
+   * status pill's text, one cover ground. Never a control's fill — and the
+   * gate can say so, because the controls are painted by the shared
+   * primitives, which stay neutral: an area hue that cannot reach
+   * `web/ui/` cannot paint a button.
+   */
+  const AREA_HUE = /\b(?:text|bg|border)-area-[a-z]+\b/g;
+
+  /** The files that may wear an area hue. */
+  function mayWearAreaHues(file: string): boolean {
+    // The rail's icons are the area's identity mark.
+    if (file.endsWith("components/IconRail.tsx")) return true;
+    // The map's home, beside the tokens.
+    if (file.endsWith("lib/area.ts")) return true;
+    // The area's own surfaces: a capability's own pages.
+    return file.includes("/capabilities/") && file.includes("/web/");
+  }
+
+  /** The area hues a file wears that it may not. */
+  function offences(file: string, source: string): string[] {
+    if (mayWearAreaHues(file)) return [];
+    return [...source.matchAll(AREA_HUE)].map((match) => `${relative(REPO, file)}: ${match[0]}`);
+  }
+
+  it("stay inside the area's own surfaces", () => {
+    const found = scanned.flatMap((file) => offences(file, readFileSync(file, "utf8")));
+    expect(found).toEqual([]);
+  });
+
+  it("admits the accent roles and refuses the rest", () => {
+    // The roles O-2 names, in the area's own page: an eyebrow label, a
+    // sparkline's stroke, a progress fill, a status pill's text. The page
+    // wears its own area's hue; which hue belongs to which capability is
+    // the areas' own business.
+    const allowed = [
+      'className="text-eyebrow text-area-writing uppercase"',
+      '<svg className="text-area-writing" />',
+      '<div className="h-1 rounded-full bg-area-writing" />',
+      '<span className="rounded-full bg-area-writing/10 text-area-writing">Entwurf</span>',
+    ];
+    // The shell's chrome is neutral, and so are the primitives that paint
+    // the controls.
+    const refused = [
+      ["web/components/TopBar.tsx", 'className="text-area-writing"'],
+      ["web/ui/Button.tsx", 'className="bg-area-writing"'],
+      ["web/ui/field.tsx", 'className="border-area-planning"'],
+    ];
+    const page = join(REPO, "app/capabilities/writing/web/NovelsPage.tsx");
+    const wrong: string[] = [];
+    for (const source of allowed) {
+      if (offences(page, source).length > 0) wrong.push(`refused: ${source}`);
+    }
+    for (const [file, source] of refused) {
+      if (offences(join(REPO, file), source).length === 0) wrong.push(`admitted: ${source}`);
+    }
+    expect(wrong).toEqual([]);
   });
 });
 
