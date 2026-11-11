@@ -295,23 +295,20 @@ the shipped value, the reason, and the owner's approval. Empty today:
 
 ## 7. Open gaps for the first Stitch round
 
-- **G-1 — dark values for the state and area hues.** DESIGN.md gives `state-*` and `area-*`
-  as single values; the app's gates demand measured dark pairs. Ask Stitch for the Midnight
-  Ink values of the five area hues and the three state colours.
-- **G-2 — covers on dark ground.** Constant ink objects (books keep their covers) or dimmed
-  dark values? No dark Shelf screen exists in the archive — the only dark screens
-  (atlas, series) are built from literal hexes and answer nothing about token pairs. The
-  round must produce the dark Shelf.
-- **G-3 — primary/`on-primary` in dark mode.** `#D39562` with `#1D140D` text is the
-  drafted pairing; confirm it survives AA as a filled button, else ask for the adjusted
-  pair.
+- **G-1 — dark values for the state and area hues. — ANSWERED 2026-11-11** (S0 round):
+  [`dark-tokens.md`](../../design/stitch/dark-tokens.md), from the Midnight-Ink token card.
+- **G-2 — covers on dark ground. — ANSWERED 2026-11-11:** the dark Shelf exists
+  (`screens/library/shelf-dark`); covers keep their own inks, raised where needed for
+  legibility on `#16140F` (sepia ground `#5D2F17`, slate ground `#284457` in the render).
+- **G-3 — primary/`on-primary` in dark mode. — ANSWERED 2026-11-11:** `#D39562`/`#1D140D`
+  measures 7.7:1; binding.
 - **G-4 — the Shelf's undrafted states.** Loading, error, empty shelf, long titles, >12
   books: the round produces them once W2 starts.
 
-The first round is **task 0 of the plan and blocks W0** — W0 cannot be green in both themes
-without G-1/G-2 answered, so no dark value is derived locally to unblock it. The
-coordinator runs the round via MCP and exports the results into the archive; the owner can
-also drive it at stitch.withgoogle.com.
+The first round ran as **task S0 of the plan** (complete): the dark shelf
+(`shelf-dark`), the token card (`midnight-ink-swatches`), and the extracted values with
+their divergences (`dark-tokens.md`) are in the archive. No dark value is derived
+locally; the coordinator ran the round via MCP.
 
 **Owner decisions (2026-11-11, builder check round):**
 

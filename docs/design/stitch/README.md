@@ -25,7 +25,9 @@ The design system behind every screen is in [`DESIGN.md`](DESIGN.md)
 parchment and terracotta, light and dark tokens). It is the Stitch design-system
 file unchanged — YAML front matter with all tokens, then the rationale — so it
 can be uploaded back through Stitch's `upload_design_md` or read by any agent as
-plain markdown.
+plain markdown. Its dark half is completed by [`dark-tokens.md`](dark-tokens.md):
+the S0 round's Midnight-Ink values with measured contrasts and the divergences
+between its two generated screens.
 
 Documents from the same project are under [`documents/`](documents/):
 
@@ -35,12 +37,16 @@ Documents from the same project are under [`documents/`](documents/):
   and conceptual screen architecture (backend and AI blueprint).
 - [`style-directions.pdf`](documents/style-directions.pdf) — the uploaded style
   directions.
+- [`midnight-ink-swatches.html`](documents/midnight-ink-swatches.html) — the S0
+  round's dark token reference card (area hues and state colours, with contrast
+  figures).
 
 ## Screens
 
 | Area | Screen | Original label (German) | Height |
 |---|---|---|---|
 | Library and entry | [`shelf`](screens/library/shelf.webp) | Bücherregal | 2474 px |
+|  | [`shelf-dark`](screens/library/shelf-dark.webp) | Bücherregal — Midnight Ink (S0, dark) | 1246 px |
 |  | [`welcome-onboarding`](screens/library/welcome-onboarding.webp) | Willkommen & Autoren-Onboarding | 2570 px |
 |  | [`integrated-suite`](screens/library/integrated-suite.webp) | Narrare — Integrierte Gesamtsuite (Regal, Workspace & KI-Dock) | 3664 px |
 | Writing | [`workspace`](screens/writing/workspace.webp) | Schreib-Workspace | 3434 px |
