@@ -92,13 +92,15 @@ test-cov:
     uv run pytest app --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
 
 # Every capability E2E: real browser, real API, real Postgres. `all` or a
-# capability name overrides the affected default. Two xdist workers unless
-# NARRE_E2E_WORKERS or the second argument says otherwise; the suites wait on
-# the browser, not the CPU. An attached instance (the container gate) runs
+# capability name overrides the affected default. Workers: the second argument,
+# else NARRE_E2E_WORKERS, else two when the machine has 6 GB to spare and one
+# below that — this host OOM-killed a browser on a nine-gigabyte box shared with
+# other sessions (#776). An attached instance (the container gate) runs
 # serially: it has one database and no stack per worker.
 test-e2e scope="affected" workers="":
     #!/usr/bin/env bash
     set -euo pipefail
+    workers="{{workers}}"
     paths=$(uv run python -m scripts.affected --paths "{{scope}}" --worktree)
     if [ -z "$paths" ]; then
       echo "no capability touched — no browser suite owed"
@@ -106,8 +108,15 @@ test-e2e scope="affected" workers="":
     fi
     if [ -n "${NARRE_E2E_ATTACH:-}" ]; then
       workers=0
+    elif [ -z "${workers}" ]; then
+      workers="${NARRE_E2E_WORKERS:-}"
+    fi
+    if [ -z "${workers}" ]; then
+      available_mb=$(awk '/^MemAvailable:/ {printf "%d", $2 / 1024}' /proc/meminfo)
+      if [ "${available_mb}" -ge 6000 ]; then workers=2; else workers=1; fi
+      echo "E2E on ${workers} worker(s); ${available_mb} MB available"
     else
-      workers="${workers:-${NARRE_E2E_WORKERS:-2}}"
+      echo "E2E on ${workers} worker(s)"
     fi
     uv run pytest $paths -v -m e2e --timeout=60 -n "$workers"
 

@@ -63,8 +63,8 @@ Pure rendering and wiring do not require unit tests.
 - `just test` — backend integration suite.
 - `just test-frontend` — vitest unit suite.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
-  Two workers by default (`just test-e2e all 3`, or `NARRE_E2E_WORKERS`, to change it);
-  each worker owns its own port pair and database.
+  Two workers when the machine has 6 GB available, one below that (`NARRE_E2E_WORKERS`
+  or the second argument overrides); each worker owns its own port pair and database.
 - `just test-e2e-file <path|node>` — one E2E file or node, with the suite's marker and
   timeout and no resolver: the inner loop for a browser test (`--lf` passes through;
   just joins the arguments unquoted, so a `-k` selection must be a single word).
