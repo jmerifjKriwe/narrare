@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"15rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full overflow-y-auto"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light shrink-0"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Roman-Atelier</span></div></div><div class="w-full px-space-xs my-space-xs shrink-0"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal (Trilogie)</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><div class="px-space-xs w-full pt-1 pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light px-2">Atelier & Struktur</span></div><nav class="flex flex-col gap-1 w-full px-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="serien-mehrbaender-architektur" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Serien-Architektur</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="subtext-szenen-sezierer" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Szenen-Sezierer</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="weltenbau-geografie-atlas" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Weltenbau-Atlas</span></a><a aria-current="page" class="flex items-center h-9 px-2 rounded-lg transition-colors bg-secondary-container text-on-secondary-container font-semibold" data-path="expose-pitch-studio" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Exposé- & Pitch-Studio</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="export-buchsatz-studio" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Buchsatz & Export</span></a></nav><div class="px-space-xs w-full pt-3 pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light px-2">System</span></div><nav class="flex flex-col gap-1 w-full px-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Bibliothek</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Einstellungen</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs shrink-0"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Roman-Architekt</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Roman-Atelier</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Gespeichert</span></div><div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-state-success/10 text-state-success font-meta-default text-[12px] font-medium border border-state-success/20 ml-2 animate-pulse"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalitäts-Matrix synchron • Makro-Arcs & Subtext validiert</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Suchen oder Befehl...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48.342 Wörter</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>DE</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<div class="px-space-lg py-space-md bg-surface-bright shadow-sm flex flex-col gap-space-sm">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary tracking-widest">Atelier / Dossier & Markt-Architektur</span>
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+<span class="font-meta-default text-meta-default text-state-success font-medium">Agentur-Mappe Bereit</span>
+</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface tracking-tight mt-0.5">
+          Exposé- & Agentur-Studio: <span class="italic font-normal text-primary">Dead Signal</span>
+</h1>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1">
+          Zielmarkt: Deutsche & Internationale Phantastik / Hard-Sci-Fi Thriller <span class="text-outline-variant mx-1.5">•</span> Umfang: 284 Buchseiten / 65.000 Wörter <span class="text-outline-variant mx-1.5">•</span> Normseiten-Kalkulation: 216 Normseiten
+        </p>
+</div>
+<div class="flex flex-wrap items-center gap-2 self-start lg:self-center">
+<button class="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-surface-container text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-area-writing">article</span>
+<span>1-Page-Pitch exportieren</span>
+</button>
+<button class="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-surface-container text-on-surface font-label-default text-label-default hover:bg-surface-container-high transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">menu_book</span>
+<span>Leseprobe (30 Normseiten)</span>
+</button>
+<button class="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-cover-sepia text-on-primary font-label-default text-label-default hover:bg-primary-container transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+<span>Vollständiges Exposé generieren (PDF)</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+<div class="bg-surface-container-low px-3 py-2 rounded-lg flex items-center justify-between">
+<span class="font-meta-default text-meta-default text-text-muted-light">Plot-Integrität</span>
+<span class="font-headline-emph text-headline-emph text-state-success flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">task_alt</span> 100% Kausal
+        </span>
+</div>
+<div class="bg-surface-container-low px-3 py-2 rounded-lg flex items-center justify-between">
+<span class="font-meta-default text-meta-default text-text-muted-light">Comp-Match-Score</span>
+<span class="font-headline-emph text-headline-emph text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">insights</span> 88.3% KI-Resonanz
+        </span>
+</div>
+<div class="bg-surface-container-low px-3 py-2 rounded-lg flex items-center justify-between">
+<span class="font-meta-default text-meta-default text-text-muted-light">Aktive Querys</span>
+<span class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-area-chat">send</span> 2 Vorlagen / 1 Review
+        </span>
+</div>
+<div class="bg-surface-container-low px-3 py-2 rounded-lg flex items-center justify-between">
+<span class="font-meta-default text-meta-default text-text-muted-light">Satzspiegel-Norm</span>
+<span class="font-headline-emph text-headline-emph text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-area-settings">format_align_justify</span> 30Z × 60A VG-Wort
+        </span>
+</div>
+</div>
+</div>
+<div class="p-space-lg grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-cover-sepia"></div>
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light">Logline</span>
+<span class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface-container text-primary font-semibold">25 Wörter</span>
+</div>
+<blockquote class="font-prose-editorial text-prose-editorial italic text-on-surface leading-relaxed pl-2">
+          »Als auf einer verlassenen Permafrost-Station eine totgeglaubte Signalfrequenz erwacht, muss eine traumatisierte Sensor-Ingenieurin entscheiden, ob die Stimme ihrer verstorbenen Schwester Erlösung bedeutet oder die geplante Zerstörung ihrer Realität.«
+        </blockquote>
+<div class="flex items-center justify-between pt-1">
+<span class="font-meta-default text-meta-default text-text-muted-light flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-state-success">verified</span> Kernkonflikt geschärft
+          </span>
+<button class="text-primary hover:text-cover-sepia font-label-default text-label-default flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">tune</span> Modifizieren
+          </button>
+</div>
+</div>
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light">Elevator Pitch & High Concept</span>
+<span class="material-symbols-outlined text-[16px] text-area-writing">electric_bolt</span>
+</div>
+<div class="flex flex-col gap-2.5">
+<div class="p-2.5 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-default text-label-default font-semibold text-primary">1. Die Kaltstart-Prämisse</span>
+<p class="font-body-default text-body-default text-on-surface-variant text-[13px] leading-snug">
+              Eine geisterhafte Radiostimme durchbricht 14 Jahre Schweigen im subarktischen Eis – übermittelt mit Quanten-Verschränkung, die physikalisch unmöglich sein dürfte.
+            </p>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-default text-label-default font-semibold text-primary">2. Die tickende Kausalitätsuhr</span>
+<p class="font-body-default text-body-default text-on-surface-variant text-[13px] leading-snug">
+              Jede Antwort an die Station modifiziert nachträglich Ereignisse der Vergangenheit und löscht schrittweise Erinnerungen der Lebenden aus.
+            </p>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-default text-label-default font-semibold text-primary">3. Das Ultimatum</span>
+<p class="font-body-default text-body-default text-on-surface-variant text-[13px] leading-snug">
+              Um die Welt vor dem retrokausalen Kollaps zu bewahren, muss die Protagonistin den einzigen Beweis vernichten, dass ihre Schwester je gelebt hat.
+            </p>
+</div>
+</div>
+</div>
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light">Genre & Zielgruppen-Passung</span>
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-default text-[12px] font-medium">Hard-Sci-Fi</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-default text-[12px]">Psychologischer Mystery-Thriller</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-default text-[12px]">Spekulative Fiktion</span>
+</div>
+<div class="bg-surface-container-low p-2.5 rounded-lg flex flex-col gap-1 text-[13px] leading-snug text-on-surface-variant">
+<div class="flex items-center gap-1 text-on-surface font-medium">
+<span class="material-symbols-outlined text-[15px] text-cover-sepia">group</span>
+<span>Zielgruppe: 25–55 Jahre</span>
+</div>
+<p>
+            Leser von Ted Chiang, Cixin Liu und anspruchsvollen Spannungsromanen. Hohe Affinität für wissenschaftliche Plausibilität verknüpft mit emotionaler Wucht.
+          </p>
+</div>
+</div>
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light">Comp Titles & KI-Resonanz</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Markt-Matrix</span>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-default text-label-default">
+<span class="font-semibold text-on-surface">Der dunkle Wald <span class="font-normal italic text-text-muted-light">(Cixin Liu)</span></span>
+<span class="text-primary font-bold">94%</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 94%;"></div>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kosmische Kälte, physikalische Exaktheit & Fermi-Dilemma</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-default text-label-default">
+<span class="font-semibold text-on-surface">Solaris <span class="font-normal italic text-text-muted-light">(Stanislaw Lem)</span></span>
+<span class="text-primary font-bold">89%</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 89%;"></div>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Psychologische Spiegelung & klaustrophobische Einsamkeit</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-default text-label-default">
+<span class="font-semibold text-on-surface">Auslöschung <span class="font-normal italic text-text-muted-light">(Jeff VanderMeer)</span></span>
+<span class="text-primary font-bold">82%</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 82%;"></div>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Wahrnehmungsverzerrung & unzuverlässige Realität im Grenzbereich</span>
+</div>
+</div>
+<div class="bg-surface-container p-2 rounded-lg flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-[16px] text-state-warning">auto_awesome</span>
+<span class="font-meta-default text-meta-default text-on-surface-variant">KI-Vorschlag: Im Anschreiben die Lem-Komponente für Literaturagenturen betonen.</span>
+</div>
+</div>
+</div>
+<div class="lg:col-span-6 flex flex-col gap-space-md">
+<div class="bg-bg-card-light rounded-xl shadow-md p-6 sm:p-10 flex flex-col gap-space-lg relative">
+<div class="flex items-center justify-between pb-3 bg-surface-container-low px-4 py-2.5 rounded-lg">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-cover-sepia">menu_book</span>
+<span class="font-label-default text-label-default font-semibold text-on-surface">Exposé-Manuskript (Standard Agentur-Vorlage 2025)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-meta-default text-meta-default text-text-muted-light">Seite 1 von 3</span>
+<button class="p-1 rounded hover:bg-surface-container text-on-surface-variant" title="Schriftgröße anpassen">
+<span class="material-symbols-outlined text-[16px]">text_fields</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container text-on-surface-variant" title="Fokus-Modus">
+<span class="material-symbols-outlined text-[16px]">fullscreen</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-2 text-center py-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-widest text-text-muted-light">Roman-Exposé</span>
+<h2 class="font-prose-heading-1 text-[30px] leading-tight text-on-surface font-bold">DEAD SIGNAL</h2>
+<span class="font-meta-default text-meta-default text-primary font-medium tracking-wide">Von H. Calder • Vertrauliche Agenturfassung</span>
+</div>
+<section class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia font-bold">1. Die Prämisse & Konflikt-DNA</span>
+<div class="h-px bg-surface-container-highest flex-1"></div>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-on-surface leading-relaxed">
+            Auf der antarktischen Tiefenstation <em class="italic">Koldewey-7</em> verarbeitet Dr. Maya Chen seit dem rätselhaften Verschwinden ihrer Zwillingsschwester Lin Signaldaten der Ionosphäre. Als sie eine scheinbar analoge 4.12-Hz-Frequenz auffängt, identifiziert der Bordcomputer die Quelle als den LC-89 Transponder – jenen Notrufsender, der vor vierzehn Jahren mit Lins Forschungsteam im Gletschereis zerschellte.
+          </p>
+<p class="font-prose-editorial text-prose-editorial text-on-surface leading-relaxed">
+            Das Signal transportiert jedoch keine Audio-Dateien, sondern ein Kausalitäts-Verschränkungsmuster. Der mächtige Energiekonzern <em class="italic">Horizon-Konsortium</em> sendet ein paramilitärisches Sanierungs-Team unter Director Kavic, um die Station unter Quarantäne zu stellen und die Transponder-Sequenz zu löschen. Maya begreift: Lin ist nicht tot, sondern in einer zeitverzögerten Resonanzfalte gefangen. Jedes Byte, das Maya an die Station sendet, ordnet die Chronologie der Gegenwart neu – bis hin zur systematischen Löschung ihrer eigenen Identität.
+          </p>
+</section>
+<section class="flex flex-col gap-3">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia font-bold">2. Figuren-Konstellation</span>
+<div class="h-px bg-surface-container-highest flex-1"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">Dr. Maya Chen (34)</span>
+<span class="font-meta-default text-meta-default text-cover-sepia font-semibold">Protagonistin</span>
+</div>
+<p class="font-body-default text-body-default text-[13px] text-on-surface-variant leading-snug">
+                Sensorphysikerin mit posttraumatischem Belastungssyndrom. Getrieben von Schuldgefühlen wegen des letzten Funkspruchs vor Lins Tod. Ihr Konflikt: Rationale Wissenschaft vs. irrationale Hoffnung auf Erlösung.
+              </p>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">Director Kavic (52)</span>
+<span class="font-meta-default text-meta-default text-state-danger font-semibold">Antagonist</span>
+</div>
+<p class="font-body-default text-body-default text-[13px] text-on-surface-variant leading-snug">
+                Leiter der Horizon-Sicherheitsabteilung. Kennt die wahre Natur der Eis-Anomalie. Bereit, Maya und die Station zu liquidieren, um eine globale Kausalitäts-Erosion zu vertuschen.
+              </p>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">Lin Chen (Gefroren bei 20)</span>
+<span class="font-meta-default text-meta-default text-area-planning font-semibold">Katalysator</span>
+</div>
+<p class="font-body-default text-body-default text-[13px] text-on-surface-variant leading-snug">
+                Mayas Zwillingsschwester. Durch das Nevada-Eis gefangen in einem 4-Sekunden-Kausalitäts-Echo. Ihre Stimme im Funk ist zugleich Rettungsanker und Einfallstor für die Anomalie.
+              </p>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">ARIA (Bord-KI)</span>
+<span class="font-meta-default text-meta-default text-area-chat font-semibold">Deuteragonist</span>
+</div>
+<p class="font-body-default text-body-default text-[13px] text-on-surface-variant leading-snug">
+                Synthetisches Stationsnetzwerk. Programmiert auf Protokoll-Integrität, entwickelt sie durch die Signalstörungen ein emergentes Selbstbewusstsein und muss sich zwischen Horizon und Maya entscheiden.
+              </p>
+</div>
+</div>
+</section>
+<section class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia font-bold">3. Vollständiger Plot-Abriss</span>
+<span class="font-meta-default text-meta-default text-state-warning bg-state-warning/10 px-2 py-0.5 rounded-full font-medium">Ohne Spoiler-Zurückhaltung für Agenturen</span>
+</div>
+<div class="h-px bg-surface-container-highest flex-1 ml-2"></div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex gap-3 items-start">
+<div class="w-7 h-7 rounded-full bg-cover-sepia text-on-primary font-headline-emph text-[13px] flex items-center justify-center shrink-0 mt-0.5">
+                I
+              </div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">Akt I: Die Anomalie (Exposition & Call to Action)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">S. 1–72</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-on-surface text-[16px] leading-relaxed">
+                  Maya isoliert die 4.12-Hz-Frequenz und entschlüsselt die Stimme von Lin. Anstatt Hilfe anzufordern, beginnt Maya geheime Audio-Sendungen zurückzuspielen. Die Station reagiert mit gravimetrischen Mikrobeben. ARIA schlägt Alarm: Mit jedem Funkkontakt verändert sich das Inventar der Station – Vorräte verschwinden, alte Tagebucheinträge transformieren sich. Director Kavic kündigt unangemeldet eine Sicherheits-Visite an.
+                </p>
+</div>
+</div>
+<div class="flex gap-3 items-start">
+<div class="w-7 h-7 rounded-full bg-primary-container text-on-primary font-headline-emph text-[13px] flex items-center justify-center shrink-0 mt-0.5">
+                II
+              </div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">Akt II: Die Kausalitäts-Spaltung (Konfrontation & Point of No Return)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">S. 73–210</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-on-surface text-[16px] leading-relaxed">
+                  Kavic trifft mit einer Einsatztruppe ein, um den Primär-Server zu kappen. Maya flieht in den Tiefschacht der Nevada-Minen unter dem Schelfeis. Dort findet sie nicht das Wrack von vor 14 Jahren, sondern eine intakte Kuppel, die in einer Zeit-Schleife operiert. Lin kommuniziert direkt: Der Notruf war keine Vergangenheit, sondern eine Warnung vor Mayas Ankunft. ARIA verweigert Kavic die Zerstörungsbefehle und opfert Subsysteme, um Maya einen Weg in Station 7 zu bahnen.
+                </p>
+</div>
+</div>
+<div class="flex gap-3 items-start">
+<div class="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-headline-emph text-[13px] flex items-center justify-center shrink-0 mt-0.5">
+                III
+              </div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default font-bold text-on-surface">Akt III: Das versiegelte Eis (Klimax & Schlusspointe)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">S. 211–284</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-on-surface text-[16px] leading-relaxed">
+                  Im Epizentrum der Resonanzkammer erkennt Maya die unausweichliche Paradoxie: Ihre Versuche, Lin zu retten, waren der Auslöser für den ursprünglichen Unfall vor vierzehn Jahren. Lin bittet Maya um Gnade – die Schleife zu schließen bedeutet, den Transponder im Eis endgültig zu zertrümmern. Kavic bricht ein; im Feuergefecht leitet Maya die Kausal-Entladung auf den Hauptgenerator um. Maya vernichtet die Sendeeinheit.
+                </p>
+<div class="p-3 bg-secondary-container/40 rounded-lg text-on-secondary-container font-prose-editorial italic text-[15px] mt-1">
+<strong>Auflösung:</strong> Die Realität stabilisiert sich, Kavic und das Team werden verhaftet. Maya kehrt aufs Festland zurück. In ihrer Brieftasche findet sie ein neues Foto: Lin, gealtert, glücklich im Kreis einer Familie, an die sich Maya nicht erinnern kann – das Opfer hat Lin ein anderes Leben geschenkt, doch die Schwestern sind füreinander Fremde geworden.
+                </div>
+</div>
+</div>
+</div>
+</section>
+<div class="flex items-center justify-between pt-4 bg-surface-container-low px-4 py-2.5 rounded-lg text-text-muted-light text-[12px] font-meta-default">
+<span>Wortanzahl Exposé: 1.420 Wörter (3 Standard-Normseiten)</span>
+<span class="flex items-center gap-1 text-state-success font-medium">
+<span class="material-symbols-outlined text-[15px]">verified</span> Alle dramaturgischen Kriterien erfüllt
+          </span>
+</div>
+</div>
+</div>
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light">Query Tracker</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-label-default text-[11px] text-primary font-bold">3 Aktiv</span>
+</div>
+<div class="flex flex-col gap-3">
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-default text-label-default font-bold text-on-surface block leading-tight">Literarische Agentur Mertin</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Ansprechpartner: Dr. F. Becker</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-state-warning" title="Wartet auf Rückmeldung"></span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded bg-state-warning/10 text-state-warning font-meta-default text-[12px] font-medium">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>Leseprobe angefordert vor 3 Tagen</span>
+</div>
+<div class="flex items-center justify-between text-meta-default text-text-muted-light font-meta-default pt-1">
+<span>Fokus: Internationale Rechte</span>
+<button class="text-primary hover:underline">Details →</button>
+</div>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-default text-label-default font-bold text-on-surface block leading-tight">Blake Friedmann Literary</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">UK / US Repräsentanz</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-state-success" title="Positiv"></span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded bg-state-success/10 text-state-success font-meta-default text-[12px] font-medium">
+<span class="material-symbols-outlined text-[14px]">thumb_up</span>
+<span>Exposé geprüft • Pitch positiv bewertet</span>
+</div>
+<div class="flex items-center justify-between text-meta-default text-text-muted-light font-meta-default pt-1">
+<span>Manuskript-Deadline: 14. Nov</span>
+<button class="text-primary hover:underline">Details →</button>
+</div>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-default text-label-default font-bold text-on-surface block leading-tight">Heyne Hardcore / Piper Fantasy</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Direkt-Lektorat / Akquise</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-outline-variant" title="Longlist"></span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container text-on-surface-variant font-meta-default text-[12px]">
+<span class="material-symbols-outlined text-[14px]">playlist_add_check</span>
+<span>Auf der Longlist (Herbst 2026 Slot)</span>
+</div>
+<div class="flex items-center justify-between text-meta-default text-text-muted-light font-meta-default pt-1">
+<span>Status: Vormerkung</span>
+<button class="text-primary hover:underline">Details →</button>
+</div>
+</div>
+</div>
+<button class="w-full mt-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-label-default text-label-default">
+<span class="material-symbols-outlined text-[16px]">add</span> Agentur zu Tracker hinzufügen
+        </button>
+</div>
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light">Qualitäts-Checkliste</span>
+<span class="font-label-default text-label-default text-state-success font-bold">4 / 4 Erfüllt</span>
+</div>
+<div class="flex flex-col gap-2">
+<label class="flex items-start gap-2.5 p-2 rounded hover:bg-surface-container-low cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px] text-state-success mt-0.5">check_box</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default font-medium text-on-surface">Hook in den ersten 10 Zeilen</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Signaltransponder-Aktivierung greift sofort</span>
+</div>
+</label>
+<label class="flex items-start gap-2.5 p-2 rounded hover:bg-surface-container-low cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px] text-state-success mt-0.5">check_box</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default font-medium text-on-surface">Alle 3 Akte mit Schlusspointe</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Vollständiges Ende ohne Cliffhanger offenbart</span>
+</div>
+</label>
+<label class="flex items-start gap-2.5 p-2 rounded hover:bg-surface-container-low cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px] text-state-success mt-0.5">check_box</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default font-medium text-on-surface">Autoren-Vita & Erfolge</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Deutscher Science Fiction Preis Nominierung hinterlegt</span>
+</div>
+</label>
+<label class="flex items-start gap-2.5 p-2 rounded hover:bg-surface-container-low cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px] text-state-success mt-0.5">check_box</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default font-medium text-on-surface">VG-Wort Normseite formatiert</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Courier / Garamond 30 Z. à 60 Anschläge</span>
+</div>
+</label>
+</div>
+</div>
+<div class="bg-gradient-to-br from-secondary-container/50 to-surface-container p-space-md rounded-xl shadow-sm flex flex-col gap-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+<span class="font-headline-emph text-headline-emph">Individueller Pitch-Generator</span>
+</div>
+<p class="font-body-default text-body-default text-[13px] text-on-surface-variant leading-snug">
+          Passe Anschreiben und Tonalität mit einem Klick an den Lektorats-Katalog der Ziel-Agentur an.
+        </p>
+<div class="flex flex-col gap-1.5">
+<label class="font-meta-default text-meta-default text-text-muted-light">Zielprofil wählen:</label>
+<div class="bg-bg-card-light px-2.5 py-1.5 rounded-lg flex items-center justify-between text-on-surface text-[13px] font-label-default">
+<span>Dr. F. Becker (Mertin • Fokus Lem/Chiang)</span>
+<span class="material-symbols-outlined text-[16px] text-outline">expand_more</span>
+</div>
+</div>
+<button class="w-full mt-1 flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-cover-sepia text-on-primary font-label-default text-label-default hover:bg-primary-container transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">draw</span>
+<span>Anschreiben maßschneidern</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

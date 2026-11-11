@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"state-success":"#21763C","background":"#fff8f2","area-knowledge":"#606127","on-secondary-fixed-variant":"#5a4137","area-writing":"#914F2F","surface-container-low":"#faf2ea","surface":"#fff8f2","text-muted-light":"#6E6B65","on-primary":"#ffffff","primary-fixed-dim":"#ffb695","primary-container":"#743b1f","rule-dark":"#302D28","on-tertiary-container":"#eead78","secondary":"#74584e","outline":"#86736c","state-warning":"#9A6100","on-primary-fixed":"#351000","area-chat":"#3A637B","amber-focus":"#8F4622","on-secondary":"#ffffff","cover-ink":"#24211C","cover-pale":"#EEEBE5","primary":"#58250b","bg-panel-dark":"#1C1914","on-primary-fixed-variant":"#6f371c","bg-card-dark":"#211F1A","area-settings":"#5A5549","inverse-surface":"#33302b","bg-panel-light":"#FDFCF9","on-tertiary-fixed":"#2f1500","text-muted-dark":"#89867F","on-error-container":"#93000a","on-tertiary":"#ffffff","area-planning":"#834D7E","on-secondary-fixed":"#2a170f","on-surface":"#1e1b16","on-secondary-container":"#795c52","amber-focus-dark":"#F2AD73","surface-tint":"#8c4e30","surface-bright":"#fff8f2","surface-container-highest":"#e9e1d9","bg-soft-dark":"#2C2922","secondary-fixed":"#ffdbce","text-foreground-dark":"#DFDEDA","bg-soft-light":"#EFEBE2","bg-canvas-light":"#F6F3ED","error":"#ba1a1a","surface-variant":"#e9e1d9","rule-light":"#EEEBE5","surface-dim":"#e0d9d1","surface-container-high":"#eee7df","surface-container-lowest":"#ffffff","secondary-container":"#fed8ca","cover-sepia":"#743B1F","inverse-on-surface":"#f7f0e7","border-dark":"#35332D","border-light":"#E0DEDA","on-background":"#1e1b16","on-surface-variant":"#53433d","on-tertiary-fixed-variant":"#693c10","primary-fixed":"#ffdbcc","error-container":"#ffdad6","state-danger":"#AC3031","outline-variant":"#d8c2b9","bg-card-light":"#FFFFFF","on-error":"#ffffff","surface-container":"#f4ede4","secondary-fixed-dim":"#e3bfb2","inverse-primary":"#ffb695","bg-canvas-dark":"#16140F","tertiary-container":"#6e3f14","tertiary":"#522900","on-primary-container":"#f8a884","tertiary-fixed-dim":"#fcb882","tertiary-fixed":"#ffdcc3"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1.5rem","space-sm":"0.5rem","rail-collapsed":"3rem","space-xs":"0.25rem","dock-width":"21rem","container-max":"75rem","rail-expanded":"10.5rem","prose-max-width":"34rem","space-md":"1rem","gutter":"1rem","space-lg":"1.5rem","space-xl":"2rem"},fontFamily:{"meta-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"]},fontSize:{"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased selection:bg-secondary-container selection:text-primary"><aside class="fixed left-0 top-0 h-full w-rail-collapsed bg-surface-container-low z-50 flex flex-col justify-between items-center py-space-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col items-center gap-space-lg w-full"><a class="w-8 h-8 rounded-lg bg-cover-sepia text-surface flex items-center justify-center font-prose-heading-1 text-prose-heading-1 shadow-[0_1px_3px_0_rgba(44,24,16,0.15)] hover:bg-primary transition-colors" data-path="manuscript-shelf" href="#" title="Narrare Atelier"><span class="italic font-normal">N</span></a><nav class="flex flex-col items-center gap-space-xs w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="manuscript-shelf" href="#" title="Manuscript Shelf"><span class="material-symbols-outlined text-[20px]">book_2</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="writing-workspace" href="#" title="Writing Workspace"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="lore-entity-graph" href="#" title="Entity Lore Graph"><span class="material-symbols-outlined text-[20px]">hub</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="timeline-chronology" href="#" title="Timeline &amp; Structure"><span class="material-symbols-outlined text-[20px]">account_tree</span></a></nav></div><div class="flex flex-col items-center gap-space-xs w-full px-space-xs"><nav class="flex flex-col items-center gap-space-xs w-full" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center transition-all text-on-surface-variant" data-path="atelier-settings" href="#" title="Settings"><span class="material-symbols-outlined text-[20px]">settings</span></a></nav></div></aside><div class="pl-rail-collapsed min-h-screen flex flex-col"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm font-meta-default text-meta-default"><span class="font-headline-emph text-headline-emph text-on-surface tracking-tight">Atelier</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface-variant">Dead Signal</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface font-label-default text-label-default">Kapitel III: Das Observatorium</span></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant font-meta-default text-meta-default"><span class="material-symbols-outlined text-[15px] text-area-writing">ink_pen</span><span class="tabular-nums text-on-surface font-label-default text-label-default">42,850</span><span class="text-text-muted-light">Wörter</span></div><button class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-meta-default text-meta-default" title="Command Palette (⌘K)"><span class="material-symbols-outlined text-[15px]">search</span><span class="hidden sm:inline font-label-default text-label-default">Suche</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container-highest font-meta-default text-[10px] text-on-surface-variant uppercase tracking-wider">⌘K</kbd></button><div class="flex items-center rounded bg-surface-container-low p-0.5 font-label-default text-label-default"><button class="px-2 py-0.5 rounded text-on-surface font-bold bg-surface shadow-[0_1px_2px_rgba(44,24,16,0.05)]">DE</button><button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors">EN</button></div><button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Toggle Mode"><span class="material-symbols-outlined text-[18px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 bg-surface flex-1 w-full"><div class="flex flex-col w-full">
+<!-- Sub-Header & Global Dossier Control Ribbon -->
+<div class="w-full bg-surface-container-low/70 px-space-lg py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
+<!-- Category Tabs -->
+<div class="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface shadow-sm text-primary font-headline-emph text-headline-emph whitespace-nowrap">
+<span class="material-symbols-outlined text-[17px] text-area-writing">person</span>
+<span>Figuren</span>
+<span class="px-1.5 py-0.2 rounded-full bg-secondary-container text-on-secondary-container font-meta-default text-meta-default">8</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-default text-label-default whitespace-nowrap">
+<span class="material-symbols-outlined text-[17px]">location_on</span>
+<span>Schauplätze &amp; Stationen</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-meta-default text-meta-default">6</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-default text-label-default whitespace-nowrap">
+<span class="material-symbols-outlined text-[17px]">memory</span>
+<span>Artefakte &amp; Technologie</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-meta-default text-meta-default">4</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-default text-label-default whitespace-nowrap">
+<span class="material-symbols-outlined text-[17px]">diversity_3</span>
+<span>Fraktionen &amp; Allianzen</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-meta-default text-meta-default">2</span>
+</button>
+</div>
+<!-- Quick Action Toolset -->
+<div class="flex items-center gap-2 flex-wrap">
+<div class="flex items-center gap-1.5 bg-surface px-2.5 py-1 rounded shadow-sm">
+<span class="material-symbols-outlined text-outline text-[16px]">tune</span>
+<select class="bg-transparent text-on-surface font-label-default text-label-default outline-none pr-2 cursor-pointer">
+<option>Status: Kanonisch verifiziert</option>
+<option>Status: Vorläufig / Entwurf</option>
+<option>Status: Archiviert / Historisch</option>
+</select>
+</div>
+<button class="flex items-center gap-1.5 px-3 py-1 rounded bg-surface hover:bg-surface-container-high text-on-surface transition-colors shadow-sm font-label-default text-label-default">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">file_download</span>
+<span class="hidden sm:inline">Kompendium exportieren</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1 rounded bg-cover-sepia hover:bg-primary text-on-primary transition-colors shadow-sm font-label-default text-label-default">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Neues Dossier</span>
+</button>
+</div>
+</div>
+<!-- Main 3-Column Literary Workbench -->
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-0 min-h-[calc(100vh-7.5rem)]">
+<!-- COLUMN 1: Entities Navigator (ca. 290px-310px / 3 cols desktop) -->
+<aside class="lg:col-span-3 bg-surface-container-low/40 p-4 flex flex-col gap-4">
+<!-- Search & Segment Filters -->
+<div class="flex flex-col gap-2">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]">search</span>
+<input class="w-full pl-8 pr-3 py-1.5 bg-surface rounded text-on-surface placeholder:text-text-muted-light font-body-default text-body-default outline-none focus:ring-1 focus:ring-amber-focus shadow-sm" placeholder="Entität suchen (z. B. Chen, Horizon)..." type="text"/>
+</div>
+<div class="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+<span class="px-2 py-0.5 rounded-full bg-cover-sepia text-on-primary font-eyebrow-tracked text-eyebrow-tracked cursor-pointer">HAUPTCAST</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-eyebrow-tracked text-eyebrow-tracked cursor-pointer transition-colors">NEBENFIGUREN</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-eyebrow-tracked text-eyebrow-tracked cursor-pointer transition-colors">1984 REKURSION</span>
+</div>
+</div>
+<!-- Entities Feed -->
+<div class="flex flex-col gap-2 overflow-y-auto pr-1">
+<!-- Active Entity: Dr. Maya Chen -->
+<div class="p-3 rounded-lg bg-surface shadow-md relative overflow-hidden transition-all group cursor-pointer">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-cover-sepia"></div>
+<div class="flex items-start justify-between gap-2 pl-1">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-secondary-container text-on-secondary-fixed flex items-center justify-center font-prose-heading-1 text-[16px] font-semibold">
+                MC
+              </div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Dr. Maya Chen</h3>
+<span class="material-symbols-outlined text-state-success text-[15px]" title="100% Kausal synchron">verified</span>
+</div>
+<span class="text-text-muted-light font-meta-default text-meta-default">Protagonistin • Resonanz-Physikerin</span>
+</div>
+</div>
+</div>
+<div class="mt-2.5 pt-2 flex items-center justify-between text-on-surface-variant font-meta-default text-meta-default bg-surface-container-low px-2 py-1 rounded">
+<span class="flex items-center gap-1 text-area-writing"><span class="material-symbols-outlined text-[13px]">menu_book</span>24 Szenen</span>
+<span class="text-state-success font-label-default text-label-default">100% synchron</span>
+</div>
+</div>
+<!-- Entity: ARIA -->
+<div class="p-3 rounded-lg bg-surface/70 hover:bg-surface shadow-sm transition-all cursor-pointer">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-surface-container-high text-on-surface flex items-center justify-center font-headline-emph text-[14px]">
+<span class="material-symbols-outlined text-[18px] text-area-chat">neurology</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface truncate">ARIA</h4>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-meta-default text-[10px]">KI-SYMBIONT</span>
+</div>
+<span class="text-text-muted-light font-meta-default text-meta-default truncate">Bordintegrierter Ko-Pilot</span>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between text-text-muted-light font-meta-default text-meta-default px-1">
+<span>18 Szenen</span>
+<span class="text-on-surface-variant">94% Kognitions-Bindung</span>
+</div>
+</div>
+<!-- Entity: Lin Chen † -->
+<div class="p-3 rounded-lg bg-surface/70 hover:bg-surface shadow-sm transition-all cursor-pointer">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-surface-container-highest text-text-muted-light flex items-center justify-center font-prose-heading-1 text-[16px] italic">
+              LC
+            </div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface truncate">Lin Chen †</h4>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-text-muted-light font-meta-default text-[10px]">VERSTORBEN</span>
+</div>
+<span class="text-text-muted-light font-meta-default text-meta-default truncate">Schwester • Ursprung Signal</span>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between text-text-muted-light font-meta-default text-meta-default px-1">
+<span>9 Erwähnungen</span>
+<span class="text-area-planning">Kausaler Fluchtpunkt</span>
+</div>
+</div>
+<!-- Entity: Director Kavic -->
+<div class="p-3 rounded-lg bg-surface/70 hover:bg-surface shadow-sm transition-all cursor-pointer">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-surface-container-high text-on-surface flex items-center justify-center font-headline-emph text-[14px]">
+              DK
+            </div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface truncate">Director Kavic</h4>
+<span class="px-1.5 py-0.2 rounded bg-error-container text-on-error-container font-meta-default text-[10px]">ANTAGONIST</span>
+</div>
+<span class="text-text-muted-light font-meta-default text-meta-default truncate">Konsortiums-Emissär</span>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between text-text-muted-light font-meta-default text-meta-default px-1">
+<span>7 Szenen</span>
+<span class="text-state-warning">Eskalationsgrad: Hoch</span>
+</div>
+</div>
+<!-- Divider with Label -->
+<div class="pt-2 pb-1 flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider">Verknüpfte Schauplätze</span>
+<div class="flex-1 h-px bg-surface-container-highest"></div>
+</div>
+<!-- Entity: Horizon Station -->
+<div class="p-3 rounded-lg bg-surface/70 hover:bg-surface shadow-sm transition-all cursor-pointer">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-surface-container-high text-area-knowledge flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">satellite_alt</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface truncate">Horizon Station</h4>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-meta-default text-[10px]">AKTUELL</span>
+</div>
+<span class="text-text-muted-light font-meta-default text-meta-default truncate">Geostationäres Teleskop-Array</span>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between text-text-muted-light font-meta-default text-meta-default px-1">
+<span>19 Szenen</span>
+<span class="text-on-surface-variant">Schauplatz Akt I &amp; II</span>
+</div>
+</div>
+<!-- Entity: Forschungsstation 7 -->
+<div class="p-3 rounded-lg bg-surface/70 hover:bg-surface shadow-sm transition-all cursor-pointer">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-surface-container-high text-area-knowledge flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">ac_unit</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface truncate">Forschungsstation 7</h4>
+<span class="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container font-meta-default text-[10px]">SCHLÜSSELORT</span>
+</div>
+<span class="text-text-muted-light font-meta-default text-meta-default truncate">Eissektor Nevada (Stillgelegt)</span>
+</div>
+</div>
+<div class="mt-2 flex items-center justify-between text-text-muted-light font-meta-default text-meta-default px-1">
+<span>14 Szenen</span>
+<span class="text-on-surface-variant">Zielort Akt III</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- COLUMN 2: Character Dossier & Narrative Core (ca. 6 cols desktop) -->
+<section class="lg:col-span-6 bg-surface p-6 flex flex-col gap-8 overflow-y-auto shadow-sm">
+<!-- Dossier Hero & Archetype Banner -->
+<div class="flex flex-col md:flex-row gap-5 items-start justify-between bg-surface-container-low p-6 rounded-xl shadow-sm relative overflow-hidden">
+<div class="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-cover-sepia/5 blur-2xl pointer-events-none"></div>
+<div class="flex items-start gap-4">
+<div class="relative w-20 h-24 rounded-lg bg-cover-sepia text-surface flex flex-col items-center justify-between p-2 shadow-md">
+<span class="font-eyebrow-tracked text-[9px] tracking-widest text-on-primary/70">ARCHIV #01</span>
+<span class="font-prose-heading-1 text-[36px] italic leading-none">MC</span>
+<span class="font-meta-default text-[9px] text-on-primary/60">KANON 1.4</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-cover-sepia/15 text-primary font-eyebrow-tracked text-eyebrow-tracked">PROTAGONISTIN</span>
+<span class="px-2 py-0.5 rounded bg-surface text-on-surface-variant font-meta-default text-meta-default">KAPITEL I–XXVIII</span>
+</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface mt-1">Dr. Maya Chen</h1>
+<p class="font-label-default text-label-default text-on-surface-variant">Leitende Resonanz-Ingenieurin, Horizon Station</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="font-meta-default text-meta-default text-text-muted-light">Archetyp:</span>
+<span class="font-headline-emph text-headline-emph text-cover-sepia">Die suchende Skeptikerin</span>
+</div>
+</div>
+</div>
+<!-- Quick Metatags -->
+<div class="flex md:flex-col items-end gap-1.5 self-stretch justify-between md:justify-start">
+<button class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface hover:bg-surface-container-high text-on-surface font-label-default text-label-default shadow-sm transition-colors">
+<span class="material-symbols-outlined text-[15px] text-area-writing">edit</span>
+<span>Dossier bearbeiten</span>
+</button>
+<span class="text-text-muted-light font-meta-default text-meta-default">Letzte Revision vor 2 Std.</span>
+</div>
+</div>
+<!-- Vital- & Kanon-Matrix Grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<div class="bg-surface-container-low/60 p-3 rounded-lg flex flex-col gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light">ALTER &amp; URSPRUNG</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">34 Jahre</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Geboren in Neu-Taipeh</span>
+</div>
+<div class="bg-surface-container-low/60 p-3 rounded-lg flex flex-col gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light">KOGNITIVER STATUS</span>
+<span class="font-headline-emph text-headline-emph text-state-warning flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-state-warning animate-pulse"></span> Hyperakusis
+          </span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Schlafentzug &gt; 42 Std.</span>
+</div>
+<div class="bg-surface-container-low/60 p-3 rounded-lg flex flex-col gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light">LEITMOTIV</span>
+<span class="font-prose-editorial text-[15px] italic text-primary leading-tight">„Fakten gegen Geister“</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kognitiver Schutzwall</span>
+</div>
+<div class="bg-surface-container-low/60 p-3 rounded-lg flex flex-col gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light">BEZIEHUNGSFOKUS</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Lin Chen (Schwester)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Todesursache ungeklärt</span>
+</div>
+</div>
+<!-- Psychological Deep Dive & Trauma Archeology -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-on-surface">Psychologisches Profil &amp; Innerer Riss</h2>
+<span class="font-meta-default text-meta-default text-text-muted-light">Ebene: Charakter-Subtext</span>
+</div>
+<div class="space-y-3 font-prose-editorial text-prose-editorial text-on-surface leading-relaxed">
+<p>
+            Mayas gesamte Existenz ist um ein ungelöstes Gravitationszentrum aufgebaut: den Verlust ihrer jüngeren Schwester Lin während der sogenannten <em>„Kollaps-Nacht“</em> in Forschungsstation 7 vor genau drei Jahren. Während das Konsortium den Vorfall als standardisierte thermische Kernschmelze zu den Akten legte, weiß Maya aus abgefangenen Telemetriedaten, dass Lins Biosignale erst 18 Minuten <em>nach</em> der angeblichen Vernichtung der Anlage erloschen sind.
+          </p>
+<p>
+            Ihr beruflicher Werdegang ist kein Karrierestreben, sondern eine methodische Infiltration. Als leitende Resonanz-Ingenieurin auf dem einsamen Außenposten der <em>Horizon Station</em> duldet sie keine menschliche Nähe; ihr einziger Vertrauter ist ARIA, deren synthetische Nüchternheit Maya vor dem Abdriften in paranoide Isolation bewahrt. Unter ihrer extrem disziplinierten, kühlen Fassade lauert jedoch eine neurotische Hyperakusis: Sie hört Oszillationen in Frequenzen, die kein Sensor verzeichnet – Frequenzen, die in verblüffender Übereinstimmung mit Lins letzter Sprachnachricht stehen.
+          </p>
+</div>
+</div>
+<!-- Linguistic Fingerprint & Dialogue DNA -->
+<div class="flex flex-col gap-3 bg-surface-container-low p-5 rounded-xl shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-cover-sepia text-[20px]">record_voice_over</span>
+<h3 class="font-headline-title text-headline-title text-on-surface">Linguistisches Profil &amp; Dialog-DNA</h3>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant">
+          Handlungsanweisung für Roman-Prosa und AI-Sparring: Wie Dr. Maya Chen spricht, denkt und argumentiert.
+        </p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+<div class="flex flex-col gap-1.5 bg-surface p-3 rounded-lg shadow-sm">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-cover-sepia">SYNTAX &amp; DUKTUS</span>
+<p class="font-body-default text-body-default text-on-surface">
+              Strikte Reduktion auf Beobachtbares. Vermeidet emotionale Adjektive (sagt nie <em>„Ich habe Angst“</em>, sondern <em>„Die Herzfrequenz-Telemetrie weicht um 18% ab“</em>). Kurze, stakkatohafte Hauptsätze in Gefahrenmomenten.
+            </p>
+</div>
+<div class="flex flex-col gap-1.5 bg-surface p-3 rounded-lg shadow-sm">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-cover-sepia">SPRACHLICHE LEITPLANKEN</span>
+<p class="font-body-default text-body-default text-on-surface">
+              Nutzt akustische und sensorische Metaphern: <em>Interferenz, Wellenlänge, Dämpfung, Rauschen</em>. Zitiert nie Konzernregeln ohne ironische Nuance.
+            </p>
+</div>
+</div>
+<!-- Dialogue Excerpt Box -->
+<div class="mt-2 p-3 bg-surface rounded-lg shadow-sm flex flex-col gap-1.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light">BEISPIEL AUS KAPITEL IV (ZEILE 142)</span>
+<blockquote class="font-prose-editorial text-prose-editorial text-primary italic pl-3">
+            „Bestätige den Vektor, ARIA. Wiederhole nicht, was die Konsole vorgibt. Der Ursprung des Signals ist nicht orbital. Es kommt aus dem gefrorenen Sockel unter dem Permafrost.“
+          </blockquote>
+</div>
+</div>
+<!-- Narrative Timeline & Causal Scene Arc -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-prose-heading-2 text-prose-heading-2 text-on-surface">Szenen-Chronologie &amp; Kausaler Bogen</h3>
+<span class="font-meta-default text-meta-default text-text-muted-light">3 Akte • 24 Szenen belegt</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Act I -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-primary text-on-primary font-eyebrow-tracked text-[10px]">AKT I</span>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Das Signal im Observatorium</h4>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Szenen 1–8</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant">
+              Maya fängt auf Horizon Station ein kodiertes Notsignal ab, das denselben Frequenzschlüssel wie die verschollene Forschungsstation 7 trägt. Erste Reibungen mit Director Kavic über Sensorfreigaben.
+            </p>
+<div class="flex items-center gap-2 pt-1 font-meta-default text-meta-default text-text-muted-light">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-state-success">check_circle</span>Konsistent</span>
+<span>•</span>
+<span>Schlüsselobjekt: Spektrographisches Band LC-89</span>
+</div>
+</div>
+<!-- Act II -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-cover-sepia text-on-primary font-eyebrow-tracked text-[10px]">AKT II</span>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Die Entriegelung des Konsortiums-Archivs</h4>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Szenen 9–17</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant">
+              Mithilfe von ARIA umgeht sie die Sicherheitskaskaden. Sie entdeckt, dass Lin absichtlich in der Isolationskammer zurückgelassen wurde, um die Resonanz aufzuzeichnen.
+            </p>
+<div class="flex items-center gap-2 pt-1 font-meta-default text-meta-default text-text-muted-light">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-state-success">check_circle</span>Konsistent</span>
+<span>•</span>
+<span class="text-state-warning">Wendepunkt: Kavics Ultimatum</span>
+</div>
+</div>
+<!-- Act III -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-eyebrow-tracked text-[10px]">AKT III</span>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Abstieg in Forschungsstation 7</h4>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Szenen 18–24 (In Arbeit)</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant">
+              Maya landet im Permafrost. Die Station ist nicht zerstört, sondern in einer zeitlichen Resonanzschleife eingefroren. Konfrontation mit der letzten Manifestation Lins.
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- COLUMN 3: Live Lore Inspector, Graph & AI Sparring (ca. 340px / 3 cols desktop) -->
+<aside class="lg:col-span-3 bg-surface-container-low/30 p-4 flex flex-col gap-5 overflow-y-auto">
+<!-- Live Consistency Card -->
+<div class="p-3.5 rounded-lg bg-surface shadow-sm flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-state-success font-headline-emph text-headline-emph">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+<span>Kausalitäts-Wächter</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-low text-state-success font-label-default text-label-default">Synchron</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant">
+          Alle 24 Szenen von Maya Chen wurden semantisch abgeglichen: Keine Widersprüche bei Altersangaben, Augenfarbe oder Timeline-Vektoren festgestellt.
+        </p>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden mt-1">
+<div class="bg-state-success h-full w-full rounded-full"></div>
+</div>
+</div>
+<!-- Relational Graph Connections (Bespoke Network Card) -->
+<div class="p-4 rounded-xl bg-surface shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Kausales Beziehungsnetz</h4>
+<span class="material-symbols-outlined text-outline text-[16px]">hub</span>
+</div>
+<div class="flex flex-col gap-2.5">
+<!-- Rel: ARIA -->
+<div class="p-2.5 rounded bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface flex items-center justify-center text-area-chat font-bold text-xs">
+                AI
+              </div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">ARIA (Bord-KI)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Symbiotischer Dialog</span>
+</div>
+</div>
+<span class="font-label-default text-label-default text-cover-sepia font-semibold">94% Vertrauen</span>
+</div>
+<!-- Rel: Lin Chen -->
+<div class="p-2.5 rounded bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface flex items-center justify-center text-area-planning font-bold text-xs">
+                LC
+              </div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Lin Chen †</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Schuld / Trauer</span>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest font-meta-default text-[10px] text-on-surface-variant">Fluchtpunkt</span>
+</div>
+<!-- Rel: Director Kavic -->
+<div class="p-2.5 rounded bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface flex items-center justify-center text-state-danger font-bold text-xs">
+                DK
+              </div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Director Kavic</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Konsortium</span>
+</div>
+</div>
+<span class="font-label-default text-label-default text-state-danger font-semibold">Feindselig</span>
+</div>
+<!-- Rel: Forschungsstation 7 -->
+<div class="p-2.5 rounded bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface flex items-center justify-center text-area-knowledge font-bold text-xs">
+                FS
+              </div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Forschungsstation 7</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Schauplatz</span>
+</div>
+</div>
+<span class="font-meta-default text-meta-default text-on-surface-variant">Infiltration</span>
+</div>
+</div>
+</div>
+<!-- Verified Manuscript Citations -->
+<div class="p-4 rounded-xl bg-surface shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Manuskript-Evidenzen</h4>
+<span class="font-meta-default text-meta-default text-text-muted-light">Zitate</span>
+</div>
+<!-- Citation 1 -->
+<div class="p-2.5 rounded bg-surface-container-low flex flex-col gap-1.5 group cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[10px] text-cover-sepia">KAPITEL III • ABSATZ 14</span>
+<span class="material-symbols-outlined text-[14px] text-outline group-hover:text-primary">open_in_new</span>
+</div>
+<p class="font-prose-editorial text-[14px] italic text-on-surface-variant line-clamp-2">
+            „Sie schlief nicht mehr als drei Stunden in der Dekompressionskammer. Jeder Traum begann mit dem Ticken des alten Seismographen ihrer Schwester.“
+          </p>
+</div>
+<!-- Citation 2 -->
+<div class="p-2.5 rounded bg-surface-container-low flex flex-col gap-1.5 group cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[10px] text-cover-sepia">KAPITEL XI • ABSATZ 42</span>
+<span class="material-symbols-outlined text-[14px] text-outline group-hover:text-primary">open_in_new</span>
+</div>
+<p class="font-prose-editorial text-[14px] italic text-on-surface-variant line-clamp-2">
+            „Kavic sah sie an wie eine Gleichung mit zu vielen Unbekannten. Maya erwiderte den Blick mit der eisigen Ruhe eines Sensors im Vakuum.“
+          </p>
+</div>
+</div>
+<!-- AI Sparring Directives for Author -->
+<div class="p-4 rounded-xl bg-surface-container-high/50 flex flex-col gap-2.5">
+<div class="flex items-center gap-1.5 text-cover-sepia">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+<h4 class="font-headline-emph text-headline-emph text-on-surface">Autoren- &amp; KI-Sparring</h4>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant">
+          System-Prompt-Direktive für Schreibassistent bei Mayas Szenen:
+        </p>
+<div class="p-2.5 rounded bg-surface font-meta-default text-meta-default text-on-surface shadow-sm space-y-1">
+<p>• <strong>Tonfall:</strong> Analytisch, leicht erschöpft, präzise.</p>
+<p>• <strong>Kein Pathos:</strong> Zeige ihre Emotionen über Handgriffe an Apparaturen.</p>
+<p>• <strong>Lin-Trigger:</strong> Bei Erwähnung von Station 7 stockt ihr Redefluss messbar.</p>
+</div>
+<button class="w-full py-1.5 rounded bg-surface hover:bg-surface-container-highest text-on-surface font-label-default text-label-default shadow-sm transition-colors flex items-center justify-center gap-1.5 mt-1">
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">chat_bubble</span>
+<span>Dialog-Sparring mit Maya starten</span>
+</button>
+</div>
+</aside>
+</div>
+</div></main></div></body></html>

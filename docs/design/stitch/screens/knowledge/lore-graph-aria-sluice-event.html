@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"10.5rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Studio Atelier</span></div></div><div class="w-full px-space-xs my-space-xs"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><nav class="flex flex-col gap-1 w-full px-space-xs mt-1" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="material-symbols-outlined text-[20px] shrink-0">collections_bookmark</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Library</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-writing">edit_note</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Editor</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-knowledge">hub</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Knowledge</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="timeline" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-planning">schema</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Timeline</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-settings">settings</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Settings</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Author Tier</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Manuscripts</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Saved</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Search or prompt...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48,219 words</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>EN</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Notification Toast / Event Banner -->
+<div class="mx-space-lg mb-space-md mt-space-sm">
+<div class="flex items-center justify-between px-space-md py-space-sm bg-surface-container-high rounded-xl shadow-sm text-on-surface">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="flex h-2.5 w-2.5 relative shrink-0">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-state-warning opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-focus"></span>
+</span>
+<div class="flex items-center gap-2 min-w-0">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-amber-focus tracking-wider shrink-0">Live-Ereignis integriert</span>
+<span class="text-outline-variant font-meta-default text-meta-default shrink-0">•</span>
+<p class="font-body-default text-body-default text-on-surface truncate">
+            ARIA Telemetrie-Ereignis: <span class="font-headline-emph text-headline-emph">Primärschleuse auf Forschungsstation 7</span> von innen entriegelt (Kapitel 2, Szene 2). Lore-Graph &amp; Zeitlinie synchron.
+          </p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs shrink-0 ml-space-md">
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface text-primary font-label-default text-label-default shadow-sm hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-[15px] text-area-knowledge">verified</span>
+<span>Revisionsprotokoll (#REV-885)</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors" onclick="this.closest('.mx-space-lg').remove()" title="Schließen">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Primary Subtitle / Breadcrumb & View Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between px-space-lg mb-space-sm gap-space-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5 font-meta-default text-meta-default text-text-muted-light mb-0.5">
+<span>Atelier</span>
+<span class="text-outline-variant">/</span>
+<span>Dead Signal</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-label-default text-label-default">Lore &amp; Wissensnetzwerk</span>
+</div>
+<div class="flex items-center gap-3">
+<h1 class="font-headline-title text-headline-title text-on-surface tracking-tight">Kausaler Entitäten-Graph</h1>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-eyebrow-tracked text-eyebrow-tracked">Ontologie v2.5 • Live synchron</span>
+</div>
+</div>
+<!-- Action Bar & Global Controls -->
+<div class="flex items-center gap-2 flex-wrap">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5 shadow-sm">
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface font-label-default text-label-default text-primary shadow-sm font-semibold">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge">hub</span>
+<span>Beziehungsnetz</span>
+</button>
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-default text-label-default transition-colors">
+<span class="material-symbols-outlined text-[16px]">grid_view</span>
+<span>Matrix</span>
+</button>
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-default text-label-default transition-colors">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+<span>Hierarchie</span>
+</button>
+</div>
+<div class="h-5 w-px bg-surface-variant mx-1 hidden sm:block"></div>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container text-on-primary font-label-default text-label-default shadow-sm hover:bg-cover-sepia transition-all">
+<span class="material-symbols-outlined text-[17px]">add_circle</span>
+<span>Neue Entität</span>
+</button>
+</div>
+</div>
+<!-- Filter & Timeline Control Bar -->
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-space-lg mb-space-sm gap-2">
+<div class="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 text-text-muted-light font-label-default text-label-default">
+<button class="px-2.5 py-1 rounded bg-secondary-container text-on-secondary-container font-semibold shadow-sm shrink-0">Alle (20)</button>
+<button class="px-2.5 py-1 rounded bg-surface hover:bg-surface-container text-on-surface-variant shrink-0 transition-colors">Figuren (6)</button>
+<button class="px-2.5 py-1 rounded bg-surface hover:bg-surface-container text-on-surface-variant shrink-0 transition-colors">Orte &amp; Stationen (5)</button>
+<button class="px-2.5 py-1 rounded bg-surface hover:bg-surface-container text-on-surface-variant shrink-0 transition-colors">Artefakte &amp; Tech (4)</button>
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface hover:bg-surface-container text-on-surface-variant shrink-0 transition-colors">
+<span>Ereignisse (5)</span>
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning animate-pulse"></span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<!-- Search inside Graph -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2 text-[16px] text-text-muted-light">search</span>
+<input class="h-7 pl-7 pr-3 bg-surface rounded-lg font-meta-default text-meta-default text-on-surface shadow-sm focus:outline-none focus:ring-1 focus:ring-amber-focus w-48 sm:w-56" type="text" value="Forschungsstation 7"/>
+</div>
+<!-- Time Scope Dropdown -->
+<div class="flex items-center gap-1.5 h-7 px-2 bg-surface rounded-lg font-meta-default text-meta-default text-on-surface-variant shadow-sm cursor-pointer hover:text-on-surface">
+<span class="material-symbols-outlined text-[15px] text-area-planning">schedule</span>
+<span class="font-label-default text-label-default text-on-surface">Kapitel 2 (Nevada Echoes)</span>
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Workbench Main Area: Canvas + Floating Inspector -->
+<div class="flex-1 px-space-lg pb-space-lg flex flex-col xl:flex-row gap-space-md min-h-[720px]">
+<!-- LEFT: Interactive Visual Graph Canvas -->
+<div class="flex-1 bg-surface-container-lowest rounded-xl shadow-md relative overflow-hidden flex flex-col min-h-[580px] xl:min-h-auto">
+<!-- Ambient Parchment Network Background Grid & Canvas SVG -->
+<div class="absolute inset-0 bg-[radial-gradient(#e9e1d9_1px,transparent_1px)] [background-size:24px_24px] opacity-70"></div>
+<!-- Dynamic Atmospheric Glow behind Key Nodes -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-secondary-container/40 blur-3xl pointer-events-none"></div>
+<div class="absolute top-1/3 left-1/3 w-64 h-64 rounded-full bg-tertiary-fixed/30 blur-2xl pointer-events-none"></div>
+<!-- Top Overlay Floating Legend & Telemetry Status -->
+<div class="absolute top-space-md left-space-md z-20 flex flex-col gap-2">
+<div class="bg-surface/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-sm flex items-center gap-3">
+<div class="flex items-center gap-1.5 text-state-success font-meta-default text-meta-default font-semibold">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+<span>100% Kausal synchron</span>
+</div>
+<span class="text-outline-variant font-meta-default text-meta-default">|</span>
+<div class="flex items-center gap-3 text-text-muted-light font-meta-default text-meta-default">
+<span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-cover-sepia inline-block"></span> Protagonist</span>
+<span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-area-chat inline-block"></span> KI / Symbiose</span>
+<span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-area-knowledge inline-block"></span> Ort / Schauplatz</span>
+<span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-state-warning inline-block animate-pulse"></span> Neu-Ereignis</span>
+</div>
+</div>
+<!-- Live Observation Banner Card inside Canvas -->
+<div class="bg-surface-container-low/95 backdrop-blur-md p-2.5 rounded-xl shadow-sm max-w-sm">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-state-warning shrink-0 mt-0.5">sensors</span>
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary font-bold">ARIA Telemetrie-Abgleich</span>
+<p class="font-meta-default text-meta-default text-on-surface-variant leading-snug mt-0.5">
+                Neues Manuskript-Ereignis: ARIA meldet synchrone Schleusenöffnung auf Forschungsstation 7 (vor 2 Minuten, kein Archiv-Datensatz).
+              </p>
+<span class="font-meta-default text-meta-default text-state-success mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">check_circle</span> Keine Zeitschleifen-Paradoxa detektiert.
+              </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Left Floating Navigation Radar / Zoom Controls -->
+<div class="absolute bottom-space-md left-space-md z-20 flex flex-col gap-1.5 bg-surface/90 backdrop-blur-md p-1 rounded-xl shadow-md">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Zoom in">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Zoom out">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Fit to View">
+<span class="material-symbols-outlined text-[18px]">center_focus_strong</span>
+</button>
+<div class="w-full h-px bg-surface-variant my-0.5"></div>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Radar Map">
+<span class="material-symbols-outlined text-[18px]">radar</span>
+</button>
+</div>
+<!-- Interactive Network Topology Canvas (SVG Lines + DOM Interactive Nodes) -->
+<div class="relative w-full h-full min-h-[560px] flex items-center justify-center select-none overflow-hidden">
+<!-- SVG Relationship Edges / Paths -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="edgeTerracotta" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#743b1f" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#f8a884" stop-opacity="0.4"></stop>
+</lineargradient>
+<lineargradient id="edgePulsing" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#9A6100" stop-opacity="0.9"></stop>
+<stop offset="100%" stop-color="#743b1f" stop-opacity="0.7"></stop>
+</lineargradient>
+</defs>
+<!-- Maya Chen -> Station 7 -->
+<line opacity="0.6" stroke="#86736c" stroke-dasharray="4,4" stroke-width="2" x1="28%" x2="54%" y1="52%" y2="44%"></line>
+<!-- Maya Chen -> ARIA -->
+<line opacity="0.8" stroke="#743b1f" stroke-width="2.5" x1="28%" x2="34%" y1="52%" y2="28%"></line>
+<!-- ARIA -> Live Event (Primärschleuse) -->
+<line stroke="#9A6100" stroke-dasharray="2,2" stroke-width="2.5" x1="34%" x2="52%" y1="28%" y2="24%"></line>
+<!-- Station 7 -> Live Event (Primärschleuse) -->
+<line stroke="#9A6100" stroke-width="3" x1="54%" x2="52%" y1="44%" y2="24%"></line>
+<!-- Station 7 -> Lin Chen † (Subraum Harmonische) -->
+<line opacity="0.5" stroke="#86736c" stroke-width="1.8" x1="54%" x2="76%" y1="44%" y2="32%"></line>
+<!-- Lin Chen † -> Vault 3 / Resonanz -->
+<line stroke="#d8c2b9" stroke-dasharray="3,3" stroke-width="1.5" x1="76%" x2="82%" y1="32%" y2="60%"></line>
+<!-- Station 7 -> Horizon Station -->
+<line opacity="0.6" stroke="#86736c" stroke-width="2" x1="54%" x2="58%" y1="44%" y2="74%"></line>
+<!-- Horizon Station -> Director Kavic -->
+<line opacity="0.5" stroke="#86736c" stroke-width="1.8" x1="58%" x2="36%" y1="74%" y2="76%"></line>
+<!-- Maya Chen -> Director Kavic -->
+<line opacity="0.7" stroke="#ba1a1a" stroke-dasharray="4,4" stroke-width="1.5" x1="28%" x2="36%" y1="52%" y2="76%"></line>
+<!-- Station 7 -> Station 9 [Archiv-Alias] -->
+<line stroke="#d8c2b9" stroke-dasharray="6,4" stroke-width="1.5" x1="54%" x2="72%" y1="44%" y2="52%"></line>
+<!-- Animated pulse marker along Station 7 <-> Event -->
+<circle class="animate-ping" cx="53%" cy="34%" fill="#9A6100" opacity="0.8" r="4"></circle>
+</svg>
+<!-- Edge Labels (Floating HTML badges for ultra sharpness) -->
+<div class="absolute top-[37%] left-[39%] -translate-x-1/2 -translate-y-1/2 z-10 px-2 py-0.5 rounded bg-surface-container font-eyebrow-tracked text-[10px] text-area-chat shadow-xs">
+          Biometrische Warnung
+        </div>
+<div class="absolute top-[33%] left-[55%] -translate-x-1/2 -translate-y-1/2 z-10 px-2 py-0.5 rounded bg-surface-container-highest text-state-warning font-eyebrow-tracked text-[10px] shadow-xs flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning"></span>
+<span>Interne Entriegelung (-2 Min)</span>
+</div>
+<div class="absolute top-[48%] left-[40%] -translate-x-1/2 -translate-y-1/2 z-10 px-2 py-0.5 rounded bg-surface-container-low text-text-muted-light font-eyebrow-tracked text-[10px]">
+          Fokus-Zielort (POV)
+        </div>
+<!-- NODE 1: CENTER ACTIVE NODE -> Forschungsstation 7 -->
+<div class="absolute top-[44%] left-[54%] -translate-x-1/2 -translate-y-1/2 z-30 cursor-pointer group">
+<div class="relative flex flex-col items-center">
+<!-- Pulsing outer ring -->
+<div class="absolute -inset-3 rounded-2xl bg-primary/10 animate-pulse"></div>
+<div class="w-20 h-20 rounded-2xl bg-surface p-1 shadow-lg ring-2 ring-primary flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+<div class="w-10 h-10 rounded-xl bg-area-knowledge/15 text-area-knowledge flex items-center justify-center mb-1">
+<span class="material-symbols-outlined text-[24px]">location_on</span>
+</div>
+<span class="font-label-default text-label-default font-bold text-on-surface leading-tight px-1 truncate w-full">Station 7</span>
+</div>
+<!-- Node Pill -->
+<div class="mt-1.5 px-2 py-0.5 rounded-full bg-primary text-on-primary font-eyebrow-tracked text-[10px] tracking-wide shadow-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning animate-ping"></span>
+<span>Aktive Schleusenöffnung</span>
+</div>
+</div>
+</div>
+<!-- NODE 2: NEW EVENT NODE -> Primärschleusen-Entriegelung (Bernstein-Akzent) -->
+<div class="absolute top-[24%] left-[52%] -translate-x-1/2 -translate-y-1/2 z-30 cursor-pointer group">
+<div class="relative flex flex-col items-center">
+<span class="absolute -top-6 px-2 py-0.5 rounded bg-state-warning text-on-primary font-eyebrow-tracked text-[9px] uppercase tracking-widest shadow-sm">
+              NEUES EREIGNIS
+            </span>
+<div class="w-16 h-16 rounded-2xl bg-secondary-container p-1 shadow-md ring-2 ring-state-warning flex flex-col items-center justify-center text-center transition-transform group-hover:scale-110">
+<div class="w-8 h-8 rounded-lg bg-state-warning text-surface flex items-center justify-center mb-0.5">
+<span class="material-symbols-outlined text-[20px]">lock_open</span>
+</div>
+<span class="font-meta-default text-[11px] font-bold text-on-secondary-container leading-none truncate w-full px-1">Schleuse</span>
+</div>
+<span class="mt-1 px-1.5 py-0.5 bg-surface rounded text-state-warning font-meta-default text-[10px] shadow-xs">vor 2 Min</span>
+</div>
+</div>
+<!-- NODE 3: ARIA (KI) -->
+<div class="absolute top-[28%] left-[34%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group">
+<div class="flex flex-col items-center">
+<div class="w-15 h-15 rounded-2xl bg-surface p-1 shadow-md ring-1 ring-area-chat/50 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+<div class="w-8 h-8 rounded-lg bg-area-chat/15 text-area-chat flex items-center justify-center mb-0.5">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+</div>
+<span class="font-meta-default text-meta-default font-bold text-on-surface">ARIA (KI)</span>
+</div>
+<span class="mt-1 px-1.5 py-0.5 rounded bg-surface-container text-area-chat font-eyebrow-tracked text-[10px]">Symbiotisch</span>
+</div>
+</div>
+<!-- NODE 4: Dr. Maya Chen (Protagonistin) -->
+<div class="absolute top-[52%] left-[28%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group">
+<div class="flex flex-col items-center">
+<div class="w-16 h-16 rounded-2xl bg-surface p-1 shadow-md ring-1 ring-cover-sepia/60 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+<div class="w-8 h-8 rounded-lg bg-cover-sepia text-on-primary flex items-center justify-center mb-0.5">
+<span class="material-symbols-outlined text-[20px]">person</span>
+</div>
+<span class="font-meta-default text-meta-default font-bold text-on-surface">Dr. Chen</span>
+</div>
+<span class="mt-1 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-eyebrow-tracked text-[10px]">POV Primär</span>
+</div>
+</div>
+<!-- NODE 5: Lin Chen † -->
+<div class="absolute top-[32%] left-[76%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group opacity-90">
+<div class="flex flex-col items-center">
+<div class="w-14 h-14 rounded-2xl bg-surface-container-high p-1 shadow-sm ring-1 ring-outline-variant flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+<div class="w-7 h-7 rounded-lg bg-surface-variant text-on-surface-variant flex items-center justify-center mb-0.5">
+<span class="material-symbols-outlined text-[17px]">hourglass_empty</span>
+</div>
+<span class="font-meta-default text-meta-default font-medium text-on-surface">Lin Chen †</span>
+</div>
+<span class="mt-1 px-1.5 py-0.5 rounded bg-surface text-text-muted-light font-eyebrow-tracked text-[9px]">Archiv-Schlüssel</span>
+</div>
+</div>
+<!-- NODE 6: Horizon Station -->
+<div class="absolute top-[74%] left-[58%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group">
+<div class="flex flex-col items-center">
+<div class="w-14 h-14 rounded-2xl bg-surface p-1 shadow-sm ring-1 ring-outline-variant flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+<div class="w-7 h-7 rounded-lg bg-area-knowledge/15 text-area-knowledge flex items-center justify-center mb-0.5">
+<span class="material-symbols-outlined text-[17px]">apartment</span>
+</div>
+<span class="font-meta-default text-meta-default font-medium text-on-surface">Horizon St.</span>
+</div>
+<span class="mt-1 px-1.5 py-0.5 rounded bg-surface text-text-muted-light font-eyebrow-tracked text-[9px]">Lagrange L2</span>
+</div>
+</div>
+<!-- NODE 7: Director Kavic -->
+<div class="absolute top-[76%] left-[36%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group">
+<div class="flex flex-col items-center">
+<div class="w-14 h-14 rounded-2xl bg-surface p-1 shadow-sm ring-1 ring-state-danger/40 flex flex-col items-center justify-center text-center transition-transform group-hover:scale-105">
+<div class="w-7 h-7 rounded-lg bg-error-container text-error flex items-center justify-center mb-0.5">
+<span class="material-symbols-outlined text-[17px]">shield</span>
+</div>
+<span class="font-meta-default text-meta-default font-medium text-on-surface">Dir. Kavic</span>
+</div>
+<span class="mt-1 px-1.5 py-0.5 rounded bg-surface text-state-danger font-eyebrow-tracked text-[9px]">Zensur-Akte</span>
+</div>
+</div>
+<!-- NODE 8: Station 9 (Archiv-Alias) -->
+<div class="absolute top-[52%] left-[72%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group opacity-75">
+<div class="flex flex-col items-center">
+<div class="w-13 h-13 rounded-2xl bg-surface-container-low p-1 shadow-xs border border-dashed border-outline-variant flex flex-col items-center justify-center text-center">
+<span class="font-meta-default text-[11px] font-medium text-text-muted-light">Station 9</span>
+</div>
+<span class="mt-1 font-eyebrow-tracked text-[9px] text-text-muted-light">Alias / Nevada</span>
+</div>
+</div>
+</div>
+<!-- Bottom Canvas Quick Metrics Footer -->
+<div class="px-space-md py-2 bg-surface/90 backdrop-blur-sm border-t border-surface-variant flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<div class="flex items-center gap-3">
+<span>Kausale Dichte: <strong class="text-on-surface font-semibold">1.45 Rel./Entität</strong></span>
+<span>•</span>
+<span>Graph-Engine: <strong class="text-on-surface font-semibold">Narrare Neural v4.2</strong></span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-state-success"></span>
+<span>Berechnung abgeschlossen (42ms)</span>
+</div>
+</div>
+</div>
+<!-- RIGHT: Inspector Dock / Side Drawer (Forschungsstation 7 & Telemetrie-Ereignis) -->
+<div class="w-full xl:w-[380px] bg-surface rounded-xl shadow-md flex flex-col overflow-hidden shrink-0">
+<!-- Drawer Header with Icon, Entity Title & Fast Actions -->
+<div class="p-space-md bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-lg bg-cover-sepia text-on-primary flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[18px]">domain</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Schauplatz / Kausaler Fokus</span>
+<h2 class="font-headline-emph text-headline-emph text-on-surface font-bold">Forschungsstation 7</h2>
+</div>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="p-1.5 rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors" title="Lesezeichen">
+<span class="material-symbols-outlined text-[18px]">bookmark_border</span>
+</button>
+<button class="p-1.5 rounded-lg hover:bg-surface-container hover:text-on-surface transition-colors" title="Bearbeiten">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</div>
+</div>
+<div class="flex items-center justify-between font-meta-default text-meta-default text-text-muted-light pt-1">
+<span class="font-mono text-outline">ID: #LOC-07-NEV</span>
+<span class="text-state-success flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>Kausalität Verifiziert</span>
+</span>
+</div>
+</div>
+<!-- Drawer Scrollable Content -->
+<div class="flex-1 p-space-md overflow-y-auto space-y-space-md">
+<!-- Live Revision Protocol Box (#REV-885) -->
+<div class="p-3 bg-secondary-container/40 rounded-xl space-y-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary font-bold">Prüfprotokoll #REV-885</span>
+<span class="px-1.5 py-0.2 rounded bg-surface font-meta-default text-[10px] text-state-success font-semibold">14:02 Synchron</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Automatischer Konsistenzabgleich nach ARIAs Erkennung im Manuskript.
+          </p>
+<div class="space-y-1.5 pt-1 text-on-surface-variant font-meta-default text-meta-default">
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-state-success shrink-0 mt-0.5">verified</span>
+<span><strong>Autoritative Quelle:</strong> Kapitel 2, Szene 2 (Telemetrie-Eingang ARIA).</span>
+</div>
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-state-warning shrink-0 mt-0.5">bolt</span>
+<span><strong>Neues Ereignis:</strong> »Primärschleuse von innen entriegelt« mit Zeitstempel synchronisiert.</span>
+</div>
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-state-success shrink-0 mt-0.5">verified</span>
+<span><strong>Archiv-Konsistenz:</strong> Bestätigt, dass kein Konflikt mit Lins früherem Archivprotokoll vorliegt.</span>
+</div>
+</div>
+</div>
+<!-- Lore Facts & Core Attributes -->
+<div class="space-y-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Kern-Attribute &amp; Lore</span>
+<div class="grid grid-cols-2 gap-2 font-meta-default text-meta-default">
+<div class="p-2.5 rounded-lg bg-surface-container-low">
+<span class="text-text-muted-light block text-[11px]">Sektor &amp; Lage</span>
+<span class="text-on-surface font-semibold mt-0.5 block truncate">Nevada Deep-Array 7-B</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low">
+<span class="text-text-muted-light block text-[11px]">Status vor Ereignis</span>
+<span class="text-on-surface font-semibold mt-0.5 block truncate">Versiegelt (2284)</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low col-span-2">
+<span class="text-text-muted-light block text-[11px]">Signal-Status</span>
+<span class="text-state-warning font-semibold mt-0.5 block flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning animate-ping"></span>
+                Synchrone Subraum-Trägerwelle aktiv (14.2008 Hz)
+              </span>
+</div>
+</div>
+</div>
+<!-- Kausal-Relationen Accordion / List -->
+<div class="space-y-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Aktive Kausal-Relationen (5)</span>
+<span class="font-meta-default text-meta-default text-primary cursor-pointer hover:underline">Alle anzeigen</span>
+</div>
+<div class="space-y-1.5">
+<!-- Rel 1 -->
+<div class="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2 min-w-0">
+<span class="w-2 h-2 rounded-full bg-area-chat"></span>
+<span class="font-label-default text-label-default truncate">ARIA (KI)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">→ Detektierte Öffnung</span>
+</div>
+<span class="material-symbols-outlined text-[15px] text-state-success shrink-0">check</span>
+</div>
+<!-- Rel 2 -->
+<div class="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2 min-w-0">
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+<span class="font-label-default text-label-default truncate">Dr. Maya Chen</span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">→ Zielort &amp; Suche</span>
+</div>
+<span class="material-symbols-outlined text-[15px] text-state-success shrink-0">check</span>
+</div>
+<!-- Rel 3 -->
+<div class="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2 min-w-0">
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+<span class="font-label-default text-label-default truncate">Lin Chen †</span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">→ Urheber Archivschlüssel</span>
+</div>
+<span class="material-symbols-outlined text-[15px] text-state-success shrink-0">check</span>
+</div>
+<!-- Rel 4 -->
+<div class="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2 min-w-0">
+<span class="w-2 h-2 rounded-full bg-area-knowledge"></span>
+<span class="font-label-default text-label-default truncate">Vault 3 Resonanz</span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">→ Aktivitätssprung</span>
+</div>
+<span class="material-symbols-outlined text-[15px] text-state-success shrink-0">check</span>
+</div>
+</div>
+</div>
+<!-- Manuscript Evidence / Excerpts (Manuskript-Belege) -->
+<div class="space-y-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Manuskript-Belege (4 Fundstellen)</span>
+<span class="px-1.5 py-0.5 rounded bg-primary-fixed text-on-primary-fixed font-eyebrow-tracked text-[10px]">1 Neu</span>
+</div>
+<!-- Active Quote Card: Kap 2 Szene 2 -->
+<div class="p-3 rounded-xl bg-surface-container-low space-y-1.5 border-l-2 border-primary">
+<div class="flex items-center justify-between font-meta-default text-meta-default text-primary">
+<span class="font-semibold">Kapitel 2 • Zeile 61–64</span>
+<span class="text-text-muted-light">Kanonisch aktiv</span>
+</div>
+<p class="font-prose-editorial text-[15px] leading-relaxed text-on-surface italic">
+              „...Jemand hat vor zwei Minuten die Primärschleuse auf Forschungsstation 7 von innen entriegelt.“
+            </p>
+<span class="font-meta-default text-[11px] text-text-muted-light block pt-0.5">
+              Gesprochen durch: ARIA • POV: Dr. Maya Chen
+            </span>
+</div>
+<!-- Secondary Quote Card -->
+<div class="p-2.5 rounded-lg bg-surface-container-lowest space-y-1">
+<div class="flex items-center justify-between font-meta-default text-meta-default text-text-muted-light">
+<span>Kapitel 2 • Zeile 52</span>
+<span>Referenz</span>
+</div>
+<p class="font-prose-editorial text-[14px] leading-snug text-on-surface-variant italic truncate">
+              „...unverkennbare tonale Modulation von Forschungsstation 7...“
+            </p>
+</div>
+</div>
+</div>
+<!-- Inspector Footer Actions -->
+<div class="p-space-md bg-surface-container-low flex items-center justify-between gap-2">
+<button class="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-surface text-on-surface hover:bg-surface-container font-label-default text-label-default shadow-xs transition-colors">
+<span class="material-symbols-outlined text-[16px] text-primary">description</span>
+<span>Dossier drucken</span>
+</button>
+<button class="flex items-center justify-center p-2 rounded-lg bg-surface text-on-surface hover:bg-surface-container transition-colors" title="GraphML / JSON Export">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="flex items-center justify-center p-2 rounded-lg bg-surface text-on-surface hover:bg-surface-container transition-colors" title="Vollbild-Fokus">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Global Status & Telemetry Strip -->
+<div class="mx-space-lg mb-space-md p-space-sm bg-surface rounded-xl shadow-xs flex flex-col sm:flex-row items-center justify-between gap-2 text-text-muted-light font-meta-default text-meta-default">
+<div class="flex items-center gap-space-md flex-wrap">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge">bubble_chart</span>
+<span><strong>20</strong> Entitäten erfasst</span>
+</div>
+<span>•</span>
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-primary">share</span>
+<span><strong>29</strong> Kausale Relationen</span>
+</div>
+<span>•</span>
+<div class="flex items-center gap-1 text-state-success font-semibold">
+<span class="material-symbols-outlined text-[15px]">verified</span>
+<span>0 Konsistenz-Konflikte (100% konsistent)</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-text-muted-light">Letztes Manuskript-Update:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-label-default text-label-default text-on-surface">Heute, 14:04 Uhr (Kapitel 2)</span>
+</div>
+</div>
+</div></main></div></body></html>

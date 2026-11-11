@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"10.5rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Studio Atelier</span></div></div><div class="w-full px-space-xs my-space-xs"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><nav class="flex flex-col gap-1 w-full px-space-xs mt-1" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="material-symbols-outlined text-[20px] shrink-0">collections_bookmark</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Library</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-writing">edit_note</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Editor</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-knowledge">hub</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Knowledge</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="timeline" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-planning">schema</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Timeline</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-settings">settings</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Settings</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Author Tier</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Manuscripts</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Saved</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Search or prompt...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48,219 words</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>EN</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full text-on-surface">
+<!-- Sub-Header / Breadcrumb & Viewport Bar -->
+<header class="w-full bg-surface-container-low px-space-lg py-2.5 shadow-sm flex flex-wrap items-center justify-between gap-y-3">
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant">
+<span class="hover:text-primary cursor-pointer transition-colors font-medium">Atelier</span>
+<span class="text-outline-variant">›</span>
+<span class="hover:text-primary cursor-pointer transition-colors font-medium">Dead Signal</span>
+<span class="text-outline-variant">›</span>
+<span class="text-on-surface-variant font-medium">Lore &amp; Wissensnetzwerk</span>
+<span class="text-outline-variant">›</span>
+<span class="font-headline-emph text-headline-emph text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge">hub</span>
+          Kausaler Entitäten-Graph
+        </span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider">
+        Ontologie v2.4
+      </span>
+</div>
+<!-- Quick Graph Presets & Time Mode -->
+<div class="flex items-center gap-2">
+<div class="flex items-center bg-surface-container rounded-lg p-0.5 shadow-sm">
+<button class="px-2.5 py-1 rounded bg-bg-card-light text-primary font-label-default text-label-default shadow-xs flex items-center gap-1" id="btn-view-graph">
+<span class="material-symbols-outlined text-[16px]">bubble_chart</span>
+<span>Beziehungsnetz</span>
+</button>
+<button class="px-2.5 py-1 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors flex items-center gap-1" id="btn-view-matrix">
+<span class="material-symbols-outlined text-[16px]">grid_on</span>
+<span>Matrix</span>
+</button>
+<button class="px-2.5 py-1 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default transition-colors flex items-center gap-1" id="btn-view-tree">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+<span>Hierarchie</span>
+</button>
+</div>
+<div class="h-4 w-px bg-rule-light mx-1"></div>
+<button class="h-7 px-2.5 rounded-lg bg-primary text-on-primary hover:bg-cover-sepia font-label-default text-label-default shadow-xs flex items-center gap-1 transition-all">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>Neue Entität</span>
+</button>
+</div>
+</header>
+<!-- Interactive Control Strip -->
+<section class="w-full bg-bg-panel-light px-space-lg py-2.5 shadow-xs flex flex-wrap items-center justify-between gap-3">
+<!-- Filter Chips / Dimensionen -->
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light mr-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">filter_list</span> Dimensionen:
+      </span>
+<button class="filter-chip active flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cover-sepia text-on-primary font-label-default text-label-default transition-all shadow-xs" data-filter="all">
+<span>Alle Knoten</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface/20 text-on-primary font-meta-default text-meta-default">18</span>
+</button>
+<button class="filter-chip flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default transition-all" data-filter="char">
+<span class="w-2 h-2 rounded-full bg-area-writing"></span>
+<span>Figuren &amp; Crew</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">6</span>
+</button>
+<button class="filter-chip flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default transition-all" data-filter="place">
+<span class="w-2 h-2 rounded-full bg-area-chat"></span>
+<span>Orte &amp; Stationen</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">5</span>
+</button>
+<button class="filter-chip flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default transition-all" data-filter="artifact">
+<span class="w-2 h-2 rounded-full bg-area-knowledge"></span>
+<span>Artefakte &amp; Tech</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">4</span>
+</button>
+<button class="filter-chip flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default transition-all" data-filter="event">
+<span class="w-2 h-2 rounded-full bg-area-planning"></span>
+<span>Ereignisse &amp; Brüche</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">3</span>
+</button>
+</div>
+<!-- Search & Scrubber -->
+<div class="flex items-center gap-3">
+<!-- Search Input -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined text-[16px] text-outline absolute left-2.5 pointer-events-none">search</span>
+<input class="w-56 h-7 pl-8 pr-2 rounded-lg bg-surface-container-low text-on-surface placeholder:text-text-muted-light font-label-default text-label-default focus:bg-bg-card-light focus:shadow-xs outline-none transition-all" placeholder="Entität, Relation filtern..." type="text"/>
+</div>
+<!-- Time Scrubber / Kapitel Filter -->
+<div class="flex items-center gap-2 pl-3 bg-surface-container-low px-2 py-1 rounded-lg">
+<span class="material-symbols-outlined text-[16px] text-area-planning">history_toggle_off</span>
+<div class="flex flex-col">
+<div class="flex items-center justify-between text-[10px] font-eyebrow-tracked uppercase text-text-muted-light leading-none mb-0.5">
+<span>Kapitel-Horizont</span>
+<span class="text-primary font-bold">Kapitel 2 (Nevada Echoes)</span>
+</div>
+<input class="w-36 h-1 bg-outline-variant rounded-lg appearance-none cursor-pointer accent-primary" max="14" min="1" type="range" value="2"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Workspace Canvas & Inspector Split Layout -->
+<div class="flex flex-col lg:flex-row w-full relative min-h-[calc(100vh-140px)]">
+<!-- Graph Canvas Stage (Fluid Master Area) -->
+<main class="flex-1 relative bg-[#FAF7F1] overflow-hidden select-none flex flex-col">
+<!-- Subdued Dot-Grid Background Canvas -->
+<div class="absolute inset-0 pointer-events-none opacity-40" style="background-image: radial-gradient(#86736C 1px, transparent 1px); background-size: 24px 24px;"></div>
+<!-- Canvas HUD: Zoom & Navigation Tools -->
+<aside class="absolute top-4 left-4 z-20 flex flex-col gap-1 bg-bg-panel-light/95 backdrop-blur-md p-1 rounded-xl shadow-md">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" id="btn-zoom-in" title="Vergrößern">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" id="btn-zoom-out" title="Verkleinern">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<div class="w-full h-px bg-rule-light my-0.5"></div>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" id="btn-zoom-reset" title="100% Reset">
+<span class="material-symbols-outlined text-[18px]">restart_alt</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" id="btn-center-focus" title="Auf Auswahl zentrieren">
+<span class="material-symbols-outlined text-[18px]">filter_center_focus</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-secondary-container/50 transition-colors" id="btn-organize" title="Knoten auto-organisieren">
+<span class="material-symbols-outlined text-[18px]">grain</span>
+</button>
+</aside>
+<!-- Active Warning HUD / Conflict Banner Floating -->
+<div class="absolute top-4 right-4 z-20 max-w-sm bg-bg-card-light/95 backdrop-blur-md p-3 rounded-xl shadow-md flex items-start gap-2.5">
+<div class="w-7 h-7 rounded-lg bg-error-container text-state-danger flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-danger tracking-wider">Kausalitäts-Konflikt #01</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kapitel 1 vs 2</span>
+</div>
+<p class="font-label-default text-label-default text-on-surface mt-0.5 font-medium leading-snug">
+            Forschungsstation: 7 gegen 9
+          </p>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1">
+            Sterbeort von Mayas Schwester divergiert zwischen Protokoll Nevadas und dem Funkspruch an Bord der Horizon.
+          </p>
+<div class="mt-2 flex items-center gap-2">
+<button class="px-2 py-0.5 rounded bg-primary text-on-primary font-label-default text-label-default hover:bg-cover-sepia shadow-xs transition-colors">
+              Befund lösen
+            </button>
+<button class="px-2 py-0.5 rounded text-text-muted-light hover:text-on-surface font-label-default text-label-default">
+              Details
+            </button>
+</div>
+</div>
+</div>
+<!-- Vector Canvas Area (Interactive SVG Diagram + Node DOM Overlay) -->
+<div class="relative w-full h-full min-h-[620px] cursor-grab active:cursor-grabbing overflow-hidden" id="graph-viewport">
+<!-- SVG Edges & Connectors -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" id="graph-edges" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="edge-primary-grad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#58250b" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#3A637B" stop-opacity="0.8"></stop>
+</lineargradient>
+<lineargradient id="edge-conflict-grad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#AC3031"></stop>
+<stop offset="100%" stop-color="#9A6100"></stop>
+</lineargradient>
+<marker id="arrow" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="28" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#86736c"></path>
+</marker>
+<marker id="arrow-active" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="28" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#58250b"></path>
+</marker>
+<marker id="arrow-conflict" markerheight="7" markerwidth="7" orient="auto-start-reverse" refx="24" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#AC3031"></path>
+</marker>
+</defs>
+<!-- Edge: Maya -> ARIA (Symbiotisch) -->
+<path d="M 380 340 Q 480 230 580 180" fill="none" marker-end="url(#arrow-active)" stroke="#58250b" stroke-dasharray="6 4" stroke-width="2.5"></path>
+<!-- Edge: Maya -> Horizon Station (Aufenthaltsort) -->
+<path d="M 380 340 Q 510 390 640 430" fill="none" marker-end="url(#arrow)" stroke="#86736c" stroke-width="2"></path>
+<!-- Edge: Maya -> Director Kavic (Misstrauen / Hierarchie) -->
+<path d="M 380 340 Q 280 220 200 160" fill="none" marker-end="url(#arrow)" stroke="#74584e" stroke-dasharray="4 4" stroke-width="1.8"></path>
+<!-- Edge: Maya -> Station 7 (Vergangenheit / Verlust) -->
+<path d="M 380 340 Q 260 410 190 470" fill="none" marker-end="url(#arrow)" stroke="#86736c" stroke-width="1.8"></path>
+<!-- Edge: Maya -> Resonanz-Transmitter -->
+<path d="M 380 340 Q 370 480 380 560" fill="none" marker-end="url(#arrow)" stroke="#606127" stroke-width="1.8"></path>
+<!-- Edge: Station 7 <-> Station 9 (KONFLIKT / WIDERSPRUCH) -->
+<path d="M 190 470 C 140 520 140 600 220 620" fill="none" marker-end="url(#arrow-conflict)" stroke="#AC3031" stroke-dasharray="5 3" stroke-width="2.2"></path>
+<!-- Edge: ARIA -> Subraum Matrix -->
+<path d="M 580 180 Q 720 160 800 190" fill="none" marker-end="url(#arrow)" stroke="#d8c2b9" stroke-width="1.5"></path>
+<!-- Edge: Horizon Station -> Der Grosse Bruch 2281 -->
+<path d="M 640 430 Q 760 420 820 480" fill="none" marker-end="url(#arrow)" stroke="#834D7E" stroke-dasharray="3 3" stroke-width="1.5"></path>
+<!-- Edge Labels Placed on Paths -->
+<!-- Maya -> ARIA -->
+<g transform="translate(485, 240) rotate(-26)">
+<rect fill="#FAF2EA" height="20" opacity="0.95" rx="4" width="150" x="-75" y="-10"></rect>
+<text fill="#58250b" font-family="'Plus Jakarta Sans'" font-size="10.5" font-weight="600" text-anchor="middle" x="0" y="3">Symbiotische Co-Pilotin</text>
+</g>
+<!-- Maya -> Horizon Station -->
+<g transform="translate(515, 395) rotate(16)">
+<rect fill="#FAF2EA" height="20" opacity="0.95" rx="4" width="160" x="-80" y="-10"></rect>
+<text fill="#53433d" font-family="'Plus Jakarta Sans'" font-size="10.5" font-weight="500" text-anchor="middle" x="0" y="3">Aktiver Dienstort (L2 Orbit)</text>
+</g>
+<!-- Maya -> Kavic -->
+<g transform="translate(285, 235) rotate(32)">
+<rect fill="#FAF2EA" height="20" opacity="0.95" rx="4" width="140" x="-70" y="-10"></rect>
+<text fill="#74584e" font-family="'Plus Jakarta Sans'" font-size="10.5" font-weight="500" text-anchor="middle" x="0" y="3">Verdeckter Auftrag / Zensur</text>
+</g>
+<!-- Station 7 -> Station 9 (Conflict Label) -->
+<g transform="translate(135, 565) rotate(70)">
+<rect fill="#FFDAD6" height="22" rx="4" width="130" x="-65" y="-11"></rect>
+<text fill="#AC3031" font-family="'Plus Jakarta Sans'" font-size="11" font-weight="700" text-anchor="middle" x="0" y="4">⚡ Widerspruch (7 vs 9)</text>
+</g>
+</svg>
+<!-- Node: Dr. Maya Chen (CENTRAL HERO NODE) -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-maya" style="left: 380px; top: 340px;">
+<!-- Ambient Focus Glow -->
+<div class="absolute -inset-4 rounded-full bg-cover-sepia/20 blur-md pointer-events-none animate-pulse"></div>
+<div class="relative bg-bg-card-light px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 bg-gradient-to-r from-bg-card-light via-surface-container-low to-secondary-container/20">
+<div class="w-12 h-12 rounded-xl bg-cover-sepia text-on-primary flex items-center justify-center shrink-0 shadow-md">
+<span class="font-prose-heading-1 text-prose-heading-2 italic">M</span>
+</div>
+<div class="pr-2">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.2 rounded bg-primary-container text-on-primary font-eyebrow-tracked text-[10px] uppercase">Protagonistin</span>
+<span class="w-2 h-2 rounded-full bg-state-success"></span>
+</div>
+<h2 class="font-headline-emph text-headline-emph text-primary font-bold tracking-tight">Dr. Maya Chen</h2>
+<p class="font-meta-default text-meta-default text-text-muted-light">Chefingeneurin • Deep Signal 4</p>
+</div>
+<div class="w-6 h-6 rounded-full bg-secondary-container text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[15px]">radio_button_checked</span>
+</div>
+</div>
+</div>
+<!-- Node: ARIA (Bord-KI) -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-aria" style="left: 580px; top: 180px;">
+<div class="bg-bg-card-light px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-2.5 hover:shadow-lg transition-all">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+</div>
+<div>
+<div class="flex items-center gap-1">
+<span class="font-eyebrow-tracked text-[10px] text-area-writing uppercase font-bold">Synthetisch</span>
+</div>
+<h3 class="font-label-default text-label-default font-semibold text-on-surface">ARIA</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Autonome Schiffsintelligenz</p>
+</div>
+</div>
+</div>
+<!-- Node: Horizon Station -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-horizon" style="left: 640px; top: 430px;">
+<div class="bg-bg-card-light px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-2.5 hover:shadow-lg transition-all">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-area-chat flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">satellite_alt</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-area-chat uppercase font-bold">Ort • Orbital</span>
+<h3 class="font-label-default text-label-default font-semibold text-on-surface">Horizon Station</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Lagrange-Punkt L2</p>
+</div>
+</div>
+</div>
+<!-- Node: Director Kavic -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-kavic" style="left: 200px; top: 160px;">
+<div class="bg-bg-card-light px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-2.5 hover:shadow-lg transition-all">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">security</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-secondary uppercase font-bold">Antagonist • Rat</span>
+<h3 class="font-label-default text-label-default font-semibold text-on-surface">Director Kavic</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Flotten-Kommando Erde</p>
+</div>
+</div>
+</div>
+<!-- Node: Station 7 (Nevada) -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-station7" style="left: 190px; top: 470px;">
+<div class="bg-bg-card-light px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-2.5 hover:shadow-lg transition-all">
+<div class="w-9 h-9 rounded-lg bg-error-container text-state-danger flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">domain_disabled</span>
+</div>
+<div>
+<div class="flex items-center gap-1">
+<span class="font-eyebrow-tracked text-[10px] text-state-danger uppercase font-bold">Konfliktpunkt</span>
+<span class="w-1.5 h-1.5 rounded-full bg-state-danger animate-ping"></span>
+</div>
+<h3 class="font-label-default text-label-default font-semibold text-on-surface">Station 7 (Nevada)</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Laut Funkspruch Kap. 1</p>
+</div>
+</div>
+</div>
+<!-- Node: Station 9 (Nevada) - Konfliktgegenpart -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-station9" style="left: 220px; top: 620px;">
+<div class="bg-bg-card-light px-3 py-2 rounded-xl shadow-sm flex items-center gap-2 hover:shadow-md transition-all">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-outline flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-[9px] text-text-muted-light uppercase font-bold">Archiv-Eintrag</span>
+<h4 class="font-label-default text-label-default font-medium text-on-surface">Station 9 (Nevada)</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light">Laut Akte Kap. 3</p>
+</div>
+</div>
+</div>
+<!-- Node: Resonanz-Transmitter -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105" id="node-transmitter" style="left: 380px; top: 560px;">
+<div class="bg-bg-card-light px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-2.5 hover:shadow-lg transition-all">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-area-knowledge flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">cell_tower</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-area-knowledge uppercase font-bold">Artefakt / Tech</span>
+<h3 class="font-label-default text-label-default font-semibold text-on-surface">Resonanz-Transmitter</h3>
+<p class="font-meta-default text-meta-default text-text-muted-light">Frequenz 14.2 Hz • Mayas Bau</p>
+</div>
+</div>
+</div>
+<!-- Node: Subraum Matrix -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105 opacity-80" id="node-matrix" style="left: 800px; top: 190px;">
+<div class="bg-bg-card-light px-3 py-2 rounded-xl shadow-xs flex items-center gap-2 hover:shadow-md transition-all">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high text-area-chat flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">memory</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-[9px] text-text-muted-light uppercase font-bold">Quantenfeld</span>
+<h4 class="font-label-default text-label-default font-medium text-on-surface">Subraum-Matrix</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light">Entschlüsselt ARIA</p>
+</div>
+</div>
+</div>
+<!-- Node: Der Grosse Bruch 2281 -->
+<div class="absolute z-10 -translate-x-1/2 -translate-y-1/2 cursor-pointer group transition-transform duration-200 hover:scale-105 opacity-80" id="node-break" style="left: 820px; top: 480px;">
+<div class="bg-bg-card-light px-3 py-2 rounded-xl shadow-xs flex items-center gap-2 hover:shadow-md transition-all">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high text-area-planning flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">event_repeat</span>
+</div>
+<div>
+<span class="font-eyebrow-tracked text-[9px] text-area-planning uppercase font-bold">Historisches Ereignis</span>
+<h4 class="font-label-default text-label-default font-medium text-on-surface">Der Große Bruch 2281</h4>
+<p class="font-meta-default text-meta-default text-text-muted-light">Verlust der Erdkolonie</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Canvas Legend Bottom Overlay -->
+<footer class="absolute bottom-3 left-4 z-20 flex items-center gap-4 bg-bg-panel-light/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-xs font-meta-default text-meta-default text-text-muted-light">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cover-sepia"></span> Primärfigur</span>
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-area-chat"></span> Schauplatz</span>
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-area-knowledge"></span> Technologie</span>
+<span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-state-danger"></span> Kausaler Widerspruch</span>
+</footer>
+</main>
+<!-- Right Inspector Dock: Detailed Lore Sheet for Selected Node -->
+<aside class="w-full lg:w-[360px] bg-bg-panel-light shadow-[-1px_0_12px_rgba(0,0,0,0.03)] flex flex-col justify-between shrink-0 overflow-y-auto max-h-[calc(100vh-140px)]" id="inspector-dock">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Selected Node Header Block -->
+<div>
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-wider">
+              Aktive Entität
+            </span>
+<div class="flex items-center gap-1">
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors" title="Lesezeichen">
+<span class="material-symbols-outlined text-[17px]">bookmark</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors" title="Entität teilen">
+<span class="material-symbols-outlined text-[17px]">share</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors" title="Schließen">
+<span class="material-symbols-outlined text-[17px]">close</span>
+</button>
+</div>
+</div>
+<div class="flex items-start gap-3 mt-3">
+<div class="w-12 h-12 rounded-xl bg-cover-sepia text-on-primary flex items-center justify-center shrink-0 shadow-sm">
+<span class="font-prose-heading-1 text-prose-heading-1 italic">M</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-1.5 flex-wrap">
+<h1 class="font-headline-title text-headline-title text-on-surface font-bold truncate">Dr. Maya Chen</h1>
+<span class="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container font-eyebrow-tracked text-[10px] uppercase font-bold">
+                  Protagonistin
+                </span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">
+                Menschlich • Weiblich • Alter: 34 Standardjahre
+              </p>
+</div>
+</div>
+</div>
+<!-- Conflict Warning Card (Specific to Maya's Lore Path) -->
+<article class="bg-error-container/40 p-3 rounded-xl flex flex-col gap-2">
+<div class="flex items-center gap-1.5 text-state-danger font-headline-emph text-[13px] font-bold">
+<span class="material-symbols-outlined text-[16px]">priority_high</span>
+<span>1 Unaufgelöster Kausal-Befund</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface">
+            Mayas Schwester starb laut Kapiteldialog 1 in <strong class="text-state-danger">Station 7</strong>, während die Dienstakte in Kapitel 2 <strong class="text-state-danger">Station 9</strong> angibt.
+          </p>
+<div class="flex items-center gap-2 pt-1">
+<button class="px-2 py-1 rounded bg-cover-sepia text-on-primary font-label-default text-label-default hover:bg-primary transition-all text-left">
+              Übernehmen: Station 7
+            </button>
+<button class="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-container text-on-surface font-label-default text-label-default transition-all">
+              Verwerfen
+            </button>
+</div>
+</article>
+<!-- Core Dossier Attributes Grid -->
+<section class="flex flex-col gap-2">
+<h2 class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-wider">
+            Stammdaten &amp; Zustand
+          </h2>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light block">Lebensstatus</span>
+<span class="font-label-default text-label-default font-semibold text-state-success flex items-center gap-1 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span> Aktiv / Lebendig
+              </span>
+</div>
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light block">Aufenthaltsort</span>
+<span class="font-label-default text-label-default font-semibold text-on-surface truncate block mt-0.5">
+                Horizon Station (L2)
+              </span>
+</div>
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light block">Psych. Profil</span>
+<span class="font-label-default text-label-default font-semibold text-on-surface truncate block mt-0.5">
+                Schlafmangel • Getrieben
+              </span>
+</div>
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light block">Erstauftritt</span>
+<span class="font-label-default text-label-default font-semibold text-primary truncate block mt-0.5 cursor-pointer hover:underline">
+                Kapitel 1 • Abs. 3
+              </span>
+</div>
+</div>
+</section>
+<!-- Active Graph Relations List -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<h2 class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-wider">
+              Direkte Verknüpfungen (5)
+            </h2>
+<button class="font-meta-default text-meta-default text-primary hover:underline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">add</span> Kante hinzufügen
+            </button>
+</div>
+<div class="flex flex-col gap-1.5">
+<!-- Rel 1 -->
+<div class="group flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[15px]">smart_toy</span>
+</div>
+<div>
+<span class="font-label-default text-label-default font-semibold text-on-surface block">ARIA</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Symbiotische Co-Pilotin</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<!-- Rel 2 -->
+<div class="group flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface-container-high text-area-chat flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[15px]">satellite_alt</span>
+</div>
+<div>
+<span class="font-label-default text-label-default font-semibold text-on-surface block">Horizon Station</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Dienstort (12 Lj von Erde)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<!-- Rel 3 -->
+<div class="group flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-surface-container-high text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[15px]">security</span>
+</div>
+<div>
+<span class="font-label-default text-label-default font-semibold text-on-surface block">Director Kavic</span>
+<span class="font-meta-default text-[11px] text-state-warning">Misstrauen • Geheimbefehl</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<!-- Rel 4 -->
+<div class="group flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded bg-error-container text-state-danger flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[15px]">domain_disabled</span>
+</div>
+<div>
+<span class="font-label-default text-label-default font-semibold text-on-surface block">Station 7 (Nevada)</span>
+<span class="font-meta-default text-[11px] text-state-danger">Sterbeort Schwester • Konflikt</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Manuscript Evidence / Provenance Excerpts -->
+<section class="flex flex-col gap-2">
+<h2 class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-wider">
+            Manuskript-Belege (Auszüge)
+          </h2>
+<div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-sm flex flex-col gap-1">
+<div class="flex items-center justify-between text-text-muted-light font-meta-default text-[11px]">
+<span class="font-medium text-primary">Kapitel 1 • Zeile 42</span>
+<span>Vor 2 Tagen</span>
+</div>
+<blockquote class="font-prose-editorial text-[14px] leading-relaxed text-on-surface italic pl-2 bg-gradient-to-r from-secondary-container/40 to-transparent">
+              „Maya sah auf die Anzeige. Das Rauschen war kein atmosphärischer Fehler. Es trug die Modulation, die sie zuletzt in Station 7 gehört hatte.“
+            </blockquote>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-lowest shadow-sm flex flex-col gap-1">
+<div class="flex items-center justify-between text-text-muted-light font-meta-default text-[11px]">
+<span class="font-medium text-primary">Kapitel 2 • Zeile 118</span>
+<span>Gestern</span>
+</div>
+<blockquote class="font-prose-editorial text-[14px] leading-relaxed text-on-surface italic pl-2 bg-gradient-to-r from-secondary-container/40 to-transparent">
+              „ARIA schwieg drei Sekunden. Eine Ewigkeit für ein Quantengehirn. Dann: ‚Mayas Puls ist erhöht. Station 9 existiert nicht mehr in der Datenbank.‘“
+            </blockquote>
+</div>
+</section>
+</div>
+<!-- Dock Action Footer -->
+<footer class="p-space-md bg-surface-container-low flex flex-col gap-2">
+<button class="w-full h-8 rounded-lg bg-primary text-on-primary font-label-default text-label-default hover:bg-cover-sepia transition-all flex items-center justify-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">edit_document</span>
+<span>Im Manuskript anspringen</span>
+</button>
+<button class="w-full h-8 rounded-lg bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default transition-all flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">draw</span>
+<span>Lore-Akte vollständig bearbeiten</span>
+</button>
+</footer>
+</aside>
+</div>
+<!-- Bottom Workspace Status Bar & Global Metrics -->
+<footer class="w-full bg-surface-container px-space-lg py-2 flex flex-wrap items-center justify-between gap-y-2 select-none">
+<!-- Graph Health Stats -->
+<div class="flex items-center gap-4 text-on-surface-variant font-meta-default text-meta-default">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-area-knowledge"></span>
+<span class="font-medium text-on-surface">18 Entitäten</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-area-chat"></span>
+<span>27 Kausale Relationen</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1.5 text-state-danger font-medium">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>1 Konsistenz-Konflikt aktiv</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1 text-state-success font-medium">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+<span>Ontologie synchron</span>
+</div>
+</div>
+<!-- Export & Global Tools -->
+<div class="flex items-center gap-2">
+<button class="h-6 px-2 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-meta-default text-meta-default flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[15px]">print</span>
+<span>Lore-Dossier drucken</span>
+</button>
+<button class="h-6 px-2 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-meta-default text-meta-default flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[15px]">download</span>
+<span>GraphML / JSON</span>
+</button>
+<button class="h-6 px-2 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-meta-default text-meta-default flex items-center gap-1 transition-colors" id="btn-fullscreen">
+<span class="material-symbols-outlined text-[15px]">fullscreen</span>
+<span>Vollbild</span>
+</button>
+</div>
+</footer>
+</div>
+<!-- Interactive Behavior for Graph Canvas & Filter Chips -->
+<script>
+  (function() {
+    // Dimension Filter Chips Switching
+    const filterButtons = document.querySelectorAll('.filter-chip');
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => {
+          b.classList.remove('bg-cover-sepia', 'text-on-primary', 'shadow-xs');
+          b.classList.add('bg-surface-container-high', 'text-on-surface');
+        });
+        btn.classList.add('bg-cover-sepia', 'text-on-primary', 'shadow-xs');
+        btn.classList.remove('bg-surface-container-high', 'text-on-surface');
+      });
+    });
+
+    // Node Selection Highlights
+    const nodes = document.querySelectorAll('[id^="node-"]');
+    const dock = document.getElementById('inspector-dock');
+    
+    nodes.forEach(node => {
+      node.addEventListener('click', (e) => {
+        nodes.forEach(n => n.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'));
+        node.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+        if (dock) {
+          dock.classList.remove('hidden');
+          // Smooth bounce highlight
+          dock.classList.add('opacity-90');
+          setTimeout(() => dock.classList.remove('opacity-90'), 150);
+        }
+      });
+    });
+
+    // Zoom Buttons Feedback
+    const zoomIn = document.getElementById('btn-zoom-in');
+    const zoomOut = document.getElementById('btn-zoom-out');
+    const zoomReset = document.getElementById('btn-zoom-reset');
+    const viewport = document.getElementById('graph-viewport');
+
+    let currentScale = 1.0;
+
+    if (zoomIn && viewport) {
+      zoomIn.addEventListener('click', () => {
+        currentScale = Math.min(1.8, currentScale + 0.15);
+        viewport.style.transform = `scale(${currentScale})`;
+        viewport.style.transformOrigin = 'center center';
+        viewport.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)';
+      });
+    }
+
+    if (zoomOut && viewport) {
+      zoomOut.addEventListener('click', () => {
+        currentScale = Math.max(0.6, currentScale - 0.15);
+        viewport.style.transform = `scale(${currentScale})`;
+        viewport.style.transformOrigin = 'center center';
+        viewport.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)';
+      });
+    }
+
+    if (zoomReset && viewport) {
+      zoomReset.addEventListener('click', () => {
+        currentScale = 1.0;
+        viewport.style.transform = `scale(1.0)`;
+        viewport.style.transition = 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)';
+      });
+    }
+
+    // Toggle Matrix & Hierarchie views visual toggle
+    const btnGraph = document.getElementById('btn-view-graph');
+    const btnMatrix = document.getElementById('btn-view-matrix');
+    const btnTree = document.getElementById('btn-view-tree');
+    const viewGroup = [btnGraph, btnMatrix, btnTree];
+
+    viewGroup.forEach(btn => {
+      if (btn) {
+        btn.addEventListener('click', () => {
+          viewGroup.forEach(b => {
+            if (b) {
+              b.classList.remove('bg-bg-card-light', 'text-primary', 'shadow-xs');
+              b.classList.add('text-text-muted-light');
+            }
+          });
+          btn.classList.add('bg-bg-card-light', 'text-primary', 'shadow-xs');
+          btn.classList.remove('text-text-muted-light');
+        });
+      }
+    });
+  })();
+</script></main></div></body></html>

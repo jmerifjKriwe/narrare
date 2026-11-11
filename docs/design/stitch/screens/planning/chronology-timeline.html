@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"10.5rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Studio Atelier</span></div></div><div class="w-full px-space-xs my-space-xs"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><nav class="flex flex-col gap-1 w-full px-space-xs mt-1" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="material-symbols-outlined text-[20px] shrink-0">collections_bookmark</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Library</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-writing">edit_note</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Editor</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-knowledge">hub</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Knowledge</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="timeline" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-planning">schema</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Timeline</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-settings">settings</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Settings</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Author Tier</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Manuscripts</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Saved</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Search or prompt...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48,219 words</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>EN</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Sub-Header & Controls Bar -->
+<div class="w-full bg-surface-container-low px-space-lg py-space-sm shadow-[0_1px_3px_0_rgba(44,24,16,0.04)] flex flex-col gap-space-sm">
+<!-- Breadcrumb & Top Actions Row -->
+<div class="flex flex-wrap items-center justify-between gap-y-3">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-wider">Atelier</span>
+<span class="text-outline-variant font-meta-default text-meta-default">/</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-wider">Dead Signal</span>
+<span class="text-outline-variant font-meta-default text-meta-default">/</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-planning tracking-wider font-semibold">Planung &amp; Kausalitätsachse</span>
+<span class="ml-2 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-meta-default text-meta-default">Story-Zeit: 2278–2287</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 h-7 px-3 rounded bg-surface hover:bg-surface-container font-label-default text-label-default text-on-surface transition-colors shadow-sm" id="btn-validate">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge">verified</span>
+<span>Konsistenzprüfung ausführen</span>
+</button>
+<button class="flex items-center gap-1.5 h-7 px-3 rounded bg-surface hover:bg-surface-container font-label-default text-label-default text-on-surface transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-area-writing">sync_alt</span>
+<span>Mit Manuskript abgleichen</span>
+</button>
+<button class="flex items-center gap-1.5 h-7 px-3.5 rounded bg-primary-container text-on-primary font-label-default text-label-default hover:bg-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>Neues Ereignis anlegen</span>
+</button>
+</div>
+</div>
+<!-- Segmented Navigation & Filters Bar -->
+<div class="flex flex-wrap items-center justify-between gap-y-3 pt-1">
+<!-- Mode Switcher (Syuzhet vs. Fabula vs. Storyboard) -->
+<div class="inline-flex p-0.5 rounded-lg bg-surface-container-high shadow-inner">
+<button class="px-3 py-1 rounded-md bg-surface text-primary font-label-default text-label-default shadow-sm transition-all flex items-center gap-1.5 font-semibold">
+<span class="material-symbols-outlined text-[15px] text-area-planning">schedule</span>
+<span>Chronologisch (Story-Zeit 2278–2287)</span>
+</button>
+<button class="px-3 py-1 rounded-md text-on-surface-variant hover:text-on-surface font-label-default text-label-default transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px]">menu_book</span>
+<span>Kapitelabfolge (Fabula vs. Syuzhet)</span>
+</button>
+<button class="px-3 py-1 rounded-md text-on-surface-variant hover:text-on-surface font-label-default text-label-default transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px]">view_column</span>
+<span>3-Akt-Storyboard</span>
+</button>
+</div>
+<!-- Scrubber & Entity Filters -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-1.5 bg-surface px-2.5 py-1 rounded-md shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-outline">filter_list</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Entitäten:</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-meta-default text-meta-default cursor-pointer hover:bg-secondary-container">Maya Chen</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-meta-default text-meta-default cursor-pointer hover:bg-secondary-container">ARIA</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-meta-default text-meta-default cursor-pointer hover:bg-secondary-container">Dir. Kavic</span>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-meta-default text-meta-default cursor-pointer font-semibold">Station 7</span>
+</div>
+<div class="flex items-center gap-1 bg-surface px-2 py-1 rounded-md shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-state-warning">warning</span>
+<span class="font-label-default text-label-default font-semibold text-state-warning">1 Kausalitätslücke</span>
+</div>
+<!-- Zoom Level -->
+<div class="flex items-center rounded bg-surface px-1 py-0.5 shadow-sm text-text-muted-light">
+<button class="px-2 py-0.5 text-xs font-semibold rounded bg-surface-container text-primary">Jahre</button>
+<button class="px-2 py-0.5 text-xs hover:text-on-surface">Monate</button>
+<button class="px-2 py-0.5 text-xs hover:text-on-surface">Tage</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Split Layout (Interactive Timeline Board + Event Dossier Inspector) -->
+<div class="flex flex-col lg:flex-row w-full flex-1 min-h-[calc(100vh-140px)]">
+<!-- LEFT & CENTER: Multi-Track Timeline Canvas -->
+<div class="flex-1 p-space-md lg:p-space-lg overflow-x-auto bg-bg-canvas-light flex flex-col gap-space-lg">
+<!-- Narrative Axis Legend & Scope Marker -->
+<div class="flex flex-wrap items-center justify-between gap-4 px-space-md py-2.5 rounded-xl bg-surface shadow-sm">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-cover-sepia"></span>
+<span class="font-label-default text-label-default text-on-surface font-semibold">Spur 1: In-Universe Historie (2278–2287)</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-area-planning"></span>
+<span class="font-label-default text-label-default text-on-surface-variant">Spur 2: Erzählzeit &amp; Rückblenden-Verankerung (Syuzhet)</span>
+</div>
+</div>
+<div class="flex items-center gap-3 text-text-muted-light font-meta-default text-meta-default">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-state-success"></span> 6 Verfasste Szenen</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-focus"></span> 4 Geplante Szenen</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-state-danger"></span> 1 Inkonsistenz</span>
+</div>
+</div>
+<!-- TIMELINE CANVAS SECTION -->
+<div class="relative w-full rounded-2xl bg-surface-container-lowest p-space-lg shadow-[0_1px_4px_0_rgba(44,24,16,0.06)] flex flex-col gap-10">
+<!-- Master Horizontal Spine (SVG Connector Guide Behind Nodes) -->
+<div class="absolute left-8 right-8 top-[175px] h-1 bg-surface-container-high z-0 hidden md:block">
+<!-- Highlighted Arc for current chapter focus -->
+<div class="absolute left-[54%] w-[26%] h-1 bg-primary"></div>
+</div>
+<!-- TRACK 1: Historical Ground Truth (In-Universe Kausalität) -->
+<div class="relative z-10 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary tracking-wider font-bold">SPUR 01 • HISTORISCHE CHRONOLOGIE</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">(Verlauf der realen Ereignisse im Roman-Universum)</span>
+</div>
+<span class="font-mono text-xs text-text-muted-light">T-minus 9 Jahre bis Jetztzeit</span>
+</div>
+<!-- Chronological Nodes Grid -->
+<div class="grid grid-cols-1 md:grid-cols-6 gap-3.5">
+<!-- Node 1: 2278 Der Bruch -->
+<div class="group relative flex flex-col p-3 rounded-xl bg-surface-container-low hover:bg-surface transition-all shadow-sm cursor-pointer">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-mono text-xs font-bold text-outline">2278</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-surface font-semibold text-text-muted-light">Vor 9 J.</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface line-clamp-2 leading-snug">Der Große Bruch &amp; Erste Anomalie</h4>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1 line-clamp-2">Nevada-Tiefraumarray verliert 41% der Verbindung zum Subraum-Knoten.</p>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px] text-text-muted-light">
+<span class="font-medium text-area-knowledge">Archiv-Akte #04</span>
+<span class="material-symbols-outlined text-[14px]">lock</span>
+</div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline absolute -bottom-4 left-1/2 -translate-x-1/2 shadow-sm hidden md:block"></div>
+</div>
+<!-- Node 2: 2284 Station 7 (Selected / Highlighted Focus) -->
+<div class="group relative flex flex-col p-3 rounded-xl bg-secondary-container/50 hover:bg-secondary-container transition-all shadow-md cursor-pointer ring-2 ring-primary">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-mono text-xs font-bold text-primary">14. Nov 2284</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-primary text-on-primary font-semibold">Schlüsselmoment</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-primary font-bold line-clamp-2 leading-snug">Unglück auf Station 7 (Lins Tod)</h4>
+<p class="font-meta-default text-meta-default text-on-surface mt-1 line-clamp-2">Verdampfung des Hauptlabors. Offiziell: „Kühlmittel-Kollaps“. Lins Signal verstummt.</p>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px]">
+<span class="font-semibold text-cover-sepia">Lin Chen † • Maya</span>
+<span class="material-symbols-outlined text-[14px] text-state-danger">warning</span>
+</div>
+<!-- Connector Node Marker -->
+<div class="w-3.5 h-3.5 rounded-full bg-primary absolute -bottom-4 left-1/2 -translate-x-1/2 shadow-sm hidden md:block"></div>
+</div>
+<!-- Node 3: Frühjahr 2287 -->
+<div class="group relative flex flex-col p-3 rounded-xl bg-surface-container-low hover:bg-surface transition-all shadow-sm cursor-pointer">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-mono text-xs font-bold text-outline">Mai 2287</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-surface text-text-muted-light">Vor 6 Mon.</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface line-clamp-2 leading-snug">Verlegung Transmitter L2</h4>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1 line-clamp-2">Transport des Resonanzrings von Nevada in den Orbit. Kavic übernimmt Aufsicht.</p>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px] text-text-muted-light">
+<span class="font-medium">Dir. Kavic</span>
+<span class="material-symbols-outlined text-[14px]">flag</span>
+</div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline absolute -bottom-4 left-1/2 -translate-x-1/2 shadow-sm hidden md:block"></div>
+</div>
+<!-- Node 4: Tag 1 (Gegenwart / Kap 1) -->
+<div class="group relative flex flex-col p-3 rounded-xl bg-surface-container-high hover:bg-surface transition-all shadow-sm cursor-pointer">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-mono text-xs font-bold text-cover-sepia">Tag 01 (Jetztzeit)</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-surface-container-lowest text-state-success font-bold">Kapitel 1</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface line-clamp-2 leading-snug">Ankunft auf Horizon Station</h4>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1 line-clamp-2">Dockung der Shuttle-Kapsel. Kalibrierung der ARIA-Schnittstelle im Tiefspiegel.</p>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px] text-text-muted-light">
+<span class="font-semibold text-primary">Maya Chen • ARIA</span>
+<span class="material-symbols-outlined text-[14px] text-state-success">check_circle</span>
+</div>
+<div class="w-2.5 h-2.5 rounded-full bg-state-success absolute -bottom-4 left-1/2 -translate-x-1/2 shadow-sm hidden md:block"></div>
+</div>
+<!-- Node 5: Tag 3 (Gegenwart / Kap 2 Aktueller Fokus) -->
+<div class="group relative flex flex-col p-3 rounded-xl bg-surface hover:bg-surface-container transition-all shadow-md cursor-pointer border-t-2 border-primary">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-mono text-xs font-bold text-primary">Tag 03 (04:12 Uhr)</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-primary text-on-primary font-bold">Kapitel 2</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface line-clamp-2 leading-snug">Empfang des Notfall-Codes</h4>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1 line-clamp-2">Das Signal moduliert auf 14.2 Hz: Die Identifikationssignatur von Lins Armband.</p>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px]">
+<span class="font-medium text-state-warning">14.2 Hz Signal</span>
+<span class="px-1 py-0.2 rounded bg-surface-container font-mono text-[10px]">Aktuell</span>
+</div>
+<div class="w-3 h-3 rounded-full bg-primary absolute -bottom-4 left-1/2 -translate-x-1/2 shadow-sm hidden md:block"></div>
+</div>
+<!-- Node 6: Geplant (Kapitel 3 / Akt II) -->
+<div class="group relative flex flex-col p-3 rounded-xl bg-surface-container-low/70 hover:bg-surface transition-all shadow-sm cursor-pointer opacity-90">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-mono text-xs font-bold text-text-muted-light">Tag 04 (Geplant)</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-surface-container text-outline font-semibold">Kapitel 3</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-on-surface line-clamp-2 leading-snug">Öffnung von Sektor D-4</h4>
+<p class="font-meta-default text-meta-default text-on-surface-variant mt-1 line-clamp-2">Maya umgeht ARIA-Sicherheitsgrenzen und konfrontiert Kavics Logbücher.</p>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px] text-text-muted-light">
+<span class="font-medium">Geplanter Entwurf</span>
+<span class="material-symbols-outlined text-[14px]">edit_note</span>
+</div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant absolute -bottom-4 left-1/2 -translate-x-1/2 shadow-sm hidden md:block"></div>
+</div>
+</div>
+</div>
+<!-- Dynamic Syuzhet Linking Ribbon & Interactive Consistency Anomaly Alert -->
+<div class="relative py-2">
+<!-- Active Conflict Card on the timeline -->
+<div class="w-full rounded-xl bg-surface-container-high p-space-md shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-state-warning text-surface flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[20px]">report</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-warning font-bold">Kausalitäts-Anomalie #01 • Zeitstempel-Diskrepanz</span>
+<span class="px-1.5 py-0.2 rounded bg-surface font-meta-default text-meta-default text-on-surface-variant">Kapitel 1 vs. Archiv-Chronik</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface mt-0.5">
+                  Mayas Monolog in <span class="font-semibold text-primary">Kapitel 1 (Zeile 84)</span> datiert Lins Tod auf das Unglück an <span class="underline decoration-state-warning font-semibold">Station 7 im Jahr 2284</span>. Die Archiv-Akte in Kapitel 2 verweist jedoch auf <span class="underline decoration-state-warning font-semibold">Station 9 im März 2285</span>.
+                </p>
+</div>
+</div>
+<!-- Resolution CTAs -->
+<div class="flex items-center gap-2 shrink-0">
+<button class="px-3 py-1.5 rounded bg-primary-container text-on-primary font-label-default text-label-default hover:bg-primary shadow-sm transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">auto_fix_high</span>
+<span>Auf 2284 (Station 7) synchronisieren</span>
+</button>
+<button class="px-3 py-1.5 rounded bg-surface hover:bg-surface-container font-label-default text-label-default text-on-surface shadow-sm transition-all">
+                Als unzuverlässige Erinnerung behalten
+              </button>
+</div>
+</div>
+</div>
+<!-- TRACK 2: Narrative Erzählzeit (Syuzhet & Flashbacks in the Manuscript) -->
+<div class="relative z-10 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-area-planning/10 font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-planning tracking-wider font-bold">SPUR 02 • ERZÄHLTE REIHENFOLGE (MANUSKRIPT-SZENE)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">(Leser-Perspektive: Wie die Szenen im Buch aufgedeckt werden)</span>
+</div>
+<span class="font-mono text-xs text-text-muted-light">Akt I &amp; Akt II Aufbau</span>
+</div>
+<!-- Scene Sequence Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<!-- Book Scene 1 -->
+<div class="p-3.5 rounded-xl bg-surface-container-low shadow-sm flex flex-col justify-between hover:bg-surface transition-all">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-default text-label-default font-bold text-on-surface">Szene 1.1: Ankunft</span>
+<span class="font-mono text-[11px] text-text-muted-light">1.840 W.</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant line-clamp-2">Lineare Jetztzeit. Maya dockt an Horizon Station an und aktiviert ARIA.</p>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between text-[11px]">
+<span class="text-state-success font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span> Manuskript fertig
+                </span>
+<span class="text-primary font-mono text-[10px]">Akt I • Eröffnung</span>
+</div>
+</div>
+<!-- Book Scene 2: The Flashback Hook -->
+<div class="p-3.5 rounded-xl bg-surface shadow-sm flex flex-col justify-between hover:bg-surface-container transition-all">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-default text-label-default font-bold text-primary">Szene 1.2: Das Flüstern</span>
+<span class="font-mono text-[11px] text-text-muted-light">2.410 W.</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant line-clamp-2">Erstes Subraum-Signal bricht durch. Maya wird an die Katastrophe von 2284 erinnert.</p>
+</div>
+<!-- Embedded Flashback Arc Badge -->
+<div class="mt-2.5 px-2 py-1 rounded bg-secondary-container/60 text-on-secondary-container text-[11px] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span>Rückblenden-Verbindung zu 2284</span>
+</div>
+<div class="mt-2 pt-2 flex items-center justify-between text-[11px]">
+<span class="text-state-success font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span> Überarbeitet v2.4
+                </span>
+<span class="text-outline font-mono text-[10px]">Akt I • Auslöser</span>
+</div>
+</div>
+<!-- Book Scene 3: The Clashing Record -->
+<div class="p-3.5 rounded-xl bg-surface shadow-sm flex flex-col justify-between hover:bg-surface-container transition-all">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-default text-label-default font-bold text-on-surface">Szene 2.1: Quarantäne-Protokoll</span>
+<span class="font-mono text-[11px] text-text-muted-light">3.120 W.</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant line-clamp-2">Kavic ordnet Funkstille an. Maya vergleicht Archivdaten und stößt auf die Station 7/9 Diskrepanz.</p>
+</div>
+<div class="mt-2.5 px-2 py-1 rounded bg-surface-container text-state-warning text-[11px] flex items-center gap-1.5 font-medium">
+<span class="material-symbols-outlined text-[14px]">priority_high</span>
+<span>Erkenntnis-Wendepunkt</span>
+</div>
+<div class="mt-2 pt-2 flex items-center justify-between text-[11px]">
+<span class="text-state-success font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span> In Revision
+                </span>
+<span class="text-outline font-mono text-[10px]">Akt I • Plot Point 1</span>
+</div>
+</div>
+<!-- Book Scene 4: Planned Chapter 3 -->
+<div class="p-3.5 rounded-xl bg-surface-container-low/50 shadow-sm flex flex-col justify-between hover:bg-surface transition-all">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-default text-label-default font-bold text-text-muted-light">Szene 3.1: Volle Rückblende</span>
+<span class="font-mono text-[11px] text-text-muted-light">~2.800 W.</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant line-clamp-2">Expliziter Flashback in das Nevada-Labor vor der Explosion. Lins letzte Worte unzensiert.</p>
+</div>
+<div class="mt-2.5 px-2 py-1 rounded bg-surface-container text-text-muted-light text-[11px] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">hourglass_empty</span>
+<span>Gliederung skizziert</span>
+</div>
+<div class="mt-2 pt-2 flex items-center justify-between text-[11px]">
+<span class="text-outline font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span> Geplant
+                </span>
+<span class="text-outline font-mono text-[10px]">Akt II • Vertiefung</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-Graphic: Tension Arc Visualization (Inline SVG Minimal Chart) -->
+<div class="flex flex-col gap-2 pt-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">SPANNUNGSBOGEN &amp; MYSTERY-ENTHÜLLUNGSKURVE</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Zielkorridor: Linear ansteigend bis Katastrophe</span>
+</div>
+<div class="w-full h-16 rounded-xl bg-surface-container-low px-4 py-2 flex items-center">
+<svg class="w-full h-12 text-primary" fill="none" preserveaspectratio="none" viewbox="0 0 600 48">
+<!-- Tension Curve Line -->
+<path d="M0,40 Q100,36 180,32 T300,24 T420,12 T540,8 L600,4" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Filled area underneath -->
+<path d="M0,40 Q100,36 180,32 T300,24 T420,12 T540,8 L600,4 L600,48 L0,48 Z" fill="currentColor" fill-opacity="0.08"></path>
+<!-- Data Points on curve -->
+<circle class="fill-surface stroke-primary" cx="180" cy="32" r="3.5" stroke-width="2"></circle>
+<circle class="fill-primary" cx="300" cy="24" r="4.5"></circle>
+<circle class="fill-surface stroke-primary" cx="420" cy="12" r="3.5" stroke-width="2"></circle>
+<circle class="fill-surface stroke-state-warning" cx="540" cy="8" r="3.5" stroke-width="2"></circle>
+</svg>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT: Inspector Dock ("Ereignis-Dossier & Kausalitäts-Editor") -->
+<div class="w-full lg:w-dock-width bg-bg-panel-light p-space-md lg:p-space-lg flex flex-col gap-space-md shadow-[-1px_0_4px_rgba(44,24,16,0.03)]">
+<!-- Inspector Header -->
+<div class="flex items-center justify-between pb-2">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-cover-sepia"></span>
+<h3 class="font-headline-title text-headline-title text-on-surface">Ereignis-Dossier</h3>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Dossier Title Card & Event Meta -->
+<div class="p-space-md rounded-xl bg-surface shadow-sm flex flex-col gap-3">
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia font-bold">Selektiertes Ereignis #02</span>
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-on-surface mt-0.5 leading-snug">Das Unglück auf Forschungsstation 7</h2>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1 font-meta-default text-meta-default">
+<div class="flex flex-col p-2 rounded bg-surface-container-low">
+<span class="text-text-muted-light font-medium">In-Universe Zeit</span>
+<span class="font-semibold text-on-surface font-mono">14.11.2284 • 03:42</span>
+</div>
+<div class="flex flex-col p-2 rounded bg-surface-container-low">
+<span class="text-text-muted-light font-medium">Erzähl-Ebene</span>
+<span class="font-semibold text-primary">Flashback (Kapitel 3)</span>
+</div>
+</div>
+<!-- Entity Tags -->
+<div class="flex flex-col gap-1.5 pt-1">
+<span class="font-meta-default text-meta-default text-text-muted-light">Beteiligte Entitäten &amp; Akteure:</span>
+<div class="flex flex-wrap gap-1.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary-container text-on-secondary-container font-label-default text-label-default font-medium">
+<span class="material-symbols-outlined text-[14px]">person</span>
+              Dr. Maya Chen
+            </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface font-label-default text-label-default">
+<span class="material-symbols-outlined text-[14px]">person_outline</span>
+              Lin Chen (†)
+            </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface font-label-default text-label-default">
+<span class="material-symbols-outlined text-[14px]">shield_person</span>
+              Dir. Samuel Kavic
+            </span>
+</div>
+</div>
+<!-- Location -->
+<div class="flex items-center gap-2 text-on-surface-variant font-meta-default text-meta-default">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge">location_on</span>
+<span>Nevada Deep-Array Komplex (Sektor 7-B)</span>
+</div>
+</div>
+<!-- Kausalitätsprüfung & Warnings Box -->
+<div class="p-space-md rounded-xl bg-surface-container-high shadow-inner flex flex-col gap-2.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-state-warning font-label-default text-label-default font-bold">
+<span class="material-symbols-outlined text-[18px]">balance</span>
+<span>Kausalitäts-Zustand</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface font-mono text-[10px] text-state-warning font-semibold">1 Konflikt</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface text-xs leading-relaxed">
+          In Kapitel 1 Z.84 erinnert sich Maya an eine Explosion bei <strong>Station 7</strong> im Jahr 2284. In Entwurf Kapitel 2 wird jedoch ein Archivprotokoll zitiert, das <strong>Station 9 (März 2285)</strong> benennt.
+        </p>
+<!-- Side-by-Side Excerpt Comparison -->
+<div class="flex flex-col gap-2 mt-1">
+<div class="p-2 rounded bg-surface font-prose-editorial text-xs italic text-on-surface-variant shadow-sm">
+            „...als Station 7 in der Wüste erlosch, blieb nur Mayas Pulsmesser auf dem Monitor...“ (Kapitel 1)
+          </div>
+<div class="p-2 rounded bg-surface font-prose-editorial text-xs italic text-on-surface-variant shadow-sm">
+            „Station 9 Logfile: Vorfall bestätigt im Frühjahr 2285 durch Kavics Büro.“ (Kapitel 2)
+          </div>
+</div>
+<div class="flex items-center gap-2 pt-1">
+<button class="flex-1 py-1 px-2 rounded bg-primary text-on-primary font-label-default text-label-default hover:bg-cover-sepia transition-colors shadow-sm text-center">
+            Auf Station 7 korrigieren
+          </button>
+<button class="py-1 px-2 rounded bg-surface hover:bg-surface-container text-on-surface font-label-default text-label-default shadow-sm transition-colors text-center">
+            Ignorieren
+          </button>
+</div>
+</div>
+<!-- Lore & Author's Working Notes -->
+<div class="p-space-md rounded-xl bg-surface shadow-sm flex flex-col gap-2 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light font-bold">Autoren-Notizen &amp; Subtext</span>
+<span class="material-symbols-outlined text-[16px] text-outline cursor-pointer hover:text-on-surface">edit</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant text-xs leading-relaxed">
+          Wichtig für den Wendepunkt im 2. Akt: Maya weiß zu diesem Zeitpunkt noch nicht, dass ARIA das Notsignal nicht zufällig empfangen hat, sondern eine automatisierte Routine aus Lins eigenem Laborrechner abspielt.
+        </p>
+<div class="mt-auto pt-3 flex items-center justify-between font-meta-default text-meta-default text-text-muted-light">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">link</span>
+            Verlinkt in 3 Manuskript-Abschnitten
+          </span>
+<span class="font-mono text-[11px]">ds-evt-084</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Metric & Status Dock (Persistent Shelf Footer) -->
+<div class="w-full bg-surface-container-high px-space-lg py-2.5 shadow-[0_-1px_4px_rgba(44,24,16,0.04)] flex flex-wrap items-center justify-between gap-4 select-none">
+<!-- Left KPI Badges -->
+<div class="flex flex-wrap items-center gap-5 font-meta-default text-meta-default text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-area-planning">hub</span>
+<span class="font-semibold">14 verankerte Ereignisse</span>
+</div>
+<div class="flex items-center gap-1.5 text-text-muted-light">
+<span class="material-symbols-outlined text-[16px] text-area-knowledge">layers</span>
+<span>3 Zeitebenen (Historie / Rückblende / Jetztzeit)</span>
+</div>
+<div class="flex items-center gap-1.5 text-state-warning font-semibold">
+<span class="w-2 h-2 rounded-full bg-state-warning"></span>
+<span>1 Kausalitätslücke ungelöst</span>
+</div>
+<div class="flex items-center gap-1 text-text-muted-light">
+<span class="material-symbols-outlined text-[14px]">cloud_done</span>
+<span>Letzter Manuskript-Sync vor 4 Min.</span>
+</div>
+</div>
+<!-- Right Export & Utilities -->
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1 h-6 px-2.5 rounded bg-surface hover:bg-surface-container text-on-surface font-label-default text-label-default shadow-sm transition-colors">
+<span class="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+<span>Timeline drucken (PDF)</span>
+</button>
+<button class="flex items-center gap-1 h-6 px-2.5 rounded bg-surface hover:bg-surface-container text-on-surface font-label-default text-label-default shadow-sm transition-colors">
+<span class="material-symbols-outlined text-[14px]">data_object</span>
+<span>Story-Engine Export</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for validation feedback
+  document.getElementById('btn-validate')?.addEventListener('click', function() {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>Prüfe Kausalitätskette...</span>';
+    setTimeout(() => {
+      btn.innerHTML = '<span class="material-symbols-outlined text-[16px] text-state-success">done_all</span><span>Prüfung abgeschlossen</span>';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 2500);
+    }, 700);
+  });
+</script></main></div></body></html>

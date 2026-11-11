@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"state-success":"#21763C","background":"#fff8f2","area-knowledge":"#606127","on-secondary-fixed-variant":"#5a4137","area-writing":"#914F2F","surface-container-low":"#faf2ea","surface":"#fff8f2","text-muted-light":"#6E6B65","on-primary":"#ffffff","primary-fixed-dim":"#ffb695","primary-container":"#743b1f","rule-dark":"#302D28","on-tertiary-container":"#eead78","secondary":"#74584e","outline":"#86736c","state-warning":"#9A6100","on-primary-fixed":"#351000","area-chat":"#3A637B","amber-focus":"#8F4622","on-secondary":"#ffffff","cover-ink":"#24211C","cover-pale":"#EEEBE5","primary":"#58250b","bg-panel-dark":"#1C1914","on-primary-fixed-variant":"#6f371c","bg-card-dark":"#211F1A","area-settings":"#5A5549","inverse-surface":"#33302b","bg-panel-light":"#FDFCF9","on-tertiary-fixed":"#2f1500","text-muted-dark":"#89867F","on-error-container":"#93000a","on-tertiary":"#ffffff","area-planning":"#834D7E","on-secondary-fixed":"#2a170f","on-surface":"#1e1b16","on-secondary-container":"#795c52","amber-focus-dark":"#F2AD73","surface-tint":"#8c4e30","surface-bright":"#fff8f2","surface-container-highest":"#e9e1d9","bg-soft-dark":"#2C2922","secondary-fixed":"#ffdbce","text-foreground-dark":"#DFDEDA","bg-soft-light":"#EFEBE2","bg-canvas-light":"#F6F3ED","error":"#ba1a1a","surface-variant":"#e9e1d9","rule-light":"#EEEBE5","surface-dim":"#e0d9d1","surface-container-high":"#eee7df","surface-container-lowest":"#ffffff","secondary-container":"#fed8ca","cover-sepia":"#743B1F","inverse-on-surface":"#f7f0e7","border-dark":"#35332D","border-light":"#E0DEDA","on-background":"#1e1b16","on-surface-variant":"#53433d","on-tertiary-fixed-variant":"#693c10","primary-fixed":"#ffdbcc","error-container":"#ffdad6","state-danger":"#AC3031","outline-variant":"#d8c2b9","bg-card-light":"#FFFFFF","on-error":"#ffffff","surface-container":"#f4ede4","secondary-fixed-dim":"#e3bfb2","inverse-primary":"#ffb695","bg-canvas-dark":"#16140F","tertiary-container":"#6e3f14","tertiary":"#522900","on-primary-container":"#f8a884","tertiary-fixed-dim":"#fcb882","tertiary-fixed":"#ffdcc3"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1.5rem","space-sm":"0.5rem","rail-collapsed":"3rem","space-xs":"0.25rem","dock-width":"21rem","container-max":"75rem","rail-expanded":"10.5rem","prose-max-width":"34rem","space-md":"1rem","gutter":"1rem","space-lg":"1.5rem","space-xl":"2rem"},fontFamily:{"meta-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"]},fontSize:{"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased selection:bg-secondary-container selection:text-primary"><aside class="fixed left-0 top-0 h-full w-rail-collapsed bg-surface-container-low z-50 flex flex-col justify-between items-center py-space-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col items-center gap-space-lg w-full"><a class="w-8 h-8 rounded-lg bg-cover-sepia text-surface flex items-center justify-center font-prose-heading-1 text-prose-heading-1 shadow-[0_1px_3px_0_rgba(44,24,16,0.15)] hover:bg-primary transition-colors" data-path="manuscript-shelf" href="#" title="Narrare Atelier"><span class="italic font-normal">N</span></a><nav class="flex flex-col items-center gap-space-xs w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="manuscript-shelf" href="#" title="Manuscript Shelf"><span class="material-symbols-outlined text-[20px]">book_2</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="writing-workspace" href="#" title="Writing Workspace"><span class="material-symbols-outlined text-[20px]">edit_note</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="lore-entity-graph" href="#" title="Entity Lore Graph"><span class="material-symbols-outlined text-[20px]">hub</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="timeline-chronology" href="#" title="Timeline &amp; Structure"><span class="material-symbols-outlined text-[20px]">account_tree</span></a></nav></div><div class="flex flex-col items-center gap-space-xs w-full px-space-xs"><nav class="flex flex-col items-center gap-space-xs w-full" data-active-classes="bg-primary-container text-on-primary rounded-lg"><a class="w-9 h-9 flex items-center justify-center rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" data-path="atelier-settings" href="#" title="Atelier-Einstellungen"><span class="material-symbols-outlined text-[20px]">settings</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" data-path="ki-prompts-feature-ueberschreibung" href="#" title="KI-Prompts &amp; Feature-Überschreibung"><span class="material-symbols-outlined text-[20px]">tune</span></a><a class="w-9 h-9 flex items-center justify-center rounded-lg transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" data-path="hilfe-zentrum-kontext-handbuch" href="#" title="Hilfe-Zentrum &amp; Kontext-Handbuch"><span class="material-symbols-outlined text-[20px]">help_outline</span></a></nav></div></aside><div class="pl-rail-collapsed min-h-screen flex flex-col"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm font-meta-default text-meta-default"><span class="font-headline-emph text-headline-emph text-on-surface tracking-tight">Atelier</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface-variant">Dead Signal</span><span class="material-symbols-outlined text-outline text-[14px]">chevron_right</span><span class="text-on-surface font-label-default text-label-default">Kapitel III: Das Observatorium</span></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant font-meta-default text-meta-default"><span class="material-symbols-outlined text-[15px] text-area-writing">ink_pen</span><span class="tabular-nums text-on-surface font-label-default text-label-default">42,850</span><span class="text-text-muted-light">Wörter</span></div><button class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-meta-default text-meta-default" title="Command Palette (⌘K)"><span class="material-symbols-outlined text-[15px]">search</span><span class="hidden sm:inline font-label-default text-label-default">Suche</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container-highest font-meta-default text-[10px] text-on-surface-variant uppercase tracking-wider">⌘K</kbd></button><div class="flex items-center rounded bg-surface-container-low p-0.5 font-label-default text-label-default"><button class="px-2 py-0.5 rounded text-on-surface font-bold bg-surface shadow-[0_1px_2px_rgba(44,24,16,0.05)]">DE</button><button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface transition-colors">EN</button></div><button class="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="Toggle Mode"><span class="material-symbols-outlined text-[18px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 bg-surface flex-1 w-full"><div class="flex flex-col w-full">
+<!-- Sub-Header & Live Mode Controller -->
+<div class="w-full bg-surface-container-low px-space-lg py-space-sm shadow-[0_1px_4px_rgba(44,24,16,0.04)] flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs font-eyebrow-tracked text-eyebrow-tracked text-primary tracking-widest uppercase">
+<span class="material-symbols-outlined text-[15px] text-area-knowledge">menu_book</span>
+<span>System &amp; Support</span>
+<span class="text-outline-variant font-normal">/</span>
+<span class="text-on-surface">Hilfe-Zentrum &amp; Kontext-Handbuch</span>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container text-[10px] lowercase font-label-default">v2.4</span>
+</div>
+<!-- Mode Toggle Switcher -->
+<div class="inline-flex rounded-lg bg-surface-container-highest p-0.5">
+<button class="px-space-sm py-1 rounded font-label-default text-label-default bg-surface text-on-surface shadow-[0_1px_3px_rgba(44,24,16,0.08)] flex items-center gap-1.5 transition-all" id="btn-mode-drawer">
+<span class="w-2 h-2 rounded-full bg-state-success animate-pulse"></span>
+<span>Live-Vorschau: In-Screen Drawer</span>
+</button>
+<button class="px-space-sm py-1 rounded font-label-default text-label-default text-on-surface-variant hover:text-on-surface flex items-center gap-1.5 transition-all" id="btn-mode-full">
+<span class="material-symbols-outlined text-[15px]">auto_stories</span>
+<span>Vollbild-Handbuch</span>
+</button>
+</div>
+</div>
+<!-- Search Input & Quick Help -->
+<div class="flex items-center gap-space-sm flex-1 max-w-lg justify-end">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[17px] pointer-events-none">search</span>
+<input class="w-full h-8 pl-8 pr-12 rounded bg-surface-container-lowest font-body-default text-meta-default text-on-surface placeholder:text-text-muted-light focus:outline-none focus:bg-surface shadow-[0_1px_2px_rgba(44,24,16,0.04)]" placeholder="Handbuch durchsuchen (z. B. Kausalitäts-Kollision, Idiolekt-Regler, Ghost-Prompting)..." type="text"/>
+<kbd class="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-surface-container-highest text-[10px] font-meta-default text-on-surface-variant">F1</kbd>
+</div>
+<button class="h-8 px- space-sm rounded bg-surface text-on-surface-variant hover:text-primary hover:bg-surface-container shadow-[0_1px_2px_rgba(44,24,16,0.03)] px-3 flex items-center gap-1 font-label-default text-label-default transition-all" title="Letzte Änderungen an v2.4">
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">history_edu</span>
+<span class="hidden sm:inline">Changelog</span>
+</button>
+</div>
+</div>
+<!-- Main Viewport Dual Presentation -->
+<div class="flex-1 w-full grid grid-cols-1 xl:grid-cols-[1fr_390px] relative overflow-hidden bg-bg-canvas-light">
+<!-- LEFT: Simulated Active Narrare Workspace with Walkthrough Overlays -->
+<section class="relative p-space-md lg:p-space-lg flex flex-col justify-between overflow-hidden min-h-[760px] bg-gradient-to-b from-surface/40 via-surface-container-low/20 to-surface-container-high/40">
+<!-- Simulated Editor Topbar (Breadcrumbs & Status) -->
+<div class="w-full flex items-center justify-between pb-space-sm mb-space-sm">
+<div class="flex items-center gap-space-xs font-meta-default text-meta-default text-text-muted-light">
+<span class="px-2 py-0.5 rounded bg-surface-container font-label-default text-label-default text-on-surface">Aktiver Schreib-Workspace</span>
+<span>•</span>
+<span class="italic font-prose-editorial">Roman: »Dead Signal«</span>
+<span>•</span>
+<span class="font-label-default text-label-default text-on-surface">Kapitel III: Das Observatorium</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest font-meta-default text-meta-default text-area-writing flex items-center gap-1 shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-area-writing"></span>
+            Live-Kollision aktiv
+          </span>
+<span class="text-meta-default font-meta-default text-text-muted-light">Wortziel: 1.800 / 2.500</span>
+</div>
+</div>
+<!-- Simulated Editor Canvas & Dock Split Grid -->
+<div class="w-full grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-space-lg relative items-start flex-1">
+<!-- Document Sheet (Simulated Writing Pad) with Ghost-Prompting Spotlight -->
+<div class="relative bg-bg-card-light rounded-xl p-space-xl shadow-[0_4px_24px_rgba(44,24,16,0.06)] min-h-[580px] flex flex-col justify-between">
+<div class="max-w-[34rem] mx-auto w-full">
+<div class="text-eyebrow-tracked font-eyebrow-tracked text-area-writing tracking-widest uppercase mb-space-xs">
+              Szenenentwurf • Azimut 41.2
+            </div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface mb-space-lg leading-tight">
+              Kapitel III. Die parabolische Stille
+            </h1>
+<p class="font-prose-editorial text-prose-editorial text-on-surface leading-loose mb-space-md">
+              Die Kupferkuppel über Mayas Kopf vibrierte mit jenem kaum hörbaren Brummen, das sie schon während der ersten Überwinterung auf Svalbard in den Wahnsinn getrieben hatte. Sie strich mit dem Daumen über die gravierte Skala des Refraktors. Sieben Grad Abweichung. Es war unmöglich, und doch war das Nadellager unberührt geblieben.
+            </p>
+<div class="relative p-space-sm rounded bg-surface-container-lowest shadow-[inset_0_1px_3px_rgba(44,24,16,0.03)] my-space-md">
+<p class="font-prose-editorial text-prose-editorial text-on-surface leading-loose">
+                »Wenn die Polachse kippt«, murmelte Maya und trat an das Kartierpult, 
+                <span class="text-cover-sepia/75 bg-secondary-container/40 px-1 py-0.5 rounded">
+                  wird das Signal nicht am Nordturm brechen, sondern im Tal der Messstation versickern.
+                </span>
+<span class="inline-flex items-center gap-1 ml-1 text-meta-default font-label-default bg-surface-container text-primary px-1.5 py-0.5 rounded shadow-sm align-middle animate-pulse">
+<span class="material-symbols-outlined text-[13px]">keyboard_tab</span> Tab übernehmen
+                </span>
+</p>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-text-muted-light/90 italic leading-relaxed">
+              Sie griff nach dem Logbuch aus gepresstem Ziegenleder und notierte die drei Ziffern, die ihr Großvater vor sechzig Jahren auf den Rand gekritzelt hatte...
+            </p>
+</div>
+<!-- Walkthrough Spotlight 1: Ghost-Prompting Annotation (Zettelkasten Callout) -->
+<div class="absolute left-6 bottom-8 max-w-sm rounded-xl bg-surface-bright shadow-[0_12px_32px_rgba(44,24,16,0.14)] p-space-md z-30 transition-transform hover:scale-[1.02]">
+<div class="flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded-lg bg-cover-sepia text-surface flex items-center justify-center font-label-default text-label-default font-bold shadow-sm shrink-0">
+                1
+              </div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-headline-emph text-on-surface">Ghost-Prompting im Satzfluss</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest font-eyebrow-tracked text-[10px] text-area-writing uppercase">Tipp</span>
+</div>
+<p class="font-body-default text-meta-default text-on-surface-variant mt-1 leading-relaxed">
+                  Pausiere 1.5s am Satzende für unaufdringliche Weiterführung im Stil deines Idiolekts. Drücke <kbd class="px-1 py-0.5 bg-surface-container rounded text-on-surface font-semibold text-[10px]">Tab</kbd> zum Einsetzen oder schreibe einfach weiter, um den Vorschlag geräuschlos zu verwerfen.
+                </p>
+<div class="mt-2.5 pt-2 flex items-center justify-between">
+<a class="font-label-default text-label-default text-primary hover:underline flex items-center gap-1" href="#">
+<span>Im Handbuch vertiefen</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+<span class="text-meta-default font-meta-default text-text-muted-light">1 von 3 Touren</span>
+</div>
+</div>
+</div>
+<!-- Indicator Pin Arrow -->
+<div class="absolute -top-2 left-8 w-4 h-4 bg-surface-bright rotate-45 rounded-sm shadow-[-2px_-2px_4px_rgba(44,24,16,0.04)]"></div>
+</div>
+</div>
+<!-- Simulated Right Inspector / Lore Dock with Kausalitäts-Sensor Spotlight -->
+<div class="relative bg-surface-container-low rounded-xl p-space-md shadow-[0_2px_12px_rgba(44,24,16,0.04)] flex flex-col gap-space-md min-h-[580px]">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-1.5 font-label-default text-label-default text-on-surface font-semibold">
+<span class="material-symbols-outlined text-area-knowledge text-[17px]">hub</span>
+<span>Lore &amp; Kausalität</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-state-warning"></span>
+</div>
+<!-- Simulated Lore Card: Maya Lindqvist -->
+<div class="rounded-lg bg-surface p-space-sm shadow-[0_1px_4px_rgba(44,24,16,0.04)] flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-label-default text-on-surface">Maya Lindqvist</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-[10px] font-meta-default text-on-surface-variant">Protagonistin</span>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kausalstatus: Divergenz bei Svalbard-Datum</span>
+</div>
+<!-- Simulated Paradox Warning Card -->
+<div class="rounded-lg bg-secondary-container/40 p-space-sm flex flex-col gap-2 relative">
+<div class="flex items-center gap-1.5 text-cover-sepia font-headline-emph text-meta-default">
+<span class="material-symbols-outlined text-[16px] text-state-warning">warning</span>
+<span>Kausalitäts-Kollision #14</span>
+</div>
+<p class="font-body-default text-meta-default text-on-surface-variant leading-snug">
+              Kapitel I datiert Svalbard auf 2041. Im aktuellen Absatz wird von »erster Überwinterung vor 6 Jahren« gesprochen (Diskrepanz: 2 Jahre).
+            </p>
+<button class="w-full py-1 rounded bg-cover-sepia text-surface text-center font-label-default text-label-default shadow-sm hover:bg-primary transition-all">
+              Resolver öffnen
+            </button>
+</div>
+<!-- Walkthrough Spotlight 2: Kausalitäts-Sensor Annotation -->
+<div class="absolute -left-12 top-40 max-w-[270px] rounded-xl bg-surface-bright shadow-[0_12px_28px_rgba(44,24,16,0.18)] p-space-md z-30 transition-transform hover:scale-[1.02]">
+<div class="flex items-start gap-space-xs">
+<div class="w-6 h-6 rounded-lg bg-cover-sepia text-surface flex items-center justify-center font-label-default text-label-default font-bold shadow-sm shrink-0">
+                2
+              </div>
+<div class="flex-1">
+<span class="font-headline-emph text-label-default text-on-surface block">Kausalitäts-Sensor</span>
+<p class="font-body-default text-meta-default text-on-surface-variant mt-1 leading-snug">
+                  Prüft in Echtzeit, ob Figuren-Aussagen mit Wissensgraphen &amp; Dossiers übereinstimmen. Ein Klick auf das Paradoxon öffnet den intelligenten Abgleich.
+                </p>
+</div>
+</div>
+<div class="mt-2 text-right">
+<span class="font-meta-default text-[10px] text-text-muted-light">2 von 3 Touren</span>
+</div>
+<!-- Pointer Arrow -->
+<div class="absolute -right-2 top-8 w-4 h-4 bg-surface-bright rotate-45 rounded-sm shadow-[2px_-2px_4px_rgba(44,24,16,0.04)]"></div>
+</div>
+<!-- Simulated Timeline Snippet -->
+<div class="mt-auto p-space-sm rounded bg-surface-container flex flex-col gap-1.5">
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase tracking-wider">Chronologie-Anker</span>
+<div class="flex items-center justify-between text-meta-default font-meta-default text-on-surface">
+<span>04. Nov, 2047</span>
+<span class="font-semibold text-cover-sepia">19:42 UTC</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating In-Screen Help Trigger & Interactive Walkthrough Floating Bar -->
+<div class="w-full flex items-center justify-between mt-space-md pt-space-xs">
+<div class="flex items-center gap-space-xs bg-surface/90 backdrop-blur-md px-space-md py-1.5 rounded-full shadow-[0_2px_8px_rgba(44,24,16,0.06)]">
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+<span class="font-meta-default text-meta-default text-on-surface">Kontext-Tour aktiv:</span>
+<span class="font-label-default text-label-default font-semibold text-cover-sepia">Schreib-Atelier &amp; Echtzeit-Lektorat</span>
+<button class="ml-2 text-meta-default text-text-muted-light hover:text-on-surface underline">Tour beenden</button>
+</div>
+<!-- Floating Help Button (Bottom Corner) with Active Pulse -->
+<button class="relative group flex items-center gap-space-xs px-space-md py-2 rounded-full bg-cover-sepia text-surface shadow-[0_4px_16px_rgba(116,59,31,0.3)] hover:bg-primary transition-all" id="toggle-drawer-btn">
+<span class="absolute -top-1 -right-1 flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-focus-dark opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-tertiary-fixed"></span>
+</span>
+<span class="material-symbols-outlined text-[19px]">help</span>
+<span class="font-label-default text-label-default font-semibold tracking-wide">? Hilfe (F1)</span>
+</button>
+</div>
+</section>
+<!-- RIGHT: Integrated In-Screen Help Drawer (Dockbares Kontext-Handbuch) -->
+<aside class="w-full bg-surface-container-lowest shadow-[-4px_0_24px_rgba(44,24,16,0.06)] flex flex-col justify-between overflow-y-auto max-h-[calc(100vh-3.5rem)] z-20" id="help-drawer">
+<!-- Drawer Header with Pin/Unpin, Maximize & Close -->
+<div>
+<div class="p-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-cover-sepia text-[20px]">sticky_note_2</span>
+<div>
+<h2 class="font-headline-emph text-headline-emph text-on-surface leading-tight">Kontext-Hilfe</h2>
+<span class="font-meta-default text-[11px] text-area-writing uppercase tracking-wider block">Schreib-Workspace</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Dock anheften (Pinned)">
+<span class="material-symbols-outlined text-[17px]">push_pin</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="In Vollbild-Handbuch öffnen">
+<span class="material-symbols-outlined text-[17px]">open_in_full</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-error transition-colors" title="Hilfe schließen (Esc)">
+<span class="material-symbols-outlined text-[17px]">close</span>
+</button>
+</div>
+</div>
+<!-- In-Context Quick Answers Accordions -->
+<div class="p-space-md flex flex-col gap-space-md">
+<div>
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-on-surface-variant uppercase tracking-wider">Häufigste Fragen zu diesem Screen</span>
+<span class="text-meta-default font-meta-default text-text-muted-light">3 Artikel</span>
+</div>
+<!-- Accordion Item 1 (Expanded) -->
+<div class="rounded-lg bg-surface shadow-[0_1px_3px_rgba(44,24,16,0.04)] overflow-hidden mb-space-xs">
+<button class="w-full p-space-sm text-left flex items-start justify-between gap-space-xs bg-surface hover:bg-surface-container-low transition-colors">
+<span class="font-headline-emph text-label-default text-on-surface leading-snug">
+                  Wie passe ich den Tonfall der KI-Ghost-Texte an?
+                </span>
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0">expand_less</span>
+</button>
+<div class="px-space-sm pb-space-sm pt-0 font-body-default text-meta-default text-on-surface-variant leading-relaxed">
+<p>
+                  Der Schreibton passt sich automatisch dem von dir definierten <strong class="text-on-surface">Idiolekt-Profil</strong> der aktiven Erzählstimme an. Um Wortwahl, Metaphorik und Satzlänge feinzugradieren:
+                </p>
+<div class="mt-2 p-2 rounded bg-surface-container-low flex items-center justify-between">
+<span class="text-primary font-semibold font-meta-default">Atelier-Regler: Idiolekt &amp; Kadenz</span>
+<a class="px-2 py-1 rounded bg-cover-sepia text-surface text-[11px] font-label-default hover:bg-primary transition-colors" href="#">
+                    Öffnen
+                  </a>
+</div>
+<div class="mt-2">
+<a class="text-cover-sepia hover:underline font-label-default text-[12px] inline-flex items-center gap-1" href="#">
+<span>Zu KI-Prompts &amp; Feature-Überschreibung springen</span>
+<span class="material-symbols-outlined text-[12px]">north_east</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Accordion Item 2 -->
+<div class="rounded-lg bg-surface shadow-[0_1px_3px_rgba(44,24,16,0.04)] overflow-hidden mb-space-xs">
+<button class="w-full p-space-sm text-left flex items-start justify-between gap-space-xs hover:bg-surface-container-low transition-colors">
+<span class="font-headline-emph text-label-default text-on-surface leading-snug">
+                  Was bedeutet das gelbe Divergenz-Symbol?
+                </span>
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0">expand_more</span>
+</button>
+<!-- Hidden explanation hint for visual clarity -->
+<div class="px-space-sm pb-space-sm pt-0 text-meta-default text-on-surface-variant flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-state-warning shrink-0"></span>
+<span>Signalisiert ein chronologisches oder biografisches Paradoxon.</span>
+</div>
+</div>
+<!-- Accordion Item 3 -->
+<div class="rounded-lg bg-surface shadow-[0_1px_3px_rgba(44,24,16,0.04)] overflow-hidden">
+<button class="w-full p-space-sm text-left flex items-start justify-between gap-space-xs hover:bg-surface-container-low transition-colors">
+<span class="font-headline-emph text-label-default text-on-surface leading-snug">
+                  Wie stelle ich gelöschte Absätze aus der Time-Machine wieder her?
+                </span>
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Interactive Mini-Tutorials & Media Spotlight -->
+<div class="rounded-xl bg-surface p-space-sm shadow-[0_1px_4px_rgba(44,24,16,0.05)]">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-area-knowledge uppercase tracking-wider">Video-Tutorial • 60 Sek.</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container font-meta-default text-[10px] text-text-muted-light">Neu</span>
+</div>
+<div class="relative w-full h-32 rounded-lg bg-cover-ink overflow-hidden group cursor-pointer shadow-inner">
+<div class="bg-cover bg-center w-full h-full opacity-60 group-hover:scale-105 transition-transform duration-500" data-alt="An atmospheric cinematic close-up of a vintage mechanical typewriter keyboard on dark aged oak wood, illuminated by warm amber library desk lamps with glowing dust motes, scholarly literary ambiance in deep sepia and ivory tones." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDmuey17gyAHsAU1ykKeU2G-ktgvqnEsQdpoScYCql7EwCG9uxqoI6uM9_QpetdX2eQ0mPi1U8r2Wlbup6akXT6HAML9qXe2gJ820xswbrKMGdmyF2DZauWAiIJUIXltHXwY-5ug_VDtEVdJ9FVgFPXfYGlYWUTGybaDH2gKjZFhaXxkhjoHwWkzaAGwW_lsiWEdE-1Il2wC_aNOQYd4o64WXe3qllNbwqKTiF2EEAx')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-cover-ink/90 via-cover-ink/30 to-transparent flex items-center justify-center">
+<div class="w-10 h-10 rounded-full bg-surface text-cover-sepia flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[24px] ml-0.5">play_arrow</span>
+</div>
+</div>
+<div class="absolute bottom-2 left-2 right-2 text-surface font-headline-emph text-label-default drop-shadow truncate">
+                Der perfekte Schreibfluss mit Kausalitätsprüfung
+              </div>
+</div>
+<p class="font-body-default text-meta-default text-text-muted-light mt-2 leading-tight">
+              Lerne in einer Minute, wie du Unterbrechungen minimierst und Divergenzen erst im Revisions-Modus glättest.
+            </p>
+</div>
+<!-- Keyboard Shortcuts Cheat Sheet (In-Context) -->
+<div class="rounded-xl bg-surface-container-low p-space-sm">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-on-surface-variant uppercase tracking-wider">Tastaturkürzel (Workspace)</span>
+<a class="font-meta-default text-[11px] text-primary hover:underline" href="#">Alle Shortcuts</a>
+</div>
+<div class="grid grid-cols-1 gap-1.5 font-meta-default">
+<div class="flex items-center justify-between p-1.5 rounded bg-surface">
+<span class="text-on-surface">Ghost-Text annehmen</span>
+<kbd class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface font-semibold text-[11px] shadow-sm">Tab</kbd>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface">
+<span class="text-on-surface">Neuer KI-Vorschlag</span>
+<kbd class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface font-semibold text-[11px] shadow-sm">Shift + Tab</kbd>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface">
+<span class="text-on-surface">Universalsuche &amp; Sprünge</span>
+<kbd class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface font-semibold text-[11px] shadow-sm">⌘K</kbd>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface">
+<span class="text-on-surface">Zen-Fokusmodus vertiefen</span>
+<kbd class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface font-semibold text-[11px] shadow-sm">F9</kbd>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Direct Support & Literary Community Help Box (Footer) -->
+<div class="p-space-md bg-surface-container-low mt-auto">
+<div class="p-space-sm rounded-lg bg-surface shadow-[0_1px_3px_rgba(44,24,16,0.04)] flex flex-col gap-2">
+<div class="flex items-center gap-space-xs text-cover-sepia font-headline-emph text-label-default">
+<span class="material-symbols-outlined text-[18px]">forum</span>
+<span>Frage an das Support-Atelier</span>
+</div>
+<p class="font-body-default text-meta-default text-on-surface-variant leading-snug">
+            Keine passende Antwort gefunden? Schreib direkt an unser literarisches Team oder frag die Autoren-Gilde.
+          </p>
+<div class="flex items-center gap-space-xs mt-1">
+<button class="flex-1 py-1.5 rounded bg-cover-sepia text-surface text-center font-label-default text-label-default shadow hover:bg-primary transition-all">
+              Nachricht senden
+            </button>
+<button class="px-2 py-1.5 rounded bg-surface-container text-on-surface-variant hover:text-on-surface text-center font-label-default text-label-default transition-all" title="Zur Narrare Discord-Gilde">
+<span class="material-symbols-outlined text-[16px] align-middle">groups</span>
+</button>
+</div>
+</div>
+<div class="mt-2 text-center text-meta-default text-[11px] text-text-muted-light font-prose-editorial italic">
+          Narrare Atelier Dokumentation • Ausgabe Herbst 2024
+        </div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+  // Simple micro-interactions for Help Drawer toggle & mode switching preview
+  (function() {
+    const btnModeDrawer = document.getElementById('btn-mode-drawer');
+    const btnModeFull = document.getElementById('btn-mode-full');
+    const drawer = document.getElementById('help-drawer');
+    const toggleBtn = document.getElementById('toggle-drawer-btn');
+
+    if (btnModeFull && btnModeDrawer && drawer) {
+      btnModeFull.addEventListener('click', () => {
+        btnModeFull.classList.add('bg-surface', 'text-on-surface', 'shadow-[0_1px_3px_rgba(44,24,16,0.08)]');
+        btnModeFull.classList.remove('text-on-surface-variant');
+        btnModeDrawer.classList.remove('bg-surface', 'text-on-surface', 'shadow-[0_1px_3px_rgba(44,24,16,0.08)]');
+        btnModeDrawer.classList.add('text-on-surface-variant');
+        drawer.classList.add('hidden');
+      });
+
+      btnModeDrawer.addEventListener('click', () => {
+        btnModeDrawer.classList.add('bg-surface', 'text-on-surface', 'shadow-[0_1px_3px_rgba(44,24,16,0.08)]');
+        btnModeDrawer.classList.remove('text-on-surface-variant');
+        btnModeFull.classList.remove('bg-surface', 'text-on-surface', 'shadow-[0_1px_3px_rgba(44,24,16,0.08)]');
+        btnModeFull.classList.add('text-on-surface-variant');
+        drawer.classList.remove('hidden');
+      });
+    }
+
+    if (toggleBtn && drawer) {
+      toggleBtn.addEventListener('click', () => {
+        drawer.classList.toggle('hidden');
+      });
+    }
+  })();
+</script></main></div></body></html>

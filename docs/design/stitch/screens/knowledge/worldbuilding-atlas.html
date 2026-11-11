@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"15rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full overflow-y-auto"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light shrink-0"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Roman-Atelier</span></div></div><div class="w-full px-space-xs my-space-xs shrink-0"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal (Trilogie)</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><div class="px-space-xs w-full pt-1 pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light px-2">Atelier & Struktur</span></div><nav class="flex flex-col gap-1 w-full px-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="serien-mehrbaender-architektur" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Serien-Architektur</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="subtext-szenen-sezierer" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Szenen-Sezierer</span></a><a aria-current="page" class="flex items-center h-9 px-2 rounded-lg transition-colors bg-secondary-container text-on-secondary-container font-semibold" data-path="weltenbau-geografie-atlas" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Weltenbau-Atlas</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="expose-pitch-studio" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Exposé- & Pitch-Studio</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="export-buchsatz-studio" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Buchsatz & Export</span></a></nav><div class="px-space-xs w-full pt-3 pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light px-2">System</span></div><nav class="flex flex-col gap-1 w-full px-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Bibliothek</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Einstellungen</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs shrink-0"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Roman-Architekt</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Roman-Atelier</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Gespeichert</span></div><div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-state-success/10 text-state-success font-meta-default text-[12px] font-medium border border-state-success/20 ml-2 animate-pulse"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalitäts-Matrix synchron • Makro-Arcs & Subtext validiert</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Suchen oder Befehl...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48.342 Wörter</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>DE</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Command & Map Navigation Bar -->
+<div class="bg-surface-container-low px-space-lg py-space-md shadow-sm">
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-area-knowledge uppercase tracking-widest">Kartenwerk & Kausalitäts-Matrix</span>
+<span class="h-1.5 w-1.5 rounded-full bg-cover-sepia"></span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Archiv-Register: GEO-7749-DS</span>
+</div>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-primary mt-0.5 tracking-tight">Geografie- & Raum-Atlas: Nevada-Becken & Sektor 04-Nord</h1>
+<p class="font-meta-default text-meta-default text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span>Lagrange-Korridor L2 ↔ Große Becken-Senke (Nevada)</span>
+<span class="text-outline-variant">•</span>
+<span>Epoche: Zyklus 3 (Akt I–III)</span>
+<span class="text-outline-variant">•</span>
+<span class="text-state-success font-medium">14.2008 Hz Trägerwelle synchronisiert</span>
+</p>
+</div>
+<!-- Kartenebenen-Wahlschalter (Segmented Controller) -->
+<div class="flex flex-wrap items-center gap-2 bg-surface p-1 rounded-xl shadow-sm">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cover-sepia text-surface-bright font-label-default text-label-default transition-all shadow-sm" id="layer-topo">
+<span class="material-symbols-outlined text-[17px]">terrain</span>
+<span>Topografie & Becken</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all font-label-default text-label-default" id="layer-deck">
+<span class="material-symbols-outlined text-[17px]">domain</span>
+<span>Deckplan: Station 7</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all font-label-default text-label-default" id="layer-orbital">
+<span class="material-symbols-outlined text-[17px]">satellite_alt</span>
+<span>Orbit Horizon (L2)</span>
+</button>
+</div>
+</div>
+<!-- Active Map Filter Pills -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm mt-3 pt-3 bg-surface-container-lowest/60 px-3 py-2 rounded-xl">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light mr-1">Layer-Filter:</span>
+<label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary-container/40 text-on-secondary-container font-meta-default text-meta-default cursor-pointer hover:bg-secondary-container/60 transition-colors">
+<input checked="" class="rounded accent-cover-sepia cursor-pointer" type="checkbox"/>
+<span class="font-medium">Szenen-Pins (Akt I–III)</span>
+<span class="text-[11px] px-1 rounded bg-secondary-container text-on-secondary-container font-bold">42</span>
+</label>
+<label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface text-on-surface-variant font-meta-default text-meta-default cursor-pointer hover:bg-surface-container transition-colors">
+<input checked="" class="rounded accent-cover-sepia cursor-pointer" type="checkbox"/>
+<span>Funksignal-Radien (14.2008 Hz)</span>
+</label>
+<label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface text-on-surface-variant font-meta-default text-meta-default cursor-pointer hover:bg-surface-container transition-colors">
+<input class="rounded accent-cover-sepia cursor-pointer" type="checkbox"/>
+<span>Atmosphärendruck & Permafrost-Gradient</span>
+</label>
+<label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface text-on-surface-variant font-meta-default text-meta-default cursor-pointer hover:bg-surface-container transition-colors">
+<input checked="" class="rounded accent-cover-sepia cursor-pointer" type="checkbox"/>
+<span>Suborbitaler Sinkflug-Vektor</span>
+</label>
+</div>
+<div class="flex items-center gap-2 text-text-muted-light font-meta-default text-meta-default">
+<span class="material-symbols-outlined text-[16px]">straighten</span>
+<span>Maßstab 1 : 25.000 • Datum: WGS-84 / L2 Matrix</span>
+</div>
+</div>
+</div>
+<!-- Tri-Column Interactive Spatial Workbench -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md p-space-md">
+<!-- LEFT COLUMN: Schauplatz- & Terrain-Katalog (Col 1-3) -->
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<!-- Action: Neuen Schauplatz anlegen -->
+<div class="bg-surface p-space-md rounded-xl shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-headline-emph text-primary">Topografischer Atlas</span>
+<span class="font-meta-default text-meta-default text-text-muted-light px-2 py-0.5 rounded-full bg-surface-container">6 Schauplätze</span>
+</div>
+<button class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary text-on-primary font-label-default text-label-default shadow-sm hover:bg-cover-sepia transition-all">
+<span class="material-symbols-outlined text-[18px]">add_location_alt</span>
+<span>Neuen Schauplatz kartieren</span>
+</button>
+</div>
+<!-- Schauplatz-Kartenliste -->
+<div class="flex flex-col gap-3">
+<!-- POI 1: Forschungsstation 7 (Aktiv / Kritisch) -->
+<div class="bg-surface rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-state-danger"></div>
+<div class="pl-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-state-danger uppercase font-bold tracking-wider">Kritischer Knotenpunkt • -380m</span>
+<h3 class="font-prose-heading-2 text-[17px] text-primary group-hover:text-cover-sepia leading-snug">Forschungsstation 7</h3>
+</div>
+<span class="px-2 py-0.5 rounded bg-state-danger/10 text-state-danger font-meta-default text-[11px] font-bold">14 Szenen</span>
+</div>
+<p class="font-body-default text-[13px] text-on-surface-variant mt-1.5 leading-relaxed">
+              Subterranes Kryo-Array. Primärschleuse Delta-Nord entriegelt.
+            </p>
+<!-- Umwelt-Parameter Tag Cloud -->
+<div class="grid grid-cols-2 gap-1.5 mt-3 pt-2 bg-surface-container-low p-2 rounded-lg font-meta-default text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-state-danger">thermostat</span>
+<span>-14°C (Kryo-Leck)</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-state-warning">compress</span>
+<span>1.42 bar (N₂-Stau)</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-primary">warning</span>
+<span>Kontaminiert</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-cover-sepia">radar</span>
+<span>Frequenz 14.2 kHz</span>
+</div>
+</div>
+<div class="mt-2.5 flex items-center justify-between text-text-muted-light font-meta-default text-[11px]">
+<span>Letzte Verknüpfung: Kap. 14 (Szene 3)</span>
+<span class="material-symbols-outlined text-[14px] text-primary">arrow_forward</span>
+</div>
+</div>
+</div>
+<!-- POI 2: Horizon Station -->
+<div class="bg-surface rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-area-chat"></div>
+<div class="pl-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-area-chat uppercase font-bold tracking-wider">Geostationär • L2 Korridor</span>
+<h3 class="font-prose-heading-2 text-[17px] text-primary group-hover:text-cover-sepia leading-snug">Horizon Station</h3>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-meta-default text-[11px] font-bold">19 Szenen</span>
+</div>
+<p class="font-body-default text-[13px] text-on-surface-variant mt-1.5 leading-relaxed">
+              Mayas Hauptquartier & Spektrografie-Plattform. Relais-Kopplung aktiv.
+            </p>
+<div class="grid grid-cols-2 gap-1.5 mt-3 pt-2 bg-surface-container-low p-2 rounded-lg font-meta-default text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-area-chat">ac_unit</span>
+<span>21.4°C (Klimat.)</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-area-chat">air</span>
+<span>0.98 bar (O₂/N₂)</span>
+</div>
+<div class="flex items-center gap-1 col-span-2">
+<span class="material-symbols-outlined text-[13px] text-state-success">cell_tower</span>
+<span>Transmitter: L2-Omni-Array</span>
+</div>
+</div>
+</div>
+</div>
+<!-- POI 3: Nevada Trümmerfeld -->
+<div class="bg-surface rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-cover-sepia"></div>
+<div class="pl-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-cover-sepia uppercase font-bold tracking-wider">Oberflächen-Senke • Ruby Range</span>
+<h3 class="font-prose-heading-2 text-[17px] text-primary group-hover:text-cover-sepia leading-snug">Nevada Trümmerfeld</h3>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-meta-default text-[11px] font-bold">7 Szenen</span>
+</div>
+<p class="font-body-default text-[13px] text-on-surface-variant mt-1.5 leading-relaxed">
+              -26°C, Permafrost-Ebene, basaltische Ascheablagerungen, Geruch nach Schwefel.
+            </p>
+<div class="flex items-center gap-3 mt-2 text-text-muted-light font-meta-default text-[11px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">speed</span> 0.18 bar</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">altitude</span> 1.840m ü. NN</span>
+</div>
+</div>
+</div>
+<!-- POI 4: Basin City Minen-Schächte -->
+<div class="bg-surface rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-area-settings"></div>
+<div class="pl-2">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase font-bold tracking-wider">Stollen-Netzwerk • Sektor B</span>
+<h3 class="font-prose-heading-2 text-[17px] text-primary group-hover:text-cover-sepia leading-snug">Basin City Minen</h3>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-meta-default text-[11px] font-bold">9 Szenen</span>
+</div>
+<p class="font-body-default text-[13px] text-on-surface-variant mt-1.5 leading-relaxed">
+              Verlassene Lithium-Stollen. Klandestiner Transit & Schmuggelroute.
+            </p>
+</div>
+</div>
+</div>
+<!-- Atmospheric Lore Card -->
+<div class="bg-surface-container-high/60 rounded-xl p-space-md">
+<div class="flex items-center gap-2 text-primary font-headline-emph text-headline-emph">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span>Historische Vermessung</span>
+</div>
+<p class="font-prose-editorial text-[14px] text-on-surface-variant italic mt-1 leading-relaxed">
+          „Die seismischen Echos aus Station 7 begannen nicht mit dem Einsturz von 2084. Sie folgten exakt der Frequenz des 1983 versiegelten Tiefbohrlochs bei Groom Lake.“
+        </p>
+<span class="block mt-2 font-meta-default text-[11px] text-text-muted-light uppercase tracking-wider">— Geologischer Bericht / Calder</span>
+</div>
+</div>
+<!-- CENTER COLUMN: Interaktive Kartografie & Geländemodell (Col 4-8) -->
+<div class="lg:col-span-6 flex flex-col gap-space-md">
+<!-- Topographical Canvas Container -->
+<div class="bg-bg-panel-light rounded-xl shadow-md p-space-sm relative overflow-hidden flex flex-col min-h-[620px]">
+<!-- Cartographic Metadata Header Overlay -->
+<div class="flex items-center justify-between px-3 py-2 bg-surface/90 backdrop-blur-md rounded-lg shadow-sm z-10">
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-cover-sepia text-on-primary font-bold text-xs">NV</span>
+<div>
+<span class="font-headline-emph text-headline-emph text-primary block leading-none">Nevada Quadrant 04-Nord / Deep Array</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Koordinaten: 39°45'22"N • 115°22'48"W | Azimut: 042°</span>
+</div>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded">
+<span class="w-2 h-2 rounded-full bg-state-danger animate-ping"></span>
+<span class="font-meta-default text-[11px] font-semibold text-state-danger ml-1">Echtzeit-Resonanz 14.2008 Hz</span>
+</div>
+</div>
+<!-- Interactive Map Visual with Topographic SVG -->
+<div class="relative w-full flex-1 rounded-lg mt-2 overflow-hidden bg-bg-canvas-light select-none">
+<!-- Vector Map SVG Layer -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="xMidYMid slice" viewbox="0 0 800 560" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!-- Geodetic Grid Pattern -->
+<pattern height="40" id="geodetic-grid" patternunits="userSpaceOnUse" width="40">
+<path class="text-outline-variant/35" d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.5"></path>
+<circle class="text-cover-sepia/40" cx="0" cy="0" fill="currentColor" r="1"></circle>
+</pattern>
+<!-- Radial Echo Wave -->
+<radialgradient cx="50%" cy="50%" id="signal-pulse" r="50%">
+<stop offset="0%" stop-color="#AC3031" stop-opacity="0.25"></stop>
+<stop offset="40%" stop-color="#743B1F" stop-opacity="0.12"></stop>
+<stop offset="100%" stop-color="#58250b" stop-opacity="0"></stop>
+</radialgradient>
+<!-- Orbital Drop Shadow -->
+<lineargradient id="vector-grad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#3A637B" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#743B1F" stop-opacity="0.9"></stop>
+</lineargradient>
+</defs>
+<!-- Background Grid Layer -->
+<rect fill="url(#geodetic-grid)" height="100%" width="100%"></rect>
+<!-- Topographic Elevation Contour Lines (Ruby Mountains / Basin Floor) -->
+<g class="text-cover-sepia/20" fill="none" stroke="currentColor" stroke-width="1.2">
+<path d="M-50,120 Q120,80 260,140 T520,110 T850,170"></path>
+<path d="M-30,160 Q160,120 310,190 T570,160 T850,210"></path>
+<path class="text-cover-sepia/30" d="M-20,210 Q190,170 340,240 T630,200 T850,260" stroke-width="1.6"></path>
+<path d="M-40,270 Q140,230 380,300 T690,260 T850,310"></path>
+<!-- Mountain Ridges: Ruby Crests -->
+<path class="text-cover-sepia/40" d="M180,340 C220,280 290,260 360,280 C440,300 480,250 540,230 C610,210 680,260 740,300" stroke-width="2"></path>
+<path d="M210,360 C240,310 310,300 370,310 C430,320 470,290 530,270 C590,250 650,290 710,340"></path>
+<path d="M250,390 C290,350 350,330 400,340 C460,350 500,320 560,310 C620,300 660,330 700,390"></path>
+<!-- Depression Basin (Permafrost-Senke) -->
+<ellipse class="text-state-warning/50" cx="450" cy="370" rx="130" ry="70" stroke-dasharray="4,4"></ellipse>
+<ellipse class="text-state-danger/40" cx="450" cy="370" rx="80" ry="40" stroke-dasharray="2,2"></ellipse>
+</g>
+<!-- Signal Echo Radii centered on Station 7 (450, 370) -->
+<circle cx="450" cy="370" fill="url(#signal-pulse)" r="180"></circle>
+<circle class="opacity-60" cx="450" cy="370" fill="none" r="140" stroke="#AC3031" stroke-dasharray="6,4" stroke-width="0.8"></circle>
+<circle class="opacity-80" cx="450" cy="370" fill="none" r="85" stroke="#AC3031" stroke-dasharray="3,3" stroke-width="1.2"></circle>
+<circle cx="450" cy="370" fill="none" r="35" stroke="#AC3031" stroke-width="1.5"></circle>
+<!-- Suborbital Descent Path (Horizon Station -> Sektor 04-Nord) -->
+<path d="M120,60 C210,120 320,230 445,360" fill="none" stroke="url(#vector-grad)" stroke-dasharray="8,6" stroke-width="2.5"></path>
+<!-- Descent Vector Arrowhead -->
+<polygon fill="#743B1F" points="445,360 435,350 442,345"></polygon>
+<!-- Vector Path Distance Label in SVG -->
+<rect class="shadow-sm" fill="#FFFFFF" height="22" rx="4" width="130" x="240" y="180"></rect>
+<text fill="#58250b" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" x="245" y="195">Vektor: 1.400 km • 42 Min</text>
+<!-- POI Point: Horizon Station Orbit Overlay (Top Left) -->
+<g transform="translate(120,60)">
+<circle cx="0" cy="0" fill="#3A637B" r="8"></circle>
+<circle class="animate-spin" cx="0" cy="0" fill="none" r="16" stroke="#3A637B" stroke-dasharray="2,2" stroke-width="1" style="animation-duration: 20s;"></circle>
+<text fill="#1e1b16" font-family="Plus Jakarta Sans" font-size="11" font-weight="700" x="14" y="4">Horizon Station (L2)</text>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="9" x="14" y="17">Alt: 1.500.000 km geostationär</text>
+</g>
+<!-- POI Point: Basin City (Westlich) -->
+<g transform="translate(150,330)">
+<rect fill="#5A5549" height="12" transform="rotate(45)" width="12" x="-6" y="-6"></rect>
+<text fill="#1e1b16" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" x="14" y="3">Basin City Minen</text>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="9" x="14" y="15">Schmuggelstollen Sektor B</text>
+</g>
+<!-- POI Point: Sektor 04-Nord / Transponder Fundort (Kapitel 2.3) -->
+<g transform="translate(320,430)">
+<circle cx="0" cy="0" fill="#8F4622" r="5"></circle>
+<line stroke="#8F4622" stroke-width="1" x1="0" x2="35" y1="0" y2="35"></line>
+<text fill="#58250b" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" x="40" y="40">Sektor 04-Nord: LC-89 Transponder</text>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="9" x="40" y="52">Szene 2.3: Signalanomalie im Eis</text>
+</g>
+<!-- POI Point: Echo-Korridor (Nordost) -->
+<g transform="translate(620,170)">
+<polygon fill="#606127" points="0,-7 6,5 -6,5"></polygon>
+<text fill="#1e1b16" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" x="12" y="2">Nevada Echo-Korridor</text>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="9" x="12" y="14">Akustischer Resonanz-Trichter</text>
+</g>
+<!-- POI Point: Forschungsstation 7 (Pulsierender Hauptschauplatz) -->
+<g transform="translate(450,370)">
+<circle class="animate-ping opacity-30" cx="0" cy="0" fill="#AC3031" r="12"></circle>
+<circle cx="0" cy="0" fill="#AC3031" r="7"></circle>
+<circle cx="0" cy="0" fill="#ffffff" r="3"></circle>
+</g>
+</svg>
+<!-- Floating Interactive Callout Card (Pinned to Station 7) -->
+<div class="absolute left-[54%] top-[56%] bg-surface/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-state-danger/30 max-w-[260px] pointer-events-auto">
+<div class="flex items-center justify-between">
+<span class="flex items-center gap-1 font-eyebrow-tracked text-[10px] text-state-danger uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-state-danger animate-pulse"></span>
+                Subterran -380m
+              </span>
+<span class="font-meta-default text-[10px] text-text-muted-light">Akt II / Finale</span>
+</div>
+<h4 class="font-headline-emph text-headline-emph text-primary mt-0.5">Forschungsstation 7</h4>
+<p class="font-meta-default text-[12px] text-on-surface-variant mt-1 leading-snug">
+              Schleusen-Entriegelung vor 4 Min registriert. 14 verknüpfte Szenen in Kausalität.
+            </p>
+<div class="flex items-center gap-2 mt-2.5">
+<button class="px-2 py-1 rounded bg-cover-sepia text-on-primary font-label-default text-[11px] font-medium hover:bg-primary transition-all">
+                Deckplan öffnen
+              </button>
+<button class="px-2 py-1 rounded bg-surface-container text-on-surface-variant font-label-default text-[11px] hover:bg-surface-container-high transition-all">
+                Szenenliste (14)
+              </button>
+</div>
+</div>
+<!-- Topographic Map Ruler / Compass Overlay -->
+<div class="absolute bottom-3 left-3 bg-surface/85 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm font-meta-default text-[11px] text-on-surface flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px] text-cover-sepia">explore</span>
+<span class="font-bold">N 0°</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="w-16 h-1 bg-primary relative">
+<div class="absolute left-0 top-0 bottom-0 w-8 bg-cover-sepia"></div>
+</div>
+<span class="text-text-muted-light">10 km</span>
+</div>
+<div class="text-text-muted-light">Höhenlinien-Intervall: 50m</div>
+</div>
+<!-- Coordinate Crosshairs HUD -->
+<div class="absolute top-3 right-3 bg-surface/85 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] font-meta-default text-text-muted-light">
+            Cursor: 39°48'11"N | 115°19'02"W
+          </div>
+</div>
+<!-- Cross-Section Elevation Profile (Höhenprofil-Vorschau Schnittlinie A-B) -->
+<div class="mt-space-sm bg-surface p-space-sm rounded-lg shadow-sm">
+<div class="flex items-center justify-between mb-1.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Geländeschnitt A-B: West-Becken ➔ Ruby Crest ➔ Station 7</span>
+<span class="font-meta-default text-meta-default text-primary font-medium">Vertikale Überhöhung 3:1</span>
+</div>
+<div class="h-16 w-full relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 600 60">
+<!-- Elevation Area Fill -->
+<path d="M 0,55 L 60,50 L 140,52 L 220,38 L 300,10 L 370,18 L 440,48 L 520,54 L 600,52 L 600,60 L 0,60 Z" fill="#EEEBE5"></path>
+<!-- Elevation Line -->
+<path d="M 0,55 L 60,50 L 140,52 L 220,38 L 300,10 L 370,18 L 440,48 L 520,54 L 600,52" fill="none" stroke="#743B1F" stroke-width="1.8"></path>
+<!-- Subterranean Marker: Station 7 at x=440, deep underground -->
+<line stroke="#AC3031" stroke-dasharray="2,2" stroke-width="2" x1="440" x2="440" y1="48" y2="60"></line>
+<circle cx="440" cy="58" fill="#AC3031" r="3"></circle>
+</svg>
+<div class="absolute top-1 left-[48%] text-[10px] font-meta-default text-primary font-bold">Ruby Crest (2.890m)</div>
+<div class="absolute bottom-0 right-[24%] text-[10px] font-meta-default text-state-danger font-bold">Station 7 (-380m)</div>
+<div class="absolute bottom-1 left-2 text-[10px] font-meta-default text-text-muted-light">Becken 1.400m</div>
+</div>
+</div>
+</div>
+<!-- Photographic Reference Mosaik (Setting Impressions) -->
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="relative rounded-xl overflow-hidden shadow-sm h-32 group">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="Vast frozen desert basin in Nevada under a pale desolate sky, scattered basalt boulders dusted with permafrost, distant jagged mountain range in terracotta and sepia tones, moody cinematic cinematic sci-fi atmosphere with atmospheric haze." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDo9fM1Ja5GdH58auLJAr8nCCchjObnQebDHBEUh9AzNSdFhxNvEXMImSmCGBBMFAhUid9yTeSgryVDUXM3J2MUmWKn4gyttvQyGZ-cATU26nN5acTZ-nTt_3781emZRxYFEnBdP8QmPuv0Tfra8znBXgXRV92v_dw_kxuiGfTgHeFn4Jw4KjZiEv9XW4enpXPJFWAcFCR_cbl1OJPpWuBqRnLkXLAEdTHSAdI2yvxn')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-cover-ink/80 via-cover-ink/20 to-transparent flex flex-col justify-end p-2.5">
+<span class="font-eyebrow-tracked text-[10px] text-surface-bright uppercase tracking-wider">Oberflächen-Dokumentation</span>
+<span class="font-headline-emph text-surface-bright text-[13px]">Nevada Trümmerfeld & Permafrost</span>
+</div>
+</div>
+<div class="relative rounded-xl overflow-hidden shadow-sm h-32 group">
+<div class="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="Brutal concrete subterranean research airlock tunnel deep underground, frosted industrial steel hatches, cold rust accents, soft amber warning lights illuminating frozen nitrogen mist, hyper-detailed literary sci-fi aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDYXDRczEAv4HAtQVSZhcSaHGxYQ4maQm7rOFSW4MOpgdh0K0T5S2sWQLbGmnv6ndk80WoBH1zSf-wzNQmVODhsz4dKs3WIDmXSyRYG6R7gknVjViwZe4He17TxOubl0GXaTpBE34TA2gTDPwf0p9c8la-NSWyHv2Z3k4u-SgrP8GAaCzr3D6XpMCG4BpEt08oYDnbsN-merZl__-XyZgKAAe1qIkN91UsurphFqNRX')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-cover-ink/80 via-cover-ink/20 to-transparent flex flex-col justify-end p-2.5">
+<span class="font-eyebrow-tracked text-[10px] text-surface-bright uppercase tracking-wider">Architektur-Skizze</span>
+<span class="font-headline-emph text-surface-bright text-[13px]">Station 7 Schleuse Delta-Nord</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Kausale Reisezeit- & Distanz-Matrix (Col 9-12) -->
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<!-- Kausalitäts- & Konsistenz-Wächter -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-state-success text-[20px]">verified</span>
+<div>
+<h3 class="font-headline-emph text-headline-emph text-primary leading-tight">Kausaler Logik-Rechner</h3>
+<span class="font-meta-default text-[11px] text-text-muted-light">Automatisierter Timeline-Prüfer</span>
+</div>
+</div>
+<!-- Plausibility Banner -->
+<div class="mt-2 p-2.5 rounded-lg bg-state-success/10 text-on-surface font-body-default text-[12px] leading-relaxed">
+<div class="flex items-center gap-1.5 text-state-success font-semibold mb-0.5">
+<span class="material-symbols-outlined text-[15px]">task_alt</span>
+<span>Plausibilitäts-Check: Gültig</span>
+</div>
+          Mayas geplante Landung in <strong>Akt III (Kapitel 15)</strong> kollidiert nicht mit der Stations-Dekompressionsrate (-0.02 bar/h).
+        </div>
+<!-- Travel & Signal Physics Breakdown -->
+<div class="flex flex-col gap-3 mt-3 pt-3">
+<!-- Route 1: Orbitaler Sinkflug -->
+<div class="bg-surface-container-low p-2.5 rounded-lg">
+<div class="flex items-center justify-between text-on-surface">
+<span class="font-label-default text-[12px] font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-cover-sepia">flight_takeoff</span>
+<span>Horizon (L2) ➔ Sektor 04</span>
+</span>
+<span class="font-meta-default text-[11px] text-primary font-bold">1.400 km</span>
+</div>
+<div class="flex items-center justify-between mt-2 text-text-muted-light font-meta-default text-[11px]">
+<span>Suborbital-Shuttle (Mach 4.2)</span>
+<span class="text-on-surface font-semibold">42 Minuten</span>
+</div>
+<!-- Progress / Timing Bar -->
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-1.5 overflow-hidden">
+<div class="bg-cover-sepia h-full rounded-full" style="width: 70%"></div>
+</div>
+<div class="flex justify-between text-[10px] text-text-muted-light mt-0.5">
+<span>Start: 08:14 UTC</span>
+<span>Aufschlag: 08:56 UTC</span>
+</div>
+</div>
+<!-- Route 2: Signalübertragung Vergleich -->
+<div class="bg-surface-container-low p-2.5 rounded-lg">
+<span class="font-label-default text-[12px] font-semibold text-on-surface block mb-1.5">Signal-Latenz & Resonanz</span>
+<div class="flex items-center justify-between text-[11px] font-meta-default py-1">
+<span class="text-text-muted-light">EM-Funk (Lichtgeschw.):</span>
+<span class="font-mono text-on-surface font-semibold">4.6 ms</span>
+</div>
+<div class="flex items-center justify-between text-[11px] font-meta-default py-1 bg-surface-container/60 px-1.5 rounded">
+<span class="text-primary font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-state-danger">graphic_eq</span>
+<span>Subraum 14.2008 Hz:</span>
+</span>
+<span class="font-mono text-state-danger font-bold">0.0 ms (Echtzeit)</span>
+</div>
+<p class="font-meta-default text-[10px] text-text-muted-light mt-1 italic">
+              Kein Kausalitätsbruch für dialogische Telemetrie in Kapitel 11.
+            </p>
+</div>
+<!-- Route 3: Zu Fuß / Rover Basin Minen -> Station 7 -->
+<div class="bg-surface-container-low p-2.5 rounded-lg">
+<div class="flex items-center justify-between text-on-surface">
+<span class="font-label-default text-[12px] font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-area-knowledge">directions_car</span>
+<span>Basin Minen ➔ Station 7</span>
+</span>
+<span class="font-meta-default text-[11px] text-text-muted-light font-bold">28.4 km</span>
+</div>
+<div class="flex items-center justify-between mt-1 text-text-muted-light font-meta-default text-[11px]">
+<span>Ketten-Crawler (Sturmfront)</span>
+<span class="text-on-surface font-semibold">3 Std 15 Min</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sensorische Umweltparameter (Übergabe an Schreib-Workspace) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-cover-sepia">palette</span>
+<h3 class="font-headline-emph text-headline-emph text-primary">Sensorische Matrix</h3>
+</div>
+<span class="font-eyebrow-tracked text-[10px] uppercase text-area-writing bg-secondary-container/50 px-2 py-0.5 rounded">Auto-Injektion</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant mb-3">
+          Aktive Sinnes-Hinweise für Kapitel 14 (Schreib-Workspace Übernahme):
+        </p>
+<div class="flex flex-col gap-2 font-body-default text-[12px]">
+<!-- Taktil / Kälte -->
+<div class="flex items-start gap-2 bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-[16px] text-area-chat shrink-0 mt-0.5">ac_unit</span>
+<div>
+<strong class="text-on-surface font-semibold">Taktil:</strong>
+<span class="text-on-surface-variant ml-1">Krustiger Permafrost bricht glasartig unter Stiefeln; Griff an Schleusenstahl friert Handschuhe sofort fest.</span>
+</div>
+</div>
+<!-- Olfaktorisch / Geruch -->
+<div class="flex items-start gap-2 bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-[16px] text-cover-sepia shrink-0 mt-0.5">air</span>
+<div>
+<strong class="text-on-surface font-semibold">Geruch:</strong>
+<span class="text-on-surface-variant ml-1">Ozonisierter Kältedampf, stechender Methangeruch aus Spalten, metallischer Geschmack auf der Zunge.</span>
+</div>
+</div>
+<!-- Akustisch / Geräuschkulisse -->
+<div class="flex items-start gap-2 bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-[16px] text-primary shrink-0 mt-0.5">volume_up</span>
+<div>
+<strong class="text-on-surface font-semibold">Akustik:</strong>
+<span class="text-on-surface-variant ml-1">Tieffrequentes Dröhnen (14 Hz Brummen) in den Schläfen; knisternde Funkstille im Helm-Interkom.</span>
+</div>
+</div>
+</div>
+<button class="w-full mt-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant font-label-default text-label-default hover:bg-surface-container-high transition-colors flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-[15px]">send_to_mobile</span>
+<span>In Editor-Sidebar spiegeln</span>
+</button>
+</div>
+<!-- Quick Action Mini-Toolbar -->
+<div class="bg-surface-container p-3 rounded-xl flex items-center justify-between text-on-surface-variant">
+<span class="font-meta-default text-[12px]">Kartenstand v3.4 exportieren</span>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded-lg bg-surface hover:bg-surface-bright text-primary transition-colors shadow-sm" title="Vektor-Export SVG">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+<button class="p-1.5 rounded-lg bg-surface hover:bg-surface-bright text-primary transition-colors shadow-sm" title="Druck-Layout">
+<span class="material-symbols-outlined text-[16px]">print</span>
+</button>
+<button class="p-1.5 rounded-lg bg-surface hover:bg-surface-bright text-primary transition-colors shadow-sm" title="Teilen / Kollaboration">
+<span class="material-symbols-outlined text-[16px]">share</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple Layer Switcher Micro-interaction
+  document.addEventListener('DOMContentLoaded', () => {
+    const topoBtn = document.getElementById('layer-topo');
+    const deckBtn = document.getElementById('layer-deck');
+    const orbitalBtn = document.getElementById('layer-orbital');
+    const buttons = [topoBtn, deckBtn, orbitalBtn];
+
+    buttons.forEach(btn => {
+      if(!btn) return;
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => {
+          b.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all font-label-default text-label-default';
+        });
+        btn.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cover-sepia text-surface-bright font-label-default text-label-default transition-all shadow-sm';
+      });
+    });
+  });
+</script></main></div></body></html>

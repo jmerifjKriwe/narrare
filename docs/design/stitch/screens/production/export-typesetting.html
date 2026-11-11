@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"10.5rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Studio Atelier</span></div></div><div class="w-full px-space-xs my-space-xs"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><nav class="flex flex-col gap-1 w-full px-space-xs mt-1" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="material-symbols-outlined text-[20px] shrink-0">collections_bookmark</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Library</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-writing">edit_note</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Editor</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-knowledge">hub</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Knowledge</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="timeline" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-planning">schema</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Timeline</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-settings">settings</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Settings</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Author Tier</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Manuscripts</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Saved</span></div><div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-state-success/10 text-state-success font-meta-default text-[12px] font-medium border border-state-success/20 ml-2 animate-pulse"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalitäts-Konflikt #01 erfolgreich gelöst • Manuskript &amp; Lore-Graph synchron</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Search or prompt...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48.342 words</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>EN</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Bar: Context, Preflight Status & Master Actions -->
+<header class="w-full bg-surface-container-low px-space-lg py-3 flex flex-wrap items-center justify-between gap-4 shadow-sm select-none">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant">
+<span class="hover:text-primary transition-colors cursor-pointer">Atelier</span>
+<span class="text-outline-variant font-bold">›</span>
+<span class="hover:text-primary transition-colors cursor-pointer">Dead Signal</span>
+<span class="text-outline-variant font-bold">›</span>
+<span class="font-headline-emph text-headline-emph text-primary flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-area-writing">auto_stories</span>
+          Buchsatz- &amp; Export-Studio
+        </span>
+</div>
+<div class="hidden xl:flex items-center gap-2 pl-3 bg-surface-container-high py-1 px-3 rounded-full text-text-muted-light font-meta-default text-meta-default">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+<span class="text-on-surface font-medium">Engine v4.2</span>
+<span class="text-outline-variant">•</span>
+<span class="text-state-success font-medium">0 Hurenkinder, 0 Schusterjungen</span>
+<span class="text-outline-variant">•</span>
+<span>284 Buchseiten (Druck)</span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface font-medium">ePub 3.3 Valide</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="h-7 px-3 rounded-lg bg-surface hover:bg-surface-container-high text-on-surface text-label-default font-label-default shadow-sm transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-outline">tune</span>
+<span>Profil: Belletristik D-Octav</span>
+</button>
+<button class="h-7 px-3 rounded-lg bg-surface hover:bg-surface-container-high text-on-surface text-label-default font-label-default shadow-sm transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-primary">picture_as_pdf</span>
+<span>Testdruck (PDF/X-1a)</span>
+</button>
+<button class="h-7 px-3.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-label-default font-label-default shadow-sm transition-colors flex items-center gap-1.5 font-medium">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span>Exportieren</span>
+</button>
+</div>
+</header>
+<!-- Studio Main Workstation: 3 Distinct Columns -->
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden" style="min-height: calc(100vh - 7rem);">
+<!-- LEFT PANEL: Typografie, Satzspiegel & Mikrotypografie (320px / 3 cols on xl) -->
+<aside class="lg:col-span-3 xl:col-span-3 bg-bg-panel-light p-space-md flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-7rem)]">
+<!-- Target Mode Tabs -->
+<div class="bg-surface-container-low p-1 rounded-xl flex items-center gap-1">
+<button class="flex-1 py-1.5 px-2 rounded-lg bg-primary text-on-primary font-label-default text-[12px] font-semibold text-center shadow-sm">
+          Print (Hardcover)
+        </button>
+<button class="flex-1 py-1.5 px-2 rounded-lg hover:bg-surface-container text-on-surface-variant font-label-default text-[12px] text-center transition-colors">
+          E-Book (ePub 3)
+        </button>
+<button class="flex-1 py-1.5 px-2 rounded-lg hover:bg-surface-container text-on-surface-variant font-label-default text-[12px] text-center transition-colors">
+          Normseite
+        </button>
+</div>
+<!-- Format & Trim Size Accordion/Card -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">straighten</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">Trim Size &amp; Buchformat</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-eyebrow-tracked text-[10px] uppercase font-bold tracking-wider">DIN / Belletristik</span>
+</div>
+<div class="space-y-1.5">
+<label class="block font-meta-default text-meta-default text-text-muted-light">Schnittmaß (Endformat)</label>
+<div class="flex items-center justify-between px-2.5 py-1.5 bg-surface-container-low rounded-lg text-on-surface font-body-default text-label-default">
+<span class="font-medium">D-Octav (135 × 215 mm)</span>
+<span class="material-symbols-outlined text-[16px] text-outline">unfold_more</span>
+</div>
+</div>
+<!-- Satzspiegel Stege / Margins Visualization -->
+<div class="pt-2 space-y-2">
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="text-text-muted-light">Satzspiegel-Konstruktion</span>
+<span class="text-primary font-medium">Goldener Schnitt (1:1.618)</span>
+</div>
+<!-- Micro Schema Preview of Stege -->
+<div class="bg-surface-container-low rounded-lg p-2.5 flex items-center justify-center">
+<div class="relative w-32 h-44 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between">
+<!-- Top Margin Label -->
+<div class="text-center text-[9px] text-text-muted-light font-meta-default">Kopf 16mm</div>
+<div class="flex justify-between items-center px-1">
+<span class="text-[9px] text-text-muted-light font-meta-default">Bund 22mm</span>
+<!-- Text Area Wireframe -->
+<div class="w-16 h-28 bg-secondary-container/40 rounded flex flex-col justify-center items-center p-1 gap-1">
+<div class="w-full h-1 bg-primary/20 rounded"></div>
+<div class="w-5/6 h-1 bg-primary/20 rounded"></div>
+<div class="w-full h-1 bg-primary/20 rounded"></div>
+<div class="w-4/5 h-1 bg-primary/20 rounded"></div>
+<div class="w-full h-1 bg-primary/20 rounded"></div>
+<div class="w-3/4 h-1 bg-primary/20 rounded"></div>
+</div>
+<span class="text-[9px] text-text-muted-light font-meta-default">Außen 18mm</span>
+</div>
+<!-- Bottom Margin Label -->
+<div class="text-center text-[9px] text-text-muted-light font-meta-default">Fuß 24mm</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1 font-meta-default text-meta-default">
+<div class="flex justify-between px-2 py-1 bg-surface-container-low rounded">
+<span class="text-text-muted-light">Bund (Klebung):</span>
+<span class="font-medium text-on-surface">22.0 mm</span>
+</div>
+<div class="flex justify-between px-2 py-1 bg-surface-container-low rounded">
+<span class="text-text-muted-light">Außensteg:</span>
+<span class="font-medium text-on-surface">18.0 mm</span>
+</div>
+<div class="flex justify-between px-2 py-1 bg-surface-container-low rounded">
+<span class="text-text-muted-light">Kopfsteg:</span>
+<span class="font-medium text-on-surface">16.0 mm</span>
+</div>
+<div class="flex justify-between px-2 py-1 bg-surface-container-low rounded">
+<span class="text-text-muted-light">Fußsteg:</span>
+<span class="font-medium text-on-surface">24.0 mm</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Grundschrift & Typografie Settings -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">format_size</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">Grundschrift &amp; Zeilennetz</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-state-success" title="Registerhaltig verankert">grid_on</span>
+</div>
+<div class="space-y-1.5">
+<label class="block font-meta-default text-meta-default text-text-muted-light">Brottext Schriftfamilie</label>
+<div class="flex items-center justify-between px-2.5 py-1.5 bg-surface-container-low rounded-lg text-on-surface">
+<div class="flex items-center gap-2">
+<span class="font-prose-editorial italic text-prose-heading-2 text-primary leading-none">Ag</span>
+<span class="font-label-default text-label-default font-medium">EB Garamond Pro (OTF)</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="block text-[11px] font-meta-default text-text-muted-light">Schriftgrad</span>
+<div class="flex items-center justify-between mt-0.5">
+<span class="font-label-default text-label-default font-semibold text-on-surface">10.5 pt</span>
+<span class="text-[10px] text-outline-variant">3.70 mm</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-2 rounded-lg">
+<span class="block text-[11px] font-meta-default text-text-muted-light">Zeilendurchschuss</span>
+<div class="flex items-center justify-between mt-0.5">
+<span class="font-label-default text-label-default font-semibold text-on-surface">14.2 pt</span>
+<span class="text-[10px] text-state-success font-semibold">Gitter aktiv</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-label-default text-[12px] text-on-surface font-medium">Registerhaltigkeit erzwingen</span>
+<span class="font-meta-default text-[10px] text-text-muted-light">Vorder- und Rückseite deckungsgleich</span>
+</div>
+<div class="w-8 h-4 rounded-full bg-primary flex items-center justify-end px-0.5 cursor-pointer">
+<div class="w-3 h-3 rounded-full bg-white shadow-sm"></div>
+</div>
+</div>
+</section>
+<!-- Mikrotypografie & Umbruchregeln -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-2.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">spellcheck</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">Mikrotypografie</span>
+</div>
+<span class="text-[11px] font-meta-default text-state-success font-medium">InDesign Parität</span>
+</div>
+<!-- Rule Toggles -->
+<div class="space-y-1.5 font-label-default text-[12px]">
+<label class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-low cursor-pointer">
+<span class="text-on-surface">Optischer Randausgleich (Margin Kerning)</span>
+<span class="material-symbols-outlined text-[18px] text-primary">check_box</span>
+</label>
+<label class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-low cursor-pointer">
+<span class="text-on-surface">Hurenkinder- &amp; Schusterjungen-Schutz (2 Zeilen)</span>
+<span class="material-symbols-outlined text-[18px] text-primary">check_box</span>
+</label>
+<label class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-low cursor-pointer">
+<span class="text-on-surface">Silbentrennung: Max. 2 Folgetrennungen</span>
+<span class="material-symbols-outlined text-[18px] text-primary">check_box</span>
+</label>
+<label class="flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-container-low cursor-pointer">
+<span class="text-on-surface">Mediävalziffern &amp; echte Kapitälchen</span>
+<span class="material-symbols-outlined text-[18px] text-primary">check_box</span>
+</label>
+</div>
+</section>
+<!-- Titelei & Zierelemente -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-2.5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">format_shapes</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">Kapitel-Auftakt &amp; Kolumnen</span>
+</div>
+<div class="grid grid-cols-2 gap-2 text-label-default text-[11px]">
+<div class="p-2 bg-surface-container-low rounded-lg">
+<span class="text-text-muted-light block">Initial-Höhe</span>
+<span class="font-semibold text-on-surface">3 Zeilen versetzt</span>
+</div>
+<div class="p-2 bg-surface-container-low rounded-lg">
+<span class="text-text-muted-light block">Szenenteiler</span>
+<span class="font-semibold text-on-surface">Ornament (✦ ✦ ✦)</span>
+</div>
+</div>
+</section>
+</aside>
+<!-- MIDDLE COLUMN: Interaktive Doppelseiten-Vorschau (Print Inspection) -->
+<main class="lg:col-span-6 xl:col-span-6 bg-surface-container p-space-md flex flex-col justify-between overflow-y-auto max-h-[calc(100vh-7rem)]">
+<!-- Top Inspector Toolbar -->
+<div class="flex flex-wrap items-center justify-between gap-3 bg-surface p-2.5 rounded-xl shadow-sm">
+<div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+<button class="px-2.5 py-1 rounded bg-primary text-on-primary font-label-default text-[12px] font-medium shadow-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">menu_book</span>
+<span>Druckbogen</span>
+</button>
+<button class="px-2.5 py-1 rounded hover:bg-surface text-on-surface-variant font-label-default text-[12px] flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[15px]">description</span>
+<span>Einzelseite</span>
+</button>
+<button class="px-2.5 py-1 rounded hover:bg-surface text-on-surface-variant font-label-default text-[12px] flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[15px]">devices</span>
+<span>eReader</span>
+</button>
+</div>
+<!-- Overlays & Inspection Badges -->
+<div class="flex items-center gap-2">
+<label class="flex items-center gap-1.5 text-label-default text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded cursor-pointer hover:text-on-surface">
+<input checked="" class="rounded accent-primary text-white w-3.5 h-3.5" type="checkbox"/>
+<span>Satzspiegel-Gitter</span>
+</label>
+<label class="flex items-center gap-1.5 text-label-default text-[11px] text-on-surface-variant bg-surface-container-low px-2 py-1 rounded cursor-pointer hover:text-on-surface">
+<input checked="" class="rounded accent-primary text-white w-3.5 h-3.5" type="checkbox"/>
+<span>Schnittkanten (Bleed 3mm)</span>
+</label>
+<span class="h-4 w-px bg-outline-variant mx-0.5"></span>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-low" title="Bogen zoomen">
+<span class="material-symbols-outlined text-[18px]">zoom_in</span>
+</button>
+</div>
+</div>
+<!-- Realistic Book Spread Container (Verso + Recto) -->
+<div class="my-4 flex items-center justify-center">
+<!-- Physical Book Spread Mockup with Warm Lighting Shadow -->
+<div class="relative w-full max-w-[760px] bg-cover-pale rounded-lg p-2 shadow-xl flex gap-1 select-none overflow-hidden">
+<!-- Subtle Center Bookfold Shadow / Spine Emboss -->
+<div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 bg-gradient-to-r from-transparent via-cover-ink/10 to-transparent pointer-events-none z-20"></div>
+<!-- VERSO PAGE (Left Page: 42) -->
+<div class="relative flex-1 bg-surface-bright rounded-l p-7 flex flex-col justify-between shadow-inner min-h-[580px]">
+<!-- Subtle bleed & margin rule overlay -->
+<div class="absolute inset-[18px] border border-dashed border-primary/20 pointer-events-none rounded-sm"></div>
+<!-- Verso Running Header (Kolumnentitel: Romantitel) -->
+<div class="relative z-10 flex items-center justify-between text-text-muted-light font-eyebrow-tracked text-[10px] uppercase tracking-widest pb-3">
+<span class="font-meta-default text-[11px] text-primary">42</span>
+<span>DEAD SIGNAL</span>
+<span></span>
+</div>
+<!-- Page Body: Continuous Narrative Nevada Echoes -->
+<div class="relative z-10 font-prose-editorial text-[14px] leading-[22px] text-on-surface space-y-3.5 text-justify antialiased">
+<p class="indent-4">
+                Das Brummen des troposphärischen Scanners hatte sich in den Felswänden der Tonopah-Senke festgesetzt. Es war kein gewöhnliches Geräusch, sondern eine tektonische Reibung, die man eher in den Zahnwurzeln spürte als mit dem Gehörsinn. Calder strich mit dem Daumen über die gravierte Seriennummer des Telegrafengehäuses.
+              </p>
+<p class="indent-4">
+                »Wenn die Kausalität bricht, Calder, zählt nicht mehr, wer zuerst gesendet hat«, hatte Dr. Vane damals in White Sands protokolliert. Seine Stimme schien durch die dünne Isolierschicht der Relaisstation zu dringen, trocken und staubig wie die Luft über dem Salzsee.
+              </p>
+<div class="relative p-2 rounded bg-surface-container-low/70 font-prose-editorial text-[13px] leading-[20px] italic text-area-chat">
+<span class="absolute -top-2 right-2 px-1.5 py-0.2 rounded bg-secondary text-on-secondary font-meta-default text-[9px]">Telemetrie-Protokoll 04:19 UTC</span>
+                »Signalimpuls empfangen. Phasensprung um 180 Grad nachgewiesen. Der Sender befindet sich nicht auf der Erdoberfläche.«
+              </div>
+<p class="indent-4">
+                Er justierte die Ferritkern-Antenne um zwei Bogenminuten nach Nordwesten. Der Zeiger des Galvanometers schlug nicht gleichmäßig aus; er zitterte mit der nervösen Frequenz eines Herzflimmerns. Jeder Strich auf der Skala markierte siebzig Kilometer toten Raum zwischen hier und dem Stützpunkt Nellis.
+              </p>
+<p class="indent-4">
+                Draußen begann der Wüstenwind, feinen Quarzstaub gegen die doppelt verglasten Sichtfenster zu peitschen. Das Licht der Quecksilberdampflampe flackerte im Takt der Generatorstöße.
+              </p>
+</div>
+<!-- Micro Inspection Overlay Marker -->
+<div class="relative z-10 flex items-center justify-between pt-3 font-meta-default text-[10px] text-text-muted-light">
+<span class="flex items-center gap-1 text-state-success font-medium">
+<span class="material-symbols-outlined text-[13px]">check</span>
+                Registerhaltig: 28 Zeilen
+              </span>
+<span class="text-outline-variant">Verso • Bogen 21</span>
+</div>
+</div>
+<!-- RECTO PAGE (Right Page: 43 - Kapitelauftakt) -->
+<div class="relative flex-1 bg-surface-bright rounded-r p-7 flex flex-col justify-between shadow-inner min-h-[580px]">
+<!-- Bleed & margin rule overlay -->
+<div class="absolute inset-[18px] border border-dashed border-primary/20 pointer-events-none rounded-sm"></div>
+<!-- Recto Running Header (Kolumnentitel: Kapitelname) -->
+<div class="relative z-10 flex items-center justify-between text-text-muted-light font-eyebrow-tracked text-[10px] uppercase tracking-widest pb-3">
+<span></span>
+<span>KAPITEL III • NEVADA ECHOES</span>
+<span class="font-meta-default text-[11px] text-primary">43</span>
+</div>
+<!-- Chapter Opener Content -->
+<div class="relative z-10 flex flex-col justify-start">
+<!-- Chapter Header Typography (Garamond Hierarchy) -->
+<div class="pt-2 pb-5 text-center">
+<span class="font-eyebrow-tracked text-[10px] uppercase tracking-[0.25em] text-primary block mb-1">D r i t t e s  K a p i t e l</span>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface font-semibold tracking-tight">Nevada Echoes</h1>
+<div class="flex items-center justify-center gap-2 mt-2 text-outline-variant">
+<span class="h-px w-6 bg-outline-variant"></span>
+<span class="text-[10px] text-primary">✦</span>
+<span class="h-px w-6 bg-outline-variant"></span>
+</div>
+</div>
+<!-- Paragraph with Initial (Drop Cap) -->
+<div class="font-prose-editorial text-[14px] leading-[22px] text-on-surface text-justify antialiased">
+<p>
+<span class="float-left font-prose-heading-1 text-[48px] leading-[40px] pr-2.5 pt-1 text-primary font-bold">D</span>
+                  ER DRITTE SCHWUNG des Oszilloskops war kein Zufall. Calder sah es an der Krümmung der Lissajous-Figur, die auf dem phosphorgrünen Rundschirm tanzte. Die Schwingung besaß Struktur; sie atmete in einem mathematischen Intervall, das in keinem meteorologischen Lehrbuch verzeichnet war.
+                </p>
+<p class="indent-4 mt-3">
+                  Er legte das Kopfhörerband an. Was das Rauschen des Äthers überlagerte, glich dem Schaben von trockenem Holz auf Schiefer. Drei kurze Stöße, eine Pause von exakt vier Komma zwei Sekunden, gefolgt von einer fallenden Kaskade.
+                </p>
+<p class="indent-4 mt-3">
+                  »Signalquelle bestätigt«, notierte er in das linierte Logbuch. Seine Handschrift war ruhig, fast gleichgültig, doch die Tinte verlief leicht auf dem klammen Papier. Das Observatorium am Groom Lake schwieg weiterhin.
+                </p>
+</div>
+<!-- Elegant Scene Break Vignette -->
+<div class="my-4 flex items-center justify-center gap-3 text-primary/70">
+<span class="text-[9px]">✦</span>
+<span class="text-[12px] font-prose-heading-2">§</span>
+<span class="text-[9px]">✦</span>
+</div>
+<div class="font-prose-editorial text-[14px] leading-[22px] text-on-surface text-justify antialiased">
+<p class="indent-4">
+                  Um Mitternacht erlosch das Licht im Generatorraum. Nicht durch Kurzschluss, sondern als hätte jemand die Schmelzsicherungen mit chirurgischer Bedacht entfernt.
+                </p>
+</div>
+</div>
+<!-- Micro Inspection Overlay Marker -->
+<div class="relative z-10 flex items-center justify-between pt-3 font-meta-default text-[10px] text-text-muted-light">
+<span class="text-outline-variant">Recto • Kapitelauftakt</span>
+<span class="flex items-center gap-1 text-state-success font-medium">
+<span class="material-symbols-outlined text-[13px]">verified</span>
+                Optischer Randausgleich: 100%
+              </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Spread Navigation Footer Bar -->
+<div class="bg-surface p-2.5 rounded-xl shadow-sm flex flex-wrap items-center justify-between gap-3 select-none">
+<div class="flex items-center gap-2">
+<button class="h-7 px-2.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-default text-label-default flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+<span>Bogen 20</span>
+</button>
+<span class="font-headline-emph text-label-default text-primary font-semibold">Seite 42 – 43</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">von 284 Buchseiten</span>
+<button class="h-7 px-2.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-default text-label-default flex items-center gap-1">
+<span>Bogen 22</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-meta-default text-meta-default text-text-muted-light hidden sm:inline">Maßstab: 100%</span>
+<div class="w-24 bg-surface-container-low h-1.5 rounded-full overflow-hidden flex items-center">
+<div class="bg-primary h-full w-2/3"></div>
+</div>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-low" title="Vollbild-Lektorat">
+<span class="material-symbols-outlined text-[18px]">fit_screen</span>
+</button>
+</div>
+</div>
+</main>
+<!-- RIGHT PANEL: Preflight Druckerei-Audit, ePub Metadaten & Export Targets (ca. 320px) -->
+<aside class="lg:col-span-3 xl:col-span-3 bg-bg-panel-light p-space-md flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-7rem)]">
+<!-- Preflight Audit Status Card -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-state-success">task_alt</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">Preflight Druckerei-Audit</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-state-success/10 text-state-success font-label-default text-[11px] font-bold">100% Bereit</span>
+</div>
+<!-- Checklist of Print Standards -->
+<div class="space-y-2 text-label-default text-[12px]">
+<div class="flex items-start gap-2 p-1.5 rounded bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px] text-state-success mt-0.5">check_circle</span>
+<div class="flex-1">
+<span class="text-on-surface font-medium block">Farbraum: CMYK FOGRA39</span>
+<span class="text-[10px] text-text-muted-light block">Reines Buch-Schwarz (K: 100%, CMY: 0%) ohne Farbstich</span>
+</div>
+</div>
+<div class="flex items-start gap-2 p-1.5 rounded bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px] text-state-success mt-0.5">check_circle</span>
+<div class="flex-1">
+<span class="text-on-surface font-medium block">Anschnitt &amp; Beschnittzeichen</span>
+<span class="text-[10px] text-text-muted-light block">3.0 mm ringsum, Passermarken außerhalb Endformat</span>
+</div>
+</div>
+<div class="flex items-start gap-2 p-1.5 rounded bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px] text-state-success mt-0.5">check_circle</span>
+<div class="flex-1">
+<span class="text-on-surface font-medium block">Schrift-Einbettung</span>
+<span class="text-[10px] text-text-muted-light block">100% Subsets als OpenType-CFF PostScript eingebettet</span>
+</div>
+</div>
+<div class="flex items-start gap-2 p-1.5 rounded bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px] text-state-success mt-0.5">check_circle</span>
+<div class="flex-1">
+<span class="text-on-surface font-medium block">Vignetten- &amp; Kartenauflösung</span>
+<span class="text-[10px] text-text-muted-light block">Alle 4 Rastergrafiken mit ≥ 350 DPI berechnet</span>
+</div>
+</div>
+</div>
+<!-- Inline SVG Visualization: Ink Coverage (Gesamtfarbauftrag TIC) -->
+<div class="pt-1">
+<div class="flex justify-between font-meta-default text-[11px] mb-1">
+<span class="text-text-muted-light">Max. Farbauftrag (TIC):</span>
+<span class="font-medium text-on-surface">260% (Limit: 300%)</span>
+</div>
+<svg class="w-full h-3 rounded bg-surface-container-low overflow-hidden" viewbox="0 0 100 8">
+<rect class="text-state-success" fill="currentColor" height="8" width="65"></rect>
+<rect class="text-amber-focus/60" fill="currentColor" height="8" width="20" x="65"></rect>
+<rect class="text-state-danger/30" fill="currentColor" height="8" width="15" x="85"></rect>
+</svg>
+</div>
+</section>
+<!-- ePub 3.3 & Barrierefreiheit -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-area-knowledge">phonelink</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">ePub 3.3 &amp; Digital-Paket</span>
+</div>
+<span class="text-[11px] font-meta-default text-state-success font-medium">EPUBCheck OK</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low space-y-1.5 text-meta-default text-meta-default">
+<div class="flex justify-between">
+<span class="text-text-muted-light">Reflowable Struktur:</span>
+<span class="text-on-surface font-medium">Validiert (HTML5)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-text-muted-light">Inhaltsverzeichnis:</span>
+<span class="text-on-surface font-medium">NCX &amp; NAV (18 Kapitel)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-text-muted-light">Barrierefreiheit:</span>
+<span class="text-on-surface font-medium">WCAG 2.1 AA konform</span>
+</div>
+<div class="flex justify-between">
+<span class="text-text-muted-light">Cover-Embed:</span>
+<span class="text-on-surface font-medium">2560 × 1600 px sRGB</span>
+</div>
+</div>
+</section>
+<!-- Spine Calculator (Rückenbreiten-Kalkulator) -->
+<section class="bg-surface rounded-xl p-3.5 shadow-sm space-y-2.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">menu</span>
+<span class="font-headline-emph text-[13px] text-on-surface font-semibold">Buchrücken-Kalkulator</span>
+</div>
+<span class="font-label-default text-[12px] text-primary font-bold">19.4 mm</span>
+</div>
+<div class="text-[11px] font-meta-default text-text-muted-light leading-relaxed">
+          Basierend auf 284 Buchseiten auf <strong class="text-on-surface">Werkdruckpapier 90g/m² (1.5-faches Volumen)</strong> + 2mm Buchbinderpappe für Fadenheftung.
+        </div>
+</section>
+<!-- One-Click Export Targets -->
+<section class="space-y-2 pt-1">
+<span class="font-eyebrow-tracked text-[10px] uppercase tracking-wider text-text-muted-light block px-1">Produktions-Exporte ausführen</span>
+<!-- Primary Print Target -->
+<div class="p-3 rounded-xl bg-surface hover:bg-surface-container-low transition-colors shadow-sm flex flex-col gap-2 cursor-pointer group">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-cover-sepia text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[17px]">print</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-default text-[12px] font-semibold text-on-surface group-hover:text-primary transition-colors">Druckreifes PDF/X-1a</span>
+<span class="font-meta-default text-[10px] text-text-muted-light">Für BoD, IngramSpark, CPI &amp; Offset</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-primary group-hover:translate-x-0.5 transition-transform">download</span>
+</div>
+</div>
+<!-- ePub Target -->
+<div class="p-3 rounded-xl bg-surface hover:bg-surface-container-low transition-colors shadow-sm flex flex-col gap-2 cursor-pointer group">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-area-chat text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[17px]">tablet_mac</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-default text-[12px] font-semibold text-on-surface group-hover:text-primary transition-colors">ePub 3.3 (KDP &amp; Tolino)</span>
+<span class="font-meta-default text-[10px] text-text-muted-light">Amazon KDP, Apple Books, Tolino Allianz</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-primary group-hover:translate-x-0.5 transition-transform">download</span>
+</div>
+</div>
+<!-- Advance Reading Copy Target -->
+<div class="p-3 rounded-xl bg-surface hover:bg-surface-container-low transition-colors shadow-sm flex flex-col gap-2 cursor-pointer group">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-area-planning text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[17px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-default text-[12px] font-semibold text-on-surface group-hover:text-primary transition-colors">Leseexemplar (Vorab-ARC)</span>
+<span class="font-meta-default text-[10px] text-text-muted-light">Mit individuellem Wasserzeichen für Rezensenten</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-primary group-hover:translate-x-0.5 transition-transform">download</span>
+</div>
+</div>
+</section>
+</aside>
+</div>
+</div></main></div></body></html>

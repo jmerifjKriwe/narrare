@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#795c52", "bg-card-dark": "#211F1A", "on-secondary-fixed": "#2a170f", "on-surface-variant": "#53433d", "area-chat": "#3A637B", "on-primary-container": "#f8a884", "bg-canvas-light": "#F6F3ED", "cover-pale": "#EEEBE5", "rule-dark": "#302D28", "surface-container-high": "#eee7df", "bg-card-light": "#FFFFFF", "secondary-fixed": "#ffdbce", "text-foreground-dark": "#DFDEDA", "on-error": "#ffffff", "state-success": "#21763C", "error": "#ba1a1a", "text-muted-dark": "#89867F", "on-error-container": "#93000a", "bg-soft-light": "#EFEBE2", "state-danger": "#AC3031", "border-dark": "#35332D", "primary-container": "#743b1f", "on-tertiary-container": "#eead78", "bg-soft-dark": "#2C2922", "surface": "#fff8f2", "on-primary-fixed": "#351000", "surface-variant": "#e9e1d9", "primary-fixed": "#ffdbcc", "bg-panel-light": "#FDFCF9", "on-background": "#1e1b16", "tertiary-fixed-dim": "#fcb882", "area-settings": "#5A5549", "cover-sepia": "#743B1F", "primary": "#58250b", "bg-canvas-dark": "#16140F", "tertiary-container": "#6e3f14", "primary-fixed-dim": "#ffb695", "area-planning": "#834D7E", "secondary-fixed-dim": "#e3bfb2", "on-secondary": "#ffffff", "tertiary": "#522900", "on-primary-fixed-variant": "#6f371c", "area-knowledge": "#606127", "secondary": "#74584e", "on-secondary-fixed-variant": "#5a4137", "outline-variant": "#d8c2b9", "error-container": "#ffdad6", "surface-container-highest": "#e9e1d9", "area-writing": "#914F2F", "amber-focus-dark": "#F2AD73", "background": "#fff8f2", "on-tertiary-fixed-variant": "#693c10", "surface-dim": "#e0d9d1", "amber-focus": "#8F4622", "surface-container-low": "#faf2ea", "on-tertiary-fixed": "#2f1500", "rule-light": "#EEEBE5", "tertiary-fixed": "#ffdcc3", "surface-tint": "#8c4e30", "on-primary": "#ffffff", "surface-container": "#f4ede4", "inverse-on-surface": "#f7f0e7", "text-muted-light": "#6E6B65", "on-tertiary": "#ffffff", "surface-container-lowest": "#ffffff", "inverse-surface": "#33302b", "bg-panel-dark": "#1C1914", "secondary-container": "#fed8ca", "cover-ink": "#24211C", "state-warning": "#9A6100", "inverse-primary": "#ffb695", "surface-bright": "#fff8f2", "outline": "#86736c", "border-light": "#E0DEDA", "on-surface": "#1e1b16" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "prose-max-width": "34rem", "space-lg": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "dock-width": "21rem", "space-md": "1rem", "rail-collapsed": "3rem", "space-xs": "0.25rem", "margin": "1.5rem", "space-xl": "2rem", "container-max": "75rem", "rail-expanded": "10.5rem" }, "fontFamily": { "prose-heading-2": [ "EB Garamond" ], "body-default": [ "Plus Jakarta Sans" ], "prose-heading-1": [ "EB Garamond" ], "label-default": [ "Plus Jakarta Sans" ], "headline-hero": [ "Plus Jakarta Sans" ], "eyebrow-tracked": [ "Plus Jakarta Sans" ], "prose-editorial": [ "EB Garamond" ], "meta-default": [ "Plus Jakarta Sans" ], "headline-emph": [ "Plus Jakarta Sans" ], "headline-title": [ "Plus Jakarta Sans" ] }, "fontSize": { "prose-heading-2": [ "21px", { "lineHeight": "28px", "fontWeight": "600" } ], "body-default": [ "14px", { "lineHeight": "22px", "fontWeight": "400" } ], "prose-heading-1": [ "26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-default": [ "13px", { "lineHeight": "18px", "fontWeight": "500" } ], "headline-hero": [ "28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "eyebrow-tracked": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" } ], "prose-editorial": [ "18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" } ], "meta-default": [ "12px", { "lineHeight": "17px", "fontWeight": "400" } ], "headline-emph": [ "15px", { "lineHeight": "22px", "fontWeight": "600" } ], "headline-title": [ "20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-background font-body-default text-body-default text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-fixed"><aside class="fixed left-0 top-0 h-full w-72 bg-bg-panel-light z-50 flex flex-col shadow-[0_1px_8px_rgba(44,24,16,0.04)]"><div class="h-16 px-space-lg flex items-center justify-between border-b border-rule-light"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-prose-heading-1 text-headline-emph shadow-sm">N</div><span class="font-prose-heading-1 text-prose-heading-2 text-primary tracking-tight">Narrare</span></div><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light bg-surface-container px-space-xs py-0.5 rounded">Studio v2.4</span></div><div class="flex-1 overflow-y-auto px-space-md py-space-md flex flex-col gap-space-md"><nav class="flex flex-col gap-space-md" data-active-classes="bg-primary-container text-on-primary font-headline-emph shadow-sm"><div class="flex flex-col gap-1"><span class="px-space-sm font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider mb-1">Manuskript &amp; Werk</span><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="buecherregal" href="#"><span class="material-symbols-outlined text-[18px]">shelves</span><span class="font-label-default text-label-default">Bücherregal</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[18px]">edit_note</span><span class="font-label-default text-label-default">Workspace</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="storyboard-und-szenen" href="#"><span class="material-symbols-outlined text-[18px]">view_kanban</span><span class="font-label-default text-label-default">Storyboard &amp; Szenen</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="zen-fokus" href="#"><span class="material-symbols-outlined text-[18px]">nature_people</span><span class="font-label-default text-label-default">Zen-Fokus</span></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider mb-1">Architektur &amp; Welt</span><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="weltenbau-und-atlas" href="#"><span class="material-symbols-outlined text-[18px]">public</span><span class="font-label-default text-label-default">Weltenbau &amp; Atlas</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="serien-architektur" href="#"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-label-default text-label-default">Serien-Architektur</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="wissens--und-lore-graph" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span class="font-label-default text-label-default">Wissens- &amp; Lore-Graph</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="kausalitaets-matrix-und-what-if" href="#"><span class="material-symbols-outlined text-[18px]">alt_route</span><span class="font-label-default text-label-default">Kausalitäts-Matrix &amp; What-If</span></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider mb-1">Produktion &amp; Studio</span><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="lektorat-und-team" href="#"><span class="material-symbols-outlined text-[18px]">rate_review</span><span class="font-label-default text-label-default">Lektorat &amp; Team</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="recherche-und-quellen" href="#"><span class="material-symbols-outlined text-[18px]">menu_book</span><span class="font-label-default text-label-default">Recherche &amp; Quellen</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="analytik-und-metriken" href="#"><span class="material-symbols-outlined text-[18px]">insights</span><span class="font-label-default text-label-default">Analytik &amp; Metriken</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="buchsatz-und-export" href="#"><span class="material-symbols-outlined text-[18px]">auto_stories</span><span class="font-label-default text-label-default">Buchsatz &amp; Export</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cover-und-marketing" href="#"><span class="material-symbols-outlined text-[18px]">palette</span><span class="font-label-default text-label-default">Cover &amp; Marketing</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="agentur-und-einreichungen" href="#"><span class="material-symbols-outlined text-[18px]">outgoing_mail</span><span class="font-label-default text-label-default">Agentur &amp; Einreichungen</span></a></div></nav></div><div class="p-space-md border-t border-rule-light"><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-headline-emph shadow-sm"><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="studio-einstellungen" href="#"><span class="material-symbols-outlined text-[18px]">tune</span><span class="font-label-default text-label-default">Einstellungen &amp; Modelle</span></a></nav></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-md z-40 border-b border-rule-light shadow-[0_1px_8px_rgba(44,24,16,0.03)]"><div class="h-16 w-full px-space-lg flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm min-w-0"><div class="w-2 h-2 rounded-full bg-area-writing shrink-0"></div><div class="flex items-baseline gap-space-xs truncate"><span class="font-prose-heading-2 text-headline-emph text-on-surface tracking-tight truncate">Dead Signal</span><span class="font-meta-default text-meta-default text-text-muted-light">/</span><span class="font-meta-default text-meta-default text-text-muted-light truncate">Roman · Band I</span></div><div class="hidden xl:flex items-center gap-1.5 bg-surface-container-low px-space-sm py-0.5 rounded text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalität synchron</span></div></div><div class="flex items-center gap-space-md shrink-0"><div class="hidden md:flex items-center gap-space-md font-meta-default text-meta-default text-text-muted-light bg-surface-container-low px-space-md py-1.5 rounded-lg"><div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px]">history_edu</span><span>48.342 / 65.000 W.</span></div><div class="w-px h-3.5 bg-border-light"></div><div class="flex items-center gap-1.5 text-state-success"><span class="material-symbols-outlined text-[15px]">cloud_done</span><span>Gespeichert</span></div></div><div class="flex items-center gap-space-xs bg-bg-card-light px-space-sm py-1.5 rounded-lg border border-border-light text-text-muted-light font-meta-default text-meta-default shadow-sm"><span class="material-symbols-outlined text-[16px]">search</span><span class="hidden sm:inline">Suche</span><kbd class="bg-surface-container text-on-surface-variant px-1 rounded text-[10px] font-mono border border-border-light">⌘K</kbd></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 min-h-screen bg-bg-canvas-light"><div class="flex flex-col w-full">
+<!-- Sub-Header / Control Strip -->
+<div class="w-full bg-surface-container-low px-space-xl py-space-sm shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-0.5 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light tracking-widest">PRODUKTION &amp; STUDIO</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">/</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary-container tracking-widest">COVER &amp; MARKETING</span>
+<span class="text-text-muted-light font-meta-default text-meta-default">/</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">DEAD SIGNAL</span>
+</div>
+<div class="flex items-center gap-space-sm text-text-muted-light font-meta-default text-meta-default">
+<span class="inline-flex items-center gap-1 text-state-success font-headline-emph">
+<span class="w-2 h-2 rounded-full bg-state-success animate-pulse"></span>
+          Print-Ready CMYK (FOGRA51)
+        </span>
+<span>•</span>
+<span>Spine: 26.4 mm</span>
+<span>•</span>
+<span>Format: Hardcover 140 × 215 mm</span>
+</div>
+</div>
+<!-- Quick Action Bar -->
+<div class="flex items-center flex-wrap gap-space-sm">
+<button class="bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default px-space-sm py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-primary">view_in_ar</span>
+<span>3D-Assets (.glb / .png)</span>
+</button>
+<button class="bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-default text-label-default px-space-sm py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-area-knowledge">tune</span>
+<span>KDP Preset anwenden</span>
+</button>
+<button class="bg-primary-container hover:bg-primary text-on-primary font-label-default text-label-default px-space-md py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px]">picture_as_pdf</span>
+<span>Druck-PDF (300 DPI)</span>
+</button>
+</div>
+</div>
+<!-- Primary Studio Workspace: 3-Column Ergonomic Layout -->
+<div class="w-full p-space-md lg:p-space-lg grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- LEFT PANEL: Format- & Veredelungs-Konfigurator (col-span-3) -->
+<div class="lg:col-span-3 flex flex-col gap-space-md">
+<!-- Format Selector Box -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">book_online</span>
+<h2 class="font-headline-emph text-headline-emph text-on-surface">Ausgabe &amp; Format</h2>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase bg-surface-container px-1.5 py-0.5 rounded">Preset #01</span>
+</div>
+<div class="grid grid-cols-1 gap-1.5" id="format-selector">
+<!-- Active Hardcover -->
+<div class="bg-surface-container-high text-on-surface p-space-sm rounded-lg flex items-center justify-between cursor-pointer shadow-sm">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-primary text-[19px]">menu_book</span>
+<div class="flex flex-col truncate">
+<span class="font-headline-emph text-label-default truncate">Hardcover (Schutzumschlag)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">140 × 215 mm · Blindprägung</span>
+</div>
+</div>
+<span class="w-2 h-2 rounded-full bg-primary-container shrink-0"></span>
+</div>
+<!-- Option 2: Paperback -->
+<div class="bg-surface-container-low hover:bg-surface-container text-on-surface p-space-sm rounded-lg flex items-center justify-between cursor-pointer transition-colors">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-text-muted-light text-[19px]">chrome_reader_mode</span>
+<div class="flex flex-col truncate">
+<span class="font-label-default text-label-default truncate">Paperback (Klappenbroschur)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">135 × 210 mm · Mattlack</span>
+</div>
+</div>
+</div>
+<!-- Option 3: eBook -->
+<div class="bg-surface-container-low hover:bg-surface-container text-on-surface p-space-sm rounded-lg flex items-center justify-between cursor-pointer transition-colors">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-text-muted-light text-[19px]">tablet_mac</span>
+<div class="flex flex-col truncate">
+<span class="font-label-default text-label-default truncate">Kindle &amp; ePub Cover</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">1600 × 2560 px (1:1.6)</span>
+</div>
+</div>
+</div>
+<!-- Option 4: Audio -->
+<div class="bg-surface-container-low hover:bg-surface-container text-on-surface p-space-sm rounded-lg flex items-center justify-between cursor-pointer transition-colors">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-text-muted-light text-[19px]">headphones</span>
+<div class="flex flex-col truncate">
+<span class="font-label-default text-label-default truncate">Hörbuch-Cover (Audible)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">2400 × 2400 px · 1:1 Quadrat</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Spine Width Physics Calculator -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-cover-sepia text-[19px]">straighten</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Rückenbreiten-Kalkulator</h3>
+</div>
+<span class="font-meta-default text-meta-default text-state-success font-headline-emph bg-surface-container px-2 py-0.5 rounded">Exakt ±0.1mm</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-space-sm flex flex-col gap-2">
+<div class="flex justify-between items-center text-meta-default font-meta-default">
+<span class="text-text-muted-light">Seitenumfang</span>
+<span class="font-headline-emph text-on-surface">420 Seiten (Kern)</span>
+</div>
+<div class="flex justify-between items-center text-meta-default font-meta-default">
+<span class="text-text-muted-light">Papiersorte</span>
+<span class="font-label-default text-on-surface">80g Werkdruck (1.5 Vol.)</span>
+</div>
+<div class="flex justify-between items-center text-meta-default font-meta-default">
+<span class="text-text-muted-light">Pappenstärke (Hardcover)</span>
+<span class="font-label-default text-on-surface">2.25 mm Buchbinderpappe</span>
+</div>
+<!-- Formula schematic bar -->
+<div class="mt-1 pt-2 bg-surface-container-high rounded p-2 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Berechneter Buchrücken</span>
+<span class="font-headline-title text-headline-title text-primary font-bold">26.40 mm</span>
+</div>
+<div class="text-right">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Falzrille</span>
+<span class="font-meta-default text-meta-default text-on-surface-variant block">8.0 mm Nut</span>
+</div>
+</div>
+</div>
+<!-- Visual Spine Cross-Section -->
+<div class="w-full bg-surface-container rounded-lg p-space-xs flex items-center gap-1 text-[10px] text-text-muted-light font-meta-default">
+<div class="flex-1 bg-surface-variant h-6 rounded flex items-center justify-center text-center">Vorderklappe 85mm</div>
+<div class="w-16 bg-surface-container-high h-6 rounded flex items-center justify-center font-bold text-on-surface">Deckel</div>
+<div class="w-8 bg-primary-container text-on-primary h-6 rounded flex items-center justify-center font-bold">26.4</div>
+<div class="w-16 bg-surface-container-high h-6 rounded flex items-center justify-center font-bold text-on-surface">Rücken</div>
+<div class="flex-1 bg-surface-variant h-6 rounded flex items-center justify-center text-center">Hinterklappe 85mm</div>
+</div>
+</div>
+<!-- Veredelung & Farbprofile -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[19px]">layers</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Druckveredelung &amp; Lack</h3>
+</div>
+<div class="space-y-2">
+<!-- Foil 1 -->
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-cover-sepia shadow-inner"></div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Heißfolienprägung Kupfer</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Titelzug + Signalwelle (Glanz)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-state-success text-[18px]">check_circle</span>
+</div>
+<!-- Blindprägung -->
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-cover-ink shadow-inner"></div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Tiefprägung (Blinddruck)</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Koordinaten-Raster auf Rückseite</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-state-success text-[18px]">check_circle</span>
+</div>
+<!-- Lack -->
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-surface-dim shadow-inner"></div>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Softtouch-Mattkaschierung</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Kratzfestes Matt-Laminat</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-state-success text-[18px]">check_circle</span>
+</div>
+</div>
+</div>
+<!-- ISBN & Barcode Box -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted-light text-[19px]">qr_code_2</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">ISBN &amp; EAN-13 Vektor</h3>
+</div>
+<span class="font-meta-default text-meta-default text-state-success font-headline-emph">Verifiziert</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-space-sm flex items-center justify-between gap-space-sm">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Offizielle ISBN-13</span>
+<span class="font-headline-emph text-headline-emph text-on-surface tracking-wider">978-3-982410-4-1</span>
+<span class="font-meta-default text-meta-default text-text-muted-light mt-0.5">Empf. Ladenpreis: € 24,00 [D] / € 24,70 [A]</span>
+</div>
+<!-- Clean Inline SVG Vector Barcode -->
+<div class="bg-white p-1.5 rounded shadow-sm flex flex-col items-center">
+<svg class="w-24 h-9" fill="currentColor" viewbox="0 0 120 45">
+<rect class="text-cover-ink" height="35" width="2" x="0" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="3" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="6" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="11" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="15" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="4" x="18" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="24" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="28" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="31" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="36" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="40" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="43" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="48" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="52" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="55" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="60" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="4" x="64" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="70" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="73" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="78" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="82" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="4" x="85" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="91" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="95" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="98" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="103" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="3" x="107" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="1" x="112" y="0"></rect>
+<rect class="text-cover-ink" height="35" width="2" x="115" y="0"></rect>
+</svg>
+<span class="text-[9px] font-mono tracking-tighter text-cover-ink">9 783982 410418</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CENTER PANEL: Interaktiver 3D-Buch- & Mockup-Visualisierer (col-span-5) -->
+<div class="lg:col-span-5 flex flex-col gap-space-md">
+<!-- Studio Mockup Card -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-md relative overflow-hidden">
+<!-- View Mode Switcher -->
+<div class="flex items-center justify-between border-b border-rule-light pb-space-sm">
+<div class="flex items-center gap-1 bg-surface-container p-1 rounded-lg">
+<button class="bg-bg-card-light text-on-surface shadow-sm font-label-default text-label-default px-2.5 py-1 rounded">3D Isometrie</button>
+<button class="hover:bg-surface-container-high text-text-muted-light hover:text-on-surface font-label-default text-label-default px-2.5 py-1 rounded transition-colors">Frontal 2D</button>
+<button class="hover:bg-surface-container-high text-text-muted-light hover:text-on-surface font-label-default text-label-default px-2.5 py-1 rounded transition-colors">Druckbogen</button>
+<button class="hover:bg-surface-container-high text-text-muted-light hover:text-on-surface font-label-default text-label-default px-2.5 py-1 rounded transition-colors">Oasis</button>
+</div>
+<div class="flex items-center gap-1 text-text-muted-light">
+<button class="w-7 h-7 rounded bg-surface-container hover:bg-surface-container-high flex items-center justify-center transition-colors" title="Zoom In">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span>
+</button>
+<button class="w-7 h-7 rounded bg-surface-container hover:bg-surface-container-high flex items-center justify-center transition-colors" title="Drehen">
+<span class="material-symbols-outlined text-[16px]">360</span>
+</button>
+</div>
+</div>
+<!-- The Photorealistic Studio Stage Area -->
+<div class="relative w-full h-[540px] bg-gradient-to-b from-surface-container-low via-surface-container to-surface-dim rounded-xl flex items-center justify-center p-space-lg overflow-hidden select-none">
+<!-- Subtle Atmospheric Spotlight Background -->
+<div class="absolute w-96 h-96 rounded-full bg-cover-sepia/10 filter blur-3xl -top-10 -left-10 pointer-events-none"></div>
+<div class="absolute w-80 h-80 rounded-full bg-primary/10 filter blur-2xl bottom-4 right-4 pointer-events-none"></div>
+<!-- Studio Lighting Reflection Plane -->
+<div class="absolute bottom-6 w-72 h-10 bg-cover-ink/30 filter blur-xl rounded-full transform scale-x-125"></div>
+<!-- Realistic 3D Hardcover Book Object (CSS 3D Transform Representation) -->
+<div class="relative z-10 flex items-center justify-center transition-transform hover:scale-[1.02] duration-300">
+<!-- Book Construct: Spine + Front Cover with Isometric Depth -->
+<div class="relative flex shadow-2xl rounded-r-sm overflow-hidden" style="filter: drop-shadow(18px 24px 30px rgba(24, 18, 14, 0.45));">
+<!-- 3D Spine Simulation -->
+<div class="w-10 h-[430px] bg-gradient-to-r from-[#171412] via-[#2d1b13] to-[#1a1512] flex flex-col justify-between py-6 px-1.5 text-center shadow-inner relative">
+<!-- Spine Foil Detail -->
+<div class="w-full flex flex-col items-center gap-1 opacity-90">
+<span class="material-symbols-outlined text-[#d39562] text-[14px]">graphic_eq</span>
+</div>
+<!-- Vertical Spine Title -->
+<div class="flex-1 flex items-center justify-center py-4">
+<span class="font-prose-heading-1 text-[#e8cbb5] tracking-widest text-[13px] uppercase [writing-mode:vertical-rl] transform rotate-180 select-none">
+                    DEAD SIGNAL  —  V. S. THORNE
+                  </span>
+</div>
+<div class="text-[9px] font-meta-default tracking-widest text-[#d39562] uppercase [writing-mode:vertical-rl] transform rotate-180">
+                  NARRARE
+                </div>
+<!-- Spine shadow curl effect -->
+<div class="absolute right-0 top-0 bottom-0 w-1 bg-black/40"></div>
+</div>
+<!-- Front Cover Canvas -->
+<div class="w-[280px] h-[430px] bg-[#1a1714] text-[#FAF8F5] relative p-6 flex flex-col justify-between overflow-hidden shadow-2xl">
+<!-- Gloss / Paper Sheen subtle highlight -->
+<div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none"></div>
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-cover-sepia/25 rounded-full filter blur-2xl pointer-events-none"></div>
+<!-- Top: Author Eyebrow -->
+<div class="relative z-10 flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-[10px] tracking-[0.25em] text-[#d39562] uppercase">SPIEGEL-BESTSELLER AUTOR</span>
+<span class="text-[9px] font-mono text-text-muted-dark opacity-60">ARC // 2025</span>
+</div>
+<h3 class="font-headline-title text-headline-title tracking-[0.18em] font-light text-[#ece6df] uppercase mt-1">
+                    V. S. THORNE
+                  </h3>
+</div>
+<!-- Center Graphic: Minimalist Sci-Fi Resonance / Singularity Line -->
+<div class="relative z-10 my-auto flex flex-col items-center justify-center">
+<!-- Schematic 14.2008 Hz Waveform with Copper Sheen -->
+<div class="w-full relative flex items-center justify-center py-4">
+<svg class="w-full h-20 text-[#d39562]" fill="none" viewbox="0 0 240 80">
+<!-- Grid lines -->
+<line opacity="0.4" stroke="#743b1f" stroke-dasharray="2 3" stroke-width="0.75" x1="0" x2="240" y1="40" y2="40"></line>
+<!-- Main quantum signal spike -->
+<path class="drop-shadow-[0_0_8px_rgba(211,149,98,0.6)]" d="M 0 40 L 40 40 L 60 40 L 75 38 L 85 40 L 95 39 L 105 18 L 112 62 L 120 8 L 128 72 L 135 24 L 142 52 L 150 40 L 165 40 L 190 41 L 240 40" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<!-- Sub circle event horizon -->
+<circle cx="120" cy="40" opacity="0.6" r="26" stroke="#f8a884" stroke-dasharray="3 3" stroke-width="0.8"></circle>
+</svg>
+</div>
+<div class="flex items-center gap-2 text-[10px] font-mono text-[#d39562]/80 mt-1">
+<span>λ = 14.2008 Hz</span>
+<span>•</span>
+<span>S/N RATIO +48 dB</span>
+</div>
+</div>
+<!-- Bottom: Major Title Treatment -->
+<div class="relative z-10 flex flex-col">
+<h1 class="font-prose-heading-1 text-[38px] leading-[36px] font-serif tracking-tight text-[#fcf9f5] drop-shadow-md">
+                    DEAD<br/>SIGNAL
+                  </h1>
+<div class="w-8 h-0.5 bg-[#d39562] my-2"></div>
+<p class="font-meta-default text-[11px] uppercase tracking-[0.16em] text-[#d39562] font-semibold">
+                    EIN QUANTEN-NOIR ROMAN
+                  </p>
+<p class="font-meta-default text-[9px] text-[#a99e96] mt-1 tracking-wider">
+                    NARRARE HARD SCIENCE FICTION
+                  </p>
+</div>
+<!-- Page Edge Highlight (Book Right Side Thickness) -->
+<div class="absolute right-0 top-0 bottom-0 w-1 bg-white/20"></div>
+</div>
+<!-- Page Block Edge Thickness Effect (Paper Edge) -->
+<div class="w-4 h-[430px] bg-gradient-to-r from-[#d9d4cb] via-[#eeebe5] to-[#c7c0b5] shadow-inner flex flex-col justify-between py-2">
+<div class="w-full h-full bg-[repeating-linear-gradient(to_bottom,#cfc7bc_0px,#cfc7bc_1px,#eeebe5_1px,#eeebe5_3px)] opacity-60"></div>
+</div>
+</div>
+</div>
+<!-- Studio Metadaten Badge -->
+<div class="absolute top-4 left-4 bg-surface-container/90 backdrop-blur-sm px-2.5 py-1 rounded text-text-muted-light font-meta-default text-meta-default flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span>Echtzeit-Renderer: WebGL / PBR Foil Shader</span>
+</div>
+</div>
+<!-- Umschlag-Details & Klappen-Vorschau Quick Strip -->
+<div class="bg-surface-container-low rounded-lg p-space-sm flex items-center justify-between text-meta-default font-meta-default">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-container text-[20px]">aspect_ratio</span>
+<div class="flex flex-col">
+<span class="text-on-surface font-headline-emph">Gesamt-Druckbogen Bemaßung</span>
+<span class="text-text-muted-light">476.4 mm × 215.0 mm (inkl. 3 mm Beschnitt ringsum)</span>
+</div>
+</div>
+<button class="text-primary hover:text-primary-container font-headline-emph text-label-default flex items-center gap-1">
+<span>Klappen-Textura anpassen</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Live Mockup Gallery Carousel -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Mockup-Szenen &amp; Kampagnen-Fotos</h3>
+<span class="font-meta-default text-meta-default text-text-muted-light">4 Generierte Renderings</span>
+</div>
+<div class="grid grid-cols-3 gap-space-sm">
+<div class="bg-surface-container rounded-lg p-1.5 flex flex-col gap-1 group cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="bg-cover bg-center w-full h-24 rounded" data-alt="A cinematic photorealistic product shot of a hardcover science fiction novel tilted on an obsidian slate rock with warm copper studio light from the top right. Dark moody ambiance." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA_SWxeqeUbigdpO8J2dTp7JzApJJUT3m3ngN3in9wd4fBTgZMKdAwyQ8cPpwD9w-kRR8GgD9_Uq2GpU_DMJwG9_Esd8StDT2lW-wOfLaZ7KpS8xysf0hqE0KSkV6ohwe82RRZOcGERNT1ABstKop8IqY65nhZ-LImuczR93PKzvAUnXG2W0HOjsgTk1ciLlrsA4bt4Ok0BHHXtHMPVr0OJkxvCydWK8S_0XHXofEEf')"></div>
+<span class="font-meta-default text-[11px] text-on-surface font-medium truncate">Editorial Schreibtisch</span>
+</div>
+<div class="bg-surface-container rounded-lg p-1.5 flex flex-col gap-1 group cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="bg-cover bg-center w-full h-24 rounded" data-alt="Photorealistic top-down flatlay photo of an open dust jacket book cover next to an old mechanical fountain pen and brass measuring caliper on warm ivory desk." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDgFl5xYoVxl3nhKLSzugcR-IRTdyNJu1p5owToQQ6dzzt8CC9aWaybxuLKK5DtkgDkUuezvA58zl7Z4Zv7Dr1ChJ152bdNoNs80eyhkv3r-cB2HaPl7MleYUlSqNsa1OYPbtB3Njhmv-dSBcwydo85ZAheGVe8LXypnqN_IF-f37oroYcU8mzSVxy59SeX2OT5KEblV9pRCBPA8P62rJYErVdSGozdeedEc4ehQC_E')"></div>
+<span class="font-meta-default text-[11px] text-on-surface font-medium truncate">Flatlay &amp; Klappen</span>
+</div>
+<div class="bg-surface-container rounded-lg p-1.5 flex flex-col gap-1 group cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="bg-cover bg-center w-full h-24 rounded" data-alt="A high-end modern e-reader displaying the Dead Signal book cover with crisp e-ink contrast lying beside a warm cup of black coffee." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD7R5Lq2Sh4LZXD_xIj_-r9C3GwV1v_ANKP2TFvVtNBC42wlhgzVpY7Ym5ZuWC4balQDVxtA5NtQ6_ewHqOt44aSvFt_mgomvs7FccICfnm1khtkPy9E_nZys5EcqrjnkiO6mS1jrX53bF9pqOeKybK6Lo87xOsfItrmExWH6iEnSF785FqA6H7-B_e0i6YWzw4Lkx64nGXfojZq6WXhPhRI9Zr7nd4JVWWI_ogAjMc')"></div>
+<span class="font-meta-default text-[11px] text-on-surface font-medium truncate">Kindle Oasis Handheld</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Klappentext-, Blurb- & Marketing-Labor (col-span-4) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Klappentext Lab Card -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-planning text-[20px]">auto_stories</span>
+<h2 class="font-headline-emph text-headline-emph text-on-surface">Klappentext &amp; Blurb-Labor</h2>
+</div>
+<span class="font-meta-default text-meta-default text-state-success font-headline-emph bg-surface-container px-2 py-0.5 rounded">148 Wörter · Optimal</span>
+</div>
+<!-- AI Tone Presets -->
+<div class="flex flex-col gap-1.5">
+<label class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">KI-Kuration: Tonalität</label>
+<div class="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg">
+<button class="bg-bg-card-light text-on-surface shadow-sm font-label-default text-[12px] py-1 rounded text-center">Hard-Sci-Fi Noir</button>
+<button class="hover:bg-surface-container text-text-muted-light hover:text-on-surface font-label-default text-[12px] py-1 rounded text-center transition-colors">Bestseller-Hook</button>
+<button class="hover:bg-surface-container text-text-muted-light hover:text-on-surface font-label-default text-[12px] py-1 rounded text-center transition-colors">Literarisch knapp</button>
+</div>
+</div>
+<!-- Live Editor Field -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center text-meta-default font-meta-default text-text-muted-light">
+<span>Umschlag-Rückseite &amp; Klappentext</span>
+<span class="hover:text-primary cursor-pointer flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">spark</span> Re-Phraze</span>
+</div>
+<div class="bg-surface-container-lowest p-space-sm rounded-lg text-body-default font-prose-editorial text-prose-editorial text-on-surface shadow-inner leading-relaxed">
+            Zwölf Lichtjahre von der Erde entfernt empfängt Dr. Maya Chen ein Notsignal auf einer Frequenz, die seit dem Nevada-Vorfall vor drei Jahren tot sein müsste. Die Modulation trägt eindeutig die biometrische Signatur ihres vermissten Bruders.
+            <br/><br/>
+            An Bord des Tiefraum-Horizont-Observatoriums 'Aethelgard' beginnt ein verstörendes Kausalitäts-Rätsel: Während die Funkwellen eintreffen, registriert der Quanten-Rechner der Station keine Zeitverzögerung. Jemand antwortet in Echtzeit aus dem Herzen einer kollabierenden Raumzeit-Singularität. Und er kennt Maya Chens Namen.
+          </div>
+</div>
+<!-- Testleser- & Pressestimmen (Blurbs) -->
+<div class="flex flex-col gap-2 pt-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Ausgewählte Pressestimmen (Umschlag)</span>
+<span class="text-primary text-[12px] font-label-default cursor-pointer hover:underline">+ Zitat hinzufügen</span>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1">
+<p class="font-prose-editorial italic text-label-default text-on-surface">
+              "Ein atmosphärisches Meisterwerk zwischen Stanisław Lem und Philip K. Dick. Thorne verhandelt Quantenphysik mit der emotionalen Wucht eines antiken Dramas."
+            </p>
+<div class="flex justify-between items-center mt-1">
+<span class="font-headline-emph text-meta-default text-primary">— Spektrum der Science Fiction</span>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase bg-surface-container px-1 rounded">Rückdeckel-Top</span>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1">
+<p class="font-prose-editorial italic text-label-default text-on-surface">
+              "Schnittige Hard-Sci-Fi, die man atemlos in einer einzigen Nacht verschlingt."
+            </p>
+<div class="flex justify-between items-center mt-1">
+<span class="font-headline-emph text-meta-default text-on-surface-variant">— Cixin Liu Fanclub Deutschland</span>
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase bg-surface-container px-1 rounded">Klappeninnenseite</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Amazon A+ Content & Social Teaser Generator -->
+<div class="bg-bg-card-light rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-chat text-[20px]">campaign</span>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Marketing &amp; A+ Module</h3>
+</div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase bg-secondary-container text-on-secondary-fixed px-1.5 py-0.5 rounded">Kampagnen-Kits</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm pt-1">
+<!-- Item 1 -->
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container rounded-lg flex flex-col gap-1.5 cursor-pointer transition-colors">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-cover-sepia text-[18px]">photo_camera_front</span>
+<span class="font-headline-emph text-label-default">Instagram Carousels</span>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">5 Folien (Hook, Lore, Zitat, 3D Mockup, Vorbestell-CTA)</span>
+</div>
+<!-- Item 2 -->
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container rounded-lg flex flex-col gap-1.5 cursor-pointer transition-colors">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-area-writing text-[18px]">dashboard_customize</span>
+<span class="font-headline-emph text-label-default">Amazon A+ Banner</span>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light">Standard 970 × 600 px Header + 3 Tech-Detailkarten</span>
+</div>
+</div>
+<!-- BISAC & Classification -->
+<div class="mt-2 pt-2 border-t border-rule-light flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Thema / BISAC Metadaten</span>
+<span class="material-symbols-outlined text-state-success text-[16px]">verified</span>
+</div>
+<div class="flex flex-wrap gap-1">
+<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[11px] font-mono">FIC028010: Hard Science Fiction</span>
+<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[11px] font-mono">FIC028000: Space Exploration</span>
+<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[11px] font-mono">FIC031080: Thrillers / Tech</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>
