@@ -30,18 +30,19 @@ const CLASS = /className="([^"]*)"/g;
 
 /**
  * The scale's steps, as the design names them (spec §6.3): the size in rem,
- * the leading as the ratio its token states, and the weight and the tracking
- * where the norm names one. The eyebrow is the design's micro-label — 11 px
- * on 16 px, weight 600, tracked 0.08 em; its uppercase rides with the usage,
- * because Tailwind's theme namespace carries no text-transform.
+ * the leading as the ratio its token states, the weight every step carries,
+ * and the tracking where the norm names one. The eyebrow is the design's
+ * micro-label — 11 px on 16 px, weight 600, tracked 0.08 em; its uppercase
+ * rides with the usage, because Tailwind's theme namespace carries no
+ * text-transform.
  */
-const SCALE: Record<string, { size: string; leading: string; weight?: string; tracking?: string }> = {
+const SCALE: Record<string, { size: string; leading: string; weight: string; tracking?: string }> = {
   eyebrow: { size: "0.6875rem", leading: "1.45", weight: "600", tracking: "0.08em" },
-  meta: { size: "0.75rem", leading: "1.42" },
-  label: { size: "0.8125rem", leading: "1.38" },
-  body: { size: "0.875rem", leading: "1.57" },
-  emph: { size: "0.9375rem", leading: "1.47" },
-  title: { size: "1.25rem", leading: "1.3" },
+  meta: { size: "0.75rem", leading: "1.42", weight: "400" },
+  label: { size: "0.8125rem", leading: "1.38", weight: "500" },
+  body: { size: "0.875rem", leading: "1.57", weight: "400" },
+  emph: { size: "0.9375rem", leading: "1.47", weight: "600" },
+  title: { size: "1.25rem", leading: "1.3", weight: "600" },
   hero: { size: "1.75rem", leading: "1.14", weight: "700" },
 };
 
@@ -81,7 +82,19 @@ function compileCss(): Promise<string> {
       return { path, base: dirname(path), content: readFileSync(path, "utf8") };
     },
   }).then((compiler) =>
-    compiler.build(["text-eyebrow", "text-hero", "tabular-nums", "uppercase"]),
+    compiler.build([
+      "text-eyebrow",
+      "text-meta",
+      "text-label",
+      "text-body",
+      "text-emph",
+      "text-title",
+      "text-hero",
+      "font-medium",
+      "font-semibold",
+      "tabular-nums",
+      "uppercase",
+    ]),
   );
   return compiled;
 }
@@ -196,9 +209,9 @@ describe("the scale's steps", () => {
       if (leading !== step.leading) {
         wrong.push(`--text-${name}--line-height: ${leading} ≠ ${step.leading}`);
       }
-      if (step.weight !== undefined) {
-        const weight = token(`text-${name}--font-weight`);
-        if (weight !== step.weight) wrong.push(`--text-${name}--font-weight: ${weight} ≠ ${step.weight}`);
+      const weight = token(`text-${name}--font-weight`);
+      if (weight !== step.weight) {
+        wrong.push(`--text-${name}--font-weight: ${weight} ≠ ${step.weight}`);
       }
       if (step.tracking !== undefined) {
         const tracking = token(`text-${name}--letter-spacing`);
@@ -272,6 +285,27 @@ describe("the scale's utilities", () => {
     expect(hero).toMatch(/font-size:\s*1\.75rem/);
     expect(hero).toMatch(/line-height:[^;]*1\.14/);
     expect(hero).toMatch(/font-weight:[^;]*700/);
+  });
+
+  it("gives every step the weight the design names", async () => {
+    const css = await compileCss();
+    for (const [name, step] of Object.entries(SCALE)) {
+      const utility = css.match(new RegExp(`\\.text-${name}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+      // The step's weight is the fallback of the variable a call site's
+      // `font-*` utility sets.
+      expect(utility).toMatch(new RegExp(`font-weight:[^;]*${step.weight}`));
+    }
+  });
+
+  it("leaves a call site's font utility in charge of the weight", async () => {
+    const css = await compileCss();
+    // A step reads its weight from the variable Tailwind's font-weight
+    // utilities set (`font-weight: var(--tw-font-weight, 500)`), so a call
+    // site's own `font-medium` or `font-semibold` still wins over the step's
+    // token weight — the override the call sites rely on.
+    expect(css).toMatch(/\.text-label\s*\{[^}]*font-weight:\s*var\(--tw-font-weight,\s*500\)/);
+    expect(css).toMatch(/\.font-medium\s*\{[^}]*--tw-font-weight:\s*var\(--font-weight-medium\)/);
+    expect(css).toMatch(/\.font-semibold\s*\{[^}]*--tw-font-weight:\s*var\(--font-weight-semibold\)/);
   });
 
   it("has Tailwind's own tabular figures, so no custom utility is needed", async () => {
