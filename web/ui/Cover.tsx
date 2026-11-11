@@ -34,12 +34,13 @@
 /** The tile's four looks: ground, ink, and the composition each tone owns.
  *  A cover's ground is an object surface, never an action token — dark mode
  *  is where borrowing `--primary` made the tile read as a giant button
- *  (#590). */
+ *  (#590). The spine strength is the ground's own: the darker the ground,
+ *  the more black its hinge takes to read. */
 const TONES = [
-  { name: "pale", ground: "bg-cover-pale", ink: "text-cover-pale-ink", frame: false, centered: false },
-  { name: "sepia", ground: "bg-cover-sepia", ink: "text-cover-sepia-ink", frame: true, centered: false },
-  { name: "ink", ground: "bg-cover-ink", ink: "text-cover-ink-ink", frame: false, centered: true },
-  { name: "slate", ground: "bg-cover-slate", ink: "text-cover-slate-ink", frame: false, centered: false },
+  { name: "pale", ground: "bg-cover-pale", ink: "text-cover-pale-ink", spine: "bg-black/20", frame: false, centered: false },
+  { name: "sepia", ground: "bg-cover-sepia", ink: "text-cover-sepia-ink", spine: "bg-black/40", frame: true, centered: false },
+  { name: "ink", ground: "bg-cover-ink", ink: "text-cover-ink-ink", spine: "bg-black/60", frame: false, centered: true },
+  { name: "slate", ground: "bg-cover-slate", ink: "text-cover-slate-ink", spine: "bg-black/40", frame: false, centered: false },
 ] as const;
 
 /** A tone: the quartet's own name, as the shelf speaks it. */
@@ -94,13 +95,16 @@ export function Cover({
       } ${look.ink}`}
     >
       {/* The spine: 5 px of the ground darkened, the one strip every tone
-       * bends on. Black at 20 % is the strength the shelf's own pale cover
-       * renders — not the tone's ink, which would lighten the three dark
-       * grounds it has to shade. Decorative: it carries no text and no
-       * forced palette needs it. */}
+       * bends on. The strengths come from the rendered composition, which
+       * names them per tone — pale 20 %, sepia 40 %, slate 40 %, ink 60 %
+       * (the dark shelf names all four; the light shelf agrees on pale):
+       * a uniform strength is invisible on the midnight ground, and the
+       * tone's ink is no substitute — it would lighten the dark grounds it
+       * has to shade. Decorative: it carries no text and no forced palette
+       * needs it. */}
       <span
         data-cover-spine
-        className="pointer-events-none absolute inset-y-0 left-0 w-[5px] bg-black/20"
+        className={`pointer-events-none absolute inset-y-0 left-0 w-[5px] ${look.spine}`}
       />
       {look.frame ? (
         /* Sepia's gold frame: a 1 px hairline at a 5 px offset. No token

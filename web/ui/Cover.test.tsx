@@ -113,7 +113,18 @@ describe("Cover", () => {
     expect(getByText("DE")).toBeTruthy();
   });
 
-  it("wears the spine strip on every tone, the ground darkened", () => {
+  it("wears the spine strip on every tone, at the strength its ground names", () => {
+    // The rendered composition names the strength per tone — pale 20 %,
+    // sepia 40 %, slate 40 %, ink 60 %: the dark shelf names all four and
+    // the light shelf agrees on pale. A strength that drifts from its
+    // screen fails here; a uniform one is imperceptible on the midnight
+    // ground.
+    const strengths: Record<CoverTone, string> = {
+      pale: "bg-black/20",
+      sepia: "bg-black/40",
+      ink: "bg-black/60",
+      slate: "bg-black/40",
+    };
     for (const name of NAMES) {
       const { container } = render(<Cover title={byTone(name)} />);
       const spine = container.querySelector("[data-cover-spine]") as HTMLElement;
@@ -122,7 +133,7 @@ describe("Cover", () => {
       expect(spine, name).toBeTruthy();
       expect(spine.className, name).toContain("w-[5px]");
       expect(spine.className, name).toContain("left-0");
-      expect(spine.className, name).toContain("bg-black/20");
+      expect(spine.className, name).toContain(strengths[name]);
       expect(spine.className, name).not.toContain("bg-current");
       cleanup();
     }
