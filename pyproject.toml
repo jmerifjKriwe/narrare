@@ -150,6 +150,7 @@ timeout_method = "thread"
 timeout_func_only = true
 markers = [
   "e2e: end-to-end tests (full stack: browser, API, Postgres)",
+  "showcase: visual showcase seeds for Stitch comparison; run manually, not in CI",
 ]
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 

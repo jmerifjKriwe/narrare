@@ -20,6 +20,9 @@ Each screen is a pair in `screens/<area>/`:
   preview is the offline view. The source is the editable form: change it in
   Stitch and re-export, or copy structures out of it — never edit it here.
 
+Visual comparison against the drafts needs a populated instance: see
+[`SCREENSHOT-COMPARISON.md`](SCREENSHOT-COMPARISON.md).
+
 The design system behind every screen is in [`DESIGN.md`](DESIGN.md)
 (`Literary Modernism`: EB Garamond for prose, Plus Jakarta Sans for chrome,
 parchment and terracotta, light and dark tokens). It is the Stitch design-system

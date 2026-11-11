@@ -102,7 +102,7 @@ test-e2e scope="affected":
       echo "no capability touched — no browser suite owed"
       exit 0
     fi
-    uv run pytest $paths -v -m e2e --timeout=60
+    uv run pytest $paths -v -m "e2e and not showcase" --timeout=60
 
 # Bounded Atheris run over the interchange parser: just fuzz 60 (seconds).
 # Seeds are fuzz/corpus; new units and a finding land in the gitignored
