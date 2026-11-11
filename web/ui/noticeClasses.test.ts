@@ -6,7 +6,7 @@
  * fill sneaking under it, fails here, not in a screenshot. The drafted
  * finding-card shell (spec §6.5) rides the base: a hairline `--border`
  * edge on the surface radius, and the severity tones crown it with their
- * own colour as a 4 px rule on top — warning amber, danger rust — while
+ * own colour as a 2 px rule on top — warning amber, danger rust — while
  * `info` and `quiet`, with nothing to raise, keep the plain edge. What no
  * tone may wear is a fill (the parked P1 rule: muted on soft is below AA);
  * the card is its edge and its rule, not a ground.
@@ -31,8 +31,8 @@ const NOTICE_BASE =
 
 const MATRIX: Record<(typeof NOTICE_TONES)[number], string> = {
   info: `${NOTICE_BASE} text-foreground`,
-  warning: `${NOTICE_BASE} border-t-4 border-t-warning text-warning`,
-  danger: `${NOTICE_BASE} border-t-4 border-t-danger text-danger`,
+  warning: `${NOTICE_BASE} border-t-2 border-t-warning text-warning`,
+  danger: `${NOTICE_BASE} border-t-2 border-t-danger text-danger`,
   quiet: `${NOTICE_BASE} text-muted`,
 };
 
@@ -45,8 +45,12 @@ describe("noticeClass", () => {
 
   it("speaks the state colours and crowns the severity tones with their rule", () => {
     expect(noticeClass("danger")).toContain("text-danger");
-    expect(noticeClass("danger")).toContain("border-t-4 border-t-danger");
-    expect(noticeClass("warning")).toContain("border-t-4 border-t-warning");
+    // The rule wears the drafted 2 px: the finding card's own
+    // `border-t-2` (causality-matrix-plot-twist.html, the "Lore
+    // Consistency Inspector Card (Finding Box)") — not a value invented
+    // for this shell.
+    expect(noticeClass("danger")).toContain("border-t-2 border-t-danger");
+    expect(noticeClass("warning")).toContain("border-t-2 border-t-warning");
     // The unraised tones keep the plain hairline: no severity to mark.
     expect(noticeClass("info")).not.toContain("border-t-");
     expect(noticeClass("quiet")).not.toContain("border-t-");

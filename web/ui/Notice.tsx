@@ -5,7 +5,7 @@ import type { HTMLAttributes, ReactNode } from "react";
  * loading all speak through `Notice` — four tones, one card. The shell is
  * the drafted finding card's (spec §6.5): a hairline `--border` edge on
  * the surface radius, and the severity tones crown it with their own
- * colour as a 4 px rule on top — warning amber, danger rust — while
+ * colour as a 2 px rule on top — warning amber, danger rust — while
  * `info` and `quiet`, with nothing to raise, keep the plain edge. The
  * state colours (`--warning`, `--danger`) surface here and nowhere else
  * (§8.1); the census bans `text-danger` outside this file, which is why
@@ -46,10 +46,12 @@ const NOTICE_BASE =
 
 const TONE_CLASSES: Record<NoticeTone, string> = {
   info: `${NOTICE_BASE} text-foreground`,
-  // The severity rule: the tone's own colour as a 4 px crown on the
-  // card's top edge (the drafted finding card's top highlight rule).
-  warning: `${NOTICE_BASE} border-t-4 border-t-warning text-warning`,
-  danger: `${NOTICE_BASE} border-t-4 border-t-danger text-danger`,
+  // The severity rule: the tone's own colour as a 2 px crown on the
+  // card's top edge — the drafted finding card's own treatment
+  // (`border-t-2 border-state-danger`, the "Lore Consistency Inspector
+  // Card (Finding Box)" in screens/planning/causality-matrix-plot-twist.html).
+  warning: `${NOTICE_BASE} border-t-2 border-t-warning text-warning`,
+  danger: `${NOTICE_BASE} border-t-2 border-t-danger text-danger`,
   quiet: `${NOTICE_BASE} text-muted`,
 };
 
