@@ -18,8 +18,8 @@ violates one of its rules is a review finding, not a style question.
 
 ## Verify
 
-`just check` (fast) · `just test-file <path>` (inner loop) · `just verify` (the
-suites the change touches) · `just verify all` (everything) · the capability's E2E.
+`just check` (fast) · `just test-file <path>` (inner loop) · `just test-e2e-file <path>`
+(one browser test) · `just verify` (the suites the change touches) · `just verify all` (everything) · the capability's E2E.
 A gate counts only when its output was read.
 
 `just --list` is the whole command surface, no hidden gates.

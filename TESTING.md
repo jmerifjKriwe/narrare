@@ -63,6 +63,11 @@ Pure rendering and wiring do not require unit tests.
 - `just test` — backend integration suite.
 - `just test-frontend` — vitest unit suite.
 - `just test-e2e` — the E2E suites the change touches (`all`, or a capability name, for more).
+  Two workers when the machine has 6 GB available, one below that (`NARRE_E2E_WORKERS`
+  or the second argument overrides); each worker owns its own port pair and database.
+- `just test-e2e-file <path|node>` — one E2E file or node, with the suite's marker and
+  timeout and no resolver: the inner loop for a browser test (`--lf` passes through;
+  just joins the arguments unquoted, so a `-k` selection must be a single word).
 - `just fuzz [seconds]` — a bounded Atheris run over the interchange parser
   (advisory; weekly in CI via `fuzz.yml`, not part of `verify`).
 - `just verify` — check, test, test-frontend and the E2E, plus the production
@@ -89,7 +94,8 @@ tool is introduced by this document — it states expectations, not mechanisms.
   suite and every E2E stack at its own Postgres; the per-run names are minted
   on whichever server that door opens.
 - Frontend tests mock only the API client; the logic under test runs unmocked.
-- E2E suites create their own databases; see the capability conftests.
+- E2E suites create their own databases and their own port pair per xdist worker;
+  see the capability conftests and `app/kernel/testing/stack.py`.
 
 ## Naming and structure
 

@@ -526,6 +526,14 @@ def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -
 
     def assert_label_row(scope: Locator, label_text: str, control: Locator) -> None:
         expect(control).to_be_visible()
+        # The grid is the subject; wait for it to be applied before reading
+        # boxes. A single read after visibility can measure the stacked form
+        # the first paint still shows — under a loaded runner that read is
+        # what flaked (#775).
+        expect(control).to_have_css("height", "28px")
+        expect(control.locator("xpath=..")).to_have_css(
+            "grid-template-columns", re.compile(r"^128px(\s|$)")
+        )
         label_box = scope.get_by_text(label_text, exact=True).bounding_box()
         control_box = control.bounding_box()
         assert label_box is not None and control_box is not None
@@ -533,11 +541,6 @@ def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -
         label_centre = label_box["y"] + label_box["height"] / 2
         control_centre = control_box["y"] + control_box["height"] / 2
         assert abs(label_centre - control_centre) <= 1.5
-        # The control height is the density law's field: 28 px.
-        assert control_box["height"] == 28
-        # The label column is the grid's track, not a sized label.
-        columns = control.evaluate("el => getComputedStyle(el.parentElement).gridTemplateColumns")
-        assert columns.split(" ")[0] == "128px"
 
     providers = _region(page, PROVIDERS)
     models = _region(page, MODELS)
