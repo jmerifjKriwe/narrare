@@ -9,10 +9,13 @@ from collections.abc import Iterator  # noqa: TC003
 
 import pytest
 
+from app.kernel.db import testsupport
 from app.kernel.testing.stack import run_stack
+
+DATABASE = testsupport.test_database("narrare_v2_planning_e2e")
 
 
 @pytest.fixture(scope="module")
 def stack() -> Iterator[None]:
-    with run_stack(database="narrare_v2_planning_e2e", seed_user=True):
+    with run_stack(database=DATABASE, seed_user=True):
         yield

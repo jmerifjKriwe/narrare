@@ -103,16 +103,16 @@ jobs:
               browser.new_page().goto("data:text/html,ok")
               browser.close()
           PY
-      # The matrix runs the same recipe the local gate runs. The capability
-      # suites are browser-latency bound (a local suite averages 0.4 cores), so
-      # three workers fit a 4-vCPU runner without oversubscribing it; the
-      # matrix already runs capabilities side by side, and writing is the
-      # pacemaker this shortens.
+      # The matrix runs the same recipe the local gate runs. Two workers, like
+      # the local default: the capability suites are browser-latency bound, and
+      # three on a 4-vCPU runner made timing-sensitive layout and focus
+      # assertions flake (issue #775). Raise it there once those assertions wait
+      # for the fact they measure.
       - name: E2E
         env:
           # Indirection for zizmor's template-injection audit: the capability
           # name reaches the shell as an env value, never as an expanded
           # expression in the command line.
           CAPABILITY: ${{ inputs.capability }}
-          NARRE_E2E_WORKERS: "3"
+          NARRE_E2E_WORKERS: "2"
         run: just test-e2e "$CAPABILITY"

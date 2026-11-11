@@ -1,11 +1,12 @@
 # E2E parallel, one dev server — design
 
 Date: 2026-11-11
-Status: approved by the owner in the session ("1+2 umsetzen"; more workers on CI
-than locally). This design supersedes the 2026-10-31 cadence design's "no
-parametric ports, no xdist" non-goals for the local harness and the CI matrix
-job; the matrix itself, the per-capability split and what E2E proves stay as
-they are.
+Status: approved by the owner in the session ("1+2 umsetzen"). The owner asked
+for more workers on CI than locally; the attempt failed on timing-sensitive
+assertions, so both stay at two (#775). This design supersedes the 2026-10-31
+cadence design's "no parametric ports, no xdist" non-goals for the local harness
+and the CI matrix job; the matrix itself, the per-capability split and what E2E
+proves stay as they are.
 
 ## Intent
 
@@ -35,12 +36,18 @@ Two fixed costs were measured separately:
 
 ## Decisions
 
-### 1. pytest-xdist, two workers locally, three on CI
+### 1. pytest-xdist, two workers
 
 `just test-e2e [scope] [workers]` runs with `-n 2` unless
 `NARRE_E2E_WORKERS` or the second argument says otherwise; `_e2e.yml` exports
-`NARRE_E2E_WORKERS=3` for the per-capability job. The worker count is a
+`NARRE_E2E_WORKERS=2` for the per-capability job. The worker count is a
 parameter, not a second recipe.
+
+A third worker was tried and is shelved (#775): on a 4-vCPU runner it made
+timing-sensitive layout and focus assertions flake — a label measured 36 px off
+its row, a dialog still open after Escape, a drag that did not survive a reload
+— while the same suites pass on a rerun and at two workers. The CI gate stays
+reliable until those assertions wait for the fact they measure.
 
 - Ports: a worker's pair is the configured pair moved by `WORKER_PORT_SPACING`
   (ten) per worker. `stack.py` derives it from `PYTEST_XDIST_WORKER` at import,
@@ -107,12 +114,11 @@ Two workers are worth ~1.5–1.7×, not 2×: each worker pays its own stack star
 and its own cold Vite graph, and the suites were never CPU-bound enough to keep
 four cores busy.
 
-The three-worker local run failed, and not on the code: this host had 7 of 9 GB
-used by other sessions, workers were restarted and cold page loads ran into
-Playwright's 30 s navigation timeout. The CI setting of three therefore rests on
-the runner's 4 vCPU / 16 GB — where three stacks are ~2–3 GB — not on a local
-measurement. Two is the local default and the first thing to try if a CI job
-ever flakes on a cold load.
+The three-worker local run failed twice over: this host had 7 of 9 GB used by
+other sessions, workers were restarted and cold page loads ran into Playwright's
+30 s navigation timeout; and on the runs where memory held, single UI tests
+failed on layout and focus timing and passed on the next run. That is why the CI
+setting is two, not three (#775).
 
 **Known limitation.** A worker that dies without a clean session teardown leaves
 its stack processes behind, as a crashed serial run always did with the API; the
