@@ -14,8 +14,15 @@ WORKDIR /src
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY web/package.json web/
 # Node 25 ships no corepack (`command -v corepack` is empty in node:25-slim),
-# so the package manager comes from npm at the version package.json names.
-RUN npm install -g pnpm@11.5.2 && pnpm install --frozen-lockfile
+# so pnpm comes from its own image, pinned by digest like every base image here:
+# a bare `npm install -g pnpm@11.5.2` names a version but no hash, which was
+# Scorecard's last Pinned-Dependencies finding (alert #21). The tag and
+# `package.json`'s `packageManager` move together — pnpm switches itself to the
+# version packageManager names (neither a CLI flag, an env var nor .npmrc stops
+# it), so bumping one alone silently downloads the other from the registry.
+COPY --from=ghcr.io/pnpm/pnpm:11.5.2@sha256:4d561daf74b0775b389a6cef94806582fa5ab3e8ce73a17cef64a4eed2b69239 /opt/pnpm /opt/pnpm
+ENV PATH=/opt/pnpm:$PATH
+RUN pnpm install --frozen-lockfile
 # The generated registries in web/lib/generated import capability views as
 # ../../../app/capabilities/<name>/web/…; the build reads them, so the context
 # needs them beside web/, not only web/.
