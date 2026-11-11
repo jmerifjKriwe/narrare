@@ -215,6 +215,9 @@ From DESIGN.md "Components" and the Shelf/workspace screens, in the shell's own 
 - Notice and finding cards: 1 px border, severity rule on top (warning amber / danger
   rust), side-by-side quotes, action bar with primary *Übernehmen* / ghost *Verwerfen*
   pairs.
+- Table headers: the component pins 600 (`font-semibold`) as the cell's own weight — the
+  browser's `th` bold was accidental (Task 4 fix round, 2026-11-11). W1's chrome and
+  eyebrow re-composition owns the drafted table-header treatment.
 - Ghost text: 50 % opacity, warm sepia tint, `[Tab]`/`[Esc]` keycap trailer.
 
 Copy for all of the above flows through the i18n catalogs (de informed by the drafts, en/fr
