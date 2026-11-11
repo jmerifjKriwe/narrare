@@ -519,17 +519,22 @@ jobs:
           done
           # The one secret the book must keep across the upgrade.
           start "$PREVIOUS"
-          novel=$(curl -sf -X POST "$base/api/setup" -H 'content-type: application/json' \
-            -d '{"novel_title":"Upgrade"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["novel_id"])')
-          chapter=$(curl -sf -X POST "$base/api/writing/novels/$novel/chapters" \
-            -H 'content-type: application/json' -d '{"title":"First"}' \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          # Each answer goes to a file and is parsed from there, never piped
+          # into python3: Scorecard's downloadThenRun audit flags every
+          # `curl … | <interpreter>` without reading the URL — these three
+          # local-container calls were alerts #18–#20 (docs/architecture/github.md).
+          curl -sf -o /tmp/setup.json -X POST "$base/api/setup" \
+            -H 'content-type: application/json' -d '{"novel_title":"Upgrade"}'
+          novel=$(python3 -c 'import json; print(json.load(open("/tmp/setup.json"))["novel_id"])')
+          curl -sf -o /tmp/chapter.json -X POST "$base/api/writing/novels/$novel/chapters" \
+            -H 'content-type: application/json' -d '{"title":"First"}'
+          chapter=$(python3 -c 'import json; print(json.load(open("/tmp/chapter.json"))["id"])')
           curl -sf -X PUT "$base/api/writing/chapters/$chapter" \
             -H 'content-type: application/json' -d '{"body":"Der Regen fiel."}' >/dev/null
           docker rm -f upgrade-app >/dev/null
           start narrare:candidate
-          body=$(curl -sf "$base/api/writing/chapters/$chapter" \
-            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["body"])')
+          curl -sf -o /tmp/read.json "$base/api/writing/chapters/$chapter"
+          body=$(python3 -c 'import json; print(json.load(open("/tmp/read.json"))["body"])')
           [ "$body" = "Der Regen fiel." ]
           echo "upgraded: chapter intact"
       - name: Clean up
