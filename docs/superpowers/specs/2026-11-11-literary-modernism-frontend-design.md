@@ -304,6 +304,10 @@ the shipped value, the reason, and the owner's approval. Empty today:
   measures 7.7:1; binding.
 - **G-4 — the Shelf's undrafted states.** Loading, error, empty shelf, long titles, >12
   books: the round produces them once W2 starts.
+- **G-5 — `muted` on `soft` fails AA in the norm itself** (measured 4.46:1 light /
+  3.99:1 dark; surfaced by Task 3). The app keeps off that pairing, and no norm value is
+  adjusted locally: the round decides (adjusted value or blessed exception), batched with
+  G-4.
 
 The first round ran as **task S0 of the plan** (complete): the dark shelf
 (`shelf-dark`), the token card (`midnight-ink-swatches`), and the extracted values with
