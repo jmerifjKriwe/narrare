@@ -305,8 +305,10 @@ the shipped value, the reason, and the owner's approval. Empty today:
   legibility on `#16140F` (sepia ground `#5D2F17`, slate ground `#284457` in the render).
 - **G-3 — primary/`on-primary` in dark mode. — ANSWERED 2026-11-11:** `#D39562`/`#1D140D`
   measures 7.7:1; binding.
-- **G-4 — the Shelf's undrafted states.** Loading, error, empty shelf, long titles, >12
-  books: the round produces them once W2 starts.
+- **G-4 — the Shelf's undrafted states. — ANSWERED 2026-11-11** (the G-4 round,
+  run at W2's opening per the gap protocol): `screens/library/shelf-empty` (the empty
+  state) and `screens/library/shelf-states` (loading skeleton, the error notice with its
+  retry, the dense many-books grid, the long-title card).
 - **G-5 — `muted` on `soft` fails AA in the norm itself** (measured 4.46:1 light /
   3.99:1 dark; surfaced by Task 3). The app keeps off that pairing, and no norm value is
   adjusted locally: the round decides (adjusted value or blessed exception), batched with

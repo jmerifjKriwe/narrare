@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zustands-Referenz: Bücherregal — Narrare</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <style>
+    :root {
+      --surface-canvas: #F6F3ED;
+      --surface-card: #FFFFFF;
+      --surface-low: #FAF7F2;
+      --surface-subtle: #EFEBE2;
+      --border-subtle: #E5E0D4;
+      --border-dark: #D6D0C2;
+      --primary: #743B1F;
+      --primary-hover: #5D2F18;
+      --secondary: #935433;
+      --danger-rule: #AC3031;
+      --danger-bg: #FDF4F4;
+      --text-main: #231A14;
+      --text-secondary: #5C4D42;
+      --text-muted: #8C7B6F;
+      --book-pale: #F0EAE1;
+      --book-sepia: #743B1F;
+      --book-ink: #1C1917;
+      --book-slate: #2C3E50;
+    }
+
+    body {
+      background-color: var(--surface-canvas);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-serif {
+      font-family: 'EB Garamond', Georgia, serif;
+    }
+
+    .font-mono {
+      font-family: 'Space Mono', Menlo, monospace;
+    }
+
+    .shimmer-subtle {
+      background: linear-gradient(90deg, #EFEBE2 0%, #F5F2EA 50%, #EFEBE2 100%);
+      background-size: 200% 100%;
+      animation: softWave 2.8s ease-in-out infinite;
+    }
+
+    @keyframes softWave {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .panel-shadow {
+      box-shadow: 0 2px 8px -2px rgba(35, 26, 20, 0.05), 0 1px 3px rgba(35, 26, 20, 0.03);
+    }
+
+    .book-spine-effect {
+      box-shadow: inset 3px 0 0 rgba(0, 0, 0, 0.18), inset -1px 0 0 rgba(255, 255, 255, 0.12), 2px 3px 6px rgba(35, 26, 20, 0.12);
+    }
+  </style>
+</head>
+<body class="min-h-screen p-8 lg:p-10 flex flex-col justify-between">
+
+  <!-- Header / Spezifikations-Banner -->
+  <header class="max-w-[1540px] mx-auto w-full mb-8">
+    <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-[#E5E0D4] pb-5 gap-4">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-[#743B1F] text-[#FAF7F2] font-serif text-sm font-semibold">N</span>
+          <span class="text-[11px] font-bold tracking-[0.2em] uppercase text-[#743B1F]">Narrare Atelier Spec • V2.4</span>
+          <span class="text-[#D6D0C2]">•</span>
+          <span class="text-[11px] font-medium tracking-[0.14em] uppercase text-[#8C7B6F]">Bücherregal-Zustände</span>
+        </div>
+        <h1 class="text-3xl lg:text-[34px] font-serif font-bold text-[#231A14] tracking-tight leading-none">
+          Zustands-Referenz: Bücherregal
+        </h1>
+        <p class="text-xs text-[#5C4D42] mt-2 max-w-2xl leading-relaxed">
+          Deterministische Visualisierung der vier Systemzustände des Hauptregals. Verbindliche Token-Einhaltung, barrierefreie Typografie und vollständige Vermeidung von Datenverlust.
+        </p>
+      </div>
+
+      <!-- Token & Canvas Quick Info -->
+      <div class="flex items-center gap-4 text-xs font-mono text-[#5C4D42] bg-[#FAF7F2] border border-[#E5E0D4] px-4 py-2.5 rounded-md">
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-full border border-black/10" style="background-color: #F6F3ED;"></span>
+          <span>Fond: #F6F3ED</span>
+        </div>
+        <span class="text-[#D6D0C2]">|</span>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-full" style="background-color: #743B1F;"></span>
+          <span>Primary: #743B1F</span>
+        </div>
+        <span class="text-[#D6D0C2]">|</span>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-full" style="background-color: #AC3031;"></span>
+          <span>Alert: #AC3031</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 4-Spaltiges Panel-Raster -->
+  <main class="max-w-[1540px] mx-auto w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch my-auto">
+
+    <!-- ==================== PANEL 1: LADEN ==================== -->
+    <section class="bg-white rounded-lg border border-[#E5E0D4] panel-shadow flex flex-col h-[580px] p-5 relative overflow-hidden" aria-label="Zustand Laden">
+      <!-- Eyebrow-Label -->
+      <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-[#F0EAE1]">
+        <span class="text-[10.5px] font-bold tracking-[0.18em] uppercase text-[#743B1F]">
+          Panel 1 • Laden
+        </span>
+        <span class="text-[10px] font-mono text-[#8C7B6F] bg-[#FAF7F2] px-2 py-0.5 rounded border border-[#E5E0D4]">
+          Skeleton #EFEBE2
+        </span>
+      </div>
+
+      <div class="text-[12px] text-[#8C7B6F] mb-4">
+        Ruhige Platzhalter-Geometrie ohne Flackern oder sprunghafte Layout-Verschiebungen.
+      </div>
+
+      <!-- Mini-Toolbar Skeleton -->
+      <div class="flex justify-between items-center mb-5 pb-3 border-b border-[#F5F2EA]">
+        <div class="h-4 w-28 rounded shimmer-subtle"></div>
+        <div class="flex gap-2">
+          <div class="h-6 w-14 rounded shimmer-subtle"></div>
+          <div class="h-6 w-20 rounded shimmer-subtle"></div>
+        </div>
+      </div>
+
+      <!-- Regal Hero Skeleton (Aktives Buch) -->
+      <div class="p-3.5 rounded-md bg-[#FAF7F2] border border-[#EFEBE2] mb-5">
+        <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#8C7B6F] mb-2.5">
+          Aktuell in Arbeit
+        </div>
+        <div class="flex gap-3.5 items-center">
+          <!-- Cover Skeleton -->
+          <div class="w-14 h-20 rounded shimmer-subtle flex-shrink-0 book-spine-effect"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-4 w-3/4 rounded shimmer-subtle"></div>
+            <div class="h-2.5 w-1/2 rounded shimmer-subtle"></div>
+            <div class="h-2 w-full rounded shimmer-subtle mt-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Regal Grid Skeletons (Sekundäre Bücher) -->
+      <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#8C7B6F] mb-2">
+        Bibliothek (3 Entwürfe)
+      </div>
+      <div class="grid grid-cols-3 gap-2.5 flex-1">
+        <!-- Skeleton Buch 1 -->
+        <div class="flex flex-col items-center p-2 rounded bg-[#FAF7F2] border border-[#EFEBE2]">
+          <div class="w-12 h-16 rounded shimmer-subtle mb-2 book-spine-effect"></div>
+          <div class="h-2.5 w-12 rounded shimmer-subtle mb-1"></div>
+          <div class="h-2 w-8 rounded shimmer-subtle"></div>
+        </div>
+        <!-- Skeleton Buch 2 -->
+        <div class="flex flex-col items-center p-2 rounded bg-[#FAF7F2] border border-[#EFEBE2]">
+          <div class="w-12 h-16 rounded shimmer-subtle mb-2 book-spine-effect"></div>
+          <div class="h-2.5 w-14 rounded shimmer-subtle mb-1"></div>
+          <div class="h-2 w-9 rounded shimmer-subtle"></div>
+        </div>
+        <!-- Skeleton Buch 3 -->
+        <div class="flex flex-col items-center p-2 rounded bg-[#FAF7F2] border border-[#EFEBE2]">
+          <div class="w-12 h-16 rounded shimmer-subtle mb-2 book-spine-effect"></div>
+          <div class="h-2.5 w-11 rounded shimmer-subtle mb-1"></div>
+          <div class="h-2 w-7 rounded shimmer-subtle"></div>
+        </div>
+      </div>
+
+      <!-- Status Footer Skeleton -->
+      <div class="mt-4 pt-3 border-t border-[#F0EAE1] flex items-center justify-between text-[11px] text-[#8C7B6F]">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-[#E5E0D4] animate-pulse"></span>
+          <span class="font-mono text-[10px]">Indizes laden…</span>
+        </div>
+        <div class="h-3 w-16 rounded shimmer-subtle"></div>
+      </div>
+    </section>
+
+
+    <!-- ==================== PANEL 2: FEHLER ==================== -->
+    <section class="bg-white rounded-lg border border-[#E5E0D4] panel-shadow flex flex-col h-[580px] p-5 relative" aria-label="Zustand Fehler">
+      <!-- Eyebrow-Label -->
+      <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-[#F0EAE1]">
+        <span class="text-[10.5px] font-bold tracking-[0.18em] uppercase text-[#743B1F]">
+          Panel 2 • Fehler
+        </span>
+        <span class="text-[10px] font-mono text-[#AC3031] bg-[#FDF4F4] px-2 py-0.5 rounded border border-[#AC3031]/20">
+          Rule #AC3031
+        </span>
+      </div>
+
+      <div class="text-[12px] text-[#8C7B6F] mb-4">
+        Präzise Problembeschreibung: Nennung der Ursache und klare Handlungsanweisung.
+      </div>
+
+      <!-- Deaktivierter Shelf-Header im Hintergrund -->
+      <div class="flex justify-between items-center mb-4 opacity-40">
+        <span class="font-serif font-bold text-lg text-[#231A14]">Bücherregal</span>
+        <span class="text-xs text-[#8C7B6F]">4 Manuskripte</span>
+      </div>
+
+      <!-- Notice-Karte mit 2px orangeroter Severity-Regel oben -->
+      <div class="rounded-md border border-[#E5E0D4] bg-[#FAF7F2] overflow-hidden my-auto border-t-0 shadow-sm">
+        <!-- 2px Severity-Regel (#AC3031) -->
+        <div class="h-[2px] w-full bg-[#AC3031]"></div>
+        
+        <div class="p-5 flex flex-col gap-4">
+          <!-- Icon + Fehlerzeile in EB Garamond -->
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-[#AC3031] text-2xl flex-shrink-0 mt-0.5">
+              cloud_off
+            </span>
+            <div>
+              <h2 class="font-serif text-lg font-bold text-[#231A14] leading-snug">
+                Manuskript-Index konnte nicht synchronisiert werden
+              </h2>
+              <div class="text-[11px] font-mono text-[#AC3031] mt-0.5">
+                HTTP 503 • Lore-Graph Gateway Timeout (Station 7 Hub)
+              </div>
+            </div>
+          </div>
+
+          <!-- Ursache & Lösung -->
+          <div class="text-xs text-[#5C4D42] space-y-2 leading-relaxed bg-white/70 p-3 rounded border border-[#E5E0D4]">
+            <p>
+              <strong class="text-[#231A14]">Was fehlt:</strong> Die Kausalitäts-Metadaten und der aktuelle Kapitelstand für <em>Dead Signal</em> sind lokal gecacht, aber der Atelier-Speicher antwortet seit 14 Sekunden nicht.
+            </p>
+            <p>
+              <strong class="text-[#231A14]">Was zu tun ist:</strong> Prüfen Sie Ihre Netzwerkverbindung oder erzwingen Sie einen neuen Handshake. Ihr lokaler Textstand ist gesichert.
+            </p>
+          </div>
+
+          <!-- Aktionsleiste mit Secondary-Stil Button -->
+          <div class="flex items-center gap-3 pt-1">
+            <button type="button" class="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#231A14] bg-white border border-[#D6D0C2] hover:bg-[#FAF7F2] hover:border-[#743B1F] active:scale-[0.98] transition-all rounded shadow-sm">
+              <span class="material-symbols-outlined text-sm text-[#743B1F]">refresh</span>
+              Erneut versuchen
+            </button>
+            <button type="button" class="text-xs text-[#743B1F] hover:underline font-medium">
+              Offline-Cache öffnen
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Footer -->
+      <div class="mt-4 pt-3 border-t border-[#F0EAE1] flex items-center justify-between text-[11px] text-[#8C7B6F]">
+        <span class="font-mono text-[10px]">Letzter Versuch: Vor 12s</span>
+        <span class="text-[#AC3031] font-semibold text-[10.5px] flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#AC3031]"></span>
+          Nicht synchron
+        </span>
+      </div>
+    </section>
+
+
+    <!-- ==================== PANEL 3: VIELE BÜCHER ==================== -->
+    <section class="bg-white rounded-lg border border-[#E5E0D4] panel-shadow flex flex-col h-[580px] p-5 relative" aria-label="Zustand Viele Bücher">
+      <!-- Eyebrow-Label -->
+      <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-[#F0EAE1]">
+        <span class="text-[10.5px] font-bold tracking-[0.18em] uppercase text-[#743B1F]">
+          Panel 3 • Viele Bücher
+        </span>
+        <span class="text-[10px] font-mono text-[#5C4D42] bg-[#FAF7F2] px-2 py-0.5 rounded border border-[#E5E0D4]">
+          6 Cover (Dichter Fluss)
+        </span>
+      </div>
+
+      <div class="text-[12px] text-[#8C7B6F] mb-3">
+        Dichtere Skalierung bei wachsender Bibliothek: 4 Kanon-Farbtöne (pale, sepia, ink, slate).
+      </div>
+
+      <!-- Filter- und Suchzeile oben -->
+      <div class="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[#EFEBE2]">
+        <div class="flex items-center gap-1.5 text-xs text-[#5C4D42] bg-[#FAF7F2] border border-[#E5E0D4] px-2.5 py-1 rounded w-full">
+          <span class="material-symbols-outlined text-[15px] text-[#8C7B6F]">search</span>
+          <span class="text-[#8C7B6F] text-[11px]">Alle Genres (6)</span>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <button class="p-1 rounded bg-[#EFEBE2] text-[#743B1F] text-xs">
+            <span class="material-symbols-outlined text-sm">grid_view</span>
+          </button>
+          <button class="p-1 rounded text-[#8C7B6F] hover:bg-[#FAF7F2] text-xs">
+            <span class="material-symbols-outlined text-sm">view_list</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dichtes 6er-Raster (2 Spalten x 3 Zeilen) -->
+      <div class="grid grid-cols-2 gap-2.5 flex-1 overflow-y-auto pr-0.5">
+        
+        <!-- Buch 1: Sepia (#743B1F) -->
+        <article class="p-2 rounded bg-[#FAF7F2] border border-[#E5E0D4] flex gap-2 items-center hover:border-[#743B1F] transition-colors cursor-pointer group">
+          <div class="w-9 h-13 rounded bg-[#743B1F] text-white flex-shrink-0 book-spine-effect p-1 flex flex-col justify-between">
+            <span class="text-[6px] font-mono tracking-widest uppercase opacity-75">Sci-Fi</span>
+            <span class="text-[8px] font-serif font-bold leading-tight">DS</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-serif font-bold text-[#231A14] truncate group-hover:text-[#743B1F]">Dead Signal</h3>
+            <p class="text-[10px] text-[#5C4D42] truncate">38.734 W. • 64%</p>
+            <span class="inline-block mt-0.5 text-[8.5px] font-mono px-1 rounded bg-[#E8F5E9] text-[#2E6930]">Synchron</span>
+          </div>
+        </article>
+
+        <!-- Buch 2: Pale (#F0EAE1) -->
+        <article class="p-2 rounded bg-[#FAF7F2] border border-[#E5E0D4] flex gap-2 items-center hover:border-[#743B1F] transition-colors cursor-pointer group">
+          <div class="w-9 h-13 rounded bg-[#F0EAE1] text-[#743B1F] border border-[#D6D0C2] flex-shrink-0 book-spine-effect p-1 flex flex-col justify-between">
+            <span class="text-[6px] font-mono tracking-widest uppercase opacity-75">Lit</span>
+            <span class="text-[8px] font-serif font-bold leading-tight">SR</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-serif font-bold text-[#231A14] truncate group-hover:text-[#743B1F]">The Salt Road</h3>
+            <p class="text-[10px] text-[#5C4D42] truncate">24.150 W. • Lektorat</p>
+            <span class="inline-block mt-0.5 text-[8.5px] font-mono px-1 rounded bg-[#EFEBE2] text-[#5C4D42]">In Ruhe</span>
+          </div>
+        </article>
+
+        <!-- Buch 3: Ink (#1C1917) -->
+        <article class="p-2 rounded bg-[#FAF7F2] border border-[#E5E0D4] flex gap-2 items-center hover:border-[#743B1F] transition-colors cursor-pointer group">
+          <div class="w-9 h-13 rounded bg-[#1C1917] text-[#FAF7F2] flex-shrink-0 book-spine-effect p-1 flex flex-col justify-between">
+            <span class="text-[6px] font-mono tracking-widest uppercase opacity-75">Myst</span>
+            <span class="text-[8px] font-serif font-bold leading-tight">WH</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-serif font-bold text-[#231A14] truncate group-hover:text-[#743B1F]">Winterhaus</h3>
+            <p class="text-[10px] text-[#5C4D42] truncate">Planung • 0 W.</p>
+            <span class="inline-block mt-0.5 text-[8.5px] font-mono px-1 rounded bg-[#FFF8E1] text-[#B76E00]">Exposé</span>
+          </div>
+        </article>
+
+        <!-- Buch 4: Slate (#2C3E50) -->
+        <article class="p-2 rounded bg-[#FAF7F2] border border-[#E5E0D4] flex gap-2 items-center hover:border-[#743B1F] transition-colors cursor-pointer group">
+          <div class="w-9 h-13 rounded bg-[#2C3E50] text-[#FAF7F2] flex-shrink-0 book-spine-effect p-1 flex flex-col justify-between">
+            <span class="text-[6px] font-mono tracking-widest uppercase opacity-75">Hist</span>
+            <span class="text-[8px] font-serif font-bold leading-tight">NA</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-serif font-bold text-[#231A14] truncate group-hover:text-[#743B1F]">Nebel Arkona</h3>
+            <p class="text-[10px] text-[#5C4D42] truncate">11.200 W. • 14%</p>
+            <span class="inline-block mt-0.5 text-[8.5px] font-mono px-1 rounded bg-[#E8F5E9] text-[#2E6930]">Recherche</span>
+          </div>
+        </article>
+
+        <!-- Buch 5: Sepia (#743B1F Variant) -->
+        <article class="p-2 rounded bg-[#FAF7F2] border border-[#E5E0D4] flex gap-2 items-center hover:border-[#743B1F] transition-colors cursor-pointer group">
+          <div class="w-9 h-13 rounded bg-[#5D2F18] text-white flex-shrink-0 book-spine-effect p-1 flex flex-col justify-between">
+            <span class="text-[6px] font-mono tracking-widest uppercase opacity-75">Sci-Fi</span>
+            <span class="text-[8px] font-serif font-bold leading-tight">DS2</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-serif font-bold text-[#231A14] truncate group-hover:text-[#743B1F]">Dead Signal II</h3>
+            <p class="text-[10px] text-[#5C4D42] truncate">4.120 W. • Entwurf</p>
+            <span class="inline-block mt-0.5 text-[8.5px] font-mono px-1 rounded bg-[#E1F3FA] text-[#1F5974]">Kanon II</span>
+          </div>
+        </article>
+
+        <!-- Buch 6: Pale (#FAF7F2 Variant) -->
+        <article class="p-2 rounded bg-[#FAF7F2] border border-[#E5E0D4] flex gap-2 items-center hover:border-[#743B1F] transition-colors cursor-pointer group">
+          <div class="w-9 h-13 rounded bg-[#E8DFD1] text-[#231A14] border border-[#D6D0C2] flex-shrink-0 book-spine-effect p-1 flex flex-col justify-between">
+            <span class="text-[6px] font-mono tracking-widest uppercase opacity-75">Essay</span>
+            <span class="text-[8px] font-serif font-bold leading-tight">OA</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-serif font-bold text-[#231A14] truncate group-hover:text-[#743B1F]">Opus Archiv</h3>
+            <p class="text-[10px] text-[#5C4D42] truncate">Fragmente</p>
+            <span class="inline-block mt-0.5 text-[8.5px] font-mono px-1 rounded bg-[#EFEBE2] text-[#5C4D42]">Notizen</span>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Status Footer -->
+      <div class="mt-4 pt-3 border-t border-[#F0EAE1] flex items-center justify-between text-[11px] text-[#8C7B6F]">
+        <span>6 Romane registriert</span>
+        <button class="text-[#743B1F] hover:underline font-semibold text-[11px] flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">add</span>
+          Neues Buch
+        </button>
+      </div>
+    </section>
+
+
+    <!-- ==================== PANEL 4: LANGER TITEL ==================== -->
+    <section class="bg-white rounded-lg border border-[#E5E0D4] panel-shadow flex flex-col h-[580px] p-5 relative" aria-label="Zustand Langer Titel">
+      <!-- Eyebrow-Label -->
+      <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-[#F0EAE1]">
+        <span class="text-[10.5px] font-bold tracking-[0.18em] uppercase text-[#743B1F]">
+          Panel 4 • Langer Titel
+        </span>
+        <span class="text-[10px] font-mono text-[#2E6930] bg-[#E8F5E9] px-2 py-0.5 rounded border border-[#2E6930]/20">
+          Zweizeilig • Kein Datenverlust
+        </span>
+      </div>
+
+      <div class="text-[12px] text-[#8C7B6F] mb-4">
+        Keine Ellipsen-Abschneidung: Typografischer Zeilenumbruch mit vollem barrierefreiem Namen.
+      </div>
+
+      <!-- Vollständige Buchkarte mit langem Titel -->
+      <div class="rounded-md border border-[#E5E0D4] bg-[#FAF7F2] p-4 flex-1 flex flex-col justify-between">
+        
+        <div>
+          <!-- Buch-Header mit Genre & Kausalitäts-Pill -->
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-[#743B1F] font-bold">
+              Band I • Romanzyklus
+            </span>
+            <span class="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-[#E8F5E9] text-[#2E6930] border border-[#2E6930]/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#2E6930]"></span>
+              Kausal synchron
+            </span>
+          </div>
+
+          <!-- Großes Cover & Zweizeiliger Buchtitel -->
+          <div class="flex gap-4 items-start mb-4">
+            <!-- Buchcover mit zweizeiligem Buchrücken-Titel -->
+            <div class="w-20 h-28 rounded bg-[#743B1F] text-[#FAF7F2] flex-shrink-0 book-spine-effect p-2.5 flex flex-col justify-between shadow-sm">
+              <div class="text-[7.5px] font-mono uppercase tracking-wider opacity-80">
+                Opus IV
+              </div>
+              <div class="font-serif font-bold text-[11px] leading-tight text-[#FAF7F2]">
+                Die Chroniken von Svalbard & das Paradies
+              </div>
+              <div class="text-[7.5px] font-mono text-white/70">
+                Calder • 2025
+              </div>
+            </div>
+
+            <!-- Titel-Block: Voll ausgeschrieben ohne Ellipse -->
+            <div class="flex-1">
+              <!-- Vollständiger Titel zweizeilig brechend -->
+              <h2 class="font-serif text-[19px] font-bold text-[#231A14] leading-[1.25] tracking-tight" 
+                  tabindex="0" 
+                  aria-label="Titel: Die Chroniken von Svalbard und das verschollene Signal von Forschungsstation 7">
+                Die Chroniken von Svalbard und das verschollene Signal
+              </h2>
+              <div class="text-xs font-serif italic text-[#5C4D42] mt-1">
+                Untertitel: Eine archivarische Rekonstruktion in 14 Akten
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadaten-Raster -->
+          <div class="grid grid-cols-2 gap-2 text-xs py-3 border-y border-[#E5E0D4] font-mono text-[#5C4D42]">
+            <div>
+              <span class="text-[#8C7B6F] block text-[10px] uppercase">Wortumfang</span>
+              <span class="font-bold text-[#231A14]">48.219 / 65.000</span>
+            </div>
+            <div>
+              <span class="text-[#8C7B6F] block text-[10px] uppercase">Fortschritt</span>
+              <span class="font-bold text-[#743B1F]">74% (Kapitel 8)</span>
+            </div>
+          </div>
+
+          <!-- Accessibility Notice -->
+          <div class="mt-3 text-[11px] text-[#5C4D42] bg-white p-2.5 rounded border border-[#E5E0D4] leading-relaxed">
+            <span class="font-semibold text-[#231A14] flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px] text-[#2E6930]">check_circle</span>
+              A11y-Konformität:
+            </span>
+            Screenreader lesen den unverkürzten Titel ohne Fragmentierung vor. Kein <code class="font-mono text-[10px] bg-[#FAF7F2] px-1">text-overflow: ellipsis</code> im Haupttitel.
+          </div>
+        </div>
+
+        <!-- Aktions-Footer der Karte -->
+        <div class="flex items-center gap-2 pt-3">
+          <button class="flex-1 py-1.5 px-3 rounded bg-[#743B1F] text-white text-xs font-semibold hover:bg-[#5D2F18] transition-colors text-center shadow-sm">
+            Weiterschreiben
+          </button>
+          <button class="py-1.5 px-2.5 rounded bg-white border border-[#D6D0C2] text-[#231A14] hover:bg-[#FAF7F2] text-xs font-medium">
+            Gliederung
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Status Footer -->
+      <div class="mt-4 pt-3 border-t border-[#F0EAE1] flex items-center justify-between text-[11px] text-[#8C7B6F]">
+        <span class="font-mono text-[10px]">Zeichenlänge: 58 Chars</span>
+        <span class="text-[#231A14] font-medium text-[11px]">Kein Umbruch-Fehler</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Fußzeile / Konformitätsnachweis -->
+  <footer class="max-w-[1540px] mx-auto w-full mt-8 pt-4 border-t border-[#E5E0D4] flex flex-col sm:flex-row items-center justify-between text-xs text-[#5C4D42] font-mono gap-2">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-[#2E6930]"></span>
+      <span>Literary Modernism Spec: 4/4 Zustände validiert (Pergament #F6F3ED)</span>
+    </div>
+    <div class="flex items-center gap-4 text-[11px] text-[#8C7B6F]">
+      <span>Plus Jakarta Sans • EB Garamond • Space Mono</span>
+      <span>•</span>
+      <span>Narrare Author Studio UI</span>
+    </div>
+  </footer>
+
+</body>
+</html>
