@@ -109,9 +109,15 @@
   --area-settings: light-dark(#5A5549, #ABA391);
 
   /* The book object's own grounds and inks: a cover is an object surface,
-   * not an action. The inks are the cover's own and do not change with the
-   * theme; the grounds are raised where the midnight canvas would swallow
-   * them (gap G-2's answer, the dark shelf's own render). */
+   * not an action. The grounds are raised where the midnight canvas would
+   * swallow them (gap G-2's answer, the dark shelf's own render), and the
+   * inks answer their grounds: pale's and ink's are pairs because the
+   * raised dark grounds take their own tuning — the pale ground's ink
+   * deepens onto the linen, the ink ground's lettering warms a step.
+   * Sepia's and slate's bright parchment inks are theme-constant on
+   * purpose: those grounds stay dark in both halves, and a cover's
+   * lettering is printed on the object rather than re-inked with the
+   * page's theme. */
   --cover-pale: light-dark(#EEEBE5, #E8E2D7);
   --cover-pale-ink: light-dark(#1E1B16, #24211C);
   --cover-sepia: light-dark(#743B1F, #5D2F17);

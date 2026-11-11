@@ -188,7 +188,7 @@ def test_the_demo_entries_wear_covers(page: Page, stack: Stack) -> None:
         # The demo entries have no genre, so the eyebrow falls back to the
         # language — the first screen a user ever sees names the book's.
         tone = tile.get_attribute("data-cover-tone")
-        assert tone in {"pale", "sepia", "ink"}, tone
+        assert tone in {"pale", "sepia", "ink", "slate"}, tone
         expect(tile.locator("[data-cover-eyebrow]")).to_have_text(language)
 
     assert_accessible(page)

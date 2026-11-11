@@ -44,11 +44,12 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  * every locale; only the section heading itself comes from the catalog.
  */
 
-// The cover's three tones, pinned like Cover.test pins them: the tone is a
+// The cover's four tones, pinned like Cover.test pins them: the tone is a
 // pure hash of the title, so these names keep their tone.
 const PALE_TITLE = "Das Zählwerk";
-const SEPIA_TITLE = "Gegenwind";
-const INK_TITLE = "Der Sturm";
+const SEPIA_TITLE = "Die Salzhändlerin";
+const INK_TITLE = "Übers Meer";
+const SLATE_TITLE = "Der Sturm";
 
 // The clamp's pin: a title no rail geometry can fit. The wrapper carries the
 // pin attributes — `Cover` takes no extra props — and names the tone the
@@ -63,7 +64,6 @@ const ENTITY_SPECIMENS = [
     name: "Die Hüterin des Leuchtturms am Ende der Welt, die jedes verschwundene Schiff in ihr Ledger einträgt",
   },
 ];
-const TONE_NAMES = ["pale", "sepia", "ink"] as const;
 
 const TYPE_STEPS = [
   "text-meta",
@@ -197,11 +197,12 @@ export function DesignGallery() {
           <Cover title={PALE_TITLE} />
           <Cover title={SEPIA_TITLE} />
           <Cover title={INK_TITLE} />
+          <Cover title={SLATE_TITLE} />
           {/* The clamp's pin (see LONG_TITLE): the utility class is the real
               styling; the inline declaration is for jsdom, which runs no
               Tailwind cascade, so `getComputedStyle` only sees inline style. */}
           <div
-            data-cover-tone={TONE_NAMES[coverTone(LONG_TITLE)]}
+            data-cover-tone={coverTone(LONG_TITLE)}
             data-long-title
             className="overflow-hidden"
             style={{ overflow: "hidden" }}
