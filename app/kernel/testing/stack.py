@@ -453,3 +453,84 @@ def run_stack(
         # and outlives this module on purpose.
         if stack.api is not None:
             _stop(stack.api)
+
+
+# Hebel 2 pilot: a worker-process-wide cache of capability stacks. A capability's
+# API and database are started once per worker and reused by every test module of
+# that capability; the port handover happens when a different capability asks.
+# Nothing here is stopped per module — teardown is session-wide (see
+# ``stop_capability_stacks``), so a crashed test can poison later modules of the
+# same capability; that is the pilot's known risk.
+
+_CAPABILITY_STACKS: dict[str, Stack] = {}
+
+
+def _start_capability_stack(
+    capability: str, *, database: str, seed_user: bool, env: dict[str, str] | None
+) -> Stack:
+    """Spawn one stack for ``capability`` and cache it. Caller holds the lock."""
+    if ATTACH:
+        database_url = environ.get("NARRE_DATABASE_URL", "")
+        if not database_url:
+            raise RuntimeError(
+                "NARRE_E2E_ATTACH needs NARRE_DATABASE_URL: the attached"
+                " instance's database is where the preconditions are seeded"
+            )
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(asyncio.run, _seed_local_user(database_url, seed_user)).result()
+        stack = Stack(environment=_environment(database, env), api=None, web=None)
+        _CAPABILITY_STACKS[capability] = stack
+        return stack
+
+    _wait_for_free_port(API_PORT)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(_prepare, database, seed_user).result()
+
+    environment = _environment(database, env)
+    api_process = _spawn_api(environment)
+    try:
+        web_process = _shared_web_process()
+    except BaseException:
+        _stop(api_process)
+        raise
+    stack = Stack(environment=environment, api=api_process, web=web_process)
+    try:
+        _wait_for(f"{API_URL}/openapi.json", process=api_process)
+        _wait_for(WEB_URL, process=web_process)
+    except BaseException:
+        _stop(api_process)
+        raise
+    _CAPABILITY_STACKS[capability] = stack
+    return stack
+
+
+def acquire_stack(
+    capability: str, *, database: str, seed_user: bool, env: dict[str, str] | None = None
+) -> Stack:
+    """Return the running stack for ``capability``, starting it on first use.
+
+    A different capability's stack is stopped first so the port is free; the
+    same capability's stack is reused for the rest of the worker process.
+    """
+    # Hand over the port if another capability currently owns it.
+    for other in list(_CAPABILITY_STACKS):
+        if other != capability:
+            other_stack = _CAPABILITY_STACKS.pop(other)
+            if other_stack.api is not None:
+                _stop(other_stack.api)
+
+    cached = _CAPABILITY_STACKS.get(capability)
+    if cached is not None and (cached.api is None or cached.api.poll() is None):
+        return cached
+    if cached is not None:
+        # Died without a clean teardown: drop the stale entry.
+        del _CAPABILITY_STACKS[capability]
+    return _start_capability_stack(capability, database=database, seed_user=seed_user, env=env)
+
+
+def stop_capability_stacks() -> None:
+    """End every cached capability stack. Called at session teardown."""
+    for stack in list(_CAPABILITY_STACKS.values()):
+        if stack.api is not None:
+            _stop(stack.api)
+    _CAPABILITY_STACKS.clear()

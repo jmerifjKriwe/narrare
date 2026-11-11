@@ -42,8 +42,9 @@ def _stop_the_shared_web() -> Iterator[None]:
     lifetime, and it runs in an xdist worker too — where a stack usually lives.
     """
     yield
-    from app.kernel.testing.stack import stop_shared_web
+    from app.kernel.testing.stack import stop_capability_stacks, stop_shared_web
 
+    stop_capability_stacks()
     stop_shared_web()
 
 
