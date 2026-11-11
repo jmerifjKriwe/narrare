@@ -88,6 +88,14 @@
   --scrim: oklch(0 0 0 / 0.4);
   --overlay-shadow:
     0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
+  /* The UI voice: Plus Jakarta Sans, self-hosted (the faces are declared
+   * below; the licence notice sits beside them). The system sans follows it
+   * as the fallback, so a reader whose browser never fetches the face still
+   * reads the shell in the face they already have. */
+  --font-ui:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
 }
 
 /* The reader's choice, as the browser's own `color-scheme`: "system" leaves
@@ -116,6 +124,10 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  /* The UI's own voice — the sans the shell speaks in, where the brand
+   * serif would read as manuscript. Set here rather than left to the
+   * document's default so the prose below can keep the serif it is set in. */
+  font-family: var(--font-ui);
   /* dvh, not vh: the shell is h-dvh, and a 100vh body under a dynamic
    * toolbar paints a phantom strip below the fold on mobile. */
   min-height: 100dvh;
@@ -150,6 +162,9 @@ body {
   --color-danger: var(--danger);
   --color-scrim: var(--scrim);
   --shadow-overlay: var(--overlay-shadow);
+  /* The theme's sans IS the UI voice: every `text-*` step and every element
+   * without a family of its own speaks in Plus Jakarta Sans. */
+  --font-sans: var(--font-ui);
   /* The shape names its role, not its size: a control is never rounded like
    * the surface that holds it. */
   --radius-control: var(--radius);
@@ -194,6 +209,106 @@ body {
   font-weight: 600;
   font-display: swap;
   src: url("/fonts/eb-garamond-latin-600.woff2") format("woff2");
+}
+
+/*
+ * The UI voice: Plus Jakarta Sans, self-hosted like the serif — the app's
+ * own copy, never a CDN. It speaks where the serif must not: chrome,
+ * labels, numbers, the whole shell around the manuscript. Four voices
+ * (400 / 500 / 600 / 700), each its own static instance cut from the
+ * variable font with varLib.instancer, so no weight is ever synthesised.
+ * The design's scale needs all four: 400 the body word, 500 the label,
+ * 600 the title and the eyebrow, 700 the hero.
+ *
+ * Two subsets per voice, latin and latin-ext, because the app's German
+ * and French catalogs carry letters the base Latin does not (ā, ş, ș, ż,
+ * ě and their kin). Each face declares the range it owns, so a browser
+ * fetches the extended cut only when a text actually needs it. The
+ * tabular figures (tnum) stay in the cut, so the counters and the word
+ * counts can hold their width instead of jittering as they change.
+ */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-ext-400.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-500.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-ext-500.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-600.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-ext-600.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-700.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/plus-jakarta-sans-latin-ext-700.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
 }
 
 /* The editor's prose: the one place long-form text is read, so it gets the
