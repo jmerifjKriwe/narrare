@@ -101,14 +101,16 @@ resolver. The inner loop for a browser test; `--lf` and `-k` pass through.
 | knowledge, 2 workers | 251 s | 147 s |
 | setup, 2 workers | 24 s | 18 s |
 | writing, 2 workers | 506 s (CI, serial) | 329 s |
+| writing, CI job, 2 workers | 506 s (8 m 26 s) | 320 s (5 m 20 s) |
 | all seven suites, 2 workers | ~15 min (sum of the serial suite walls) | 10 min 23 s, 173 tests |
 
 The `before` for writing is the CI job's number: no serial local run was taken,
 because knowledge's local wall clock matched CI within 3 % (251 s vs 244 s) and
-it is the same 80 tests. The full serial local run was not re-taken either: the
-measured serial evidence is knowledge (251 s) and setup (24 s) in the table, and
-the local suite walls — CI minus the per-job scaffolding — add up to about
-fifteen minutes.
+it is the same 80 tests. The CI `after` is the green run of PR #774 — the same
+job, now the pacemaker at 5 m 20 s instead of 8 m 26 s. The full serial local run
+was not re-taken either: the measured serial evidence is knowledge (251 s) and
+setup (24 s) in the table, and the local suite walls — CI minus the per-job
+scaffolding — add up to about fifteen minutes.
 
 Two workers are worth ~1.5–1.7×, not 2×: each worker pays its own stack starts
 and its own cold Vite graph, and the suites were never CPU-bound enough to keep
