@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The icon set's contract, pinned as records rather than single samples:
- * `icons` carries exactly the seventeen names (the wave's whole vocabulary
+ * `icons` carries exactly the eighteen names (the wave's whole vocabulary
  * — a name that drifts in or out breaks a P9 consumer), and every one of
  * them renders through `Icon` as the same hidden 16×16 svg — stroked in
  * the ink around it, filled with nothing, sized by `size` alone. The
@@ -13,8 +13,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { Icon, icons, type IconName } from "./icons";
 
-/** The seventeen names, verbatim: the set is exactly this and no more. */
-const SEVENTEEN = [
+/** The eighteen names, verbatim: the set is exactly this and no more. */
+const EIGHTEEN = [
   "books",
   "write",
   "knowledge",
@@ -31,6 +31,7 @@ const SEVENTEEN = [
   "check",
   "cross",
   "chevronDown",
+  "selectChevron",
   "planning",
 ] as const satisfies readonly IconName[];
 
@@ -232,13 +233,13 @@ function geometryValues(svg: SVGSVGElement): number[] {
 afterEach(cleanup);
 
 describe("icons", () => {
-  it("carries exactly the seventeen names of the set, verbatim", () => {
-    expect(Object.keys(icons).sort()).toEqual([...SEVENTEEN].sort());
+  it("carries exactly the eighteen names of the set, verbatim", () => {
+    expect(Object.keys(icons).sort()).toEqual([...EIGHTEEN].sort());
   });
 
   it("renders every name as the same hidden 16×16 stroked svg", () => {
-    expect(Object.fromEntries(SEVENTEEN.map((name) => [name, contractOf(name)]))).toEqual(
-      Object.fromEntries(SEVENTEEN.map((name) => [name, SVG_CONTRACT])),
+    expect(Object.fromEntries(EIGHTEEN.map((name) => [name, contractOf(name)]))).toEqual(
+      Object.fromEntries(EIGHTEEN.map((name) => [name, SVG_CONTRACT])),
     );
   });
 
@@ -249,7 +250,7 @@ describe("icons", () => {
   it("draws every glyph as geometry, never as text or a fill", () => {
     // Shape first: a glyph with no drawing element renders as empty space.
     expect(
-      SEVENTEEN.filter(
+      EIGHTEEN.filter(
         (name) =>
           svgOf(name).querySelector(
             "path, circle, ellipse, line, polyline, polygon, rect",
@@ -257,9 +258,9 @@ describe("icons", () => {
       ),
     ).toEqual([]);
     // Then the bans: no glyph may write its metaphor, and any fill there is must be none.
-    expect(SEVENTEEN.filter((name) => svgOf(name).querySelector("text") !== null)).toEqual([]);
+    expect(EIGHTEEN.filter((name) => svgOf(name).querySelector("text") !== null)).toEqual([]);
     expect(
-      SEVENTEEN.filter((name) =>
+      EIGHTEEN.filter((name) =>
         [...svgOf(name).querySelectorAll("[fill]")].some(
           (element) => element.getAttribute("fill") !== "none",
         ),
@@ -267,17 +268,17 @@ describe("icons", () => {
     ).toEqual([]);
   });
 
-  it("keeps all seventeen drawings distinct — cross dismisses, close folds a panel", () => {
+  it("keeps all eighteen drawings distinct — cross dismisses, close folds a panel", () => {
     // cross and close must never converge on the same ✕: a dismissal drops
     // content, a close folds a panel away — and no two names may share a drawing.
-    expect(new Set(SEVENTEEN.map((name) => JSON.stringify(icons[name]))).size).toBe(17);
+    expect(new Set(EIGHTEEN.map((name) => JSON.stringify(icons[name]))).size).toBe(18);
     expect(icons.close).not.toEqual(icons.cross);
   });
 
   it("draws every glyph with real ink — no empty path, no degenerate shape", () => {
     // An empty `d` passes the shape query above while drawing nothing, and
     // a zero radius draws nothing either: the pin is the data, not the query.
-    for (const name of SEVENTEEN) {
+    for (const name of EIGHTEEN) {
       const shapes = [...svgOf(name).querySelectorAll("path, circle, ellipse")];
       expect(shapes.length, name).toBeGreaterThan(0);
       for (const shape of shapes) {
@@ -303,7 +304,7 @@ describe("icons", () => {
     // doc states — the bound a 1.5-wide stroke may not leave. A hair of
     // tolerance absorbs float jitter in the derived ink (centre ± radius),
     // not off-grid ink: real drift moves by tenths, not by 1e-9.
-    for (const name of SEVENTEEN) {
+    for (const name of EIGHTEEN) {
       const values = geometryValues(svgOf(name));
       expect(values.length, `${name}: scanned no geometry`).toBeGreaterThan(0);
       for (const value of values) {

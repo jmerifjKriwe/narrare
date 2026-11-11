@@ -515,7 +515,7 @@ def test_a_provider_carries_models_and_tasks_use_them(page: Page, stack: Stack) 
 
 def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -> None:
     """The provider surface sits on the 128 px label grid: label and control
-    share one row, the control is the field's 28 px, and the label column is
+    share one row, the control is the field's 36 px, and the label column is
     the row grid's own 128 px track — stacked fields and hand-sized labels
     are what this pin exists to catch.
 
@@ -533,10 +533,15 @@ def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -
         label_centre = label_box["y"] + label_box["height"] / 2
         control_centre = control_box["y"] + control_box["height"] / 2
         assert abs(label_centre - control_centre) <= 1.5
-        # The control height is the density law's field: 28 px.
-        assert control_box["height"] == 28
-        # The label column is the grid's track, not a sized label.
-        columns = control.evaluate("el => getComputedStyle(el.parentElement).gridTemplateColumns")
+        # The control height is the drafted field: 36 px.
+        assert control_box["height"] == 36
+        # The label column is the grid's track, not a sized label. The grid
+        # the control sits on, not its parent: the select's shell is a box
+        # of its own — it carries the caret — so a select's parent is the
+        # shell, and the field's grid is the shell's parent.
+        columns = control.evaluate(
+            "el => getComputedStyle(el.closest('.grid')).gridTemplateColumns"
+        )
         assert columns.split(" ")[0] == "128px"
 
     providers = _region(page, PROVIDERS)

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: seventeen line glyphs on one 16×16 grid, drawn for the
+ * The icon set: eighteen line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The seventeen drawings. Each stays inside the 2.35–13.65 envelope —
+ * The eighteen drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -79,6 +79,9 @@ export const icons = {
   cross: <path d="M4.5 4.5L11.5 11.5M11.5 4.5L4.5 11.5" />,
   /** Disclosure: selects and menus point down. */
   chevronDown: <path d="M3.5 6L8 10.5L12.5 6" />,
+  /** The select's own caret: the disclosure mark, tightened for a control
+   *  that has text beside it — a wide chevron crowds the value. */
+  selectChevron: <path d="M4.5 6.5L8 10L11.5 6.5" />,
   /** The scene plan: the chapter's scenes in their order — a spine with
    *  one row per scene, the last row shorter, because a plan is a list
    *  that ends. The workspace's dock tabs name the registry's ids, so a

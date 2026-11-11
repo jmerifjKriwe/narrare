@@ -71,9 +71,12 @@ export function ChapterRail({
          editor, and the rail — capped a viewport tall minus its
          own chrome — holds its place beside the writing instead of
          being carried out of sight with the page's top; `top-4`
-         and the 16rem max-height budget keep the box inside the
-         viewport at any height it takes. */
-      className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-16rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+         and the 17rem max-height budget keep the box inside the
+         viewport at any height it takes. The budget is the chrome
+         above the rail, the band included: the band holds the rail's
+         own filter field, and the field's drafted height (36 px) is
+         part of what the rail must leave room for. */
+      className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-17rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
       aria-label={t("chapters.heading")}
     >
       <h2 className="text-emph font-semibold tracking-tight">{t("chapters.heading")}</h2>

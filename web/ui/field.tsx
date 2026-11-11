@@ -9,6 +9,8 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 
+import { Icon } from "./icons";
+
 /**
  * The labelled form field: `Field` owns the label, the hint and the error;
  * `Input`, `Select` and `Textarea` are the native controls that live inside
@@ -20,16 +22,43 @@ import {
  * change.
  */
 
+/**
+ * The control's geometry — the drafted shells (spec §6.5): the 8 px control
+ * radius, the button ladder's amber focus ring with its 1 px gap, and the
+ * height the size axis names. One definition here, so the input, the
+ * select, the textarea and the file input cannot drift apart.
+ */
 const CONTROL_BASE =
-  "rounded-[var(--radius)] border border-border bg-card px-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50";
+  "rounded-[var(--radius-control)] border border-border bg-card px-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-transparent disabled:opacity-50";
+
+/**
+ * The two heights a control wears: the drafted default (36 px, the button
+ * ladder's middle rung) and the compact one (32 px) for the dense rows.
+ */
+export type ControlSize = "md" | "compact";
+
+/** The height each size pins, and the floor the growing control starts from. */
+const CONTROL_HEIGHTS: Record<ControlSize, string> = {
+  md: "h-9",
+  compact: "h-8",
+};
+const CONTROL_FLOORS: Record<ControlSize, string> = {
+  md: "min-h-9",
+  compact: "min-h-8",
+};
 
 /**
  * The control's class matrix — the input/select/textarea contract, pinned
- * beside `buttonClass`. `grows` swaps the fixed 28px height for a minimum:
- * a textarea grows with its rows, inputs and selects stay one line.
+ * beside `buttonClass`. `size` picks the height; `grows` swaps that fixed
+ * height for a minimum: a textarea grows with its rows, inputs and selects
+ * stay one line.
  */
-export function controlClass(grows = false): string {
-  return `${grows ? "min-h-7" : "h-7"} ${CONTROL_BASE}`;
+export function controlClass({
+  grows = false,
+  size = "md",
+}: { grows?: boolean; size?: ControlSize } = {}): string {
+  const height = grows ? CONTROL_FLOORS[size] : CONTROL_HEIGHTS[size];
+  return `${height} ${CONTROL_BASE}`;
 }
 
 const FILE_CONTROL_CLASSES = `${controlClass()} file:mr-3 file:rounded-[var(--radius)] file:border-0 file:bg-transparent file:text-label file:font-medium`;
@@ -183,22 +212,54 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+/**
+ * The select's own string: the control contract plus the three
+ * companions of the custom chevron — the native arrow off, the room the
+ * chevron needs on the right, the width the shell fills — and the `peer`
+ * that lets the caret dim with a disabled control.
+ */
+const SELECT_CLASSES = `${controlClass()} peer w-full appearance-none pr-8`;
+
+/**
+ * The caret's place in the shell: right of the value, centred, and in the
+ * muted ink — a graphic, not text. It never takes the pointer, so the
+ * native control keeps the whole click.
+ */
+const CHEVRON_CLASSES =
+  "pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted peer-disabled:opacity-50";
+
+/**
+ * The select's shell: the native control, its own arrow off, and the app's
+ * chevron beside it. The element stays native on purpose — the popup is the
+ * browser's own and follows the theme's `color-scheme`; what the app owns
+ * is the shell around it: the height, the radius, the ring and the caret.
+ * The caret is the icon set's glyph, drawn in the control's ink, so it
+ * follows the theme and never names itself.
+ */
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   const { id, describedBy, ariaInvalid } = useFieldControl();
   const {
     className,
+    children,
     "aria-describedby": describedby,
     "aria-invalid": invalid,
     ...rest
   } = props;
   return (
-    <select
-      {...rest}
-      id={id(props.id)}
-      aria-describedby={describedBy(describedby)}
-      aria-invalid={invalid || ariaInvalid}
-      className={className ? `${controlClass()} ${className}` : controlClass()}
-    />
+    <span className="relative inline-flex items-center">
+      <select
+        {...rest}
+        id={id(props.id)}
+        aria-describedby={describedBy(describedby)}
+        aria-invalid={invalid || ariaInvalid}
+        className={className ? `${SELECT_CLASSES} ${className}` : SELECT_CLASSES}
+      >
+        {children}
+      </select>
+      <span className={CHEVRON_CLASSES}>
+        <Icon name="selectChevron" />
+      </span>
+    </span>
   );
 }
 
@@ -217,7 +278,9 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
       aria-describedby={describedBy(describedby)}
       aria-invalid={invalid || ariaInvalid}
       className={
-        className ? `${controlClass(true)} ${className}` : controlClass(true)
+        className
+          ? `${controlClass({ grows: true })} ${className}`
+          : controlClass({ grows: true })
       }
     />
   );
