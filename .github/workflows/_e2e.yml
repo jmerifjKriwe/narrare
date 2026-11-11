@@ -103,16 +103,17 @@ jobs:
               browser.new_page().goto("data:text/html,ok")
               browser.close()
           PY
-      # The matrix runs the same recipe the local gate runs. Three workers fit
-      # the 4-vCPU runner (two just leave it idle), now that the layout- and
-      # focus-reading assertions wait for the fact they measure instead of the
-      # paint that precedes it (#775). Two is the local default: this host has
-      # half the runner's RAM.
+      # The matrix runs the same recipe the local gate runs. Two workers, like
+      # the local default. Three were tried twice (#775, #776): first they
+      # exposed assertions that read layout and focus before the page settled
+      # (fixed, and settings then passed at three), then a cold lazy import
+      # failed to fetch its module from one of the three Vite servers. The CI
+      # gate stays reliable until #776 names the cause.
       - name: E2E
         env:
           # Indirection for zizmor's template-injection audit: the capability
           # name reaches the shell as an env value, never as an expanded
           # expression in the command line.
           CAPABILITY: ${{ inputs.capability }}
-          NARRE_E2E_WORKERS: "3"
+          NARRE_E2E_WORKERS: "2"
         run: just test-e2e "$CAPABILITY"

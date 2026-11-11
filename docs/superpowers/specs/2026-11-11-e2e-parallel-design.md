@@ -2,12 +2,14 @@
 
 Date: 2026-11-11
 Status: approved by the owner in the session ("1+2 umsetzen"). The owner asked
-for more workers on CI than locally; the third worker exposed assertions that
-read layout and focus before the page settled, and hardening those (no widened
-tolerance) is what lets CI run three (#775, closed by this change). This design
-supersedes the 2026-10-31 cadence design's "no parametric ports, no xdist"
-non-goals for the local harness and the CI matrix job; the matrix itself, the
-per-capability split and what E2E proves stay as they are.
+for more workers on CI than locally; the third worker exposed layout/focus
+assertions that read the page too early, and hardening those (no widened
+tolerance) is part of this change (#775). A second, different three-worker
+failure — a cold dynamic import that could not fetch its module — is open as
+#776, so both CI and local run two workers for now. This design supersedes the
+2026-10-31 cadence design's "no parametric ports, no xdist" non-goals for the
+local harness and the CI matrix job; the matrix itself, the per-capability split
+and what E2E proves stay as they are.
 
 ## Intent
 
@@ -37,21 +39,30 @@ Two fixed costs were measured separately:
 
 ## Decisions
 
-### 1. pytest-xdist, two workers locally, three in CI
+### 1. pytest-xdist, two workers
 
 `just test-e2e [scope] [workers]` runs with `-n 2` unless
 `NARRE_E2E_WORKERS` or the second argument says otherwise; `_e2e.yml` exports
-`NARRE_E2E_WORKERS=3` for the per-capability job. The worker count is a
+`NARRE_E2E_WORKERS=2` for the per-capability job. The worker count is a
 parameter, not a second recipe.
 
-Three workers exposed assertions that read layout or focus straight after
-`to_be_visible()` — a label measured 36 px off its row, a dialog still open
-after Escape, a drag whose PUT raced the reload (#775). They now wait for the
-fact they assert: the grid's track and the field's height before the boxes, the
-focus inside the dialog before the key, the move's response before the reload.
-Nothing was loosened. Three is CI-only because this host has half the runner's
-RAM; the local three-worker runs drowned in navigation timeouts, not assertion
-failures.
+Two things were learned on the way to three, both kept open rather than papered
+over:
+
+- Three workers exposed assertions that read layout or focus straight after
+  `to_be_visible()` — a label measured 36 px off its row, a dialog still open
+  after Escape, a drag whose PUT raced the reload. They now wait for the fact
+  they assert: the grid's track and the field's height before the boxes, the
+  focus inside the dialog before the key, the move's response before the
+  reload. Nothing was loosened, and settings then passed at three (#775).
+- Three workers then failed on a cold lazy import — Chromium could not fetch
+  the transformed module from one of the three Vite servers, and the route
+  rendered its error boundary (#776). That is not an assertion race; the
+  candidate causes are the shared `web/node_modules/.vite` dependency cache and
+  the module-body ceiling #634 belongs to.
+
+Three is therefore CI-only once #776 names its cause; this host has half the
+runner's RAM and drowned in navigation timeouts even earlier.
 
 - Ports: a worker's pair is the configured pair moved by `WORKER_PORT_SPACING`
   (ten) per worker. `stack.py` derives it from `PYTEST_XDIST_WORKER` at import,
@@ -122,11 +133,11 @@ four cores busy.
 
 The three-worker local runs are not a measurement of the assertions: this host
 had 7 of 9 GB used by other sessions, so workers were restarted and cold page
-loads ran into Playwright's 30 s navigation timeout. The assertion failures the
-third worker exposed on CI — the label grid, the dialog's Escape, the drag's
-reload — are fixed in the tests (decision 1), and the CI job is the proof that
-three workers hold. Two stays the local default because the host has half the
-runner's RAM.
+loads ran into Playwright's 30 s navigation timeout. On CI, the assertion
+failures the third worker exposed are fixed in the tests (decision 1) and
+settings passes at three; the remaining three-worker failure is the module fetch
+of #776, which is not an assertion. Two workers are the measured configuration
+on both sides.
 
 **Known limitation.** A worker that dies without a clean session teardown leaves
 its stack processes behind, as a crashed serial run always did with the API; the
