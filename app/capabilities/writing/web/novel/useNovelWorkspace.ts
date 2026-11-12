@@ -75,6 +75,18 @@ export function useNovelWorkspace(novelId: string) {
     () => new Map(chapters.map((chapter) => [chapter.id, countWords(chapter.body)])),
     [chapters],
   );
+  // The band's word-count chip (the ribbon's live total): the rail's own
+  // per-chapter counts, summed — one derivation, two views, so a keystroke's
+  // cache patch moves both in one re-render. `undefined` while the chapters
+  // read has not answered: the chip must not claim 0 for a book the page
+  // cannot yet see.
+  const bookWords = useMemo(
+    () =>
+      chaptersQuery.data === undefined
+        ? undefined
+        : [...chapterCounts.values()].reduce((sum, count) => sum + count, 0),
+    [chaptersQuery.data, chapterCounts],
+  );
   // The page's name (§8.7): the book's title once its row is here — a
   // catalog fallback while it waits, never an empty string.
   usePageTitle(novelQuery.data?.title ?? t("chapters.loading"));
@@ -324,6 +336,7 @@ export function useNovelWorkspace(novelId: string) {
     chaptersQuery,
     chapters,
     chapterCounts,
+    bookWords,
     pending,
     failed,
     refreshFailed,

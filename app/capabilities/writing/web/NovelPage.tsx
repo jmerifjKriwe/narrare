@@ -1,8 +1,9 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { activeLocale, subscribeLocale } from "@shell/lib/locale";
 import { queryClient, useDeleteChapter } from "@shell/lib/query";
 import { unsavedStatus } from "@shell/lib/save";
 import { shortcutKeycap } from "@shell/lib/shortcuts";
@@ -10,6 +11,7 @@ import { Button } from "@shell/ui/Button";
 import { Dialog } from "@shell/ui/Dialog";
 
 import { ChapterDeleteDialog, ChapterRenameDialog } from "./ChapterDialogs";
+import { ExportNovelDialog } from "./InterchangeDialogs";
 import { ChapterRail } from "./novel/ChapterRail";
 import { DockColumn } from "./novel/DockColumn";
 import { EditorColumn } from "./novel/EditorColumn";
@@ -37,6 +39,7 @@ export function NovelPage() {
     novelQuery,
     chapters,
     chapterCounts,
+    bookWords,
     pending,
     failed,
     refreshFailed,
@@ -60,6 +63,11 @@ export function NovelPage() {
   } = useNovelWorkspace(novelId);
   const { status, schedule, discard, draft, changeTitle, rename, guardOpen, answerGuard } =
     useNovelDraft(novelId, current);
+  // The band's language chip reads the shell's one locale store — the same
+  // mechanism the switcher on the page it opens speaks through. The chip's
+  // code is the active locale's, uppercased as the spec names it (EN/DE/FR);
+  // subscribing is what makes a language change re-ink the chip.
+  const locale = useSyncExternalStore(subscribeLocale, activeLocale, activeLocale);
   const {
     visibleChapters,
     activeVisibleIndex,
@@ -156,6 +164,10 @@ export function NovelPage() {
   // rows; the menu is the touch path's way to every chapter deed.
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // The band's export press: the shelf's own dialog, controlled — the
+  // ribbon's button is the opener, the dialog the ask (its own pattern for
+  // an opener that is not its trigger).
+  const [exportOpen, setExportOpen] = useState(false);
   const deleteChapter = useDeleteChapter(novelId);
 
   /** Delete one chapter: the one orchestrated sequence the delete dialog's
@@ -264,12 +276,13 @@ export function NovelPage() {
         </p>
       ) : null}
 
-      {/* The toolbar band (F26): one gap group of icon buttons — focus, rail,
-          the dock tabs the registry names. The rail's collapse control lives
-          here now, not above the chapter list; at depth 1 the rail is hidden,
-          so its toggle is hidden with it. The dock tabs keep their pressed
-          state (they toggle); the group's name is the one dock control the
-          toolbar carries — no separate dock toggle beside the tabs. */}
+      {/* The toolbar band (F26), dressed as the draft's editor ribbon
+          (spec §5.1): the breadcrumb, the save chip reading the one
+          autosave status, the book's live word count and the language
+          chip; the workbench's own controls keep their names, pressed
+          states and presses. The drafted values ride the reads the
+          workspace already holds — `undefined` while a read waits, so no
+          chip claims a book the page cannot see. */}
       {focus < 2 ? (
         <WorkspaceToolbar
           focus={focus}
@@ -280,6 +293,11 @@ export function NovelPage() {
           chapterCount={chapters.length}
           railFilter={railFilter}
           activeDockPath={activeDock?.path}
+          bookTitle={novelQuery.data?.title}
+          words={bookWords}
+          status={status}
+          localeChip={locale.toUpperCase()}
+          onExport={novelQuery.data ? () => setExportOpen(true) : undefined}
           step={step}
           toggleRail={toggleRail}
           toggleDock={toggleDock}
@@ -403,6 +421,17 @@ export function NovelPage() {
             onDelete={confirmDeleteChapter}
           />
         </>
+      ) : null}
+
+      {/* The band's export: the shelf's own dialog for this book, one
+          export surface, not two — mounted while the book's row is here,
+          the only thing it can name. */}
+      {novelQuery.data ? (
+        <ExportNovelDialog
+          novel={novelQuery.data}
+          isOpen={exportOpen}
+          onOpenChange={setExportOpen}
+        />
       ) : null}
 
       {/* The leave guard's ask (F21): the shell's dialog, not window.confirm

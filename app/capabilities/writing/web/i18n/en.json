@@ -185,9 +185,12 @@
   "shelf.viewLabel": "View:",
   "shelf.viewList": "List view",
   "shelf.wordsUnit": "{count, plural, one {word} other {words}}",
+  "workspace.breadcrumbRoot": "Manuscripts",
   "workspace.dockToggle": "Docks",
   "workspace.focusHint": "{key} brings the rail back",
   "workspace.focusToggle": "Focus",
+  "workspace.historyPending": "Version history is not available yet",
+  "workspace.languageChip": "Language: {code}",
   "workspace.railToggle": "Chapter rail",
   "workspace.shortcutHints": "{focus} focus · {back} step back or discard · {palette} palette"
 }

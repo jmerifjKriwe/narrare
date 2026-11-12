@@ -185,9 +185,12 @@
   "shelf.viewLabel": "Ansicht:",
   "shelf.viewList": "Listenansicht",
   "shelf.wordsUnit": "{count, plural, one {Wort} other {Wörter}}",
+  "workspace.breadcrumbRoot": "Manuskripte",
   "workspace.dockToggle": "Docks",
   "workspace.focusHint": "{key} zeigt die Leiste wieder",
   "workspace.focusToggle": "Fokus",
+  "workspace.historyPending": "Versionsverlauf ist noch nicht verfügbar",
+  "workspace.languageChip": "Sprache: {code}",
   "workspace.railToggle": "Kapitelleiste",
   "workspace.shortcutHints": "{focus} Fokus · {back} zurück oder verwerfen · {palette} Palette"
 }
