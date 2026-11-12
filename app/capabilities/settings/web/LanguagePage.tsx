@@ -26,7 +26,7 @@ export function LanguagePage() {
       <div className="mt-3">
         <LanguageSwitcher />
         {locale !== "en" ? (
-          <p className="mt-2 text-caption text-muted">
+          <p className="mt-2 text-meta text-muted">
             {t("settings.formality.hint")}
           </p>
         ) : null}
