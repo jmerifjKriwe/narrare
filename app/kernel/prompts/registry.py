@@ -11,7 +11,7 @@ whether the key may carry a novel scope. The key set is closed: users
 override keys, they never invent them — an unknown key is a ``KeyError``.
 
 The render itself and its named refusals live in
-:mod:`app.kernel.prompts.render`; the model and repository of the user-owned
+:mod:`app.kernel.prompts.rendering`; the model and repository of the user-owned
 overrides dock here later, on the ``ProviderProfile`` precedent.
 """
 
