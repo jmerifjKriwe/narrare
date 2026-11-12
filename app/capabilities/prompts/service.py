@@ -119,6 +119,14 @@ class PromptService:
     async def validate(self, key: str, content: str, novel_id: UUID | None) -> None:
         """The save-time gate: refuse by name, store nothing.
 
+        Design note (WP4 follow-up #389): the gate resolves ``{% include %}``
+        for this key to the content being saved and every other key to its
+        bundled template, so an override that includes another key validates
+        against that key's bundled (sample) variables. A hand-set template can
+        include another key, and call-time render walks the full chain;
+        chain-resolved validation at save time is deferred — the bundled target
+        is the contract the gate checks.
+
         The unknown key is the 404; ``novel_id`` is checked for scope and
         ownership; the content renders through the sandbox at sample scope —
         includes resolving to the saved content for this key, to the bundled
