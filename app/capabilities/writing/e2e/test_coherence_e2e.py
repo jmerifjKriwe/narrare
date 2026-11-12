@@ -448,7 +448,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # exactly this state standing unswept at the end of a merge flow.
     page.get_by_role("link", name="Alle Romane").click()
     expect(page).to_have_url(f"{BASE}/")
-    hero = page.get_by_role("region", name="Mach weiter")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
     expect(hero).to_contain_text(NOVEL)
     assert_accessible(page)
 

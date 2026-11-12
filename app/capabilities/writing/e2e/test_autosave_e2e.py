@@ -34,7 +34,7 @@ def _create_book(page: Page, title: str) -> None:
     page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
 

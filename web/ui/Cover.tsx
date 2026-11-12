@@ -62,10 +62,13 @@ export function coverTone(title: string): CoverTone {
   return TONES[toneIndex(title)].name;
 }
 
-/** The two widths the shelf needs: the card's thumbnail and the hero's. */
+/** The widths the shelf needs: the list row's thumbnail, the grid card's
+ *  cover and the hero's. The drafted widths are the screen's own (w-36,
+ *  w-48); the height always derives from the 3:4 norm. */
 const SIZES = {
   md: "w-20",
-  lg: "w-28",
+  card: "w-36",
+  hero: "w-48",
 } as const;
 
 export type CoverSize = keyof typeof SIZES;

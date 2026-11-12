@@ -15,5 +15,10 @@
   "settings.formality.hint": "Comment Narrare s'adresse à vous.",
   "settings.profiles.taskAuditOnly": "Le test des paramètres vérifie le profil que vous choisissez",
   "setup.demo.blankHint": "Un roman vide, prêt pour votre premier chapitre.",
-  "setup.intro": "Créez votre premier roman."
+  "setup.intro": "Créez votre premier roman.",
+  "shelf.banner.goalIdle": "Vous avez écrit {count} mots aujourd'hui. Encore {remaining} mots avant l'objectif du jour.",
+  "shelf.banner.noSession": "Pas encore de session d'écriture — Créez votre premier chapitre pour lancer votre routine.",
+  "shelf.empty.body": "Chaque grand récit commence par une page blanche. Commencez votre œuvre dans l'atelier ou importez un manuscrit existant.",
+  "shelf.empty.title": "Votre premier livre vous attend.",
+  "shelf.subtitle": "Gérez vos manuscrits, vos structures de livre et vos ébauches littéraires."
 }

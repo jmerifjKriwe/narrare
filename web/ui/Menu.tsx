@@ -1,7 +1,7 @@
 import { Button, Keyboard, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 
 import { buttonClass } from "./Button";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 
 /** One offered action: what it says, the key that chooses it, and what it
  *  does. `shortcut` is a hint beside the label — visible for discovery,
@@ -42,11 +42,14 @@ function keyShortcutOf(hint: string): string {
  *
  * The trigger is RAC's `Button`, not the primitive's — the trigger child
  * must answer the press context `MenuTrigger` provides — painted with the
- * one matrix (`buttonClass`), exactly the dialog trigger's pattern. Items
- * carry the focus treatment once: the `--soft` wash under React-Aria's
- * focus attribute, the house ring only where the focus was drawn by a
- * keyboard (`data-focus-visible`, the GridList row's own convention), so
- * an item can never show two rings.
+ * one matrix (`buttonClass`), exactly the dialog trigger's pattern. Two
+ * trigger shapes: the labelled one by default, and — for the drafted
+ * quick menus whose face is a glyph — the icon cell, which names its
+ * subject through `triggerAriaLabel` alone. Items carry the focus
+ * treatment once: the `--soft` wash under React-Aria's focus attribute,
+ * the house ring only where the focus was drawn by a keyboard
+ * (`data-focus-visible`, the GridList row's own convention), so an item
+ * can never show two rings.
  *
  * The shortcut's two channels never touch the name: the hint renders in
  * RAC's `Keyboard` — a `<kbd>` whose id React-Aria wires into the item's
@@ -61,23 +64,37 @@ export function ActionMenu({
   label,
   triggerAriaLabel,
   items,
+  triggerIcon,
 }: {
-  /** The visible label of the trigger. */
-  label: string;
+  /** The visible label of the text trigger; unused with `triggerIcon`. */
+  label?: string;
   /** The accessible name of the trigger, naming the subject the actions
    *  act on — a row of identical "Actions" words needs the chapter, the
    *  novel, the row to tell one trigger from its siblings. */
   triggerAriaLabel: string;
   items: ActionItem[];
+  /** The drafted quick-menu face: the trigger renders this glyph in the
+   *  icon cell instead of a label with a chevron. */
+  triggerIcon?: IconName;
 }) {
   return (
     <MenuTrigger>
       <Button
         aria-label={triggerAriaLabel}
-        className={`${buttonClass("secondary", "sm")} inline-flex items-center gap-1`}
+        className={
+          triggerIcon === undefined
+            ? `${buttonClass("secondary", "sm")} inline-flex items-center gap-1`
+            : `${buttonClass("icon", "sm")} transition-colors`
+        }
       >
-        {label}
-        <Icon name="chevronDown" />
+        {triggerIcon === undefined ? (
+          <>
+            {label}
+            <Icon name="chevronDown" />
+          </>
+        ) : (
+          <Icon name={triggerIcon} />
+        )}
       </Button>
       <Popover className="min-w-40 rounded-[var(--radius)] border border-border bg-card p-1 shadow-overlay">
         <Menu className="flex flex-col outline-hidden">

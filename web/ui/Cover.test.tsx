@@ -200,9 +200,16 @@ describe("Cover", () => {
   });
 
   it("sizes the hero's cover wider than the shelf card's", () => {
-    render(<Cover title="Der Sturm" size="lg" />);
-    const tile = screen.getByText("Der Sturm").parentElement as HTMLElement;
-    expect(tile.className).toContain("w-28");
-    expect(tile.className).not.toContain("w-20");
+    // The drafted shelf's own widths (screens/library/shelf.html): the
+    // card's cover at w-36, the hero's at w-48 — the tile's height always
+    // deriving from the 3:4 norm, never from a drafted h-* pair.
+    render(<Cover title="Der Sturm" size="hero" />);
+    const heroTile = screen.getByText("Der Sturm").parentElement as HTMLElement;
+    expect(heroTile.className).toContain("w-48");
+    render(<Cover title="Winterhaus" size="card" />);
+    const cardTile = screen.getByText("Winterhaus").parentElement as HTMLElement;
+    expect(cardTile.className).toContain("w-36");
+    expect(cardTile.className).not.toContain("w-20");
+    expect(heroTile.className).not.toContain("w-36");
   });
 });

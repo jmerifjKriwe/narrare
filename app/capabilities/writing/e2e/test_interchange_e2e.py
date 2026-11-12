@@ -248,11 +248,17 @@ def _import_merge(page: Page, source: Path, title: str) -> Locator:
 
 
 def _open_export(page: Page, title: str) -> Locator:
-    """The export dialog of the named shelf row, its proposal prefilled."""
+    """The export dialog of the named shelf row, its proposal prefilled.
+
+    The drafted card carries one corner control — the more_horiz quick
+    menu — and export lives behind it (the old shelf's standalone export
+    button is gone with the corner it stood in).
+    """
     page.goto(BASE + "/")
     row = page.get_by_role("listitem").filter(has_text=title)
     expect(row).to_be_visible()
-    row.get_by_role("button", name="Exportieren").click()
+    row.get_by_role("button", name=f"Aktionen für {title}").click()
+    page.get_by_role("menuitem", name="Exportieren").click()
     dialog = page.get_by_role("dialog")
     expect(dialog.get_by_label("Zielordner")).to_be_visible()
     return dialog
@@ -397,7 +403,7 @@ def test_merge_outside_work(page: Page, stack: Stack, tmp_path: Path) -> None:
     touched_after = str(_novel_api(novel_id)["updated_at"])
     assert datetime.fromisoformat(touched_after) > datetime.fromisoformat(touched_before)
     _close_report(page)
-    hero = page.locator("section[aria-labelledby='novels-continue']")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
     expect(hero).to_contain_text(title)
 
 

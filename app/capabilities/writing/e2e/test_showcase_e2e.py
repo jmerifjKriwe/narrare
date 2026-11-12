@@ -120,7 +120,7 @@ def test_showcase_captures_stitch_comparison(page: Page, stack) -> None:
 
     # Shelf: hold next to docs/design/stitch/screens/library/shelf.webp
     page.goto(f"{BASE}/")
-    expect(page.get_by_role("heading", name="Romane")).to_be_visible()
+    expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
     for title in ("Dead Signal", "Winterhaus", "The Salt Road", "Der Nebel von Arkona"):
         expect(page.get_by_role("link", name=title).first).to_be_visible()
     page.screenshot(path=str(SHOTS / "shelf.png"), full_page=True)

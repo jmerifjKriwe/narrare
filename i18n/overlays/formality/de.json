@@ -25,10 +25,15 @@
   "settings.providers.apiKeyHint": "Lassen Sie das Feld leer, um den gespeicherten Schlüssel zu behalten.",
   "setup.demo.blankHint": "Ein leerer Roman, bereit für Ihr erstes Kapitel.",
   "setup.intro": "Legen Sie Ihren ersten Roman an.",
+  "shelf.banner.goalIdle": "Sie haben heute {count} Wörter verfasst. Noch {remaining} Wörter bis zum Tagesziel.",
+  "shelf.banner.noSession": "Noch keine aktive Schreibsession — Legen Sie Ihr erstes Kapitel an, um die Schreibroutine zu starten.",
+  "shelf.empty.body": "Jede große Erzählung beginnt mit einem leeren Blatt. Beginnen Sie Ihr Werk im Atelier oder überführen Sie ein bestehendes Manuskript.",
+  "shelf.empty.title": "Ihr erstes Buch wartet.",
   "shelf.export.pathRequired": "Bitte geben Sie einen Ordner an, in den geschrieben wird.",
   "shelf.export.targetNotEmpty": "Der Ordner {path} existiert und ist nicht leer. Wählen Sie einen leeren Ordner.",
   "shelf.import.bothSources": "Wählen Sie eine Datei oder einen Pfad — nicht beides.",
   "shelf.import.noSource": "Wählen Sie eine Archivdatei oder geben Sie einen Pfad an.",
   "shelf.import.targetPick": "Bitte wählen Sie einen Roman.",
-  "shelf.import.targetRequired": "Bitte wählen Sie den Roman, in den importiert wird."
+  "shelf.import.targetRequired": "Bitte wählen Sie den Roman, in den importiert wird.",
+  "shelf.subtitle": "Verwalten Sie Ihre Manuskripte, Buchstrukturen und schriftstellerischen Entwürfe."
 }

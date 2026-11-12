@@ -37,7 +37,7 @@ def _open_workbench(page: Page, title: str) -> None:
     page.goto(f"{WEB_URL}/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
     page.get_by_role("button", name="Neues Kapitel").click()
@@ -250,5 +250,5 @@ def test_chrome_returns_when_leaving_the_novel(page: Page, stack: Stack) -> None
     # Leaving the workbench restores the shell everywhere else.
     page.get_by_role("link", name="Alle Romane").click()
     expect(page.get_by_role("banner")).to_be_visible()
-    expect(page.get_by_role("heading", name="Romane")).to_be_visible()
+    expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
     assert_accessible(page)

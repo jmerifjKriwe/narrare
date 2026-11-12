@@ -37,8 +37,8 @@ def _create_book(page: Page, title: str, genre: str = "") -> None:
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     if genre:
-        page.get_by_label("Genre").fill(genre)
-    page.get_by_role("button", name="Anlegen").click()
+        page.get_by_label("Genre", exact=True).fill(genre)
+    page.get_by_role("button", name="Anlegen", exact=True).click()
 
 
 def test_novel_created_in_browser_survives_reload(page: Page, stack: Stack) -> None:
@@ -49,11 +49,19 @@ def test_novel_created_in_browser_survives_reload(page: Page, stack: Stack) -> N
     # its order shuffled, so every test here owns a title no other uses.
     card = page.get_by_role("list").get_by_role("link", name="Das Wattenmeer")
     expect(card).to_be_visible()
-    expect(card).to_contain_text("Fantasy")
-    expect(card).to_contain_text("Zuletzt bearbeitet")
+    # The drafted card carries the genre on its cover's eyebrow and the
+    # touch time as the bare relative word — the named "Zuletzt bearbeitet"
+    # line is the hero's, and this book (just created) is the hero. The
+    # row — the list item, not the link — is what carries everything the
+    # dialog collected.
+    row = page.get_by_role("listitem").filter(has_text="Das Wattenmeer")
+    expect(row).to_contain_text("Fantasy")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
+    expect(hero).to_contain_text("Das Wattenmeer")
+    expect(hero).to_contain_text("Zuletzt bearbeitet")
 
     page.reload()
-    expect(page.get_by_role("list").get_by_role("link", name="Das Wattenmeer")).to_contain_text(
+    expect(page.get_by_role("listitem").filter(has_text="Das Wattenmeer")).to_contain_text(
         "Fantasy"
     )
 
@@ -64,49 +72,54 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
     _create_book(page, "Der erste Wurf")
     _create_book(page, "Der Sturm")
 
-    hero = page.get_by_role("region", name="Mach weiter")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
     expect(hero).to_be_visible()
     # The newest book is the one to continue; an older one never wins the hero.
     expect(hero).to_contain_text("Der Sturm")
     expect(hero.get_by_text("Der erste Wurf")).to_have_count(0)
     expect(hero).to_contain_text("Zuletzt bearbeitet")
 
-    # R47's hero steps on the shelf, in computed pixels: the hero's book
-    # title reads at the hero step (28), the shelf card's title at emph
-    # (15). A class swap that misses the token fails here as a wrong
-    # pixel, not as a silent drift. The hero keeps its face and its quiet
-    # door, too: the cover tile (any of the three token tones) and the
-    # secondary Weiterschreiben — the shelf's links carry no primary fill.
+    # The drafted type steps, in computed pixels: the hero's title in the
+    # brand serif at the prose-heading step (26 — the draft's
+    # font-prose-heading-1, which the class pair on the drafted h2 names),
+    # the shelf card's title at the title step (20). A class swap that
+    # misses the token fails here as a wrong pixel, not as a silent drift.
     sizes = page.evaluate(
         """() => ({
-          hero: getComputedStyle(document.querySelector('.text-hero')).fontSize,
+          hero: getComputedStyle(
+            document.querySelector('section[aria-label="Aktuell in Arbeit"] h2')
+          ).fontSize,
           card: getComputedStyle(document.querySelector('[data-shelf-title]')).fontSize,
         })"""
     )
-    assert sizes == {"hero": "28px", "card": "15px"}, sizes
+    assert sizes == {"hero": "26px", "card": "20px"}, sizes
 
     # The text steps render at the scale, not just in the CSS: a token edit
-    # that never reaches a surface fails here as a pixel. `text-label` is not
-    # pinned here — its lines (genre, language) are conditional; the token pin
-    # in typeScale.test.ts covers that step.
+    # that never reaches a surface fails here as a pixel. The hero's sync
+    # line rides the meta step (12); the top bar's place name rides body
+    # (14), pinned where the shell owns it.
     steps = page.evaluate(
         """() => {
-          const hero = document.querySelector('section[aria-labelledby="novels-continue"]');
+          const hero = document.querySelector('section[aria-label="Aktuell in Arbeit"]');
           return {
             body: getComputedStyle(document.querySelector('header .truncate')).fontSize,
-            meta: getComputedStyle(hero.querySelector('p.text-meta')).fontSize,
+            meta: getComputedStyle(hero.querySelector('.text-meta')).fontSize,
           };
         }"""
     )
     assert steps == {"body": "14px", "meta": "12px"}, steps
     expect(hero.locator("[data-cover-tone]").first).to_be_visible()
-    door = hero.get_by_role("link", name="Weiterschreiben")
+    # The drafted hero door is the primary one: the sepia fill the draft
+    # draws on "Weiterschreiben in Kapitel n" is the button ladder's
+    # primary paint (the old shelf's links carried no fill — the draft
+    # moved this pin, not the behaviour: the door opens the hero's book).
+    door = hero.get_by_role("link", name=re.compile(r"Weiterschreiben"))
     expect(door).to_be_visible()
-    expect(door).not_to_have_class(re.compile(r"bg-primary"))
+    expect(door).to_have_class(re.compile(r"\bbg-primary\b"))
 
     # The hero's link opens the book it names, and the workspace's h1
-    # reads the title step (20) — the third of R47's pinned sizes.
-    hero.get_by_role("link", name="Weiterschreiben").click()
+    # reads the title step (20) — the third pinned size.
+    door.click()
     expect(page.get_by_role("heading", name="Der Sturm")).to_be_visible()
     assert (
         page.evaluate("getComputedStyle(document.querySelector('h1.text-title')).fontSize")
@@ -132,7 +145,7 @@ def test_writing_a_chapter_makes_its_book_the_hero(page: Page, stack: Stack) -> 
     # The shelf loads, the cache settles: the hero names the newer book.
     # This is the cached truth a returning writer carries in memory.
     page.goto(f"{WEB_URL}/")
-    hero = page.get_by_role("region", name="Mach weiter")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
     expect(hero).to_contain_text("Der Strandwall")
 
     # Write in the older book through the real workbench: a chapter
@@ -161,9 +174,13 @@ def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> No
     expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
 
     # No mouse anywhere: Tab walks the page to the trigger, Enter opens.
-    for _ in range(12):
+    # The drafted shelf added controls ahead of the header doors (nothing
+    # in the rail or bar changed), so the walk still finds the door within
+    # its rounds — the button's own words are the drafted "Neues Buch
+    # anlegen", the one door on a standing shelf.
+    for _ in range(16):
         focused = page.evaluate("() => document.activeElement?.textContent ?? ''")
-        if focused.strip() == "Neues Buch":
+        if focused.strip() == "Neues Buch anlegen":
             break
         page.keyboard.press("Tab")
     page.keyboard.press("Enter")
@@ -202,7 +219,7 @@ def test_create_failure_keeps_the_dialog_open_with_its_message(page: Page, stack
     # app, produced by stopping the real API, not by faking a response.
     stack.stop_api()
     try:
-        page.get_by_role("button", name="Anlegen").click()
+        page.get_by_role("button", name="Anlegen", exact=True).click()
 
         # The dialog stays open, the failure is named where the retry is,
         # and the typed Titel is still the user's to fix or resubmit.
@@ -304,14 +321,16 @@ def test_shelf_cards_show_length_in_words_not_percentages(page: Page, stack: Sta
 
 
 def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack) -> None:
-    """A long title clamps inside its span instead of blowing up the shelf.
+    """A long title wraps inside its span instead of blowing up the shelf.
 
-    Measured where it can fail: the clamp is read from the computed style
-    (three lines, not a class string), the unbreakable token must wrap
-    inside its own box, and the two title spans — not the cards, the grid
-    stretch would equalize the cards either way — must be the same height.
+    The states screen's long-title answer (G-4, `shelf-states.html` panel
+    4): no ellipsis cut on the card's title — it wraps typographically,
+    the unbreakable token breaks inside its own box, and the full string
+    stays the link's accessible name. Measured where it can fail: the
+    computed clamp must be "none" (an ellipsis cut is data loss), nothing
+    paints past the title's box, and the card keeps the grid's width.
     """
-    # The 40-character compound cannot wrap on its own; the span has to
+    # The 40-character compound cannot wrap on its own; the title has to
     # break it. No phrase in the title may be one another test in this
     # module queries by (card names match as substrings, and the module's
     # database is shared): an overlap would resolve one test's locator to
@@ -334,20 +353,21 @@ def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack
     expect(long_span).to_be_visible()
     expect(short_span).to_be_visible()
 
-    # The clamp is really three lines, computed — not a class string.
+    # The clamp is really gone — computed, not a class string: the states
+    # screen bans the ellipsis on the card's title.
     clamp = long_span.evaluate("element => getComputedStyle(element).webkitLineClamp")
-    assert clamp == "3"
+    assert clamp == "none", clamp
 
     # The unbreakable token wraps inside the span: nothing paints past it.
     overflow = long_span.evaluate("element => element.scrollWidth - element.clientWidth")
     assert overflow <= 1
 
-    # The title slot is fixed at three lines whether the title fills it or
-    # not — measured on the spans, the thing the design fixes.
-    long_height = long_span.bounding_box()
-    short_height = short_span.bounding_box()
-    assert long_height is not None and short_height is not None
-    assert abs(long_height["height"] - short_height["height"]) <= 1
+    # The full string is the link's accessible name — the locator above
+    # already matched it, and the span's text is the whole title: no data
+    # loss for a reader, whatever the wrap did visually.
+    assert long_span.inner_text().startswith(
+        "Die Geschichte Nordseeinsellichterturmwegesommerblickea"
+    )
 
     assert_accessible(page)
 
@@ -355,8 +375,10 @@ def test_an_eighty_character_title_keeps_the_card_shape(page: Page, stack: Stack
 def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> None:
     """A book with nothing but a title still renders a whole card.
 
-    No undefined, no null, and no separator dangling where a genre would
-    be: the optional fields render when they exist and never leave a mark.
+    No undefined, no null, and no separator dangling where an absent field
+    would be: the optional fields render when they exist and never leave a
+    mark. The drafted card carries no meta separator at all — its facts
+    are their own rows.
     """
     _seed_novel(page, "Der stille Strand")
 
@@ -369,10 +391,9 @@ def test_a_title_only_book_renders_no_placeholders(page: Page, stack: Stack) -> 
     text = card.inner_text()
     assert "undefined" not in text
     assert "null" not in text
-    # Exactly one separator, and it sits between the two counts.
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    assert "0 Kapitel · 0 Wörter" in lines
-    assert sum(line.count("·") for line in lines) == 1
+    # The drafted rows are separate lines: no separator survives because
+    # none is drafted — the counts speak for themselves.
+    assert "·" not in text
 
     assert_accessible(page)
 
@@ -404,7 +425,7 @@ def test_a_failed_refresh_keeps_the_shelf_and_its_retry(page: Page, stack: Stack
 
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Der zweite Hafen")
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
 
     # The quiet voice, above the shelf — never the alert, never a torn-down
     # page: the books shown are the last loaded ones.
@@ -479,6 +500,87 @@ def test_the_rail_is_the_one_navigation(page: Page, stack: Stack) -> None:
     assert_accessible(page)
 
 
+def test_the_drafted_row_is_reachable_and_operable_by_keyboard(page: Page, stack: Stack) -> None:
+    """The drafted filter row works without a mouse — and the axe floor
+    runs in both themes on the recomposed shelf.
+
+    Search, genre filter, view toggle and the card's quick menu are all
+    native controls in the drafted composition; this pins that the
+    keyboard really drives them: typing filters, Enter on the toggle
+    switches the view, the menu opens on its trigger and Escape hands
+    focus back. The amber ring is the focus contract — pinned on the
+    search field as the row's first stop.
+    """
+    # No phrase in these titles may be one another test in this module
+    # queries by (card names match as substrings, and the module's
+    # database is shared): an overlap would resolve one test's locator to
+    # another test's card.
+    _seed_novel(page, "Der Wetterhahn")
+    _seed_novel(page, "Die Sundfahrer")
+    page.goto(f"{WEB_URL}/")
+
+    # Search: reachable by Tab from the page's head, and the amber ring
+    # paints on the field's shell when the keyboard lands on it.
+    search = page.get_by_label("Regal durchsuchen")
+    search.focus()
+    expect(search).to_be_focused()
+    ring = page.evaluate(
+        """() => {
+          const box = document.activeElement;
+          const shell = box.closest("div");
+          const style = getComputedStyle(shell);
+          return { shadow: style.boxShadow };
+        }"""
+    )
+    assert ring["shadow"] != "none", ring
+    page.keyboard.type("wetterhahn")
+    expect(page.get_by_role("link", name="Der Wetterhahn")).to_be_visible()
+    expect(page.get_by_role("link", name="Die Sundfahrer")).to_have_count(0)
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.press("Backspace")
+    expect(page.get_by_role("link", name="Die Sundfahrer")).to_be_visible()
+
+    # The view toggle: two named buttons, the grid the drafted default
+    # with its pressed state saying so; Enter switches the shelf to its
+    # dense rows and back.
+    grid = page.get_by_role("button", name="Rasteransicht")
+    list = page.get_by_role("button", name="Listenansicht")
+    expect(grid).to_have_attribute("aria-pressed", "true")
+    expect(list).to_have_attribute("aria-pressed", "false")
+    expect(page.locator("[data-shelf-card]").first).to_be_visible()
+    list.focus()
+    page.keyboard.press("Enter")
+    expect(list).to_have_attribute("aria-pressed", "true")
+    expect(page.locator("[data-shelf-row]").first).to_be_visible()
+    expect(page.locator("[data-shelf-card]")).to_have_count(0)
+    grid.focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("[data-shelf-card]").first).to_be_visible()
+
+    # The card's quick menu: the more_horiz trigger is a named button;
+    # Enter opens, the items are real menu items, Escape closes and hands
+    # focus back to the trigger.
+    trigger = page.get_by_role("button", name="Aktionen für Der Wetterhahn")
+    trigger.focus()
+    page.keyboard.press("Enter")
+    expect(page.get_by_role("menuitem", name="Details")).to_be_visible()
+    expect(page.get_by_role("menuitem", name="Exportieren")).to_be_visible()
+    expect(page.get_by_role("menuitem", name="Löschen")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(trigger).to_be_focused()
+
+    # The axe floor in both halves of the theme pair: the tokens are
+    # `light-dark()`, so the OS preference flips the page without any
+    # stored choice, and the recomposed shelf has to pass on both grounds.
+    assert_accessible(page)
+    page.emulate_media(color_scheme="dark")
+    expect(page.locator("[data-cover-tone]").first).to_be_visible()
+    assert_accessible(page)
+    page.emulate_media(color_scheme="light")
+
+    assert_accessible(page)
+
+
 def test_header_controls_keep_their_content_inside_the_control(page: Page, stack: Stack) -> None:
     """An icon beside a label is one line: the control's height is its contract.
 
@@ -493,12 +595,13 @@ def test_header_controls_keep_their_content_inside_the_control(page: Page, stack
     page.goto(f"{WEB_URL}/")
 
     # Both controls need a book to stand on: the empty shelf swaps the header's
-    # actions for its one create door.
-    for name in ("Importieren", "Neues Buch"):
+    # actions for its one create door. The drafted doors carry the drafted
+    # words — "Importieren" and "Neues Buch anlegen".
+    for name in ("Importieren", "Neues Buch anlegen"):
         expect(page.get_by_role("button", name=name)).to_be_visible()
 
     rows = page.evaluate(
-        """() => ["Importieren", "Neues Buch"].map((name) => {
+        """() => ["Importieren", "Neues Buch anlegen"].map((name) => {
             const button = [...document.querySelectorAll("button")].find(
                 (candidate) => candidate.textContent.trim() === name
             );

@@ -96,7 +96,7 @@ def test_editing_an_entity_makes_its_book_the_hero(page: Page, stack: Stack) -> 
     # The shelf loads, the cache settles: the hero names the other book,
     # the newer one. This is the cached truth a returning writer carries.
     page.goto(f"{WEB}/")
-    hero = page.get_by_role("region", name="Mach weiter")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
     expect(hero).to_contain_text(OTHER_TITLE)
 
     # Correct the canon through the real dock: an entity edited, the

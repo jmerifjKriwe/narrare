@@ -649,7 +649,7 @@ describe("a book deleted elsewhere", () => {
     // was never missing, only deleted — and the quiet notice names what
     // happened: status speech, not an alert, because nothing here asks the
     // user to fix anything.
-    expect(await screen.findByRole("heading", { name: t("novels.heading") })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: t("shelf.title") })).toBeTruthy();
     const notice = await screen.findByText(t("novels.deleteElsewhere"));
     expect(notice.getAttribute("role")).toBe("status");
     expect(screen.queryByRole("alert")).toBeNull();
@@ -1623,10 +1623,10 @@ describe("the shelf's first paint", () => {
     renderAt("/");
     // Once the shelf paints at all, it paints its shape: the heading, the
     // named wait, and the skeleton blocks that claim the loaded layout's
-    // heights — the answer's arrival moves content, not layout. The hero's
-    // repetition of the first row is deliberate (the continue affordance)
-    // and keeps its place above the rows it previews.
-    expect(await screen.findByRole("heading", { name: t("novels.heading") })).toBeTruthy();
+    // heights — the answer's arrival moves content, not layout. The drafted
+    // skeleton (states screen, panel 1) carries the header, the hero, the
+    // toolbar and the grid.
+    expect(await screen.findByRole("heading", { name: t("shelf.title") })).toBeTruthy();
     expect(screen.getByText(t("novels.loading"))).toBeTruthy();
     const pulsing = document.querySelectorAll('[class*="animate-pulse"]');
     expect(pulsing.length).toBeGreaterThanOrEqual(4);

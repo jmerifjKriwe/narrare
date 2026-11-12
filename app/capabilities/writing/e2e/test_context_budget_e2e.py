@@ -274,9 +274,9 @@ def _create_novel(page: Page, title: str) -> None:
     page.goto(BASE + "/")
     page.get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
-    page.get_by_label("Genre").fill(GENRE)
+    page.get_by_label("Genre", exact=True).fill(GENRE)
     page.get_by_label("Klappentext").fill(BLURB)
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
 
