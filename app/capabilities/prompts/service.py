@@ -109,7 +109,14 @@ class PromptService:
             )
 
     def _refuse_scope(self, spec: PromptSpec, novel_id: UUID | None) -> None:
-        """A ``novel_id`` is only legal where the key carries the scope."""
+        """A ``novel_id`` is only legal where the key carries the scope.
+
+        Deliberate asymmetry (WP4 follow-up #392): ``detail`` and ``diff`` accept
+        a ``novel_id`` for any key and fall back to the global tier when the key
+        is not novel-scopable, so a page can render in a novel context; ``save``
+        and ``delete`` refuse a novel scope for such a key, because there is no
+        per-novel row to write or remove. No override leaks either way.
+        """
         if novel_id is not None and not spec.novel_scopable:
             raise PromptRefusedError(
                 "novel-scope",
