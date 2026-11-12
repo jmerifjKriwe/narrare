@@ -78,10 +78,10 @@ ALIAS = "die Wanderin"
 ENTITIES_HEADING = "Referenced entities:"
 PREDECESSORS_HEADING = "Previous chapters:"
 STYLE_HEADING = "Style notes:"
-IMMEDIATE_BUDGET = 2151
-ENTITIES_BUDGET = 896
-PREDECESSORS_BUDGET = 358
-STYLE_BUDGET = 179
+IMMEDIATE_BUDGET = 2050
+ENTITIES_BUDGET = 80
+PREDECESSORS_BUDGET = 210
+STYLE_BUDGET = 135
 
 DEFAULT_NOVEL = "Die Schenke im Nebel"
 BASELINE_NOVEL = "Die Kette am Kai"
@@ -432,6 +432,9 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
 
     page.get_by_role("button", name="Weiterschreiben").click()
 
+    # No ghost may appear on any path — not before the error frame lands, and
+    # not after it: the refusal writes nothing into the editor.
+    expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
     # The refusal is the stream's one coded error frame, named where the
     # button sits: the prompt-refused sentence, with the settings door linked
     # inside it. No ghost ever appears, and the typed text is all the editor
@@ -454,3 +457,27 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
         )
         == []
     )
+
+
+STREAMING_NOVEL = "Die offene Boje"
+STREAMING_PROFILE = "FastNullraum"
+
+
+def test_a_just_above_zero_room_pair_streams(page: Page, stack: Stack) -> None:
+    """One token of input room above the refusal is enough to stream: the
+    refusal is the zero-room case specifically, not any pre-call failure."""
+    _create_profile_and_assign(page, STREAMING_PROFILE, "2048")
+    assert_accessible(page)
+
+    page.get_by_role("link", name="Zurück").click()
+    _create_novel(page, STREAMING_NOVEL)
+    _write_chapter(page, "Die offene Boje lag im Schilf.")
+
+    page.get_by_role("button", name="Weiterschreiben").click()
+    ghost = page.locator(".ProseMirror .ghost")
+    expect(ghost).to_contain_text("über die Straße.")
+    page.keyboard.press("Tab")
+    expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
+    _wait_saved(page)
+
+    assert_accessible(page)
