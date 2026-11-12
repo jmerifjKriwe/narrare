@@ -22,6 +22,16 @@ import { usePageTitle } from "@shell/lib/pageTitle";
  * landed keys for the specimens); the specimen labels themselves — token and
  * tone names — are documentation, the same in every language.
  *
+ * The Tokens section is the living proof of the Literary Modernism pairs
+ * (spec §6.2, §6.4): the parchment surface ladder with its hairlines, the
+ * text and action inks, the four cover ground-and-ink pairs, and the radius
+ * ladder at 4 / 8 / 12 px. Type runs the seven steps, eyebrow first. Controls
+ * pin the button ladder's three heights and its four paints, the amber focus
+ * ring — drawn statically, because a focused control cannot stand still in a
+ * screenshot — and the severity rules' 2 px crown. The four cover
+ * compositions, with their spines and sepia's gold frame, are the real
+ * `Cover` tiles in Surfaces.
+ *
  * The "Target" section pins the visual master every later slice builds
  * toward (atlas: spec §5.7, slot per family, fork decisions P1–P15). One
  * skeleton frame per slot family, each stamped ENTWURF and inert — `Row`
@@ -66,12 +76,70 @@ const ENTITY_SPECIMENS = [
 ];
 
 const TYPE_STEPS = [
-  "text-meta",
-  "text-label",
-  "text-body",
-  "text-emph",
-  "text-title",
-  "text-hero",
+  { className: "text-eyebrow uppercase", label: "text-eyebrow" },
+  { className: "text-meta", label: "text-meta" },
+  { className: "text-label", label: "text-label" },
+  { className: "text-body", label: "text-body" },
+  { className: "text-emph", label: "text-emph" },
+  { className: "text-title", label: "text-title" },
+  { className: "text-hero", label: "text-hero" },
+] as const;
+
+// The parchment surface ladder, the canvas up to the card (spec §6.2): the
+// steps a composition translates with instead of a literal hex. `--card`
+// and `--surface` sit above `--panel`; the ladder's own names carry the
+// drafted compositions.
+const SURFACE_STEPS = [
+  "bg-background",
+  "bg-panel",
+  "bg-card",
+  "bg-surface",
+  "bg-surface-container-lowest",
+  "bg-surface-container-low",
+  "bg-surface-container",
+  "bg-surface-container-high",
+  "bg-surface-container-highest",
+  "bg-surface-variant",
+  "bg-soft",
+] as const;
+
+// The hairlines: the visible edge, the quiet rule inside content, and the
+// ladder's outline pair. A hairline is shown as a line, never as a fill,
+// because that is the only shape the product gives it.
+const HAIRLINE_STEPS = [
+  { className: "bg-border", label: "border" },
+  { className: "bg-rule", label: "rule" },
+  { className: "bg-outline", label: "outline" },
+  { className: "bg-outline-variant", label: "outline-variant" },
+] as const;
+
+// The object's four grounds with the ink each one carries (Cover's quartet,
+// spec §6.5): the pair is the proof, so every chip sets its ink on its own
+// ground. The compositions — spine, gold frame, eyebrow — are the real
+// `Cover` tiles in Surfaces.
+const COVER_PAIRS = [
+  { ground: "bg-cover-pale", ink: "text-cover-pale-ink", label: "cover-pale" },
+  { ground: "bg-cover-sepia", ink: "text-cover-sepia-ink", label: "cover-sepia" },
+  { ground: "bg-cover-ink", ink: "text-cover-ink-ink", label: "cover-ink" },
+  { ground: "bg-cover-slate", ink: "text-cover-slate-ink", label: "cover-slate" },
+] as const;
+
+// The shape ladder (spec §6.4), by role: the small control, the control, the
+// surface. The token's own name is the specimen's label, so a call site
+// cannot learn the pixel value without learning the name.
+const RADIUS_STEPS = [
+  { px: "4", token: "--radius-sm", radius: "rounded-[var(--radius-sm)]" },
+  { px: "8", token: "--radius-control", radius: "rounded-[var(--radius-control)]" },
+  { px: "12", token: "--radius-surface", radius: "rounded-[var(--radius-surface)]" },
+] as const;
+
+// The button ladder's three heights (spec §6.5): the dense floor, the
+// middle, the large. The sizes are their own row so the height difference
+// reads; the paints are the row below it.
+const BUTTON_SIZES = [
+  { size: "sm", label: "sm" },
+  { size: "md", label: "md" },
+  { size: "lg", label: "lg" },
 ] as const;
 
 export function DesignGallery() {
@@ -86,22 +154,27 @@ export function DesignGallery() {
         <h2 id="design-tokens-heading" className="text-emph font-semibold">
           {t("design.tokens")}
         </h2>
+        {/* The parchment ladder, the canvas up to the card. Every step rides
+            on the same parchment, so each chip carries its hairline; the
+            ladder's order is the ladder's meaning, not a ranking. */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <span aria-hidden="true" className="border border-border bg-card px-2 py-1 text-label">
-            bg-card
-          </span>
-          <span aria-hidden="true" className="border border-border bg-panel px-2 py-1 text-label">
-            bg-panel
-          </span>
-          <span aria-hidden="true" className="border border-border bg-soft px-2 py-1 text-label">
-            bg-soft
-          </span>
-          <span aria-hidden="true" className="border border-border bg-background px-2 py-1 text-label">
-            bg-background
-          </span>
-          <span aria-hidden="true" className="border border-border bg-primary px-2 py-1 text-label text-primary-foreground">
-            bg-primary
-          </span>
+          {SURFACE_STEPS.map((step) => (
+            <span
+              key={step}
+              aria-hidden="true"
+              className={`border border-border px-2 py-1 text-label ${step}`}
+            >
+              {step}
+            </span>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {HAIRLINE_STEPS.map((hairline) => (
+            <span key={hairline.label} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className={`h-px w-12 ${hairline.className}`} />
+              <span className="text-label">{hairline.label}</span>
+            </span>
+          ))}
         </div>
         <div className="mt-3 flex flex-col gap-1">
           <p className="text-body text-foreground">text-foreground</p>
@@ -109,6 +182,28 @@ export function DesignGallery() {
           <p className="text-body text-success">text-success</p>
           <p className="text-body text-warning">text-warning</p>
           <p className="text-body text-danger">text-danger</p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span aria-hidden="true" className="border border-border bg-primary px-2 py-1 text-label text-primary-foreground">
+            bg-primary
+          </span>
+          <span aria-hidden="true" className="border border-border bg-secondary px-2 py-1 text-label text-secondary-foreground">
+            bg-secondary
+          </span>
+        </div>
+        {/* The book object's four pairs: each ground beside the ink it
+            carries. The compositions above them are the real covers in
+            Surfaces — spine, the sepia gold frame, the eyebrow. */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {COVER_PAIRS.map((pair) => (
+            <span
+              key={pair.label}
+              aria-hidden="true"
+              className={`rounded-[var(--radius-sm)] border border-border px-2 py-1 text-eyebrow uppercase ${pair.ground} ${pair.ink}`}
+            >
+              {pair.label}
+            </span>
+          ))}
         </div>
         {/* Rail-icon-sized swatches: the cover grounds and the area hues live
             on objects and nav icons, never as fills or text elsewhere, so the
@@ -119,6 +214,7 @@ export function DesignGallery() {
           <span aria-hidden="true" className="inline-block size-4 bg-cover-pale" />
           <span aria-hidden="true" className="inline-block size-4 bg-cover-sepia" />
           <span aria-hidden="true" className="inline-block size-4 bg-cover-ink" />
+          <span aria-hidden="true" className="inline-block size-4 bg-cover-slate" />
           <span aria-hidden="true" className={`inline-block size-4 ${AREA_ICON.writing}`}>
             ■
           </span>
@@ -132,6 +228,24 @@ export function DesignGallery() {
             ■
           </span>
         </div>
+        {/* The shape ladder: a control is never rounded like the surface that
+            holds it, so each step is a box at its own radius, labelled by the
+            token a call site names. */}
+        <h3 className="mt-6 text-body font-semibold">Radius ladder</h3>
+        <div className="mt-2 flex flex-wrap items-end gap-4">
+          {RADIUS_STEPS.map((step) => (
+            <figure key={step.token} className="flex flex-col items-start gap-1">
+              <span
+                data-radius={step.px}
+                aria-hidden="true"
+                className={`inline-block size-12 border border-border bg-soft ${step.radius}`}
+              />
+              <figcaption className="text-label">
+                {step.px} px · {step.token}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
       </section>
 
       <section aria-labelledby="design-type-heading" className="mt-8">
@@ -140,8 +254,8 @@ export function DesignGallery() {
         </h2>
         <div className="mt-3 flex flex-col gap-1">
           {TYPE_STEPS.map((step) => (
-            <p key={step} className={step}>
-              {step}
+            <p key={step.label} className={step.className}>
+              {step.label}
             </p>
           ))}
         </div>
@@ -151,6 +265,17 @@ export function DesignGallery() {
         <h2 id="design-controls-heading" className="text-emph font-semibold">
           {t("design.controls")}
         </h2>
+        {/* The drafted button ladder (spec §6.5): three heights on the
+            control radius, one row so the steps read against each other. */}
+        <h3 className="mt-3 text-body font-semibold">Button ladder</h3>
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          {BUTTON_SIZES.map((step) => (
+            <Button key={step.size} variant="secondary" size={step.size}>
+              {step.label}
+            </Button>
+          ))}
+          <span className="text-label text-muted">28 / 36 / 40 px</span>
+        </div>
         {/* Every paint the primitive wears, one row: the destructive one is
             here so the diagnostic ink has a home that is reviewed. */}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -158,6 +283,20 @@ export function DesignGallery() {
           <Button variant="secondary">{t("proposal.discard")}</Button>
           <Button variant="ghost">{t("settings.retry")}</Button>
           <Button variant="destructive">{t("knowledge.delete")}</Button>
+        </div>
+        {/* The keyboard's pointer: the same 2 px amber ring and 1 px gap the
+            button matrix wears on `:focus-visible`, drawn statically so a
+            screenshot can show it — a focused control cannot stand still in
+            a gallery. */}
+        <h3 className="mt-6 text-body font-semibold">Focus ring</h3>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Button
+            variant="secondary"
+            className="ring-2 ring-focus ring-offset-1 ring-offset-transparent"
+          >
+            Focus ring
+          </Button>
+          <span className="text-label text-muted">2 px amber · 1 px offset</span>
         </div>
         <div className="mt-3 max-w-64">
           <Field label={t("settings.appearance.themeLabel")} hint={t("settings.appearance.hint")}>
@@ -168,7 +307,11 @@ export function DesignGallery() {
             </Select>
           </Field>
         </div>
-        <div className="mt-3 flex flex-col gap-2">
+        {/* The severity rules (spec §6.5): warning and danger crown their
+            card with a 2 px rule in their own colour; info and quiet have
+            nothing to raise and keep the plain hairline. */}
+        <h3 className="mt-6 text-body font-semibold">Severity rules</h3>
+        <div className="mt-2 flex flex-col gap-2">
           <Notice tone="info">{t("settings.appearance.hint")}</Notice>
           <Notice tone="warning">{t("knowledge.modelChanged")}</Notice>
           <Notice tone="danger">{t("settings.appearance.errorSave")}</Notice>

@@ -146,6 +146,114 @@ describe("DesignGallery", () => {
     expect(block.textContent).toMatch(/→/);
   });
 
+  it("shows the parchment surface ladder and the hairlines", () => {
+    cleanup();
+    const { container } = render(<DesignGallery />);
+    for (const step of [
+      "bg-background",
+      "bg-panel",
+      "bg-card",
+      "bg-surface",
+      "bg-surface-container-lowest",
+      "bg-surface-container-low",
+      "bg-surface-container",
+      "bg-surface-container-high",
+      "bg-surface-container-highest",
+      "bg-surface-variant",
+      "bg-soft",
+    ]) {
+      expect(screen.getByText(step)).toBeTruthy();
+      expect(container.querySelector(`.${step}`)).not.toBeNull();
+    }
+    for (const hairline of ["border", "rule", "outline", "outline-variant"]) {
+      expect(screen.getByText(hairline)).toBeTruthy();
+      expect(container.querySelector(`.bg-${hairline}`)).not.toBeNull();
+    }
+  });
+
+  it("shows the four cover pairs on their own inks", () => {
+    cleanup();
+    const { container } = render(<DesignGallery />);
+    for (const tone of ["pale", "sepia", "ink", "slate"]) {
+      expect(screen.getByText(`cover-${tone}`)).toBeTruthy();
+      expect(container.querySelector(`.bg-cover-${tone}`)).not.toBeNull();
+      expect(container.querySelector(`.text-cover-${tone}-ink`)).not.toBeNull();
+    }
+    // The compositions themselves: every cover bends on its spine, and the
+    // sepia tile alone wears the gold inset frame.
+    const tones = new Set(
+      Array.from(container.querySelectorAll("[data-cover-tone]")).map((tile) =>
+        tile.getAttribute("data-cover-tone"),
+      ),
+    );
+    expect(Array.from(tones).sort()).toEqual(["ink", "pale", "sepia", "slate"]);
+    expect(container.querySelectorAll("[data-cover-spine]").length).toBeGreaterThanOrEqual(4);
+    // Only sepia frames: the long-title pin hashes to its own tone, so the
+    // invariant is the tone that owns the frame, not a count of specimens.
+    const framed = Array.from(container.querySelectorAll("[data-cover-frame]")).map((frame) =>
+      frame.closest("[data-cover-tone]")?.getAttribute("data-cover-tone"),
+    );
+    expect(framed.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(framed)).toEqual(new Set(["sepia"]));
+  });
+
+  it("shows the radius ladder's three steps", () => {
+    cleanup();
+    const { container } = render(<DesignGallery />);
+    for (const [step, token] of [
+      ["4", "--radius-sm"],
+      ["8", "--radius-control"],
+      ["12", "--radius-surface"],
+    ]) {
+      const specimen = container.querySelector(`[data-radius="${step}"]`) as HTMLElement;
+      expect(specimen).not.toBeNull();
+      expect(specimen.className).toContain(`rounded-[var(${token})]`);
+      expect(screen.getByText(new RegExp(`${step} px`))).toBeTruthy();
+    }
+  });
+
+  it("shows the eyebrow as a type step, in its uppercase usage", () => {
+    cleanup();
+    render(<DesignGallery />);
+    expect(screen.getByText("text-eyebrow").className).toContain("uppercase");
+    for (const step of [
+      "text-eyebrow",
+      "text-meta",
+      "text-label",
+      "text-body",
+      "text-emph",
+      "text-title",
+      "text-hero",
+    ]) {
+      expect(screen.getByText(step)).toBeTruthy();
+    }
+  });
+
+  it("shows the button ladder's three sizes and the focus ring", () => {
+    cleanup();
+    render(<DesignGallery />);
+    expect(screen.getByRole("button", { name: "sm" }).className).toContain("h-7");
+    expect(screen.getByRole("button", { name: "md" }).className).toContain("h-9");
+    expect(screen.getByRole("button", { name: "lg" }).className).toContain("h-10");
+    // The ring specimen draws the same 2 px amber ring with its 1 px gap
+    // every interactive element wears when the keyboard reaches it.
+    const ring = screen.getByRole("button", { name: "Focus ring" });
+    expect(ring.className).toContain("ring-2");
+    expect(ring.className).toContain("ring-focus");
+    expect(ring.className).toContain("ring-offset-1");
+  });
+
+  it("shows the severity rules at 2 px", () => {
+    cleanup();
+    render(<DesignGallery />);
+    const warning = screen.getByText("The embedding model changed. Re-embed the documents.");
+    expect(warning.className).toContain("border-t-2");
+    expect(warning.className).toContain("border-t-warning");
+    const danger = screen.getByText("The theme could not be saved.");
+    expect(danger.className).toContain("border-t-2");
+    expect(danger.className).toContain("border-t-danger");
+  });
+
   it("clamps a 120-character cover title", () => {
     const { container } = render(<DesignGallery />);
     const tile = container.querySelector('[data-cover-tone][data-long-title]');
