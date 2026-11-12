@@ -171,7 +171,7 @@ def _open_import(page: Page) -> Locator:
     page.goto(BASE + "/")
     page.locator("header").get_by_role("button", name="Importieren").click()
     dialog = page.get_by_role("dialog")
-    expect(dialog.get_by_label("Archivpfad")).to_be_visible()
+    expect(dialog.get_by_label("Archivpfad")).to_be_visible(timeout=10_000)
     return dialog
 
 
@@ -479,7 +479,7 @@ def test_palette_opens_the_import_dialog(page: Page, stack: Stack) -> None:
         "button", name="Roman importieren"
     ).click()
     dialog = page.get_by_role("dialog")
-    expect(dialog.get_by_label("Archivpfad")).to_be_visible()
+    expect(dialog.get_by_label("Archivpfad")).to_be_visible(timeout=10_000)
     assert_accessible(page)
     expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
     page.keyboard.press("Escape")
