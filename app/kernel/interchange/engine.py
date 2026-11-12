@@ -439,6 +439,16 @@ async def import_archive(
     if novel_id is None:
         if not archive.title.strip():
             raise ArchiveError(METADATA_NAME, "a new novel needs a title")
+        # A relations-only archive on the new-novel path would create a
+        # title-only novel whose every edge conflicts (no entities to
+        # resolve against); refuse it instead of that confusing state.
+        # Merging into an existing novel keeps the behavior — edges that
+        # resolve are created, the rest reported.
+        if archive.relations and not archive.entities:
+            raise ArchiveError(
+                METADATA_NAME,
+                "a new novel with relations needs at least one knowledge entry",
+            )
         novel = await _Novels(session, user_id).create(
             archive.title,
             author=archive.author,
@@ -567,7 +577,10 @@ async def _merge_entities(
     stock = await entities.list_for_novel(novel.id)
     by_id = {entity.id: entity for entity in stock}
     names = _NameIndex(stock)
-    for file_entity in archive.entities:
+    # Id-bearing files (matched revisions/renames) run before id-less ones:
+    # an id-less file spelling an old name must not revise the row first and
+    # then be overwritten by the later rename without a conflict (#346).
+    for file_entity in sorted(archive.entities, key=lambda entity: entity.id is None):
         conflict_file = file_entity.file or file_entity.name
         if file_entity.type not in ENTITY_TYPES:
             report.conflicts.append(
