@@ -1398,9 +1398,9 @@ def typescript_demos(root: Path) -> str:
         archive = parse_archive(demo_tree(info.slug))
         rows.append(
             "  { "
-            f'slug: "{info.slug}", '
+            f"slug: {_ts_string(info.slug)}, "
             f"title: {_ts_string(info.title)}, "
-            f'language: "{info.language}", '
+            f"language: {_ts_string(info.language)}, "
             f"chapters: {len(archive.chapters)}, "
             f"entities: {len(archive.entities)} "
             "},"
