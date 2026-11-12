@@ -9,7 +9,7 @@ surfaces translate; the frames' exact bytes are pinned in
 
 import json
 from collections.abc import AsyncGenerator, Mapping  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from anyio import CancelScope
 from starlette.responses import StreamingResponse
@@ -18,6 +18,11 @@ from app.kernel.llm.contract import error_code
 
 if TYPE_CHECKING:
     from starlette.types import Receive, Scope, Send
+
+
+# The one terminal frame a stream ends with when it delivered its answer:
+# one spelling for every router, so a change in one cannot drift from the other.
+DONE_FRAME: Final = "event: done\ndata: {}\n\n"
 
 
 def error_frame(code: str, **params: str) -> str:

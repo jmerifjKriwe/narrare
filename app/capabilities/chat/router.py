@@ -17,7 +17,12 @@ from app.kernel.embeddings import EmbeddingProvider, get_embedding_provider
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events, failure_frame
+from app.kernel.llm.streaming import (
+    DONE_FRAME,
+    FinalizingStreamingResponse,
+    error_events,
+    failure_frame,
+)
 from app.kernel.prompts import PromptRenderError
 from app.kernel.retrieval import EmbeddingMismatchError, Passage
 from app.kernel.secrets import KeyUnavailableError
@@ -77,7 +82,7 @@ async def _events(
         # disclosure. One spelling for both routers.
         yield failure_frame(failure)
     else:
-        yield "event: done\ndata: {}\n\n"
+        yield DONE_FRAME
     finally:
         # The inner finalizer must run deterministically: relying on the loop's
         # async-generator finalizer would lose the audit row on a disconnect.

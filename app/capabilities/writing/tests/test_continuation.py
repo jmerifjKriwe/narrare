@@ -409,7 +409,7 @@ async def test_an_impossible_budget_pair_ends_the_stream_with_the_one_error_fram
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
-    assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
+    assert response.text == 'event: error\ndata: {"code": "prompt-refused", "reason": "budget"}\n\n'
     async with Session() as session:
         assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
     refusals = [
@@ -491,6 +491,10 @@ async def test_the_continuation_request_carries_the_reservation_and_set_facts_on
     assert "event: done" in response.text
     assert probe.request is not None
     assert probe.request.messages[0].role == "user"
+    # The prompt that reaches the provider is the one the builder assembled,
+    # not an empty or re-derived placeholder.
+    assert "Text so far:" in probe.request.messages[0].content
+    assert "Continue the chapter" in probe.request.messages[0].content
     assert probe.request.max_tokens == expected_max_tokens
     assert probe.request.temperature == temperature
 
@@ -551,6 +555,41 @@ async def test_a_missing_chapter_is_still_a_404_on_the_plain_tier() -> None:
     async with _client() as client:
         response = await client.post(f"/api/writing/chapters/{uuid4()}/continue")
     assert response.status_code == 404
+
+
+async def test_a_broken_key_wins_over_a_missing_chapter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A broken key plus a missing chapter is the error frame, never a 404.
+
+    Resolution runs before the builder, so the lost key refuses first even
+    when the chapter does not exist: a future reorder that resolves the
+    chapter before the provider would surface a 404 instead, and this pins
+    the current order.
+    """
+    monkeypatch.setenv("NARRE_KEYRING", "off")
+    monkeypatch.setenv("NARRE_SECRET_KEY", Fernet.generate_key().decode())
+    async with Session() as session:
+        providers = ProviderRepository(session, LOCAL_USER_ID)
+        provider = await providers.create(
+            name="Broken",
+            kind="openai-chat",
+            base_url="https://api.vendor.example/v1",
+            api_key="gAAAAABlindtext-not-what-this-key-encrypted",
+            api_key_hint="roken",
+        )
+        await ProfileRepository(session, LOCAL_USER_ID).create(
+            name="Broken model",
+            provider_id=provider.id,
+            model="acme/turbo-3",
+        )
+        await session.commit()
+
+    async with _client() as client:
+        response = await client.post(f"/api/writing/chapters/{uuid4()}/continue")
+
+    assert response.status_code == 200
+    assert response.text == 'event: error\ndata: {"code": "key-unavailable"}\n\n'
 
 
 _INSTRUCTION_END = (
@@ -703,15 +742,11 @@ def test_a_slice_that_cannot_hold_its_heading_is_omitted_whole() -> None:
         entities=[Entity(name="Mira", type="character", content="Die Wanderin.", aliases=[])],
         predecessors=[Chapter(title="Ursprung", position=0, body="Mira kam.")],
     )
-    entities_section = whole[
-        whole.index("Referenced entities:") : whole.index("Previous chapters:")
-    ]
-    assert len(entities_section) <= 23
+    # With the bare-heading fix, a section whose entries all skip is omitted
+    # whole instead of rendering a heading alone.
+    assert "Referenced entities:" not in whole
+    assert "Previous chapters:" not in whole
     assert "Mira" not in whole  # no entry fits beside the heading: skipped silently
-    chapters_section = whole[
-        whole.index("Previous chapters:") : whole.index("Continue the chapter")
-    ]
-    assert len(chapters_section) <= 21
     assert "Ursprung" not in whole  # the tail does not fit beside the heading: dropped
 
 
@@ -859,18 +894,17 @@ async def test_a_small_window_omits_sections_whose_heading_does_not_fit() -> Non
         current.body = "Rest."
         await session.commit()
 
-        # allocate(1000, 997): room 10 — entities 2, chapters 1, style 0.
-        prompt = await service.continuation_prompt(
-            current.id, context_window=1000, max_output_tokens=997, model="fake"
-        )
-        # allocate(1000, 990): room 35 — entities 8, chapters 3, style 1 with a
-        # genre set: still below the heading, so nothing partial may render.
-        wider = await service.continuation_prompt(
-            current.id, context_window=1000, max_output_tokens=990, model="fake"
-        )
-    scaffold = "Novel: Der Nebel\nChapter: Klein\n\nText so far:\n\n\n" + _INSTRUCTION_END
-    assert prompt == scaffold
-    assert wider == scaffold
+        # allocate(1000, 997): room 10 — the fixed scaffold alone exceeds the
+        # immediate slice, so the builder refuses instead of overflowing.
+        with pytest.raises(BudgetImpossibleError):
+            await service.continuation_prompt(
+                current.id, context_window=1000, max_output_tokens=997, model="fake"
+            )
+        # allocate(1000, 990): room 35 — same refusal: the scaffold does not fit.
+        with pytest.raises(BudgetImpossibleError):
+            await service.continuation_prompt(
+                current.id, context_window=1000, max_output_tokens=990, model="fake"
+            )
 
 
 async def test_an_impossible_pair_is_refused_before_any_gathering() -> None:
@@ -905,17 +939,10 @@ async def test_a_tiny_window_omits_the_three_small_sections() -> None:
         current.body = "Sie schwiegen."
         await session.commit()
 
-        prompt = await service.continuation_prompt(
-            current.id, context_window=1000, max_output_tokens=999, model="fake"
-        )
-    assert "Referenced entities:" not in prompt
-    assert "Previous chapters:" not in prompt
-    assert "Style notes:" not in prompt
-    assert "Mystery" not in prompt
-    assert "Mira" not in prompt
-    # The 3-character room is smaller than the uncuttable scaffolding, so the
-    # tail renders empty; the sections are absent, not empty headings.
-    assert "Text so far:\n\n" in prompt
+        with pytest.raises(BudgetImpossibleError):
+            await service.continuation_prompt(
+                current.id, context_window=1000, max_output_tokens=999, model="fake"
+            )
 
 
 async def test_the_entity_repository_lists_only_its_novels_entities() -> None:
