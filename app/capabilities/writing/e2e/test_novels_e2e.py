@@ -84,9 +84,8 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
     expect(hero.get_by_text("Der erste Wurf")).to_have_count(0)
     expect(hero).to_contain_text("Zuletzt bearbeitet")
 
-    # The drafted type steps, in computed pixels: the hero's title in the
-    # brand serif at the prose-heading step (26 — the draft's
-    # font-prose-heading-1, which the class pair on the drafted h2 names),
+    # The drafted type steps, in computed pixels: the hero's title on the
+    # hero step (30 — the drafted resolution text-3xl, carried by --text-hero),
     # the shelf card's title at the title step (20). A class swap that
     # misses the token fails here as a wrong pixel, not as a silent drift.
     sizes = page.evaluate(
@@ -97,7 +96,7 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
           card: getComputedStyle(document.querySelector('[data-shelf-title]')).fontSize,
         })"""
     )
-    assert sizes == {"hero": "26px", "card": "20px"}, sizes
+    assert sizes == {"hero": "30px", "card": "20px"}, sizes
 
     # The text steps render at the scale, not just in the CSS: a token edit
     # that never reaches a surface fails here as a pixel. The hero's sync
@@ -120,7 +119,7 @@ def test_hero_names_the_last_touched_novel(page: Page, stack: Stack) -> None:
     # moved this pin, not the behaviour: the door opens the hero's book).
     door = hero.get_by_role("link", name=re.compile(r"Weiterschreiben"))
     expect(door).to_be_visible()
-    expect(door).to_have_class(re.compile(r"\bbg-primary\b"))
+    expect(door).to_have_class(re.compile(r"\bbg-cover-sepia\b"))
 
     # The hero's link opens the book it names, and the workspace's h1
     # reads the title step (20) — the third pinned size.
@@ -580,7 +579,7 @@ def test_the_drafted_row_is_reachable_and_operable_by_keyboard(page: Page, stack
     expect(page.get_by_role("menuitem", name="Details")).to_be_visible()
     expect(page.get_by_role("menuitem", name="Exportieren")).to_be_visible()
     expect(page.get_by_role("menuitem", name="Löschen")).to_be_visible()
-    expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
+    expect(page.locator("[role='menu']:focus, [role='menu'] :focus")).to_have_count(1)
     page.keyboard.press("Escape")
     expect(trigger).to_be_focused()
 
