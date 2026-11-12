@@ -201,3 +201,31 @@ async def test_repositories_stay_narrowed_to_their_user() -> None:
         found = await PromptTemplateRepository(session, OTHER).effective("chat.ask", None)
         assert found is not None
         assert found.content == "theirs"
+
+
+@pytest.mark.usefixtures("two_users")
+async def test_novel_delete_cascades_its_override_and_keeps_global() -> None:
+    """Verify the FK's ondelete=CASCADE removes a novel's override rows while
+    the global tier survives — the contract #379 pins (novel-delete route
+    pending)."""
+    async with Session() as session:
+        novel = await seed_novel(session, OWNER, "CascadeMe")
+        novel_id = novel.id
+        repo = PromptTemplateRepository(session, OWNER)
+        await repo.save("chat.ask", "novel words", novel_id)
+        await repo.save("chat.ask", "global words", None)
+        await session.commit()
+
+    async with Session() as session:
+        novel = await session.get(Novel, novel_id)
+        assert novel is not None
+        await session.delete(novel)
+        await session.commit()
+
+    async with Session() as session:
+        rows = (await session.scalars(select(PromptTemplate))).all()
+        assert not any(row.novel_id == novel_id for row in rows)
+        repo = PromptTemplateRepository(session, OWNER)
+        found = await repo.effective("chat.ask", None)
+        assert found is not None
+        assert found.content == "global words"
