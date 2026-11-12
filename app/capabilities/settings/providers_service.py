@@ -203,6 +203,13 @@ class ProviderService:
         if "base_url" in set_fields:
             # The normalized spelling, never the payload's raw one.
             updates["base_url"] = base_url
+        # Remember the prior credential so a failed commit can restore it
+        # instead of leaving the provider keyless.
+        prior_column = provider.api_key
+        prior_plaintext = None
+        if prior_column:
+            with contextlib.suppress(Exception):
+                prior_plaintext = load_key(provider.id, prior_column)
         if payload.api_key:
             column, hint = self._store_key(provider.id, payload.api_key)
             updates["api_key"] = column
@@ -212,11 +219,15 @@ class ProviderService:
         try:
             await self.session.commit()
         except Exception:
-            # A new key was already written to the keyring; roll it back so a
-            # failed commit leaves no orphaned secret behind.
+            # A new key was already written to the keyring; roll it back and
+            # restore the prior credential so a failed commit does not leave
+            # the provider keyless.
             if payload.api_key:
                 with contextlib.suppress(Exception):
                     erase_key(provider.id)
+                if prior_plaintext is not None:
+                    with contextlib.suppress(Exception):
+                        save_key(provider.id, prior_plaintext)
             await self.session.rollback()
             raise
         return provider
