@@ -719,6 +719,14 @@ def _split_frontmatter(source: Path, text: str) -> tuple[dict[object, object], s
     return cast("dict[object, object]", loaded), rest
 
 
+def _is_slug(value: str) -> bool:
+    """A capability id or topic slug: lowercase letters, digits and
+    hyphens, starting with a letter. This is the documented format, and it
+    is also what makes the value safe to interpolate into the generated
+    TypeScript string literals and import paths without escaping."""
+    return bool(re.fullmatch(r"[a-z][a-z0-9-]*", value))
+
+
 def scan_help(root: Path) -> tuple[HelpCapability, ...]:
     """The help convention, discovered from the capability folders.
 
@@ -745,6 +753,12 @@ def scan_help(root: Path) -> tuple[HelpCapability, ...]:
     }
     if not help_dirs:
         return ()
+    for capability in help_dirs:
+        if not _is_slug(capability):
+            raise HelpScanError(
+                f"app/capabilities/{capability}: capability id must be a"
+                f" lowercase, hyphenated slug (was {capability!r})"
+            )
     known = locales(root)
     capabilities: list[HelpCapability] = []
     for capability, help_dir in help_dirs.items():
@@ -774,6 +788,11 @@ def scan_help(root: Path) -> tuple[HelpCapability, ...]:
             )
         topics: list[HelpTopic] = []
         for slug in sorted(files):
+            if not _is_slug(slug):
+                raise HelpScanError(
+                    f"{help_dir}: topic slug {slug!r} must be a lowercase,"
+                    f" hyphenated slug (a-z, 0-9, -)"
+                )
             source = files[slug].get(SOURCE_LOCALE)
             if source is None:
                 raise HelpScanError(
