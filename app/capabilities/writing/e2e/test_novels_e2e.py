@@ -34,7 +34,12 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
 def _create_book(page: Page, title: str, genre: str = "") -> None:
     """Create a novel the only way a user can: through the new-book dialog."""
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    # Scoped to the shelf header's own door: on an empty shelf the drafted
+    # panel carries a second "Neues Buch anlegen" CTA, and a page-wide
+    # role locator would resolve to both (strict-mode violation). The
+    # top bar's header carries no such button, so the header scope names
+    # exactly the one door in every shelf state.
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     if genre:
         page.get_by_label("Genre", exact=True).fill(genre)
@@ -171,7 +176,7 @@ def test_writing_a_chapter_makes_its_book_the_hero(page: Page, stack: Stack) -> 
 
 def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/")
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     # No mouse anywhere: Tab walks the page to the trigger, Enter opens.
     # The drafted shelf added controls ahead of the header doors (nothing
@@ -193,14 +198,14 @@ def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> No
     # keyboard came from — is where focus must land again.
     page.keyboard.press("Escape")
     expect(dialog).to_have_count(0)
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_focused()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_focused()
 
     assert_accessible(page)
 
 
 def test_the_open_dialog_passes_the_accessibility_floor(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     expect(page.get_by_label("Titel")).to_be_visible()
 
     # The floor runs with the dialog open: containment and labels are the
@@ -210,7 +215,7 @@ def test_the_open_dialog_passes_the_accessibility_floor(page: Page, stack: Stack
 
 def test_create_failure_keeps_the_dialog_open_with_its_message(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     dialog = page.get_by_role("dialog")
     expect(dialog).to_be_visible()
     page.get_by_label("Titel").fill("Der gescheiterte Wurf")
@@ -235,7 +240,7 @@ def test_create_failure_keeps_the_dialog_open_with_its_message(page: Page, stack
 def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -> None:
     """A local service the user has not started must be named, not shown as empty."""
     page.goto(f"{WEB_URL}/")
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     stack.stop_api()
     try:
@@ -247,7 +252,7 @@ def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -
 
     # The same page recovers once the service answers again.
     page.reload()
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     assert_accessible(page)
 
@@ -255,7 +260,7 @@ def test_landing_page_reports_an_unreachable_backend(page: Page, stack: Stack) -
 def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) -> None:
     """The dead-backend story has a second act: the retry button, not F5."""
     page.goto(f"{WEB_URL}/")
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     stack.stop_api()
     try:
@@ -267,7 +272,7 @@ def test_landing_page_retry_recovers_without_a_reload(page: Page, stack: Stack) 
 
     # One press, no reload: the shelf is back.
     page.get_by_role("button", name="Erneut versuchen").click()
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     assert_accessible(page)
 
@@ -423,7 +428,7 @@ def test_a_failed_refresh_keeps_the_shelf_and_its_retry(page: Page, stack: Stack
         lambda route: route.abort() if route.request.method == "GET" else route.fallback(),
     )
 
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Der zweite Hafen")
     page.get_by_role("button", name="Anlegen", exact=True).click()
 
@@ -594,10 +599,11 @@ def test_header_controls_keep_their_content_inside_the_control(page: Page, stack
     assert created.ok, created.text()
     page.goto(f"{WEB_URL}/")
 
-    # Both controls stand on the standing shelf — and on the empty one
-    # too: the draft draws the header strip with its doors even there
-    # (`shelf-empty.html`). The drafted doors carry the drafted words —
-    # "Importieren" and "Neues Buch anlegen".
+    # Both controls stand on the standing shelf this test seeds — the
+    # draft draws the header strip with its doors on the empty shelf too
+    # (`shelf-empty.html`, beside the panel's own CTA), but that
+    # composition is pinned by the unit test's empty-state assertion,
+    # not exercised here.
     for name in ("Importieren", "Neues Buch anlegen"):
         expect(page.get_by_role("button", name=name)).to_be_visible()
 

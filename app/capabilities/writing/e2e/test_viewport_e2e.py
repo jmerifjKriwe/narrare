@@ -58,7 +58,7 @@ def _create_workspace(page: Page, title: str) -> None:
     """
     page.set_viewport_size({"width": 1280, "height": 720})
     page.goto(f"{WEB}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()

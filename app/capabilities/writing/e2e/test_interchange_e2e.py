@@ -190,7 +190,7 @@ def _chapter_file(export: Path, title: str) -> Path:
 def _open_import(page: Page) -> Locator:
     """The shelf's import dialog, form side up."""
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Importieren").click()
+    page.locator("header").get_by_role("button", name="Importieren").click()
     dialog = page.get_by_role("dialog")
     expect(dialog.get_by_label("Archivpfad")).to_be_visible()
     return dialog

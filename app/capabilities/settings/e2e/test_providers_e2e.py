@@ -317,7 +317,7 @@ def test_providers_models_assign_and_audit_end_to_end(page: Page, stack: Stack) 
     # database's audit — the default model never answers this task.
     # The settings page's own back control, in the reader's language.
     page.get_by_role("link", name="Zurück").click()
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Die Anbieterprobe")
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name="Die Anbieterprobe").click()

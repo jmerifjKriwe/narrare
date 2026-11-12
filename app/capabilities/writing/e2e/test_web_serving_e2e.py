@@ -24,13 +24,13 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(120)]
 
 def test_a_second_load_revalidates_nothing(page: Page, stack: Stack) -> None:
     page.goto(WEB_URL)
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     responses: list[tuple[int, str]] = []
     page.on("response", lambda response: responses.append((response.status, response.url)))
 
     page.goto(WEB_URL)
-    expect(page.get_by_role("button", name="Neues Buch")).to_be_visible()
+    expect(page.locator("header").get_by_role("button", name="Neues Buch")).to_be_visible()
 
     revalidated = [url for status, url in responses if status == 304]
     assert revalidated == [], (

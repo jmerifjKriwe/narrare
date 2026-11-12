@@ -125,7 +125,7 @@ def _open_workspace_with_validated_title(page: Page, title: str) -> None:
     empty field instead of silently doing nothing.
     """
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_role("button", name="Anlegen", exact=True).click()
     expect(page.get_by_text("Bitte gib einen Titel ein.")).to_be_visible()
     page.get_by_label("Titel").fill(title)

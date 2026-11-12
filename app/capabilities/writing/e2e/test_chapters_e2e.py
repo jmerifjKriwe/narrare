@@ -74,7 +74,7 @@ def _create_book(page: Page, title: str) -> None:
     The module's database is shared, so every test owns a title no other uses.
     """
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
@@ -140,7 +140,7 @@ def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> Non
 
 def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Der Nebel")
     page.get_by_role("button", name="Anlegen", exact=True).click()
 
@@ -952,7 +952,7 @@ def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack:
     # (The hero's own paragraph, not the cover's title span: the generated
     # cover repeats the book's name inside the same section.)
     page.get_by_role("link", name="Alle Romane").click()
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Die späte Fähre")
     page.get_by_role("button", name="Anlegen", exact=True).click()
     hero = page.get_by_role("region", name="Aktuell in Arbeit")

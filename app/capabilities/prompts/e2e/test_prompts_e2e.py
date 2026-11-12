@@ -244,7 +244,7 @@ def _create_novel_with_chapter(page: Page, title: str, line: str) -> None:
     The module's database is shared, so every test owns a title no other uses.
     """
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
@@ -272,7 +272,7 @@ def _run_continuation(page: Page) -> None:
 def _import_as_new_novel(page: Page, source: Path, title: str) -> None:
     """Import a folder as a new novel through the shelf, and read the receipt."""
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Importieren").click()
+    page.locator("header").get_by_role("button", name="Importieren").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Archivpfad").fill(str(source))
     dialog.get_by_role("button", name="Jetzt importieren").click()

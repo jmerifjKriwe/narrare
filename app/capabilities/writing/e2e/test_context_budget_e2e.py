@@ -272,7 +272,7 @@ def _create_profile_and_assign(page: Page, name: str, context_window: str) -> No
 def _create_novel(page: Page, title: str) -> None:
     """Create a novel with genre and blurb through the shelf's form, and open it."""
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_label("Genre", exact=True).fill(GENRE)
     page.get_by_label("Klappentext").fill(BLURB)

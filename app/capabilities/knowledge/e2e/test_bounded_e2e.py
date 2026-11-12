@@ -26,7 +26,7 @@ LONG_BODY = "x" * 20_001
 def _create_book(page: Page, title: str) -> None:
     """Create a novel the only way a user can, then open its workspace."""
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()

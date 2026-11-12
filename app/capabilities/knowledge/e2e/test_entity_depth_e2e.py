@@ -83,7 +83,7 @@ def _accept(dock: Locator, name_and_type: str) -> None:
 def test_the_entity_depth_flow_from_review_to_corrections(page: Page, stack: Stack) -> None:
     """Eight types born through review, then every correction the card owes."""
     page.goto(f"{WEB}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(NOVEL_TITLE)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=NOVEL_TITLE).click()

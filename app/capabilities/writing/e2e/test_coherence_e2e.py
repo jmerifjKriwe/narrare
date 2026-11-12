@@ -248,7 +248,7 @@ def _import_demo(page: Page, source: Path) -> None:
     not stepped over.
     """
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Importieren").click()
+    page.locator("header").get_by_role("button", name="Importieren").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Archivpfad").fill(str(source))
     dialog.get_by_role("button", name="Jetzt importieren").click()

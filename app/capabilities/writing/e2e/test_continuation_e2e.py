@@ -72,7 +72,7 @@ def _write_a_line(page: Page, title: str, line: str) -> None:
     The module's database is shared, so every test owns a title no other uses.
     """
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()

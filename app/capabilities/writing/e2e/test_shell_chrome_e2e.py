@@ -38,7 +38,7 @@ def _create_workspace(page: Page, title: str) -> str:
     browser on the workbench with the editor rendered and returns the
     workspace's bare URL (no search), so a test can walk to a dock child."""
     page.goto(f"{WEB}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
     page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()

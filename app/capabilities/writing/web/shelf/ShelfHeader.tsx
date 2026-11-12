@@ -85,8 +85,12 @@ export function ShelfHeader({
   // The empty shelf's icons sit quiet in the outline ink (shelf-empty's
   // own cells); the standing shelf's carry their accents.
   const quietCell = "bg-surface-container-high text-outline";
+  // A real `header` element, scoped by `main` (no banner role — the top
+  // bar owns that one): it names the container the create and import
+  // doors live in, so tests and screen readers can tell the header's
+  // door from the empty panel's own CTA apart by scope, not by order.
   return (
-    <div className="flex flex-col justify-between gap-4 pb-1 lg:flex-row lg:items-end">
+    <header className="flex flex-col justify-between gap-4 pb-1 lg:flex-row lg:items-end">
       <div>
         <div className="mb-1.5 flex items-center gap-2">
           <span className="text-eyebrow uppercase text-area-writing">{t("shelf.eyebrow")}</span>
@@ -135,6 +139,6 @@ export function ShelfHeader({
           </Button>
         </div>
       </div>
-    </div>
+    </header>
   );
 }
