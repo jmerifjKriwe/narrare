@@ -854,16 +854,22 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     expect(page.get_by_text("Das Zählwerk ·")).to_be_visible()
     expect(title_field).to_have_attribute("placeholder", "Kapitel 2")
     # The footer: the chapter's word count and its position in the book.
-    expect(page.get_by_text("2.107 Wörter")).to_be_visible()
-    expect(page.get_by_text("Kapitel 2 von 4")).to_be_visible()
+    # Scoped to the footer element: the drafted band chip and the rail
+    # header's Σ speak the same count, so a page-wide locator now resolves
+    # three elements and Playwright's strict mode refuses it.
+    footer = page.locator("footer")
+    expect(footer.get_by_text("2.107 Wörter")).to_be_visible()
+    expect(footer.get_by_text("Kapitel 2 von 4")).to_be_visible()
 
     editor = page.locator(".ProseMirror")
     editor.click()
     page.keyboard.press("Control+End")
     page.keyboard.type(" Mehr.")
     expect(page.get_by_text("Gespeichert")).to_be_visible(timeout=10_000)
-    # The count is the live document's, not the stored row's.
-    expect(page.get_by_text("2.108 Wörter")).to_be_visible()
+    # The count is the live document's, not the stored row's — the footer's
+    # own, again scoped: the band and the rail header still hold the saved
+    # book until their refetch lands.
+    expect(footer.get_by_text("2.108 Wörter")).to_be_visible()
 
 
 def test_deleting_a_chapter_opens_its_neighbour(page: Page, stack: Stack) -> None:
