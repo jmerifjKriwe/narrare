@@ -892,7 +892,7 @@ describe("the mount's reads through the panel", () => {
     render(<ProvidersPanel />);
     expect(await screen.findAllByText(labelOf(DEFAULT_MODEL)).then((rows) => rows.length)).toBeGreaterThan(0);
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain(t("settings.profiles.errorLoad"));
+    expect(alert.textContent).toContain(t("settings.tasks.errorKey"));
     // The failure sits above everything it concerns: the alert precedes each
     // section's heading in the page's own order.
     for (const key of ["settings.providers", "settings.models", "settings.assignments"] as const) {

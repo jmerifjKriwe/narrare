@@ -10,26 +10,7 @@ import { Field, Input } from "@shell/ui/field";
 import { Notice } from "@shell/ui/Notice";
 import { Panel } from "@shell/ui/Panel";
 
-/**
- * The demo corpus as the picker shows it, mirroring the kernel manifest
- * (`app/kernel/interchange/demos.py`, same order, same slugs): the demos are
- * content in their own language, so their titles are not catalog keys — only
- * the labels around them are. The counts are the bundled archives' facts;
- * the setup suite's `test_demo_manifest.py` cross-checks both manifests
- * against each other and against the parsed archives, so a demo added on
- * one side only — or a card with a wrong count — is a red test.
- */
-const DEMOS = [
-  { slug: "im-stillen-wald", title: "Im Stillen Wald", language: "de", chapters: 2, entities: 6 },
-  { slug: "dead-signal", title: "Dead Signal", language: "en", chapters: 3, entities: 8 },
-  {
-    slug: "echoes-of-the-thornwall",
-    title: "Echoes of the Thornwall",
-    language: "en",
-    chapters: 4,
-    entities: 16,
-  },
-] as const;
+import { demos as DEMOS } from "@shell/lib/generated/demos";
 
 /**
  * The setup page: start blank or from a demo, then straight into the editor.

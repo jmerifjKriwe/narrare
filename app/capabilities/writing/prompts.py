@@ -26,7 +26,7 @@ from uuid import UUID  # noqa: TC003
 
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.kernel.context import ContextBudgets  # noqa: TC001
+from app.kernel.context import BudgetImpossibleError, ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity  # noqa: TC001
 from app.kernel.prompts import PromptRenderError, get_registry, render, render_source
 
@@ -94,13 +94,13 @@ def _packed_variables(
         "style_section": "",
     }
     if budgets.referenced_entities >= len(_ENTITIES_HEADING) + _SECTION_OVERHEAD and entities:
-        variables["entities_section"] = (
-            _entities_block(entities, budgets.referenced_entities) + "\n\n"
-        )
+        entities_block = _entities_block(entities, budgets.referenced_entities)
+        if entities_block:
+            variables["entities_section"] = entities_block + "\n\n"
     if budgets.recent_chapters >= len(_PREDECESSORS_HEADING) + _SECTION_OVERHEAD and predecessors:
-        variables["predecessors_section"] = (
-            _predecessors_block(predecessors, budgets.recent_chapters) + "\n\n"
-        )
+        predecessors_block = _predecessors_block(predecessors, budgets.recent_chapters)
+        if predecessors_block:
+            variables["predecessors_section"] = predecessors_block + "\n\n"
     if budgets.style_hints >= len(_STYLE_HEADING) + _SECTION_OVERHEAD and (
         genre is not None or blurb is not None
     ):
@@ -138,6 +138,14 @@ async def _fit_tail(
         return len(text) - sections - len(variables["tail"])
 
     measured = frame(rendered)
+    # The fixed scaffolding (header, Text-so-far, instruction) is uncuttable:
+    # if it alone exceeds the immediate slice, the window cannot hold even an
+    # empty continuation, so refuse instead of overflowing.
+    if measured > budgets.immediate_text:
+        raise BudgetImpossibleError(
+            "the continuation scaffold does not fit the immediate-text budget "
+            f"({measured} characters vs {budgets.immediate_text})"
+        )
     room = budgets.immediate_text - measured
     tail = body[-room:] if room > 0 else ""
     if tail != candidate:
@@ -162,6 +170,25 @@ async def _fit_tail(
 def _bundled_only(key: str) -> str:
     """The offline render's include chain: the bundled template includes nothing."""
     raise KeyError(key)
+
+
+def scaffold_length(novel_title: str, chapter_title: str) -> int:
+    """The bundled template's fixed frame for an empty tail and no sections.
+
+    The allocator's immediate slice also carries the header, the ``Text so
+    far:`` scaffolding and the instruction; this is what that fixed frame
+    measures, so a scan that ranks entities by their position in the tail
+    excludes the characters that never reach the model.
+    """
+    variables = {
+        "novel_title": novel_title,
+        "chapter_title": chapter_title,
+        "tail": "",
+        "entities_section": "",
+        "predecessors_section": "",
+        "style_section": "",
+    }
+    return len(render_source(CONTINUATION_TEMPLATE, variables, include=_bundled_only))
 
 
 def continuation_prompt(
@@ -259,6 +286,8 @@ def _entities_block(entities: Sequence[Entity], budget: int) -> str:
                 entries.append(entry)
                 used += join + len(entry)
                 break
+    if not entries:
+        return ""
     return heading + "".join(f"\n{entry}" for entry in entries)
 
 
@@ -272,10 +301,14 @@ def _predecessors_block(predecessors: Sequence[Chapter], budget: int) -> str:
         title_line = f"### {chapter.title}\n"
         tail_room = budget - used - join - len(title_line)
         if tail_room <= 0:
-            continue
+            # The nearest chapter did not fit; older ones are farther away and
+            # must not skip past it, so stop packing here.
+            break
         entry = title_line + chapter.body[-tail_room:]
         entries.append(entry)
         used += join + len(entry)
+    if not entries:
+        return ""
     return heading + "".join(f"\n{entry}" for entry in entries)
 
 

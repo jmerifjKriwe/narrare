@@ -15,7 +15,8 @@ from pathlib import Path
 from app.kernel.interchange import parse_archive
 from app.kernel.interchange.demos import DEMOS, DemoInfo, demo_tree
 
-PAGE = Path(__file__).parents[2] / "setup" / "web" / "SetupPage.tsx"
+ROOT = Path(__file__).resolve().parents[4]
+PAGE = ROOT / "web" / "lib" / "generated" / "demos.ts"
 
 ENTRY = re.compile(
     r'\{\s*slug:\s*"([^"]+)"\s*,\s*title:\s*"([^"]+)"\s*,\s*language:\s*"([^"]+)"'

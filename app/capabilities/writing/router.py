@@ -43,7 +43,12 @@ from app.kernel.db.session import get_session
 from app.kernel.llm.audit import audited_stream
 from app.kernel.llm.contract import CompletionRequest, Delta, Message
 from app.kernel.llm.resolution import ResolvedProvider, resolve_provider
-from app.kernel.llm.streaming import FinalizingStreamingResponse, error_events, failure_frame
+from app.kernel.llm.streaming import (
+    DONE_FRAME,
+    FinalizingStreamingResponse,
+    error_events,
+    failure_frame,
+)
 from app.kernel.prompts import PromptRenderError
 from app.kernel.secrets import KeyUnavailableError
 
@@ -117,7 +122,7 @@ async def _continuation_events(
         # disclosure. One spelling for both routers.
         yield failure_frame(failure)
     else:
-        yield "event: done\ndata: {}\n\n"
+        yield DONE_FRAME
     finally:
         # The inner finalizer must run deterministically: relying on the loop's
         # async-generator finalizer would lose the audit row on a disconnect.
@@ -508,7 +513,9 @@ async def continue_chapter(
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
-            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused", reason="budget"),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     except PromptRenderError:
         logger.exception("continuation prompt refused")

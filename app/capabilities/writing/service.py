@@ -10,7 +10,7 @@ from zipfile import BadZipFile
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.capabilities.writing.metadata import normalized_novel_updates
-from app.capabilities.writing.prompts import render_continuation
+from app.capabilities.writing.prompts import render_continuation, scaffold_length
 from app.capabilities.writing.repository import ChapterRepository, EntityRepository, NovelRepository
 from app.capabilities.writing.schemas import ChapterUpdate, ExportDone, NovelRead, NovelUpdate
 from app.kernel.auth import SetupRequiredError
@@ -221,7 +221,14 @@ class WritingService:
         )
         chapter = await self.get_chapter(chapter_id)
         novel = await self.novels.get(chapter.novel_id)
-        tail = chapter.body[-budgets.immediate_text :] if budgets.immediate_text > 0 else ""
+        # Only the characters that survive into the rendered tail can name an
+        # entity: the fixed scaffolding (header, Text-so-far, instruction) is
+        # never part of the tail, so scanning it would rank entities that the
+        # builder never renders and spend entity budget on them.
+        scan_window = budgets.immediate_text - scaffold_length(
+            novel.title if novel else "", chapter.title
+        )
+        tail = chapter.body[-scan_window:] if scan_window > 0 else ""
         folded = tail.casefold()
         ranked: list[tuple[int, Entity]] = []
         for entity in await self.entities.list_for_novel(chapter.novel_id):
@@ -235,7 +242,7 @@ class WritingService:
             ]
             if positions:
                 ranked.append((min(positions), entity))
-        ranked.sort(key=lambda pair: pair[0])
+        ranked.sort(key=lambda pair: (pair[0], pair[1].name))
         chapters = await self.chapters.list_for_novel(chapter.novel_id)
         predecessors = [
             earlier for earlier in reversed(chapters) if earlier.position < chapter.position

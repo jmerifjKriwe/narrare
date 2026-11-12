@@ -28,9 +28,9 @@ EXPECTED = {
 
 def test_every_demo_parses() -> None:
     assert [info.slug for info in DEMOS] == [
-        "im-stillen-wald",
         "dead-signal",
         "echoes-of-the-thornwall",
+        "im-stillen-wald",
     ]
     for info in DEMOS:
         expected = EXPECTED[info.slug]

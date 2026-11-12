@@ -31,6 +31,7 @@ describe("StreamError's sentence", () => {
     [{ code: "provider-auth", detail: "401" }, "errors.providerAuth"],
     [{ code: "key-unavailable" }, "errors.keyUnavailable"],
     [{ code: "prompt-refused" }, "errors.promptRefused"],
+    [{ code: "prompt-refused", reason: "budget" }, "errors.promptRefusedBudget"],
   ] as const)("the %s frame speaks its own sentence", (failure, key) => {
     render(<StreamError failure={failure} />);
     expect(screen.getByRole("alert").textContent).toContain(t(key, { link: t("errors.link") }));
