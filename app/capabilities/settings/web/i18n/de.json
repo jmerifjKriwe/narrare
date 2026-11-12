@@ -80,7 +80,7 @@
   "settings.providers.keyOnce": "Der Anbieter „{name}“ wurde gespeichert. Der API-Schlüssel wird nur dieses eine Mal angezeigt: {key}",
   "settings.providers.keyOnceDone": "Verstanden",
   "settings.providers.kind.anthropic": "Anthropic (Claude)",
-  "settings.providers.kind.fake": "Fake (deterministisch, ohne Netzwerk)",
+  "settings.providers.kind.fake": "Fake, deterministisch, ohne Netzwerk",
   "settings.providers.kind.openai-chat": "OpenAI-kompatibler Chat",
   "settings.providers.kindLabel": "Art",
   "settings.providers.models": "Verfügbare Modelle",
@@ -115,5 +115,6 @@
   "settings.task.knowledge.extract-entities": "Wissen, Entitäten finden",
   "settings.task.writing.continuation": "Weiterschreiben",
   "settings.tasks.settings.test": "Verbindungstest",
+  "settings.tasks.errorKey": "Der Schlüssel einer Aufgabe konnte nicht gelesen werden. Geben Sie den Schlüssel in den Einstellungen erneut ein.",
   "settings.tasks.unknown": "Aufgabe"
 }

@@ -69,32 +69,45 @@ export function ProvidersPanel() {
       ]);
     if (cancelled()) return;
     let failed = false;
+    let tasksFailed = false;
+    let otherFailed = false;
     if (providerList.status === "fulfilled" && providerList.value.response.ok) {
       setProviders(providerList.value.data ?? []);
     } else {
       failed = true;
+      otherFailed = true;
     }
     if (modelList.status === "fulfilled" && modelList.value.response.ok) {
       setModels(modelList.value.data ?? []);
     } else {
       failed = true;
+      otherFailed = true;
     }
     if (assignmentList.status === "fulfilled" && assignmentList.value.response.ok) {
       setAssignments(assignmentList.value.data ?? []);
     } else {
       failed = true;
+      otherFailed = true;
     }
     if (taskList.status === "fulfilled" && taskList.value.response.ok) {
       setTasks(taskList.value.data ?? []);
     } else {
       failed = true;
+      tasksFailed = true;
     }
     if (presetList.status === "fulfilled" && presetList.value.response.ok) {
       setPresets(presetList.value.data ?? []);
     } else {
       failed = true;
+      otherFailed = true;
     }
-    setFailure(failed ? "settings.profiles.errorLoad" : null);
+    setFailure(
+      failed
+        ? tasksFailed && !otherFailed
+          ? "settings.tasks.errorKey"
+          : "settings.profiles.errorLoad"
+        : null,
+    );
   }
 
   // The two form sections report their dirtiness here: one leave guard for

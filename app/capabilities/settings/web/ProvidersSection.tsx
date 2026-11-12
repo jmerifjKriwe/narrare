@@ -260,7 +260,12 @@ export function ProvidersSection({
         // suggestion. A failed save emits nothing — nothing was stored.
         if (presetModel !== null) onModelSeed(data.id, presetModel);
         resetForm();
-        await reload();
+        try {
+          await reload();
+        } catch {
+          // A failed refetch is a load failure, not a failure of the write
+          // that just landed: the saved row stands.
+        }
       } catch {
         // A rejected fetch has no response to inspect: the page still says
         // so, in the same place a server-reachable failure appears.
@@ -303,7 +308,12 @@ export function ProvidersSection({
       });
       if (response.ok) {
         setDeleteRefused(null);
-        await reload();
+        try {
+          await reload();
+        } catch {
+          // A failed refetch is a load failure, not a failure of the write
+          // that just landed: the saved row stands.
+        }
         return;
       }
       // The 409 is the delete guard: its message names the models still

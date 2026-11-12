@@ -80,7 +80,7 @@
   "settings.providers.keyOnce": "The provider “{name}” was stored. This is the only time the API key is shown: {key}",
   "settings.providers.keyOnceDone": "Got it",
   "settings.providers.kind.anthropic": "Anthropic (Claude)",
-  "settings.providers.kind.fake": "Fake (deterministic, no network)",
+  "settings.providers.kind.fake": "Fake, deterministic, no network",
   "settings.providers.kind.openai-chat": "OpenAI-compatible chat",
   "settings.providers.kindLabel": "Kind",
   "settings.providers.models": "Available models",
@@ -115,5 +115,6 @@
   "settings.task.knowledge.extract-entities": "Knowledge, find entities",
   "settings.task.writing.continuation": "Continue writing",
   "settings.tasks.settings.test": "Connection test",
+  "settings.tasks.errorKey": "A task's key could not be read. Re-enter the key in settings.",
   "settings.tasks.unknown": "Task"
 }
