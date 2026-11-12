@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "cover-sepia": "#743B1F", "on-error-container": "#93000a", "primary-fixed-dim": "#ffb695", "area-planning": "#834D7E", "rule-dark": "#302D28", "error-container": "#ffdad6", "bg-canvas-light": "#F6F3ED", "on-tertiary-container": "#eead78", "outline-variant": "#d8c2b9", "on-background": "#1e1b16", "state-warning": "#9A6100", "on-surface": "#1e1b16", "border-dark": "#35332D", "area-settings": "#5A5549", "amber-focus": "#8F4622", "inverse-primary": "#ffb695", "primary-fixed": "#ffdbcc", "secondary-fixed-dim": "#e3bfb2", "inverse-surface": "#33302b", "surface-bright": "#fff8f2", "text-foreground-dark": "#DFDEDA", "primary": "#58250b", "secondary-fixed": "#ffdbce", "error": "#ba1a1a", "bg-panel-dark": "#1C1914", "rule-light": "#EEEBE5", "area-writing": "#914F2F", "area-chat": "#3A637B", "background": "#fff8f2", "surface-tint": "#8c4e30", "on-secondary-fixed": "#2a170f", "surface-dim": "#e0d9d1", "secondary-container": "#fed8ca", "on-secondary-container": "#795c52", "text-muted-dark": "#89867F", "secondary": "#74584e", "tertiary-container": "#6e3f14", "area-knowledge": "#606127", "amber-focus-dark": "#F2AD73", "text-muted-light": "#6E6B65", "on-secondary-fixed-variant": "#5a4137", "surface-container-high": "#eee7df", "bg-soft-dark": "#2C2922", "outline": "#86736c", "inverse-on-surface": "#f7f0e7", "on-tertiary": "#ffffff", "bg-soft-light": "#EFEBE2", "on-primary-container": "#f8a884", "on-primary": "#ffffff", "bg-card-light": "#FFFFFF", "surface": "#fff8f2", "bg-card-dark": "#211F1A", "on-tertiary-fixed-variant": "#693c10", "cover-pale": "#EEEBE5", "bg-panel-light": "#FDFCF9", "on-primary-fixed-variant": "#6f371c", "on-primary-fixed": "#351000", "cover-ink": "#24211C", "surface-container-low": "#faf2ea", "surface-variant": "#e9e1d9", "on-surface-variant": "#53433d", "tertiary": "#522900", "surface-container": "#f4ede4", "on-tertiary-fixed": "#2f1500", "bg-canvas-dark": "#16140F", "border-light": "#E0DEDA", "primary-container": "#743b1f", "tertiary-fixed": "#ffdcc3", "on-error": "#ffffff", "surface-container-highest": "#e9e1d9", "surface-container-lowest": "#ffffff", "state-success": "#21763C", "state-danger": "#AC3031", "tertiary-fixed-dim": "#fcb882", "on-secondary": "#ffffff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "container-max": "75rem", "space-xl": "2rem", "dock-width": "21rem", "prose-max-width": "34rem", "space-xs": "0.25rem", "gutter": "1rem", "rail-collapsed": "3rem", "margin": "1.5rem", "rail-expanded": "10.5rem", "space-sm": "0.5rem", "space-md": "1rem", "space-lg": "1.5rem" }, "fontFamily": { "headline-hero": [ "Plus Jakarta Sans" ], "headline-emph": [ "Plus Jakarta Sans" ], "prose-editorial": [ "EB Garamond" ], "headline-title": [ "Plus Jakarta Sans" ], "label-default": [ "Plus Jakarta Sans" ], "eyebrow-tracked": [ "Plus Jakarta Sans" ], "body-default": [ "Plus Jakarta Sans" ], "meta-default": [ "Plus Jakarta Sans" ], "prose-heading-1": [ "EB Garamond" ], "prose-heading-2": [ "EB Garamond" ] }, "fontSize": { "headline-hero": [ "28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-emph": [ "15px", { "lineHeight": "22px", "fontWeight": "600" } ], "prose-editorial": [ "18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" } ], "headline-title": [ "20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "label-default": [ "13px", { "lineHeight": "18px", "fontWeight": "500" } ], "eyebrow-tracked": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" } ], "body-default": [ "14px", { "lineHeight": "22px", "fontWeight": "400" } ], "meta-default": [ "12px", { "lineHeight": "17px", "fontWeight": "400" } ], "prose-heading-1": [ "26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "prose-heading-2": [ "21px", { "lineHeight": "28px", "fontWeight": "600" } ] } } } };</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default min-h-screen selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-64 bg-bg-panel-light z-50 flex flex-col shadow-[0_1px_8px_rgba(44,24,16,0.04)]"><div class="h-14 px-5 flex items-center gap-3 bg-bg-panel-light"><div class="w-7 h-7 rounded bg-primary flex items-center justify-center text-on-primary font-prose-heading-2 text-prose-heading-2 select-none">N</div><div class="flex flex-col"><span class="font-headline-emph text-headline-emph tracking-tight text-on-surface">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Roman-Atelier</span></div></div><div class="px-4 py-2"><div class="h-px bg-rule-light w-full"></div></div><nav class="flex-1 px-3 space-y-0.5 overflow-y-auto" data-active-classes="bg-surface-container-high text-primary font-headline-emph shadow-[0_1px_2px_rgba(44,24,16,0.03)]"><div class="px-3 pt-2 pb-1 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Manuskript &amp; Werk</div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="buecherregal" href="#"><span class="material-symbols-outlined text-[19px]">auto_stories</span><span>Bücherregal</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="workspace" href="#"><span class="material-symbols-outlined text-[19px]">edit_note</span><span>Workspace</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="storyboard-und-szenen" href="#"><span class="material-symbols-outlined text-[19px]">view_kanban</span><span>Storyboard &amp; Szenen</span></a><div class="px-3 pt-4 pb-1 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Architektur &amp; Welt</div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="weltenbau-und-atlas" href="#"><span class="material-symbols-outlined text-[19px]">map</span><span>Weltenbau &amp; Atlas</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="serien-architektur" href="#"><span class="material-symbols-outlined text-[19px]">account_tree</span><span>Serien-Architektur</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="wissens-und-lore-graph" href="#"><span class="material-symbols-outlined text-[19px]">hub</span><span>Wissens- &amp; Lore-Graph</span></a><div class="px-3 pt-4 pb-1 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Produktion &amp; Studio</div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="lektorat-und-team" href="#"><span class="material-symbols-outlined text-[19px]">group</span><span>Lektorat &amp; Team</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="recherche-und-audio-studio" href="#"><span class="material-symbols-outlined text-[19px]">mic</span><span>Recherche &amp; Audio</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-all bg-surface-container-high text-primary font-headline-emph shadow-[0_1px_2px_rgba(44,24,16,0.03)]" data-path="analytik-und-produktivitaet" href="#"><span class="material-symbols-outlined text-[19px]">monitoring</span><span>Analytik &amp; Metriken</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="buchsatz-und-export" href="#"><span class="material-symbols-outlined text-[19px]">print</span><span>Buchsatz &amp; Export</span></a></nav><div class="p-3 bg-bg-panel-light"><div class="h-px bg-rule-light w-full mb-2"></div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-label-default text-label-default" data-path="atelier-einstellungen" href="#"><span class="material-symbols-outlined text-[19px]">tune</span><span>Atelier-Einstellungen</span></a></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-bg-panel-light/90 backdrop-blur-md z-40 flex items-center justify-between px-6 shadow-[0_1px_6px_rgba(44,24,16,0.03)]"><div class="flex items-center gap-3"><div class="flex items-center gap-2 font-headline-emph text-headline-emph text-on-surface"><span class="text-text-muted-light font-normal font-body-default text-body-default">Werk /</span><span class="font-prose-editorial italic text-prose-editorial text-primary">Dead Signal</span></div><div class="h-3 w-px bg-rule-light mx-1"></div><div class="flex items-center gap-2"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container text-state-success font-meta-default text-meta-default font-medium"><span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Gespeichert</span><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container text-secondary font-meta-default text-meta-default font-medium"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Kausalitäts-Matrix synchron</span></div></div><div class="w-80"><button class="w-full flex items-center justify-between px-3 h-8 rounded bg-surface-container-low text-text-muted-light hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="flex items-center gap-2 font-body-default text-body-default"><span class="material-symbols-outlined text-[17px]">search</span><span>Suchen oder Befehl...</span></span><kbd class="px-1.5 py-0.5 text-[10px] font-medium tracking-tight bg-bg-card-light text-text-muted-light rounded shadow-sm">⌘K</kbd></button></div><div class="flex items-center gap-4"><div class="flex items-center gap-1.5 font-label-default text-label-default text-on-surface-variant"><span class="material-symbols-outlined text-[17px] text-text-muted-light">history_edu</span><span class="font-medium tabular-nums">48.342</span><span class="text-text-muted-light font-meta-default text-meta-default">Wörter</span></div><div class="h-3 w-px bg-rule-light"></div><button class="px-2 py-0.5 text-on-surface-variant hover:text-on-surface font-label-default text-label-default rounded hover:bg-bg-soft-light transition-colors" type="button">DE</button><button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-bg-soft-light transition-colors flex items-center" type="button"><span class="material-symbols-outlined text-[19px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 w-full px-space-lg bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full pb-16 space-y-6">
+<!-- Sub-Header & Controls -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary">Analytik &amp; Produktivitäts-Cockpit</span>
+<span class="w-1.5 h-1.5 rounded-full bg-cover-sepia/40"></span>
+<span class="font-prose-editorial italic text-text-muted-light text-[15px]">Dead Signal (Romanentwurf)</span>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<h1 class="font-headline-title text-headline-title text-on-surface">Produktivitäts- &amp; Routine-Zentrum</h1>
+<div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-container text-secondary text-meta-default font-label-default">
+<span class="material-symbols-outlined text-[15px] text-cover-sepia">flag</span>
+<span>Ziel: <strong class="text-on-surface">65.000 Wörter</strong> bis 15. Dezember 2026</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="text-state-success font-medium">Noch 42 Tage</span>
+</div>
+</div>
+</div>
+<!-- Action Toolbar -->
+<div class="flex items-center gap-2.5">
+<button class="flex items-center gap-2 px-3.5 py-1.5 rounded bg-primary text-on-primary font-label-default text-label-default shadow-sm hover:bg-primary-container transition-all active:scale-[0.98]" id="quickSprintBtn">
+<span class="material-symbols-outlined text-[17px]">timer</span>
+<span>Sprint starten (25 Min)</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors font-label-default text-label-default">
+<span class="material-symbols-outlined text-[17px] text-text-muted-light">tune</span>
+<span>Ziel anpassen</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container text-text-muted-light hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-default text-label-default">
+<span class="material-symbols-outlined text-[17px]">picture_as_pdf</span>
+<span>Monatsbericht</span>
+</button>
+</div>
+</div>
+<!-- 4 Top KPI Cards Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1: Gesamtwortzahl -->
+<div class="p-4 rounded-xl bg-bg-card-light shadow-sm flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Gesamtwortzahl</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-headline-hero text-headline-hero tracking-tight text-on-surface tabular-nums">48.342</span>
+<span class="text-text-muted-light text-meta-default font-meta-default">/ 65.000</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-meta-default font-meta-default">
+<span class="text-cover-sepia font-medium">74,4% erreicht</span>
+<span class="text-text-muted-light tabular-nums">Noch 16.658 W</span>
+</div>
+<!-- Progress track -->
+<div class="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-primary-container rounded-full transition-all duration-1000" style="width: 74.4%"></div>
+</div>
+</div>
+</div>
+<!-- Card 2: Heutiger Ausstoß -->
+<div class="p-4 rounded-xl bg-bg-card-light shadow-sm flex flex-col justify-between relative group hover:shadow-md transition-shadow">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Heutiger Schreibausstoß</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-headline-hero text-headline-hero tracking-tight text-primary tabular-nums">1.428</span>
+<span class="text-text-muted-light text-meta-default font-meta-default">Wörter</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between">
+<div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container text-state-success font-meta-default text-meta-default font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+<span>+320 über Tagesziel (1.100)</span>
+</div>
+<span class="text-[12px] text-text-muted-light">Tagesziel erfüllt 🎉</span>
+</div>
+</div>
+<!-- Card 3: Velocity & Tempo -->
+<div class="p-4 rounded-xl bg-bg-card-light shadow-sm flex flex-col justify-between relative group hover:shadow-md transition-shadow">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Schreib-Velocity &amp; Tempo</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-headline-hero text-headline-hero tracking-tight text-on-surface tabular-nums">682</span>
+<span class="text-text-muted-light text-meta-default font-meta-default">W / Stunde</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-cover-sepia">
+<span class="material-symbols-outlined text-[18px]">speed</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between font-meta-default text-meta-default text-text-muted-light">
+<span class="flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-[14px] text-text-muted-light">hourglass_top</span>
+<strong class="tabular-nums font-medium">2h 06m</strong> heute
+        </span>
+<span class="inline-flex items-center text-state-success font-medium">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+          +14% vs. Vorwoche
+        </span>
+</div>
+</div>
+<!-- Card 4: Streak & Kontinuität -->
+<div class="p-4 rounded-xl bg-bg-card-light shadow-sm flex flex-col justify-between relative group hover:shadow-md transition-shadow">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Aktuelle Schreibroutine</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-headline-hero text-headline-hero tracking-tight text-cover-sepia tabular-nums">19 Tage</span>
+<span class="text-text-muted-light text-meta-default font-meta-default">in Folge</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between font-meta-default text-meta-default">
+<span class="text-text-muted-light">Beste: <span class="text-on-surface font-medium tabular-nums">28 Tage</span></span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-cover-sepia font-medium">Index: 96%</span>
+</div>
+</div>
+</div>
+<!-- Main Asymmetric Dashboard Grid (Main 65% / Sidebar 35%) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- Left Main Content Column (~65% / 8 cols) -->
+<div class="lg:col-span-8 flex flex-col space-y-6">
+<!-- Chart 1: Wortzahl-Historie & Burndown-Kurve -->
+<div class="p-6 rounded-xl bg-bg-card-light shadow-sm flex flex-col">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Fortschritts-Dynamik</span>
+<span class="w-1.5 h-1.5 rounded-full bg-cover-sepia/30"></span>
+<span class="text-meta-default font-meta-default text-text-muted-light">30-Tage Burndown vs. Ist-Ausstoß</span>
+</div>
+<h2 class="font-headline-title text-headline-title text-on-surface mt-0.5">Wortzahl-Historie &amp; Soll-Trajektorie</h2>
+</div>
+<!-- Legend & Toggle -->
+<div class="flex items-center gap-3 text-meta-default font-meta-default">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded bg-primary-container"></span>
+<span class="text-on-surface">Tageswörter</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3.5 h-0.5 bg-amber-focus"></span>
+<span class="text-text-muted-light">Ideale Zielgerade</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-area-planning"></span>
+<span class="text-text-muted-light">Meilenstein</span>
+</div>
+</div>
+</div>
+<!-- Custom SVG Chart: 30-Day Wordcount & Burndown Trajectory -->
+<div class="w-full relative mt-2">
+<svg class="w-full h-64 overflow-visible select-none" preserveaspectratio="none" viewbox="0 0 740 260">
+<defs>
+<lineargradient id="barGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#8F4622" stop-opacity="0.95"></stop>
+<stop offset="100%" stop-color="#743B1F" stop-opacity="0.65"></stop>
+</lineargradient>
+<lineargradient id="targetGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#D8C2B9" stop-opacity="0.5"></stop>
+<stop offset="100%" stop-color="#8F4622" stop-opacity="0.9"></stop>
+</lineargradient>
+</defs>
+<!-- Horizontal Guide Rules -->
+<line stroke="#EEEBE5" stroke-dasharray="3,3" stroke-width="1" x1="30" x2="730" y1="30" y2="30"></line>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="10" x="5" y="34">2.000</text>
+<line stroke="#EEEBE5" stroke-dasharray="3,3" stroke-width="1" x1="30" x2="730" y1="85" y2="85"></line>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="10" x="5" y="89">1.500</text>
+<line stroke="#EEEBE5" stroke-dasharray="3,3" stroke-width="1" x1="30" x2="730" y1="140" y2="140"></line>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="10" x="5" y="144">1.000</text>
+<line stroke="#EEEBE5" stroke-dasharray="3,3" stroke-width="1" x1="30" x2="730" y1="195" y2="195"></line>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="10" x="12" y="199">500</text>
+<line stroke="#E0DEDA" stroke-width="1" x1="30" x2="730" y1="230" y2="230"></line>
+<text fill="#6E6B65" font-family="Plus Jakarta Sans" font-size="10" x="18" y="234">0</text>
+<!-- Trajectory Trendline (Target Burndown Curve to 65k) -->
+<path d="M 40 180 Q 240 160, 420 120 T 720 50" fill="none" stroke="url(#targetGrad)" stroke-dasharray="5,4" stroke-width="2.5"></path>
+<!-- Daily Histogram Bars (Simulated past 26 days) -->
+<!-- Day 1-5 -->
+<rect fill="url(#barGrad)" height="85" opacity="0.6" rx="2" width="14" x="42" y="145"></rect>
+<rect fill="url(#barGrad)" height="100" opacity="0.6" rx="2" width="14" x="66" y="130"></rect>
+<rect fill="url(#barGrad)" height="70" opacity="0.6" rx="2" width="14" x="90" y="160"></rect>
+<rect fill="url(#barGrad)" height="120" opacity="0.65" rx="2" width="14" x="114" y="110"></rect>
+<rect fill="url(#barGrad)" height="105" opacity="0.65" rx="2" width="14" x="138" y="125"></rect>
+<!-- Day 6-10 (Milestone: Kapitel 2) -->
+<rect fill="#743B1F" height="175" rx="2" width="14" x="162" y="55"></rect>
+<rect fill="url(#barGrad)" height="90" opacity="0.7" rx="2" width="14" x="186" y="140"></rect>
+<rect fill="#BA1A1A" height="20" opacity="0.75" rx="2" width="14" x="210" y="210"></rect>
+<rect fill="url(#barGrad)" height="80" opacity="0.7" rx="2" width="14" x="234" y="150"></rect>
+<rect fill="url(#barGrad)" height="125" opacity="0.7" rx="2" width="14" x="258" y="105"></rect>
+<!-- Day 11-15 (Plot-Umbau Dip) -->
+<rect fill="url(#barGrad)" height="115" opacity="0.75" rx="2" width="14" x="282" y="115"></rect>
+<rect fill="#834D7E" height="40" opacity="0.8" rx="2" width="14" x="306" y="190"></rect>
+<rect fill="#834D7E" height="55" opacity="0.8" rx="2" width="14" x="330" y="175"></rect>
+<rect fill="url(#barGrad)" height="135" opacity="0.8" rx="2" width="14" x="354" y="95"></rect>
+<rect fill="url(#barGrad)" height="160" opacity="0.85" rx="2" width="14" x="378" y="70"></rect>
+<!-- Day 16-20 -->
+<rect fill="url(#barGrad)" height="110" opacity="0.85" rx="2" width="14" x="402" y="120"></rect>
+<rect fill="url(#barGrad)" height="150" opacity="0.85" rx="2" width="14" x="426" y="80"></rect>
+<rect fill="url(#barGrad)" height="130" opacity="0.85" rx="2" width="14" x="450" y="100"></rect>
+<rect fill="url(#barGrad)" height="165" opacity="0.9" rx="2" width="14" x="474" y="65"></rect>
+<rect fill="url(#barGrad)" height="100" opacity="0.9" rx="2" width="14" x="498" y="130"></rect>
+<!-- Day 21-25 (Current week) -->
+<rect fill="url(#barGrad)" height="140" opacity="0.9" rx="2" width="14" x="522" y="90"></rect>
+<rect fill="url(#barGrad)" height="155" opacity="0.95" rx="2" width="14" x="546" y="75"></rect>
+<rect fill="url(#barGrad)" height="170" opacity="0.95" rx="2" width="14" x="570" y="60"></rect>
+<rect fill="#743B1F" height="180" rx="2" width="14" x="594" y="50"></rect>
+<!-- Today (Highlighted active bar) -->
+<rect fill="#58250B" height="158" rx="2" stroke="#8F4622" stroke-width="1.5" width="16" x="618" y="72"></rect>
+<!-- Future projection markers (Ghost bars) -->
+<rect fill="#EEEBE5" height="130" rx="2" stroke="#D8C2B9" stroke-dasharray="2,2" width="14" x="644" y="100"></rect>
+<rect fill="#EEEBE5" height="130" rx="2" stroke="#D8C2B9" stroke-dasharray="2,2" width="14" x="668" y="100"></rect>
+<rect fill="#EEEBE5" height="140" rx="2" stroke="#D8C2B9" stroke-dasharray="2,2" width="14" x="692" y="90"></rect>
+<!-- Special Event Annotations -->
+<!-- Milestone Kapitel 2 -->
+<circle cx="169" cy="55" fill="#834D7E" r="4.5"></circle>
+<line stroke="#834D7E" stroke-width="1" x1="169" x2="169" y1="50" y2="28"></line>
+<rect fill="#834D7E" height="16" opacity="0.9" rx="3" width="98" x="120" y="14"></rect>
+<text fill="#ffffff" font-family="Plus Jakarta Sans" font-size="9" font-weight="600" x="126" y="25">Kapitel 2 fertig (+1.890)</text>
+<!-- Revisions-Tag Dip -->
+<circle cx="217" cy="210" fill="#BA1A1A" r="3.5"></circle>
+<text fill="#BA1A1A" font-family="Plus Jakarta Sans" font-size="9" font-weight="600" x="200" y="200">Revision</text>
+<!-- Plot Umbau -->
+<circle cx="313" cy="190" fill="#834D7E" r="3.5"></circle>
+<text fill="#834D7E" font-family="Plus Jakarta Sans" font-size="9" font-weight="600" x="300" y="180">Plot-Umbau</text>
+<!-- Today marker badge -->
+<rect fill="#58250B" height="20" rx="3" width="72" x="590" y="20"></rect>
+<text fill="#ffffff" font-family="Plus Jakarta Sans" font-size="10" font-weight="600" x="597" y="34">Heute: 1.428 W</text>
+<line stroke="#58250B" stroke-dasharray="2,2" stroke-width="1.5" x1="626" x2="626" y1="40" y2="70"></line>
+</svg>
+</div>
+<div class="mt-4 pt-3 flex flex-wrap items-center justify-between text-meta-default font-meta-default text-text-muted-light">
+<div class="flex items-center gap-4">
+<span>Vor 30 Tagen (14. Okt)</span>
+<span>Halbzeit (30. Okt)</span>
+<span class="text-on-surface font-medium">Heute (03. Nov)</span>
+<span>Prognose (15. Dez)</span>
+</div>
+<div class="flex items-center gap-1.5 text-cover-sepia">
+<span class="material-symbols-outlined text-[15px]">insights</span>
+<span class="font-medium">Ideale tägliche Pace: 840 Wörter bis zur Abgabe</span>
+</div>
+</div>
+</div>
+<!-- Chart 2: Schreibzeiten-Heatmap (Wochentage vs. Uhrzeiten) -->
+<div class="p-6 rounded-xl bg-bg-card-light shadow-sm flex flex-col">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-writing">Chronobiologie</span>
+<span class="w-1.5 h-1.5 rounded-full bg-area-writing/40"></span>
+<span class="text-meta-default font-meta-default text-text-muted-light">Fokus-Konzentration nach Tageszeit</span>
+</div>
+<h2 class="font-headline-title text-headline-title text-on-surface mt-0.5">Schreibzeiten-Heatmap (Wochentage × Uhrzeit)</h2>
+</div>
+<div class="flex items-center gap-1.5 text-meta-default font-meta-default text-text-muted-light">
+<span>Wenig Aktivität</span>
+<span class="w-3 h-3 rounded bg-surface-container-high"></span>
+<span class="w-3 h-3 rounded bg-secondary-container"></span>
+<span class="w-3 h-3 rounded bg-primary-container"></span>
+<span class="w-3 h-3 rounded bg-primary"></span>
+<span>Spitzenfokus</span>
+</div>
+</div>
+<!-- Heatmap Grid -->
+<div class="overflow-x-auto pb-2">
+<div class="min-w-[620px]">
+<!-- Hours header -->
+<div class="grid grid-cols-10 gap-1.5 mb-2 text-center text-meta-default font-meta-default text-text-muted-light">
+<div class="text-left pl-1 font-label-default">Tag</div>
+<div>06–08h</div>
+<div>08–10h</div>
+<div>10–12h</div>
+<div>12–14h</div>
+<div>14–16h</div>
+<div>16–18h</div>
+<div>18–20h</div>
+<div>20–22h</div>
+<div>22–24h</div>
+</div>
+<!-- Days rows -->
+<!-- Montag -->
+<div class="grid grid-cols-10 gap-1.5 mb-1.5 items-center">
+<span class="text-meta-default font-label-default text-on-surface">Mo</span>
+<div class="h-7 rounded bg-secondary-container/80 flex items-center justify-center text-[11px] text-on-secondary-container font-medium" title="450 Wörter">450</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-low"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container/60"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium" title="920 Wörter">920</div>
+<div class="h-7 rounded bg-secondary-container/90 flex items-center justify-center text-[11px] text-on-secondary-container">310</div>
+</div>
+<!-- Dienstag (Peak Day) -->
+<div class="grid grid-cols-10 gap-1.5 mb-1.5 items-center">
+<span class="text-meta-default font-label-default text-cover-sepia font-semibold">Di</span>
+<div class="h-7 rounded bg-primary flex items-center justify-center text-[11px] text-on-primary font-semibold shadow-sm" title="Peak: 1.150 Wörter">1.150</div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">840</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-low"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container/50"></div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">780</div>
+<div class="h-7 rounded bg-primary flex items-center justify-center text-[11px] text-on-primary font-semibold">1.020</div>
+</div>
+<!-- Mittwoch -->
+<div class="grid grid-cols-10 gap-1.5 mb-1.5 items-center">
+<span class="text-meta-default font-label-default text-on-surface">Mi</span>
+<div class="h-7 rounded bg-secondary-container flex items-center justify-center text-[11px] text-on-secondary-container font-medium">510</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-low"></div>
+<div class="h-7 rounded bg-surface-container-low"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">690</div>
+<div class="h-7 rounded bg-secondary-container/70"></div>
+</div>
+<!-- Donnerstag (Peak Day) -->
+<div class="grid grid-cols-10 gap-1.5 mb-1.5 items-center">
+<span class="text-meta-default font-label-default text-cover-sepia font-semibold">Do</span>
+<div class="h-7 rounded bg-primary flex items-center justify-center text-[11px] text-on-primary font-semibold shadow-sm" title="Peak: 1.280 Wörter">1.280</div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">740</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-low"></div>
+<div class="h-7 rounded bg-secondary-container/50"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container/80 flex items-center justify-center text-[11px] text-on-secondary-container">420</div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">890</div>
+<div class="h-7 rounded bg-primary flex items-center justify-center text-[11px] text-on-primary font-semibold">960</div>
+</div>
+<!-- Freitag -->
+<div class="grid grid-cols-10 gap-1.5 mb-1.5 items-center">
+<span class="text-meta-default font-label-default text-on-surface">Fr</span>
+<div class="h-7 rounded bg-secondary-container/90 flex items-center justify-center text-[11px] text-on-secondary-container">620</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-low"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container/50"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+</div>
+<!-- Samstag -->
+<div class="grid grid-cols-10 gap-1.5 mb-1.5 items-center">
+<span class="text-meta-default font-label-default text-on-surface">Sa</span>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container flex items-center justify-center text-[11px] text-on-secondary-container font-medium">480</div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">810</div>
+<div class="h-7 rounded bg-secondary-container/80 flex items-center justify-center text-[11px] text-on-secondary-container">390</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container/50"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+</div>
+<!-- Sonntag -->
+<div class="grid grid-cols-10 gap-1.5 items-center">
+<span class="text-meta-default font-label-default text-on-surface">So</span>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-secondary-container flex items-center justify-center text-[11px] text-on-secondary-container">520</div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-surface-container-high"></div>
+<div class="h-7 rounded bg-primary-container flex items-center justify-center text-[11px] text-on-primary font-medium">750</div>
+<div class="h-7 rounded bg-primary flex items-center justify-center text-[11px] text-on-primary font-semibold">1.100</div>
+<div class="h-7 rounded bg-secondary-container flex items-center justify-center text-[11px] text-on-secondary-container">490</div>
+</div>
+</div>
+</div>
+<!-- Heatmap Insight Callout -->
+<div class="mt-4 p-3 rounded-lg bg-surface-container flex items-start gap-3">
+<span class="material-symbols-outlined text-[20px] text-cover-sepia shrink-0 mt-0.5">wb_twilight</span>
+<div class="text-body-default font-body-default text-on-surface">
+<strong class="font-headline-emph text-headline-emph text-primary">Goldenes Schreibfenster identifiziert:</strong>
+            Deine produktivsten Phasen sind <span class="font-medium text-cover-sepia">Dienstag &amp; Donnerstag von 06:30 bis 08:30 Uhr</span> (Morgenspurt: Ø 820 W/h) sowie der späte Abendblock zwischen <span class="font-medium text-cover-sepia">21:00 und 23:00 Uhr</span>. Nachmittage zeigen eine um 48% reduzierte Wortdichte.
+          </div>
+</div>
+</div>
+<!-- Chart 3: Kapitel-Verteilung & Szenen-Dichte (Symmetrie-Auditing) -->
+<div class="p-6 rounded-xl bg-bg-card-light shadow-sm flex flex-col">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-planning">Dramaturgie &amp; Pacing</span>
+<span class="w-1.5 h-1.5 rounded-full bg-area-planning/40"></span>
+<span class="text-meta-default font-meta-default text-text-muted-light">Symmetrie- und Längenüberprüfung</span>
+</div>
+<h2 class="font-headline-title text-headline-title text-on-surface mt-0.5">Kapitel-Verteilung &amp; Szenen-Dichte (Akt I bis III)</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1 text-meta-default font-meta-default px-2 py-0.5 rounded bg-surface-container text-cover-sepia">
+<span class="material-symbols-outlined text-[14px]">balance</span>
+              Ø 2.685 Wörter / Kapitel
+            </span>
+</div>
+</div>
+<!-- Chapter wordcount stacked symmetry bars -->
+<div class="space-y-3 pt-2">
+<!-- Kap 1 -->
+<div class="flex items-center gap-3">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 01</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 58%" title="Szene 1: Funkfeuer (1.700 W)"></div>
+<div class="h-full bg-secondary" style="width: 42%" title="Szene 2: Das Rauschen (1.200 W)"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-on-surface">2.900 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-success shrink-0" title="Im idealen Korridor">check_circle</span>
+</div>
+<!-- Kap 2 -->
+<div class="flex items-center gap-3">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 02</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 50%"></div>
+<div class="h-full bg-secondary" style="width: 50%"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-on-surface">3.120 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-success shrink-0" title="Im idealen Korridor">check_circle</span>
+</div>
+<!-- Kap 3 -->
+<div class="flex items-center gap-3">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 03</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 70%"></div>
+<div class="h-full bg-secondary" style="width: 30%"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-on-surface">2.750 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-success shrink-0">check_circle</span>
+</div>
+<!-- Kap 4 (Outlier: Zu lang!) -->
+<div class="flex items-center gap-3 p-1 rounded bg-error-container/30">
+<span class="w-16 font-label-default text-label-default text-state-danger font-semibold shrink-0">Kap. 04</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 45%" title="Szene 1 (1.890 W)"></div>
+<div class="h-full bg-cover-sepia" style="width: 30%" title="Szene 2 (1.260 W)"></div>
+<div class="h-full bg-secondary" style="width: 25%" title="Szene 3 (1.050 W)"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-state-danger font-semibold">4.200 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-danger shrink-0" title="Pacing-Warnung: 56% über dem Roman-Mittelwert. Aufteilung in 2 Kapitel empfohlen!">warning</span>
+</div>
+<!-- Kap 5 -->
+<div class="flex items-center gap-3">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 05</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 60%"></div>
+<div class="h-full bg-secondary" style="width: 40%"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-on-surface">2.450 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-success shrink-0">check_circle</span>
+</div>
+<!-- Kap 6 -->
+<div class="flex items-center gap-3">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 06</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary-container" style="width: 55%"></div>
+<div class="h-full bg-secondary" style="width: 45%"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-on-surface">2.880 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-success shrink-0">check_circle</span>
+</div>
+<!-- Kap 7 (Outlier: Zu kurz!) -->
+<div class="flex items-center gap-3 p-1 rounded bg-surface-container-high">
+<span class="w-16 font-label-default text-label-default text-state-warning font-semibold shrink-0">Kap. 07</span>
+<div class="flex-1 h-5 rounded bg-surface-container overflow-hidden flex">
+<div class="h-full bg-secondary-container" style="width: 100%" title="Einzelne Kurzszene (1.800 W)"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-state-warning font-semibold">1.800 W</span>
+<span class="material-symbols-outlined text-[16px] text-state-warning shrink-0" title="Ungewöhnlich knappes Kapitel im Kontrast zu Kap. 04">info</span>
+</div>
+<!-- Kap 8 bis 12 (Kompakt gebündelt) -->
+<div class="flex items-center gap-3">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 08–14</span>
+<div class="flex-1 h-5 rounded bg-surface-container-high overflow-hidden flex">
+<div class="h-full bg-primary-container/80" style="width: 68%" title="Abgeschlossene Szenen (18.640 W)"></div>
+<div class="h-full bg-outline-variant/60" style="width: 32%" title="Aktive Entwurfsfragmente"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-on-surface">21.420 W</span>
+<span class="material-symbols-outlined text-[16px] text-text-muted-light shrink-0">more_horiz</span>
+</div>
+<!-- Kap 15 bis 18 (In Bearbeitung) -->
+<div class="flex items-center gap-3 opacity-75">
+<span class="w-16 font-label-default text-label-default text-text-muted-light shrink-0">Kap. 15–18</span>
+<div class="flex-1 h-5 rounded bg-surface-container-low overflow-hidden flex border-dashed">
+<div class="h-full bg-secondary-container" style="width: 38%" title="In Arbeit: 9.622 W"></div>
+</div>
+<span class="w-16 text-right font-meta-default text-meta-default tabular-nums text-text-muted-light">9.622 W</span>
+<span class="material-symbols-outlined text-[16px] text-primary shrink-0">pending</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between text-meta-default font-meta-default text-text-muted-light">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded bg-state-danger"></span>
+<span>Kapitel 4 (4.200 W) überprüfen — Schnittstelle nach Szene 2 bietet sich an.</span>
+</div>
+<button class="text-primary hover:text-cover-sepia font-label-default">Szenen-Gliederung öffnen →</button>
+</div>
+</div>
+</div>
+<!-- Right Sidebar Area (~35% / 4 cols) -->
+<div class="lg:col-span-4 flex flex-col space-y-6">
+<!-- Module 1: Focus- & Schreib-Sprint Timer (Interactive) -->
+<div class="p-6 rounded-xl bg-bg-card-light shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+<div class="w-full flex items-center justify-between pb-3">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Fokus-Labor</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-state-success font-meta-default text-meta-default font-medium">Bereit</span>
+</div>
+<!-- Circular Countdown Visual (SVG Ring) -->
+<div class="relative w-44 h-44 my-2 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 120 120">
+<circle cx="60" cy="60" fill="none" r="52" stroke="#EEEBE5" stroke-width="6"></circle>
+<circle class="transition-all duration-500" cx="60" cy="60" fill="none" id="timerProgressRing" r="52" stroke="#743B1F" stroke-dasharray="326.7" stroke-dashoffset="40" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-headline-hero text-[34px] leading-none text-on-surface tracking-tight tabular-nums" id="timerDisplay">25:00</span>
+<span class="font-meta-default text-meta-default text-text-muted-light mt-1">Pomodoro Sprint</span>
+</div>
+</div>
+<!-- Timer Controls -->
+<div class="w-full mt-2 flex items-center gap-2 justify-center">
+<button class="flex-1 py-2 rounded bg-primary text-on-primary font-headline-emph text-headline-emph hover:bg-primary-container transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5" id="startTimerBtn">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+<span id="timerBtnText">Sprint starten</span>
+</button>
+<button class="p-2 rounded bg-surface-container text-text-muted-light hover:text-on-surface hover:bg-surface-container-high transition-colors" id="resetTimerBtn" title="Zurücksetzen">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</button>
+</div>
+<!-- Ambient Sound Selector -->
+<div class="w-full mt-4 pt-3 bg-surface-container-low p-2.5 rounded-lg flex items-center justify-between text-left">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[19px] text-cover-sepia">headphones</span>
+<div>
+<div class="font-label-default text-label-default text-on-surface">Klang-Begleitung</div>
+<div class="font-meta-default text-meta-default text-text-muted-light">Atelier-Regen &amp; Schreibmaschine</div>
+</div>
+</div>
+<button class="p-1 rounded text-primary hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">volume_up</span>
+</button>
+</div>
+</div>
+<!-- Module 2: AI Meilenstein-Prognose & Deadlines -->
+<div class="p-6 rounded-xl bg-gradient-to-br from-bg-card-light to-surface-container-low shadow-sm flex flex-col relative">
+<div class="flex items-center gap-2 pb-2">
+<span class="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary">Kausalitäts-Prognose</span>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Frühzeitiger Abschluss erwartet</h3>
+<p class="font-body-default text-body-default text-on-surface-variant mt-2">
+          Bei deinem aktuellen 7-Tage-Rhythmus von <strong class="text-on-surface font-semibold">1.240 W / Tag</strong> erreichst du das Manuskriptziel von 65.000 W voraussichtlich am:
+        </p>
+<!-- Big Prediction Date Box -->
+<div class="my-4 p-4 rounded-lg bg-surface-container flex items-center justify-between">
+<div>
+<div class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia">Errechnetes Zieldatum</div>
+<div class="font-headline-title text-headline-title text-primary font-bold">28. November 2026</div>
+</div>
+<div class="text-right">
+<span class="inline-flex items-center px-2 py-1 rounded bg-state-success text-on-primary font-label-default text-label-default font-medium">
+              -17 Tage Puffer
+            </span>
+<div class="text-[11px] text-text-muted-light mt-0.5">vor Verlagsabgabe</div>
+</div>
+</div>
+<div class="space-y-2 text-meta-default font-meta-default text-text-muted-light">
+<div class="flex justify-between items-center">
+<span>Verlags-Deadline:</span>
+<span class="text-on-surface font-medium">15. Dezember 2026</span>
+</div>
+<div class="flex justify-between items-center">
+<span>Geplante Rohfassung:</span>
+<span class="text-on-surface font-medium">28. November 2026</span>
+</div>
+<div class="flex justify-between items-center">
+<span>Puffer für Lektorat:</span>
+<span class="text-state-success font-medium">17 volle Tage</span>
+</div>
+</div>
+</div>
+<!-- Module 3: Kognitive Schreib-Muster & Stilistik-Statistik -->
+<div class="p-6 rounded-xl bg-bg-card-light shadow-sm flex flex-col space-y-4">
+<div>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Stilistische Signatur</span>
+<h3 class="font-headline-title text-headline-title text-on-surface mt-0.5">Kognitive Schreib-Muster</h3>
+</div>
+<!-- Metric 1: Satzlänge -->
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-meta-default font-meta-default">
+<span class="font-label-default text-on-surface">Ø Satzlänge</span>
+<span class="font-medium text-cover-sepia tabular-nums">13.8 Wörter</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-cover-sepia rounded-full" style="width: 62%"></div>
+</div>
+<span class="text-[11px] text-text-muted-light">Idealbereich für literarische Belletristik (11–16 W)</span>
+</div>
+<!-- Metric 2: Dialog vs. Narration Ratio -->
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex justify-between items-center text-meta-default font-meta-default">
+<span class="font-label-default text-on-surface">Dialog vs. Narration</span>
+<span class="font-medium text-on-surface tabular-nums">42% / 58%</span>
+</div>
+<!-- Split Bar -->
+<div class="w-full h-2 rounded-full overflow-hidden flex">
+<div class="h-full bg-area-chat" style="width: 42%" title="Dialog (42%)"></div>
+<div class="h-full bg-primary-container" style="width: 58%" title="Narration &amp; Beschreibung (58%)"></div>
+</div>
+<div class="flex justify-between text-[11px] text-text-muted-light">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-area-chat"></span>Dialog (42%)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-primary-container"></span>Narration (58%)</span>
+</div>
+</div>
+<!-- Metric 3: Wiederholungs-Index -->
+<div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+<div>
+<div class="font-label-default text-label-default text-on-surface">Wortwiederholungs-Index</div>
+<div class="text-[11px] text-text-muted-light">Redundanz in gleichen Absätzen</div>
+</div>
+<div class="text-right">
+<div class="font-headline-emph text-headline-emph text-state-success tabular-nums">1.2%</div>
+<div class="text-[11px] text-state-success font-medium">Sehr sauber</div>
+</div>
+</div>
+<!-- Module 4: Mood & Tonality Graph Mini -->
+<div class="pt-2">
+<div class="flex items-center justify-between text-meta-default font-meta-default text-text-muted-light mb-2">
+<span>Atmosphärische Grundtönung</span>
+<span class="text-cover-sepia font-medium">Dunkel &amp; Melancholisch</span>
+</div>
+<div class="flex items-center gap-1 h-3">
+<div class="h-full rounded-sm bg-cover-ink flex-1" title="Düster (45%)"></div>
+<div class="h-full rounded-sm bg-cover-sepia flex-1" title="Spannung (30%)"></div>
+<div class="h-full rounded-sm bg-secondary flex-1" title="Reflexion (15%)"></div>
+<div class="h-full rounded-sm bg-surface-container-high w-8" title="Katharsis (10%)"></div>
+</div>
+</div>
+</div>
+<!-- Quick Session Note Box -->
+<div class="p-4 rounded-xl bg-surface-container-high/60 flex items-start gap-3">
+<span class="material-symbols-outlined text-[19px] text-text-muted-light shrink-0 mt-0.5">lightbulb</span>
+<div class="text-meta-default font-meta-default text-on-surface">
+<strong>Notiz für die Abendsitzung:</strong>
+          In Kapitel 4 fehlt noch die Konfrontation an der alten Relais-Station. Nicht über 800 neue Wörter gehen, um die Kapitelbalance zu wahren.
+        </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Client-side Script for Timer & Micro-interactions -->
+<script>
+  (function() {
+    let timerDuration = 25 * 60; // 25 minutes
+    let timeRemaining = timerDuration;
+    let timerInterval = null;
+    let isRunning = false;
+
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerProgress = document.getElementById('timerProgressRing');
+    const startTimerBtn = document.getElementById('startTimerBtn');
+    const timerBtnText = document.getElementById('timerBtnText');
+    const resetTimerBtn = document.getElementById('resetTimerBtn');
+    const quickSprintBtn = document.getElementById('quickSprintBtn');
+
+    const totalCircumference = 2 * Math.PI * 52; // ~326.7
+
+    function updateDisplay() {
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      if (timerDisplay) {
+        timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+
+      if (timerProgress) {
+        const fraction = (timerDuration - timeRemaining) / timerDuration;
+        const offset = totalCircumference * (1 - fraction);
+        timerProgress.style.strokeDashoffset = offset;
+      }
+    }
+
+    function toggleTimer() {
+      if (isRunning) {
+        clearInterval(timerInterval);
+        isRunning = false;
+        timerBtnText.textContent = 'Fortsetzen';
+        startTimerBtn.classList.remove('bg-cover-sepia');
+        startTimerBtn.classList.add('bg-primary');
+      } else {
+        isRunning = true;
+        timerBtnText.textContent = 'Pausieren';
+        startTimerBtn.classList.remove('bg-primary');
+        startTimerBtn.classList.add('bg-cover-sepia');
+        timerInterval = setInterval(() => {
+          if (timeRemaining > 0) {
+            timeRemaining--;
+            updateDisplay();
+          } else {
+            clearInterval(timerInterval);
+            isRunning = false;
+            timerBtnText.textContent = 'Sprint beendet!';
+            alert('🎉 25-Minuten-Sprint abgeschlossen! Zeit für eine Tasse Tee.');
+          }
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      timeRemaining = timerDuration;
+      timerBtnText.textContent = 'Sprint starten';
+      startTimerBtn.classList.remove('bg-cover-sepia');
+      startTimerBtn.classList.add('bg-primary');
+      updateDisplay();
+    }
+
+    if (startTimerBtn) startTimerBtn.addEventListener('click', toggleTimer);
+    if (resetTimerBtn) resetTimerBtn.addEventListener('click', resetTimer);
+    if (quickSprintBtn) {
+      quickSprintBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+        if (!isRunning) toggleTimer();
+      });
+    }
+
+    updateDisplay();
+  })();
+</script></main></div></body></html>

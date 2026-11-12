@@ -107,7 +107,7 @@ export function Dialog({
           cannot. The paint still comes from the one matrix — `buttonClass`
           is exactly its export for a control that is not the primitive
           (the bar's settings link wears it the same way). */}
-      <Button aria-label={triggerAriaLabel} className={buttonClass(triggerVariant, "md")}>
+      <Button aria-label={triggerAriaLabel} className={buttonClass(triggerVariant, "sm")}>
         {triggerLabel}
       </Button>
       <ModalOverlay

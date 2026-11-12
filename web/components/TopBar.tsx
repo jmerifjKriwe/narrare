@@ -6,6 +6,7 @@ import { usePageTitleValue } from "../lib/pageTitle";
 import { shortcutKeycap } from "../lib/shortcuts";
 import { buttonClass } from "../ui/Button";
 import { Icon } from "../ui/icons";
+import { Keycap } from "../ui/Keycap";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 /**
@@ -68,14 +69,18 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
               for, and the palette's door for a pointer: a keycap is the same
               glyph in every language, and the catalog names what it opens.
               The shell owns the ⌘K listener; this control asks the same
-              refusal before it opens what the key opens. */}
+              refusal before it opens what the key opens. The chip is the
+              Keycap primitive's — one definition for every key the app
+              names — so the button wears only what makes it a control: the
+              pressable dim and the amber focus ring on the keycap's own
+              radius. */}
           <button
             type="button"
             onClick={onOpenPalette}
             aria-label={t("shell.paletteOpen", { key: paletteKey })}
-            className="rounded-[var(--radius)] border border-border bg-card px-1.5 py-0.5 font-mono text-meta leading-none text-muted hover:bg-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            className="rounded-[var(--radius-sm)] hover:opacity-95 active:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-transparent"
           >
-            {paletteKey}
+            <Keycap>{paletteKey}</Keycap>
           </button>
           {/* The gear: settings is a control, not a browsing destination.
               A link wearing the icon button's paint through `buttonClass`
@@ -86,7 +91,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           <Link
             to="/settings"
             aria-label={t("shell.settings")}
-            className={buttonClass("icon", "md")}
+            className={buttonClass("icon", "sm")}
           >
             <Icon name="settings" />
           </Link>

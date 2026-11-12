@@ -8,8 +8,6 @@
   "knowledge.errorQueue": "Impossible de charger vos suggestions. Le service local est-il démarré ?",
   "knowledge.errorRelations": "Impossible de charger vos relations. Le service local est-il démarré ?",
   "knowledge.relationDeleteText": "Voulez-vous vraiment supprimer la relation vers {name} ? Elle ne peut pas être annulée.",
-  "novels.deleteDocuments": "Vos documents restent — ils appartiennent à la bibliothèque, pas au livre.",
-  "novels.errorLoad": "Impossible de charger vos romans. Le service local est-il démarré ?",
   "prompts.pickNovel": "Choisissez un roman ci-dessus pour voir et modifier ce périmètre.",
   "settings.appearance.hint": "Système suit votre appareil.",
   "settings.formality.hint": "Comment Narrare s'adresse à vous.",

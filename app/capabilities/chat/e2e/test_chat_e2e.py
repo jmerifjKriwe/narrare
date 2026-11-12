@@ -238,9 +238,9 @@ def _open_workspace(page: Page, title: str) -> None:
     The module's database is shared, so every test owns a title no other uses.
     """
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
     page.get_by_role("button", name="Neues Kapitel").click()
@@ -544,7 +544,7 @@ def test_an_offered_ghost_does_not_survive_leaving_the_novel(
     # Leaving the novel tears the offer's audience away; coming back must
     # not resurrect it — not as a ghost, and never as unasked-for text.
     page.get_by_role("link", name="Alle Romane").click()
-    expect(page.get_by_role("heading", name="Romane")).to_be_visible()
+    expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
     page.get_by_role("link", name="Die Abschiedsgabe").click()
     expect(page.locator(".ProseMirror")).to_be_visible()
 

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "cover-sepia": "#743B1F", "on-error-container": "#93000a", "primary-fixed-dim": "#ffb695", "area-planning": "#834D7E", "rule-dark": "#302D28", "error-container": "#ffdad6", "bg-canvas-light": "#F6F3ED", "on-tertiary-container": "#eead78", "outline-variant": "#d8c2b9", "on-background": "#1e1b16", "state-warning": "#9A6100", "on-surface": "#1e1b16", "border-dark": "#35332D", "area-settings": "#5A5549", "amber-focus": "#8F4622", "inverse-primary": "#ffb695", "primary-fixed": "#ffdbcc", "secondary-fixed-dim": "#e3bfb2", "inverse-surface": "#33302b", "surface-bright": "#fff8f2", "text-foreground-dark": "#DFDEDA", "primary": "#58250b", "secondary-fixed": "#ffdbce", "error": "#ba1a1a", "bg-panel-dark": "#1C1914", "rule-light": "#EEEBE5", "area-writing": "#914F2F", "area-chat": "#3A637B", "background": "#fff8f2", "surface-tint": "#8c4e30", "on-secondary-fixed": "#2a170f", "surface-dim": "#e0d9d1", "secondary-container": "#fed8ca", "on-secondary-container": "#795c52", "text-muted-dark": "#89867F", "secondary": "#74584e", "tertiary-container": "#6e3f14", "area-knowledge": "#606127", "amber-focus-dark": "#F2AD73", "text-muted-light": "#6E6B65", "on-secondary-fixed-variant": "#5a4137", "surface-container-high": "#eee7df", "bg-soft-dark": "#2C2922", "outline": "#86736c", "inverse-on-surface": "#f7f0e7", "on-tertiary": "#ffffff", "bg-soft-light": "#EFEBE2", "on-primary-container": "#f8a884", "on-primary": "#ffffff", "bg-card-light": "#FFFFFF", "surface": "#fff8f2", "bg-card-dark": "#211F1A", "on-tertiary-fixed-variant": "#693c10", "cover-pale": "#EEEBE5", "bg-panel-light": "#FDFCF9", "on-primary-fixed-variant": "#6f371c", "on-primary-fixed": "#351000", "cover-ink": "#24211C", "surface-container-low": "#faf2ea", "surface-variant": "#e9e1d9", "on-surface-variant": "#53433d", "tertiary": "#522900", "surface-container": "#f4ede4", "on-tertiary-fixed": "#2f1500", "bg-canvas-dark": "#16140F", "border-light": "#E0DEDA", "primary-container": "#743b1f", "tertiary-fixed": "#ffdcc3", "on-error": "#ffffff", "surface-container-highest": "#e9e1d9", "surface-container-lowest": "#ffffff", "state-success": "#21763C", "state-danger": "#AC3031", "tertiary-fixed-dim": "#fcb882", "on-secondary": "#ffffff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "container-max": "75rem", "space-xl": "2rem", "dock-width": "21rem", "prose-max-width": "34rem", "space-xs": "0.25rem", "gutter": "1rem", "rail-collapsed": "3rem", "margin": "1.5rem", "rail-expanded": "10.5rem", "space-sm": "0.5rem", "space-md": "1rem", "space-lg": "1.5rem" }, "fontFamily": { "headline-hero": [ "Plus Jakarta Sans" ], "headline-emph": [ "Plus Jakarta Sans" ], "prose-editorial": [ "EB Garamond" ], "headline-title": [ "Plus Jakarta Sans" ], "label-default": [ "Plus Jakarta Sans" ], "eyebrow-tracked": [ "Plus Jakarta Sans" ], "body-default": [ "Plus Jakarta Sans" ], "meta-default": [ "Plus Jakarta Sans" ], "prose-heading-1": [ "EB Garamond" ], "prose-heading-2": [ "EB Garamond" ] }, "fontSize": { "headline-hero": [ "28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-emph": [ "15px", { "lineHeight": "22px", "fontWeight": "600" } ], "prose-editorial": [ "18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" } ], "headline-title": [ "20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "label-default": [ "13px", { "lineHeight": "18px", "fontWeight": "500" } ], "eyebrow-tracked": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" } ], "body-default": [ "14px", { "lineHeight": "22px", "fontWeight": "400" } ], "meta-default": [ "12px", { "lineHeight": "17px", "fontWeight": "400" } ], "prose-heading-1": [ "26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "prose-heading-2": [ "21px", { "lineHeight": "28px", "fontWeight": "600" } ] } } } };</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default min-h-screen selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-64 bg-bg-panel-light z-50 flex flex-col shadow-[0_1px_8px_rgba(44,24,16,0.04)]"><div class="h-14 px-5 flex items-center gap-3 bg-bg-panel-light"><div class="w-7 h-7 rounded bg-primary flex items-center justify-center text-on-primary font-prose-heading-2 text-prose-heading-2 select-none">N</div><div class="flex flex-col"><span class="font-headline-emph text-headline-emph tracking-tight text-on-surface">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Roman-Atelier</span></div></div><div class="px-4 py-2"><div class="h-px bg-rule-light w-full"></div></div><nav class="flex-1 px-3 space-y-0.5 overflow-y-auto" data-active-classes="bg-surface-container-high text-primary font-headline-emph shadow-[0_1px_2px_rgba(44,24,16,0.03)]"><div class="px-3 pt-2 pb-1 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Manuskript &amp; Werk</div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="buecherregal" href="#"><span class="material-symbols-outlined text-[19px]">auto_stories</span><span>Bücherregal</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="workspace" href="#"><span class="material-symbols-outlined text-[19px]">edit_note</span><span>Workspace</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="storyboard-und-szenen" href="#"><span class="material-symbols-outlined text-[19px]">view_kanban</span><span>Storyboard &amp; Szenen</span></a><div class="px-3 pt-4 pb-1 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Architektur &amp; Welt</div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="weltenbau-und-atlas" href="#"><span class="material-symbols-outlined text-[19px]">map</span><span>Weltenbau &amp; Atlas</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="serien-architektur" href="#"><span class="material-symbols-outlined text-[19px]">account_tree</span><span>Serien-Architektur</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="wissens-und-lore-graph" href="#"><span class="material-symbols-outlined text-[19px]">hub</span><span>Wissens- &amp; Lore-Graph</span></a><div class="px-3 pt-4 pb-1 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Produktion &amp; Studio</div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="lektorat-und-team" href="#"><span class="material-symbols-outlined text-[19px]">group</span><span>Lektorat &amp; Team</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded transition-all bg-surface-container-high text-primary font-headline-emph shadow-[0_1px_2px_rgba(44,24,16,0.03)]" data-path="recherche-und-audio-studio" href="#"><span class="material-symbols-outlined text-[19px]">mic</span><span>Recherche &amp; Audio</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="analytik-und-produktivitaet" href="#"><span class="material-symbols-outlined text-[19px]">monitoring</span><span>Analytik &amp; Metriken</span></a><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-body-default text-body-default" data-path="buchsatz-und-export" href="#"><span class="material-symbols-outlined text-[19px]">print</span><span>Buchsatz &amp; Export</span></a></nav><div class="p-3 bg-bg-panel-light"><div class="h-px bg-rule-light w-full mb-2"></div><a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-bg-soft-light hover:text-on-surface transition-all font-label-default text-label-default" data-path="atelier-einstellungen" href="#"><span class="material-symbols-outlined text-[19px]">tune</span><span>Atelier-Einstellungen</span></a></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-bg-panel-light/90 backdrop-blur-md z-40 flex items-center justify-between px-6 shadow-[0_1px_6px_rgba(44,24,16,0.03)]"><div class="flex items-center gap-3"><div class="flex items-center gap-2 font-headline-emph text-headline-emph text-on-surface"><span class="text-text-muted-light font-normal font-body-default text-body-default">Werk /</span><span class="font-prose-editorial italic text-prose-editorial text-primary">Dead Signal</span></div><div class="h-3 w-px bg-rule-light mx-1"></div><div class="flex items-center gap-2"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container text-state-success font-meta-default text-meta-default font-medium"><span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>Gespeichert</span><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container text-secondary font-meta-default text-meta-default font-medium"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Kausalitäts-Matrix synchron</span></div></div><div class="w-80"><button class="w-full flex items-center justify-between px-3 h-8 rounded bg-surface-container-low text-text-muted-light hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="flex items-center gap-2 font-body-default text-body-default"><span class="material-symbols-outlined text-[17px]">search</span><span>Suchen oder Befehl...</span></span><kbd class="px-1.5 py-0.5 text-[10px] font-medium tracking-tight bg-bg-card-light text-text-muted-light rounded shadow-sm">⌘K</kbd></button></div><div class="flex items-center gap-4"><div class="flex items-center gap-1.5 font-label-default text-label-default text-on-surface-variant"><span class="material-symbols-outlined text-[17px] text-text-muted-light">history_edu</span><span class="font-medium tabular-nums">48.342</span><span class="text-text-muted-light font-meta-default text-meta-default">Wörter</span></div><div class="h-3 w-px bg-rule-light"></div><button class="px-2 py-0.5 text-on-surface-variant hover:text-on-surface font-label-default text-label-default rounded hover:bg-bg-soft-light transition-colors" type="button">DE</button><button class="p-1 text-on-surface-variant hover:text-on-surface rounded hover:bg-bg-soft-light transition-colors flex items-center" type="button"><span class="material-symbols-outlined text-[19px]">light_mode</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-14 w-full px-space-lg bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Sub-Header Status Console -->
+<header class="w-full bg-surface-container-lowest/80 backdrop-blur-md rounded-xl p-4 mb-6 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+<div class="flex flex-wrap items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-state-danger animate-pulse"></div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-title text-headline-title text-on-surface">Audio-Studio &amp; Voice-to-Lore</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-eyebrow-tracked text-eyebrow-tracked uppercase">Live</span>
+</div>
+<div class="flex items-center gap-2 text-text-muted-light font-meta-default text-meta-default">
+<span>Aufnahmemodus: <strong class="font-medium text-on-surface">Diktat &amp; Szenen-Improvisation</strong></span>
+<span>•</span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-state-success">mic</span>
+            Shure MV7 (USB) • 48 kHz / 24-bit aktiv
+          </span>
+</div>
+</div>
+</div>
+<!-- Live Telemetry Badges -->
+<div class="flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-lg">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">timer</span>
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase">Aufnahmezeit</span>
+<span class="font-headline-emph text-headline-emph text-on-surface tabular-nums" id="session-timer">14:32</span>
+</div>
+</div>
+<div class="w-px h-6 bg-surface-container-high mx-2"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-writing text-[18px]">spellcheck</span>
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase">Erkannte Wörter</span>
+<span class="font-headline-emph text-headline-emph text-on-surface tabular-nums">1.840 W</span>
+</div>
+</div>
+<div class="w-px h-6 bg-surface-container-high mx-2"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-knowledge text-[18px]">hub</span>
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase">Lore-Knoten</span>
+<span class="font-headline-emph text-headline-emph text-state-success tabular-nums">+3 erkannt</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Three-Column Production Workbench Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- LEFT PANEL: Audio Engine & Control Console (lg:col-span-3) -->
+<section class="lg:col-span-3 flex flex-col gap-5 bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+<div class="flex items-center justify-between pb-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase">1. Aufnahmetool &amp; Pegel</span>
+<span class="flex items-center gap-1 font-meta-default text-meta-default text-state-danger font-medium">
+<span class="w-2 h-2 rounded-full bg-state-danger animate-ping"></span> REC
+        </span>
+</div>
+<!-- Terracotta Realtime Waveform Display -->
+<div class="relative w-full h-36 bg-surface-container-low rounded-lg p-3 flex flex-col justify-between overflow-hidden shadow-inner">
+<div class="flex items-center justify-between z-10">
+<span class="font-meta-default text-[11px] text-text-muted-light font-mono">CHANNEL A (MONO)</span>
+<span class="font-meta-default text-[11px] text-primary font-mono tabular-nums">-14.2 dB</span>
+</div>
+<!-- Custom SVG Waveform with Terracotta copper gradient -->
+<div class="relative w-full h-20 flex items-center justify-center">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 320 80">
+<defs>
+<lineargradient id="waveGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#914F2F" stop-opacity="0.9"></stop>
+<stop offset="50%" stop-color="#743B1F" stop-opacity="0.6"></stop>
+<stop offset="100%" stop-color="#914F2F" stop-opacity="0.1"></stop>
+</lineargradient>
+</defs>
+<path d="M 0,40 Q 10,25 20,40 T 40,40 T 60,18 T 80,62 T 100,10 T 120,68 T 140,24 T 160,56 T 180,8 T 200,72 T 220,30 T 240,50 T 260,14 T 280,66 T 300,35 T 320,40 L 320,80 L 0,80 Z" fill="url(#waveGrad)"></path>
+<path d="M 0,40 Q 10,25 20,40 T 40,40 T 60,18 T 80,62 T 100,10 T 120,68 T 140,24 T 160,56 T 180,8 T 200,72 T 220,30 T 240,50 T 260,14 T 280,66 T 300,35 T 320,40" fill="none" stroke="#743B1F" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+<!-- Decibel Meter Bars -->
+<div class="flex items-center gap-1 z-10 w-full pt-1">
+<div class="h-1.5 flex-1 bg-surface-container rounded-full overflow-hidden flex gap-0.5">
+<span class="h-full w-2 bg-state-success"></span>
+<span class="h-full w-2 bg-state-success"></span>
+<span class="h-full w-2 bg-state-success"></span>
+<span class="h-full w-2 bg-state-success"></span>
+<span class="h-full w-2 bg-state-success"></span>
+<span class="h-full w-2 bg-state-success"></span>
+<span class="h-full w-2 bg-state-warning"></span>
+<span class="h-full w-2 bg-state-warning"></span>
+<span class="h-full w-2 bg-surface-container-high"></span>
+<span class="h-full w-2 bg-surface-container-high"></span>
+</div>
+<span class="font-meta-default text-[10px] text-text-muted-light font-mono">RMS</span>
+</div>
+</div>
+<!-- Primary Hardware Recording Controls -->
+<div class="flex items-center justify-center gap-4 py-1">
+<button class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-variant transition-colors shadow-sm" title="Aufnahme pausieren" type="button">
+<span class="material-symbols-outlined text-[20px]">pause</span>
+</button>
+<button class="w-14 h-14 rounded-full bg-primary-container text-on-primary flex items-center justify-center hover:bg-primary transition-transform active:scale-95 shadow-md shadow-primary-container/30" title="Aufnahme stoppen" type="button">
+<span class="material-symbols-outlined text-[28px]">stop</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-variant transition-colors shadow-sm" title="Marke / Bookmark setzen" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark_add</span>
+</button>
+</div>
+<!-- DSP & Noise Filter Toggle -->
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary">graphic_eq</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">KI-Rauschunterdrückung</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">DeepFilterNet v3 (Latenz: 12ms)</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Recording Mode Select Menu -->
+<div class="flex flex-col gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase">Aufnahmemodus</span>
+<div class="flex flex-col gap-1.5">
+<label class="flex items-start gap-3 p-2.5 rounded-lg bg-secondary-container/40 cursor-pointer shadow-xs">
+<input checked="" class="mt-1 text-primary accent-primary" name="recording_mode" type="radio"/>
+<div class="flex flex-col">
+<span class="font-headline-emph text-headline-emph text-on-surface">1. Manuskript-Rohdiktat</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Fließtext, wörtliche Rede &amp; Erzählstimme</span>
+</div>
+</label>
+<label class="flex items-start gap-3 p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+<input class="mt-1 text-primary accent-primary" name="recording_mode" type="radio"/>
+<div class="flex flex-col">
+<span class="font-headline-emph text-headline-emph text-on-surface">2. Brainstorming &amp; Lore-Memo</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Entitäten, Weltenbau &amp; Chronologie-Notizen</span>
+</div>
+</label>
+<label class="flex items-start gap-3 p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
+<input class="mt-1 text-primary accent-primary" name="recording_mode" type="radio"/>
+<div class="flex flex-col">
+<span class="font-headline-emph text-headline-emph text-on-surface">3. Dialog-Rollenspiel mit ARIA</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Live-Gegenrede für Dialog-Authentizität</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Audio Archives & Past Takes -->
+<div class="flex flex-col gap-2 pt-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase">Sprachmemo-Archiv</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Heute</span>
+</div>
+<div class="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">audiotrack</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Take 04_Schleuse_Aussen</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">10:14 Uhr • 06:18 Min</span>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-state-success/10 text-state-success font-meta-default text-[10px] font-medium">Transkribiert</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">audiotrack</span>
+<div class="flex flex-col">
+<span class="font-label-default text-label-default text-on-surface">Take 03_Maya_Monolog</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">09:40 Uhr • 18:45 Min</span>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-state-success/10 text-state-success font-meta-default text-[10px] font-medium">Transkribiert</span>
+</div>
+</div>
+</div>
+</section>
+<!-- CENTER PANEL: Realtime Semantic Transcription (lg:col-span-5) -->
+<main class="lg:col-span-5 flex flex-col gap-4">
+<!-- Editor Floating Action Ribbon -->
+<div class="sticky top-16 z-30 flex flex-wrap items-center justify-between gap-2 p-2 bg-surface-container-lowest/95 backdrop-blur-md rounded-xl shadow-md">
+<div class="flex items-center gap-1.5">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-primary text-on-primary font-label-default text-label-default hover:bg-primary-container transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">post_add</span>
+<span>In Kapitel 2 einfügen</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container-high text-on-surface font-label-default text-label-default hover:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">save_as</span>
+<span>Als neue Szene</span>
+</button>
+</div>
+<button class="flex items-center gap-1 px-2.5 py-1.5 rounded bg-surface-container-low text-text-muted-light hover:text-on-surface font-label-default text-label-default hover:bg-surface-container transition-colors" title="Füllwörter ('ähm', 'also', Wiederholungen) herausfiltern" type="button">
+<span class="material-symbols-outlined text-[16px] text-amber-focus">auto_fix_high</span>
+<span>Bereinigen</span>
+</button>
+</div>
+<!-- Transcription Parchment Sheet -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm flex flex-col gap-6 relative min-h-[580px]">
+<div class="flex items-center justify-between pb-3 bg-surface-container-lowest">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">notes</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Live-Transkription ('Dead Signal')</span>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light font-mono">Whisper Large-v3 • 99.4% Konfidenz</span>
+</div>
+<!-- Semantic Tagged Transcription Feed -->
+<div class="flex flex-col gap-5">
+<!-- Block 1: Raw Manuscript Stream -->
+<div class="group relative pl-4 rounded-lg hover:bg-surface-container-lowest/80 transition-colors">
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-eyebrow-tracked text-[10px] uppercase font-semibold">
+                [Manuskript-Entwurf]
+              </span>
+<span class="font-meta-default text-[11px] text-text-muted-light tabular-nums">14:10</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-on-surface leading-relaxed selection:bg-secondary-container">
+              »Maya stolperte an der Schleusenkonsole vorbei. Die Atemluft schmeckte bitter nach Ozon und gefrorenem Stickstoff. Ihre Finger zitterten so heftig, dass der Magnetschlüssel dreimal von der titanverstärkten Buchse abrutschte, bevor das dumpfe Einrasten der Verriegelung endlich ertönte.«
+            </p>
+</div>
+<!-- Block 2: Author Directorial Aside (Purple Italic) -->
+<div class="group relative pl-4 rounded-lg bg-area-planning/10 p-3.5 transition-colors">
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded bg-area-planning/20 text-area-planning font-eyebrow-tracked text-[10px] uppercase font-semibold">
+                [Regieanweisung des Autors]
+              </span>
+<span class="font-meta-default text-[11px] text-area-planning/70 tabular-nums">14:18</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial italic text-area-planning leading-relaxed">
+              [Regieanweisung des Autors an sich selbst: Hier mehr Fokus auf die Kälte legen, sie zittert unkontrolliert. Der Reif muss sich auf dem Visier ihres Schutzanzugs niederschlagen, die Sicht einschränken.]
+            </p>
+</div>
+<!-- Block 3: Lore Fact Identified (Amber Highlight) -->
+<div class="group relative pl-4 rounded-lg bg-state-warning/10 p-3.5 transition-colors">
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded bg-state-warning/20 text-state-warning font-eyebrow-tracked text-[10px] uppercase font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">notification_important</span>
+                [Neue Lore-Entität erkannt!]
+              </span>
+<span class="font-meta-default text-[11px] text-state-warning tabular-nums">14:26</span>
+</div>
+<p class="font-prose-editorial text-prose-editorial font-medium text-amber-focus leading-relaxed">
+              »Wichtig für die Lore: Forschungsstation 7 hatte 1983 eine geheime Bohrung namens <span class="underline decoration-state-warning decoration-2 underline-offset-4">Groom Lake Deep Array</span>. Das muss zwingend mit der Sonde im Permafrost synchronisiert werden.«
+            </p>
+</div>
+<!-- Block 4: Streaming Ghost Text in Flight -->
+<div class="group relative pl-4 rounded-lg p-2">
+<div class="flex items-center gap-2 mb-1">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-text-muted-light font-eyebrow-tracked text-[10px] uppercase">
+                [In Sprache...]
+              </span>
+</div>
+<p class="font-prose-editorial text-prose-editorial text-primary/60 italic leading-relaxed flex items-center gap-1.5">
+<span>...das Signal pulsierte in Intervallen von sieben Sekunden, wie ein mechanischer Herzschlag im Basalt</span>
+<span class="inline-block w-2 h-4 bg-primary animate-pulse ml-1"></span>
+<span class="ml-2 px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px] text-text-muted-light not-italic shadow-xs">[Tab] Bestätigen</span>
+</p>
+</div>
+</div>
+<!-- Manuscript Word & Cadence Footnote -->
+<div class="mt-auto pt-4 flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">auto_stories</span>
+            Aktuelle Sequenz: Kapitel 2 • Szene 4 (Permafrost-Schleuse)
+          </span>
+<span class="tabular-nums">Lesedauer: ~1 Min 12 Sek</span>
+</div>
+</div>
+</main>
+<!-- RIGHT PANEL: Voice-to-Lore Extractor & Causality Engine (lg:col-span-4) -->
+<aside class="lg:col-span-4 flex flex-col gap-5">
+<!-- Voice-to-Lore Extractor Box -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-4">
+<div class="flex items-center justify-between pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-knowledge text-[20px]">bubble_chart</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Extrahierte Entitäten &amp; Fakten</span>
+</div>
+<span class="w-6 h-6 rounded-full bg-area-knowledge/15 text-area-knowledge font-label-default text-[12px] flex items-center justify-center font-bold">2</span>
+</div>
+<!-- Suggestion Card 1 -->
+<div class="p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col gap-2.5">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-area-knowledge uppercase font-bold tracking-wider">Topographie • Geheimbau</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Groom Lake Deep Array</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-meta-default text-[11px]">Bohrloch (1983)</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant">
+            Unterirdische Anomaliebohrung im Sektor 7. Kausale Verbindung zur Permafrost-Sonde hergestellt.
+          </p>
+<div class="pt-1 flex items-center gap-2">
+<button class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-primary-container text-on-primary font-label-default text-label-default hover:bg-primary transition-colors shadow-xs" type="button">
+<span class="material-symbols-outlined text-[15px]">add_link</span>
+<span>In Wissensgraph übernehmen (+ Relationen)</span>
+</button>
+</div>
+</div>
+<!-- Suggestion Card 2 -->
+<div class="p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col gap-2.5">
+<div class="flex items-start justify-between gap-2">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-area-planning uppercase font-bold tracking-wider">Sensorik • Schauplatz</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Atemluft: Ozonisierter Stickstoff</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-meta-default text-[11px]">Schleuse 7</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant">
+            Bitter schmeckendes Gasgemisch als Indikator für Kühlmittel-Leckage im Hauptreaktor.
+          </p>
+<div class="pt-1 flex items-center gap-2">
+<button class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-surface-container-high text-on-surface font-label-default text-label-default hover:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">sensors</span>
+<span>In Sensorische Matrix Schauplatz 7 spiegeln</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Realtime Causality Check Diagnostic Card -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-state-success text-[20px]">verified</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Sofortiger Kausalitäts-Abgleich</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-state-success/15 text-state-success font-eyebrow-tracked text-[10px] uppercase font-bold">Konsistent</span>
+</div>
+<div class="p-3.5 rounded-lg bg-state-success/10 flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 text-state-success font-headline-emph text-label-default">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>Prüfbericht: Akt I • Zeitstrahl 1983</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface">
+            Keine Widersprüche zu Akt I entdeckt. Bohrung stimmt exakt mit der Tiefenkarte im Geografie-Atlas und Mayas Dienstakte überein.
+          </p>
+</div>
+</div>
+<!-- Stylistic Prose Synthesis Card (Claude/Muse) -->
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-3.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-chat text-[20px]">psychology</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">KI-Stilistisches Lektorat</span>
+</div>
+<span class="font-meta-default text-[11px] text-text-muted-light font-mono">Dead Signal Engine</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface-variant">
+          Wandelt das gesprochene Rohdiktat in den lakonischen, atmosphärisch dichten Präsens-Stil von <em>Dead Signal</em> um.
+        </p>
+<div class="flex flex-col gap-2 pt-1">
+<button class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded bg-primary text-on-primary font-headline-emph text-headline-emph hover:bg-primary-container transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+<span>Diktat in Roman-Stil umschreiben</span>
+</button>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1 text-text-muted-light font-meta-default text-meta-default">
+<div class="flex items-center justify-between">
+<span class="font-medium text-on-surface">Stilparameter:</span>
+<span class="text-primary font-mono text-[11px]">Noir Sci-Fi • Fokalisierung Maya</span>
+</div>
+<span>Substantivlastig, sensorische Kälte-Metaphorik, parataktischer Satzbau.</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div></main></div></body></html>

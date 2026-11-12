@@ -46,10 +46,10 @@ export function ProposalCard({
       <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed text-muted">{body}</p>
       {children}
       <div className="mt-3 flex gap-2">
-        <Button onPress={onAccept} className={buttonClass("secondary", "md")}>
+        <Button onPress={onAccept} className={buttonClass("secondary", "sm")}>
           {t("proposal.accept")}
         </Button>
-        <Button onPress={onDiscard} className={buttonClass("secondary", "md")}>
+        <Button onPress={onDiscard} className={buttonClass("secondary", "sm")}>
           {t("proposal.discard")}
         </Button>
       </div>

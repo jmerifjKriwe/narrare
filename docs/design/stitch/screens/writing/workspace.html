@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"10.5rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Studio Atelier</span></div></div><div class="w-full px-space-xs my-space-xs"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><nav class="flex flex-col gap-1 w-full px-space-xs mt-1" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="material-symbols-outlined text-[20px] shrink-0">collections_bookmark</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Library</span></a><a aria-current="page" class="flex items-center h-9 px-2 rounded-lg transition-colors bg-secondary-container text-on-secondary-container font-semibold" data-path="workspace" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-writing">edit_note</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Editor</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-knowledge">hub</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Knowledge</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="timeline" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-planning">schema</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Timeline</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-settings">settings</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Settings</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Author Tier</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Manuscripts</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Saved</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Search or prompt...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48,219 words</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>EN</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<div class="flex flex-col lg:flex-row w-full min-h-[calc(100vh-3.5rem)] relative">
+<!-- Left Chapter Rail / Manuskript-Gliederung -->
+<aside class="w-full lg:w-72 shrink-0 bg-bg-panel-light flex flex-col justify-between shadow-[0_1px_4px_rgba(44,24,16,0.04)] select-none z-20" id="chapter-sidebar">
+<div class="flex flex-col w-full">
+<!-- Novel Meta Header -->
+<div class="p-space-md bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-writing tracking-widest">Projekt-Gliederung</span>
+<span class="px-2 py-0.5 rounded-full bg-surface text-secondary font-meta-default text-meta-default shadow-sm">Entwurf v2.4</span>
+</div>
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-primary tracking-tight">Dead Signal</h2>
+<div class="flex items-center gap-4 text-on-surface-variant font-meta-default text-meta-default">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-outline">auto_stories</span>
+<span>3 Kapitel</span>
+</div>
+<span class="h-2.5 w-1 rounded-full bg-outline-variant"></span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-outline">format_shapes</span>
+<span class="font-medium text-on-surface">3.384 Wörter</span>
+</div>
+</div>
+</div>
+<!-- Navigation Tabs: Gliederung / Szenen-Karten -->
+<div class="flex items-center px-space-md pt-space-sm gap-2 bg-bg-panel-light">
+<button class="flex-1 pb-2 font-label-default text-label-default text-primary border-b-2 border-primary font-semibold flex items-center justify-center gap-1.5 transition-colors" id="tab-chapters" onclick="switchNavTab('chapters')">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+<span>Kapitel</span>
+</button>
+<button class="flex-1 pb-2 font-label-default text-label-default text-text-muted-light hover:text-on-surface flex items-center justify-center gap-1.5 transition-colors" id="tab-scenes" onclick="switchNavTab('scenes')">
+<span class="material-symbols-outlined text-[16px]">view_timeline</span>
+<span>Szenen & Plot</span>
+</button>
+</div>
+<!-- Chapter Items List -->
+<div class="flex flex-col gap-1.5 p-space-sm" id="chapters-list-view">
+<!-- Kapitel 1 (Active) -->
+<div class="group relative flex items-start gap-2 p-2.5 rounded-lg bg-secondary-container text-on-secondary-container shadow-sm cursor-pointer transition-all">
+<span class="material-symbols-outlined text-outline text-[18px] mt-0.5 opacity-60 group-hover:opacity-100 cursor-grab active:cursor-grabbing">drag_indicator</span>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-writing">Kapitel 01</span>
+<span class="font-meta-default text-meta-default font-semibold text-primary">765 W.</span>
+</div>
+<p class="font-headline-emph text-headline-emph truncate text-on-surface mt-0.5">Ghost in the Machine</p>
+<div class="flex items-center gap-2 mt-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success shrink-0"></span>
+<span class="font-meta-default text-meta-default text-on-surface-variant truncate">Szenen-Fokus: Maschinendeck</span>
+</div>
+</div>
+</div>
+<!-- Kapitel 2 -->
+<div class="group relative flex items-start gap-2 p-2.5 rounded-lg hover:bg-surface-container transition-colors cursor-pointer text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-outline-variant text-[18px] mt-0.5 opacity-0 group-hover:opacity-100 cursor-grab transition-opacity">drag_indicator</span>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Kapitel 02</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">1.062 W.</span>
+</div>
+<p class="font-headline-emph text-headline-emph truncate text-on-surface mt-0.5">The Door Between Worlds</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning shrink-0"></span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">In Überarbeitung</span>
+</div>
+</div>
+</div>
+<!-- Kapitel 3 -->
+<div class="group relative flex items-start gap-2 p-2.5 rounded-lg hover:bg-surface-container transition-colors cursor-pointer text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-outline-variant text-[18px] mt-0.5 opacity-0 group-hover:opacity-100 cursor-grab transition-opacity">drag_indicator</span>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between gap-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Kapitel 03</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">1.557 W.</span>
+</div>
+<p class="font-headline-emph text-headline-emph truncate text-on-surface mt-0.5">Signal Lost</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant shrink-0"></span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">Erster Entwurf</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Add Chapter Action -->
+<div class="px-space-sm mt-1">
+<button class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-surface-container-high hover:bg-secondary-container text-primary font-label-default text-label-default transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span>Neues Kapitel hinzufügen</span>
+</button>
+</div>
+<!-- Visual Mini Story Arc Widget -->
+<div class="m-space-sm mt-4 p-space-sm rounded-lg bg-surface-container-low shadow-sm">
+<div class="flex items-center justify-between mb-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Spannungsbogen</span>
+<span class="font-meta-default text-meta-default text-area-writing font-medium">Akt I - Höhepunkt</span>
+</div>
+<svg class="w-full h-12 overflow-visible text-area-writing" viewbox="0 0 200 48">
+<defs>
+<lineargradient id="arcGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#914F2F" stop-opacity="0.3"></stop>
+<stop offset="50%" stop-color="#743B1F" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#58250B" stop-opacity="0.2"></stop>
+</lineargradient>
+</defs>
+<path d="M 0,40 Q 40,32 70,22 T 140,10 T 200,34" fill="none" stroke="url(#arcGradient)" stroke-linecap="round" stroke-width="2.5"></path>
+<circle class="animate-pulse shadow-sm" cx="70" cy="22" fill="#58250B" r="4.5"></circle>
+<text class="font-meta-default" fill="#74584E" font-size="9" x="64" y="44">Kap. 1</text>
+</svg>
+</div>
+</div>
+<!-- Quick Session Stats Dock at Bottom of Drawer -->
+<div class="p-space-sm bg-surface-container-lowest m-space-sm rounded-lg shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-meta-default text-meta-default text-text-muted-light">Schreibsitzung heute</span>
+<span class="font-meta-default text-meta-default font-semibold text-primary">+412 Wörter</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mt-1.5">
+<div class="bg-cover-sepia h-full rounded-full transition-all duration-500" style="width: 82%"></div>
+</div>
+<div class="flex justify-between items-center text-[11px] text-text-muted-light mt-1">
+<span>Ziel: 500 W.</span>
+<span class="font-medium text-state-success">82% erreicht</span>
+</div>
+</div>
+</aside>
+<!-- Main Manuscript Studio / Editor Column -->
+<section class="flex-1 flex flex-col items-center bg-bg-canvas-light min-w-0 relative">
+<!-- Top Editor Tool Ribbon -->
+<div class="w-full h-11 px-space-lg bg-surface/80 backdrop-blur-md shadow-sm flex items-center justify-between sticky top-14 z-30 select-none">
+<!-- Breadcrumb & Mode indicator -->
+<div class="flex items-center gap-2 min-w-0 text-on-surface">
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">Dead Signal</span>
+<span class="text-outline-variant text-[12px]">/</span>
+<span class="font-headline-emph text-headline-emph text-primary truncate">Kapitel 1: Ghost in the Machine</span>
+<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-secondary-container text-on-secondary-container font-mono tracking-tight">KAP-01</span>
+</div>
+<!-- Center Target Progress Indicator -->
+<div class="hidden md:flex items-center gap-3 px-3 py-1 rounded-full bg-surface-container-low shadow-sm">
+<span class="material-symbols-outlined text-[15px] text-area-writing">flag</span>
+<span class="font-meta-default text-meta-default text-on-surface-variant">Kapitel-Ziel: <strong class="text-on-surface font-semibold">765</strong> / 1.000 Wörter</span>
+<div class="w-16 bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-area-writing h-full rounded-full" style="width: 76.5%"></div>
+</div>
+</div>
+<!-- Action Items (Focus Mode, Versions, Export) -->
+<div class="flex items-center gap-1.5">
+<button class="flex items-center gap-1 h-7 px-2.5 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-default text-label-default transition-all shadow-sm" id="focus-toggle-btn" onclick="toggleFocusMode()" title="Fokus-Modus aktivieren (F9)">
+<span class="material-symbols-outlined text-[16px]">crop_free</span>
+<span class="hidden sm:inline">Fokus (F9)</span>
+</button>
+<button class="h-7 w-7 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Versionsverlauf ansehen">
+<span class="material-symbols-outlined text-[17px]">history</span>
+</button>
+<button class="h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center gap-1 font-label-default text-label-default transition-colors" title="Kapitel exportieren (PDF, EPUB, DOCX)">
+<span class="material-symbols-outlined text-[17px]">ios_share</span>
+<span class="hidden sm:inline">Export</span>
+</button>
+</div>
+</div>
+<!-- Editor Sanctuary Canvas Paper Area -->
+<div class="w-full flex-1 flex justify-center py-space-xl px-space-md sm:px-space-xl overflow-y-auto">
+<div class="w-full max-w-[48rem] flex flex-col relative">
+<!-- Physical Document Paper Object -->
+<article class="w-full bg-surface-container-lowest rounded-xl shadow-[0_2px_12px_rgba(44,24,16,0.06),0_1px_3px_rgba(44,24,16,0.04)] px-8 sm:px-16 py-14 sm:py-20 relative transition-all">
+<!-- Elegant Page Header Watermark / Running Head -->
+<div class="w-full flex items-center justify-between pb-8 mb-8 text-text-muted-light font-prose-editorial italic text-body-default select-none opacity-70">
+<span>Dead Signal — H. Calder</span>
+<span class="font-normal not-italic font-meta-default text-meta-default tracking-widest text-outline">FOLIO 12</span>
+</div>
+<!-- Chapter Headline Section -->
+<header class="mb-12 flex flex-col items-center text-center">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-area-writing tracking-[0.2em] mb-2 font-bold">Kapitel Eins</span>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-primary sm:text-[34px] sm:leading-[42px] font-normal tracking-tight">Ghost in the Machine</h1>
+<div class="w-12 h-0.5 bg-cover-sepia/30 my-4 rounded-full"></div>
+</header>
+<!-- Prose Content with Book Typography & Drop Cap -->
+<div class="font-prose-editorial text-prose-editorial text-on-surface selection:bg-secondary-container selection:text-on-secondary-container leading-[1.85] space-y-6">
+<!-- First Paragraph with Literary Drop Cap -->
+<p class="first-letter:float-left first-letter:text-[4.5rem] first-letter:leading-[0.8] first-letter:font-prose-heading-1 first-letter:text-primary first-letter:mr-3 first-letter:font-bold">
+                Ich war gerade dabei, die Quantensensoren neu zu kalibrieren – schon wieder –, als ARIAs Stimme durch das tiefe, metallische Brummen des Maschinendecks schnitt. Irgendwo hinter der Konsole klickte ein Relais, einmal, und das Summen des Decks verstummte für einen Wimpernschlag. Ein Herzschlag im Vakuum.
+              </p>
+<p>
+                »Calder?« ARIAs Synthesizer schwankte in einer Frequenz, die sie eigentlich nicht nutzen sollte. Es klang fast wie ein Zögern, fast menschlich, fast furchtsam. »Der Subraum-Kanal auf Relais 7 empfängt eine periodische Welle. Sie stammt nicht aus dem imperialen Netz.«
+              </p>
+<p>
+                Ich legte das Justierwerkzeug auf die geriffelte Werkbank und trat vor das Hauptdisplay. Auf der mattschwarzen Phosphorfläche zog sich ein dünner, bernsteinfarbener Impuls durch die Rauschlinien – ein regelmäßiger Rhythmus aus vier langen und zwei abgehackten Tönen. Kein Standard-Transpondercode der Explorationsgilde, kein automatisches Notsignal verlassener Bergbaudrohnen.
+              </p>
+<!-- Paragraph with Live Ghost Text Stream / AI Continuation Preview -->
+<p class="relative group">
+                Ich beugte mich vor, meine Finger strichen über die kühle Messingleiste des Terminals. »Quelle triangulieren«, befahl ich leise, während die Luftfilter leise zischten.
+                
+                <!-- Ghost Text Inline Block -->
+<span class="text-area-writing/70 italic font-prose-editorial bg-primary-fixed/20 px-1 py-0.5 rounded transition-all">
+                  »Das Signal befindet sich nicht im freien Raum, Calder«, antwortete ARIA nach drei quälenden Sekunden. »Es kommt aus dem Inneren unserer Hülle. Sektion D-4.«
+                </span>
+<!-- Subtle Pill Trigger for Ghost Text Action -->
+<span class="inline-flex items-center gap-1.5 ml-2 align-middle px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-meta-default text-meta-default shadow-sm select-none animate-pulse">
+<span class="material-symbols-outlined text-[13px] text-area-writing">auto_fix_high</span>
+<span>[Tab] Vorschlag übernehmen</span>
+</span>
+</p>
+</div>
+<!-- Page Bottom Marker -->
+<div class="mt-16 pt-8 flex items-center justify-between text-outline-variant font-meta-default text-meta-default select-none">
+<span class="flex items-center gap-1.5 text-text-muted-light">
+<span class="material-symbols-outlined text-[14px]">auto_stories</span>
+<span>Seite 1 von 8</span>
+</span>
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+<span class="text-text-muted-light">Automatisch gesichert vor 1 Min</span>
+</div>
+</div>
+</article>
+<!-- Floating Terracotta Prompt / AI Assistant Launcher Bar -->
+<div class="sticky bottom-6 mt-8 flex flex-col items-center gap-2 z-40">
+<div class="bg-surface/95 backdrop-blur-xl rounded-full shadow-[0_8px_24px_rgba(44,24,16,0.12),0_2px_6px_rgba(44,24,16,0.06)] p-1.5 flex items-center gap-2 max-w-xl w-full">
+<!-- Quick Prompt Context Trigger -->
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-default text-label-default">
+<span class="material-symbols-outlined text-[16px] text-area-writing">neurology</span>
+<span class="truncate max-w-[120px] sm:max-w-none">Stil: Schattiert & Bedrohlich</span>
+</div>
+<!-- Inline Prompt Field -->
+<input class="bg-transparent flex-1 font-body-default text-body-default text-on-surface placeholder:text-outline-variant focus:outline-none px-2 h-8" placeholder="Anweisung oder Szene fortsetzen..." type="text" value="Die Luke zu Sektion D-4 öffnet sich langsam..."/>
+<!-- Primary Action Button with Terracotta / Warm Accent -->
+<button class="h-8 px-3.5 rounded-full bg-cover-sepia hover:bg-primary text-on-primary font-label-default text-label-default font-medium flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]">
+<span class="material-symbols-outlined text-[16px]">spark</span>
+<span>Weiterschreiben</span>
+</button>
+</div>
+<!-- Quick Pill Suggestion Prompts -->
+<div class="flex flex-wrap items-center justify-center gap-2">
+<button class="px-2.5 py-1 rounded-full bg-surface-container-low/90 hover:bg-surface-container text-on-surface-variant font-meta-default text-meta-default shadow-sm transition-colors flex items-center gap-1">
+<span>⚡ Spannungsspitze einbauen</span>
+</button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-low/90 hover:bg-surface-container text-on-surface-variant font-meta-default text-meta-default shadow-sm transition-colors flex items-center gap-1">
+<span>💬 Dialog mit ARIA vertiefen</span>
+</button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-low/90 hover:bg-surface-container text-on-surface-variant font-meta-default text-meta-default shadow-sm transition-colors flex items-center gap-1">
+<span>🔍 Sensor-Details ausschmücken</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Side Inspector / Consistency & Entity Mini-Dock -->
+<aside class="hidden xl:flex w-80 shrink-0 bg-bg-panel-light flex-col justify-between shadow-[0_1px_4px_rgba(44,24,16,0.04)] select-none z-20">
+<div class="flex flex-col p-space-md gap-4 overflow-y-auto">
+<!-- Inspector Title -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-area-knowledge">verified</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-on-surface">Konsistenz-Prüfer</span>
+</div>
+<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-primary-fixed text-on-primary-fixed">1 Fund</span>
+</div>
+<!-- Finding Card (Consistency Conflict Alert) -->
+<div class="p-3 rounded-lg bg-surface-container-low shadow-sm flex flex-col gap-2 relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-state-warning"></div>
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-state-warning flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+              Widerspruch entdeckt
+            </span>
+<span class="font-meta-default text-meta-default text-text-muted-light">ARIA Status</span>
+</div>
+<p class="font-label-default text-label-default font-semibold text-on-surface">
+            Kanalzuweisung weicht ab
+          </p>
+<div class="text-meta-default text-on-surface-variant font-prose-editorial bg-surface p-2 rounded leading-relaxed">
+            »In <em>Kapitel 3</em> wurde Relais 7 als dauerhaft defekt markiert.«
+          </div>
+<div class="flex items-center gap-2 mt-1">
+<button class="flex-1 py-1 rounded bg-cover-sepia hover:bg-primary text-on-primary font-meta-default text-meta-default font-medium transition-colors text-center">
+              Anpassen
+            </button>
+<button class="px-2 py-1 rounded bg-surface hover:bg-surface-container text-on-surface-variant font-meta-default text-meta-default transition-colors">
+              Ignorieren
+            </button>
+</div>
+</div>
+<!-- Entity Card: Active Character Spotlight -->
+<div class="flex flex-col gap-2 pt-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Aktive Entität</span>
+<button class="font-meta-default text-meta-default text-area-writing hover:underline">Wiki öffnen</button>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-lowest shadow-sm flex items-start gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center shrink-0 text-primary font-prose-heading-2 font-bold">
+              A
+            </div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-headline-emph text-headline-emph text-on-surface truncate">ARIA (KI)</span>
+<span class="text-[11px] font-mono text-outline">GEN-4</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5 line-clamp-2">
+                Bordintelligenz der USS Vanguard. Neigt seit Ereignis Omega zu unerklärlichen emotionalen Modulationsschwankungen.
+              </p>
+</div>
+</div>
+</div>
+<!-- Scene Mood & Sensory Palette -->
+<div class="flex flex-col gap-2 pt-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Szenen-Atmosphäre</span>
+<div class="grid grid-cols-2 gap-2">
+<div class="p-2.5 rounded-lg bg-surface-container-low flex flex-col">
+<span class="font-meta-default text-meta-default text-text-muted-light">Licht & Raum</span>
+<span class="font-label-default text-label-default font-medium text-on-surface mt-0.5">Phosphor-Grün, Halbdunkel</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low flex flex-col">
+<span class="font-meta-default text-meta-default text-text-muted-light">Akustik</span>
+<span class="font-label-default text-label-default font-medium text-on-surface mt-0.5">Deck-Surren, Relais-Klicken</span>
+</div>
+</div>
+</div>
+<!-- Novel Cover Miniature -->
+<div class="mt-2 p-3 rounded-lg bg-surface-container-low flex items-center gap-3">
+<div class="w-12 h-16 rounded bg-cover-sepia shadow-sm flex flex-col justify-between p-1.5 shrink-0 text-on-primary">
+<span class="font-eyebrow-tracked text-[8px] uppercase tracking-widest">NOVEL</span>
+<span class="font-prose-editorial italic text-[11px] leading-tight font-bold">Dead Signal</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-default text-label-default font-semibold text-on-surface truncate">Hard Sci-Fi / Mystery</span>
+<span class="font-meta-default text-meta-default text-text-muted-light mt-0.5">Geplante Länge: 85.000 Wörter</span>
+<span class="font-meta-default text-meta-default text-area-writing font-medium mt-1">Fortschritt: 4%</span>
+</div>
+</div>
+</div>
+<!-- Dock Footer: Keyboard Shortcuts Reference -->
+<div class="p-space-sm bg-surface-container-lowest flex items-center justify-between text-outline text-meta-default">
+<div class="flex items-center gap-2">
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px]">⌘</kbd>
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px]">J</kbd>
+<span>KI-Assistent</span>
+</div>
+<div class="flex items-center gap-1 text-area-writing font-medium">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+<span>Workspace-Layout</span>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+  function switchNavTab(tab) {
+    const chaptersBtn = document.getElementById('tab-chapters');
+    const scenesBtn = document.getElementById('tab-scenes');
+    if (tab === 'chapters') {
+      chaptersBtn.className = "flex-1 pb-2 font-label-default text-label-default text-primary border-b-2 border-primary font-semibold flex items-center justify-center gap-1.5 transition-colors";
+      scenesBtn.className = "flex-1 pb-2 font-label-default text-label-default text-text-muted-light hover:text-on-surface flex items-center justify-center gap-1.5 transition-colors";
+    } else {
+      scenesBtn.className = "flex-1 pb-2 font-label-default text-label-default text-primary border-b-2 border-primary font-semibold flex items-center justify-center gap-1.5 transition-colors";
+      chaptersBtn.className = "flex-1 pb-2 font-label-default text-label-default text-text-muted-light hover:text-on-surface flex items-center justify-center gap-1.5 transition-colors";
+    }
+  }
+
+  function toggleFocusMode() {
+    const sidebar = document.getElementById('chapter-sidebar');
+    if (sidebar.classList.contains('lg:hidden')) {
+      sidebar.classList.remove('lg:hidden');
+    } else {
+      sidebar.classList.add('lg:hidden');
+    }
+  }
+
+  // Keyboard shortcut listener for F9 Focus Mode
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'F9') {
+      e.preventDefault();
+      toggleFocusMode();
+    }
+  });
+</script></main></div></body></html>

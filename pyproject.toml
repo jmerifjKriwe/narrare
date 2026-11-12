@@ -41,6 +41,7 @@ dev = [
   "pytest-timeout>=2.4.0",
   "pip-audit>=2.10.1",
   "ruff==0.17.3",
+  "pillow>=11",
   "pytest-xdist>=3.8",
 ]
 fuzz = [
@@ -151,6 +152,7 @@ timeout_method = "thread"
 timeout_func_only = true
 markers = [
   "e2e: end-to-end tests (full stack: browser, API, Postgres)",
+  "showcase: visual showcase seeds for Stitch comparison; run manually, not in CI",
 ]
 norecursedirs = ["e2e", ".venv", "node_modules", ".git", "dist", "build", "__pycache__", "*.egg-info", ".hypothesis", ".pytest_cache"]
 

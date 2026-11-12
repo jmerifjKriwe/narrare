@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Midnight Ink V2.4 • Token-Referenzkarte 2 — Narrare Atelier</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "error": "#ffb4ab",
+            "on-secondary-container": "#fff3df",
+            "on-tertiary-fixed-variant": "#693b29",
+            "surface-dim": "#16130e",
+            "tertiary-fixed": "#ffdbcf",
+            "on-primary-container": "#686250",
+            "surface-container-high": "#2d2924",
+            "tertiary-fixed-dim": "#fab7a0",
+            "inverse-surface": "#e9e1d9",
+            "inverse-on-surface": "#34302a",
+            "primary": "#fffaf9",
+            "surface-container-highest": "#38342e",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-container": "#895542",
+            "outline": "#959086",
+            "surface": "#16130e",
+            "primary-fixed-dim": "#cfc6b0",
+            "on-surface": "#e9e1d9",
+            "secondary-fixed-dim": "#ecc15a",
+            "on-tertiary": "#4e2515",
+            "on-background": "#e9e1d9",
+            "on-primary-fixed": "#201b0e",
+            "secondary-fixed": "#ffdf99",
+            "outline-variant": "#4a463e",
+            "error-container": "#93000a",
+            "surface-bright": "#3c3933",
+            "surface-container-lowest": "#100e09",
+            "on-secondary-fixed-variant": "#5a4300",
+            "primary-container": "#e8dec8",
+            "on-secondary": "#3f2e00",
+            "surface-tint": "#cfc6b0",
+            "secondary": "#ecc15a",
+            "on-primary": "#353021",
+            "surface-container": "#221f1a",
+            "on-primary-fixed-variant": "#4c4636",
+            "on-secondary-fixed": "#251a00",
+            "tertiary": "#fffaf9",
+            "on-surface-variant": "#ccc6ba",
+            "inverse-primary": "#655e4d",
+            "tertiary-container": "#ffd6c8",
+            "on-tertiary-fixed": "#341104",
+            "background": "#16130e",
+            "surface-variant": "#38342e",
+            "secondary-container": "#8c6b01",
+            "primary-fixed": "#ece2cc",
+            "surface-container-low": "#1e1b16",
+            "on-error": "#690005"
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          spacing: {
+            "gutter-mobile": "1rem",
+            "space-lg": "1.5rem",
+            "margin-mobile": "1.25rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-xs": "0.25rem",
+            "margin": "3rem",
+            "space-xl": "2.5rem",
+            "gutter": "1.5rem",
+            "margin-tablet": "2rem"
+          },
+          fontFamily: {
+            "headline-lg": ["EB Garamond"],
+            "headline-sm": ["EB Garamond"],
+            "ui-label-lg": ["Plus Jakarta Sans"],
+            "body-md": ["EB Garamond"],
+            "ui-label-sm": ["Plus Jakarta Sans"],
+            "display-lg": ["EB Garamond"],
+            "headline-md": ["EB Garamond"],
+            "ui-label-md": ["Plus Jakarta Sans"],
+            "display-lg-mobile": ["EB Garamond"],
+            "body-lg": ["EB Garamond"],
+            "mono": ["Space Mono", "monospace"]
+          },
+          fontSize: {
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "ui-label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+            "body-md": ["17px", { "lineHeight": "28px", "fontWeight": "400" }],
+            "ui-label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "400" }],
+            "headline-md": ["26px", { "lineHeight": "34px", "fontWeight": "500" }],
+            "ui-label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "display-lg-mobile": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+            "body-lg": ["20px", { "lineHeight": "32px", "fontWeight": "400" }]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen selection:bg-[#47291D] selection:text-[#FED8CA]">
+<!-- TopNavBar (Shared Component Anchor) -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant/60 dark:border-outline-variant/60 sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-6 py-3 max-w-7xl mx-auto">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<span class="w-2.5 h-2.5 rounded-full bg-[#D7A892] inline-block shadow-[0_0_8px_rgba(215,168,146,0.4)]"></span>
+<span class="font-headline-sm text-headline-sm text-primary dark:text-primary tracking-tight font-bold">Midnight Ink Spec</span>
+</div>
+<nav class="hidden md:flex items-center gap-6 pl-4 border-l border-outline-variant/40">
+<a class="text-secondary dark:text-secondary border-b-2 border-secondary font-ui-label-lg text-ui-label-lg pb-1" href="#">Tokens</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-ui-label-lg text-ui-label-lg hover:text-on-surface transition-colors" href="#">Typography</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-ui-label-lg text-ui-label-lg hover:text-on-surface transition-colors" href="#">Components</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-ui-label-lg text-ui-label-lg hover:text-on-surface transition-colors" href="#">Guidelines</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-ui-label-lg text-ui-label-lg hover:text-on-surface transition-colors" href="#">Changelog</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<!-- Search and Action Icons -->
+<div class="hidden sm:flex items-center gap-1 text-on-surface-variant">
+<button class="p-2 rounded-lg hover:text-on-surface hover:bg-surface-container-high transition-colors" title="Dark Mode Active">
+<span class="material-symbols-outlined text-[18px]">dark_mode</span>
+</button>
+<button class="p-2 rounded-lg hover:text-on-surface hover:bg-surface-container-high transition-colors" title="Source Spec">
+<span class="material-symbols-outlined text-[18px]">code</span>
+</button>
+<button class="p-2 rounded-lg hover:text-on-surface hover:bg-surface-container-high transition-colors" title="Bookmark Spec">
+<span class="material-symbols-outlined text-[18px]">bookmark</span>
+</button>
+</div>
+<button class="bg-[#E8DEC8] hover:bg-[#F4EFE3] text-[#16140F] font-ui-label-lg text-ui-label-lg px-3.5 py-1.5 rounded transition-all active:scale-98 flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+          Export CSS
+        </button>
+<div class="w-8 h-8 rounded-full border border-outline-variant/60 bg-surface-container flex items-center justify-center text-xs font-mono text-[#D7A892]" title="Lead Design Engineer avatar">
+          NA
+        </div>
+</div>
+</div>
+</header>
+<!-- Layout Wrapper with SideNavBar Anchor & Main Content -->
+<div class="max-w-7xl mx-auto flex w-full">
+<!-- SideNavBar (Shared Component Anchor) -->
+<aside class="hidden lg:flex flex-col h-[calc(100vh-57px)] w-64 bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant/60 dark:border-outline-variant/60 sticky top-[57px] shrink-0 p-4 justify-between">
+<div class="space-y-6">
+<!-- Header -->
+<div class="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-outline-variant/40">
+<div class="w-8 h-8 rounded bg-[#2C2922] border border-[#3D372E] flex items-center justify-center text-[#D7A892]">
+<span class="material-symbols-outlined text-[18px]">auto_stories</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-primary leading-tight">Midnight Ink</h2>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant font-mono">v2.4.0 Literary Dark</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="space-y-1">
+<p class="px-3 font-ui-label-sm text-ui-label-sm uppercase tracking-wider text-outline mb-2">Token-Katalog</p>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container-highest text-primary font-ui-label-md text-ui-label-md transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px] text-[#D7A892]" style="font-variation-settings: 'FILL' 1;">palette</span>
+<span>Color System</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant font-ui-label-md text-ui-label-md hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">format_size</span>
+<span>Typography</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant font-ui-label-md text-ui-label-md hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">grid_view</span>
+<span>Spacing &amp; Layout</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant font-ui-label-md text-ui-label-md hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">layers</span>
+<span>Elevation &amp; Tonal</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant font-ui-label-md text-ui-label-md hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">rounded_corner</span>
+<span>Shapes &amp; Radii</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant font-ui-label-md text-ui-label-md hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">animation</span>
+<span>Motion</span>
+</a>
+</div>
+<!-- CTA in SideNav -->
+<div class="px-2 pt-2">
+<button class="w-full bg-[#211F1A] hover:bg-[#2C2922] text-[#E8DEC8] border border-[#2C2922] font-ui-label-md text-ui-label-md py-2 px-3 rounded transition-all text-center flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+            Inspect Spec Sheet
+          </button>
+</div>
+</div>
+<!-- Footer Tabs -->
+<div class="pt-4 border-t border-outline-variant/40 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary font-ui-label-md text-ui-label-md transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+<span>Documentation</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary font-ui-label-md text-ui-label-md transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Canvas Area -->
+<main class="flex-1 min-w-0 px-4 sm:px-8 py-8 md:py-10">
+<!-- 1. HEADER & META-BAR -->
+<div class="mb-10 pb-8 border-b border-[#2C2922]">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded font-ui-label-sm text-ui-label-sm bg-[#1C1914] text-[#D7A892] border border-[#3D372E] tracking-wider uppercase">
+              DESIGN-TOKEN REFERENZ • V2.4 DARK SPEC 2
+            </span>
+<span class="inline-flex items-center px-2.5 py-0.5 rounded font-ui-label-sm text-ui-label-sm bg-[#221F1A] text-on-surface-variant border border-[#2C2922]">
+              Theme: Midnight Ink
+            </span>
+</div>
+<!-- Schnell-Indikatoren oben rechts -->
+<div class="flex items-center gap-2 bg-[#1C1914] p-1.5 rounded-lg border border-[#2C2922]">
+<span class="font-ui-label-sm text-ui-label-sm text-outline px-1.5">Basis-Anker:</span>
+<div class="flex items-center gap-1.5 bg-[#16140F] px-2 py-0.5 rounded border border-[#2C2922]/80" title="Canvas (#16140F)">
+<span class="w-2.5 h-2.5 rounded-full bg-[#16140F] border border-[#3D372E]"></span>
+<span class="font-mono text-[10px] text-on-surface-variant">Canvas <span class="text-white/60">#16140F</span></span>
+</div>
+<div class="flex items-center gap-1.5 bg-[#1C1914] px-2 py-0.5 rounded border border-[#2C2922]/80" title="Panel (#1C1914)">
+<span class="w-2.5 h-2.5 rounded-full bg-[#1C1914] border border-[#3D372E]"></span>
+<span class="font-mono text-[10px] text-on-surface-variant">Panel <span class="text-white/60">#1C1914</span></span>
+</div>
+<div class="flex items-center gap-1.5 bg-[#211F1A] px-2 py-0.5 rounded border border-[#3D372E]" title="Card (#211F1A)">
+<span class="w-2.5 h-2.5 rounded-full bg-[#211F1A] border border-[#564E43]"></span>
+<span class="font-mono text-[10px] text-primary">Card <span class="text-[#D7A892]">#211F1A</span></span>
+</div>
+<div class="flex items-center gap-1.5 bg-[#2C2922] px-2 py-0.5 rounded border border-[#3D372E]" title="Soft (#2C2922)">
+<span class="w-2.5 h-2.5 rounded-full bg-[#2C2922] border border-[#564E43]"></span>
+<span class="font-mono text-[10px] text-on-surface-variant">Soft <span class="text-white/60">#2C2922</span></span>
+</div>
+</div>
+</div>
+<h1 class="font-headline-lg text-[36px] leading-[44px] text-primary mb-3 font-normal tracking-tight">
+          Oberflächen-Leiter, Linien &amp; Sekundär-Tokens
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-4xl text-[#ccc6ba]/90">
+          Ergänzende Spezifikationskarte: Abstufungen der Surface-Container-Hierarchie, Hairline-Outlines, Warmbraun-Sekundärpaare und inverse Leuchtfelder. Optimiert für das Autoren-Atelier Narrare mit barrierefreier WCAG-Kontrastführung.
+        </p>
+</div>
+<!-- 2. SEKTION 1: DIE FEINE OBERFLÄCHEN-LEITER (Surface-Container Hierarchy) -->
+<section class="mb-14">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-4 bg-[#D7A892] rounded-full inline-block"></span>
+<h2 class="font-headline-md text-headline-md text-primary">1. Die feine Oberflächen-Leiter</h2>
+<span class="font-ui-label-sm text-ui-label-sm text-outline ml-2">(Surface-Container Hierarchy)</span>
+</div>
+<span class="font-ui-label-sm text-ui-label-sm font-mono text-[#D7A892] bg-[#211F1A] px-2 py-1 rounded border border-[#2C2922]">
+            Basispegel: #211F1A
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+          Optische Tiefenstaffelung im archivarischen Dunkelraum. Anstelle von Schlagschatten steuert diese chromatische Leiter Erhabenheit, Vertiefung und taktile Haptik im Manuskript-Canvas.
+        </p>
+<!-- Chips Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- Token: surface-container-lowest -->
+<div class="bg-[#100E0A] border border-[#2C2922] rounded-lg p-5 flex flex-col justify-between hover:border-[#564E43] transition-colors relative overflow-hidden group">
+<div class="flex items-start justify-between mb-4">
+<div>
+<span class="font-mono text-xs text-[#D7A892] uppercase tracking-wider block">Token</span>
+<h3 class="font-mono text-sm font-bold text-primary">surface-container-lowest</h3>
+</div>
+<span class="font-mono text-xs px-2 py-0.5 rounded bg-[#16140F] text-outline border border-[#2C2922]">-6 Level (Tiefe)</span>
+</div>
+<div class="flex items-center gap-3 py-3 border-y border-[#2C2922]/60 my-2">
+<div class="w-12 h-12 rounded border border-[#2C2922] bg-[#100E0A] flex items-center justify-center text-[10px] font-mono text-outline shrink-0">
+                #100E0A
+              </div>
+<div>
+<div class="font-mono text-xs text-primary">#100E0A</div>
+<div class="font-ui-label-sm text-ui-label-sm text-outline">Delta: -10 Rel. Luminanz zu Canvas</div>
+</div>
+</div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-2">
+              Tiefste Vertiefungen, Textur-Schlucht, Code-Embeds, tiefer als Canvas.
+            </p>
+</div>
+<!-- Token: surface-container-low -->
+<div class="bg-[#191611] border border-[#2C2922] rounded-lg p-5 flex flex-col justify-between hover:border-[#564E43] transition-colors group">
+<div class="flex items-start justify-between mb-4">
+<div>
+<span class="font-mono text-xs text-[#D7A892] uppercase tracking-wider block">Token</span>
+<h3 class="font-mono text-sm font-bold text-primary">surface-container-low</h3>
+</div>
+<span class="font-mono text-xs px-2 py-0.5 rounded bg-[#16140F] text-outline border border-[#2C2922]">-2 Level</span>
+</div>
+<div class="flex items-center gap-3 py-3 border-y border-[#2C2922]/60 my-2">
+<div class="w-12 h-12 rounded border border-[#2C2922] bg-[#191611] flex items-center justify-center text-[10px] font-mono text-outline shrink-0">
+                #191611
+              </div>
+<div>
+<div class="font-mono text-xs text-primary">#191611</div>
+<div class="font-ui-label-sm text-ui-label-sm text-outline">Delta: Subtile Einbettung</div>
+</div>
+</div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-2">
+              Zwischen Canvas #16140F und Panel #1C1914, subtile Mulden &amp; Meta-Zonen.
+            </p>
+</div>
+<!-- Token: surface-container -->
+<div class="bg-[#211F1A] border-2 border-[#564E43] rounded-lg p-5 flex flex-col justify-between shadow-sm relative group">
+<div class="absolute -top-2.5 right-4 bg-[#D7A892] text-[#3B1C10] font-ui-label-sm text-[10px] font-bold px-2 py-0.5 rounded">
+              STANDARD CARD REFERENZ
+            </div>
+<div class="flex items-start justify-between mb-4">
+<div>
+<span class="font-mono text-xs text-[#D7A892] uppercase tracking-wider block">Token</span>
+<h3 class="font-mono text-sm font-bold text-primary">surface-container</h3>
+</div>
+<span class="font-mono text-xs px-2 py-0.5 rounded bg-[#2C2922] text-[#D7A892] border border-[#3D372E]">0 (Nullpunkt)</span>
+</div>
+<div class="flex items-center gap-3 py-3 border-y border-[#3D372E] my-2">
+<div class="w-12 h-12 rounded border border-[#564E43] bg-[#211F1A] flex items-center justify-center text-[10px] font-mono text-primary font-bold shrink-0">
+                #211F1A
+              </div>
+<div>
+<div class="font-mono text-xs text-[#D7A892] font-bold">#211F1A</div>
+<div class="font-ui-label-sm text-ui-label-sm text-on-surface-variant">Atelier Standard-Kartenpegel</div>
+</div>
+</div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface mt-2">
+              Karten-Basisniveau / Standard-Card für Buchszenen &amp; Manuskript-Kapitel.
+            </p>
+</div>
+<!-- Token: surface-container-high -->
+<div class="bg-[#27241E] border border-[#2C2922] rounded-lg p-5 flex flex-col justify-between hover:border-[#564E43] transition-colors group">
+<div class="flex items-start justify-between mb-4">
+<div>
+<span class="font-mono text-xs text-[#D7A892] uppercase tracking-wider block">Token</span>
+<h3 class="font-mono text-sm font-bold text-primary">surface-container-high</h3>
+</div>
+<span class="font-mono text-xs px-2 py-0.5 rounded bg-[#16140F] text-[#D7A892] border border-[#2C2922]">+2 Level</span>
+</div>
+<div class="flex items-center gap-3 py-3 border-y border-[#2C2922]/60 my-2">
+<div class="w-12 h-12 rounded border border-[#3D372E] bg-[#27241E] flex items-center justify-center text-[10px] font-mono text-on-surface shrink-0">
+                #27241E
+              </div>
+<div>
+<div class="font-mono text-xs text-primary">#27241E</div>
+<div class="font-ui-label-sm text-ui-label-sm text-outline">Delta: +6 Tonalität</div>
+</div>
+</div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-2">
+              Leicht erhabene Sektionen, Inputs, Card-Header und Tool-Paletten.
+            </p>
+</div>
+<!-- Token: surface-container-highest -->
+<div class="bg-[#2E2A23] border border-[#3D372E] rounded-lg p-5 flex flex-col justify-between hover:border-[#564E43] transition-colors group">
+<div class="flex items-start justify-between mb-4">
+<div>
+<span class="font-mono text-xs text-[#D7A892] uppercase tracking-wider block">Token</span>
+<h3 class="font-mono text-sm font-bold text-primary">surface-container-highest</h3>
+</div>
+<span class="font-mono text-xs px-2 py-0.5 rounded bg-[#16140F] text-[#D7A892] border border-[#2C2922]">+4 Level</span>
+</div>
+<div class="flex items-center gap-3 py-3 border-y border-[#3D372E] my-2">
+<div class="w-12 h-12 rounded border border-[#564E43] bg-[#2E2A23] flex items-center justify-center text-[10px] font-mono text-primary shrink-0">
+                #2E2A23
+              </div>
+<div>
+<div class="font-mono text-xs text-primary">#2E2A23</div>
+<div class="font-ui-label-sm text-ui-label-sm text-outline">Delta: +13 Tonalität</div>
+</div>
+</div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant mt-2">
+              Hover-Zustände, aktive Nav-Kacheln, modale Layer und Dialog-Plattformen.
+            </p>
+</div>
+<!-- Token: surface-variant -->
+<div class="bg-[#3A352C] border border-[#564E43]/60 rounded-lg p-5 flex flex-col justify-between hover:border-[#D7A892] transition-colors group">
+<div class="flex items-start justify-between mb-4">
+<div>
+<span class="font-mono text-xs text-[#FED8CA] uppercase tracking-wider block">Token</span>
+<h3 class="font-mono text-sm font-bold text-primary">surface-variant</h3>
+</div>
+<span class="font-mono text-xs px-2 py-0.5 rounded bg-[#16140F] text-[#FED8CA] border border-[#3D372E]">+6 Level</span>
+</div>
+<div class="flex items-center gap-3 py-3 border-y border-[#4a463e] my-2">
+<div class="w-12 h-12 rounded border border-[#564E43] bg-[#3A352C] flex items-center justify-center text-[10px] font-mono text-primary shrink-0">
+                #3A352C
+              </div>
+<div>
+<div class="font-mono text-xs text-[#FED8CA]">#3A352C</div>
+<div class="font-ui-label-sm text-ui-label-sm text-on-surface-variant">Stärkste Abhebung im Low-Tone</div>
+</div>
+</div>
+<p class="font-ui-label-sm text-ui-label-sm text-[#e9e1d9] mt-2">
+              Deutlich akzentuierter Container für sekundäre Gruppierungen &amp; Sidebars.
+            </p>
+</div>
+</div>
+</section>
+<!-- 3. SEKTION 2: OUTLINE & TRENNLINIEN (Grenz- & Haarlinien) -->
+<section class="mb-14">
+<div class="flex items-center gap-2 mb-4">
+<span class="w-1.5 h-4 bg-[#D7A892] rounded-full inline-block"></span>
+<h2 class="font-headline-md text-headline-md text-primary">2. Outline &amp; Trennlinien</h2>
+<span class="font-ui-label-sm text-ui-label-sm text-outline ml-2">(Grenz- &amp; Haarlinien)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+          Definierte Hairline-Präzision. Verhindert unruhige Konturen und garantiert optische Ruhe zwischen Absätzen, Figuren-Katalogen und Tabellengittern.
+        </p>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Card Token 1: outline -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-6 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-mono text-xs text-[#D7A892] font-semibold">outline</span>
+<span class="font-mono text-xs text-on-surface bg-[#16140F] px-2 py-0.5 rounded border border-[#3D372E]">
+                  Kontrast ~3.2:1 auf #16140F
+                </span>
+</div>
+<div class="flex items-baseline gap-3 mb-2">
+<span class="font-mono text-2xl text-primary font-bold">#564E43</span>
+<span class="font-ui-label-sm text-ui-label-sm text-outline">Dominante Kanten &amp; Fokus-Status</span>
+</div>
+<p class="font-ui-label-md text-ui-label-md text-on-surface-variant mb-5">
+                Verwendet für Grenzlinien von fokussierten Eingabefeldern, dominante Card-Borders und primäre Abgrenzungen erhabener Module.
+              </p>
+</div>
+<!-- Live Demonstration -->
+<div class="bg-[#16140F] p-4 rounded border border-[#2C2922] space-y-4">
+<span class="font-ui-label-sm text-[11px] uppercase tracking-wider text-outline block">Live-Demonstration: Fokus-Zustand</span>
+<div class="relative">
+<input class="w-full bg-[#1C1914] text-[#E8DEC8] font-ui-label-md text-ui-label-md px-3.5 py-2.5 rounded border border-[#564E43] shadow-[0_0_0_1px_#564E43] outline-none" readonly="" type="text" value="Aktives Kapitel-Feld (Fokussiert)"/>
+<span class="absolute right-3 top-2.5 font-mono text-[10px] text-[#D7A892]">border: 1px #564E43</span>
+</div>
+</div>
+</div>
+<!-- Card Token 2: outline-variant -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-6 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-mono text-xs text-[#D7A892] font-semibold">outline-variant</span>
+<span class="font-mono text-xs text-on-surface bg-[#16140F] px-2 py-0.5 rounded border border-[#2C2922]">
+                  Subtile Haarlinie (Hairline)
+                </span>
+</div>
+<div class="flex items-baseline gap-3 mb-2">
+<span class="font-mono text-2xl text-primary font-bold">#3D372E</span>
+<span class="font-ui-label-sm text-ui-label-sm text-outline">Dezente Trennung &amp; Ghost-Lines</span>
+</div>
+<p class="font-ui-label-md text-ui-label-md text-on-surface-variant mb-5">
+                Subtile 1px-Haarlinien, Trennstriche zwischen Absätzen, Fließtext-Divider und dezente Tabellenraster ohne optische Härte.
+              </p>
+</div>
+<!-- Live Demonstration -->
+<div class="bg-[#16140F] p-4 rounded border border-[#2C2922] space-y-3">
+<span class="font-ui-label-sm text-[11px] uppercase tracking-wider text-outline block">Live-Demonstration: Manuskript-Divider</span>
+<div class="space-y-2">
+<div class="flex justify-between items-center text-xs font-mono text-on-surface-variant">
+<span>Absatz § 41 (Szenenwechsel)</span>
+<span class="text-[#D7A892]">border-t: #3D372E</span>
+</div>
+<!-- 1px outline-variant separator -->
+<div class="w-full border-t border-[#3D372E] my-2"></div>
+<div class="flex justify-between items-center text-xs font-mono text-on-surface-variant">
+<span>Absatz § 42 (Kontemplation)</span>
+<span class="text-outline">1px hairline</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. SEKTION 3: SEKUNDÄR- & WARMBRAUN-PAARE -->
+<section class="mb-14">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-4 bg-[#D7A892] rounded-full inline-block"></span>
+<h2 class="font-headline-md text-headline-md text-primary">3. Sekundär- &amp; Warmbraun-Paare</h2>
+<span class="font-ui-label-sm text-ui-label-sm text-outline ml-2">(Dunkelmodus-Terracotta)</span>
+</div>
+<span class="inline-flex items-center gap-1 font-ui-label-sm text-ui-label-sm text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">verified</span> WCAG 2.1 AA Konform (&gt;4.5:1)
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+          Abgeleitet vom Tag-Atelier-Äquivalent (#74584E / #FED8CA), aber im Dark Mode leuchtend, samtig und barrierefrei ausbalanciert.
+        </p>
+<!-- Bento Grid for Secondary Pairs -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<!-- Pair 1: secondary & on-secondary -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-6 space-y-4">
+<div class="flex items-center justify-between border-b border-[#2C2922] pb-3">
+<div>
+<span class="font-mono text-xs uppercase tracking-wider text-[#D7A892]">Primäres Sekundärpaar</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">secondary on on-secondary</h3>
+</div>
+<span class="font-mono text-xs px-2.5 py-1 rounded bg-[#3B1C10] text-[#D7A892] border border-[#D7A892]/30 font-bold">
+                Kontrast 8.4:1 (AAA)
+              </span>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="p-3 bg-[#1C1914] rounded border border-[#2C2922]">
+<div class="w-full h-10 rounded bg-[#D7A892] mb-2 flex items-center justify-center font-mono text-xs font-bold text-[#3B1C10]">
+                  #D7A892
+                </div>
+<div class="font-mono text-xs text-primary font-semibold">secondary</div>
+<div class="font-ui-label-sm text-[11px] text-outline">Warmes Terracotta-Rosé</div>
+</div>
+<div class="p-3 bg-[#1C1914] rounded border border-[#2C2922]">
+<div class="w-full h-10 rounded bg-[#3B1C10] mb-2 flex items-center justify-center font-mono text-xs font-bold text-[#D7A892] border border-[#47291D]">
+                  #3B1C10
+                </div>
+<div class="font-mono text-xs text-primary font-semibold">on-secondary</div>
+<div class="font-ui-label-sm text-[11px] text-outline">Tiefes Kastanienbraun</div>
+</div>
+</div>
+<!-- Live Button Demonstration -->
+<div class="pt-2">
+<span class="font-ui-label-sm text-[11px] uppercase tracking-wider text-outline block mb-2">Live-Element: Sekundäre Autoren-Aktion</span>
+<button class="bg-[#D7A892] hover:bg-[#FED8CA] text-[#3B1C10] font-ui-label-md text-ui-label-md font-bold px-4 py-2 rounded flex items-center gap-2 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+                Szenen-Zweig synchronisieren
+              </button>
+</div>
+</div>
+<!-- Pair 2: secondary-container & on-secondary-container -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-6 space-y-4">
+<div class="flex items-center justify-between border-b border-[#2C2922] pb-3">
+<div>
+<span class="font-mono text-xs uppercase tracking-wider text-[#FED8CA]">Container-Sekundärpaar</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">secondary-container on on-secondary-container</h3>
+</div>
+<span class="font-mono text-xs px-2.5 py-1 rounded bg-[#47291D] text-[#FED8CA] border border-[#FED8CA]/30 font-bold">
+                Kontrast 7.6:1 (AAA)
+              </span>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="p-3 bg-[#1C1914] rounded border border-[#2C2922]">
+<div class="w-full h-10 rounded bg-[#47291D] mb-2 flex items-center justify-center font-mono text-xs font-bold text-[#FED8CA] border border-[#3D372E]">
+                  #47291D
+                </div>
+<div class="font-mono text-xs text-primary font-semibold">secondary-container</div>
+<div class="font-ui-label-sm text-[11px] text-outline">Gedämpftes Lederbraun</div>
+</div>
+<div class="p-3 bg-[#1C1914] rounded border border-[#2C2922]">
+<div class="w-full h-10 rounded bg-[#FED8CA] mb-2 flex items-center justify-center font-mono text-xs font-bold text-[#47291D]">
+                  #FED8CA
+                </div>
+<div class="font-mono text-xs text-primary font-semibold">on-secondary-container</div>
+<div class="font-ui-label-sm text-[11px] text-outline">Helles Puder-Terracotta</div>
+</div>
+</div>
+<!-- Live Chips Preview (Mandatory Requirements) -->
+<div class="pt-2">
+<span class="font-ui-label-sm text-[11px] uppercase tracking-wider text-outline block mb-2">Live-Pill-Vorschau: Manuskript-Entitäten</span>
+<div class="flex flex-wrap items-center gap-2">
+<!-- Pill 1: Dr. Maya Chen (Figur) -->
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#47291D] text-[#FED8CA] border border-[#3D372E]">
+<span class="w-2 h-2 rounded-full bg-[#D7A892]"></span>
+<span class="font-ui-label-md text-ui-label-md font-semibold">Dr. Maya Chen (Figur)</span>
+<span class="font-mono text-[10px] opacity-70 ml-1">#FED8CA / #47291D</span>
+</div>
+<!-- Pill 2: Horizontale Szene 12 -->
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#47291D] text-[#FED8CA] border border-[#3D372E]">
+<span class="material-symbols-outlined text-[14px] text-[#D7A892]">schedule</span>
+<span class="font-ui-label-md text-ui-label-md font-semibold">Horizontale Szene 12</span>
+<span class="font-mono text-[10px] opacity-70 ml-1">Narrativer Plot</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 5. SEKTION 4: INVERSE TOKENS (Invertierte Leuchtflächen) -->
+<section class="mb-14">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-4 bg-[#D7A892] rounded-full inline-block"></span>
+<h2 class="font-headline-md text-headline-md text-primary">4. Inverse Tokens</h2>
+<span class="font-ui-label-sm text-ui-label-sm text-outline ml-2">(Invertierte Leuchtflächen für Tooltips &amp; Floating SnackBar)</span>
+</div>
+<span class="font-mono text-xs text-[#E8DEC8] bg-[#2C2922] px-2.5 py-1 rounded border border-[#3D372E]">
+            Level 3 Elevation Overlay
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+          Wenn dunkle Manuskriptseiten einen schwebenden Leuchtkörper erfordern: Invertierte Flächen wirken wie echtes altes Büttenpapier, das sanft über dem obsidianen Schreibtisch liegt.
+        </p>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+<!-- Token: inverse-surface -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-5">
+<div class="flex items-center justify-between mb-2">
+<span class="font-mono text-xs text-[#D7A892] uppercase">Token</span>
+<span class="font-mono text-[11px] text-[#16140F] bg-[#EDE0D4] px-1.5 py-0.5 rounded font-bold">11.8:1</span>
+</div>
+<div class="font-mono text-lg font-bold text-primary mb-1">inverse-surface</div>
+<div class="font-mono text-sm text-[#EDE0D4] mb-3">#EDE0D4</div>
+<div class="w-full h-6 rounded bg-[#EDE0D4] mb-3 border border-[#ccc6ba]"></div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant">
+              Heller Büttenpapier-Fond für schwebende Modale, HUDs, Lesezeichen und Tooltips über Dark Canvas.
+            </p>
+</div>
+<!-- Token: on-inverse-surface -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-5">
+<div class="flex items-center justify-between mb-2">
+<span class="font-mono text-xs text-[#D7A892] uppercase">Token</span>
+<span class="font-mono text-[11px] text-[#EDE0D4] bg-[#211F1A] px-1.5 py-0.5 rounded border border-[#3D372E]">Kontrast-Anker</span>
+</div>
+<div class="font-mono text-lg font-bold text-primary mb-1">on-inverse-surface</div>
+<div class="font-mono text-sm text-[#D7A892] mb-3">#211F1A</div>
+<div class="w-full h-6 rounded bg-[#211F1A] mb-3 border border-[#564E43]"></div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant">
+              Dunkle Typografie auf hellem Tooltip-Grund. Kontrastreich, scharf und optisch beruhigt.
+            </p>
+</div>
+<!-- Token: inverse-primary -->
+<div class="bg-[#211F1A] border border-[#2C2922] rounded-lg p-5">
+<div class="flex items-center justify-between mb-2">
+<span class="font-mono text-xs text-[#D7A892] uppercase">Token</span>
+<span class="font-mono text-[11px] text-[#FED8CA] bg-[#743B1F] px-1.5 py-0.5 rounded">4.9:1 AA</span>
+</div>
+<div class="font-mono text-lg font-bold text-primary mb-1">inverse-primary</div>
+<div class="font-mono text-sm text-[#FED8CA] mb-3">#743B1F</div>
+<div class="w-full h-6 rounded bg-[#743B1F] mb-3 border border-[#3D372E]"></div>
+<p class="font-ui-label-sm text-ui-label-sm text-on-surface-variant">
+              Klassisches Buchdruck-Terracotta auf hellem Invers-Hintergrund für Links und Aktionen.
+            </p>
+</div>
+</div>
+<!-- Live Widget: Schwebender Invers-Tooltip mit Toast-Benachrichtigung -->
+<div class="bg-[#191611] p-6 rounded-lg border border-[#2C2922] relative overflow-hidden">
+<div class="flex items-center justify-between mb-4">
+<span class="font-ui-label-sm text-[11px] uppercase tracking-wider text-outline">
+              Interaktive Vorschau: Floating HUD &amp; Toast SnackBar
+            </span>
+<span class="font-mono text-xs text-[#D7A892]">Z-Index 40 • Ambient Umber Shadow</span>
+</div>
+<!-- Floating Inverted SnackBar Widget -->
+<div class="max-w-xl mx-auto my-4 bg-[#EDE0D4] text-[#211F1A] rounded-lg px-4 py-3.5 shadow-[0_12px_32px_-4px_rgba(10,8,6,0.65)] flex items-center justify-between border border-[#ccc6ba]/50 transition-all hover:translate-y-[-1px]">
+<div class="flex items-center gap-3">
+<span class="w-8 h-8 rounded-full bg-[#743B1F] text-[#FED8CA] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</span>
+<div>
+<div class="font-ui-label-md text-ui-label-md font-bold text-[#211F1A]">
+                  Kausalität im Dunkelmodus verifiziert
+                </div>
+<div class="font-ui-label-sm text-ui-label-sm text-[#211F1A]/80">
+                  Alle 14 Kontrastpaare übertreffen die WCAG 2.1 AA Kriterien.
+                </div>
+</div>
+</div>
+<div class="flex items-center gap-2 pl-4">
+<button class="font-ui-label-sm text-ui-label-sm text-[#743B1F] font-bold hover:underline transition-all">
+                Details
+              </button>
+<button class="w-6 h-6 rounded flex items-center justify-center text-[#211F1A]/60 hover:text-[#211F1A] hover:bg-[#211F1A]/10 transition-colors">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<div class="text-center font-mono text-[11px] text-outline mt-3">
+            Hintergrund: <span class="text-[#EDE0D4]">#EDE0D4 (inverse-surface)</span> • Typo: <span class="text-white/80">#211F1A (on-inverse-surface)</span> • Akzent: <span class="text-[#FED8CA]">#743B1F (inverse-primary)</span>
+</div>
+</div>
+</section>
+<!-- 6. CODE- & HANDOFF-SNIPPET AM FUSS -->
+<section class="mb-14">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-4 bg-[#D7A892] rounded-full inline-block"></span>
+<h2 class="font-headline-md text-headline-md text-primary">5. Code- &amp; Handoff-Snippet</h2>
+<span class="font-ui-label-sm text-ui-label-sm text-outline ml-2">(CSS Custom Properties)</span>
+</div>
+<button class="bg-[#211F1A] hover:bg-[#2C2922] text-[#E8DEC8] border border-[#2C2922] text-xs font-mono px-3 py-1.5 rounded flex items-center gap-1.5 transition-all" onclick="navigator.clipboard.writeText(document.getElementById('css-snippet').innerText)">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+            Copy CSS Variables
+          </button>
+</div>
+<div class="bg-[#100E0A] rounded-lg border border-[#2C2922] p-5 relative overflow-hidden font-mono text-xs text-[#ccc6ba] leading-relaxed shadow-inner">
+<div class="flex items-center justify-between pb-3 mb-3 border-b border-[#2C2922] text-outline text-[11px]">
+<span>midnight-ink-spec-v2.4-dark-2.css</span>
+<span class="text-[#D7A892]">15 DESIGN TOKENS</span>
+</div>
+<pre class="overflow-x-auto text-[#FED8CA]" id="css-snippet"><code><span class="text-outline">/* Midnight Ink V2.4 Dark Spec 2 */</span>
+--surface-container-lowest: #100E0A;
+--surface-container-low: #191611;
+--surface-container: #211F1A;
+--surface-container-high: #27241E;
+--surface-container-highest: #2E2A23;
+--surface-variant: #3A352C;
+--outline: #564E43;
+--outline-variant: #3D372E;
+--secondary: #D7A892;
+--on-secondary: #3B1C10;
+--secondary-container: #47291D;
+--on-secondary-container: #FED8CA;
+--inverse-surface: #EDE0D4;
+--on-inverse-surface: #211F1A;
+--inverse-primary: #743B1F;</code></pre>
+</div>
+</section>
+<!-- 7. FOOTER-NOTE -->
+<footer class="pt-8 border-t border-[#2C2922] flex flex-col sm:flex-row items-center justify-between gap-4 text-outline font-ui-label-sm text-ui-label-sm">
+<div class="flex items-center gap-4">
+<span>Typografie: <strong class="text-on-surface">EB Garamond</strong> (Headings), <strong class="text-on-surface">Plus Jakarta Sans</strong> (UI &amp; Labels), <strong class="text-on-surface">Space Mono</strong> (Code).</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1 text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            WCAG 2.1 AA Konformität
+          </span>
+<span class="text-[#2C2922]">|</span>
+<span class="text-on-surface-variant">Narrare Atelier Spec • Dark Mode V2.4</span>
+</div>
+</footer>
+</main>
+</div>
+</body></html>

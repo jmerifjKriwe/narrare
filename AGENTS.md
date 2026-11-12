@@ -78,8 +78,13 @@ explicitly — an omitted model silently inherits the session's most capable one
 and defeats the purpose. The coordinator picks the concrete models at dispatch
 time; the standing preference below is the default until the owner changes it.
 
-Standing preference (2026-11-09, owner decision): implementer and reviewer run
-`opencode-go/muse-spark-1.3-contributor`.
+Standing preference (2026-11-12, owner decision, rev. 5; supersedes 2026-11-09):
+the agent-model assignment for narrare is — Coordinator
+`zai-coding-plan/glm-5.3`, Coding Agent `zai-coding-plan/glm-5.3-flash`,
+Reviewer `zai-coding-plan/glm-5.3`, UI Agent
+`opencode/deepseek-v4.1-flash-free`. UI tasks are implemented by the UI Agent
+and reviewed by the Reviewer. (OpenCode Go's monthly quota is exhausted, so
+neither the Coding nor the UI seat rides on Go.)
 
 Keep the PR updated while the work continues: push after every green task
 group, so review never faces a wall of commits at the end.

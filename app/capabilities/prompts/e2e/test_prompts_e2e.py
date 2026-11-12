@@ -223,9 +223,9 @@ def _create_novel_with_chapter(page: Page, title: str, line: str) -> None:
     The module's database is shared, so every test owns a title no other uses.
     """
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
     page.get_by_role("button", name="Neues Kapitel").click()
     editor = page.locator(".ProseMirror")
@@ -251,7 +251,7 @@ def _run_continuation(page: Page) -> None:
 def _import_as_new_novel(page: Page, source: Path, title: str) -> None:
     """Import a folder as a new novel through the shelf, and read the receipt."""
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Importieren").click()
+    page.locator("header").get_by_role("button", name="Importieren").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Archivpfad").fill(str(source))
     dialog.get_by_role("button", name="Jetzt importieren").click()
@@ -431,7 +431,10 @@ def test_an_export_carries_the_closed_surface_and_no_override(
     page.goto(BASE + "/")
     row = page.get_by_role("listitem").filter(has_text=title)
     expect(row).to_be_visible()
-    row.get_by_role("button", name="Exportieren").click()
+    # The drafted card's corner holds the more_horiz quick menu; export
+    # lives behind it (the standalone export button is gone with the corner).
+    row.get_by_role("button", name=f"Aktionen für {title}").click()
+    page.get_by_role("menuitem", name="Exportieren").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Zielordner").fill(str(export))
     dialog.get_by_role("button", name="Jetzt exportieren").click()

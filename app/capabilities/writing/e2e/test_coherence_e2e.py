@@ -227,7 +227,7 @@ def _import_demo(page: Page, source: Path) -> None:
     not stepped over.
     """
     page.goto(BASE + "/")
-    page.get_by_role("button", name="Importieren").click()
+    page.locator("header").get_by_role("button", name="Importieren").click()
     dialog = page.get_by_role("dialog")
     dialog.get_by_label("Archivpfad").fill(str(source))
     dialog.get_by_role("button", name="Jetzt importieren").click()
@@ -424,7 +424,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # exactly this state standing unswept at the end of a merge flow.
     page.get_by_role("link", name="Alle Romane").click()
     expect(page).to_have_url(f"{BASE}/")
-    hero = page.get_by_role("region", name="Mach weiter")
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
     expect(hero).to_contain_text(NOVEL)
     assert_accessible(page)
 
@@ -551,6 +551,9 @@ def test_the_writer_s_day_holds_together_end_to_end(
     )
     expect(_palette_group(palette, "Novels").get_by_role("button", name=NOVEL)).to_be_visible()
     expect(_palette_group(palette, "Docks & pages")).to_be_visible()
+    assert_accessible(page)
+    expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
+
     page.keyboard.press("Escape")
 
     page.goto(f"{BASE}/settings/prompts")

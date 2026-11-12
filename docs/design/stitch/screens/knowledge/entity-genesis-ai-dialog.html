@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"10.5rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Studio Atelier</span></div></div><div class="w-full px-space-xs my-space-xs"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><nav class="flex flex-col gap-1 w-full px-space-xs mt-1" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="material-symbols-outlined text-[20px] shrink-0">collections_bookmark</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Library</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-writing">edit_note</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Editor</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-knowledge">hub</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Knowledge</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="timeline" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-planning">schema</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Timeline</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px] shrink-0 text-area-settings">settings</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Settings</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Author Tier</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Manuscripts</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Saved</span></div><div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-state-success/10 text-state-success font-meta-default text-[12px] font-medium border border-state-success/20 ml-2 animate-pulse"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalitäts-Konflikt #01 erfolgreich gelöst • Manuskript &amp; Lore-Graph synchron</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Search or prompt...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48.342 words</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>EN</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Context Sub-Bar: Project & Entity Mode Status -->
+<div class="w-full bg-surface-container-low px-space-lg py-2 flex items-center justify-between shadow-sm z-10">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-cover-sepia animate-pulse"></span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-primary tracking-wider">Lore-Genesis Engine v4.5</span>
+</div>
+<span class="text-outline-variant font-meta-default text-meta-default">|</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-knowledge text-[17px]">hub</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Kausal-Kontext: Dead Signal / Akt I • Szene 2.3</span>
+</div>
+<span class="bg-secondary-container/60 text-on-secondary-container px-2.5 py-0.5 rounded-full font-meta-default text-meta-default font-medium">
+        Artefakt-Synthese aktiv
+      </span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-meta-default text-meta-default text-text-muted-light">Letzte Graph-Synchronisation vor 18 Sek.</span>
+<button class="flex items-center gap-1.5 px-3 py-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg font-label-default text-label-default transition-colors">
+<span class="material-symbols-outlined text-[15px] text-area-knowledge">account_tree</span>
+<span>Graph-Vorschau</span>
+</button>
+</div>
+</div>
+<!-- Main 3-Column Studio Workbench -->
+<div class="w-full grid grid-cols-12 gap-0 min-h-[calc(100vh-5.5rem)]">
+<!-- COLUMN 1: Manuscript Excerpt & Scene Trigger (Width: 3/12) -->
+<section class="col-span-12 lg:col-span-3 bg-surface-container-lowest flex flex-col justify-between shadow-sm">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Scene Meta Header -->
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-1.5 text-text-muted-light font-eyebrow-tracked text-eyebrow-tracked uppercase">
+<span class="material-symbols-outlined text-[15px] text-area-writing">segment</span>
+<span>Akt I • Kapitel 2</span>
+</div>
+<h2 class="font-prose-heading-2 text-prose-heading-2 text-on-surface mt-1">Nevada Echoes</h2>
+<p class="font-meta-default text-meta-default text-text-muted-light mt-0.5">Szene 2.3 • Der Fund im Konsolenschacht</p>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-meta-default text-meta-default font-mono">1.840 W</span>
+</div>
+<!-- Mini Chapter Navigator Strip -->
+<div class="bg-surface-container-low p-space-xs rounded-xl flex items-center justify-between text-on-surface-variant">
+<button class="p-1 hover:text-on-surface transition-colors flex items-center">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<div class="flex items-center gap-2 font-meta-default text-meta-default">
+<span class="text-text-muted-light">Szene 1</span>
+<span class="text-text-muted-light">•</span>
+<span class="font-headline-emph text-headline-emph text-primary underline decoration-primary/40 underline-offset-4">Szene 2 (Fund)</span>
+<span class="text-text-muted-light">•</span>
+<span class="text-text-muted-light">Szene 3</span>
+</div>
+<button class="p-1 hover:text-on-surface transition-colors flex items-center">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+<!-- Manuscript Segment Box with High-Contrast Text -->
+<div class="relative bg-bg-canvas-light p- space-md rounded-xl shadow-inner text-on-surface leading-relaxed">
+<div class="flex items-center justify-between mb-3">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Manuskript-Ausschnitt (Live)</span>
+<span class="flex items-center gap-1 font-meta-default text-meta-default text-state-success">
+<span class="material-symbols-outlined text-[14px]">lock_clock</span>
+<span>Zeile 142–168</span>
+</span>
+</div>
+<div class="font-prose-editorial text-prose-editorial space-y-3 selection:bg-secondary-container">
+<p class="text-on-surface-variant text-[16px] leading-[26px]">
+              Der Staub schmeckte nach altem Trockeneis und ionisierter Kupferpaste. Maya kniete vor der zerborstenen Abdeckung von Terminal Vier. Die Notstrom-Dioden warfen flackernde Bernstein-Streifen über den rissigen Linoleum-Boden.
+            </p>
+<div class="relative p-2.5 rounded-lg bg-surface-container-highest shadow-sm">
+<p class="text-on-surface text-[16px] leading-[26px] italic">
+                »Maya, die Seriennummer auf der rückseitigen Plombe lautet 
+                <mark class="bg-secondary-container text-on-secondary-container px-1 py-0.5 rounded font-headline-emph not-italic">LC-89</mark>«, flüsterte ARIA über den Ohrkanal. »Keine reguläre Kennung des Horizon-Konsortiums. Die Spulen wurden von Hand gewickelt.«
+              </p>
+<!-- Inline Action Pill Floating from text -->
+<div class="mt-2.5 pt-2 flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-cover-sepia uppercase">Kausalitäts-Trigger erkannt</span>
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-cover-sepia text-on-primary font-label-default text-label-default shadow-sm hover:opacity-95 cursor-pointer">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span>Lore-Entität extrahieren</span>
+</span>
+</div>
+</div>
+<p class="text-on-surface-variant text-[16px] leading-[26px]">
+              Sie wischte mit dem Daumen über die gravierten Initialen: <em>L.C.</em> – Lin Chen. Ihr Bruder hatte dieses Relais vor dem großen Schweigen gebaut. Und es vibrierte noch immer auf einer stummen, warmen Frequenz.
+            </p>
+</div>
+</div>
+<!-- Entity Extraction Metadata Card -->
+<div class="bg-surface-container-low p-space-md rounded-xl space-y-2.5">
+<div class="flex items-center justify-between text-on-surface">
+<span class="font-headline-emph text-headline-emph">Szenische Referenzen</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">3 Verbindungen</span>
+</div>
+<div class="space-y-1.5 font-meta-default text-meta-default">
+<div class="flex items-center justify-between bg-surface-container-lowest px-2.5 py-1.5 rounded-lg shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-cover-sepia text-[16px]">person</span>
+<span class="font-medium text-on-surface">Dr. Lin Chen</span>
+</div>
+<span class="text-text-muted-light">Erwähnt in Kap. 1 • Status: Verschollen</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest px-2.5 py-1.5 rounded-lg shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-area-knowledge text-[16px]">domain</span>
+<span class="font-medium text-on-surface">Forschungsstation 7</span>
+</div>
+<span class="text-text-muted-light">Schauplatz Akt I</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Left Column Footer -->
+<div class="p-space-md bg-surface-container-low flex items-center justify-between text-text-muted-light font-meta-default text-meta-default">
+<span>Fokus-Modus: ⌘ + \</span>
+<button class="hover:text-primary transition-colors flex items-center gap-1 font-label-default text-label-default">
+<span class="material-symbols-outlined text-[15px]">history_edu</span>
+<span>Szenen-Revisionen</span>
+</button>
+</div>
+</section>
+<!-- COLUMN 2: Entity Genesis Live Preview & Canonical Dossier (Width: 5/12) -->
+<main class="col-span-12 lg:col-span-5 bg-bg-canvas-light flex flex-col justify-between overflow-y-auto">
+<div class="p-space-lg space-y-space-md">
+<!-- Header Ribbon: Synthesis State -->
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-cover-sepia text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[24px]">token</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Entitäten-Genesis</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-state-warning/15 text-state-warning font-meta-default text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-state-warning"></span>
+                  In Erstellung • Synthese 85%
+                </span>
+</div>
+<h1 class="font-headline-title text-headline-title text-on-surface mt-0.5">Dossier-Vorschau: LC-89</h1>
+</div>
+</div>
+<!-- Type Switcher Badges -->
+<div class="hidden sm:flex items-center bg-surface-container-high p-1 rounded-lg gap-1">
+<button class="px-2.5 py-1 rounded-md bg-cover-sepia text-on-primary font-label-default text-[12px] shadow-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">precision_manufacturing</span>
+<span>Artefakt</span>
+</button>
+<button class="px-2 py-1 rounded-md text-on-surface-variant hover:text-on-surface font-label-default text-[12px] transition-colors">Figur</button>
+<button class="px-2 py-1 rounded-md text-on-surface-variant hover:text-on-surface font-label-default text-[12px] transition-colors">Ort</button>
+<button class="px-2 py-1 rounded-md text-on-surface-variant hover:text-on-surface font-label-default text-[12px] transition-colors">Fraktion</button>
+</div>
+</div>
+<!-- Living Card: The Canonical Entity Blueprint -->
+<article class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-md relative overflow-hidden">
+<!-- Top Accent Line for Artifact Tier -->
+<div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cover-sepia via-amber-focus to-secondary"></div>
+<!-- Title Block with Real-time Edit Indicator -->
+<div class="space-y-1 pt-1">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-cover-sepia tracking-widest">Technologie-Relikt • Subraum-Hardware</span>
+<span class="font-meta-default text-meta-default text-state-success flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">check_circle</span>
+<span>Kausalität synchron</span>
+</span>
+</div>
+<h3 class="font-prose-heading-1 text-prose-heading-1 text-on-surface">Resonanz-Transponder LC-89</h3>
+<p class="font-headline-emph text-headline-emph text-text-muted-light italic">
+              Verschollenes Prototyp-Subraumrelais (Lin Chens persönliche Modifikation vor dem Horizon-Vorfall)
+            </p>
+</div>
+<!-- Entity Rich Image / Visual Artifact Render -->
+<div class="relative w-full h-44 rounded-lg overflow-hidden bg-cover-ink shadow-inner group">
+<img class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" data-alt="Close-up macro shot of a weathered vintage copper casing device with hand-soldered brass resonance coils and vacuum crystal tube. Dark cinematic studio lighting with amber backlighting, scientific literary atmosphere, engraved serial letters LC-89 on aged patina metal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlZaX5HV69lJ76S22FWaDJGaLLgQ7gasvPROQtOGWqQj-B_K5Qst_kVKoH_xCvppyrEw7wW-xqrWltRHkLlD6RdvVCm7dtav05wKI6W6Ayes82tucLVzJIOjSYhBfWtdyxKahDY3YkmlFi0V9HDtWG_ENcyAbPXuYhiNiIiWzI0ClM-TfzhqvU8g-8FzLaV3Lh4Se6YOna7fgpdjrnnx9nVgeegAp1s3txmVCRuj54"/>
+<div class="absolute inset-0 bg-gradient-to-t from-cover-ink via-cover-ink/30 to-transparent"></div>
+<div class="absolute bottom-2.5 left-3.5 right-3.5 flex items-center justify-between text-on-primary">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-amber-focus-dark text-[18px]">biotech</span>
+<span class="font-label-default text-label-default">Kupfer-Kryo-Relais • Prototyp #001</span>
+</div>
+<span class="font-meta-default text-meta-default bg-surface/20 backdrop-blur-md px-2 py-0.5 rounded text-surface">14.2008 Hz Trägerwelle</span>
+</div>
+</div>
+<!-- Extracted Fields Grid (Live Sync from Right Chat) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm pt-1">
+<div class="p-space-sm bg-surface-container-low rounded-lg space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Physische Gestalt</span>
+<p class="font-body-default text-body-default text-on-surface">
+                Grob gefrästes Kupfer-Kryo-Gehäuse (14×8 cm), plombierte Rückseite mit Stempel <em>LC-89</em>, handgewickelte Neusilber-Spulen und sichtbare Wärmeleitbrücken.
+              </p>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded-lg space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Kausale Primärfunktion</span>
+<p class="font-body-default text-body-default text-on-surface">
+                Schlüssel-Autorisierung für Primärschleuse 01 in Forschungsstation 7. Reagiert ausschließlich auf biometrische DNA-Resonanz (Lin &amp; Maya Chen).
+              </p>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded-lg space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Verknüpfte Schauplätze</span>
+<div class="flex flex-wrap gap-1 mt-1">
+<span class="px-2 py-0.5 bg-surface-container-highest rounded text-on-surface font-meta-default text-meta-default">Forschungsstation 7 (Ursprung)</span>
+<span class="px-2 py-0.5 bg-surface-container-highest rounded text-on-surface font-meta-default text-meta-default">Nevada-Trümmerfeld (Gegenwart)</span>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded-lg space-y-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Assoziierte Entitäten</span>
+<div class="flex flex-wrap gap-1 mt-1">
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded font-meta-default text-meta-default flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">person</span> Dr. Maya Chen
+                </span>
+<span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container rounded font-meta-default text-meta-default flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">person</span> Dr. Lin Chen
+                </span>
+</div>
+</div>
+</div>
+<!-- Kausalitäts-Check / Logic Consistency Meter -->
+<div class="bg-surface-container p-space-sm rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-state-success/20 text-state-success flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+</div>
+<div>
+<span class="font-headline-emph text-headline-emph text-on-surface block">Konsistenzprüfung: Bestanden</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Keine chronologischen Widersprüche zu Akt I • Kapitel 1</span>
+</div>
+</div>
+<span class="font-label-default text-label-default text-state-success font-semibold">100% Kanonisch</span>
+</div>
+</article>
+</div>
+<!-- Action Confirmation Dock Bar -->
+<div class="p-space-md bg-surface-container-lowest shadow-sm flex flex-wrap items-center justify-between gap-space-sm">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-default text-label-default transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">close</span>
+<span>Dossier verwerfen</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container text-primary hover:bg-surface-container-high font-label-default text-label-default transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+<span>Als Verknüpfung vormerken</span>
+</button>
+<button class="px-4 py-1.5 rounded-lg bg-cover-sepia hover:bg-primary-container text-on-primary font-label-default text-label-default shadow-sm transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">bookmark_add</span>
+<span>Als kanonische Entität speichern</span>
+</button>
+</div>
+</div>
+</main>
+<!-- COLUMN 3: Right Inspector & Interactive AI Dialogue Dock (Width: 4/12) -->
+<aside class="col-span-12 lg:col-span-4 bg-surface-container-lowest flex flex-col justify-between shadow-sm">
+<!-- Dock Header Tabs -->
+<div class="flex flex-col">
+<div class="flex items-center justify-between px-space-md pt-space-sm pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-cover-sepia text-[20px]">psychology</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Narrare Muse 4.5</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-cover-sepia/10 text-cover-sepia font-meta-default text-[11px] font-semibold">
+            Modell: Prosa-Architekt
+          </span>
+</div>
+<!-- Sub Tabs -->
+<div class="flex px-space-md gap-4">
+<button class="pb-2 font-label-default text-label-default text-cover-sepia border-b-2 border-cover-sepia flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">chat_bubble</span>
+<span>Lore-Genesis</span>
+</button>
+<button class="pb-2 font-label-default text-label-default text-text-muted-light hover:text-on-surface transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">rule</span>
+<span>Kausalitäts-Graph</span>
+</button>
+<button class="pb-2 font-label-default text-label-default text-text-muted-light hover:text-on-surface transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+<span>Kanon-Zitate</span>
+</button>
+</div>
+</div>
+<!-- Dialogue History Stream (Scrollable) -->
+<div class="p-space-md space-y-space-md overflow-y-auto max-h-[calc(100vh-16rem)] flex-1">
+<!-- Turn 1: Author Query -->
+<div class="flex flex-col items-end space-y-1">
+<div class="flex items-center gap-1.5 text-text-muted-light font-meta-default text-meta-default mb-0.5">
+<span>H. Calder (Autor)</span>
+<span>•</span>
+<span>14:22</span>
+</div>
+<div class="bg-primary text-on-primary p-space-sm rounded-xl rounded-tr-none max-w-[90%] shadow-sm">
+<p class="font-body-default text-body-default leading-relaxed">
+              Erstelle mir aus dem Fund in Szene 2 ein neues Artefakt-Dossier. Es soll der Transponder sein, den Lin vor dem Kollaps von Forschungsstation 7 heimlich modifiziert hat.
+            </p>
+</div>
+</div>
+<!-- Turn 2: AI Muse Synthesis Response -->
+<div class="flex flex-col items-start space-y-1">
+<div class="flex items-center gap-1.5 text-text-muted-light font-meta-default text-meta-default mb-0.5">
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+<span class="font-medium text-cover-sepia">Narrare Muse</span>
+<span>•</span>
+<span>14:23</span>
+</div>
+<div class="bg-surface-container-low text-on-surface p-space-sm rounded-xl rounded-tl-none space-y-2.5 max-w-[95%] shadow-sm">
+<p class="font-body-default text-body-default leading-relaxed">
+              Ich habe die Textstellen aus Kapitel 1 &amp; 2 analysiert. Der Entwurf für das Artefakt <strong>»Resonanz-Transponder LC-89«</strong> wurde initialisiert:
+            </p>
+<ul class="space-y-1 font-meta-default text-meta-default bg-surface-container-lowest p-2 rounded-lg">
+<li class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-cover-sepia text-[15px]">arrow_right</span>
+<span><strong>Typ:</strong> Artefakt &amp; Kognitive Subraum-Technologie</span>
+</li>
+<li class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-cover-sepia text-[15px]">arrow_right</span>
+<span><strong>Trägersignal:</strong> 14.2008 Hz (Subakustische Resonanz)</span>
+</li>
+<li class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-cover-sepia text-[15px]">arrow_right</span>
+<span><strong>Gehäuse:</strong> Handgravierte Plombe <em>LC-89</em></span>
+</li>
+</ul>
+<p class="font-body-default text-body-default text-on-surface-variant italic">
+              Welche Rolle soll das Relais im 3. Akt spielen? Soll es passiver Empfänger für ARIA bleiben oder als aktiver Schlüssel die versiegelten Schleusen von Station 7 öffnen?
+            </p>
+</div>
+</div>
+<!-- Turn 3: Author Refinement -->
+<div class="flex flex-col items-end space-y-1">
+<div class="flex items-center gap-1.5 text-text-muted-light font-meta-default text-meta-default mb-0.5">
+<span>H. Calder</span>
+<span>•</span>
+<span>14:25</span>
+</div>
+<div class="bg-primary text-on-primary p-space-sm rounded-xl rounded-tr-none max-w-[90%] shadow-sm">
+<p class="font-body-default text-body-default leading-relaxed">
+              Er soll als biometrischer Schlüssel dienen, den nur Mayas und Lins geteilte DNA-Resonanz triggern kann. Keine fremde Horizon-Crew darf ihn bedienen können.
+            </p>
+</div>
+</div>
+<!-- Turn 4: AI Resolution & Update Confirmation -->
+<div class="flex flex-col items-start space-y-1">
+<div class="flex items-center gap-1.5 text-text-muted-light font-meta-default text-meta-default mb-0.5">
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+<span class="font-medium text-cover-sepia">Narrare Muse</span>
+<span>•</span>
+<span>Gerade eben</span>
+</div>
+<div class="bg-surface-container-low text-on-surface p-space-sm rounded-xl rounded-tl-none space-y-2 max-w-[95%] shadow-sm">
+<p class="font-body-default text-body-default leading-relaxed">
+              Perfekt. Das schließt elegant das Kausalitätsloch in Akt III (Infiltration der Primärschleuse). Folgende Spezifikationen sind im Live-Dossier aktualisiert:
+            </p>
+<div class="bg-state-success/10 p-2 rounded-lg space-y-1 text-on-surface font-meta-default text-meta-default">
+<div class="flex items-center gap-1.5 text-state-success">
+<span class="material-symbols-outlined text-[15px]">done</span>
+<span><strong>Schlüssel-Funktion:</strong> Schleuse 01 (Forschungsstation 7)</span>
+</div>
+<div class="flex items-center gap-1.5 text-state-success">
+<span class="material-symbols-outlined text-[15px]">done</span>
+<span><strong>DNS-Resonanzkopplung:</strong> Exklusiv Chen-Blutlinie</span>
+</div>
+</div>
+<p class="font-label-default text-label-default text-primary">
+              Möchtest du das Relais jetzt direkt mit Dr. Lin Chen verknüpfen?
+            </p>
+</div>
+</div>
+<!-- Quick Interactive Chips / Assistant Suggestions -->
+<div class="space-y-1.5 pt-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Vorgeschlagene Kausal-Aktionen:</span>
+<div class="flex flex-col gap-1.5">
+<button class="w-full text-left px-3 py-2 rounded-lg bg-surface-container-high hover:bg-secondary-container hover:text-on-secondary-container transition-colors font-label-default text-label-default flex items-center justify-between group">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-cover-sepia">add_link</span>
+<span>Ja, im Graphen verknüpfen (+2 Relationen)</span>
+</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</button>
+<button class="w-full text-left px-3 py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors font-label-default text-label-default flex items-center justify-between group">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-text-muted-light">tune</span>
+<span>Akustische Signatur (14.2008 Hz) genauer beschreiben</span>
+</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</button>
+<button class="w-full text-left px-3 py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors font-label-default text-label-default flex items-center justify-between group">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-state-warning">shield</span>
+<span>Konsistenz-Regel: »Transponder kann nicht dupliziert werden«</span>
+</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Dialogue Prompt Input Box -->
+<div class="p-space-md bg-surface-container-low shadow-sm space-y-2">
+<div class="relative bg-surface-container-lowest rounded-xl shadow-inner p-2">
+<textarea class="w-full bg-transparent resize-none font-body-default text-body-default text-on-surface placeholder:text-text-muted-light outline-none" placeholder="Entität weiter verfeinern (z.B. Material, Geruch, Störsignale)..." rows="2"></textarea>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1.5 text-text-muted-light">
+<button class="p-1 hover:text-on-surface transition-colors" title="Manuskript-Referenz anhängen">
+<span class="material-symbols-outlined text-[18px]">attach_file</span>
+</button>
+<button class="p-1 hover:text-on-surface transition-colors" title="Lore-Graph anheften">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+</button>
+<span class="font-meta-default text-[11px] text-text-muted-light">Modus: Dialogische Genesis</span>
+</div>
+<button class="px-3 py-1 bg-cover-sepia hover:bg-primary-container text-on-primary rounded-lg font-label-default text-label-default flex items-center gap-1 transition-all shadow-sm">
+<span>Senden</span>
+<span class="material-symbols-outlined text-[15px]">send</span>
+</button>
+</div>
+</div>
+<div class="flex items-center justify-between px-1 text-text-muted-light font-meta-default text-[11px]">
+<span>Eingabe mit ↵ Return senden • Shift + ↵ für Zeilenumbruch</span>
+<span class="text-state-success font-medium">Muse bereit</span>
+</div>
+</div>
+</aside>
+</div>
+</div></main></div></body></html>

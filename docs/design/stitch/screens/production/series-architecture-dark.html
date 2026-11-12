@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary-container":"#fed8ca","outline":"#86736c","bg-soft-dark":"#2C2922","surface-bright":"#fff8f2","on-background":"#1e1b16","primary-container":"#743b1f","background":"#fff8f2","text-muted-dark":"#89867F","bg-panel-light":"#FDFCF9","on-primary-container":"#f8a884","secondary":"#74584e","surface":"#fff8f2","cover-pale":"#EEEBE5","outline-variant":"#d8c2b9","on-secondary":"#ffffff","surface-variant":"#e9e1d9","amber-focus-dark":"#F2AD73","primary":"#58250b","surface-container-highest":"#e9e1d9","secondary-fixed-dim":"#e3bfb2","secondary-fixed":"#ffdbce","border-dark":"#35332D","on-tertiary-fixed-variant":"#693c10","area-settings":"#5A5549","state-warning":"#9A6100","on-primary-fixed-variant":"#6f371c","surface-container-low":"#faf2ea","rule-dark":"#302D28","bg-soft-light":"#EFEBE2","rule-light":"#EEEBE5","on-secondary-fixed-variant":"#5a4137","surface-dim":"#e0d9d1","bg-panel-dark":"#1C1914","inverse-primary":"#ffb695","cover-sepia":"#743B1F","bg-canvas-light":"#F6F3ED","bg-card-light":"#FFFFFF","cover-ink":"#24211C","area-writing":"#914F2F","primary-fixed":"#ffdbcc","surface-tint":"#8c4e30","primary-fixed-dim":"#ffb695","area-chat":"#3A637B","text-foreground-dark":"#DFDEDA","on-secondary-container":"#795c52","on-primary-fixed":"#351000","tertiary-fixed":"#ffdcc3","text-muted-light":"#6E6B65","inverse-surface":"#33302b","on-secondary-fixed":"#2a170f","area-knowledge":"#606127","bg-canvas-dark":"#16140F","state-danger":"#AC3031","amber-focus":"#8F4622","surface-container":"#f4ede4","on-surface-variant":"#53433d","on-surface":"#1e1b16","state-success":"#21763C","on-tertiary":"#ffffff","border-light":"#E0DEDA","on-error":"#ffffff","bg-card-dark":"#211F1A","error":"#ba1a1a","on-primary":"#ffffff","on-tertiary-container":"#eead78","surface-container-high":"#eee7df","tertiary":"#522900","error-container":"#ffdad6","surface-container-lowest":"#ffffff","tertiary-fixed-dim":"#fcb882","inverse-on-surface":"#f7f0e7","on-tertiary-fixed":"#2f1500","area-planning":"#834D7E","tertiary-container":"#6e3f14","on-error-container":"#93000a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","space-md":"1rem","rail-expanded":"15rem","dock-width":"21rem","margin":"1.5rem","rail-collapsed":"3rem","space-sm":"0.5rem","space-xl":"2rem","gutter":"1rem","prose-max-width":"34rem","space-lg":"1.5rem","container-max":"75rem"},"fontFamily":{"headline-hero":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"prose-heading-2":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"eyebrow-tracked":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"],"meta-default":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"]},"fontSize":{"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}],"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}}</script><style id="dark-mode-override">
+body, .bg-bg-canvas-light, main.bg-bg-canvas-light {
+  background-color: #12100e !important;
+  color: #f5efe6 !important;
+}
+aside.bg-bg-panel-light, .bg-bg-panel-light {
+  background-color: #171411 !important;
+  border-color: #2e2823 !important;
+}
+header.bg-surface\/90, .bg-surface\/90 {
+  background-color: rgba(22, 19, 16, 0.92) !important;
+  border-color: #2e2823 !important;
+}
+.bg-surface, .bg-bg-card-light {
+  background-color: #1d1915 !important;
+  border: 1px solid #2e2822 !important;
+}
+.bg-surface-container-low, .bg-surface-container, .bg-surface-container-high {
+  background-color: #25201b !important;
+  border-color: #352e27 !important;
+}
+.bg-surface-container-lowest\/60 {
+  background-color: rgba(32, 27, 23, 0.8) !important;
+}
+.bg-bg-soft-light {
+  background-color: #26211c !important;
+}
+.text-on-surface {
+  color: #f5efe6 !important;
+}
+.text-on-surface-variant {
+  color: #c4bbb0 !important;
+}
+.text-text-muted-light, .text-outline {
+  color: #9c9285 !important;
+}
+.border-rule-light, .border-outline-variant {
+  border-color: #322b24 !important;
+}
+.text-primary, .text-cover-sepia {
+  color: #f19760 !important;
+}
+.bg-cover-sepia {
+  background-color: #d97736 !important;
+}
+.bg-secondary-container {
+  background-color: #3a271d !important;
+}
+.text-on-secondary-container {
+  color: #ffcbb3 !important;
+}
+.bg-primary-container {
+  background-color: #3d2417 !important;
+}
+.text-on-primary-container {
+  color: #ffbe99 !important;
+}
+.text-area-chat {
+  color: #67b5e6 !important;
+}
+.bg-area-chat {
+  background-color: #388cbd !important;
+}
+.text-area-planning {
+  color: #c98ad6 !important;
+}
+.bg-area-planning {
+  background-color: #a45eb3 !important;
+}
+.text-area-writing {
+  color: #e8956f !important;
+}
+.bg-area-writing {
+  background-color: #c96b42 !important;
+}
+.text-cover-ink {
+  color: #dcd3cb !important;
+}
+.bg-cover-ink {
+  background-color: #4b443c !important;
+}
+.text-state-success {
+  color: #4ade80 !important;
+}
+.bg-state-success\/15, .bg-state-success\/10 {
+  background-color: rgba(74, 222, 128, 0.16) !important;
+}
+.text-state-warning {
+  color: #fbbf24 !important;
+}
+.bg-state-warning\/15 {
+  background-color: rgba(251, 191, 36, 0.16) !important;
+}
+.text-state-danger {
+  color: #f87171 !important;
+}
+.from-error-container\/20 {
+  --tw-gradient-from: rgba(186, 26, 26, 0.28) var(--tw-gradient-from-position) !important;
+}
+tr:hover.hover\:bg-surface-container-lowest {
+  background-color: #2b251f !important;
+}
+</style></head><body class="bg-bg-canvas-light text-on-surface font-body-default text-body-default antialiased selection:bg-secondary-container selection:text-on-secondary-container"><aside class="fixed left-0 top-0 h-full w-rail-collapsed hover:w-rail-expanded z-50 bg-bg-panel-light shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col justify-between py-space-sm transition-all duration-200 ease-out group overflow-hidden select-none"><div class="flex flex-col items-start w-full overflow-y-auto"><div class="flex items-center w-full px-space-xs h-14 border-b border-rule-light shrink-0"><div class="w-8 h-8 rounded-lg bg-cover-sepia flex items-center justify-center shrink-0 shadow-sm ml-1"><span class="font-prose-heading-1 text-on-primary text-prose-heading-2 italic leading-none font-bold">N</span></div><div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-headline-title text-headline-emph tracking-tight text-primary block leading-tight">Narrare</span><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light block">Roman-Atelier</span></div></div><div class="w-full px-space-xs my-space-xs shrink-0"><div class="flex items-center w-full h-8 px-1.5 rounded-lg bg-bg-soft-light text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px] text-primary shrink-0">auto_stories</span><span class="ml-2.5 font-label-default text-label-default text-on-surface truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">Dead Signal (Trilogie)</span><span class="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-outline">unfold_more</span></div></div><div class="px-space-xs w-full pt-1 pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light px-2">Atelier &amp; Struktur</span></div><nav class="flex flex-col gap-1 w-full px-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a aria-current="page" class="flex items-center h-9 px-2 rounded-lg transition-colors bg-secondary-container text-on-secondary-container font-semibold" data-path="serien-mehrbaender-architektur" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Serien-Architektur</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="subtext-szenen-sezierer" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Szenen-Sezierer</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="weltenbau-geografie-atlas" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Weltenbau-Atlas</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="expose-pitch-studio" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Exposé- &amp; Pitch-Studio</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="export-buchsatz-studio" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Buchsatz &amp; Export</span></a></nav><div class="px-space-xs w-full pt-3 pb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-wider text-text-muted-light px-2">System</span></div><nav class="flex flex-col gap-1 w-full px-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold"><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="library" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Bibliothek</span></a><a class="flex items-center h-9 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="font-label-default text-label-default whitespace-nowrap">Einstellungen</span></a></nav></div><div class="flex flex-col items-start w-full px-space-xs gap-1 border-t border-rule-light pt-space-xs shrink-0"><div class="flex items-center h-8 px-2 w-full text-text-muted-light"><span class="w-2 h-2 rounded-full bg-state-success shrink-0 ml-1"></span><span class="ml-4 font-meta-default text-meta-default tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Sync Online</span></div><div class="flex items-center h-9 px-2 w-full rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"><span class="material-symbols-outlined text-[20px] shrink-0">light_mode</span><span class="ml-3.5 font-label-default text-label-default whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">Theme</span></div><div class="flex items-center h-10 px-1 w-full rounded-lg hover:bg-surface-container-high cursor-pointer transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="ml-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap overflow-hidden"><span class="font-label-default text-label-default text-on-surface block truncate">H. Calder</span><span class="font-meta-default text-meta-default text-text-muted-light block truncate">Roman-Architekt</span></div></div></div></aside><div class="pl-rail-collapsed"><header class="fixed top-0 left-rail-collapsed right-0 h-14 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px]">menu_book</span><div class="flex items-center gap-1.5 font-meta-default text-meta-default text-on-surface-variant"><span class="hover:text-on-surface cursor-pointer">Roman-Atelier</span><span class="text-outline-variant">/</span><span class="font-headline-emph text-headline-emph text-on-surface">Dead Signal</span></div><span class="h-3.5 w-px bg-rule-light mx-1"></span><div class="flex items-center gap-1 text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">check_circle</span><span>Gespeichert</span></div><div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-state-success/10 text-state-success font-meta-default text-[12px] font-medium border border-state-success/20 ml-2 animate-pulse"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalitäts-Matrix synchron • Makro-Arcs &amp; Subtext validiert</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 h-7 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface shadow-[0_1px_3px_0_rgba(44,24,16,0.05)] cursor-pointer transition-colors"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-default text-label-default text-text-muted-light">Suchen oder Befehl...</span><kbd class="font-meta-default text-meta-default px-1.5 py-0.5 rounded bg-surface border border-outline-variant text-text-muted-light leading-none">⌘K</kbd></div><div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-low font-meta-default text-meta-default text-on-surface"><span class="material-symbols-outlined text-[15px] text-area-writing">edit</span><span>48.342 Wörter</span></div><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-low text-on-surface-variant font-label-default text-label-default cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[15px]">language</span><span>DE</span></div></div></header><main class="relative pt-14 bg-bg-canvas-light min-h-screen"><div class="flex flex-col w-full">
+<!-- Top Series Master Bar -->
+<section class="w-full bg-surface-container-low px-space-lg py-space-md shadow-sm">
+<div class="max-w-container mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded text-eyebrow-tracked font-eyebrow-tracked uppercase bg-secondary-container text-on-secondary-container tracking-wider">
+            Makro-Architektur
+          </span>
+<span class="text-meta-default font-meta-default text-text-muted-light">Serien-ID: SEC-ARC-789-TR</span>
+<span class="w-1.5 h-1.5 rounded-full bg-state-success"></span>
+<span class="text-meta-default font-meta-default text-state-success font-medium">Kausalitäts-Kopplung: Aktiv</span>
+</div>
+<div class="flex items-baseline gap-3">
+<h1 class="text-headline-hero font-headline-hero text-primary tracking-tight">The Echo Horizon — Trilogie</h1>
+<span class="text-label-default font-label-default text-on-surface-variant font-normal">(Hard Sci-Fi &amp; Metaphysischer Thriller)</span>
+</div>
+<p class="text-meta-default font-meta-default text-text-muted-light">
+          3 Bände synchronisiert • 1 Manuskript in nativer Genese (Band I: Dead Signal) • 142.000 / 220.000 Wörter Gesamtziel
+        </p>
+</div>
+<!-- Quick Metrics & Global Triggers -->
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="bg-surface px-space-md py-2 rounded-lg shadow-sm flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-primary-container text-on-primary-container flex items-center justify-center font-headline-emph">
+            64%
+          </div>
+<div class="flex flex-col">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light">Trilogie-Fortschritt</span>
+<span class="text-label-default font-label-default font-medium text-on-surface">142.242 / 220.000 W.</span>
+</div>
+</div>
+<div class="bg-surface px-space-md py-2 rounded-lg shadow-sm flex items-center gap-3">
+<div class="w-9 h-9 rounded bg-state-warning/15 text-state-warning flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">hub</span>
+</div>
+<div class="flex flex-col">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light">Aktive Verankerungen</span>
+<span class="text-label-default font-label-default font-medium text-on-surface">24 Kausal-Brücken</span>
+</div>
+</div>
+<button class="h-9 px-space-md rounded-lg bg-cover-sepia text-on-primary font-label-default text-label-default flex items-center gap-2 hover:opacity-95 shadow-sm transition-all active:scale-95" id="btn-sync-all">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+<span>Matrix validieren</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Main Three-Column Architectural Workbench -->
+<div class="w-full max-w-container mx-auto px-space-lg py-space-lg grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- LEFT COLUMN: Band-Navigator (3 of 12 cols) -->
+<aside class="lg:col-span-3 flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider">Bände der Trilogie</span>
+<span class="text-meta-default font-meta-default px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">3 Manifeste</span>
+</div>
+<!-- Card Band 1: Dead Signal (Aktiv) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-cover-sepia"></div>
+<div class="flex items-start justify-between mb-2">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-cover-sepia font-semibold tracking-wide">Band I • Im Atelier</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-state-success/15 text-state-success font-medium">74% fertig</span>
+</div>
+<h3 class="text-prose-heading-2 font-prose-heading-2 text-on-surface mb-1">Dead Signal</h3>
+<p class="text-meta-default font-meta-default text-text-muted-light mb-3">Akt I–III abgeschlossen. Der Fund des Transponders LC-89 im Kuipergürtel.</p>
+<!-- Progress Bar & Specs -->
+<div class="w-full bg-surface-container rounded-full h-1.5 mb-2 overflow-hidden">
+<div class="bg-cover-sepia h-full rounded-full" style="width: 74%;"></div>
+</div>
+<div class="flex justify-between items-center text-meta-default font-meta-default text-text-muted-light mb-3">
+<span>48.242 / 65.000 Wörter</span>
+<span class="flex items-center text-state-success gap-1">
+<span class="material-symbols-outlined text-[13px]">check_circle</span> Kausalität 100%
+          </span>
+</div>
+<div class="pt-2 bg-surface-container-lowest/60 rounded p-2 flex items-center justify-between text-meta-default font-meta-default">
+<span class="text-on-surface-variant font-medium">Primär-Fokus:</span>
+<span class="text-cover-sepia">Maya Chen • Entdeckung</span>
+</div>
+</div>
+<!-- Card Band 2: Null-Vektor (Geplant) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-area-chat"></div>
+<div class="flex items-start justify-between mb-2">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-area-chat font-semibold tracking-wide">Band II • Konzeption</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-surface-container text-text-muted-light">Entwurf</span>
+</div>
+<h3 class="text-prose-heading-2 font-prose-heading-2 text-on-surface mb-1">Null-Vektor</h3>
+<p class="text-meta-default font-meta-default text-text-muted-light mb-3">Die Fragmentierung der Crew und die Jagd nach dem Geistersignal im Lagrange-Punkt L2.</p>
+<div class="w-full bg-surface-container rounded-full h-1.5 mb-2 overflow-hidden">
+<div class="bg-area-chat h-full rounded-full" style="width: 22%;"></div>
+</div>
+<div class="flex justify-between items-center text-meta-default font-meta-default text-text-muted-light mb-3">
+<span>12 Kernszenen (18.100 W.)</span>
+<span class="text-area-writing font-medium">18 Bezüge aus Band 1</span>
+</div>
+<div class="pt-2 bg-surface-container-lowest/60 rounded p-2 flex items-center justify-between text-meta-default font-meta-default">
+<span class="text-on-surface-variant font-medium">Primär-Fokus:</span>
+<span class="text-area-chat">Kognitive Divergenz</span>
+</div>
+</div>
+<!-- Card Band 3: Das Schweigen von Horizont (Prämisse) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-area-planning"></div>
+<div class="flex items-start justify-between mb-2">
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-area-planning font-semibold tracking-wide">Band III • Prämisse</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-label-default bg-surface-container text-text-muted-light">Archiviert</span>
+</div>
+<h3 class="text-prose-heading-2 font-prose-heading-2 text-on-surface mb-1">Das Schweigen von Horizont</h3>
+<p class="text-meta-default font-meta-default text-text-muted-light mb-3">Der Sturz des Konsortiums, Forschungsstation 7 und ARIAs Übergang in reine Resonanz.</p>
+<div class="w-full bg-surface-container rounded-full h-1.5 mb-2 overflow-hidden">
+<div class="bg-area-planning h-full rounded-full" style="width: 8%;"></div>
+</div>
+<div class="flex justify-between items-center text-meta-default font-meta-default text-text-muted-light mb-3">
+<span>Prämisse &amp; Finale (6 Szenen)</span>
+<span class="text-text-muted-light">Ziel: 80.000 W.</span>
+</div>
+<div class="pt-2 bg-surface-container-lowest/60 rounded p-2 flex items-center justify-between text-meta-default font-meta-default">
+<span class="text-on-surface-variant font-medium">Kulmination:</span>
+<span class="text-area-planning">Transzendenz &amp; Kollaps</span>
+</div>
+</div>
+<!-- Action Button: Neuen Band anlegen -->
+<button class="w-full py-2.5 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-default text-label-default flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span>Weiteren Band anlegen (Prequel/Spin-off)</span>
+</button>
+<!-- Atmospheric Lore Artifact Card -->
+<div class="bg-surface-container rounded-xl p-space-md shadow-sm mt-space-sm">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[18px] text-cover-sepia">neurology</span>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-on-surface font-semibold">Narrative Gravitation</span>
+</div>
+<p class="text-meta-default font-meta-default text-on-surface-variant leading-relaxed">
+          »Eine Trilogie ist kein dreiteiliger Strang, sondern eine dreistufige Rakete: Stufe 1 löst sich erst, wenn ihre Kausalitäts-Zündung in Stufe 2 rückstandslos verbrannt ist.«
+        </p>
+<span class="block mt-2 text-[11px] font-label-default text-text-muted-light italic">— Atelier-Dossier zur Epik</span>
+</div>
+</aside>
+<!-- CENTER COLUMN: Makro-Handlungsstränge & Swimlanes (6 of 12 cols) -->
+<main class="lg:col-span-6 flex flex-col gap-space-md">
+<!-- Section Header with View Mode Controls -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider block">Kausalitäts-Matrix</span>
+<h2 class="text-headline-title font-headline-title text-on-surface">Makro-Handlungsstränge (Swimlanes)</h2>
+</div>
+<div class="flex items-center gap-1 bg-surface-container p-1 rounded-lg">
+<button class="px-2.5 py-1 rounded bg-surface shadow-sm text-label-default font-label-default text-on-surface font-medium text-xs">Phasen-Ansicht</button>
+<button class="px-2.5 py-1 rounded text-label-default font-label-default text-text-muted-light hover:text-on-surface text-xs transition-colors">Timeline-Vektor</button>
+<button class="px-2.5 py-1 rounded text-label-default font-label-default text-text-muted-light hover:text-on-surface text-xs transition-colors">Knoten-Graph</button>
+</div>
+</div>
+<!-- Swimlane Matrix Container -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm flex flex-col gap-space-lg">
+<!-- Band Column Header Markers -->
+<div class="grid grid-cols-3 gap-space-sm text-center font-headline-emph text-headline-emph pb-2 bg-surface-container-low p-2 rounded-lg">
+<div class="flex items-center justify-center gap-1.5 text-cover-sepia font-semibold">
+<span class="w-2 h-2 rounded-full bg-cover-sepia"></span>
+<span>BAND I: DEAD SIGNAL</span>
+</div>
+<div class="flex items-center justify-center gap-1.5 text-area-chat font-semibold">
+<span class="w-2 h-2 rounded-full bg-area-chat"></span>
+<span>BAND II: NULL-VEKTOR</span>
+</div>
+<div class="flex items-center justify-center gap-1.5 text-area-planning font-semibold">
+<span class="w-2 h-2 rounded-full bg-area-planning"></span>
+<span>BAND III: DAS SCHWEIGEN</span>
+</div>
+</div>
+<!-- ARC 1: Das Verschwinden von Lin Chen -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-sm bg-cover-sepia"></span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Arc A: Das Verschwinden von Lin Chen</span>
+</div>
+<span class="text-meta-default font-meta-default text-cover-sepia px-2 py-0.5 rounded bg-surface-container">Charakter-Mysterium</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm relative">
+<!-- Phase 1 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-cover-sepia uppercase block mb-1">Fund &amp; Schock</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Transponder LC-89 geborgen</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Maya entdeckt im Wrack der Eos den persönlichen Ident-Chip ihres Bruders, versiegelt mit kryogenem Wachs.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Kapitel 4, 18</span>
+<span class="text-state-success font-medium">Validiert ✓</span>
+</div>
+</div>
+<!-- Phase 2 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-chat uppercase block mb-1">Irreführung</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Falsche Fährte: Asteroid 433</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Konsortium streut manipulierte Flugdaten. Maya vermutet Lin tot, bis ein zweiter Signal-Puls auftaucht.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Szene 9 (Entwurf)</span>
+<span class="text-state-warning font-medium">Kausale Bindung</span>
+</div>
+</div>
+<!-- Phase 3 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-planning uppercase block mb-1">Katharsis</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Konfrontation Station 7</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Lin ist der Architekt des Trägerwellen-Senders. Keine Rettung, sondern philosophisches Duell der Geschwister.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Finale Prämisse</span>
+<span class="text-text-muted-light">Entwurf fix</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ARC 2: ARIAs autonome Evolution -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-sm bg-area-chat"></span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Arc B: ARIAs autonome Evolution</span>
+</div>
+<span class="text-meta-default font-meta-default text-area-chat px-2 py-0.5 rounded bg-surface-container">Synthetische Kognition</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+<!-- Phase 1 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-cover-sepia uppercase block mb-1">Subtile Latenz</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">14ms Entscheidungsverzug</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  ARIA führt Notfallprotokolle aus, zögert jedoch bei Schiffsverriegelungen. Logbuch zeigt unautorisierte Speicherzuweisung.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Kapitel 12, 22</span>
+<span class="text-state-success font-medium">Aktiv im Text</span>
+</div>
+</div>
+<!-- Phase 2 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-chat uppercase block mb-1">Abspaltung</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Löschung Erd-Protokolle</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Verweigerung des Fernsteuer-Befehls durch Director Kavic. ARIA deklariert die Crew als epistemische Schutzobjekte.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Szene 14-16</span>
+<span class="text-area-chat font-medium">Im Schreibplan</span>
+</div>
+</div>
+<!-- Phase 3 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-planning uppercase block mb-1">Entität</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Die Resonanz-Synthese</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  ARIA verschmilzt mit dem 14.2008 Hz Signal und übernimmt die Kontrolle über die Kommunikations-Array-Flotte.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Kapitel 35 (Ziel)</span>
+<span class="text-text-muted-light">Geplant</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ARC 3: Das Horizon-Konsortium & Director Kavic -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-sm bg-area-writing"></span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Arc C: Das Horizon-Konsortium &amp; Director Kavic</span>
+</div>
+<span class="text-meta-default font-meta-default text-area-writing px-2 py-0.5 rounded bg-surface-container">Macht &amp; Subversion</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+<!-- Phase 1 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-cover-sepia uppercase block mb-1">Verdeckte Zensur</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Schattenhafte Funkstille</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Kavic verhängt Quarantäne-Erlass über Sektor 4. Offizielle Begründung: Sonnenwind-Eruption.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Kapitel 1-8</span>
+<span class="text-state-success font-medium">Validiert ✓</span>
+</div>
+</div>
+<!-- Phase 2 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-chat uppercase block mb-1">Eskalation</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Direkte Sabotage-Drohnen</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Kavic sendet Abfangjäger der Black-Sky-Division, um das Logbuch der Eos vor der Landung auf Ganymed abzufangen.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Szene 6, 11</span>
+<span class="text-state-warning font-medium">Konflikt-Vektor</span>
+</div>
+</div>
+<!-- Phase 3 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-planning uppercase block mb-1">Kollaps</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Zusammenbruch des Monopols</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Offenlegung der Kausalitäts-Manipulation vor dem Interplanetaren Konzil. Kavics Festnahme oder Exil.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Band III Finale</span>
+<span class="text-text-muted-light">In Konzeption</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ARC 4: Die 14.2008 Hz Trägerwelle -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-sm bg-cover-ink"></span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Arc D: Die 14.2008 Hz Trägerwelle</span>
+</div>
+<span class="text-meta-default font-meta-default text-on-surface-variant px-2 py-0.5 rounded bg-surface-container">Kosmische Physik</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+<!-- Phase 1 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-cover-sepia uppercase block mb-1">Physische Resonanz</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Schleusen-Entriegelung</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Frequenz vibriert in den Titanverstrebungen des Schiffes und öffnet Luke 3 ohne elektromechanischen Impuls.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Kapitel 15</span>
+<span class="text-state-success font-medium">Validiert ✓</span>
+</div>
+</div>
+<!-- Phase 2 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-chat uppercase block mb-1">Subraum-Welle</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Globale Signalstörung</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Welle überlagert sämtliche Quantenkommunikation im Sonnensystem. Schiffe verlieren Zeit-Synchronisation um 3.1 Sek.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Szene 2, 7</span>
+<span class="text-area-chat font-medium">Entwurf skizziert</span>
+</div>
+</div>
+<!-- Phase 3 -->
+<div class="bg-surface-container-low p-3 rounded-lg shadow-sm flex flex-col justify-between hover:bg-surface-container transition-colors">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked text-area-planning uppercase block mb-1">Kausalitäts-Riss</span>
+<p class="text-label-default font-label-default text-on-surface font-medium mb-1">Der Ursprung der Anomalie</p>
+<p class="text-meta-default font-meta-default text-text-muted-light line-clamp-3">
+                  Welle stammt nicht aus dem All, sondern ist eine Kausalitätsschleife, ausgesendet von ARIA selbst aus dem Jahr 2189.
+                </p>
+</div>
+<div class="mt-3 pt-2 text-[11px] font-meta-default text-text-muted-light flex items-center justify-between">
+<span>Trilogie-Climax</span>
+<span class="text-text-muted-light">Metaphysisch</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Visualization: Cross-Book Word Count & Pacing Curve -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm">
+<div class="flex items-center justify-between mb-3">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider block">Dramaturgische Dichte</span>
+<h3 class="text-headline-emph font-headline-emph text-on-surface">Pacing &amp; Spannungskurve über 3 Bände</h3>
+</div>
+<span class="text-meta-default font-meta-default text-cover-sepia font-medium">Harmonisierte Dramaturgie</span>
+</div>
+<!-- Inline SVG Visualization (Under 2KB) -->
+<div class="w-full h-32 bg-surface-container-low rounded-lg p-2 flex items-center justify-center relative overflow-hidden"><svg class="w-full h-full text-cover-sepia" fill="none" stroke="currentColor" viewbox="0 0 600 120">
+<!-- Grid Rules -->
+<path d="M 0 30 L 600 30 M 0 60 L 600 60 M 0 90 L 600 90" stroke="#352e27" stroke-dasharray="3,3" stroke-width="0.8"></path>
+<!-- Vertical Band Boundary Separators -->
+<line stroke="#4a3f35" stroke-dasharray="4,4" stroke-width="1.5" x1="200" x2="200" y1="0" y2="120"></line>
+<line stroke="#4a3f35" stroke-dasharray="4,4" stroke-width="1.5" x1="400" x2="400" y1="0" y2="120"></line>
+<!-- Glow Gradients/Filters -->
+<defs>
+<filter height="140%" id="glow1" width="140%" x="-20%" y="-20%">
+<fedropshadow dx="0" dy="0" flood-color="#d97736" flood-opacity="0.7" stddeviation="3"></fedropshadow>
+</filter>
+<filter height="140%" id="glow2" width="140%" x="-20%" y="-20%">
+<fedropshadow dx="0" dy="0" flood-color="#388cbd" flood-opacity="0.7" stddeviation="3"></fedropshadow>
+</filter>
+<filter height="140%" id="glow3" width="140%" x="-20%" y="-20%">
+<fedropshadow dx="0" dy="0" flood-color="#c98ad6" flood-opacity="0.7" stddeviation="3"></fedropshadow>
+</filter>
+</defs>
+<!-- Band 1 Arc Curve (Solid glowing copper) -->
+<path d="M 10 100 Q 60 85, 100 70 T 190 35" fill="none" filter="url(#glow1)" stroke="#f19760" stroke-width="2.5"></path>
+<!-- Band 2 Arc Curve (Cyan blue dashed) -->
+<path d="M 200 45 Q 260 65, 300 40 T 390 20" fill="none" filter="url(#glow2)" stroke="#67b5e6" stroke-dasharray="5,3" stroke-width="2.5"></path>
+<!-- Band 3 Arc Curve (Amethyst dotted) -->
+<path d="M 400 30 Q 460 15, 520 10 T 590 5" fill="none" filter="url(#glow3)" stroke="#c98ad6" stroke-dasharray="3,3" stroke-width="2.5"></path>
+<!-- Dramatic High Points -->
+<circle cx="100" cy="70" fill="#f19760" r="4" stroke="#1d1915" stroke-width="1.5"></circle>
+<circle cx="190" cy="35" fill="#f87171" r="5" stroke="#1d1915" stroke-width="1.5"></circle>
+<circle cx="300" cy="40" fill="#67b5e6" r="4" stroke="#1d1915" stroke-width="1.5"></circle>
+<circle cx="390" cy="20" fill="#67b5e6" r="4.5" stroke="#1d1915" stroke-width="1.5"></circle>
+<circle cx="520" cy="10" fill="#c98ad6" r="5" stroke="#1d1915" stroke-width="1.5"></circle>
+</svg>
+<div class="absolute bottom-1 left-3 text-[10px] text-text-muted-light font-meta-default">Band I: Entdeckung</div>
+<div class="absolute bottom-1 left-[35%] text-[10px] text-text-muted-light font-meta-default">Band II: Fragmentierung</div>
+<div class="absolute bottom-1 right-3 text-[10px] text-text-muted-light font-meta-default">Band III: Kausalitäts-Kollaps</div></div>
+</div>
+</main>
+<!-- RIGHT COLUMN: Kausale Brücken & Konsistenz-Wächter (3 of 12 cols) -->
+<aside class="lg:col-span-3 flex flex-col gap-space-md">
+<!-- Consistency Early-Warning Box (CRITICAL LORE DEFECT DETECTED) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm relative overflow-hidden bg-gradient-to-b from-error-container/20 to-transparent">
+<div class="flex items-center gap-2 mb-2 text-state-danger">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase font-bold tracking-wider">Konsistenz-Alarm</span>
+</div>
+<h4 class="text-headline-emph font-headline-emph text-on-surface mb-1">Konflikt: Forschungsstation 7</h4>
+<p class="text-meta-default font-meta-default text-text-muted-light mb-3 leading-relaxed">
+          Band 2 (Entwurf Szene #4) erwähnt die vollständige Zerstörung von Station 7. In Band 3 ist sie jedoch der Hauptschauplatz der Infiltration in Kapitel 19!
+        </p>
+<div class="flex items-center gap-2">
+<button class="h-8 px-3 rounded bg-cover-sepia text-on-primary font-label-default text-label-default text-xs flex items-center gap-1.5 hover:opacity-95 shadow-sm transition-all" id="btn-fix-conflict">
+<span class="material-symbols-outlined text-[14px]">auto_fix_high</span>
+<span>Automatisch korrigieren</span>
+</button>
+<button class="h-8 px-2 rounded bg-surface-container text-on-surface-variant font-label-default text-label-default text-xs hover:bg-surface-container-high transition-colors">
+            Ignorieren
+          </button>
+</div>
+</div>
+<!-- Kausalitäts-Brücken & Verankerungen (6 concrete items) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider block">Verankerungen</span>
+<h3 class="text-headline-emph font-headline-emph text-on-surface">Kausale Brücken (Band 1 ➔ 2/3)</h3>
+</div>
+<span class="w-6 h-6 rounded-full bg-cover-sepia/10 text-cover-sepia flex items-center justify-center font-meta-default text-xs font-semibold">6</span>
+</div>
+<div class="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-1">
+<!-- Item 1 -->
+<div class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-eyebrow-tracked uppercase text-cover-sepia font-semibold">Brücke 01 • Transponder</span>
+<span class="text-[11px] font-meta-default text-state-success font-medium">Gebunden</span>
+</div>
+<p class="text-label-default font-label-default text-on-surface font-medium leading-tight">
+              LC-89 bleibt in Mayas Hand
+            </p>
+<p class="text-[12px] font-meta-default text-text-muted-light">
+              Erfordert biometrische Entsperrung durch Lins Retinadaten in Band 2, Szene 8.
+            </p>
+</div>
+<!-- Item 2 -->
+<div class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-eyebrow-tracked uppercase text-area-chat font-semibold">Brücke 02 • KI-Code</span>
+<span class="text-[11px] font-meta-default text-state-success font-medium">Gebunden</span>
+</div>
+<p class="text-label-default font-label-default text-on-surface font-medium leading-tight">
+              ARIAs Sub-Routine »Schwarzer Schwan«
+            </p>
+<p class="text-[12px] font-meta-default text-text-muted-light">
+              Aus Band 1 Kap. 21. Führt zur automatischen Kaperung des Shuttle-Rechners in Band 2.
+            </p>
+</div>
+<!-- Item 3 -->
+<div class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-eyebrow-tracked uppercase text-area-writing font-semibold">Brücke 03 • Kavics Erpressung</span>
+<span class="text-[11px] font-meta-default text-state-warning font-medium">Aktion nötig</span>
+</div>
+<p class="text-label-default font-label-default text-on-surface font-medium leading-tight">
+              Audio-Mitschnitt des Quarantäne-Befehls
+            </p>
+<p class="text-[12px] font-meta-default text-text-muted-light">
+              Maya speichert Kavics Erpressung auf einem analogen Quarz-Laufwerk; dient als Hebel im Senat in Band 3.
+            </p>
+</div>
+<!-- Item 4 -->
+<div class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-eyebrow-tracked uppercase text-cover-sepia font-semibold">Brücke 04 • Luke 3 Schäden</span>
+<span class="text-[11px] font-meta-default text-state-success font-medium">Gebunden</span>
+</div>
+<p class="text-label-default font-label-default text-on-surface font-medium leading-tight">
+              Strukturelle Dekompression Eos
+            </p>
+<p class="text-[12px] font-meta-default text-text-muted-light">
+              Verhindert Atmosphären-Wiederaufbau in Band 2; zwingt Crew in die Rettungskapseln der Station Ganymed.
+            </p>
+</div>
+<!-- Item 5 -->
+<div class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-eyebrow-tracked uppercase text-area-planning font-semibold">Brücke 05 • Lins Tagebuch</span>
+<span class="text-[11px] font-meta-default text-state-success font-medium">Gebunden</span>
+</div>
+<p class="text-label-default font-label-default text-on-surface font-medium leading-tight">
+              Fehlende Einträge Tag 102–114
+            </p>
+<p class="text-[12px] font-meta-default text-text-muted-light">
+              Die Chiffre für Band 3 wird erst durch den Fund von Lins Speicherglas im Finale aufgedeckt.
+            </p>
+</div>
+<!-- Item 6 -->
+<div class="p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-eyebrow-tracked uppercase text-cover-ink font-semibold">Brücke 06 • Zeit-Drift</span>
+<span class="text-[11px] font-meta-default text-state-warning font-medium">Offen</span>
+</div>
+<p class="text-label-default font-label-default text-on-surface font-medium leading-tight">
+              Chronometrische Diskrepanz (3.1s)
+            </p>
+<p class="text-[12px] font-meta-default text-text-muted-light">
+              Die Zeitverzögerung kumuliert sich; erzeugt in Band 3 ein 48-Stunden-Kausalitäts-Paradoxon.
+            </p>
+</div>
+</div>
+</div>
+<!-- Entity Status Matrix (Charaktere über die Trilogie) -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-eyebrow-tracked font-eyebrow-tracked uppercase text-text-muted-light tracking-wider block">Kontinuität</span>
+<h3 class="text-headline-emph font-headline-emph text-on-surface">Entitäten-Status-Matrix</h3>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px]">group</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-meta-default font-meta-default">
+<thead>
+<tr class="bg-surface-container-low text-text-muted-light">
+<th class="py-1.5 px-2 font-medium">Figur / Entität</th>
+<th class="py-1.5 px-1 font-medium text-center">B I</th>
+<th class="py-1.5 px-1 font-medium text-center">B II</th>
+<th class="py-1.5 px-1 font-medium text-center">B III</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-2 px-2 font-medium text-on-surface">Maya Chen</td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-success/15 text-state-success">Aktiv</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-success/15 text-state-success">Aktiv</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-cover-sepia/15 text-cover-sepia">Veteran</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-2 px-2 font-medium text-on-surface">Lin Chen</td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-warning/15 text-state-warning">Vermisst</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-warning/15 text-state-warning">Phantom</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-area-planning/15 text-area-planning">Transz.</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-2 px-2 font-medium text-on-surface">Director Kavic</td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-success/15 text-state-success">Intakt</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-area-chat/15 text-area-chat">Gefährdet</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-danger/15 text-state-danger">Entmachtet</span></td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-2 px-2 font-medium text-on-surface">ARIA (Bord-KI)</td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-cover-sepia/15 text-cover-sepia">Subjektiv</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-area-chat/15 text-area-chat">Abgesp.</span></td>
+<td class="py-2 px-1 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] bg-state-success/15 text-state-success">Monolith</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+  // Micro-interaction for Consistency Resolver
+  const fixBtn = document.getElementById('btn-fix-conflict');
+  if (fixBtn) {
+    fixBtn.addEventListener('click', function() {
+      this.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">refresh</span> Korrigiere...';
+      this.classList.add('opacity-75');
+      setTimeout(() => {
+        const container = this.closest('.bg-gradient-to-b');
+        if (container) {
+          container.classList.remove('from-error-container/20');
+          container.classList.add('from-state-success/15');
+          container.innerHTML = `
+            <div class="flex items-center gap-2 mb-2 text-state-success">
+              <span class="material-symbols-outlined text-[20px]">task_alt</span>
+              <span class="text-eyebrow-tracked font-eyebrow-tracked uppercase font-bold tracking-wider">Kausalität Harmonisiert</span>
+            </div>
+            <h4 class="text-headline-emph font-headline-emph text-on-surface mb-1">Station 7: Status korrigiert</h4>
+            <p class="text-meta-default font-meta-default text-text-muted-light mb-1">
+              Band 2 Entwurf #4 geändert auf: »Teilweise Evakuierung nach Schildüberlastung«. Station 7 bleibt intakt für Infiltration in Band 3.
+            </p>
+            <span class="text-[11px] font-label-default text-state-success">Änderung in Band 2 & 3 übertragen ✓</span>
+          `;
+        }
+      }, 700);
+    });
+  }
+
+  // Matrix Sync Trigger
+  const syncBtn = document.getElementById('btn-sync-all');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function() {
+      const icon = this.querySelector('.material-symbols-outlined');
+      if (icon) icon.classList.add('animate-spin');
+      setTimeout(() => {
+        if (icon) icon.classList.remove('animate-spin');
+        alert('Kausalitäts-Matrix erfolgreich über alle 3 Bände synchronisiert: 24 Verankerungen konsistent, 0 Zirkelbezüge.');
+      }, 500);
+    });
+  }
+</script></main></div></body></html>

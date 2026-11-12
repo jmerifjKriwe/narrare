@@ -2,7 +2,7 @@ import type { ComponentProps, CSSProperties } from "react";
 import { Link, useMatches } from "@tanstack/react-router";
 import { workspaceRouteId } from "../lib/generated/workspace";
 
-import { useTranslation } from "../lib/i18n";
+import { useTranslation, type MessageKey } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
 import { buttonClass } from "../ui/Button";
 import { Icon, type IconName } from "../ui/icons";
@@ -11,6 +11,13 @@ import { Icon, type IconName } from "../ui/icons";
  * The app's one navigation: a fixed Home (the shelf — `writing` stays
  * `nav: false` because the shelf *is* home, not a destination), the
  * generated `nav` rows beneath it, and Settings anchored at the bottom.
+ * The drafted chrome (spec §6.4, §6.5): a Tier 1 panel — the panel
+ * ground behind the hairline edge, flat, no elevation — whose
+ * destinations sit under the drafts' eyebrow-tracked section labels
+ * (`RAIL_GROUPS`), each icon keeping its area's identity hue. The labels
+ * ride the same reveal as the destination names, so the rail opens as
+ * one column.
+ *
  * Destinations are links — that is what they are, and P9's one-navigation
  * bar counts on it — wearing the icon button's paint through `buttonClass`
  * (the sanctioned way to put a non-button control in the button's states,
@@ -23,6 +30,16 @@ import { Icon, type IconName } from "../ui/icons";
 
 /** The rail's destinations: exactly the paths Link itself accepts. */
 type RailTo = ComponentProps<typeof Link>["to"];
+
+/**
+ * The classes that reveal a rail label — a destination's name or a
+ * group's eyebrow — when the rail opens: hover, keyboard focus, or a
+ * coarse pointer's standing-open rail. One string, because the names and
+ * the groups they sit under must open together, never on different
+ * triggers.
+ */
+const REVEAL =
+  "opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100";
 
 /** The icon's colour expression, derived from the capability id. */
 export function areaStyle(area: string): CSSProperties {
@@ -59,21 +76,58 @@ function RailLink({
        * plainly appended class would not — the cascade, not the class
        * string's order, decides. The icon's own span carries the area hue,
        * a direct declaration the link's inherited ink cannot override. */
-      className={`${buttonClass("icon", "md")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
+      className={`${buttonClass("icon", "sm")} w-full grid-cols-[auto_1fr] gap-2 aria-[current=page]:bg-soft aria-[current=page]:font-semibold aria-[current=page]:text-foreground`}
     >
       <span style={areaStyle(area)}>
         <Icon name={icon} />
       </span>
       {/* The name, always in the DOM and clipped by the collapsed rail: a
-          hover or a focused entry opens the rail, and a coarse pointer gets
-          the names permanently. The link's own ink carries the state, so an
-          active entry's label reads foreground like its glyph's cell. */}
-      <span className="min-w-0 justify-self-start whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100">
+           hover or a focused entry opens the rail, and a coarse pointer gets
+           the names permanently. The link's own ink carries the state, so an
+           active entry's label reads foreground like its glyph's cell. */}
+      <span
+        className={`${REVEAL} min-w-0 justify-self-start whitespace-nowrap`}
+      >
         {label}
       </span>
     </Link>
   );
 }
+
+/**
+ * One drafted section label: the eyebrow-tracked group header over its
+ * destinations, clipped like the names until the rail opens. The label
+ * aligns with the destination names' own column — 28 px icon cell plus
+ * the 8 px gap — so a group reads as one column with its entries.
+ */
+function RailGroup({ label }: { label: string }) {
+  return (
+    <span className={`${REVEAL} mb-1 mt-2 pl-9 pr-2 text-eyebrow uppercase text-muted`}>
+      {label}
+    </span>
+  );
+}
+
+/**
+ * The drafted rail groups (spec §6.5, the screens' eyebrow section
+ * labels): the manuscript's tools — the shelf that is Home and the AI
+ * dialogue that serves the manuscript — under "Manuskript & Werk"; the
+ * world's structure — knowledge and planning — under "Architektur &
+ * Welt". The drafts' third group, "Produktion & Studio", names
+ * capabilities the app does not carry yet and renders nothing: an empty
+ * group is not chrome (the non-goal), and the group joins when its
+ * destinations do. Every generated `nav` row must land in exactly one
+ * group — the rail's test fails an unplaced capability, because a
+ * grouping is a decision, not a default.
+ */
+export const RAIL_GROUPS: ReadonlyArray<{
+  labelKey: MessageKey;
+  home?: boolean;
+  ids: readonly string[];
+}> = [
+  { labelKey: "shell.railGroupManuscript", home: true, ids: ["chat"] },
+  { labelKey: "shell.railGroupWorld", ids: ["knowledge", "planning"] },
+];
 
 /** The global icon rail: shell chrome, one navigation on every route. */
 export function IconRail() {
@@ -109,35 +163,49 @@ export function IconRail() {
     >
       <nav
         aria-label={t("shell.navAria")}
-        /* p-1.5, not p-2: the entry pill runs 36 px wide (16 px glyph + the
-           icon variant's px-2.5), and 48 − 2×6 = 36 exactly — the pill sits
-           inside the rail's rhythm instead of overhanging the padding. */
+        /* p-1.5, not p-2: the entry's icon cell runs 28 px wide (16 px glyph
+           + the icon variant's p-1.5), and 48 − 2×6 = 36 leaves the 8 px gap
+           and nothing more — the label column collapses to zero in the closed
+           rail and only earns its width in the 168 px hover. */
         /* inset-y-0, not h-screen: the rail fills the row beneath the bar — a
            viewport-tall rail there would start 53 px down and end 53 px under
            the fold, hiding the anchored Settings and scrolling the page that
            does not otherwise scroll (main owns that). */
-        className="group absolute inset-y-0 left-0 z-20 flex w-[var(--rail-width)] flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] hover:shadow-overlay focus-within:shadow-overlay motion-reduce:transition-none pointer-coarse:shadow-none pointer-coarse:transition-none"
+        /* Flat, per the drafts' Tier 1: the open rail is a panel bound by its
+           hairline edge, not a floating surface — the expansion keeps the
+           border and drops the old overlay elevation the tier forbids. */
+        className="group absolute inset-y-0 left-0 z-20 flex w-[var(--rail-width)] flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] motion-reduce:transition-none pointer-coarse:transition-none"
       >
         <div className="flex w-full flex-col items-stretch gap-1">
-          {/* Home is a shell constant, not a generated row: the shelf is
-              where the app opens, exact — a prefix match would light it on
-              every route. */}
-          <RailLink
-            to="/"
-            label={t("shell.navHome")}
-            icon="books"
-            area="writing"
-            activeOptions={{ exact: true, includeSearch: false }}
-          />
-          {nav.map((entry) => (
-            <RailLink
-              key={entry.id}
-              to={entry.path}
-              label={t(entry.titleKey)}
-              icon={entry.id}
-              area={entry.id}
-              activeOptions={{ exact: true, includeSearch: false }}
-            />
+          {RAIL_GROUPS.map((group) => (
+            <div key={group.labelKey} className="flex flex-col gap-1">
+              <RailGroup label={t(group.labelKey)} />
+              {/* Home is a shell constant, not a generated row: the shelf is
+                  where the app opens, exact — a prefix match would light it
+                  on every route. It sits in the manuscript's group, the
+                  drafts' Bücherregal. */}
+              {group.home ? (
+                <RailLink
+                  to="/"
+                  label={t("shell.navHome")}
+                  icon="books"
+                  area="writing"
+                  activeOptions={{ exact: true, includeSearch: false }}
+                />
+              ) : null}
+              {nav
+                .filter((entry) => group.ids.includes(entry.id))
+                .map((entry) => (
+                  <RailLink
+                    key={entry.id}
+                    to={entry.path}
+                    label={t(entry.titleKey)}
+                    icon={entry.id}
+                    area={entry.id}
+                    activeOptions={{ exact: true, includeSearch: false }}
+                  />
+                ))}
+            </div>
           ))}
         </div>
         {/* Settings is area-wide — the anchor stays lit on the settings

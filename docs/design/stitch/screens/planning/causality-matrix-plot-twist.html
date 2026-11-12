@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#795c52", "bg-card-dark": "#211F1A", "on-secondary-fixed": "#2a170f", "on-surface-variant": "#53433d", "area-chat": "#3A637B", "on-primary-container": "#f8a884", "bg-canvas-light": "#F6F3ED", "cover-pale": "#EEEBE5", "rule-dark": "#302D28", "surface-container-high": "#eee7df", "bg-card-light": "#FFFFFF", "secondary-fixed": "#ffdbce", "text-foreground-dark": "#DFDEDA", "on-error": "#ffffff", "state-success": "#21763C", "error": "#ba1a1a", "text-muted-dark": "#89867F", "on-error-container": "#93000a", "bg-soft-light": "#EFEBE2", "state-danger": "#AC3031", "border-dark": "#35332D", "primary-container": "#743b1f", "on-tertiary-container": "#eead78", "bg-soft-dark": "#2C2922", "surface": "#fff8f2", "on-primary-fixed": "#351000", "surface-variant": "#e9e1d9", "primary-fixed": "#ffdbcc", "bg-panel-light": "#FDFCF9", "on-background": "#1e1b16", "tertiary-fixed-dim": "#fcb882", "area-settings": "#5A5549", "cover-sepia": "#743B1F", "primary": "#58250b", "bg-canvas-dark": "#16140F", "tertiary-container": "#6e3f14", "primary-fixed-dim": "#ffb695", "area-planning": "#834D7E", "secondary-fixed-dim": "#e3bfb2", "on-secondary": "#ffffff", "tertiary": "#522900", "on-primary-fixed-variant": "#6f371c", "area-knowledge": "#606127", "secondary": "#74584e", "on-secondary-fixed-variant": "#5a4137", "outline-variant": "#d8c2b9", "error-container": "#ffdad6", "surface-container-highest": "#e9e1d9", "area-writing": "#914F2F", "amber-focus-dark": "#F2AD73", "background": "#fff8f2", "on-tertiary-fixed-variant": "#693c10", "surface-dim": "#e0d9d1", "amber-focus": "#8F4622", "surface-container-low": "#faf2ea", "on-tertiary-fixed": "#2f1500", "rule-light": "#EEEBE5", "tertiary-fixed": "#ffdcc3", "surface-tint": "#8c4e30", "on-primary": "#ffffff", "surface-container": "#f4ede4", "inverse-on-surface": "#f7f0e7", "text-muted-light": "#6E6B65", "on-tertiary": "#ffffff", "surface-container-lowest": "#ffffff", "inverse-surface": "#33302b", "bg-panel-dark": "#1C1914", "secondary-container": "#fed8ca", "cover-ink": "#24211C", "state-warning": "#9A6100", "inverse-primary": "#ffb695", "surface-bright": "#fff8f2", "outline": "#86736c", "border-light": "#E0DEDA", "on-surface": "#1e1b16" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "prose-max-width": "34rem", "space-lg": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "dock-width": "21rem", "space-md": "1rem", "rail-collapsed": "3rem", "space-xs": "0.25rem", "margin": "1.5rem", "space-xl": "2rem", "container-max": "75rem", "rail-expanded": "10.5rem" }, "fontFamily": { "prose-heading-2": [ "EB Garamond" ], "body-default": [ "Plus Jakarta Sans" ], "prose-heading-1": [ "EB Garamond" ], "label-default": [ "Plus Jakarta Sans" ], "headline-hero": [ "Plus Jakarta Sans" ], "eyebrow-tracked": [ "Plus Jakarta Sans" ], "prose-editorial": [ "EB Garamond" ], "meta-default": [ "Plus Jakarta Sans" ], "headline-emph": [ "Plus Jakarta Sans" ], "headline-title": [ "Plus Jakarta Sans" ] }, "fontSize": { "prose-heading-2": [ "21px", { "lineHeight": "28px", "fontWeight": "600" } ], "body-default": [ "14px", { "lineHeight": "22px", "fontWeight": "400" } ], "prose-heading-1": [ "26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-default": [ "13px", { "lineHeight": "18px", "fontWeight": "500" } ], "headline-hero": [ "28px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "eyebrow-tracked": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" } ], "prose-editorial": [ "18px", { "lineHeight": "31.5px", "letterSpacing": "0.01em", "fontWeight": "400" } ], "meta-default": [ "12px", { "lineHeight": "17px", "fontWeight": "400" } ], "headline-emph": [ "15px", { "lineHeight": "22px", "fontWeight": "600" } ], "headline-title": [ "20px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-background font-body-default text-body-default text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-fixed"><aside class="fixed left-0 top-0 h-full w-72 bg-bg-panel-light z-50 flex flex-col shadow-[0_1px_8px_rgba(44,24,16,0.04)]"><div class="h-16 px-space-lg flex items-center justify-between border-b border-rule-light"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-prose-heading-1 text-headline-emph shadow-sm">N</div><span class="font-prose-heading-1 text-prose-heading-2 text-primary tracking-tight">Narrare</span></div><span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light bg-surface-container px-space-xs py-0.5 rounded">Studio v2.4</span></div><div class="flex-1 overflow-y-auto px-space-md py-space-md flex flex-col gap-space-md"><nav class="flex flex-col gap-space-md" data-active-classes="bg-primary-container text-on-primary font-headline-emph shadow-sm"><div class="flex flex-col gap-1"><span class="px-space-sm font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider mb-1">Manuskript &amp; Werk</span><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="buecherregal" href="#"><span class="material-symbols-outlined text-[18px]">shelves</span><span class="font-label-default text-label-default">Bücherregal</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workspace" href="#"><span class="material-symbols-outlined text-[18px]">edit_note</span><span class="font-label-default text-label-default">Workspace</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="storyboard-und-szenen" href="#"><span class="material-symbols-outlined text-[18px]">view_kanban</span><span class="font-label-default text-label-default">Storyboard &amp; Szenen</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="zen-fokus" href="#"><span class="material-symbols-outlined text-[18px]">nature_people</span><span class="font-label-default text-label-default">Zen-Fokus</span></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider mb-1">Architektur &amp; Welt</span><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="weltenbau-und-atlas" href="#"><span class="material-symbols-outlined text-[18px]">public</span><span class="font-label-default text-label-default">Weltenbau &amp; Atlas</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="serien-architektur" href="#"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-label-default text-label-default">Serien-Architektur</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="wissens--und-lore-graph" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span class="font-label-default text-label-default">Wissens- &amp; Lore-Graph</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="kausalitaets-matrix-und-what-if" href="#"><span class="material-symbols-outlined text-[18px]">alt_route</span><span class="font-label-default text-label-default">Kausalitäts-Matrix &amp; What-If</span></a></div><div class="flex flex-col gap-1"><span class="px-space-sm font-eyebrow-tracked text-eyebrow-tracked text-text-muted-light uppercase tracking-wider mb-1">Produktion &amp; Studio</span><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="lektorat-und-team" href="#"><span class="material-symbols-outlined text-[18px]">rate_review</span><span class="font-label-default text-label-default">Lektorat &amp; Team</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="recherche-und-quellen" href="#"><span class="material-symbols-outlined text-[18px]">menu_book</span><span class="font-label-default text-label-default">Recherche &amp; Quellen</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="analytik-und-metriken" href="#"><span class="material-symbols-outlined text-[18px]">insights</span><span class="font-label-default text-label-default">Analytik &amp; Metriken</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="buchsatz-und-export" href="#"><span class="material-symbols-outlined text-[18px]">auto_stories</span><span class="font-label-default text-label-default">Buchsatz &amp; Export</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cover-und-marketing" href="#"><span class="material-symbols-outlined text-[18px]">palette</span><span class="font-label-default text-label-default">Cover &amp; Marketing</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="agentur-und-einreichungen" href="#"><span class="material-symbols-outlined text-[18px]">outgoing_mail</span><span class="font-label-default text-label-default">Agentur &amp; Einreichungen</span></a></div></nav></div><div class="p-space-md border-t border-rule-light"><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-headline-emph shadow-sm"><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="studio-einstellungen" href="#"><span class="material-symbols-outlined text-[18px]">tune</span><span class="font-label-default text-label-default">Einstellungen &amp; Modelle</span></a></nav></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-md z-40 border-b border-rule-light shadow-[0_1px_8px_rgba(44,24,16,0.03)]"><div class="h-16 w-full px-space-lg flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm min-w-0"><div class="w-2 h-2 rounded-full bg-area-writing shrink-0"></div><div class="flex items-baseline gap-space-xs truncate"><span class="font-prose-heading-2 text-headline-emph text-on-surface tracking-tight truncate">Dead Signal</span><span class="font-meta-default text-meta-default text-text-muted-light">/</span><span class="font-meta-default text-meta-default text-text-muted-light truncate">Roman · Band I</span></div><div class="hidden xl:flex items-center gap-1.5 bg-surface-container-low px-space-sm py-0.5 rounded text-state-success font-meta-default text-meta-default"><span class="material-symbols-outlined text-[14px]">verified</span><span>Kausalität synchron</span></div></div><div class="flex items-center gap-space-md shrink-0"><div class="hidden md:flex items-center gap-space-md font-meta-default text-meta-default text-text-muted-light bg-surface-container-low px-space-md py-1.5 rounded-lg"><div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px]">history_edu</span><span>48.342 / 65.000 W.</span></div><div class="w-px h-3.5 bg-border-light"></div><div class="flex items-center gap-1.5 text-state-success"><span class="material-symbols-outlined text-[15px]">cloud_done</span><span>Gespeichert</span></div></div><div class="flex items-center gap-space-xs bg-bg-card-light px-space-sm py-1.5 rounded-lg border border-border-light text-text-muted-light font-meta-default text-meta-default shadow-sm"><span class="material-symbols-outlined text-[16px]">search</span><span class="hidden sm:inline">Suche</span><kbd class="bg-surface-container text-on-surface-variant px-1 rounded text-[10px] font-mono border border-border-light">⌘K</kbd></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 min-h-screen bg-bg-canvas-light"><div class="flex flex-col w-full">
+<!-- Top Cockpit Control Sub-Bar -->
+<div class="w-full bg-surface-container-low px-space-lg py-space-sm shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">
+<span>Architektur &amp; Welt</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-headline-emph">Kausalitäts-Matrix &amp; What-If Engine</span>
+<span class="ml-2 px-1.5 py-0.2 rounded-full bg-area-planning/10 text-area-planning font-meta-default text-[10px] uppercase font-bold">Multiverse Core v4.1</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded text-on-surface text-label-default font-label-default">
+<span class="material-symbols-outlined text-[16px] text-primary">merge_type</span>
+<span class="font-semibold text-primary">Aktiv:</span>
+<span class="font-normal truncate max-w-xs lg:max-w-md">Hauptstrang Alpha (Kanon) vs. Branch Beta: „Maya öffnet Schleuse nicht“</span>
+</div>
+<span class="text-meta-default font-meta-default text-state-warning flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-state-warning animate-pulse"></span>
+          Divergenz: 38.4%
+        </span>
+</div>
+</div>
+<!-- Global Timeline Actions -->
+<div class="flex items-center gap-2 flex-wrap">
+<button class="inline-flex items-center gap-1.5 px-3 py-1 bg-bg-card-light hover:bg-surface-container text-on-surface rounded text-label-default font-label-default shadow-sm transition-all hover:shadow">
+<span class="material-symbols-outlined text-[16px] text-area-planning">alt_route</span>
+<span>Neuen What-If Zweig</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container-high hover:bg-secondary-container text-on-secondary-fixed rounded text-label-default font-label-default transition-colors" id="btn-recompute">
+<span class="material-symbols-outlined text-[16px]">autorenew</span>
+<span>Simulation berechnen</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-primary-container text-on-primary rounded text-label-default font-label-default shadow-sm hover:opacity-95 transition-opacity">
+<span class="material-symbols-outlined text-[16px]">call_merge</span>
+<span>Branch in Kanon mergen</span>
+</button>
+</div>
+</div>
+<!-- Main Multi-Column Studio Grid -->
+<div class="w-full p-space-lg grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+<!-- LEFT COLUMN: What-If Branches & Anchor Parameters (xl:col-span-3) -->
+<div class="xl:col-span-3 flex flex-col gap-space-md">
+<!-- Branch Navigation Drawer -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between pb-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Zeitlinien-Register</span>
+<span class="text-meta-default font-meta-default text-text-muted-light">3 Branches</span>
+</div>
+<!-- Active Kanon -->
+<div class="bg-surface-container p-space-sm rounded-lg flex flex-col gap-1 transition-all">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-cover-sepia"></span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Kanon Alpha</span>
+</div>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-state-success/15 text-state-success">AKTIV</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light pl-4">
+            48.342 W. · 42 Szenen · 184 Lore-Knoten
+          </p>
+<div class="flex items-center gap-2 pl-4 pt-1">
+<span class="inline-flex items-center gap-1 font-meta-default text-[11px] text-state-success font-medium">
+<span class="material-symbols-outlined text-[14px]">verified</span> 100% konsistent
+            </span>
+</div>
+</div>
+<!-- Branch Beta: Schleusen-Verweigerung (Active Divergence) -->
+<div class="bg-primary/5 p-space-sm rounded-lg flex flex-col gap-1.5 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-state-warning"></span>
+<span class="font-headline-emph text-headline-emph text-primary truncate max-w-[170px]">Branch Beta: „Schleuse“</span>
+</div>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-state-warning/20 text-state-warning">SIMULIERT</span>
+</div>
+<p class="font-meta-default text-meta-default text-on-surface-variant line-clamp-2 pl-4">
+            Maya trotzt in Akt I der Order von Director Kavic und riegelt Tor 7 ab.
+          </p>
+<div class="flex items-center justify-between pl-4 text-meta-default text-[11px] text-text-muted-light pt-0.5">
+<span>Δ 14 Szenen modifiziert</span>
+<span class="text-state-danger font-medium">1 Paradoxon</span>
+</div>
+</div>
+<!-- Branch Gamma: ARIA infiziert -->
+<div class="hover:bg-surface-container-high/60 p-space-sm rounded-lg flex flex-col gap-1 cursor-pointer transition-colors opacity-75 hover:opacity-100">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-area-chat"></span>
+<span class="font-headline-emph text-headline-emph text-on-surface truncate max-w-[170px]">Branch Gamma: ARIA-Trojan</span>
+</div>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-container text-text-muted-light">RUHEND</span>
+</div>
+<p class="font-meta-default text-meta-default text-text-muted-light line-clamp-1 pl-4">
+            Hypothese: Das Subraum-Signal ist ein gezielter KI-Trojaner.
+          </p>
+<span class="pl-4 text-meta-default text-[11px] text-text-muted-light">Δ 31 Szenen · 4 Tode</span>
+</div>
+</div>
+<!-- Kausalitäts-Anker & Parametrisierung -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[20px]">anchor</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Kausalitäts-Anker</span>
+</div>
+<span class="font-meta-default text-[10px] text-text-muted-light uppercase font-mono">T-Point 02:2</span>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-meta-default text-meta-default text-on-surface-variant">Katalysator-Szene wählen</label>
+<div class="relative bg-surface-container-high rounded-lg p-2 flex items-center justify-between">
+<div class="flex flex-col min-w-0 pr-2">
+<span class="font-label-default text-label-default text-on-surface font-semibold truncate">Kapitel 2 · Szene 2</span>
+<span class="font-meta-default text-meta-default text-text-muted-light truncate">Entriegelung Primärschleuse</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-text-muted-light">unfold_more</span>
+</div>
+</div>
+<!-- Divergenz Parameter Sliders -->
+<div class="flex flex-col gap-space-sm pt-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Twist-Parameter &amp; Drift</span>
+<!-- Slider 1 -->
+<div class="flex flex-col gap-1 bg-surface-container/50 p-2 rounded-lg">
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="text-on-surface">Mayas Loyalitäts-Index</span>
+<span class="font-mono text-state-danger font-semibold" id="slider-val">15% (Defiant)</span>
+</div>
+<input class="w-full accent-primary h-1 bg-surface-container-high rounded-lg cursor-pointer" max="100" min="0" oninput="document.getElementById('slider-val').innerText = this.value + '% (Defiant)'" type="range" value="15"/>
+<div class="flex justify-between font-meta-default text-[10px] text-text-muted-light">
+<span>0% Aufruhr</span>
+<span class="text-text-muted-light">Kanon: 80%</span>
+<span>100% Gehorsam</span>
+</div>
+</div>
+<!-- Slider 2 -->
+<div class="flex flex-col gap-1 bg-surface-container/50 p-2 rounded-lg">
+<div class="flex items-center justify-between font-meta-default text-meta-default">
+<span class="text-on-surface">Stationsdruck Schleuse 7</span>
+<span class="font-mono text-state-warning font-semibold">0.42 bar (Leck)</span>
+</div>
+<input class="w-full accent-state-warning h-1 bg-surface-container-high rounded-lg cursor-pointer" max="100" min="0" type="range" value="30"/>
+<div class="flex justify-between font-meta-default text-[10px] text-text-muted-light">
+<span>0.0 (Vakuum)</span>
+<span>1.0 bar (Norm)</span>
+</div>
+</div>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex items-start gap-2 text-text-muted-light">
+<span class="material-symbols-outlined text-[18px] text-primary shrink-0">info</span>
+<p class="font-meta-default text-meta-default leading-tight">
+            Eine Senkung unter 25% löst automatisch die Abriegelung von Sektor B aus und bricht den Signalstrom zu Nevada.
+          </p>
+</div>
+</div>
+</div>
+<!-- CENTER COLUMN: Visuelle Kausalitäts-Matrix & Multiversum-Graph (xl:col-span-6) -->
+<div class="xl:col-span-6 flex flex-col gap-space-md">
+<!-- Top Metrics Dashboard -->
+<div class="grid grid-cols-3 gap-space-sm bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="flex flex-col gap-0.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Szenen-Impact</span>
+<div class="flex items-baseline gap-1.5">
+<span class="font-headline-hero text-headline-hero text-primary">14</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">/ 42 modifiziert</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-1">
+<div class="bg-primary h-full rounded-full" style="width: 33.3%;"></div>
+</div>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Schicksale</span>
+<div class="flex items-baseline gap-1.5">
+<span class="font-headline-hero text-headline-hero text-area-planning">4</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Figuren verändert</span>
+</div>
+<div class="flex gap-1 mt-1.5">
+<span class="px-1 py-0.5 rounded text-[9px] bg-secondary-container text-on-secondary-fixed">Kavic</span>
+<span class="px-1 py-0.5 rounded text-[9px] bg-secondary-container text-on-secondary-fixed">Maya</span>
+<span class="px-1 py-0.5 rounded text-[9px] bg-secondary-container text-on-secondary-fixed">Chen</span>
+<span class="px-1 py-0.5 rounded text-[9px] bg-secondary-container text-on-secondary-fixed">ARIA</span>
+</div>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Konsistenz-Status</span>
+<div class="flex items-baseline gap-1.5">
+<span class="font-headline-hero text-headline-hero text-state-danger">1</span>
+<span class="font-meta-default text-meta-default text-state-danger font-medium">Paradoxon</span>
+</div>
+<span class="font-meta-default text-[10px] text-text-muted-light mt-1 truncate">Ganymed Relais-Bruch (Kap. 18)</span>
+</div>
+</div>
+<!-- Interactive Multiverse Canvas Node Graph -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-md flex flex-col gap-space-sm relative overflow-hidden">
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-emph text-headline-emph text-on-surface">Kausalitäts-Struktur &amp; Verzweigungsgraph</span>
+<span class="font-meta-default text-[11px] text-text-muted-light font-mono">[2D Projection · Epoch I-III]</span>
+</div>
+<!-- Canvas controls -->
+<div class="flex items-center gap-1 bg-surface-container rounded-lg p-1">
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-high text-on-surface text-[14px]">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-high text-on-surface text-[14px]">
+<span class="material-symbols-outlined text-[16px]">zoom_out</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-high text-on-surface text-[14px]">
+<span class="material-symbols-outlined text-[16px]">center_focus_strong</span>
+</button>
+</div>
+</div>
+<!-- The Visual Branching SVG Canvas -->
+<div class="w-full bg-surface-container-low/60 rounded-xl p-space-md relative min-h-[380px] flex flex-col justify-between overflow-x-auto">
+<!-- Legend Pill Overlay -->
+<div class="absolute top-3 left-3 z-10 flex items-center gap-3 bg-surface/90 backdrop-blur px-2.5 py-1 rounded-md text-[11px] font-meta-default shadow-xs">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-0.5 bg-cover-sepia rounded-full"></span>
+<span class="text-on-surface">Kanon Alpha</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-0.5 border-t border-dashed border-state-warning"></span>
+<span class="text-on-surface">What-If Beta</span>
+</div>
+<div class="flex items-center gap-1.5 text-state-danger">
+<span class="w-2 h-2 rounded-full bg-state-danger"></span>
+<span>Kollision</span>
+</div>
+</div>
+<!-- SVG Visual Branch Tree -->
+<svg class="w-full h-full min-w-[620px] select-none" viewbox="0 0 740 320">
+<defs>
+<lineargradient id="canonGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#58250b"></stop>
+<stop offset="100%" stop-color="#743b1f"></stop>
+</lineargradient>
+<lineargradient id="betaGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#9A6100"></stop>
+<stop offset="100%" stop-color="#AC3031"></stop>
+</lineargradient>
+</defs>
+<!-- Background Grid Pattern -->
+<pattern height="30" id="matrixGrid" patternunits="userSpaceOnUse" width="30">
+<path d="M 30 0 L 0 0 0 30" fill="none" stroke="#E0DEDA" stroke-opacity="0.5" stroke-width="0.5"></path>
+</pattern>
+<rect fill="url(#matrixGrid)" height="320" width="740"></rect>
+<!-- Chapter Vertical Guides -->
+<line stroke="#EEEBE5" stroke-dasharray="2 4" stroke-width="1" x1="80" x2="80" y1="20" y2="300"></line>
+<text fill="#89867F" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="80" y="312">KAP 1</text>
+<line stroke="#EEEBE5" stroke-dasharray="2 4" stroke-width="1" x1="200" x2="200" y1="20" y2="300"></line>
+<text fill="#89867F" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="200" y="312">KAP 2 (Divergenz)</text>
+<line stroke="#EEEBE5" stroke-dasharray="2 4" stroke-width="1" x1="360" x2="360" y1="20" y2="300"></line>
+<text fill="#89867F" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="360" y="312">KAP 5</text>
+<line stroke="#EEEBE5" stroke-dasharray="2 4" stroke-width="1" x1="510" x2="510" y1="20" y2="300"></line>
+<text fill="#89867F" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="510" y="312">KAP 8</text>
+<line stroke="#EEEBE5" stroke-dasharray="2 4" stroke-width="1" x1="660" x2="660" y1="20" y2="300"></line>
+<text fill="#89867F" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="660" y="312">KAP 14 (Akt II)</text>
+<!-- Pre-Split Shared Trunk -->
+<path d="M 40 100 L 200 100" fill="none" stroke="#58250b" stroke-linecap="round" stroke-width="3"></path>
+<!-- Timeline Alpha (Top Track: Kanon) -->
+<path d="M 200 100 L 360 80 L 510 80 L 670 80" fill="none" stroke="url(#canonGrad)" stroke-linecap="round" stroke-width="3"></path>
+<!-- Timeline Beta (Divergent Branch: Bottom Track) -->
+<path d="M 200 100 C 260 100, 280 200, 360 200 L 510 200 L 670 230" fill="none" stroke="url(#betaGrad)" stroke-dasharray="5 4" stroke-linecap="round" stroke-width="3"></path>
+<!-- Kausalitäts-Vektor Ripple Connectors (Impact Wave) -->
+<path d="M 360 200 C 420 180, 450 110, 510 80" fill="none" opacity="0.6" stroke="#AC3031" stroke-dasharray="3 3" stroke-width="1.5"></path>
+<!-- NODES ON TIMELINE ALPHA -->
+<!-- Shared / Unaffected Node (Szene 1.1) -->
+<circle cx="80" cy="100" fill="#FDFCF9" r="7" stroke="#21763C" stroke-width="2.5"></circle>
+<text fill="#1e1b16" font-family="Plus Jakarta Sans" font-size="10" font-weight="600" text-anchor="middle" x="80" y="85">Station Wake-up</text>
+<text fill="#21763C" font-family="Plus Jakarta Sans" font-size="8.5" text-anchor="middle" x="80" y="120">✓ Unberührt</text>
+<!-- Anchor Divergence Point (Szene 2.2) -->
+<circle cx="200" cy="100" fill="#743B1F" r="9" stroke="#FDFCF9" stroke-width="2"></circle>
+<circle cx="200" cy="100" fill="none" r="14" stroke="#743B1F" stroke-opacity="0.4" stroke-width="1"></circle>
+<text fill="#743B1F" font-family="Plus Jakarta Sans" font-size="10" font-weight="700" text-anchor="middle" x="200" y="75">Entriegelung Schleuse</text>
+<!-- Alpha Node: Kryo-Fund -->
+<circle cx="360" cy="80" fill="#FDFCF9" r="6" stroke="#58250b" stroke-width="2"></circle>
+<text fill="#58250b" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="360" y="65">Kryo-Fund</text>
+<!-- Alpha Node: Kavic-Pakt -->
+<circle cx="510" cy="80" fill="#FDFCF9" r="6" stroke="#58250b" stroke-width="2"></circle>
+<text fill="#58250b" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="510" y="65">Kavic-Allianz</text>
+<!-- Alpha Node: Ganymed Signal Kap 14 -->
+<circle cx="670" cy="80" fill="#FDFCF9" r="6" stroke="#58250b" stroke-width="2"></circle>
+<text fill="#58250b" font-family="Plus Jakarta Sans" font-size="9" text-anchor="middle" x="670" y="65">Ganymed Relais</text>
+<!-- NODES ON TIMELINE BETA (What-If) -->
+<!-- Beta Node: Schleuse blockiert -->
+<circle cx="360" cy="200" fill="#9A6100" r="7" stroke="#FDFCF9" stroke-width="2"></circle>
+<text fill="#9A6100" font-family="Plus Jakarta Sans" font-size="10" font-weight="600" text-anchor="middle" x="360" y="222">Tor-Sperre</text>
+<text fill="#53433d" font-family="Plus Jakarta Sans" font-size="8" text-anchor="middle" x="360" y="235">Maya verbarrikadiert</text>
+<!-- Beta Collision Node: Nevada-Array Zugriff verloren (Kapitel 8) -->
+<g transform="translate(510, 200)">
+<circle cx="0" cy="0" fill="#AC3031" r="10" stroke="#FDFCF9" stroke-width="2"></circle>
+<line stroke="#ffffff" stroke-linecap="round" stroke-width="2" x1="-3" x2="3" y1="-3" y2="3"></line>
+<line stroke="#ffffff" stroke-linecap="round" stroke-width="2" x1="3" x2="-3" y1="-3" y2="3"></line>
+</g>
+<text fill="#AC3031" font-family="Plus Jakarta Sans" font-size="10" font-weight="700" text-anchor="middle" x="510" y="226">Kollision: Kap. 8</text>
+<text fill="#AC3031" font-family="Plus Jakarta Sans" font-size="8.5" text-anchor="middle" x="510" y="239">Nevada-Blackout (Paradoxon)</text>
+<!-- Beta Shifted Node: Schauplatzverschiebung (Kapitel 14) -->
+<circle cx="670" cy="230" fill="#FDFCF9" r="7" stroke="#9A6100" stroke-width="2.5"></circle>
+<text fill="#9A6100" font-family="Plus Jakarta Sans" font-size="10" font-weight="600" text-anchor="middle" x="670" y="252">Bodenstations-Kollaps</text>
+<text fill="#74584e" font-family="Plus Jakarta Sans" font-size="8" text-anchor="middle" x="670" y="265">Ortswechsel: Raumschiff → Bunker</text>
+</svg>
+</div>
+<!-- Ripple Effect Finding Ribbon -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm pt-1">
+<div class="p-2.5 rounded-lg bg-surface-container flex items-start gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-state-success shrink-0 mt-1"></span>
+<div class="flex flex-col">
+<span class="font-headline-emph text-[12px] text-on-surface">Kapitel 1 – 2.1</span>
+<span class="font-meta-default text-[11px] text-text-muted-light">Vollständig immun. Vorgeschichte und Mayas Prolog bleiben unberührt.</span>
+</div>
+</div>
+<div class="p-2.5 rounded-lg bg-state-danger/10 flex items-start gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-state-danger shrink-0 mt-1 animate-pulse"></span>
+<div class="flex flex-col">
+<span class="font-headline-emph text-[12px] text-state-danger font-bold">Kapitel 8: Fatale Kollision</span>
+<span class="font-meta-default text-[11px] text-on-surface-variant">ARIA verliert Signal-Feed. 3 Folgedialoge referenzieren Daten, die nie empfangen wurden.</span>
+</div>
+</div>
+<div class="p-2.5 rounded-lg bg-state-warning/10 flex items-start gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-state-warning shrink-0 mt-1"></span>
+<div class="flex flex-col">
+<span class="font-headline-emph text-[12px] text-state-warning">Kapitel 14: Ortsverschiebung</span>
+<span class="font-meta-default text-[11px] text-on-surface-variant">Schauplatz wandert von der Brücke in die havarierte Subterran-Station.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Narrative Radiation / Atmosphere Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[26px]">psychology</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-emph text-headline-emph text-on-surface">Psychologische Tonalität des Zweigs</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">Verschiebung: „Techno-Mystery“ → „Klaustrophobischer Belagerungs-Thriller“</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex flex-col text-right">
+<span class="font-label-default text-label-default text-primary font-bold">+42% Spannung</span>
+<span class="font-meta-default text-[10px] text-text-muted-light">-15% Lore-Erklärungen</span>
+</div>
+<span class="px-2.5 py-1 bg-surface-container text-on-surface-variant text-[11px] font-label-default rounded">Hohes Tempo</span>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Kausalitäts-Diagnose & Szenen-Diff (xl:col-span-3) -->
+<div class="xl:col-span-3 flex flex-col gap-space-md">
+<!-- Scene Diff: Scene 2.4 Side-by-Side -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between border-b border-rule-light pb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">difference</span>
+<span class="font-headline-emph text-headline-emph text-on-surface">Szenen-Diff: Akt I · Szene 2.4</span>
+</div>
+<span class="font-eyebrow-tracked text-[10px] uppercase text-text-muted-light">Live-Abgleich</span>
+</div>
+<!-- Kanon Alpha Excerpt -->
+<div class="flex flex-col gap-1 p-2 rounded bg-surface-container-low">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default text-primary font-semibold">Kanon Alpha</span>
+<span class="font-meta-default text-[10px] text-text-muted-light">Zeile 84–92</span>
+</div>
+<blockquote class="font-prose-editorial text-[14px] leading-relaxed text-on-surface border-l-2 border-cover-sepia pl-2 italic">
+            „Maya drückte den Entriegelungshebel nach unten. Die Zischentladung verriet, dass Kavic die Wahrheit gesagt hatte: Die Luft war atembar.“
+          </blockquote>
+<span class="font-meta-default text-[11px] text-text-muted-light">Konsequenz: Kooperation mit Kavic beginnt; Zugang zu Archiv.</span>
+</div>
+<!-- What-If Beta Excerpt -->
+<div class="flex flex-col gap-1 p-2 rounded bg-state-warning/10 border-l-2 border-state-warning">
+<div class="flex items-center justify-between">
+<span class="font-label-default text-label-default text-state-warning font-bold">What-If Branch Beta</span>
+<span class="font-meta-default text-[10px] text-state-warning font-mono">Modifiziert</span>
+</div>
+<blockquote class="font-prose-editorial text-[14px] leading-relaxed text-on-surface pl-1 italic">
+            „Mayas Hand zuckte zurück. ‚Nein, Director.‘ Mit einem harten Schlag auf die Nottaste schoss das Schutzgitter nieder. Kavics Gesicht verzerrte sich hinter dem Quarzglas.“
+          </blockquote>
+<span class="font-meta-default text-[11px] text-state-danger font-medium">Konsequenz: Kavic sperrt Mayas ID-Token; Flucht in den Lüftungsschacht.</span>
+</div>
+</div>
+<!-- Lore Consistency Inspector Card (Finding Box) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm border-t-2 border-state-danger">
+<div class="flex items-center gap-2 text-state-danger">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<span class="font-headline-emph text-headline-emph">Kausalitäts-Inspektor</span>
+</div>
+<p class="font-body-default text-body-default text-on-surface leading-snug">
+          Dieser Twist erzeugt einen unauflösbaren Kausalitätsbruch mit <strong class="font-semibold text-primary">Band II (Szene 1)</strong>:
+        </p>
+<div class="p-2.5 rounded bg-surface-container text-on-surface-variant font-meta-default text-meta-default leading-relaxed">
+          Dr. Chen muss für das Ganymed-Subraum-Signal physisch auf der Relais-Plattform anwesend sein. Durch Mayas Flucht wird Sektor 4 dekomprimiert – Chen stirbt 6 Kapitel zu früh.
+        </div>
+<!-- Quick Fix Strategies -->
+<div class="flex flex-col gap-1.5 pt-1">
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase text-text-muted-light">Engine-Lösungsvorschläge</span>
+<button class="w-full text-left p-2 rounded-lg bg-surface-container-high hover:bg-surface-container transition-colors flex items-center justify-between group">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">add_circle</span>
+<span class="font-label-default text-label-default text-on-surface">Zusatz-Szene 8b einschieben</span>
+</div>
+<span class="material-symbols-outlined text-[14px] text-text-muted-light group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+</button>
+<button class="w-full text-left p-2 rounded-lg bg-surface-container-high hover:bg-surface-container transition-colors flex items-center justify-between group">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-area-chat">terminal</span>
+<span class="font-label-default text-label-default text-on-surface">Ganymed-Transponder remote hacken</span>
+</div>
+<span class="material-symbols-outlined text-[14px] text-text-muted-light group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Export & Archive Actions -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-2">
+<button class="w-full py-2 px-3 bg-secondary-container hover:bg-primary-fixed text-on-secondary-fixed rounded text-label-default font-label-default flex items-center justify-center gap-2 shadow-xs transition-colors">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+<span>Als Spin-off / Novelle exportieren</span>
+</button>
+<button class="w-full py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface-variant rounded text-label-default font-label-default flex items-center justify-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[16px]">archive</span>
+<span>Als Was-Wäre-Wenn Entwurf archivieren</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+    // Micro-interaction for calculation recalculation simulation feedback
+    const btnRecompute = document.getElementById('btn-recompute');
+    if (btnRecompute) {
+      btnRecompute.addEventListener('click', () => {
+        const icon = btnRecompute.querySelector('.material-symbols-outlined');
+        if (icon) {
+          icon.classList.add('animate-spin');
+          setTimeout(() => {
+            icon.classList.remove('animate-spin');
+          }, 800);
+        }
+      });
+    }
+  </script>
+</div></main></div></body></html>

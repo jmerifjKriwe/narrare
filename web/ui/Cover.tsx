@@ -1,52 +1,74 @@
 /**
- * The cover: a 3:4 tile that gives each book a face on the shelf. Which of
- * the three cover tones a book wears is `hash(title) % 3` — a pure function
- * of the title, so a book keeps its cover across renders, reloads and
- * sessions without the database storing one, and two differently named
- * books can land on the same tone without anyone lying.
+ * The cover: a 3:4 book object that gives each book a face on the shelf.
+ * Which of the four cover tones a book wears is `hash(title) % 4` — a pure
+ * function of the title, so a book keeps its cover across renders, reloads
+ * and sessions without the database storing one, and two differently named
+ * books can land on the same tone without anyone lying. The fourth tone,
+ * slate, is the ground the drafts give the area-chat cover (O-2): the same
+ * value as the area hue, but worn as its own token — an object surface,
+ * not an accent.
  *
- * A tone is more than a ground. Pale and sepia set the title at the foot and
- * name the book's genre (or its language) in the corner; sepia adds an inset
- * hairline and a spine strip, so the three tiles are three objects rather
- * than three fills. Ink centres its title. All of it is CSS: no file, no
- * uploaded art, nothing to export.
+ * A tone is more than a ground; the quartet is four composed objects, not
+ * four fills. Every tone carries the spine: 5 px of the ground darkened,
+ * the hinge a hard-edged book bends on. The three foot-tones set their
+ * title at the foot in the brand serif, and the corner eyebrow above it —
+ * pale's named mark in the norm — names the book's genre or its language;
+ * sepia adds the gold frame. Ink is the drafted midnight object: its title
+ * centres, and its metadata follows beneath it at 60 %. All of it is CSS:
+ * no file, no uploaded art, nothing to export.
  *
- * The tile is `aria-hidden`: the card that holds it already names the book
- * (the card link's accessible name is the shelf's answer), and a second
+ * The lettering is the brand serif, the EB Garamond stack the prose
+ * surface reads in, at the weight the serif's headings carry; it clamps to
+ * three lines, and the clamp carries the overflow. Forced colours strip
+ * the palette, not the object: the title is real text and every
+ * decorative layer — spine, frame, eyebrow — is its own empty span, so
+ * the lettering stays readable by structure, never by colour.
+ *
+ * The tile is `aria-hidden`: the card that holds it already names the
+ * book — its link's accessible name carries the title and the word count
+ * (the shelf's answer, pinned where the card is composed) — and a second
  * copy of the title in the accessibility tree would make "open Der Sturm"
- * read twice. The lettering is the brand serif, the EB Garamond stack the
- * prose surface reads in; it clamps to three lines, and the clamp carries
- * the overflow.
+ * read twice.
  */
 
-/** The tile's three looks: ground, ink, and the composition each tone owns.
+/** The tile's four looks: ground, ink, and the composition each tone owns.
  *  A cover's ground is an object surface, never an action token — dark mode
  *  is where borrowing `--primary` made the tile read as a giant button
- *  (#590). */
+ *  (#590). The spine strength is the ground's own: the darker the ground,
+ *  the more black its hinge takes to read. */
 const TONES = [
-  { name: "pale", ground: "bg-cover-pale", ink: "text-cover-pale-ink", frame: false, centered: false },
-  { name: "sepia", ground: "bg-cover-sepia", ink: "text-cover-sepia-ink", frame: true, centered: false },
-  { name: "ink", ground: "bg-cover-ink", ink: "text-cover-ink-ink", frame: false, centered: true },
+  { name: "pale", ground: "bg-cover-pale", ink: "text-cover-pale-ink", spine: "bg-black/20", frame: false, centered: false },
+  { name: "sepia", ground: "bg-cover-sepia", ink: "text-cover-sepia-ink", spine: "bg-black/40", frame: true, centered: false },
+  { name: "ink", ground: "bg-cover-ink", ink: "text-cover-ink-ink", spine: "bg-black/60", frame: false, centered: true },
+  { name: "slate", ground: "bg-cover-slate", ink: "text-cover-slate-ink", spine: "bg-black/40", frame: false, centered: false },
 ] as const;
 
-/** A tone: an index into `TONES`. */
-export type CoverTone = 0 | 1 | 2;
+/** A tone: the quartet's own name, as the shelf speaks it. */
+export type CoverTone = (typeof TONES)[number]["name"];
 
 /** FNV-1a, 32 bit: tiny, order-sensitive, identical in every engine — a
  *  title hashes to the same tone in the browser and in the pin test. */
-export function coverTone(title: string): CoverTone {
+function toneIndex(title: string): number {
   let hash = 0x811c9dc5;
   for (let at = 0; at < title.length; at += 1) {
     hash ^= title.charCodeAt(at);
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
-  return (hash % 3) as CoverTone;
+  return hash % TONES.length;
 }
 
-/** The two widths the shelf needs: the card's thumbnail and the hero's. */
+/** The tone a title wears. */
+export function coverTone(title: string): CoverTone {
+  return TONES[toneIndex(title)].name;
+}
+
+/** The widths the shelf needs: the list row's thumbnail, the grid card's
+ *  cover and the hero's. The drafted widths are the screen's own (w-36,
+ *  w-48); the height always derives from the 3:4 norm. */
 const SIZES = {
   md: "w-20",
-  lg: "w-28",
+  card: "w-36",
+  hero: "w-48",
 } as const;
 
 export type CoverSize = keyof typeof SIZES;
@@ -62,7 +84,7 @@ export function Cover({
   genre?: string | null;
   language?: string | null;
 }) {
-  const look = TONES[coverTone(title)];
+  const look = TONES[toneIndex(title)];
   // The eyebrow is the book's one catalogued fact: a genre, or the language
   // it is written in. No counts — the card already carries them. An empty
   // genre is no genre: the language answers instead.
@@ -71,38 +93,63 @@ export function Cover({
     <div
       aria-hidden="true"
       data-cover-tone={look.name}
-      className={`relative flex shrink-0 ${SIZES[size]} aspect-[3/4] overflow-hidden rounded-[var(--radius)] border border-border p-1.5 ${
+      className={`relative flex ${look.centered ? "flex-col items-center justify-center" : "items-end"} shrink-0 ${SIZES[size]} aspect-[3/4] overflow-hidden rounded-[var(--radius)] border border-border p-1.5 ${size === "hero" ? "shadow-2xl" : "shadow-lg"} ${
         look.ground
-      } ${look.ink} ${look.centered ? "items-center justify-center" : "items-end"}`}
+      } ${look.ink}`}
     >
+      {/* The spine: 5 px of the ground darkened, the one strip every tone
+       * bends on. The strengths come from the rendered composition, which
+       * names them per tone — pale 20 %, sepia 40 %, slate 40 %, ink 60 %
+       * (the dark shelf names all four; the light shelf agrees on pale):
+       * a uniform strength is invisible on the midnight ground, and the
+       * tone's ink is no substitute — it would lighten the dark grounds it
+       * has to shade. Decorative: it carries no text and no forced palette
+       * needs it. */}
+      <span
+        data-cover-spine
+        className={`pointer-events-none absolute inset-y-0 left-0 w-[5px] ${look.spine}`}
+      />
       {look.frame ? (
-        <>
-          <span
-            data-cover-frame
-            className="pointer-events-none absolute inset-[5px] rounded-[2px] border border-current opacity-35"
-          />
-          <span className="pointer-events-none absolute inset-y-0 left-0 w-[5px] bg-current opacity-20" />
-        </>
+        /* Sepia's gold frame: a 1 px hairline at a 5 px offset. No token
+         * names a gold; the tone's own ink washed at 35 % over the
+         * terracotta is the warm gold the drafts mean, and it stays the
+         * ink's tint so the frame follows the theme with its ground. */
+        <span
+          data-cover-frame
+          className="pointer-events-none absolute inset-[5px] rounded-[2px] border border-current opacity-35"
+        />
       ) : null}
-      {eyebrow === "" ? null : (
+      {!look.centered && eyebrow !== "" ? (
         <span
           data-cover-eyebrow
-          /* 8 px is deliberately off the UI scale: this is a spine caption on
-           * an object, not UI text, and the census only sees the named scale
-           * steps. 0.8, not 0.7: at 0.7 the dark sepia pair measured 4.30:1,
-           * under AA; 0.8 measures 5.12:1. */
-          className="absolute left-1.5 right-1.5 top-1.5 truncate text-[8px] uppercase tracking-[0.08em] opacity-80"
+          /* The design's micro-label step, at 80 %: measured on every
+           * ground it rides — 8.03:1 on pale light, 6.00:1 on sepia light,
+           * 4.60:1 on slate light (the closest), 7.08:1 / 7.42:1 / 6.89:1
+           * on the dark half's grounds. One line: a long genre must not
+           * wrap over the title below it. */
+          className="absolute left-1.5 right-1.5 top-1.5 truncate text-eyebrow uppercase opacity-80"
         >
           {eyebrow}
         </span>
-      )}
+      ) : null}
       <span
-        className={`line-clamp-3 w-full overflow-hidden break-words text-label leading-tight [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif] ${
+        className={`line-clamp-3 w-full overflow-hidden break-normal hyphens-none font-semibold italic text-label leading-tight [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif] ${
           look.centered ? "text-center" : "text-left"
         }`}
       >
         {title}
       </span>
+      {look.centered && eyebrow !== "" ? (
+        <span
+          data-cover-eyebrow
+          /* Ink's metadata follows its centred title at 60 %, as the drafts
+           * draw the midnight object: measured 6.33:1 on the light ground
+           * and 5.55:1 on the dark one. */
+          className="mt-0.5 w-full truncate text-center text-eyebrow uppercase opacity-60"
+        >
+          {eyebrow}
+        </span>
+      ) : null}
     </div>
   );
 }

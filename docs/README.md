@@ -36,3 +36,7 @@ layers, the gates and how to run each of them.
 `superpowers/` holds the dated plans, specs and reports of finished work
 packages — read one only when a comment points at it. Its
 [follow-ups page](superpowers/follow-ups.md) indexes the open findings.
+
+[`design/stitch/`](design/stitch/README.md) holds the exported Stitch design
+drafts of the shell — 42 screens by area, the design system behind them, and
+three project documents.

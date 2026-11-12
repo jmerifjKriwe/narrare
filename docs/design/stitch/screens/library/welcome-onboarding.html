@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_blank" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"state-success":"#21763C","background":"#fff8f2","area-knowledge":"#606127","on-secondary-fixed-variant":"#5a4137","area-writing":"#914F2F","surface-container-low":"#faf2ea","surface":"#fff8f2","text-muted-light":"#6E6B65","on-primary":"#ffffff","primary-fixed-dim":"#ffb695","primary-container":"#743b1f","rule-dark":"#302D28","on-tertiary-container":"#eead78","secondary":"#74584e","outline":"#86736c","state-warning":"#9A6100","on-primary-fixed":"#351000","area-chat":"#3A637B","amber-focus":"#8F4622","on-secondary":"#ffffff","cover-ink":"#24211C","cover-pale":"#EEEBE5","primary":"#58250b","bg-panel-dark":"#1C1914","on-primary-fixed-variant":"#6f371c","bg-card-dark":"#211F1A","area-settings":"#5A5549","inverse-surface":"#33302b","bg-panel-light":"#FDFCF9","on-tertiary-fixed":"#2f1500","text-muted-dark":"#89867F","on-error-container":"#93000a","on-tertiary":"#ffffff","area-planning":"#834D7E","on-secondary-fixed":"#2a170f","on-surface":"#1e1b16","on-secondary-container":"#795c52","amber-focus-dark":"#F2AD73","surface-tint":"#8c4e30","surface-bright":"#fff8f2","surface-container-highest":"#e9e1d9","bg-soft-dark":"#2C2922","secondary-fixed":"#ffdbce","text-foreground-dark":"#DFDEDA","bg-soft-light":"#EFEBE2","bg-canvas-light":"#F6F3ED","error":"#ba1a1a","surface-variant":"#e9e1d9","rule-light":"#EEEBE5","surface-dim":"#e0d9d1","surface-container-high":"#eee7df","surface-container-lowest":"#ffffff","secondary-container":"#fed8ca","cover-sepia":"#743B1F","inverse-on-surface":"#f7f0e7","border-dark":"#35332D","border-light":"#E0DEDA","on-background":"#1e1b16","on-surface-variant":"#53433d","on-tertiary-fixed-variant":"#693c10","primary-fixed":"#ffdbcc","error-container":"#ffdad6","state-danger":"#AC3031","outline-variant":"#d8c2b9","bg-card-light":"#FFFFFF","on-error":"#ffffff","surface-container":"#f4ede4","secondary-fixed-dim":"#e3bfb2","inverse-primary":"#ffb695","bg-canvas-dark":"#16140F","tertiary-container":"#6e3f14","tertiary":"#522900","on-primary-container":"#f8a884","tertiary-fixed-dim":"#fcb882","tertiary-fixed":"#ffdcc3"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1.5rem","space-sm":"0.5rem","rail-collapsed":"3rem","space-xs":"0.25rem","dock-width":"21rem","container-max":"75rem","rail-expanded":"10.5rem","prose-max-width":"34rem","space-md":"1rem","gutter":"1rem","space-lg":"1.5rem","space-xl":"2rem"},fontFamily:{"meta-default":["Plus Jakarta Sans"],"prose-editorial":["EB Garamond"],"label-default":["Plus Jakarta Sans"],"headline-emph":["Plus Jakarta Sans"],"prose-heading-2":["EB Garamond"],"eyebrow-tracked":["Plus Jakarta Sans"],"prose-heading-1":["EB Garamond"],"headline-hero":["Plus Jakarta Sans"],"body-default":["Plus Jakarta Sans"],"headline-title":["Plus Jakarta Sans"]},fontSize:{"meta-default":["12px",{"lineHeight":"17px","fontWeight":"400"}],"prose-editorial":["18px",{"lineHeight":"31.5px","letterSpacing":"0.01em","fontWeight":"400"}],"label-default":["13px",{"lineHeight":"18px","fontWeight":"500"}],"headline-emph":["15px",{"lineHeight":"22px","fontWeight":"600"}],"prose-heading-2":["21px",{"lineHeight":"28px","fontWeight":"600"}],"eyebrow-tracked":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"600"}],"prose-heading-1":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-hero":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}],"body-default":["14px",{"lineHeight":"22px","fontWeight":"400"}],"headline-title":["20px",{"lineHeight":"26px","letterSpacing":"-0.015em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased min-h-screen flex items-center justify-center p-space-md"><main class="w-full max-w-container-max mx-auto"><div class="flex flex-col w-full py-space-md">
+<!-- Onboarding Sanctuary Container -->
+<div class="w-full max-w-4xl mx-auto flex flex-col gap-space-lg">
+<!-- Top Flow Breadcrumbs & Stepper Header -->
+<header class="flex flex-col gap-space-sm pb-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm text-secondary">
+<span class="material-symbols-outlined text-amber-focus" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+<span class="font-eyebrow-tracked text-eyebrow-tracked uppercase tracking-widest text-primary">Narrare Atelier</span>
+</div>
+<span class="font-meta-default text-meta-default text-text-muted-light bg-surface-container px-space-sm py-0.5 rounded-full">
+          Schritt 02 / 03
+        </span>
+</div>
+<!-- Segmented Step Indicator (No borders, pure tonal elevation & pills) -->
+<nav aria-label="Onboarding Fortschritt" class="grid grid-cols-3 gap-space-xs pt-space-xs">
+<!-- Step 1: Completed -->
+<div class="flex flex-col gap-1.5 opacity-70 group cursor-default">
+<div class="h-1 w-full bg-cover-sepia rounded-full"></div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-state-success" style="font-size: 14px; font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-default text-label-default text-on-surface truncate">1. Autorenprofil &amp; Stil</span>
+</div>
+</div>
+<!-- Step 2: Active -->
+<div class="flex flex-col gap-1.5">
+<div class="h-1 w-full bg-primary-container rounded-full relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-primary via-amber-focus to-primary animate-pulse opacity-80"></div>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3.5 h-3.5 rounded-full bg-primary text-on-primary flex items-center justify-center font-meta-default text-[10px] font-bold">2</span>
+<span class="font-headline-emph text-headline-emph text-primary truncate">2. Projekt-Initialisierung</span>
+</div>
+</div>
+<!-- Step 3: Upcoming -->
+<div class="flex flex-col gap-1.5 opacity-40">
+<div class="h-1 w-full bg-surface-container-highest rounded-full"></div>
+<div class="flex items-center gap-1.5">
+<span class="w-3.5 h-3.5 rounded-full bg-surface-container-high text-text-muted-light flex items-center justify-center font-meta-default text-[10px]">3</span>
+<span class="font-label-default text-label-default text-text-muted-light truncate">3. Lore- &amp; KI-Grad</span>
+</div>
+</div>
+</nav>
+</header>
+<!-- Inspiring Editorial Hero Intro -->
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pt-space-xs">
+<div class="max-w-xl">
+<span class="font-eyebrow-tracked text-eyebrow-tracked text-amber-focus uppercase tracking-wider block mb-1">Genesis des Werks</span>
+<h1 class="font-prose-heading-1 text-prose-heading-1 text-on-surface tracking-tight">
+          Willkommen in Narrare.
+        </h1>
+<p class="font-prose-editorial text-prose-editorial text-secondary italic mt-1">
+          Dein Atelier für anspruchsvolle Belletristik, architektonische Dramaturgie und atmende Welten.
+        </p>
+</div>
+<!-- Live Manuscript Archetype Miniature -->
+<div class="hidden md:flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-lg shadow-sm">
+<div class="w-9 h-12 bg-cover-sepia rounded-DEFAULT flex flex-col justify-between p-1 shadow-sm">
+<div class="w-full h-0.5 bg-on-tertiary-container/40"></div>
+<span class="material-symbols-outlined text-surface text-[14px]">edit_note</span>
+</div>
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase tracking-wider">Format</span>
+<span class="font-headline-emph text-label-default text-primary">Roman-Manuskript (Standard)</span>
+</div>
+</div>
+</section>
+<!-- Main Workspace Setup Canvas -->
+<div class="flex flex-col gap-space-lg">
+<!-- BLOCK 1: Startpfad (Creation Mode) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-title text-headline-title text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">architecture</span>
+            Wie möchtest du beginnen?
+          </h2>
+<span class="font-meta-default text-meta-default text-text-muted-light">Wähle deinen Einstiegspunkt</span>
+</div>
+<div aria-label="Einstiegsmodus" class="grid grid-cols-1 md:grid-cols-3 gap-space-md" role="radiogroup">
+<!-- Option A: Selected / Active -->
+<div class="relative flex flex-col p-space-md bg-bg-card-light rounded-xl shadow-md cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 group" id="card-new" onclick="selectStartMode('new')">
+<div class="absolute -top-2.5 right-4 bg-primary text-on-primary px-2 py-0.5 rounded-full font-eyebrow-tracked text-[10px] tracking-wider uppercase shadow-sm">
+              Ausgewählt
+            </div>
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary mb-space-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[22px]">ink_pen</span>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface mb-1">Neues Manuskript</h3>
+<p class="font-body-default text-body-default text-text-muted-light text-xs leading-relaxed">
+              Vom ersten federleichten Satz an. Freie Szenerie, maßgeschneiderte Dramaturgie &amp; Kapitelgliederung.
+            </p>
+<div class="mt-auto pt-space-md flex items-center text-primary font-label-default text-xs gap-1">
+<span>Konfiguration öffnen</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</div>
+</div>
+<!-- Option B: Import -->
+<div class="relative flex flex-col p-space-md bg-surface-container-low hover:bg-bg-card-light rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 group" id="card-import" onclick="selectStartMode('import')">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[22px]">upload_file</span>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface mb-1">Manuskript importieren</h3>
+<p class="font-body-default text-body-default text-text-muted-light text-xs leading-relaxed">
+              Bestehende Werke strukturiert überführen aus DOCX, Markdown, Scrivener oder ungeschütztem ePub.
+            </p>
+<div class="mt-auto pt-space-md flex items-center gap-1.5 text-text-muted-light font-meta-default text-[11px]">
+<span class="px-1.5 py-0.5 bg-surface-container rounded">.docx</span>
+<span class="px-1.5 py-0.5 bg-surface-container rounded">.md</span>
+<span class="px-1.5 py-0.5 bg-surface-container rounded">.scriv</span>
+</div>
+</div>
+<!-- Option C: Template / Structure -->
+<div class="relative flex flex-col p-space-md bg-surface-container-low hover:bg-bg-card-light rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 group" id="card-template" onclick="selectStartMode('template')">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[22px]">account_tree</span>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface mb-1">Dramaturgische Vorlage</h3>
+<p class="font-body-default text-body-default text-text-muted-light text-xs leading-relaxed">
+              Fundiertes Gerüst anwenden: Hero's Journey, 3-Akt-Schema nach McKee oder Save the Cat Beat-Sheet.
+            </p>
+<div class="mt-auto pt-space-md flex items-center text-secondary font-label-default text-xs gap-1">
+<span>Modell wählen</span>
+<span class="material-symbols-outlined text-[14px]">tune</span>
+</div>
+</div>
+</div>
+<!-- Dynamic Configuration Panel for Option A (Unfolded by default) -->
+<div class="mt-space-xs p-space-lg bg-surface-container-lowest rounded-xl shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-col md:flex-row gap-space-md items-start">
+<!-- Book Spine & Cover Preview -->
+<div class="w-full md:w-48 shrink-0 flex flex-col items-center">
+<div class="w-36 h-52 bg-cover-sepia rounded-lg shadow-md relative p-space-sm flex flex-col justify-between overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-cover-ink/30 via-transparent to-transparent w-4"></div>
+<div class="flex items-center justify-between text-on-primary/60">
+<span class="font-eyebrow-tracked text-[9px] tracking-widest uppercase">Opus I</span>
+<span class="material-symbols-outlined text-[14px]">bookmark</span>
+</div>
+<div class="my-auto text-center px-1">
+<span class="font-prose-editorial text-surface text-[17px] font-semibold leading-tight line-clamp-3" id="preview-cover-title">
+                    Der letzte Schwellenwächter
+                  </span>
+</div>
+<div class="text-right">
+<span class="font-meta-default text-[10px] text-on-primary/70 italic">Narrare Press</span>
+</div>
+</div>
+<span class="font-meta-default text-text-muted-light text-[11px] mt-2">Visuelle Bucheinband-Vorschau</span>
+</div>
+<!-- Form Details -->
+<div class="flex-1 w-full flex flex-col gap-space-md">
+<!-- Title Field -->
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface flex justify-between" for="book-title">
+<span>Arbeitstitel des Manuskripts</span>
+<span class="text-text-muted-light font-meta-default text-[11px]">Jederzeit anpassbar</span>
+</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-text-muted-light text-[18px]">title</span>
+<input class="w-full h-9 pl-9 pr-3 rounded-lg bg-surface font-body-default text-body-default text-on-surface focus:outline-none focus:bg-surface-container-lowest transition-colors shadow-inner" id="book-title" oninput="updateTitle(this.value)" placeholder="z. B. Die Archive von Oakhaven" type="text" value="Der letzte Schwellenwächter"/>
+</div>
+</div>
+<!-- Genre Multi-Tags -->
+<div class="flex flex-col gap-1.5">
+<span class="font-label-default text-label-default text-on-surface">Genre-Klassifikation &amp; Tonalität</span>
+<div class="flex flex-wrap gap-2" id="genre-container">
+<button class="px-3 py-1 rounded-full text-xs font-label-default bg-primary text-on-primary transition-all shadow-sm" onclick="toggleTag(this)" type="button">
+                    Sci-Fi &amp; Speculative
+                  </button>
+<button class="px-3 py-1 rounded-full text-xs font-label-default bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" onclick="toggleTag(this)" type="button">
+                    Mystery &amp; Noir
+                  </button>
+<button class="px-3 py-1 rounded-full text-xs font-label-default bg-primary text-on-primary transition-all shadow-sm" onclick="toggleTag(this)" type="button">
+                    Historisch
+                  </button>
+<button class="px-3 py-1 rounded-full text-xs font-label-default bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" onclick="toggleTag(this)" type="button">
+                    Literarische Belletristik
+                  </button>
+<button class="px-3 py-1 rounded-full text-xs font-label-default bg-surface-container text-on-surface hover:bg-surface-container-high transition-all" onclick="toggleTag(this)" type="button">
+                    Low Fantasy / Magischer Realismus
+                  </button>
+</div>
+</div>
+<!-- Target Word Count & Progress Goal Visualizer -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md pt-space-xs">
+<div class="flex flex-col gap-1">
+<label class="font-label-default text-label-default text-on-surface" for="word-count">
+                    Ziel-Umfang (Wörter)
+                  </label>
+<div class="flex items-center gap-2">
+<input class="w-full h-9 px-3 rounded-lg bg-surface font-body-default text-body-default text-on-surface focus:outline-none shadow-inner" id="word-count" oninput="updateWordGauge(this.value)" step="5000" type="number" value="65000"/>
+<span class="font-meta-default text-meta-default text-secondary shrink-0">Wörter</span>
+</div>
+</div>
+<!-- Word Count Category Gauge Card -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-eyebrow-tracked text-[10px] text-text-muted-light uppercase">Format-Kategorie</span>
+<span class="font-headline-emph text-headline-emph text-primary" id="format-label">Vollwertiger Roman</span>
+<span class="font-meta-default text-meta-default text-text-muted-light">ca. 240–280 Buchseiten</span>
+</div>
+<!-- SVG Mini Donut Gauge -->
+<div class="relative w-12 h-12 shrink-0">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-high" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-amber-focus" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" id="donut-stroke" stroke="currentColor" stroke-dasharray="65, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center font-meta-default text-[10px] font-bold text-on-surface">
+                      65k
+                    </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- BLOCK 2: AI Assistance Depth (Souveränität & Kollaboration) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+<div>
+<h2 class="font-headline-title text-headline-title text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">cognition</span>
+              KI-Kollaborations-Level wählen
+            </h2>
+<p class="font-meta-default text-meta-default text-text-muted-light">
+              Definiere präzise, wie tiefgreifend dich die maschinelle Assistenz im Schaffensprozess begleitet.
+            </p>
+</div>
+<span class="font-meta-default text-[11px] text-amber-focus bg-secondary-container/50 px-2 py-0.5 rounded self-start sm:self-center">
+            Jederzeit im Editor justierbar
+          </span>
+</div>
+<div aria-label="KI-Assistenzgrad" class="grid grid-cols-1 md:grid-cols-3 gap-space-md" role="radiogroup">
+<!-- Mode 1: Stiller Archivar -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-bg-card-light transition-all cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-md group" id="ai-mode-1" onclick="selectAiMode(1)">
+<div class="flex flex-col">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="w-8 h-8 rounded-full bg-area-knowledge/15 text-area-knowledge flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</div>
+<div class="w-4 h-4 rounded-full bg-surface-container-highest flex items-center justify-center check-dot"></div>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Stiller Archivar</h3>
+<p class="font-body-default text-body-default text-text-muted-light text-xs mt-1 leading-relaxed">
+                Reine Lore-Prüfung und Timeline-Konsistenz im Hintergrund. Keine ungefragten Textvorschläge, 100% autarkes Schreiben.
+              </p>
+</div>
+<div class="mt-space-md pt-space-xs text-[11px] font-meta-default text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+<span>Fokus auf Fakten-Integrität</span>
+</div>
+</div>
+<!-- Mode 2: Ko-Pilot & Sparring (Recommended) -->
+<div class="p-space-md rounded-xl bg-bg-card-light shadow-md ring-0 cursor-pointer flex flex-col justify-between relative group transform -translate-y-0.5" id="ai-mode-2" onclick="selectAiMode(2)">
+<div class="absolute -top-2.5 right-4 bg-tertiary text-on-tertiary px-2 py-0.5 rounded-full font-eyebrow-tracked text-[10px] tracking-wider uppercase shadow-sm">
+              Empfohlen
+            </div>
+<div class="flex flex-col">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">forum</span>
+</div>
+<div class="w-4 h-4 rounded-full bg-primary flex items-center justify-center check-dot">
+<span class="material-symbols-outlined text-on-primary text-[10px]" style="font-variation-settings: 'wght' 700;">done</span>
+</div>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-primary">Ko-Pilot &amp; Sparring</h3>
+<p class="font-body-default text-body-default text-on-surface-variant text-xs mt-1 leading-relaxed">
+                Dialogisches Sparring, Entitäten-Tracking &amp; Blitz-Recherchen per <kbd class="px-1 py-0.5 bg-surface-container rounded text-[10px] font-mono">⌘K</kbd>. Ghost-Completions nur auf Tastendruck.
+              </p>
+</div>
+<div class="mt-space-md pt-space-xs text-[11px] font-meta-default text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span>Ausgewogene Ko-Kreation</span>
+</div>
+</div>
+<!-- Mode 3: Dynamische Muse -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-bg-card-light transition-all cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-md group" id="ai-mode-3" onclick="selectAiMode(3)">
+<div class="flex flex-col">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="w-8 h-8 rounded-full bg-area-planning/15 text-area-planning flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">flare</span>
+</div>
+<div class="w-4 h-4 rounded-full bg-surface-container-highest flex items-center justify-center check-dot"></div>
+</div>
+<h3 class="font-headline-emph text-headline-emph text-on-surface">Dynamische Muse</h3>
+<p class="font-body-default text-body-default text-text-muted-light text-xs mt-1 leading-relaxed">
+                Proaktive Plot-Verästelungen, rhythmische Satzbau-Vorschläge, Metaphern-Generator und semantische Stimmungsanalysen.
+              </p>
+</div>
+<div class="mt-space-md pt-space-xs text-[11px] font-meta-default text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span>Maximale Inspiration</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Security / Local-First Privacy Pledge Note -->
+<div class="flex items-center gap-space-sm p-space-sm bg-surface-container-low rounded-lg text-text-muted-light">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0">lock</span>
+<p class="font-meta-default text-meta-default">
+<strong class="text-on-surface font-headline-emph">Autoren-Privatsphäre garantiert:</strong> Deine Texte werden niemals für öffentliche KI-Basismodelle verwendet. Alle Manuskripte verbleiben verschlüsselt auf deiner persönlichen Instanz.
+        </p>
+</div>
+</div>
+<!-- Stepper Navigation Footer Actions -->
+<footer class="pt-space-sm flex flex-col-reverse sm:flex-row items-center justify-between gap-space-md">
+<!-- Back Button -->
+<button class="w-full sm:w-auto px-space-md h-10 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-default text-label-default flex items-center justify-center gap-2 transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Schritt zurück: Autorenprofil</span>
+</button>
+<!-- Primary Action CTA -->
+<div class="flex items-center gap-space-sm w-full sm:w-auto">
+<button class="w-full sm:w-auto px-space-lg h-11 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-headline-emph text-headline-emph flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99]" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">clock_loader_40</span>
+<span>Workspace betreten &amp; Loslegen</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</footer>
+</div>
+</div>
+<script>
+  function updateTitle(val) {
+    const preview = document.getElementById('preview-cover-title');
+    if (preview) {
+      preview.textContent = val.trim() || 'Unbetiteltes Opus';
+    }
+  }
+
+  function toggleTag(el) {
+    const isSelected = el.classList.contains('bg-primary');
+    if (isSelected) {
+      el.classList.remove('bg-primary', 'text-on-primary', 'shadow-sm');
+      el.classList.add('bg-surface-container', 'text-on-surface');
+    } else {
+      el.classList.add('bg-primary', 'text-on-primary', 'shadow-sm');
+      el.classList.remove('bg-surface-container', 'text-on-surface');
+    }
+  }
+
+  function updateWordGauge(val) {
+    const count = parseInt(val, 10) || 0;
+    const formatLabel = document.getElementById('format-label');
+    const donutStroke = document.getElementById('donut-stroke');
+
+    if (count < 20000) {
+      formatLabel.textContent = 'Kurzgeschichte / Essay';
+    } else if (count < 50000) {
+      formatLabel.textContent = 'Novelle / Kurzer Roman';
+    } else if (count < 90000) {
+      formatLabel.textContent = 'Vollwertiger Roman';
+    } else {
+      formatLabel.textContent = 'Epos / Fantasy-Foliant';
+    }
+
+    // Map 0 - 120,000 words to 0 - 100% stroke
+    const pct = Math.min(Math.max(Math.round((count / 100000) * 100), 5), 100);
+    donutStroke.setAttribute('stroke-dasharray', `${pct}, 100`);
+  }
+
+  function selectStartMode(mode) {
+    const cards = ['card-new', 'card-import', 'card-template'];
+    cards.forEach(c => {
+      const el = document.getElementById(c);
+      if (!el) return;
+      if (c === `card-${mode}`) {
+        el.className = 'relative flex flex-col p-space-md bg-bg-card-light rounded-xl shadow-md cursor-pointer transition-all duration-200 transform -translate-y-0.5 group';
+      } else {
+        el.className = 'relative flex flex-col p-space-md bg-surface-container-low hover:bg-bg-card-light rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 group';
+      }
+    });
+  }
+
+  function selectAiMode(modeIndex) {
+    [1, 2, 3].forEach(idx => {
+      const card = document.getElementById(`ai-mode-${idx}`);
+      const dot = card.querySelector('.check-dot');
+      if (idx === modeIndex) {
+        card.className = 'p-space-md rounded-xl bg-bg-card-light shadow-md cursor-pointer flex flex-col justify-between relative group transform -translate-y-0.5';
+        dot.className = 'w-4 h-4 rounded-full bg-primary flex items-center justify-center check-dot';
+        dot.innerHTML = `<span class="material-symbols-outlined text-on-primary text-[10px]" style="font-variation-settings: 'wght' 700;">done</span>`;
+      } else {
+        card.className = 'p-space-md rounded-xl bg-surface-container-low hover:bg-bg-card-light transition-all cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-md group';
+        dot.className = 'w-4 h-4 rounded-full bg-surface-container-highest flex items-center justify-center check-dot';
+        dot.innerHTML = '';
+      }
+    });
+  }
+</script></main></body></html>

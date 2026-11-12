@@ -8,7 +8,8 @@ import type { ReactNode, TableHTMLAttributes } from "react";
  * nothing under the last row, because a table ends, it does not close.
  * The density law's 26 px row (§8.3) is the cell height; `text-body` is
  * the cell's voice, `text-meta` the header's (the scale's own
- * table-header step, in the panel eyebrow's uppercase). Numerals line up
+ * table-header step, in the panel eyebrow's uppercase, and the header's
+ * weight is the cell's own — see `tableHeadCellClass`). Numerals line up
  * only where they are figures: `tabular-nums` rides exactly the
  * right-aligned columns, header and cells together.
  *
@@ -76,12 +77,19 @@ const ALIGN_CLASSES: Record<TableAlign, string> = {
  * eyebrow classes sit on each `<th>`, not on the `<thead>` — a ruling
  * from P5's review (R20): thead is a grouping element that carries no
  * painting, so the classes live where the paint is.
+ *
+ * The header's weight is the component's own: `font-semibold`, an author
+ * rule on the cell. The meta step carries the scale's 400, and the browser's
+ * `th { font-weight: bold }` is no contract — Tailwind's preflight does not
+ * reset it, so it painted 700 by accident and would paint 400 the moment the
+ * step carries a weight of its own. The cell says what it is; W1's chrome and
+ * eyebrow re-composition owns the final table-header treatment.
  */
 export function tableHeadCellClass(
   align: TableAlign = "left",
   dense = false,
 ): string {
-  return `h-[26px] ${dense ? "px-2.5" : "px-3"} ${ALIGN_CLASSES[align]} text-meta uppercase tracking-[0.1em] text-muted`;
+  return `h-[26px] ${dense ? "px-2.5" : "px-3"} ${ALIGN_CLASSES[align]} text-meta font-semibold uppercase tracking-[0.1em] text-muted`;
 }
 
 /** The body cell: the 26 px row, body type, figures aligned where they are figures. */

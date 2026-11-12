@@ -106,11 +106,6 @@ test-e2e scope="affected" workers="":
       echo "no capability touched — no browser suite owed"
       exit 0
     fi
-    if [ -n "${NARRE_E2E_ATTACH:-}" ]; then
-      workers=0
-    elif [ -z "${workers}" ]; then
-      workers="${NARRE_E2E_WORKERS:-}"
-    fi
     if [ -z "${workers}" ]; then
       available_mb=$(awk '/^MemAvailable:/ {printf "%d", $2 / 1024}' /proc/meminfo)
       if [ "${available_mb}" -ge 6000 ]; then workers=2; else workers=1; fi
@@ -118,7 +113,7 @@ test-e2e scope="affected" workers="":
     else
       echo "E2E on ${workers} worker(s)"
     fi
-    uv run pytest $paths -v -m e2e --timeout=60 -n "$workers"
+    uv run pytest $paths -v -m "e2e and not showcase" --timeout=60 -n "$workers"
 
 # One E2E file, node or `-k` selection with the suite's own marker and timeout
 # (no affected resolver): just test-e2e-file app/capabilities/writing/e2e/test_chapters_e2e.py --lf

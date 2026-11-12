@@ -11,7 +11,7 @@ import { controlClass } from "./field";
  * input, the popup is a real listbox, and the arrow keys walk it.
  *
  * Paint rides the system (R49): the label is `text-label`, the control is
- * `controlClass` (the 28 px input contract, pinned beside `buttonClass`),
+ * `controlClass` (the 36 px input contract, pinned beside `buttonClass`),
  * rows and popover read the type scale with token radii — no legacy
  * `text-sm`/`text-base`/`rounded-md` survives here. The ring answers RAC's
  * `data-focused` — a mouse click focuses the input without a keyboard

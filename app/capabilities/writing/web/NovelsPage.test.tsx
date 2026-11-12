@@ -1,15 +1,26 @@
 // @vitest-environment jsdom
 /**
- * The shelf's card actions (Task 13): every card carries the action menu —
- * Details and Delete — and the two dialogs behind them. The details dialog
- * is the book's five metadata fields in the new-book form's own refusal
- * style, saving only what the user changed (the PATCH's `model_fields_set`
- * contract mirrored client-side); the language is validated text, refused
- * on its own field by the pattern and by the server's 422 naming it. The
- * delete dialog names what dies — chapters from the card's row, entities
- * from the knowledge list it opens with — says documents survive, and
- * carries the export line from `exportAge`, with "Export now" one press
- * away: a landed export invalidates the row and the line recomputes.
+ * Two shelves in one file. The composition tests (Task 10) pin the drafted
+ * page — the Literary Modernism shelf 1:1 against `screens/library/shelf`:
+ * the hero derives from the last-touched novel, the metrics from the list,
+ * every interim field renders spec §6.6's neutral exactly (streak "—",
+ * the target bar hidden, every pill "Entwurf", the goal 0 and the
+ * sparkline flat), search filters titles, the toggle switches views, a
+ * long title keeps its full string in the accessible name, and every
+ * drafted section stands — hero, metrics, filter row, grid, banner, empty
+ * state.
+ *
+ * The card-action tests (Task 13) drive the dialogs behind the card's
+ * action menu — Details, Export and Delete — and the two dialogs behind
+ * them. The details dialog is the book's five metadata fields in the
+ * new-book form's own refusal style, saving only what the user changed
+ * (the PATCH's `model_fields_set` contract mirrored client-side); the
+ * language is validated text, refused on its own field by the pattern and
+ * by the server's 422 naming it. The delete dialog names what dies —
+ * chapters from the card's row, entities from the knowledge list it opens
+ * with — says documents survive, and carries the export line from
+ * `exportAge`, with "Export now" one press away: a landed export
+ * invalidates the row and the line recomputes.
  *
  * The page stands in a real router and the API client is mocked at its
  * module boundary (the workbench suite's own pattern); the export itself
@@ -28,8 +39,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { t } from "@shell/lib/i18n";
+import { formatNumber } from "@shell/lib/format";
 import { queryClient } from "@shell/lib/query";
 import { rootRoute } from "@shell/routes/__root";
+import { formatRelative } from "@shell/lib/time";
 
 vi.mock("@shell/lib/api/client", () => ({
   client: {
@@ -110,6 +123,41 @@ function mockUpdate(novel: Novel): void {
   );
 }
 
+/** A second book for the composition tests: its own id and title, so the
+ *  two cards can never be confused, and its own touch time, so the hero
+ *  has a fact to derive from. */
+function secondNovel(overrides: Partial<Novel> = {}): Novel {
+  return shelfNovel({
+    id: "6e1f2a90-3b4c-4d5e-8f9a-0b1c2d3e4f5a",
+    title: "Die Halligen",
+    chapter_count: 5,
+    word_count: 1000,
+    updated_at: "2026-11-01T09:00:00Z",
+    ...overrides,
+  });
+}
+
+/** The shelf's answers for a list of novels: the drafted page derives its
+ *  metrics and its hero from the whole list, so the composition tests need
+ *  more than one row standing. */
+function mockShelfList(novels: Novel[]): void {
+  api.GET.mockImplementation(async (path: string) => {
+    if (path === "/api/settings") return { data: { locale: null }, response: ok() };
+    if (path === "/api/setup/status") return { data: { complete: true }, response: ok() };
+    if (path === "/api/writing/novels") {
+      return { data: novels.map((novel) => ({ ...novel })), response: ok() };
+    }
+    if (path === "/api/writing/novels/{novel_id}") {
+      const row = novels.find((novel) => novel.id === NOVEL_ID) ?? novels[0];
+      return { data: { ...row }, response: ok() };
+    }
+    if (path === "/api/knowledge/novels/{novel_id}/entities") {
+      return { data: [], response: ok() };
+    }
+    throw new Error(`unexpected GET ${path}`);
+  });
+}
+
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -153,20 +201,22 @@ describe("the shelf's card actions", () => {
     });
   }
 
-  it("the_card_menu_offers_details_and_delete", { timeout: 10_000 }, async () => {
+  it("the_card_menu_offers_details_export_and_delete", { timeout: 10_000 }, async () => {
     const novel = shelfNovel();
     mockShelf(novel);
     renderShelf();
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     expect(await cardLink(novel.title)).toBeTruthy();
 
-    // The card's two deeds live in one menu: the shelf stays a grid of
-    // faces, and the actions are one press away without covering it.
+    // The card's three deeds live in one menu, behind the drafted
+    // more_horiz trigger: the shelf stays a grid of faces, and the actions
+    // are one press away without covering it.
     await user.click(await cardMenu(novel.title));
     expect(screen.getByRole("menuitem", { name: t("novels.details") })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: t("shelf.export") })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: t("novels.delete") })).toBeTruthy();
-    // Only the two: nothing else grew into the card's menu.
-    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+    // Only the three: nothing else grew into the card's menu.
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
     await user.keyboard("{Escape}");
   });
 
@@ -431,7 +481,9 @@ describe("the shelf's card actions", () => {
       params: { path: { novel_id: NOVEL_ID } },
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    await waitFor(() => expect(screen.getByText(t("novels.empty"))).toBeTruthy());
+    // The shelf's refetch left the drafted empty panel — the card is gone,
+    // not merely covered.
+    await waitFor(() => expect(screen.getByText(t("shelf.empty.title"))).toBeTruthy());
   });
 
   it("the_delete_dialog_says_never_exported_and_offers_export", {
@@ -512,5 +564,213 @@ describe("the shelf's card actions", () => {
       ([path]) => path === "/api/writing/novels/{novel_id}",
     ).length;
     expect(rowReads).toBe(2);
+  });
+});
+
+describe("the drafted shelf (Task 10)", () => {
+  /** The card's link by its title — the full title is the accessible
+   *  name's leading edge, so the long-title pin can lean on the same
+   *  helper. */
+  function cardLink(title: string): Promise<HTMLElement> {
+    return screen.findByRole("link", {
+      name: (name: string) => name === title || name.startsWith(`${title} `),
+    });
+  }
+
+  it("every_drafted_section_is_present", { timeout: 10_000 }, async () => {
+    mockShelfList([shelfNovel()]);
+    renderShelf();
+
+    // The header: eyebrow, page title, subtitle. The eyebrow is the
+    // loaded page's own mark — the wait paints it, never the skeleton,
+    // which borrows the page's title for its own shape.
+    expect(await screen.findByText(t("shelf.eyebrow"))).toBeTruthy();
+    expect(screen.getByRole("heading", { name: t("shelf.title") })).toBeTruthy();
+    expect(screen.getByText(t("shelf.subtitle"))).toBeTruthy();
+    // The metrics strip.
+    expect(screen.getByText(t("shelf.metrics.activeProjects"))).toBeTruthy();
+    expect(screen.getByText(t("shelf.metrics.totalWords"))).toBeTruthy();
+    expect(screen.getByText(t("shelf.metrics.streak"))).toBeTruthy();
+    // The hero.
+    expect(
+      await screen.findByRole("region", { name: t("shelf.hero.active") }),
+    ).toBeTruthy();
+    // The filter row: search, filter, view toggle.
+    expect(screen.getByRole("textbox", { name: t("shelf.searchLabel") })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: t("shelf.filterLabel") })).toBeTruthy();
+    expect(screen.getByRole("group", { name: t("shelf.viewLabel") })).toBeTruthy();
+    // The grid and the banner.
+    expect(screen.getByRole("list")).toBeTruthy();
+    expect(await cardLink("Das Zählwerk")).toBeTruthy();
+    expect(screen.getByText(t("shelf.banner.weekly"))).toBeTruthy();
+  });
+
+  it("the_hero_derives_from_the_last_touched_novel", { timeout: 10_000 }, async () => {
+    const older = secondNovel();
+    const newer = shelfNovel({
+      title: "Der Sturm",
+      genre: "Mystery",
+      blurb: "Ein Klappentext.",
+      chapter_count: 3,
+      word_count: 1200,
+      updated_at: "2026-11-02T09:00:00Z",
+    });
+    mockShelfList([older, newer]);
+    renderShelf();
+
+    const hero = await screen.findByRole("region", { name: t("shelf.hero.active") });
+    // The newest book is the one to continue; an older one never wins.
+    // The heading, not the cover's lettering — the tile repeats the name.
+    expect(within(hero).getByRole("heading", { name: "Der Sturm" })).toBeTruthy();
+    expect(within(hero).queryByText("Die Halligen")).toBeNull();
+    // The hero's facts are the row's own: words, chapters, the touch time.
+    expect(within(hero).getByText(formatNumber(1200))).toBeTruthy();
+    expect(within(hero).getByText("3")).toBeTruthy();
+    expect(
+      within(hero).getByText(t("novels.lastTouched", { time: formatRelative(newer.updated_at) })),
+    ).toBeTruthy();
+    // The CTA names the chapter it continues and opens the book it names.
+    const door = within(hero).getByRole("link", {
+      name: t("shelf.hero.continueChapter", { n: 3 }),
+    });
+    expect(door.getAttribute("href")).toContain(newer.id);
+    // The outline door opens the novel's planning surface, not the editor
+    // beside it: the planning landing carries the novel as `?novel=`.
+    const outline = within(hero).getByRole("link", { name: t("shelf.hero.outline") });
+    expect(outline.getAttribute("href")).toContain("/planning");
+    expect(outline.getAttribute("href")).toContain(`novel=${newer.id}`);
+  });
+
+  it("the_metrics_derive_from_the_list", { timeout: 10_000 }, async () => {
+    mockShelfList([
+      shelfNovel({ word_count: 1200, updated_at: "2026-11-02T09:00:00Z" }),
+      secondNovel({ word_count: 1000 }),
+    ]);
+    renderShelf();
+
+    // Two books, their words summed — both numbers the list itself owns.
+    expect(await screen.findByText(t("shelf.metrics.novels", { count: 2 }))).toBeTruthy();
+    expect(screen.getByText(formatNumber(2200))).toBeTruthy();
+  });
+
+  it("interim_fields_render_their_neutral_exactly", { timeout: 10_000 }, async () => {
+    mockShelfList([
+      shelfNovel({ word_count: 1200, updated_at: "2026-11-02T09:00:00Z" }),
+      secondNovel(),
+    ]);
+    renderShelf();
+    await screen.findByRole("region", { name: t("shelf.hero.active") });
+
+    // The streak is "—" until something tracks it — never a guessed number.
+    expect(screen.getByText(t("shelf.metrics.streak"))).toBeTruthy();
+    expect(screen.getByText(t("shelf.streakNone"))).toBeTruthy();
+    // No target exists: no "x / y Wörter" pair and no progress bar anywhere.
+    expect(document.body.textContent).not.toContain("60.000");
+    expect(document.querySelector("[data-target-bar]")).toBeNull();
+    // Every book wears the draft's default pill.
+    const pills = screen.getAllByText(t("shelf.statusDraft"));
+    expect(pills).toHaveLength(2);
+    // The banner's goal is 0, its weekly average 0, its sparkline flat.
+    expect(screen.getByText(t("shelf.banner.goal", { count: 0 }))).toBeTruthy();
+    expect(screen.getByText(t("shelf.banner.weeklyValue", { count: 0 }))).toBeTruthy();
+    expect(
+      screen.getByText(t("shelf.banner.goalIdle", { count: 0, remaining: 0 })),
+    ).toBeTruthy();
+    const sparkline = document.querySelector("[data-sparkline] path");
+    expect(sparkline?.getAttribute("d")).toBe("M 0,16 L 120,16");
+  });
+
+  it("search_filters_titles", { timeout: 10_000 }, async () => {
+    mockShelfList([
+      shelfNovel({ title: "Der Sturm", updated_at: "2026-11-02T09:00:00Z" }),
+      secondNovel(),
+    ]);
+    renderShelf();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    expect(await cardLink("Der Sturm")).toBeTruthy();
+    expect(await cardLink("Die Halligen")).toBeTruthy();
+
+    const search = screen.getByRole("textbox", { name: t("shelf.searchLabel") });
+    await user.type(search, "sturm");
+
+    // Only the matching title stands; the match is case-insensitive.
+    expect(screen.getByRole("link", { name: /Der Sturm/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Die Halligen/ })).toBeNull();
+
+    // Clearing the box brings the whole shelf back.
+    await user.clear(search);
+    expect(screen.getByRole("link", { name: /Die Halligen/ })).toBeTruthy();
+  });
+
+  it("the_toggle_switches_views", { timeout: 10_000 }, async () => {
+    mockShelfList([shelfNovel()]);
+    renderShelf();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    expect(await cardLink("Das Zählwerk")).toBeTruthy();
+
+    // The grid stands; the pressed state says which view is on.
+    const grid = screen.getByRole("button", { name: t("shelf.viewGrid") });
+    const list = screen.getByRole("button", { name: t("shelf.viewList") });
+    expect(grid.getAttribute("aria-pressed")).toBe("true");
+    expect(list.getAttribute("aria-pressed")).toBe("false");
+    expect(document.querySelector("[data-shelf-card]")).toBeTruthy();
+    expect(document.querySelector("[data-shelf-row]")).toBeNull();
+
+    await user.click(list);
+    expect(list.getAttribute("aria-pressed")).toBe("true");
+    expect(grid.getAttribute("aria-pressed")).toBe("false");
+    expect(document.querySelector("[data-shelf-card]")).toBeNull();
+    expect(document.querySelector("[data-shelf-row]")).toBeTruthy();
+    // The row is still the book: its link opens what the card's did.
+    expect(screen.getByRole("link", { name: /Das Zählwerk/ })).toBeTruthy();
+
+    await user.click(grid);
+    expect(document.querySelector("[data-shelf-card]")).toBeTruthy();
+  });
+
+  it("a_long_title_keeps_its_full_string_in_the_accessible_name", {
+    timeout: 10_000,
+  }, async () => {
+    // The 80-character compound from the E2E suite's own shelf pin: the
+    // unbreakable token must wrap, never cost the reader the name.
+    const longTitle =
+      "Die Geschichte Nordseeinsellichterturmwegesommerblickea und die Küsten im Herbst";
+    mockShelfList([
+      shelfNovel({ title: longTitle, updated_at: "2026-11-02T09:00:00Z" }),
+      secondNovel(),
+    ]);
+    renderShelf();
+
+    const card = await cardLink(longTitle);
+    expect(card.textContent).toContain(longTitle);
+    // The visible title wraps rather than clamping: no line-clamp rides it.
+    const visible = document.querySelector("[data-shelf-title]");
+    expect(visible?.className).not.toMatch(/line-clamp/);
+  });
+
+  it("the_empty_state_is_the_drafted_panel", { timeout: 10_000 }, async () => {
+    mockShelfList([]);
+    renderShelf();
+
+    // The empty shelf is quiet, not dead: the drafted panel names itself,
+    // the metrics are the honest zeros, the banner waits for a session,
+    // and the doors stand as drafted.
+    expect(await screen.findByRole("heading", { name: t("shelf.empty.title") })).toBeTruthy();
+    expect(screen.getByText(t("shelf.empty.body"))).toBeTruthy();
+    expect(screen.getByText(t("shelf.metrics.novels", { count: 0 }))).toBeTruthy();
+    expect(screen.getByText(formatNumber(0))).toBeTruthy();
+    expect(screen.getByText(t("shelf.banner.noSession"))).toBeTruthy();
+    expect(screen.getByText(t("shelf.banner.ready"))).toBeTruthy();
+    // The drafted empty shelf carries the create affordance twice — the
+    // header's door and the panel's own CTA — and the import door beside
+    // them (`shelf-empty.html` draws the full strip, doors included).
+    expect(screen.getByRole("button", { name: t("shelf.import") })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: t("novels.new") })).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: t("shelf.empty.importManuscript") }),
+    ).toBeTruthy();
+    expect(screen.getByText(t("shelf.empty.formats"))).toBeTruthy();
+    // No hero stands over an empty library.
+    expect(screen.queryByRole("region", { name: t("shelf.hero.active") })).toBeNull();
   });
 });

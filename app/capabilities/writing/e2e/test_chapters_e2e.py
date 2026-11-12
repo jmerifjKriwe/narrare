@@ -59,9 +59,9 @@ def _create_book(page: Page, title: str) -> None:
     The module's database is shared, so every test owns a title no other uses.
     """
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill(title)
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
     page.get_by_role("link", name=title).click()
     expect(page.get_by_role("heading", name=title)).to_be_visible()
 
@@ -123,9 +123,9 @@ def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> Non
 
 def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/")
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Der Nebel")
-    page.get_by_role("button", name="Anlegen").click()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
 
     page.get_by_role("link", name="Der Nebel").click()
     expect(page.get_by_role("heading", name="Der Nebel")).to_be_visible()
@@ -644,7 +644,7 @@ def test_the_workbench_names_a_book_that_does_not_exist(page: Page, stack: Stack
     """
     page.goto(f"{WEB_URL}/novels/00000000-0000-4000-8000-000000000000")
     expect(page.get_by_role("status").filter(has_text="woanders gelöscht")).to_be_visible()
-    expect(page.get_by_role("heading", name="Romane")).to_be_visible()
+    expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
     # The empty-rail copy is a loaded book's truth, not a missing one's.
     expect(page.get_by_text("Noch kein Kapitel")).not_to_be_visible()
     # No outage voice: the service answered; the book is what is missing.
@@ -926,11 +926,11 @@ def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack:
     # (The hero's own paragraph, not the cover's title span: the generated
     # cover repeats the book's name inside the same section.)
     page.get_by_role("link", name="Alle Romane").click()
-    page.get_by_role("button", name="Neues Buch").click()
+    page.locator("header").get_by_role("button", name="Neues Buch").click()
     page.get_by_label("Titel").fill("Die späte Fähre")
-    page.get_by_role("button", name="Anlegen").click()
-    hero = page.locator("section[aria-labelledby='novels-continue']")
-    expect(hero.get_by_role("paragraph").filter(has_text="Die späte Fähre")).to_be_visible()
+    page.get_by_role("button", name="Anlegen", exact=True).click()
+    hero = page.get_by_role("region", name="Aktuell in Arbeit")
+    expect(hero.get_by_role("heading").filter(has_text="Die späte Fähre")).to_be_visible()
 
     # Back into the first book, whose only chapter opens untitled.
     page.get_by_role("link", name="Der stille Hof").click()
@@ -949,7 +949,7 @@ def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack:
     # The shelf learned of the write: the hero names the renamed book now,
     # and its card still opens it.
     page.get_by_role("link", name="Alle Romane").click()
-    expect(hero.get_by_role("paragraph").filter(has_text="Der stille Hof")).to_be_visible()
+    expect(hero.get_by_role("heading").filter(has_text="Der stille Hof")).to_be_visible()
     expect(page.get_by_role("link", name=re.compile(r"Der stille Hof"))).to_be_visible()
 
     assert_accessible(page)
