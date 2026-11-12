@@ -437,7 +437,7 @@ def test_a_zero_room_pair_is_refused(page: Page, stack: Stack) -> None:
     # inside it. No ghost ever appears, and the typed text is all the editor
     # owns.
     expect(page.get_by_role("alert")).to_contain_text(
-        "Die Anfrage wurde abgelehnt, bevor sie das Modell erreichte."
+        "Die Anfrage wurde abgelehnt, bevor sie das Modell erreichte: das Fenster ist zu klein."
     )
     expect(page.locator(".ProseMirror .ghost")).to_have_count(0)
     expect(page.locator(".ProseMirror")).to_contain_text("Die stille Boje lag im Schilf.")
