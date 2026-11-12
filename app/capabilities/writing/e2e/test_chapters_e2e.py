@@ -91,9 +91,10 @@ def _seed_chapter(page: Page, novel_id: str, title: str) -> None:
 
 
 def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> None:
-    """A title longer than the 224 px rail wraps instead of truncating: the
-    whole title stays inside the title span's own box, and the grown row
-    pushes the next row down instead of painting over it."""
+    """A title longer than the 224 px rail truncates at the card's one line,
+    as the draft draws it — and stays fully readable through the row's
+    accessible name, which opens with the whole untruncated title. The grown
+    list still pushes the next card down instead of painting over it."""
     novel_id = _seed_novel(page, "Die Leseliste")
     long_title = "Die Nacht, in der der Nebel über die Deiche kroch und dort blieb"
     assert len(long_title) >= 60
@@ -102,17 +103,19 @@ def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> Non
 
     page.goto(f"{WEB_URL}/novels/{novel_id}")
     rail = page.get_by_role("complementary")
-    row = rail.get_by_role("button", name=re.compile(r"^Die Nacht, in der der Nebel"))
+    row = rail.get_by_role("button", name=re.compile(f"^{re.escape(long_title)}"))
     expect(row).to_be_visible()
-    title_span = row.locator("span").first
+    title_span = row.get_by_text(long_title)
     overflow = title_span.evaluate("element => element.scrollWidth - element.clientWidth")
-    assert overflow <= 1
+    assert overflow > 0, "the long title is not truncated — the draft clips at one line"
+    # The truncation hides nothing from a reader: the accessible name
+    # spells the whole title before anything else.
+    assert (row.get_attribute("aria-label") or "").startswith(long_title)
 
-    # The wrapped title grows its own row: the first row's bottom stays at
-    # or above the second row's top — whichever height utility the cascade
-    # keeps, wrapped lines must never paint over the next row. (The rail
-    # also holds the "Neues Kapitel" button, so the rows are read from the
-    # list, not the whole complementary.)
+    # The clipped title keeps its own card: the first card's bottom stays
+    # at or above the second card's top — rows must never paint over the
+    # next row. (The rail also holds the add-chapter button, so the rows
+    # are read from the list, not the whole complementary.)
     rows = rail.get_by_role("list").get_by_role("button")
     expect(rows).to_have_count(2)
     first_box = rows.nth(0).bounding_box()

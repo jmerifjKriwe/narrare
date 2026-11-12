@@ -5,15 +5,65 @@ import type { Chapter } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
 import { formatWordCount } from "@shell/lib/words";
 import { Button } from "@shell/ui/Button";
+import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
-import { Row } from "@shell/ui/Row";
 
 import { RailHeader, RailScenesEmpty, RailTabs, type RailTabId } from "./RailHeader";
 
 // The drag's drop marker: a 2 px primary edge at the slot's top — the row
 // a drop would land at. Its look is the spec's "left to the builder"; it
-// lives on the slot so the Row's own classes stay untouched.
+// lives on the slot so the row card's own classes stay untouched.
 const DROP_HINT = "shadow-[inset_0_2px_0_var(--primary)]";
+
+/**
+ * The drafted row card (screens/writing/workspace.html, the chapter items):
+ * a rounded card on its own ground, composed here rather than squeezed
+ * through the shared `Row` — the draft draws a three-line card (meta row,
+ * title, status) whose selection is a `secondary-container` wash, while
+ * `Row`'s contract is the single-line control row with the `--soft` wash
+ * and a start edge. Forcing one into the other's className would fight the
+ * row matrix this file's siblings share, so the rail owns its frame and
+ * `Row` stays untouched for its other consumers.
+ *
+ * AA, checked in both halves: the wash pairs with its own foreground for
+ * the status line (muted ink on the wash is below AA, the exact case the
+ * Row docs name), the count and eyebrow take primary and area-writing on
+ * it, and the resting text mutes only over the panel and the hover step.
+ */
+const ROW_FRAME =
+  "group relative flex w-full items-start gap-2 rounded-[var(--radius-control)] p-2.5 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus";
+const ROW_REST = "text-muted hover:bg-surface-container hover:text-foreground";
+const ROW_CURRENT = "bg-secondary-container text-secondary-container-foreground shadow-sm";
+
+/**
+ * The grip: the draft's hover-revealed `drag_indicator`, drawn with the
+ * set's stroke voice (round-cap dots) and revealed like the shell rail's
+ * names — hover, keyboard focus, or a coarse pointer, with the transition
+ * dropped under reduced motion. Chrome: `aria-hidden`, because the row is
+ * the grab and Alt+arrows are the keyboard reorder.
+ */
+const GRIP_REST =
+  "mt-0.5 shrink-0 cursor-grab text-outline-variant opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 motion-reduce:transition-none";
+const GRIP_CURRENT =
+  "mt-0.5 shrink-0 cursor-grab text-outline opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 active:cursor-grabbing";
+
+/** The grip's drawing: two columns of three round-cap dots on the 16 grid. */
+function Grip() {
+  return (
+    <svg
+      aria-hidden="true"
+      width={16}
+      height={16}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+    >
+      <path d="M5.5 4h.01M10.5 4h.01M5.5 8h.01M10.5 8h.01M5.5 12h.01M10.5 12h.01" />
+    </svg>
+  );
+}
 
 export function ChapterRail({
   visibleChapters,
@@ -108,7 +158,7 @@ export function ChapterRail({
           role="tabpanel"
           id="rail-panel-chapters"
           aria-labelledby="rail-tab-chapters"
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex min-h-0 flex-1 flex-col px-3"
         >
           {chapterCount === 0 ? (
             <p className="mt-2 text-body text-muted">{t("chapters.empty")}</p>
@@ -119,10 +169,11 @@ export function ChapterRail({
               there. The desktop column is sticky (the rail holds its
               place beside the editor while a long manuscript scrolls
               the page), and the rows it shows are the filtered list —
-              the walk below indexes into what rendered. */}
+              the walk below indexes into what rendered. The cards stand
+              a drafted step apart, on the panel's own gutter. */}
           <ul
             ref={railListRef}
-            className="mt-3 flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+            className="mt-3 flex flex-col gap-1.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
           >
             {visibleChapters.map((chapter, index) => {
               const isCurrent = chapter.id === active;
@@ -131,6 +182,16 @@ export function ChapterRail({
               // ("… 2.107 Wörter") and shown as its number alone — the
               // localized grouping, so the row and the footer read alike.
               const words = chapterCounts.get(chapter.id) ?? 0;
+              // The drafted eyebrow: "Kapitel 01" — the position, zero-padded
+              // to two places. The rail stays digits; only the editor's
+              // eyebrow is written out. The catalog sentence is the fallback
+              // title's own, so the two wordings can never drift apart.
+              const eyebrow = t("chapters.defaultTitle", {
+                n: String(chapter.position + 1).padStart(2, "0"),
+              });
+              // interim: no chapter status field — shares shelf follow-up #784
+              // (every chapter wears the draft's default line until one exists).
+              const status = t("chapters.statusFirstDraft");
               // One tab stop in the list, whatever the filter did to it:
               // the open chapter's row — or, when the filter hides that
               // row (or the book has no open chapter yet), the first
@@ -144,8 +205,8 @@ export function ChapterRail({
                   key={chapter.id}
                   /* The slot is the drop target, and the marker is the
                      slot's own top edge — the row the drop would land
-                     at — so the Row's classes stay untouched (spec §7:
-                     no markup or role change). `onDragOver` must
+                     at — so the row card's classes stay untouched (spec
+                     §7: no markup or role change). `onDragOver` must
                      preventDefault for the drop to be allowed at all,
                      and only while a drag of ours is in flight. */
                   onDragOver={(event) => {
@@ -165,17 +226,18 @@ export function ChapterRail({
                     dropIndex === index && dragId.current !== null ? DROP_HINT : undefined
                   }
                 >
-                  <Row
-                    current={isCurrent}
-                    selected={isCurrent}
-                    /* The name is composed, not computed: title and count
-                       sit in separate flex items, and every accname
-                       implementation stitches those together by its own
-                       whitespace rules — a title ending in a digit would
-                       reach the reader as one number ("Kapitel 11"). The
-                       label spells exactly the words on screen, with the
-                       separator made explicit. */
-                    aria-label={`${title} ${t("chapters.wordCount", { count: words })}`}
+                  <button
+                    type="button"
+                    aria-current={isCurrent ? "true" : undefined}
+                    /* The name spells the card in exactly its DOM order —
+                       title, eyebrow, figure, status — because the visible
+                       words must reach the reader as one unbroken sequence
+                       (axe's label-content rule reads the DOM order, hidden
+                       chrome included), and it must open with the title
+                       because the E2E locators anchor on it. The title
+                       therefore leads the DOM too: the meta row sits above
+                       it only by flex `order`, the draft's layout. */
+                    aria-label={`${title} ${eyebrow} ${formatWordCount(words)} ${status}`}
                     tabIndex={isTabStop ? 0 : -1}
                     /* The desktop drag: the row is the grab, the slot
                        above is the landing. Wired only while no filter
@@ -217,29 +279,68 @@ export function ChapterRail({
                       if (chapter.id === active) return;
                       select(chapter.id);
                     }}
-                    /* h-7 is the single-line control height: a wrapped title grows the row past it (the hits' `h-auto` precedent) instead of painting over the next row. */
-                    className="h-auto min-h-7"
+                    className={`${ROW_FRAME} ${isCurrent ? ROW_CURRENT : ROW_REST}`}
                   >
-                    {/* The separator is visible text, not only label:
-                        axe requires the visible words to be part of the
-                        accessible name, and without a space in the
-                        content the reader would still stitch "Kapitel"
-                        and the count into one number. The count stays
-                        foreground — muted on the selected row's wash is
-                        below AA, the exact case the Row's own docs name. */}
-                    {/* Wrap, never clamp: a 60-char title needs three lines in this rail, so a two-line clamp would still ellipsize exactly the titles this fixes. */}
-                    <span className="min-w-0 flex-1 break-words">
-                      {title}{" "}
+                    <span aria-hidden="true" className={isCurrent ? GRIP_CURRENT : GRIP_REST}>
+                      <Grip />
                     </span>
-                    <span className="shrink-0 text-meta tabular-nums">
-                      {formatWordCount(words)}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      {/* DOM order is the reading order — title first — and
+                          flex `order` lays the card out as the draft draws
+                          it: meta row on top, title under it, status at
+                          the foot. The `{" "}` separators are the old row's
+                          own rule: the spans' text must not fuse in the
+                          DOM ("Kapitel 1Kapitel 01…"), or the name's words
+                          and the content's words stop matching (a
+                          whitespace-only flex child renders nothing, but
+                          the text node still speaks). */}
+                      <span className="order-2 mt-0.5 block truncate text-emph text-foreground">
+                        {title}
+                      </span>{" "}
+                      <span className="order-1 flex items-center justify-between gap-1">
+                        <span
+                          className={`text-eyebrow uppercase ${isCurrent ? "text-area-writing" : "text-muted"}`}
+                        >
+                          {eyebrow}{" "}
+                        </span>
+                        <span
+                          className={`text-meta tabular-nums ${isCurrent ? "font-semibold text-primary" : "text-muted"}`}
+                        >
+                          {formatWordCount(words)}{" "}
+                        </span>
+                      </span>
+                      {/* The status line: dot then line, the drafted
+                          first-draft mark — see the interim note above.
+                          On the wash the line pairs with the wash's own
+                          foreground; muted there is below AA. */}
+                      <span className="order-3 mt-1 flex items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-outline-variant"
+                        />
+                        <span
+                          className={`min-w-0 truncate text-meta ${isCurrent ? "text-secondary-container-foreground" : "text-muted"}`}
+                        >
+                          {status}
+                        </span>
+                      </span>
                     </span>
-                  </Row>
+                  </button>
                 </li>
               );
             })}
           </ul>
-          <Button onClick={() => void onCreateChapter()} className="mt-3 w-full">
+          {/* The drafted add-chapter action: full width, dense, the
+              plus glyph beside the label — the existing create path,
+              restyled (the ladder's quiet voice; the draft's tonal
+              chip paint is not one of the matrix's five paints). */}
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Icon name="plus" size={16} />}
+            onClick={() => void onCreateChapter()}
+            className="mt-3 w-full justify-center"
+          >
             {t("chapters.new")}
           </Button>
           {orderFailed ? (

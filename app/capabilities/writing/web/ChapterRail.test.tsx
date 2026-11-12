@@ -9,10 +9,17 @@
  * second. What the draft shows that no field backs stays out and is named
  * for the follow-up where it hides (spec §6).
  *
+ * The drafted chapter rows (spec §5.2): grip chrome revealed on hover, the
+ * zero-padded "Kapitel 0N" eyebrow, the right-aligned tabular count, the
+ * title in `text-emph` truncating with the whole string in the accessible
+ * name, the interim status line, and the full-width add-chapter button on
+ * the existing create path. The row machinery — walk, select, reorder,
+ * filter — is pinned by NovelPage.test and stays untouched.
+ *
  * The rail renders under the one router its planning link reads (a link is
  * a destination, not a button) — the WorkspaceToolbar.test harness pattern.
  */
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import {
@@ -27,6 +34,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Chapter } from "@shell/lib/api/client";
 import { t } from "@shell/lib/i18n";
+import { formatWordCount } from "@shell/lib/words";
 
 import { ChapterRail } from "./novel/ChapterRail";
 
@@ -63,23 +71,33 @@ const CHAPTERS: Chapter[] = [
   },
 ];
 
-/** A row's accessible name: the title, then its count in words (the rail's composition). */
+/**
+ * A row's accessible name: the card spelled in its DOM order — title,
+ * eyebrow, figure, status — the one sequence both the axe label-content
+ * rule and the E2E locators (which anchor on the leading title) read.
+ */
 function rowName(chapter: (typeof CHAPTERS)[number], words: number): string {
-  return `${chapter.title} ${t("chapters.wordCount", { count: words })}`;
+  const title = chapter.title || t("chapters.defaultTitle", { n: chapter.position + 1 });
+  const eyebrow = t("chapters.defaultTitle", {
+    n: String(chapter.position + 1).padStart(2, "0"),
+  });
+  return `${title} ${eyebrow} ${formatWordCount(words)} ${t("chapters.statusFirstDraft")}`;
 }
 
 /** The overrides a case names; everything else takes the loaded rail. */
 type RailOverrides = {
   bookTitle?: string | undefined;
   chapterCounts?: Map<string, number>;
+  visibleChapters?: Chapter[];
+  chapterCount?: number;
 };
 
 let props: Record<string, unknown>;
 
 function railProps(overrides: RailOverrides = {}): Record<string, unknown> {
   return {
-    visibleChapters: CHAPTERS,
-    chapterCounts: new Map([
+    visibleChapters: overrides.visibleChapters ?? CHAPTERS,
+    chapterCounts: overrides.chapterCounts ?? new Map([
       ["c1", 765],
       ["c2", 1062],
       ["c3", 1557],
@@ -93,7 +111,7 @@ function railProps(overrides: RailOverrides = {}): Record<string, unknown> {
     railFilter: null,
     orderFailed: false,
     createFailed: false,
-    chapterCount: 3,
+    chapterCount: overrides.chapterCount ?? 3,
     novelId: NOVEL_ID,
     bookTitle: "Dead Signal" as string | undefined,
     move: vi.fn(),
@@ -203,6 +221,114 @@ describe("the meta header", () => {
     );
     expect(source).toContain(
       "// interim: no scenes view — follow-up filed in W3's index",
+    );
+  });
+});
+
+describe("the drafted rows", () => {
+  it("composes the draft's four parts: grip, eyebrow, count, title, status", async () => {
+    await renderRail();
+    const row = screen.getByRole("button", { name: rowName(CHAPTERS[0]!, 765) });
+    // The eyebrow: the position, zero-padded to two places ("Kapitel 01") —
+    // the rail stays digits; only the editor's eyebrow is written out.
+    expect(
+      within(row).getByText(t("chapters.defaultTitle", { n: "01" })),
+    ).toBeTruthy();
+    // The count: the localized figure alone, in tabular figures.
+    const count = within(row).getByText(formatWordCount(765));
+    expect(count.className).toContain("tabular-nums");
+    // The title: `text-emph`, truncating — the full string rides in the name.
+    const title = within(row).getByText("Ghost in the Machine");
+    expect(title.className).toContain("text-emph");
+    expect(title.className).toContain("truncate");
+    // The status: the interim line, on every row.
+    expect(within(row).getByText(t("chapters.statusFirstDraft"))).toBeTruthy();
+    expect(screen.getAllByText(t("chapters.statusFirstDraft"))).toHaveLength(3);
+  });
+
+  it("pads the eyebrow's digits past nine chapters too", async () => {
+    const eleventh: Chapter = { ...CHAPTERS[2]!, id: "c11", position: 10, title: "Breites Wasser" };
+    props = railProps({ visibleChapters: [...CHAPTERS, eleventh], chapterCount: 11 });
+    await renderRail();
+    const row = screen.getByRole("button", { name: rowName(eleventh, 0) });
+    expect(within(row).getByText(t("chapters.defaultTitle", { n: "11" }))).toBeTruthy();
+  });
+
+  it("paints the active row with the drafted wash, not the shared row's", async () => {
+    await renderRail();
+    const active = screen.getByRole("button", { name: rowName(CHAPTERS[0]!, 765) });
+    // The draft's `secondary-container` treatment — and none of the shared
+    // Row's `--soft` wash or start edge: this rail composes its own frame.
+    expect(active.className).toContain("bg-secondary-container");
+    expect(active.className).not.toContain("bg-soft");
+    expect(active.className).not.toContain("border-b");
+    expect(active.getAttribute("aria-current")).toBe("true");
+    const rest = screen.getByRole("button", { name: rowName(CHAPTERS[1]!, 1062) });
+    expect(rest.className).not.toContain("bg-secondary-container");
+    expect(rest.getAttribute("aria-current")).toBeNull();
+    // The rest state hovers into the drafted container step.
+    expect(rest.className).toContain("hover:bg-surface-container");
+  });
+
+  it("carries the whole title in the accessible name though the paint truncates", async () => {
+    const long = "Die Nacht, in der der Nebel über die Deiche kroch und dort blieb";
+    const chapter: Chapter = { ...CHAPTERS[0]!, title: long };
+    props = railProps({
+      visibleChapters: [chapter, CHAPTERS[1]!],
+      chapterCounts: new Map([["c1", 765], ["c2", 1062]]),
+    });
+    await renderRail();
+    const row = screen.getByRole("button", { name: rowName(chapter, 765) });
+    // The name opens with the full, untruncated title — the E2E locators
+    // anchor on it, and truncation may never hide it from a reader.
+    expect(row.getAttribute("aria-label")!.startsWith(`${long} `)).toBe(true);
+    // The DOM text stays whole too; only the paint clips.
+    expect(within(row).getByText(long)).toBeTruthy();
+  });
+
+  it("keeps the grip chrome hidden from the reader and revealed on hover", async () => {
+    await renderRail();
+    const active = screen.getByRole("button", { name: rowName(CHAPTERS[0]!, 765) });
+    const rest = screen.getByRole("button", { name: rowName(CHAPTERS[1]!, 1062) });
+    for (const row of [active, rest]) {
+      const grip = row.querySelector('span[aria-hidden="true"]');
+      expect(grip?.querySelector("svg")).toBeTruthy();
+      expect(grip?.className).toContain("group-hover:opacity-100");
+    }
+    // The draft's pair: the active row's grip stands at 60 %, a resting
+    // row's stays hidden until hover or focus brings it out.
+    expect(active.querySelector('span[aria-hidden="true"]')!.className).toContain("opacity-60");
+    expect(rest.querySelector('span[aria-hidden="true"]')!.className).toContain("opacity-0");
+  });
+
+  it("spells the card in DOM order: title, eyebrow, figure, status", async () => {
+    await renderRail();
+    const row = screen.getByRole("button", { name: rowName(CHAPTERS[0]!, 765) });
+    // The name is the card's visible sequence, word for word: axe's
+    // label-content rule reads the DOM order (hidden chrome included),
+    // so the name must carry every visible word, in order, unbroken.
+    expect(row.getAttribute("aria-label")).toBe(rowName(CHAPTERS[0]!, 765));
+    // The name still opens with the title — the E2E locators anchor on it.
+    expect(row.getAttribute("aria-label")!.startsWith("Ghost in the Machine ")).toBe(true);
+  });
+
+  it("carries the status interim with its shared follow-up anchor", () => {
+    const source = readFileSync("../app/capabilities/writing/web/novel/ChapterRail.tsx", "utf8");
+    expect(source).toContain(
+      "// interim: no chapter status field — shares shelf follow-up #784",
+    );
+  });
+
+  it("offers the create path as the drafted full-width add-button", async () => {
+    await renderRail();
+    const add = screen.getByRole("button", { name: t("chapters.new") });
+    expect(add.className).toContain("w-full");
+    // The drafted glyph rides beside the label.
+    expect(add.querySelector("svg")).toBeTruthy();
+    const user = userEvent.setup();
+    await user.click(add);
+    expect((props.onCreateChapter as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
+      0,
     );
   });
 });
