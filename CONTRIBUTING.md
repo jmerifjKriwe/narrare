@@ -204,7 +204,14 @@ once — `just dev-setup` installs the Python package, not the browser itself. T
 `uv run python -m scripts.screenshots` boots the same stack the E2E suites use,
 loads the bundled demo novel and writes the five frames under `assets/screenshots/`.
 Run it when a surface they show has changed: the images are the one part of the
-README no test reads.
+README no test reads. The same regeneration is available as the `Screenshots`
+workflow (`workflow_dispatch`), which opens a pull request with the updated
+images when they changed.
+
+A push to `main` regenerates screenshots automatically when a UI-relevant
+path changed (`web/`, `app/capabilities/*/web/`, `i18n/`,
+`scripts/screenshots.py`). Override the path decision with a commit footer:
+`Screenshots: regenerate` forces a run, `Screenshots: skip` suppresses one.
 
 **Was bei jedem Commit läuft:** Der Secret-Scan (`scripts/check_secrets.py
 --staged`) prüft die gestagten Blobs gegen `.gitleaks.toml` und blockt den

@@ -65,6 +65,7 @@ INERT: tuple[str, ...] = (
     "CONTRIBUTING.md",
     "TESTING.md",
     "scripts/",
+    "assets/",
     "docker-compose*.yml",
     ".pre-commit-config.yaml",
     ".release-please-manifest.json",

@@ -302,6 +302,7 @@ def test_docs_and_tooling_owe_nothing():
             "docs/x.md",
             "README.md",
             "scripts/affected.py",
+            "assets/screenshots/01.png",
             "docker-compose.dev.yml",
             ".pre-commit-config.yaml",
             "CHANGELOG.md",

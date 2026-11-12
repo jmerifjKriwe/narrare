@@ -149,6 +149,10 @@ uv run playwright install chromium   # once, after dev-setup
 uv run python -m scripts.screenshots
 ```
 
+The same regeneration can be triggered without a local setup via the
+`Screenshots` GitHub Action (`workflow_dispatch`), which opens a pull
+request with the updated images when they changed.
+
 The daily gate is `just verify` (or `just verify all` before a risky change); see
 [TESTING.md](TESTING.md) for the full test strategy. The stack is Python 3.14,
 FastAPI, SQLAlchemy (async), Postgres + pgvector on the backend, and React, Vite,

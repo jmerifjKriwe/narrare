@@ -170,6 +170,15 @@ def test_a_crlf_message_keeps_its_user_visible_line() -> None:
     assert check(message) is None
 
 
+def test_a_screenshots_footer_must_name_a_valid_decision() -> None:
+    from scripts.check_commit_msg import check
+
+    good = "chore: touch nothing\n\nScreenshots: skip\n"
+    assert check(good) is None
+    bad = "chore: touch nothing\n\nScreenshots: maybe\n"
+    assert check(bad) is not None
+
+
 def test_user_facing_matches_the_visible_changelog_sections() -> None:
     config = json.loads(
         (Path(__file__).resolve().parents[3] / "release-please-config.json").read_text(
