@@ -295,6 +295,7 @@ the shipped value, the reason, and the owner's approval. Empty today:
 | Date | Draft says | We ship | Why | Approved |
 | --- | --- | --- | --- | --- |
 | 2026-11-11 | Icons are Material Symbols (~25 glyphs, 18–20 px icon font) | The app's hand-drawn 16 px / 1.5-stroke set, extended with the drafted concepts | The app's own iconography stays the icon language; a second font and visual system would break it. Drafted glyphs name concepts, not faces. | Owner, O-3, 2026-11-11 |
+| 2026-11-12 | W3 ribbon save chip reads "Gespeichert" in the document voice (§5.1 draft) | The chip speaks the shell's `shell.sync*` vocabulary (Sync online/pending/failed) | One status owner already feeds it, and an idle→"Gespeichert" chip would contradict the clean-chapter honesty pin (a clean chapter must not claim "saved"); the existing single-match text pins in NovelPage.test lock the document voice to the runhead. | **Pending owner approval** (W3 Task 3, raised 2026-11-12) |
 
 ## 7. Open gaps for the first Stitch round
 
