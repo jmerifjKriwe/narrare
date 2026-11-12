@@ -127,15 +127,35 @@ async def _fit_tail(
     that merely does not fit degrades the tail (to empty, at the floor) the
     way the bundled scaffolding degrades in a degenerate window today.
     """
+    # Wrap each section in sentinels so the frame measures only the sections the
+    # template actually rendered: an override that drops a section no longer
+    # donates that section's length to the tail's room.
+    _sentinel_start = "\x1f["
+    _sentinel_end = "]\x1f"
+    for key, value in list(variables.items()):
+        if key.endswith("_section") and value:
+            variables[key] = (
+                f"{_sentinel_start}{key}{_sentinel_end}{value}{_sentinel_start}/{key}{_sentinel_end}"
+            )
+
     candidate = body[-budgets.immediate_text :] if budgets.immediate_text > 0 else ""
     variables["tail"] = candidate
     rendered = await render_one(variables)
 
-    sections = sum(len(value) for key, value in variables.items() if key.endswith("_section"))
+    def _rendered_sections(text: str) -> int:
+        total = 0
+        for key, value in variables.items():
+            if not key.endswith("_section") or not value:
+                continue
+            start = f"{_sentinel_start}{key}{_sentinel_end}"
+            end = f"{_sentinel_start}/{key}{_sentinel_end}"
+            if start in text and end in text:
+                total += len(value)
+        return total
 
     def frame(text: str) -> int:
         """The glue one render added: everything beyond the sections and the tail."""
-        return len(text) - sections - len(variables["tail"])
+        return len(text) - _rendered_sections(text) - len(variables["tail"])
 
     measured = frame(rendered)
     # The fixed scaffolding (header, Text-so-far, instruction) is uncuttable:
@@ -164,6 +184,10 @@ async def _fit_tail(
                     f"inside the immediate-text budget ({budgets.immediate_text}); "
                     "the sections are never cut to fit",
                 )
+    for key in variables:
+        if key.endswith("_section"):
+            rendered = rendered.replace(f"{_sentinel_start}{key}{_sentinel_end}", "")
+            rendered = rendered.replace(f"{_sentinel_start}/{key}{_sentinel_end}", "")
     return rendered
 
 
