@@ -29,7 +29,7 @@ from typing import Final, NamedTuple
 
 from app.kernel.contracts.models import ENTITY_TYPES
 from app.kernel.llm import PURPOSE_PREFIX, SOURCE_PREFIX
-from app.kernel.prompts import get_registry, render_source
+from app.kernel.prompts import get_registry, no_includes, render_source
 
 EXTRACTION_KEY: Final = "knowledge.extract-entities"
 CONSISTENCY_KEY: Final = "knowledge.check-consistency"
@@ -213,9 +213,6 @@ def extraction_prompt(*, chapter_title: str, body: str) -> str:
     for byte.
     """
 
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
-
     return render_source(
         EXTRACTION_TEMPLATE,
         extraction_variables(chapter_title=chapter_title, body=body),
@@ -232,9 +229,6 @@ def consistency_prompt(
     the jobs render through the registry, and the golden pins this path byte
     for byte.
     """
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     return render_source(
         CONSISTENCY_TEMPLATE,

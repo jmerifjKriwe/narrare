@@ -18,6 +18,12 @@ from app.kernel.prompts.registry import (
 )
 from app.kernel.prompts.rendering import MAX_INCLUDE_DEPTH, render, render_source
 
+
+def no_includes(key: str) -> str:
+    """The include chain for a bundled-only render: every include is missing."""
+    raise KeyError(key)
+
+
 __all__ = [
     "MAX_INCLUDE_DEPTH",
     "REASONS",

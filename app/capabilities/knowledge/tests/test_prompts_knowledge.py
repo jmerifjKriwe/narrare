@@ -16,7 +16,7 @@ from app.api.main import app
 from app.capabilities.knowledge.prompts import consistency_prompt, extraction_prompt
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.llm import PURPOSE_PREFIX
-from app.kernel.prompts import get_registry, render, render_source
+from app.kernel.prompts import get_registry, no_includes, render, render_source
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -81,9 +81,6 @@ CONSISTENCY_GOLDEN = (
 
 def _render(source: str, variables: dict[str, object]) -> str:
     """The offline render the contract tests drive; the bundled template includes nothing."""
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     return render_source(source, variables, include=no_includes)
 

@@ -12,7 +12,7 @@ from collections.abc import Sequence  # noqa: TC003
 from typing import Final
 
 from app.kernel.llm import SOURCE_PREFIX
-from app.kernel.prompts import get_registry, render_source
+from app.kernel.prompts import get_registry, no_includes, render_source
 from app.kernel.retrieval import Passage  # noqa: TC001
 
 CHAT_KEY: Final = "chat.ask"
@@ -81,9 +81,6 @@ def chat_prompt(*, question: str, passages: Sequence[Passage]) -> str:
     the service renders through the registry, and the golden pins this path
     byte for byte.
     """
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     return render_source(
         CHAT_TEMPLATE,
