@@ -13,7 +13,7 @@ from uuid import uuid4
 from app.capabilities.chat.prompts import chat_prompt
 from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.llm import SOURCE_PREFIX
-from app.kernel.prompts import get_registry, render, render_source
+from app.kernel.prompts import get_registry, no_includes, render, render_source
 from app.kernel.retrieval import Passage
 
 if TYPE_CHECKING:
@@ -136,9 +136,6 @@ def test_the_contract_refuses_a_render_without_the_source_marker() -> None:
     """A render that lost the marked sources is refused; the pinned one passes."""
     from app.capabilities.chat.prompts import chat_contract
 
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
-
     dropped = render_source("Asked: {{ question }}", {"question": QUESTION}, include=no_includes)
     assert chat_contract(dropped) is False
     assert chat_contract(GOLDEN) is True
@@ -178,9 +175,6 @@ def test_the_marker_mentioned_in_prose_alone_does_not_pass_the_contract() -> Non
 def test_the_sample_renders_through_the_contract() -> None:
     """The sample the editor's legend renders is a valid prompt by the contract."""
     from app.capabilities.chat.prompts import CHAT_TEMPLATE, chat_contract, sample_variables
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     rendered = render_source(CHAT_TEMPLATE, sample_variables(), include=no_includes)
     assert "Question: Wo war der Leuchtturm?" in rendered

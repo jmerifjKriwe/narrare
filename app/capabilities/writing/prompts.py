@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.context import BudgetImpossibleError, ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity  # noqa: TC001
-from app.kernel.prompts import PromptRenderError, get_registry, render, render_source
+from app.kernel.prompts import PromptRenderError, get_registry, no_includes, render, render_source
 
 CONTINUATION_KEY: Final = "writing.continuation"
 
@@ -191,11 +191,6 @@ async def _fit_tail(
     return rendered
 
 
-def _bundled_only(key: str) -> str:
-    """The offline render's include chain: the bundled template includes nothing."""
-    raise KeyError(key)
-
-
 def scaffold_length(novel_title: str, chapter_title: str) -> int:
     """The bundled template's fixed frame for an empty tail and no sections.
 
@@ -212,7 +207,7 @@ def scaffold_length(novel_title: str, chapter_title: str) -> int:
         "predecessors_section": "",
         "style_section": "",
     }
-    return len(render_source(CONTINUATION_TEMPLATE, variables, include=_bundled_only))
+    return len(render_source(CONTINUATION_TEMPLATE, variables, include=no_includes))
 
 
 def continuation_prompt(
@@ -248,7 +243,7 @@ def continuation_prompt(
     """
 
     async def bundled(variables: dict[str, str]) -> str:
-        return render_source(CONTINUATION_TEMPLATE, variables, include=_bundled_only)
+        return render_source(CONTINUATION_TEMPLATE, variables, include=no_includes)
 
     return asyncio.run(
         _fit_tail(

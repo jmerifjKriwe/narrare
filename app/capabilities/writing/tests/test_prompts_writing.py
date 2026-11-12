@@ -15,7 +15,7 @@ from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.context import ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.session import Session
-from app.kernel.prompts import PromptRenderError, render_source
+from app.kernel.prompts import PromptRenderError, no_includes, render_source
 
 BUDGETS = ContextBudgets(
     immediate_text=2000, referenced_entities=500, recent_chapters=400, style_hints=200
@@ -167,9 +167,6 @@ async def test_a_huge_frame_shrinks_the_tail_and_holds_the_total() -> None:
         "{{ entities_section }}{{ predecessors_section }}{{ style_section }}" + instruction
     )
 
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
-
     empty = {
         "novel_title": NOVEL_TITLE,
         "chapter_title": CHAPTER_TITLE,
@@ -262,9 +259,6 @@ async def test_the_tail_shrinks_by_the_frame_the_override_measures() -> None:
         "Text so far:\n{{ tail }}\n\n"
         "{{ entities_section }}{{ predecessors_section }}{{ style_section }}" + instruction
     )
-
-    def no_includes(key: str) -> str:
-        raise KeyError(key)
 
     empty = {
         "novel_title": NOVEL_TITLE,
