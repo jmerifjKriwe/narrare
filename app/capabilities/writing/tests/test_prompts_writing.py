@@ -342,3 +342,38 @@ async def test_a_refused_override_ends_the_stream_with_the_one_error_frame() -> 
     # The refusal is logged by the router branch that handled it (budget or
     # prompt); the caplog fixture does not reliably capture it across the ASGI
     # transport, so the response text above is the contract.
+
+
+async def test_a_stable_oversized_override_is_refused_by_name() -> None:
+    """A frame that never fits — even with an empty tail — is refused `budget`,
+    pinned through a direct override (not only the bundled template)."""
+    from app.capabilities.writing.prompts import render_continuation
+    from app.kernel.context import BudgetImpossibleError
+    from app.kernel.prompts.models import PromptTemplateRepository
+
+    instruction = "W" * 2500
+    override = (
+        "Novel: {{ novel_title }}\nChapter: {{ chapter_title }}\n\n"
+        "Text so far:\n{{ tail }}\n\n"
+        "{{ entities_section }}{{ predecessors_section }}{{ style_section }}" + instruction
+    )
+
+    async with Session() as session:
+        await PromptTemplateRepository(session, LOCAL_USER_ID).save(
+            "writing.continuation", override, None
+        )
+        await session.commit()
+        with pytest.raises(BudgetImpossibleError):
+            await render_continuation(
+                session,
+                LOCAL_USER_ID,
+                None,
+                budgets=BUDGETS,
+                novel_title=NOVEL_TITLE,
+                chapter_title=CHAPTER_TITLE,
+                body="Z" * 5000,
+                entities=ENTITIES,
+                predecessors=PREDECESSORS,
+                genre=GENRE,
+                blurb=BLURB,
+            )
