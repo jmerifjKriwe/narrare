@@ -634,8 +634,11 @@ describe("the drafted shelf (Task 10)", () => {
       name: t("shelf.hero.continueChapter", { n: 3 }),
     });
     expect(door.getAttribute("href")).toContain(newer.id);
-    // The drafted second door stands beside it.
-    expect(within(hero).getByRole("link", { name: t("shelf.hero.outline") })).toBeTruthy();
+    // The outline door opens the novel's planning surface, not the editor
+    // beside it: the planning landing carries the novel as `?novel=`.
+    const outline = within(hero).getByRole("link", { name: t("shelf.hero.outline") });
+    expect(outline.getAttribute("href")).toContain("/planning");
+    expect(outline.getAttribute("href")).toContain(`novel=${newer.id}`);
   });
 
   it("the_metrics_derive_from_the_list", { timeout: 10_000 }, async () => {

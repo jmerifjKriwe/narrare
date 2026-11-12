@@ -117,15 +117,12 @@ export function HeroCard({ novel }: { novel: Novel }) {
                   ? t("shelf.hero.continueChapter", { n: novel.chapter_count })
                   : t("chapters.continue")}
               </Link>
-              {/* Interim: no outline route exists — the workspace's
-               * planning dock is where the outline lives, so the drafted
-               * second door opens the book itself until a dedicated route
-               * does.
-               * Missing data: the outline & scenes route.
-               * Follow-up: point this door at it (#787). */}
+              {/* The outline door opens the novel's planning surface, the
+               * page that carries its timeline, storyboard and structure —
+               * the book's own address is the primary door beside it. */}
               <Link
-                to="/novels/$id"
-                params={{ id: novel.id }}
+                to="/planning"
+                search={{ novel: novel.id }}
                 className={`${buttonClass("secondary", "lg")} inline-flex items-center gap-2 no-underline`}
               >
                 <Icon name="schema" />
