@@ -295,6 +295,9 @@ async def import_novel(
     """
     # The cap is checked on the upload's reported size before `read()` loads
     # it; the service keeps the authoritative check on the actual bytes.
+    # Note (#349): Starlette still buffers the whole multipart part into
+    # memory on `archive.read()`; this pre-check avoids only the extra read
+    # copy, not the upload buffering itself (framework limit).
     if archive is not None and archive.size is not None and archive.size > MAX_ARCHIVE_BYTES:
         raise HTTPException(status_code=413, detail="archive too large")
     data = await archive.read() if archive is not None else None

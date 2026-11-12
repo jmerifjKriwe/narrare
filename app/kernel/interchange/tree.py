@@ -85,7 +85,7 @@ def open_directory(path: Path) -> ArchiveTree:
     for directory in _FORMAT_DIRS:
         base = path / directory
         if base.is_dir():
-            surface.extend(sorted(base.rglob("*.md")))
+            surface.extend(sorted(base.glob("*.md")))
     present = [entry for entry in surface if entry.is_file()]
     if sum(entry.stat().st_size for entry in present) > MAX_UNCOMPRESSED_BYTES:
         raise ArchiveError(str(path), _TOO_LARGE)
@@ -142,11 +142,17 @@ def write_directory(path: Path, files: dict[str, bytes]) -> None:
     try:
         staging.mkdir(parents=True)
         for relpath, data in files.items():
-            target = staging.joinpath(*PurePosixPath(relpath).parts)
+            parts = PurePosixPath(relpath).parts
+            if not parts or parts[0] == "/" or ".." in parts or any(part == "" for part in parts):
+                raise ArchiveError(relpath, "refuses a path that leaves the archive root")
+            target = staging.joinpath(*parts)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
         if path.exists():
-            path.rmdir()  # the guard above leaves only an empty directory here
+            if path.is_symlink():
+                path.unlink()
+            else:
+                path.rmdir()  # the guard above leaves only an empty directory here
         staging.rename(path)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)

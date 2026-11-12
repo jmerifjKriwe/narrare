@@ -15,7 +15,12 @@ archive twice, or exporting what was just parsed, yields byte-identical files:
 frontmatter keys ride in a fixed order through `yaml.safe_dump`
 (`sort_keys=False`), lists keep their order, `metadata.json` sorts its keys in
 writing order, file names are slugs with a numeric suffix on collision and a
-zero-padded position prefix on chapters.
+zero-padded position prefix on chapters. The prefix is the chapter's
+position written verbatim (`<nn>`): exports carry the database's 0-based
+positions, bundled demos use 1-based positions, and `<nn>` is at least
+two digits, so bare (frontmatter-less) archives order correctly only
+up to 99 chapters — exports are unaffected because their order rides on
+`metadata.json`.
 
 Frontmatter parsing is strict where lying would corrupt a novel (a non-string
 title, a non-integer position, a present-but-blank entity name or type, a
@@ -185,7 +190,10 @@ def _assign_slugs[K](keys: list[tuple[K, ...]]) -> list[str]:
     `anna-2.md` sorts before `anna.md`), and a swapped input list produces
     the same files.
     """
-    order = sorted(range(len(keys)), key=keys.__getitem__)
+    # Tie-break on the original index so identical keys never swap slugs
+    # across re-serialization (see follow-up #345): the key set alone
+    # cannot distinguish them, so input order is the last resort.
+    order = sorted(range(len(keys)), key=lambda index: (keys[index], index))
     slugs: list[str] = [""] * len(keys)
     taken: set[str] = set()
     for index in order:
