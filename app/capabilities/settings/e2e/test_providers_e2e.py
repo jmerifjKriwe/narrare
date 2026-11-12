@@ -516,9 +516,12 @@ def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -
         # the first paint still shows — under a loaded runner that read is
         # what flaked (#775).
         expect(control).to_have_css("height", "36px")
-        expect(control.locator("xpath=..")).to_have_css(
-            "grid-template-columns", re.compile(r"^128px(\s|$)")
+        # The grid is the subject's ancestor, not its parent: the control's
+        # shell is a box of its own.
+        columns = control.evaluate(
+            "el => getComputedStyle(el.closest('.grid')).gridTemplateColumns"
         )
+        assert columns.split(" ")[0] == "128px"
         label_box = scope.get_by_text(label_text, exact=True).bounding_box()
         control_box = control.bounding_box()
         assert label_box is not None and control_box is not None
