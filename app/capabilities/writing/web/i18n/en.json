@@ -2,6 +2,8 @@
   "chapters.actions": "Actions",
   "chapters.actionsFor": "Actions for {title}",
   "chapters.cancel": "Cancel",
+  "chapters.chapterCode": "CH-{n}",
+  "chapters.chapterOrdinalLabel": "Chapter {ordinal}",
   "chapters.continue": "Continue writing",
   "chapters.defaultTitle": "Chapter {n}",
   "chapters.delete": "Delete",

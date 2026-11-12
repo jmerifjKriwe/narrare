@@ -30,6 +30,7 @@ import { afterAll, beforeAll, afterEach, describe, expect, it } from "vitest";
 import { editorServer, startEditorServer, stopEditorServer } from "./editorApiServer";
 import { clearAnnouncements } from "@shell/lib/announce";
 import { t } from "@shell/lib/i18n";
+import { applyLocale } from "@shell/lib/locale";
 import { PALETTE_OPEN_EVENT } from "@shell/lib/palette";
 import {
   useAutosave,
@@ -39,6 +40,7 @@ import {
 } from "@shell/lib/save";
 
 import { ChapterEditor } from "./ChapterEditor";
+import { chapterOrdinal } from "./numberWords";
 
 const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
 
@@ -51,7 +53,8 @@ const CHAPTER = "2f0b8a52-9d3e-4f6e-8df5-7db9df0f4a51";
 function Harness(props: { chapterId?: string; body?: string; title?: string; proposal?: string | null;
   onProposalResolve?: (accepted: boolean) => void;
   onSaved?: (id: string, draft: DocumentDraft) => void;
-  onFlushed?: (outcome: FlushOutcome) => void }) {
+  onFlushed?: (outcome: FlushOutcome) => void;
+  bookTitle?: string; chapterNumber?: number; chapterTotal?: number; focusDepth?: 0 | 1 | 2 }) {
   const save = useAutosave(props.chapterId ?? CHAPTER, props.onSaved);
   // The document as one draft — title beside body — reset from the props
   // the editor initializes from; the editor owns the caret, the page owns
@@ -97,6 +100,10 @@ function Harness(props: { chapterId?: string; body?: string; title?: string; pro
         schedule={schedule}
         proposal={props.proposal}
         onProposalResolve={props.onProposalResolve}
+        bookTitle={props.bookTitle}
+        chapterNumber={props.chapterNumber}
+        chapterTotal={props.chapterTotal}
+        focusDepth={props.focusDepth}
       />
       <button type="button" onClick={async () => {
         const outcome = await save.flush();
@@ -859,6 +866,137 @@ describe("ChapterEditor's runhead title", () => {
     await waitFor(() => expect(screen.getByText(t("save.saved"))).toBeTruthy(), {
       timeout: 5000,
     });
+  });
+});
+
+describe("ChapterEditor's chapter headline", () => {
+  it("writes the ordinal eyebrow above the title inside the paper", async () => {
+    render(<Harness title="Ghost in the Machine" body="Anfang." chapterNumber={1} />);
+
+    // The drafted headline block: the eyebrow speaks the chapter's position
+    // written out ("Chapter One"), the title line beneath it is the chapter's
+    // own name — the same string the runhead's input holds, read-only here —
+    // and the 1 px rule closes the block.
+    const eyebrow = screen.getByText(
+      t("chapters.chapterOrdinalLabel", { ordinal: chapterOrdinal(1, "en") }),
+    );
+    expect(eyebrow.textContent).toBe("Chapter One");
+    expect(eyebrow.className).toContain("text-eyebrow");
+    expect(eyebrow.className).toContain("uppercase");
+    expect(eyebrow.className).toContain("text-area-writing");
+
+    const heading = screen.getByRole("heading", { name: "Ghost in the Machine" });
+    expect(heading.className).toContain("text-[26px]");
+    expect(heading.className).toContain("EB_Garamond");
+    expect(heading.className).toContain("text-primary");
+
+    const rule = document.querySelector("[data-headline-rule]");
+    expect(rule).not.toBeNull();
+    expect(rule!.className).toContain("h-px");
+    expect(rule!.className).toContain("bg-cover-sepia/30");
+
+    // The headline lives inside the paper card, above the prose it opens.
+    const card = document.querySelector("[data-editor-card]")!;
+    expect(card).not.toBeNull();
+    expect(card.contains(eyebrow)).toBe(true);
+    expect(card.contains(heading)).toBe(true);
+    expect(card.querySelector(".ProseMirror")).not.toBeNull();
+  });
+
+  it("speaks the ordinal and the code prefix in the catalog's languages", async () => {
+    // German writes the ordinal out as one word and stamps the code KAP;
+    // English and French share the CH prefix. The catalog carries both
+    // voices, so the assertion reads through `t` — never a literal here.
+    applyLocale("de");
+    try {
+      render(<Harness title="" body="" chapterNumber={1} />);
+      expect(
+        screen.getByText(t("chapters.chapterOrdinalLabel", { ordinal: chapterOrdinal(1, "de") }))
+          .textContent,
+      ).toBe("Kapitel Eins");
+      expect(screen.getByText(t("chapters.chapterCode", { n: "01" })).textContent).toBe("KAP-01");
+    } finally {
+      cleanup();
+      applyLocale(null);
+    }
+    applyLocale("fr");
+    try {
+      render(<Harness title="" body="" chapterNumber={1} />);
+      expect(
+        screen.getByText(t("chapters.chapterOrdinalLabel", { ordinal: chapterOrdinal(1, "fr") }))
+          .textContent,
+      ).toBe("Chapitre Un");
+    } finally {
+      cleanup();
+      applyLocale(null);
+    }
+    render(<Harness title="" body="" chapterNumber={1} />);
+    expect(screen.getByText(t("chapters.chapterCode", { n: "01" })).textContent).toBe("CH-01");
+  });
+
+  it("wears the placeholder's default name when the title is empty", async () => {
+    // An unnamed chapter's headline is a rendering, never a stored value —
+    // the same rule the runhead input's placeholder lives by.
+    render(<Harness title="" body="" chapterNumber={2} />);
+    expect(
+      screen.getByRole("heading", { name: t("chapters.defaultTitle", { n: 2 }) }),
+    ).not.toBeNull();
+  });
+
+  it("falls back to digits past the written-out bound", async () => {
+    // D-3's bound: 1–99 written out, everything past it as digits — the
+    // eyebrow stays legible instead of inventing words. An unnamed chapter
+    // past the bound wears the digits in both headline lines, the eyebrow
+    // and the placeholder's default name.
+    render(<Harness title="" body="" chapterNumber={100} />);
+    const digits = screen.getAllByText(
+      t("chapters.chapterOrdinalLabel", { ordinal: chapterOrdinal(100, "en") }),
+    );
+    expect(digits).toHaveLength(2);
+    expect(digits.every((node) => node.textContent === "Chapter 100")).toBe(true);
+  });
+
+  it("stamps the chapter code on the runhead line, outside the paper", async () => {
+    render(<Harness title="Waldlauf" body="" chapterNumber={3} />);
+
+    const badge = screen.getByText(t("chapters.chapterCode", { n: "03" }));
+    expect(badge.textContent).toBe("CH-03");
+    expect(badge.className).toContain("font-mono");
+    expect(badge.className).toContain("tabular-nums");
+    expect(badge.className).toContain("bg-secondary-container");
+    // The badge is runhead chrome: it yields with the frame, never rides
+    // the card's focus ring.
+    const card = document.querySelector("[data-editor-card]")!;
+    expect(card.contains(badge)).toBe(false);
+  });
+
+  it("retunes the runhead to the drafted rule and the emph title", async () => {
+    render(<Harness title="" body="" chapterNumber={1} />);
+
+    // The drafted line's 1 px hairline stands between the left cluster and
+    // the save state, and the input wears the emph step (the 600 face the
+    // line always had, at the drafted 15 px).
+    const rule = document.querySelector("[data-runhead-rule]");
+    expect(rule).not.toBeNull();
+    expect(rule!.className).toContain("w-px");
+    expect(rule!.className).toContain("bg-rule");
+
+    const field = screen.getByRole("textbox", { name: t("chapters.titleLabel") });
+    expect(field.closest("p")!.className).toContain("text-emph");
+    // The input's own contract is untouched: labelled by its name, 200
+    // characters' ceiling, no required.
+    expect((field as HTMLInputElement).maxLength).toBe(200);
+    expect((field as HTMLInputElement).required).toBe(false);
+  });
+
+  it("yields the headline with the frame at focus depth 2", async () => {
+    // The zen draft's paper is the prose alone: the headline is the frame's
+    // last piece inside the card, and it leaves with the runhead and the
+    // foot.
+    render(<Harness title="Tiefenraum" body="Anfang." chapterNumber={2} focusDepth={2} />);
+    expect(screen.queryByRole("heading", { name: "Tiefenraum" })).toBeNull();
+    expect(document.querySelector("[data-headline-rule]")).toBeNull();
+    expect(document.querySelector(".ProseMirror")).not.toBeNull();
   });
 });
 

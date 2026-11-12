@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { announce } from "@shell/lib/announce";
 import { client } from "@shell/lib/api/client";
 import { useTranslation } from "@shell/lib/i18n";
+import { activeLocale } from "@shell/lib/locale";
 import { SaveIndicator, type DocumentDraft, type SaveStatus } from "@shell/lib/save";
 import { readFrames, type StreamFailure } from "@shell/lib/stream";
 import { countWords } from "@shell/lib/words";
@@ -12,6 +13,7 @@ import { MarkdownEditor } from "@shell/ui/markdown-editor";
 import { StreamError } from "@shell/ui/StreamError";
 import type { Editor } from "@tiptap/core";
 
+import { chapterOrdinal } from "./numberWords";
 import { ghostText, showGhost, type GhostHandlers } from "./ghostText";
 import { slashPalette } from "./slashPalette";
 
@@ -26,12 +28,14 @@ import { slashPalette } from "./slashPalette";
  * switching chapters.
  *
  * The frame (F4) is the runhead above the text — book · the title input on
- * the left, the save state on the right — and the footer below it: the
- * chapter's word count, counted live with the shared rule, and its position
- * in the book. Both name the writing, so both yield at focus depth 2, where
- * only the writing surface remains. The book's name arrives as a prop;
- * without it the frame still carries the title input and the save state,
- * and the footer counts what it has.
+ * the left, the chapter's code, then the save state on the right — the
+ * chapter headline inside the card (the position written out as the eyebrow,
+ * the name in the prose heading's face, the 1 px rule), and the footer below
+ * it: the chapter's word count, counted live with the shared rule, and its
+ * position in the book. All of it names the writing, so all of it yields at
+ * focus depth 2, where only the writing surface remains. The book's name
+ * arrives as a prop; without it the frame still carries the title input and
+ * the save state, and the footer counts what it has.
  */
 export function ChapterEditor({
   chapterId,
@@ -78,6 +82,20 @@ export function ChapterEditor({
   actions?: ReactNode;
 }) {
   const t = useTranslation();
+  // The eyebrow's number words follow the catalog's language; the
+  // subscription is useTranslation's (a locale change re-renders, and this
+  // read happens in that render), so no second store subscription here.
+  const locale = activeLocale();
+  // The headline's title line: the same name the runhead's input holds, read
+  // only. An unnamed chapter wears the placeholder's default name — a
+  // rendering, never a stored value, exactly like the input's placeholder —
+  // and without a chapter position and a name there is no headline at all.
+  const headlineTitle =
+    title !== ""
+      ? title
+      : chapterNumber !== undefined
+        ? t("chapters.defaultTitle", { n: chapterNumber })
+        : null;
   const [continuing, setContinuing] = useState(false);
   // The failure the stream or its request died with, when one did: the
   // payload the error frame carried — its code picks the sentence. Empty for
@@ -259,19 +277,23 @@ export function ChapterEditor({
   return (
     <div>
       {focusDepth < 2 ? (
-        <header className="flex items-baseline justify-between gap-4">
+        <header className="flex items-center justify-between gap-3">
           {/* A paragraph, not a heading: its accessible name carries the
               book's title too, and a second heading that contains it turns
               every "heading <book>" query into a coin toss — the runhead is
               the page's label, not a node of its outline. The chapter's own
-              name is written here, in the input that wears the 600 face the
-              line always had: empty is legal (the placeholder names the
-              position, and the placeholder is a rendering, never a stored
-              value), the server's 200-character ceiling held client-side.
+              name is written here, in the input that wears the emph step's
+              600 face at the drafted 15 px (the drafted ribbon's title
+              voice): empty is legal (the placeholder names the position,
+              and the placeholder is a rendering, never a stored value), the
+              server's 200-character ceiling held client-side. The input
+              takes the line's free width, so the cluster reads as the draft
+              draws its ribbon: book · title · code — then the hairline, the
+              save state, the menu.
               The runhead stands above the card on purpose: its input and
               its menu are controls, and the card's focus ring means "the
               text has the caret" — a control inside it would blur that. */}
-          <p className="flex min-w-0 items-baseline text-body font-semibold">
+          <p className="flex min-w-0 flex-1 items-center text-emph">
             {bookTitle !== undefined ? (
               <span className="font-normal text-muted">{bookTitle} · </span>
             ) : null}
@@ -288,7 +310,21 @@ export function ChapterEditor({
               }
               className="min-w-0 flex-1 basis-32 border-0 bg-transparent p-0 font-semibold text-inherit caret-current placeholder:font-normal placeholder:text-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             />
+            {chapterNumber !== undefined ? (
+              // The drafted chapter code ("KAP-01"): the catalog supplies
+              // the prefix (de KAP, en/fr CH) and the position is
+              // zero-padded — never a hard-coded string. Mono face,
+              // tabular figures; chrome of the runhead line, outside the
+              // paper the code names.
+              <span className="ml-2 shrink-0 rounded-[var(--radius)] bg-secondary-container px-1.5 py-0.5 font-mono text-eyebrow tabular-nums text-secondary-container-foreground">
+                {t("chapters.chapterCode", { n: String(chapterNumber).padStart(2, "0") })}
+              </span>
+            ) : null}
           </p>
+          {/* The drafted line's 1 px hairline between the writer's words
+              (book · title · code) and the document's state: the vertical
+              rule the draft draws inside its ribbon. */}
+          <span aria-hidden="true" className="h-3.5 w-px shrink-0 bg-rule" data-runhead-rule />
           {/* The runhead's right side: the save state and the chapter's
               actions, one group — the frame's own words (book · title on
               the left, the document's state and its deeds on the right). */}
@@ -322,10 +358,37 @@ export function ChapterEditor({
         data-editor-card
         className="rounded-[var(--radius-lg)] border border-rule bg-card p-[15px] focus-within:ring-2 focus-within:ring-focus max-[36rem]:-mx-4 max-[36rem]:rounded-none max-[36rem]:border-x-0 max-[36rem]:focus-within:ring-inset"
       >
+        {/* The chapter headline, the draft's article header: the position
+            written out as the eyebrow ("Kapitel Eins" — owner decision
+            D-3), the chapter's name beneath it in the prose heading's own
+            face, and the 1 px sepia rule that closes the block. It is text,
+            never a control, so the card's focus ring still means "the text
+            has the caret". A heading (level two: the book above owns the
+            page's h1) — the paper's one outline node, unlike the runhead's
+            styled paragraph. It is the frame's last piece, and it yields
+            with the frame at focus depth 2, where the draft's paper is the
+            prose alone. */}
+        {focusDepth < 2 && headlineTitle !== null ? (
+          <header className="flex flex-col items-center text-center">
+            {chapterNumber !== undefined ? (
+              <span className="mb-2 text-eyebrow uppercase text-area-writing">
+                {t("chapters.chapterOrdinalLabel", { ordinal: chapterOrdinal(chapterNumber, locale) })}
+              </span>
+            ) : null}
+            <h2 className="text-[26px] leading-[34px] font-semibold tracking-tight text-primary [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+              {headlineTitle}
+            </h2>
+            <div
+              aria-hidden="true"
+              className="mt-4 h-px w-12 rounded-full bg-cover-sepia/30"
+              data-headline-rule
+            />
+          </header>
+        ) : null}
         {/* The runhead (book · title input · save state · actions) stands
             above the card: its controls are their own focus targets, and
             the card's focus-within ring stays the text's own signal. The
-            card holds the sheet and its ledger alone. */}
+            card holds the headline, the sheet and its ledger alone. */}
         <MarkdownEditor
           className="mt-4"
           focusRing={false}
