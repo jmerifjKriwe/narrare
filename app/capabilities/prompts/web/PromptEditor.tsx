@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 
 import { client } from "@shell/lib/api/client";
 import type { components } from "@shell/lib/api/schema";
@@ -47,6 +47,7 @@ export function PromptEditor(props: {
   scope: PromptScope;
   novelId: string;
   novelTitle: string | null;
+  focusNonce?: number;
   onClose: () => void;
   onSaved: () => void;
   onDirtyChange: (dirty: boolean) => void;
@@ -58,6 +59,7 @@ export function PromptEditor(props: {
     scope,
     novelId,
     novelTitle,
+    focusNonce,
     onClose,
     onSaved,
     onDirtyChange,
@@ -76,6 +78,10 @@ export function PromptEditor(props: {
   // Bumped by the retry button: the one way a failed detail load asks again
   // without leaving the editor.
   const [attempt, setAttempt] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (focusNonce) textareaRef.current?.focus();
+  }, [focusNonce]);
 
   // The detail load fills the editor's words: the text starts as the source
   // this scope would render with — the fork from an inherited tier happens on
@@ -255,6 +261,7 @@ export function PromptEditor(props: {
             {/* The template keeps the mono face: it is code the render
                 executes, not prose the reader reads. */}
             <Textarea
+              {...({ ref: textareaRef } as any)}
               value={content}
               onChange={(event) => setContent(event.target.value)}
               rows={10}
