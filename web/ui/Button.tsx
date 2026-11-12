@@ -105,7 +105,8 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export function Button({
   variant = "secondary",
-  size = "sm",  icon,
+  size = "sm",
+  icon,
   label,
   type = "button",
   disabled = false,
