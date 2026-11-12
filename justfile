@@ -173,8 +173,8 @@ db-shell:
 
 # Write the OpenAPI document, the capability views and the typed web client.
 generate:
-    uv run python -m scripts.export_openapi
     uv run python -m scripts.generate_capabilities
+    uv run python -m scripts.export_openapi
     pnpm --dir web generate
 
 # Compares only the generated paths, so unrelated dirt in the working tree does
