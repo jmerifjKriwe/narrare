@@ -409,7 +409,7 @@ async def test_an_impossible_budget_pair_ends_the_stream_with_the_one_error_fram
         response = await client.post(f"/api/writing/chapters/{chapter_id}/continue")
 
     assert response.status_code == 200
-    assert response.text == 'event: error\ndata: {"code": "prompt-refused"}\n\n'
+    assert response.text == 'event: error\ndata: {"code": "prompt-refused", "reason": "budget"}\n\n'
     async with Session() as session:
         assert await session.scalar(text("SELECT count(*) FROM llm_calls")) == 0
     refusals = [
@@ -491,6 +491,10 @@ async def test_the_continuation_request_carries_the_reservation_and_set_facts_on
     assert "event: done" in response.text
     assert probe.request is not None
     assert probe.request.messages[0].role == "user"
+    # The prompt that reaches the provider is the one the builder assembled,
+    # not an empty or re-derived placeholder.
+    assert "Text so far:" in probe.request.messages[0].content
+    assert "Continue the chapter" in probe.request.messages[0].content
     assert probe.request.max_tokens == expected_max_tokens
     assert probe.request.temperature == temperature
 

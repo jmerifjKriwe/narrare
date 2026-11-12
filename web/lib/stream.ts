@@ -11,6 +11,8 @@ export type StreamFailure = {
   code?: string;
   model?: string;
   detail?: string;
+  /** The machine reason behind a refused prompt (e.g. "budget"). */
+  reason?: string;
 };
 
 export type Frame = {

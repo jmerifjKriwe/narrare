@@ -510,7 +510,9 @@ async def continue_chapter(
     except BudgetImpossibleError:
         logger.exception("continuation budget refused")
         return FinalizingStreamingResponse(
-            error_events("prompt-refused"), media_type="text/event-stream", headers=SSE_HEADERS
+            error_events("prompt-refused", reason="budget"),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     except PromptRenderError:
         logger.exception("continuation prompt refused")

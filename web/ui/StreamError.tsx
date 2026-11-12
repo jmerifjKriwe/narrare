@@ -75,6 +75,9 @@ function sentenceKey(failure: StreamFailure): MessageKey {
   if (failure.code === "model-not-found" && failure.model === undefined) {
     return "errors.unknown";
   }
+  if (failure.code === "prompt-refused" && failure.reason === "budget") {
+    return "errors.promptRefusedBudget";
+  }
   return SENTENCES[failure.code ?? ""] ?? "errors.unknown";
 }
 
