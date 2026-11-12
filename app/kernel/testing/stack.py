@@ -173,11 +173,16 @@ async def _terminate_other_backends(database: str) -> None:
 
 
 async def _reset(database: str, seed_user: bool) -> None:
+    # Derive the table list from the models so it cannot drift from the schema
+    # the way the previous hard-coded list did (it had fallen to 5 tables).
+    from app.kernel.db.base import Base
+    from app.kernel.db.migrate import register_models
+
+    register_models()
+    tables = ", ".join(sorted(Base.metadata.tables))
     engine = create_async_engine(url_for(database))
     async with engine.begin() as connection:
-        await connection.execute(
-            text("TRUNCATE chunks, documents, novels, chapters, users CASCADE")
-        )
+        await connection.execute(text(f"TRUNCATE {tables} CASCADE"))
         if seed_user:
             # An installed instance: setup only asks whether the local user exists.
             await connection.execute(
@@ -358,6 +363,10 @@ class Stack:
     # Shared across every stack in this pytest process; the session teardown
     # ends it (``stop_shared_web``), never one module's end.
     web: subprocess.Popen[bytes] | None
+    # Hebel 2: the database this stack owns, so a reused stack can reset it
+    # between modules and keep test isolation without restarting the API.
+    database: str = ""
+    seed_user: bool = False
 
     def stop_api(self) -> None:
         if self.api is None:
@@ -420,7 +429,13 @@ def run_stack(
             )
         with ThreadPoolExecutor(max_workers=1) as pool:
             pool.submit(asyncio.run, _seed_local_user(database_url, seed_user)).result()
-        yield Stack(environment=_environment(database, env), api=None, web=None)
+        yield Stack(
+            environment=_environment(database, env),
+            api=None,
+            web=None,
+            database=database,
+            seed_user=seed_user,
+        )
         return
 
     _wait_for_free_port(API_PORT)
@@ -440,7 +455,13 @@ def run_stack(
         # to serve behind.
         _stop(api_process)
         raise
-    stack = Stack(environment=environment, api=api_process, web=web_process)
+    stack = Stack(
+        environment=environment,
+        api=api_process,
+        web=web_process,
+        database=database,
+        seed_user=seed_user,
+    )
     try:
         _wait_for(f"{API_URL}/openapi.json", process=api_process)
         _wait_for(WEB_URL, process=web_process)
@@ -478,7 +499,13 @@ def _start_capability_stack(
             )
         with ThreadPoolExecutor(max_workers=1) as pool:
             pool.submit(asyncio.run, _seed_local_user(database_url, seed_user)).result()
-        stack = Stack(environment=_environment(database, env), api=None, web=None)
+        stack = Stack(
+            environment=_environment(database, env),
+            api=None,
+            web=None,
+            database=database,
+            seed_user=seed_user,
+        )
         _CAPABILITY_STACKS[capability] = stack
         return stack
 
@@ -493,7 +520,13 @@ def _start_capability_stack(
     except BaseException:
         _stop(api_process)
         raise
-    stack = Stack(environment=environment, api=api_process, web=web_process)
+    stack = Stack(
+        environment=environment,
+        api=api_process,
+        web=web_process,
+        database=database,
+        seed_user=seed_user,
+    )
     try:
         _wait_for(f"{API_URL}/openapi.json", process=api_process)
         _wait_for(WEB_URL, process=web_process)
@@ -502,6 +535,18 @@ def _start_capability_stack(
         raise
     _CAPABILITY_STACKS[capability] = stack
     return stack
+
+
+def _reset_cached_stack(database: str, seed_user: bool) -> None:
+    """Reset a reused stack's database between test modules (Hebel 2).
+
+    Terminates lingering backends (so TRUNCATE can acquire its lock) and then
+    truncates and re-seeds. Runs in a worker thread: pytest-asyncio keeps a
+    session loop running, and ``asyncio.run`` refuses to start a second one
+    in the same thread.
+    """
+    asyncio.run(_terminate_other_backends(database))
+    asyncio.run(_reset(database, seed_user))
 
 
 def acquire_stack(
@@ -521,6 +566,12 @@ def acquire_stack(
 
     cached = _CAPABILITY_STACKS.get(capability)
     if cached is not None and (cached.api is None or cached.api.poll() is None):
+        # Hebel 2 reuses the stack (and its database) across modules in one
+        # worker. Reset the data between modules so tests keep their isolation:
+        # every module expects a clean database, as it had before Hebel 2.
+        if not ATTACH and cached.database:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(_reset_cached_stack, cached.database, cached.seed_user).result()
         return cached
     if cached is not None:
         # Died without a clean teardown: drop the stale entry.
