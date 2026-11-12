@@ -557,15 +557,28 @@ def _decode(raw: bytes, relpath: str) -> str:
 def serialize_archive(archive: NovelArchive) -> dict[str, bytes]:
     """The archive's files, `metadata.json` first, everything deterministic."""
     files: dict[str, bytes] = {}
+    # The discriminator (id, then body) keeps slug assignment a pure function
+    # of the key set rather than of list arrival: two chapters/entities that
+    # share a title/position/name but differ in payload no longer swap files
+    # when their input order changes (see follow-up #345 and the Codacy
+    # review). Truly identical keys keep the original index as the last
+    # resort, which never affects distinguishable entries.
     chapter_keys = [
-        (slugify(chapter.title), chapter.title, chapter.position) for chapter in archive.chapters
+        (
+            slugify(chapter.title),
+            chapter.title,
+            chapter.position,
+            str(chapter.id) if chapter.id is not None else "",
+            chapter.body,
+        )
+        for chapter in archive.chapters
     ]
     chapter_slugs = _assign_slugs(chapter_keys)
     chapter_names = [
         f"chapters/{chapter.position:02d}-{slug}.md"
         for chapter, slug in zip(archive.chapters, chapter_slugs, strict=True)
     ]
-    entity_keys = [(slugify(entity.name), entity.name) for entity in archive.entities]
+    entity_keys = [(slugify(entity.name), entity.name, entity.body) for entity in archive.entities]
     entity_slugs = _assign_slugs(entity_keys)
     entity_names = [f"kb/{slug}.md" for slug in entity_slugs]
 
