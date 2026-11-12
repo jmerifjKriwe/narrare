@@ -10,10 +10,15 @@ carries its own TS manifest beside this one; the two manifests are
 cross-checked against each other and against the parsed archives by the
 setup capability's `test_demo_manifest.py`, so a demo added on one side
 only — or a card with a wrong count — is a red test, not a wrong picker.
+
+The demo directories are the source of truth: every subdirectory of
+`demos/` that carries a `metadata.json` is a demo, in alphabetical slug
+order. Adding a demo is creating that directory; nothing else to register.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,12 +38,30 @@ class DemoInfo:
     language: str
 
 
-DEMOS: tuple[DemoInfo, ...] = (
-    DemoInfo(slug="im-stillen-wald", title="Im Stillen Wald", language="de"),
-    DemoInfo(slug="dead-signal", title="Dead Signal", language="en"),
-    DemoInfo(slug="echoes-of-the-thornwall", title="Echoes of the Thornwall", language="en"),
-)
-"""The demo corpus in picker order: German literary, sci-fi, fantasy."""
+def _read_demo_info(directory: Path) -> DemoInfo:
+    metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
+    title = metadata["title"]
+    language = metadata["language"]
+    if not isinstance(title, str) or not isinstance(language, str):
+        raise ValueError(f"demo {directory.name!r}: title and language must be strings")
+    return DemoInfo(slug=directory.name, title=title, language=language)
+
+
+def _discover_demos() -> tuple[DemoInfo, ...]:
+    if not DEMOS_DIR.is_dir():
+        return ()
+    infos: list[DemoInfo] = []
+    for directory in sorted(DEMOS_DIR.iterdir(), key=lambda path: path.name):
+        if not directory.is_dir():
+            continue
+        if not (directory / "metadata.json").is_file():
+            continue
+        infos.append(_read_demo_info(directory))
+    return tuple(infos)
+
+
+DEMOS: tuple[DemoInfo, ...] = _discover_demos()
+"""The demo corpus in picker order: alphabetical by slug."""
 
 DEMO_SLUGS: tuple[str, ...] = tuple(info.slug for info in DEMOS)
 """The slugs a first-run request may name; anything else is a 422."""
