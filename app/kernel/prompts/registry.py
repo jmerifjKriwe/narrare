@@ -15,8 +15,8 @@ The render itself and its named refusals live in
 overrides dock here later, on the ``ProviderProfile`` precedent.
 """
 
+import sys
 from collections.abc import Callable  # noqa: TC003  the dataclass fields evaluate
-from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
@@ -140,6 +140,7 @@ def get_registry() -> PromptRegistry:
             return _registry
         registry = PromptRegistry()
         _registry = registry
+        imported: list[str] = []
         try:
             capabilities = _capabilities_dir()
             if capabilities.is_dir():
@@ -149,10 +150,21 @@ def get_registry() -> PromptRegistry:
                         name = ".".join(
                             module.relative_to(capabilities.parent.parent).with_suffix("").parts
                         )
-                        with suppress(Exception):
+                        try:
                             # nosemgrep
                             import_module(name)
-        except Exception:
+                            imported.append(name)
+                        except Exception:  # noqa: S112
+                            # A single prompt module that fails to import contributes
+                            # nothing rather than taking the process down; the smoke
+                            # suite catches a registration gone missing.
+                            continue
+        except BaseException:
+            # Absolute rollback: a scan/iterdir/BaseException failure mid-discovery
+            # must not leave a partial registry published. Drop the modules imported
+            # so far from sys.modules so a retry re-imports and re-registers them.
+            for name in imported:
+                sys.modules.pop(name, None)
             _registry = None
             raise
         return registry
