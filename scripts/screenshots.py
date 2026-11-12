@@ -471,7 +471,7 @@ def _capture(
 
     # 5. The shelf: the books, and the door out of the app.
     page.goto(f"{WEB}/")
-    expect(page.get_by_role("heading", name="Novels")).to_be_visible()
+    expect(page.get_by_role("heading", name="The bookshelf", exact=True)).to_be_visible()
     shot(SHOTS[4], height=700)
 
     # 6. The chosen dark: the reader's setting, proven against a light OS.
@@ -479,7 +479,7 @@ def _capture(
     #    the stored choice beats the system.
     api.patch("/api/settings/theme", json={"theme": "dark"})
     page.goto(f"{WEB}/")
-    expect(page.get_by_role("heading", name="Novels")).to_be_visible()
+    expect(page.get_by_role("heading", name="The bookshelf", exact=True)).to_be_visible()
     expect(page.locator("html")).to_have_attribute("data-theme", "dark")
     shot(SHOTS[5], height=700)
 
