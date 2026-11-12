@@ -515,7 +515,7 @@ def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -
         # boxes. A single read after visibility can measure the stacked form
         # the first paint still shows — under a loaded runner that read is
         # what flaked (#775).
-        expect(control).to_have_css("height", "28px")
+        expect(control).to_have_css("height", "36px")
         expect(control.locator("xpath=..")).to_have_css(
             "grid-template-columns", re.compile(r"^128px(\s|$)")
         )
