@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.kernel.contracts.models import Novel
+from app.kernel.db.base import Base
 from app.kernel.db.session import Session
 from app.kernel.db.testsupport import seed_user
 from app.kernel.prompts.models import PromptTemplate, PromptTemplateRepository
@@ -229,3 +230,21 @@ async def test_novel_delete_cascades_its_override_and_keeps_global() -> None:
         found = await repo.effective("chat.ask", None)
         assert found is not None
         assert found.content == "global words"
+
+
+PROMPT_TEMPLATE_COLUMNS = {
+    "id",
+    "user_id",
+    "novel_id",
+    "prompt_key",
+    "content",
+    "created_at",
+    "updated_at",
+}
+
+
+@pytest.mark.usefixtures("schema")
+def test_the_prompt_templates_table_is_registered_with_exactly_these_columns() -> None:
+    """Verify model registration exposes exactly the override contract's columns."""
+    table = Base.metadata.tables[PromptTemplate.__tablename__]
+    assert set(table.columns.keys()) == PROMPT_TEMPLATE_COLUMNS
