@@ -40,17 +40,18 @@ export function HeroCard({ novel }: { novel: Novel }) {
               </span>
               {/* Real data: the row's own last-touch time is the honest
                * sync truth — the app is local, and this stamp is what the
-               * autosave last wrote (§6.6, "derived"). */}
-              <span className="flex items-center gap-1 text-meta text-success">
+               * autosave last wrote (§6.6, "derived"). Rendered as the
+               * drafted soft pastille: container + text. */}
+              <span className="inline-flex items-center gap-1 rounded bg-[#E8F5E9] px-2 py-0.5 text-meta text-[#2E6930]">
                 <span
-                  className="h-1.5 w-1.5 rounded-full bg-success motion-safe:animate-pulse"
+                  className="h-1.5 w-1.5 rounded-full bg-[#2E6930] motion-safe:animate-pulse"
                   aria-hidden="true"
                 />
                 {t("shelf.hero.synced", { time: formatRelative(novel.updated_at) })}
               </span>
             </div>
             <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-[26px] leading-[34px] font-semibold text-foreground [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+              <h2 className="text-3xl font-bold tracking-tight text-[#231A14] [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
                 {novel.title}
               </h2>
               {/* Interim: no series or band field exists; the genre is the
@@ -63,7 +64,7 @@ export function HeroCard({ novel }: { novel: Novel }) {
               ) : null}
             </div>
             {novel.blurb ? (
-              <p className="mt-3 line-clamp-3 max-w-2xl text-[18px] leading-[31.5px] text-muted [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+              <p className="mt-3 line-clamp-3 max-w-2xl italic text-[18px] leading-[31.5px] text-muted [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
                 {novel.blurb}
               </p>
             ) : null}
@@ -107,7 +108,7 @@ export function HeroCard({ novel }: { novel: Novel }) {
               <Link
                 to="/novels/$id"
                 params={{ id: novel.id }}
-                className={`${buttonClass("primary", "lg")} inline-flex items-center gap-2 no-underline`}
+                className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-control)] bg-cover-sepia px-6 text-label font-label-default text-cover-sepia-ink shadow-sm transition-all hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-transparent no-underline"
               >
                 <Icon name="editNote" />
                 {/* Real derivation: the last chapter's number is the row's
