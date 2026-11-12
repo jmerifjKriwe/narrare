@@ -316,6 +316,28 @@ body {
 }
 
 /*
+ * The brand serif's italic voice — the drafted cover titles and the prose's
+ * italic passages (blockquotes, emphasis) lean on a real italic cut, not a
+ * synthesised slant. Self-hosted like the upright cuts; the OFL notice
+ * beside them covers the family.
+ */
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/eb-garamond-latin-600-italic.woff2") format("woff2");
+}
+
+/*
  * The UI voice: Plus Jakarta Sans, self-hosted like the serif — the app's
  * own copy, never a CDN. It speaks where the serif must not: chrome,
  * labels, numbers, the whole shell around the manuscript. Four voices

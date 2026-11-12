@@ -93,7 +93,7 @@ export function Cover({
     <div
       aria-hidden="true"
       data-cover-tone={look.name}
-      className={`relative flex ${look.centered ? "flex-col items-center justify-center" : "items-end"} shrink-0 ${SIZES[size]} aspect-[3/4] overflow-hidden rounded-[var(--radius)] border border-border p-1.5 ${
+      className={`relative flex ${look.centered ? "flex-col items-center justify-center" : "items-end"} shrink-0 ${SIZES[size]} aspect-[3/4] overflow-hidden rounded-[var(--radius)] border border-border p-1.5 ${size === "hero" ? "shadow-2xl" : "shadow-lg"} ${
         look.ground
       } ${look.ink}`}
     >
@@ -133,7 +133,7 @@ export function Cover({
         </span>
       ) : null}
       <span
-        className={`line-clamp-3 w-full overflow-hidden break-words font-semibold text-label leading-tight [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif] ${
+        className={`line-clamp-3 w-full overflow-hidden break-normal hyphens-none font-semibold italic text-label leading-tight [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif] ${
           look.centered ? "text-center" : "text-left"
         }`}
       >
