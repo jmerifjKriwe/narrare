@@ -15,6 +15,7 @@ from app.kernel.auth import LOCAL_USER_ID
 from app.kernel.context import ContextBudgets
 from app.kernel.contracts.models import Chapter, Entity, Novel
 from app.kernel.db.session import Session
+from app.kernel.prompts import PromptRenderError, render_source
 
 BUDGETS = ContextBudgets(
     immediate_text=2000, referenced_entities=500, recent_chapters=400, style_hints=200
@@ -157,7 +158,6 @@ async def test_a_huge_frame_shrinks_the_tail_and_holds_the_total() -> None:
     measured frame, the sections stay whole, and the result never exceeds the
     four slices together."""
     from app.capabilities.writing.prompts import render_continuation
-    from app.kernel.prompts import render_source
     from app.kernel.prompts.models import PromptTemplateRepository
 
     instruction = "W" * 900
@@ -219,7 +219,6 @@ async def test_glue_that_grows_as_the_tail_shrinks_is_refused_by_name() -> None:
     """A frame that only fits while the tail is long cannot be truncated into
     fitting: the render is refused `budget`, the sections untouched."""
     from app.capabilities.writing.prompts import render_continuation
-    from app.kernel.prompts import PromptRenderError
     from app.kernel.prompts.models import PromptTemplateRepository
 
     grow = (
@@ -255,7 +254,6 @@ async def test_the_tail_shrinks_by_the_frame_the_override_measures() -> None:
     """A 500-character instruction and a full chapter: the slice stays filled,
     the tail is what the measured frame leaves of it — never the body's front."""
     from app.capabilities.writing.prompts import render_continuation
-    from app.kernel.prompts import render_source
     from app.kernel.prompts.models import PromptTemplateRepository
 
     instruction = "Y" * 500
