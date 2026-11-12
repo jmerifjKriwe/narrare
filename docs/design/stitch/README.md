@@ -46,6 +46,10 @@ Documents from the same project are under [`documents/`](documents/):
 - [`midnight-ink-surface-ladder.html`](documents/midnight-ink-surface-ladder.html)
   — the second S0 card: the dark surface ladder, outline pair, secondary pairs
   and inverse pairs.
+- [`parity-audit-shelf.html`](documents/parity-audit-shelf.html) — Stitch's
+  own parity audit of the implemented shelf against its draft (26 findings,
+  triaged; the real ones fixed in the branch, the artifacts documented in the
+  wave's reports).
 
 ## Screens
 

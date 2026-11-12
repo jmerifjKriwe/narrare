@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-[#F5F1E9]" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Abweichungsanalyse: implementiertes Bücherregal vs. Entwurf • Narrare Studio QA</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['EB Garamond', 'Georgia', 'serif'],
+            sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            canvas: '#F5F1E9',
+            card: '#FCFAF6',
+            cardSubtle: '#F0EBE1',
+            terracotta: {
+              DEFAULT: '#743B1F',
+              hover: '#5F3018',
+              light: '#F8EFE9',
+              dark: '#4D2411'
+            },
+            ink: {
+              DEFAULT: '#231A14',
+              muted: '#5C4D42',
+              faint: '#8C7B6F',
+              hairline: '#DEC7AE'
+            },
+            severity: {
+              critBg: '#FDF2F2',
+              critText: '#991B1B',
+              critBorder: '#F87171',
+              highBg: '#FEF3C7',
+              highText: '#92400E',
+              highBorder: '#FBBF24',
+              medBg: '#EFF6FF',
+              medText: '#1E40AF',
+              medBorder: '#93C5FD',
+              lowBg: '#F3F4F6',
+              lowText: '#4B5563',
+              lowBorder: '#D1D5DB'
+            }
+          },
+          boxShadow: {
+            'book-3d': '0 25px 50px -12px rgba(35, 26, 20, 0.28), 0 8px 16px -6px rgba(35, 26, 20, 0.15)',
+            'archival': '0 4px 20px -2px rgba(44, 30, 20, 0.06), 0 1px 3px rgba(44, 30, 20, 0.04)',
+            'subtle': '0 1px 2px rgba(0, 0, 0, 0.04)',
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      vertical-align: middle;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #dec7ae;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-full font-sans text-ink bg-canvas antialiased selection:bg-[#743B1F] selection:text-white">
+<!-- Top Minimal Studio Header Bar -->
+<header class="border-b border-ink-hairline bg-[#FCFAF6]/90 backdrop-blur sticky top-0 z-40">
+<div class="max-w-[1400px] mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-terracotta text-[#FCFAF6] flex items-center justify-center font-serif text-lg font-bold shadow-sm">
+          N
+        </div>
+<div class="flex items-baseline gap-2">
+<span class="font-serif font-bold text-lg tracking-tight text-ink">Narrare Studio QA</span>
+<span class="text-xs uppercase tracking-widest text-ink-faint font-semibold">Paritäts-Audit &amp; Design-Verifikation</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-red-100 text-red-800 border border-red-200">
+<span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span> Parität: 54% (Erhebliche Abweichungen)
+        </span>
+<div class="h-4 w-px bg-ink-hairline"></div>
+<span class="text-xs font-mono text-ink-muted">Spezifikation: Literary Modernism v2.4</span>
+<button class="ml-2 inline-flex items-center gap-1 text-xs font-medium text-terracotta hover:text-terracotta-hover border border-terracotta/30 px-2.5 py-1.5 rounded bg-terracotta/5" onclick="window.print()">
+<span class="material-symbols-outlined text-[16px]">print</span>
+          Bericht drucken
+        </button>
+</div>
+</div>
+</header>
+<main class="max-w-[1400px] mx-auto px-6 lg:px-10 py-8 space-y-10">
+<!-- Section 1: Hero & Executive Summary -->
+<section class="space-y-6">
+<div class="border-b border-ink-hairline pb-6">
+<div class="flex items-center gap-2 text-xs font-mono text-ink-faint tracking-wider uppercase mb-1">
+<span>Audit-ID: QA-AUD-2025-04</span>
+<span>•</span>
+<span>Referenz: SCREEN_91 vs. SCREEN_4</span>
+<span>•</span>
+<span>Prüfdatum: 26. Mai 2025</span>
+</div>
+<h1 class="font-serif text-3xl lg:text-4xl text-ink font-bold tracking-tight">
+          Abweichungsanalyse: implementiertes Bücherregal vs. Entwurf
+        </h1>
+<p class="mt-3 text-base text-ink-muted leading-relaxed max-w-4xl font-serif text-[17px]">
+          Systematische Untersuchung der visuellen, architektonischen und typografischen Abweichungen zwischen der Soll-Spezifikation (<em class="italic">Literary Modernism V2.4</em>) und dem Ist-Stand der Frontend-Implementierung. Die Analyse offenbart gravierende atmosphärische Verluste durch das Weglassen elementarer Inhaltselemente (u. a. Teaser-Blurb) und ein Zerfasern der typografischen Hierarchie.
+        </p>
+</div>
+<!-- KPI Summary Cards -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+<!-- KPI 1 -->
+<div class="bg-card border border-ink-hairline rounded-lg p-4 shadow-archival">
+<span class="text-xs uppercase tracking-wider text-ink-faint font-medium">Paritäts-Score</span>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-serif text-3xl font-bold text-red-700">54%</span>
+<span class="text-xs text-red-600 font-medium">Ungenügend</span>
+</div>
+<div class="w-full bg-stone-200 h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-red-600 h-full rounded-full" style="width: 54%"></div>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-card border border-ink-hairline rounded-lg p-4 shadow-archival">
+<span class="text-xs uppercase tracking-wider text-ink-faint font-medium">Gesamt-Abweichungen</span>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-serif text-3xl font-bold text-ink">26</span>
+<span class="text-xs text-ink-muted">Diskrepanzen</span>
+</div>
+<span class="text-[11px] text-ink-faint mt-3 block font-mono">5 Kategorien auditiert</span>
+</div>
+<!-- KPI 3: Kritisch -->
+<div class="bg-[#FFF5F5] border border-red-200 rounded-lg p-4 shadow-subtle">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase tracking-wider text-red-700 font-semibold">Kritisch (Schwere: Hoch)</span>
+<span class="material-symbols-outlined text-red-600 text-[18px]">error</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-serif text-3xl font-bold text-red-800">8</span>
+<span class="text-xs text-red-700">Befunde</span>
+</div>
+<span class="text-[11px] text-red-700/80 mt-3 block">Fehlender Blurb, Layoutbruch</span>
+</div>
+<!-- KPI 4: Moderat -->
+<div class="bg-[#FFFBEB] border border-amber-200 rounded-lg p-4 shadow-subtle">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase tracking-wider text-amber-800 font-semibold">Moderat (Mittel)</span>
+<span class="material-symbols-outlined text-amber-600 text-[18px]">warning</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-serif text-3xl font-bold text-amber-900">11</span>
+<span class="text-xs text-amber-800">Befunde</span>
+</div>
+<span class="text-[11px] text-amber-800/80 mt-3 block">Spacings, Buttons &amp; Badges</span>
+</div>
+<!-- KPI 5: Gering -->
+<div class="bg-card border border-ink-hairline rounded-lg p-4 shadow-subtle">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase tracking-wider text-ink-muted font-medium">Gering (Niedrig)</span>
+<span class="material-symbols-outlined text-ink-faint text-[18px]">info</span>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-serif text-3xl font-bold text-ink-muted">7</span>
+<span class="text-xs text-ink-faint">Befunde</span>
+</div>
+<span class="text-[11px] text-ink-faint mt-3 block">Borders, Schatten-Glanz</span>
+</div>
+</div>
+</section>
+<!-- Section 2: Visuelle Gegenüberstellung im Detail (Callout & Comparison Panel) -->
+<section class="bg-card border border-ink-hairline rounded-xl p-6 lg:p-8 shadow-archival space-y-6">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink-hairline/60 pb-4">
+<div>
+<span class="text-xs uppercase tracking-widest font-mono text-terracotta font-semibold">Visuelle Evidenz</span>
+<h2 class="font-serif text-2xl font-bold text-ink">Direkte Gegenüberstellung der Kern-Artefakte</h2>
+</div>
+<div class="flex items-center gap-2 text-xs font-mono">
+<span class="px-2 py-1 rounded bg-[#EAE3D6] text-ink font-medium">Soll = SCREEN_91 (Atelier Design)</span>
+<span class="text-ink-faint">vs.</span>
+<span class="px-2 py-1 rounded bg-stone-300 text-stone-800 font-medium">Ist = SCREEN_4 (Code Upload)</span>
+</div>
+</div>
+<!-- 3 Key Visual Callout Blocks -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Callout A -->
+<div class="border border-red-300 bg-white rounded-lg p-4 flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 w-2 h-full bg-red-600"></div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-mono font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">Ausschnitt A • KRITISCH</span>
+</div>
+<h3 class="font-serif font-bold text-lg text-ink">Verlust des Roman-Klappentexts (Blurb)</h3>
+<p class="text-xs text-ink-muted mt-2 leading-relaxed font-sans">
+<strong>Soll-Entwurf:</strong> 3-zeiliger, atmosphärischer Teaser in Kursivschrift (<em>„Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen…“</em>).<br/>
+<strong>Implementierung:</strong> Völlig weggelassen. Riesiges weißes Vakuum im Hero-Bereich, die narrative Seele des Literary-Modernism-Konzepts fehlt.
+            </p>
+</div>
+<div class="mt-4 pt-3 border-t border-dashed border-stone-200 text-[11px] font-mono text-red-800">
+            Auswirkung: Verlust des literarischen Kernnutzens.
+          </div>
+</div>
+<!-- Callout B -->
+<div class="border border-amber-300 bg-white rounded-lg p-4 flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 w-2 h-full bg-amber-500"></div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Ausschnitt B • HOCH</span>
+</div>
+<h3 class="font-serif font-bold text-lg text-ink">Plakative Buchdeckel vs. Lederprägung</h3>
+<p class="text-xs text-ink-muted mt-2 leading-relaxed font-sans">
+<strong>Soll-Entwurf:</strong> Warme 3D-Buchkörper mit fühlbarem Buchfalz, edlem Tiefenschatten (<code class="bg-stone-100 px-1">elevation-book-3d</code>) und zentrierten Gold-/Prägeschriften.<br/>
+<strong>Implementierung:</strong> Flache, leblose Farbblöcke ohne Schatten, schiefe serifenlose Typo („HIST ORISCH“ mit Zeilenumbruchfehler).
+            </p>
+</div>
+<div class="mt-4 pt-3 border-t border-dashed border-stone-200 text-[11px] font-mono text-amber-900">
+            Auswirkung: Zerstört die haptische Buchbinder-Ästhetik.
+          </div>
+</div>
+<!-- Callout C -->
+<div class="border border-blue-300 bg-white rounded-lg p-4 flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 w-2 h-full bg-blue-600"></div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-mono font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Ausschnitt C • HOCH</span>
+</div>
+<h3 class="font-serif font-bold text-lg text-ink">Typografische Verflachung &amp; Satzspiegel</h3>
+<p class="text-xs text-ink-muted mt-2 leading-relaxed font-sans">
+<strong>Soll-Entwurf:</strong> Sorgsam abgestimmtes Typo-Paar: Newsreader (Editorial Serif) mit Plus Jakarta Sans (Zahlen, UI).<br/>
+<strong>Implementierung:</strong> Times New Roman / Fallback-Serifen ohne Kerning, harte Browser-Grotesk für Buttons, zerschossene Wortzähler („0 Wörter“).
+            </p>
+</div>
+<div class="mt-4 pt-3 border-t border-dashed border-stone-200 text-[11px] font-mono text-blue-900">
+            Auswirkung: Qualitätsanmutung sinkt auf Entwurfs-Niveau.
+          </div>
+</div>
+</div>
+</section>
+<!-- Section 3: Die 5 Audit-Kategorien (Detaillierte Matrizen) -->
+<!-- KATEGORIE 1 -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-ink-hairline pb-2">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded bg-terracotta text-white flex items-center justify-center font-mono text-xs font-bold">01</span>
+<h2 class="font-serif text-2xl font-bold text-ink">Kategorie 1: Typografie &amp; Schriftbild</h2>
+</div>
+<span class="text-xs font-mono text-ink-muted">6 identifizierte Diskrepanzen</span>
+</div>
+<div class="overflow-x-auto custom-scroll border border-ink-hairline rounded-lg bg-card shadow-sm">
+<table class="w-full text-left border-collapse text-xs">
+<thead>
+<tr class="bg-cardSubtle border-b border-ink-hairline font-mono text-ink uppercase tracking-wider text-[11px]">
+<th class="py-3 px-4 w-[18%]">Element</th>
+<th class="py-3 px-4 w-[24%] text-[#2E6930] bg-[#F2F7F2]/60">Soll-Spezifikation (Entwurf SCREEN_91)</th>
+<th class="py-3 px-4 w-[24%] text-red-800 bg-red-50/40">Ist-Stand (Implementierung SCREEN_4)</th>
+<th class="py-3 px-4 w-[12%] text-center">Schwere</th>
+<th class="py-3 px-4 w-[22%]">Präziser Befund &amp; Refactoring</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink-hairline/60">
+<!-- Row 1.1 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Hero-Titel <code class="text-[11px] font-mono text-terracotta block mt-0.5">„Das Bücherregal“</code>
+</td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Newsreader / EB Garamond (Serif), 32px / Zeilenhöhe 36px, Bold 700, optisches Tracking -0.02em, Farbwert <span class="font-mono text-ink font-semibold">#231A14</span>.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                System-Serif (Times New Roman / ungestylt), ~28px, Semibold 600, Zeilenabstand zu eng (1.1), unruhiges Kerning.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Titel wirkt gedrückt und bieder. Es fehlt die monumentale Verlags-Schwärze und die feine Serifen-Spur von Newsreader.
+              </td>
+</tr>
+<!-- Row 1.2 -->
+<tr class="hover:bg-[#FAF6F0] transition bg-red-50/10">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Hero-Buchzitat / Blurb <code class="text-[11px] font-mono text-terracotta block mt-0.5">„Die Sensorenbatterie...“</code>
+</td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Vollständiger literarischer Teaser in Newsreader Kursiv (15px / Line-Height 1.6), Farbwert <span class="font-mono text-ink font-semibold">#5C4D42</span>, 3 Zeilen Fließtext.
+              </td>
+<td class="py-3.5 px-4 font-semibold text-red-700 bg-red-100/40">
+                FEHLT KOMPLETT! Leerfläche neben dem Buchcover.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-900 border border-red-300 animate-pulse">Kritisch</span>
+</td>
+<td class="py-3.5 px-4 text-red-800 leading-relaxed font-medium">
+                Schwerwiegendster Inhaltsverlust des Screens. Zerstört die visuelle Balance der gesamten Hero-Stage.
+              </td>
+</tr>
+<!-- Row 1.3 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Cover-Typografie <code class="text-[11px] font-mono text-terracotta block mt-0.5">Dead Signal, Winterhaus</code>
+</td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Edle Serif-Display-Type (kursiviert bei Dead Signal), warm geprägt, vertikal austariert mit Verlags-Signet.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Grobe generische Großschrift, „HIST ORISCH“ mit falschem Zeilenumbruch getrennt, keine typografische Veredelung.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Der Buchbinder-Charakter verkommt zu simplen CSS-Rechtecken. Fehlender Worttrennungsumbruch bei „HISTORISCH“.
+              </td>
+</tr>
+<!-- Row 1.4 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Metadaten &amp; Wortzähler <code class="text-[11px] font-mono text-terracotta block mt-0.5">3.384 / 60.000 W., 14 Tage</code>
+</td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Plus Jakarta Sans, 13px Tabellenziffern, Meta-Farbe <span class="font-mono text-ink">#5C4D42</span>, saubere Icon-Ausrichtung (8px Gap).
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Standard System Font, unproportionierte Abstände, teils fehlerhafte Werte („0 Wörter“, fehlendes Ziel).
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Font-Family-Mismatch und fehlende vertikale Ausrichtung mit Material Symbols.
+              </td>
+</tr>
+<!-- Row 1.5 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Labels &amp; Sektions-Header <code class="text-[11px] font-mono text-terracotta block mt-0.5">AKTUELL IN ARBEIT</code>
+</td>
+<td class="py-3.5 px-4 text-ink-muted">
+                11px Uppercase, letter-spacing +0.08em, Plus Jakarta Sans Medium, Farbe <span class="font-mono text-ink">#8C7B6F</span>.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                12px Uppercase mit gestauchtem Tracking oder fehlendem Spacing, falsche Jahreszeit („Herbst 2026“ statt „Frühjahr 2025“).
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Buchstaben laufen ohne Laufweite zusammen; Text wirkt laut und ungelenk statt archivierend-subtil.
+              </td>
+</tr>
+<!-- Row 1.6 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Buttons &amp; CTAs <code class="text-[11px] font-mono text-terracotta block mt-0.5">Weiterschreiben in Kap. 3</code>
+</td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Plus Jakarta Sans SemiBold 14px, 1.2 Line-Height, optisch zentriert mit exakt 10px Y / 18px X Padding.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Generische Browser-Schrift, ungleiches vertikales Padding (Button-Text klebt oben/unten).
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Schriftgewicht zu schwach (400 statt 600), kein haptischer Kontrast.
+              </td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- KATEGORIE 2 -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-ink-hairline pb-2">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded bg-terracotta text-white flex items-center justify-center font-mono text-xs font-bold">02</span>
+<h2 class="font-serif text-2xl font-bold text-ink">Kategorie 2: Abstände &amp; Dichte (Layout-Gitter)</h2>
+</div>
+<span class="text-xs font-mono text-ink-muted">4 identifizierte Diskrepanzen</span>
+</div>
+<div class="overflow-x-auto custom-scroll border border-ink-hairline rounded-lg bg-card shadow-sm">
+<table class="w-full text-left border-collapse text-xs">
+<thead>
+<tr class="bg-cardSubtle border-b border-ink-hairline font-mono text-ink uppercase tracking-wider text-[11px]">
+<th class="py-3 px-4 w-[18%]">Element</th>
+<th class="py-3 px-4 w-[24%] text-[#2E6930] bg-[#F2F7F2]/60">Soll-Spezifikation (Entwurf SCREEN_91)</th>
+<th class="py-3 px-4 w-[24%] text-red-800 bg-red-50/40">Ist-Stand (Implementierung SCREEN_4)</th>
+<th class="py-3 px-4 w-[12%] text-center">Schwere</th>
+<th class="py-3 px-4 w-[22%]">Präziser Befund &amp; Refactoring</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink-hairline/60">
+<!-- Row 2.1 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Globales Canvas-Padding &amp; Gutter
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Großzügige 32px/48px Margin, zentriertes 1280px max-w Container-Raster mit harmonischem Rand-Weißraum.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Asymmetrisches, gedrängtes Padding (~16px), Seiteninhalt dehnt sich unkontrolliert in die Breite.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Der archivarische Lesesaal-Eindruck verliert seine räumliche Eleganz durch gestauchte Ränder.
+              </td>
+</tr>
+<!-- Row 2.2 -->
+<tr class="hover:bg-[#FAF6F0] transition bg-red-50/10">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Hero-Card Innenabstand &amp; Grid
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Kompakte 2-Spalten-Bühne: Cover (180px Breite) links, Text- &amp; Metaspalte rechts mit konsistentem 32px Gap.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Cover und Metas sind isoliert; Buttons kleben unter den Wortzahlen; gigantisches weißes Loch auf der rechten Seite.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Fehlendes <code class="font-mono">grid-cols-[auto,1fr]</code> mit adäquatem Auto-Flow; Buttons sitzen nicht am unteren Rand.
+              </td>
+</tr>
+<!-- Row 2.3 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Buchkarten-Raster (Grid-Spalten)
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                4 gleichmäßige Spalten mit festem <code class="font-mono">gap-6</code> (24px) und exakt bündigen Buchdeckelhöhen (240px).
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Karten horizontal gestreckt, ungleiche Höhen, Buchcover wirken zu breit proportioniert.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Aspektverhältnis der Cover muss fest auf 2:3 (z. B. <code class="font-mono">aspect-[2/3]</code>) fixiert werden.
+              </td>
+</tr>
+<!-- Row 2.4 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Top-Header Statistik-Widgets
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                3 kompakte Widgets (16px Padding), harmonisch bündig auf Baseline mit „Das Bücherregal“.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Verschobene vertikale Achse, CTA-Buttons brechen die Zeile unruhig auf.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Flex-Alignments korrigieren: <code class="font-mono">items-end</code> oder bündige Baseline-Gliederung verwenden.
+              </td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- KATEGORIE 3 -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-ink-hairline pb-2">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded bg-terracotta text-white flex items-center justify-center font-mono text-xs font-bold">03</span>
+<h2 class="font-serif text-2xl font-bold text-ink">Kategorie 3: Farben &amp; Oberflächen (Palette &amp; Chromatik)</h2>
+</div>
+<span class="text-xs font-mono text-ink-muted">4 identifizierte Diskrepanzen</span>
+</div>
+<div class="overflow-x-auto custom-scroll border border-ink-hairline rounded-lg bg-card shadow-sm">
+<table class="w-full text-left border-collapse text-xs">
+<thead>
+<tr class="bg-cardSubtle border-b border-ink-hairline font-mono text-ink uppercase tracking-wider text-[11px]">
+<th class="py-3 px-4 w-[18%]">Element</th>
+<th class="py-3 px-4 w-[24%] text-[#2E6930] bg-[#F2F7F2]/60">Soll-Spezifikation (Entwurf SCREEN_91)</th>
+<th class="py-3 px-4 w-[24%] text-red-800 bg-red-50/40">Ist-Stand (Implementierung SCREEN_4)</th>
+<th class="py-3 px-4 w-[12%] text-center">Schwere</th>
+<th class="py-3 px-4 w-[22%]">Präziser Befund &amp; Refactoring</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink-hairline/60">
+<!-- Row 3.1 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Background Canvas Papier-Nuance
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Warmes Büttenpapier <span class="font-mono font-semibold text-ink">#FFF8F2</span> (Naturweiß mit sanftem Terracotta-Unterton).
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Flaches, unorganisches Graubeige <span class="font-mono">#F7F4EE</span> ohne lebendige Papier-Aura.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Hexwert auf Token <code class="font-mono">--canvas-bg: #FFF8F2</code> korrigieren für den typischen Narrare-Buchton.
+              </td>
+</tr>
+<!-- Row 3.2 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Primary Brand Terracotta
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Florentiner Rostbraun <span class="font-mono font-semibold text-terracotta">#743B1F</span> mit leuchtendem Kern.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Stumpfes Schokoladenbraun <span class="font-mono">#5A301A</span> ohne Nuancierung und Wärme.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Der primäre Akzent verliert seine Buchdrucker-Identität.
+              </td>
+</tr>
+<!-- Row 3.3 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Cover-Farbkodierung der Genres
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Dead Signal: Obsidian <span class="font-mono">#181513</span> &amp; Braun;<br/>
+                Winterhaus: Elfenbein <span class="font-mono">#FAF2EA</span>;<br/>
+                Salt Road: Ocker <span class="font-mono">#8B4513</span>;<br/>
+                Arkona: Preußischblau <span class="font-mono">#2C4A5E</span>.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Arkona ist fälschlicherweise braun statt blau gefärbt; Winterhaus ist dunkelblau statt hellem Pergament-Elfenbein vertauscht!
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Genre-Farbsemantik komplett vertauscht. Arkona (Nordsee/Küste) muss blau sein, Winterhaus helles Eis-Pergament.
+              </td>
+</tr>
+<!-- Row 3.4 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Status- &amp; Kausalitäts-Badges
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Pistazien/Salbei-Grün (<span class="font-mono">#E8F5E9</span> mit <span class="font-mono">#2E6930</span> Text) für „vor 6s synchronisiert“.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Giftiges grelles Neon-Grün (<span class="font-mono">#00C853</span>) ohne Container-Hintergrund, wirkt wie Terminal-Fehler.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Der giftgrüne Punkt sticht unpassend grell hervor. Sanfter Pastell-Status gefordert.
+              </td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- KATEGORIE 4 -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-ink-hairline pb-2">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded bg-terracotta text-white flex items-center justify-center font-mono text-xs font-bold">04</span>
+<h2 class="font-serif text-2xl font-bold text-ink">Kategorie 4: Radien, Konturen &amp; Schatten</h2>
+</div>
+<span class="text-xs font-mono text-ink-muted">3 identifizierte Diskrepanzen</span>
+</div>
+<div class="overflow-x-auto custom-scroll border border-ink-hairline rounded-lg bg-card shadow-sm">
+<table class="w-full text-left border-collapse text-xs">
+<thead>
+<tr class="bg-cardSubtle border-b border-ink-hairline font-mono text-ink uppercase tracking-wider text-[11px]">
+<th class="py-3 px-4 w-[18%]">Element</th>
+<th class="py-3 px-4 w-[24%] text-[#2E6930] bg-[#F2F7F2]/60">Soll-Spezifikation (Entwurf SCREEN_91)</th>
+<th class="py-3 px-4 w-[24%] text-red-800 bg-red-50/40">Ist-Stand (Implementierung SCREEN_4)</th>
+<th class="py-3 px-4 w-[12%] text-center">Schwere</th>
+<th class="py-3 px-4 w-[22%]">Präziser Befund &amp; Refactoring</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink-hairline/60">
+<!-- Row 4.1 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Eckenradien (Border Radius)
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Systematisches <code class="font-mono">ROUND_FOUR</code>-System: Cards 12px, Buttons 8px, Badges 4px, Buchcover 4px mit linker Buchfalz-Kante.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Inkonsistente Werte: teils 4px, teils harte 0px Ecken an Buchdeckeln, Hero-Card wirkt wie ein kantiger Kasten.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Token <code class="font-mono">rounded-xl</code> (Cards) und <code class="font-mono">rounded-md</code> (Buttons) standardisieren.
+              </td>
+</tr>
+<!-- Row 4.2 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Buchdeckel-Schatten (3D-Tiefe)
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Warmer Bernsteinschatten:<br/>
+<code class="font-mono text-[10px]">0 25px 50px -12px rgba(35,26,20,0.25)</code> und sichtbare Buchrücken-Prägung.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Vollkommen schattenlos (flat 0px) oder dünner 1px Box-Shadow; keine haptische Tiefe.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Ohne den Schatten wirken die Bücher wie simple Web-Banner statt physische Buchkörper im Regal.
+              </td>
+</tr>
+<!-- Row 4.3 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Card Elevation &amp; Haarlinien
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Sanftes Layering auf Canvas mit 1px Haarlinie <span class="font-mono">#DEC7AE</span>.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Borders fehlen teilweise komplett oder sind hart-grau ausgeführt.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-100 text-stone-700 border border-stone-300">Gering</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Haarlinien mit <code class="font-mono">border-ink-hairline</code> wiederherstellen.
+              </td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- KATEGORIE 5 -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-ink-hairline pb-2">
+<div class="flex items-center gap-3">
+<span class="w-7 h-7 rounded bg-terracotta text-white flex items-center justify-center font-mono text-xs font-bold">05</span>
+<h2 class="font-serif text-2xl font-bold text-ink">Kategorie 5: Komposition, Proportionen &amp; Interaktion</h2>
+</div>
+<span class="text-xs font-mono text-ink-muted">4 identifizierte Diskrepanzen</span>
+</div>
+<div class="overflow-x-auto custom-scroll border border-ink-hairline rounded-lg bg-card shadow-sm">
+<table class="w-full text-left border-collapse text-xs">
+<thead>
+<tr class="bg-cardSubtle border-b border-ink-hairline font-mono text-ink uppercase tracking-wider text-[11px]">
+<th class="py-3 px-4 w-[18%]">Element</th>
+<th class="py-3 px-4 w-[24%] text-[#2E6930] bg-[#F2F7F2]/60">Soll-Spezifikation (Entwurf SCREEN_91)</th>
+<th class="py-3 px-4 w-[24%] text-red-800 bg-red-50/40">Ist-Stand (Implementierung SCREEN_4)</th>
+<th class="py-3 px-4 w-[12%] text-center">Schwere</th>
+<th class="py-3 px-4 w-[22%]">Präziser Befund &amp; Refactoring</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink-hairline/60">
+<!-- Row 5.1 -->
+<tr class="hover:bg-[#FAF6F0] transition bg-red-50/10">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Linke Sidebar-Navigation
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Feste schmale Atelier-Schiene (Icon-Rail mit Atelier-Monogramm „N“, Bibliotheks-Icon, Schreib-Icon, Graph-Icon, Theme-Toggle).
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Minimalistische, unvollständige Dummy-Leiste ohne aktive Markierung oder Tooltips.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">Hoch</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Die Sidebar verankert das Studio. Es fehlen die Zustands-Indikatoren der aktiven Route („Bücherregal“).
+              </td>
+</tr>
+<!-- Row 5.2 -->
+<tr class="hover:bg-[#FAF6F0] transition bg-red-50/10">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                „Aktuell in Arbeit“ Hero-Proportionen
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Monumentale Autoren-Bühne. Buchcover im perfekten 2:3-Verhältnis zur Textspalte. Ausbalancierte Füllung.
+              </td>
+<td class="py-3.5 px-4 text-red-700 bg-red-100/30">
+                Stark geschrumpfter Inhalt, unausgewogene weiße Leere rechts, fehlender Blurb lässt die Karte kollabieren.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-900 border border-red-300 animate-pulse">Kritisch</span>
+</td>
+<td class="py-3.5 px-4 text-red-800 leading-relaxed font-medium">
+                Kompositionaler Totalschaden des Hero-Fokus. Das Auge wandert ins Nichts.
+              </td>
+</tr>
+<!-- Row 5.3 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Schreibziel &amp; Wochenfortschritt (Unten)
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                Feine Kurvengrafik („840 W/Tag“) mit dezentem Terracotta-Faden und sauberem „Statistiken öffnen“-Button.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Flacher, statischer Balken ohne Kurve, Wert zeigt fehlerhaft „0 Wörter“, unruhige Baseline.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300">Mittel</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Funktionale Entwertung des Schreibfortschritts. Sparkline-Komponente fehlt.
+              </td>
+</tr>
+<!-- Row 5.4 -->
+<tr class="hover:bg-[#FAF6F0] transition">
+<td class="py-3.5 px-4 font-semibold text-ink">
+                Buchkarten Context-Menu („...“)
+              </td>
+<td class="py-3.5 px-4 text-ink-muted">
+                3-Punkte-Menü dezent oben rechts jeder Karte, Tooltip „Aktionen“, konsistente Position.
+              </td>
+<td class="py-3.5 px-4 text-red-900 bg-red-50/20">
+                Schlampig und ungleich positioniert, keine Hover-States, springt je nach Titelbreite.
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-100 text-stone-700 border border-stone-300">Gering</span>
+</td>
+<td class="py-3.5 px-4 text-ink-muted leading-relaxed">
+                Mit <code class="font-mono">absolute top-3 right-3</code> fest im Cover-Wrapper verankern.
+              </td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Section 4: Entwickler-Empfehlungsliste & CSS-Token Blueprint -->
+<section class="bg-card border border-ink-hairline rounded-xl p-6 lg:p-8 shadow-archival">
+<div class="flex items-center gap-3 border-b border-ink-hairline pb-4 mb-6">
+<span class="material-symbols-outlined text-terracotta text-2xl">terminal</span>
+<div>
+<h2 class="font-serif text-2xl font-bold text-ink">Entwickler-Empfehlungsliste zur Wiederherstellung der Design-Treue</h2>
+<p class="text-xs text-ink-muted">Priorisierte Refactoring-Roadmap mit direkten Tailwind-/CSS-Token-Vorgaben</p>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- P1 & P2 Action Items -->
+<div class="space-y-4">
+<h3 class="text-xs font-mono uppercase tracking-wider text-red-700 font-bold flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-red-600"></span> Sofortmaßnahmen (Priorität P0 &amp; P1)
+          </h3>
+<div class="space-y-3">
+<div class="p-3.5 rounded-lg bg-[#FAF7F2] border border-ink-hairline flex items-start gap-3">
+<span class="font-mono text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">P0</span>
+<div class="text-xs">
+<strong class="text-ink block text-[13px]">Roman-Blurb im Hero einpflegen</strong>
+<p class="text-ink-muted mt-1 font-serif italic text-sm">
+                  „Die Sensorenbatterie der Station Erebus schwieg seit drei Tagen. Commander Vance wusste, dass die Stille kein technischer Defekt war...“
+                </p>
+<div class="mt-2 text-[11px] font-mono text-ink-faint">
+                  Klasse: <code class="text-terracotta">font-serif italic text-ink-muted text-sm leading-relaxed</code>
+</div>
+</div>
+</div>
+<div class="p-3.5 rounded-lg bg-[#FAF7F2] border border-ink-hairline flex items-start gap-3">
+<span class="font-mono text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">P0</span>
+<div class="text-xs">
+<strong class="text-ink block text-[13px]">Buchcover-Genres &amp; Farben korrigieren</strong>
+<p class="text-ink-muted mt-1">
+                  Der Nebel von Arkona auf Marineblau (#2C4A5E) umstellen, Winterhaus auf warmes Elfenbein (#FAF2EA) mit dunkler Typo. Falsche Worttrennung bei „HISTORISCH“ beheben.
+                </p>
+</div>
+</div>
+<div class="p-3.5 rounded-lg bg-[#FAF7F2] border border-ink-hairline flex items-start gap-3">
+<span class="font-mono text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">P1</span>
+<div class="text-xs">
+<strong class="text-ink block text-[13px]">Buchdecken-Schatten &amp; 3D-Falz integrieren</strong>
+<p class="text-ink-muted mt-1">
+                  Den flachen Vektorboxen die Buchbinder-Tiefe zurückgeben:
+                </p>
+<code class="block mt-1.5 p-2 bg-stone-900 text-stone-100 rounded text-[11px] font-mono">
+                  box-shadow: 0 25px 50px -12px rgba(35, 26, 20, 0.28), 0 8px 16px -6px rgba(35, 26, 20, 0.15);
+                </code>
+</div>
+</div>
+</div>
+</div>
+<!-- Token Reference Code Box -->
+<div class="space-y-4">
+<h3 class="text-xs font-mono uppercase tracking-wider text-ink-muted font-bold flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-terracotta"></span> Verbindliche Design-Token-Spezifikation
+          </h3>
+<div class="bg-stone-900 rounded-lg p-4 font-mono text-[11px] text-stone-300 leading-relaxed overflow-x-auto custom-scroll shadow-inner">
+<span class="text-stone-500">// Literary Modernism Core Tokens</span><br/>
+<span class="text-amber-400">const</span> tokens = {<br/>
+              font: {<br/>
+                editorial: <span class="text-emerald-400">"'Newsreader', 'EB Garamond', serif"</span>,<br/>
+                ui: <span class="text-emerald-400">"'Plus Jakarta Sans', system-ui, sans-serif"</span>,<br/>
+              },<br/>
+              color: {<br/>
+                canvas: <span class="text-emerald-400">"#FFF8F2"</span>, <span class="text-stone-500">// Naturweißes Büttenpapier</span><br/>
+                ink: <span class="text-emerald-400">"#231A14"</span>,    <span class="text-stone-500">// Warme Druckerschwärze</span><br/>
+                terracotta: <span class="text-emerald-400">"#743B1F"</span>, <span class="text-stone-500">// Florentiner Rostbraun</span><br/>
+                hairline: <span class="text-emerald-400">"#DEC7AE"</span>,   <span class="text-stone-500">// Papierfalz-Border</span><br/>
+                badgeGreen: <span class="text-emerald-400">"#E8F5E9"</span>, <span class="text-stone-500">// Kein Neon-Grün</span><br/>
+              },<br/>
+              radius: {<br/>
+                card: <span class="text-emerald-400">"12px"</span>,<br/>
+                button: <span class="text-emerald-400">"8px"</span>,<br/>
+                cover: <span class="text-emerald-400">"4px"</span>,<br/>
+              }<br/>
+            };
+          </div>
+<div class="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-amber-700 shrink-0">verified</span>
+<div>
+<strong>Audit-Freigabe:</strong> Nach Abarbeitung der 8 kritischen Punkte wird ein automatisiertes Re-Scanning durchgeführt, um den Paritäts-Score von 54% auf den geforderten Zielwert von ≥ 96% anzuheben.
+            </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Meta -->
+<footer class="text-center text-xs font-mono text-ink-faint border-t border-ink-hairline/60 pt-6 pb-10">
+      Narrare Atelier &amp; Archiv • Paritäts-Prüfbericht • Generiert auf Basis von SCREEN_91 &amp; SCREEN_4 • Vertraulich
+    </footer>
+</main>
+</body></html>
