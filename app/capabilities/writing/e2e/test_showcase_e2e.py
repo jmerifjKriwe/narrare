@@ -67,13 +67,17 @@ def _seed_novel(
     title: str,
     genre: str,
     chapters: list[tuple[int, str]],
+    blurb: str | None = None,
 ) -> str:
     """Create a novel with chapters whose bodies hit the given word counts.
 
     ``chapters`` is a list of (target_words, prefix_text) pairs; an empty
     list yields a novel with no chapters.
     """
-    novel = client.post(f"{API}/api/writing/novels", json={"title": title, "genre": genre})
+    payload: dict[str, object] = {"title": title, "genre": genre}
+    if blurb is not None:
+        payload["blurb"] = blurb
+    novel = client.post(f"{API}/api/writing/novels", json=payload)
     novel.raise_for_status()
     novel_id = str(novel.json()["id"])
     for index, (words, prefix) in enumerate(chapters, start=1):
@@ -110,6 +114,12 @@ def _seed_all(client: httpx.Client) -> dict[str, str]:
         "Dead Signal",
         "Sci-Fi",
         [(765, DEAD_SIGNAL_CH1_EXCERPT), (1062, ""), (1557, "")],
+        blurb=(
+            "Seit drei Tagen schwieg die Sensorenbatterie der Station Erebus. "
+            "Als das Tauchteam die äußere Luftschleuse des Tiefseerückens erreichte, "
+            "fanden sie keine gebrochenen Dichtungen, sondern 72 identische "
+            "Audioimpulse im Notfall-Logbuch – moduliert in reinem C-Dur."
+        ),
     )
     return ids
 
