@@ -9,8 +9,11 @@
  * eyebrow groups.
  *
  * React Aria owns the menu's keyboard contract; the rail's cases pin what
- * the rail hands it (the items, the trigger's name) and that Escape hands
- * focus back — the same legs Menu.test runs at the primitive.
+ * the rail hands it (the items, the trigger's name) and the whole keyboard
+ * path — the arrows walking the items in their focus paint, Escape handing
+ * focus back — the same legs Menu.test runs at the primitive. The axe leg
+ * runs the same floor the E2E suites run (`app/kernel/testing/a11y.py`):
+ * axe-core, WCAG 2 A/AA, over the rendered rail with the menu open.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -23,6 +26,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
+import axe from "axe-core";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -208,6 +212,69 @@ describe("the book-switcher at the rail's head", () => {
     await chooser.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("walks the novels with the arrow keys, the focused item painting its state", async () => {
+    mockApi();
+    renderAt("/novels/n1");
+    const trigger = await screen.findByRole("button", {
+      name: `${t("shell.railBookMenu")}: ${NOVELS[0].title}`,
+    });
+    const chooser = user();
+    await chooser.click(trigger);
+
+    // The walk: focus is the walk's own state, moving down the list in DOM
+    // order — the same legs the primitive's test runs, driven here through
+    // the rail's own menu.
+    await chooser.keyboard("{ArrowDown}");
+    const first = screen.getByRole("menuitem", { name: NOVELS[0].title });
+    expect(document.activeElement).toBe(first);
+    // The focused item paints the state it carries: React-Aria's
+    // data-focused="true" against the soft-wash utility the class promises.
+    expect(first.getAttribute("data-focused")).toBe("true");
+    expect(first.className).toContain("data-[focused]:bg-soft");
+
+    await chooser.keyboard("{ArrowDown}");
+    const second = screen.getByRole("menuitem", { name: NOVELS[1].title });
+    expect(document.activeElement).toBe(second);
+    expect(second.getAttribute("data-focused")).toBe("true");
+    // The state is exclusive: the item the walk left carries no focused
+    // state at all — React-Aria drops the attribute, not a "false".
+    expect(first.getAttribute("data-focused")).toBeNull();
+
+    await chooser.keyboard("{ArrowUp}");
+    expect(document.activeElement).toBe(first);
+  });
+
+  it("passes the axe floor with the menu open", async () => {
+    mockApi();
+    renderAt("/novels/n1");
+    const trigger = await screen.findByRole("button", {
+      name: `${t("shell.railBookMenu")}: ${NOVELS[0].title}`,
+    });
+    await user().click(trigger);
+    expect(screen.getByRole("menu")).toBeTruthy();
+
+    // The E2E floor's own scope (app/kernel/testing/a11y.py): axe-core on
+    // the whole document — the menu's popover portals to the body, so the
+    // open menu is inside the scan — over the WCAG 2 A/AA rule tags, failing
+    // on any violation with the targets a fix needs. The same "cannot pass
+    // without having checked" discipline: a verdict that is not a result
+    // with a violations list is a failure, never a pass.
+    const report = await axe.run(document.body, {
+      runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
+    });
+    expect(Array.isArray(report.violations)).toBe(true);
+    const found = report.violations
+      .map((violation) => {
+        const targets = violation.nodes
+          .slice(0, 5)
+          .map((node) => node.target.join(" "))
+          .join("; ");
+        return `[${violation.impact}] ${violation.id}: ${violation.help} — ${targets}`;
+      })
+      .join("\n");
+    expect(found, `axe found WCAG A/AA violations:\n${found}`).toBe("");
   });
 
   it("offers the novels without an active one off the workspace", async () => {
