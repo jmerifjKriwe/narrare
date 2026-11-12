@@ -114,7 +114,7 @@
   "settings.task.knowledge.check-consistency": "Knowledge, consistency check",
   "settings.task.knowledge.extract-entities": "Knowledge, find entities",
   "settings.task.writing.continuation": "Continue writing",
-  "settings.tasks.settings.test": "Connection test",
   "settings.tasks.errorKey": "A task's key could not be read. Re-enter the key in settings.",
+  "settings.tasks.settings.test": "Connection test",
   "settings.tasks.unknown": "Task"
 }

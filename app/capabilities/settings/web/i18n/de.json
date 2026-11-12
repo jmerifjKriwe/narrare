@@ -114,7 +114,7 @@
   "settings.task.knowledge.check-consistency": "Wissen, Konsistenzprüfung",
   "settings.task.knowledge.extract-entities": "Wissen, Entitäten finden",
   "settings.task.writing.continuation": "Weiterschreiben",
-  "settings.tasks.settings.test": "Verbindungstest",
   "settings.tasks.errorKey": "Der Schlüssel einer Aufgabe konnte nicht gelesen werden. Geben Sie den Schlüssel in den Einstellungen erneut ein.",
+  "settings.tasks.settings.test": "Verbindungstest",
   "settings.tasks.unknown": "Aufgabe"
 }

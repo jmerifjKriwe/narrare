@@ -114,7 +114,7 @@
   "settings.task.knowledge.check-consistency": "Savoir, contrôle de cohérence",
   "settings.task.knowledge.extract-entities": "Savoir, trouver des entités",
   "settings.task.writing.continuation": "Continuer à écrire",
-  "settings.tasks.settings.test": "Test de connexion",
   "settings.tasks.errorKey": "La clé d'une tâche n'a pas pu être lue. Saisissez à nouveau la clé dans les paramètres.",
+  "settings.tasks.settings.test": "Test de connexion",
   "settings.tasks.unknown": "Tâche"
 }
