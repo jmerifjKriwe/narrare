@@ -21,7 +21,7 @@
 - English in code and comments; user-visible text only through catalogs.
 - Commits: conventional; user-visible changes `feat(web)`/`feat(writing)` with a real `User-visible:` line; docs/archive `chore(docs)`; agent commits end with `Assisted-by: OpenCode (<model>)` via `--trailer`. Nothing commits before the task's gates are green.
 - Gates: `just check` (fast), `just test-file <path>`, `just verify`, the writing E2E; a gate counts only when its output was read.
-- UI tasks are implemented by the UI Agent (`zai-coding-plan/glm-5.3-flash`) and reviewed by the Reviewer (`zai-coding-plan/glm-5.3`); every dispatch names both models explicitly (AGENTS.md rev. 6).
+- UI tasks are implemented by the UI Agent and reviewed by the Reviewer, both named per AGENTS.md's standing preference at dispatch time; every dispatch names both models explicitly.
 
 ## Review Focus
 
