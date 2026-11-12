@@ -192,7 +192,16 @@ def test_new_book_dialog_opens_from_the_keyboard(page: Page, stack: Stack) -> No
 
     dialog = page.get_by_role("dialog")
     expect(dialog).to_be_visible()
-    expect(page.get_by_label("Titel")).to_be_visible()
+    title = page.get_by_label("Titel")
+    expect(title).to_be_visible()
+    # The modal takes focus only after it has committed: React Aria moves
+    # focus into it from a passive effect, so the dialog can be visible
+    # while the trigger still holds focus. Escape is the overlay's own
+    # bubble handler (react-aria's useOverlay), not a document listener —
+    # pressed before focus is inside, the key never reaches it and is lost.
+    # Waiting for the dialog (or a descendant) to own focus is the event's
+    # precondition, not a longer deadline.
+    expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
 
     # Escape is the dialog's own way out, and the trigger — the element the
     # keyboard came from — is where focus must land again.
