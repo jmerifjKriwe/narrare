@@ -3,8 +3,10 @@
  *
  * German and French distinguish a familiar register (du, tu) from a neutral
  * one (Sie, vous); English has no such choice. The base catalogs keep the
- * familiar register — the product's default — and a sparse overlay carries
- * only the strings whose formal wording differs. The choice is local to the
+ * product's default register — familiar (du, tu) — and a sparse overlay
+ * carries only the strings whose formal wording differs. The French writing
+ * catalog's older corpus keeps the neutral (vous) register in its base, so
+ * its formal overlay carries no writing keys. The choice is local to the
  * browser: it never leaves this device and never reaches a prompt.
  */
 

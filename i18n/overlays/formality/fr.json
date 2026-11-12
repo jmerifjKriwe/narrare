@@ -8,17 +8,10 @@
   "knowledge.errorQueue": "Impossible de charger vos suggestions. Le service local est-il démarré ?",
   "knowledge.errorRelations": "Impossible de charger vos relations. Le service local est-il démarré ?",
   "knowledge.relationDeleteText": "Voulez-vous vraiment supprimer la relation vers {name} ? Elle ne peut pas être annulée.",
-  "novels.deleteDocuments": "Vos documents restent — ils appartiennent à la bibliothèque, pas au livre.",
-  "novels.errorLoad": "Impossible de charger vos romans. Le service local est-il démarré ?",
   "prompts.pickNovel": "Choisissez un roman ci-dessus pour voir et modifier ce périmètre.",
   "settings.appearance.hint": "Système suit votre appareil.",
   "settings.formality.hint": "Comment Narrare s'adresse à vous.",
   "settings.profiles.taskAuditOnly": "Le test des paramètres vérifie le profil que vous choisissez",
   "setup.demo.blankHint": "Un roman vide, prêt pour votre premier chapitre.",
-  "setup.intro": "Créez votre premier roman.",
-  "shelf.banner.goalIdle": "Vous avez écrit {count} mots aujourd'hui. Encore {remaining} mots avant l'objectif du jour.",
-  "shelf.banner.noSession": "Pas encore de session d'écriture — Créez votre premier chapitre pour lancer votre routine.",
-  "shelf.empty.body": "Chaque grand récit commence par une page blanche. Commencez votre œuvre dans l'atelier ou importez un manuscrit existant.",
-  "shelf.empty.title": "Votre premier livre vous attend.",
-  "shelf.subtitle": "Gérez vos manuscrits, vos structures de livre et vos ébauches littéraires."
+  "setup.intro": "Créez votre premier roman."
 }
