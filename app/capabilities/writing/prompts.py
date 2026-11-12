@@ -228,6 +228,10 @@ def continuation_prompt(
 ) -> str:
     """The bundled continuation prompt, rendered offline inside the four budgets.
 
+    Offline-only: this sync entry point raises RuntimeError under a running
+    event loop (it uses asyncio.run); it is the golden subject for the bundled
+    template and is not the service method of the same name.
+
     Scaffolding counts: the ``Novel:``/``Chapter:`` header, the ``Text so
     far:`` tail and the instruction share the immediate-text slice; each
     optional section's heading shares its own slice. An entity entry is
