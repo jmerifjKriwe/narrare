@@ -648,6 +648,175 @@ def scan_settings(sources: dict[str, str]) -> SettingsScan:
     return SettingsScan(rows=rows, host=hosts[0])
 
 
+@dataclass(frozen=True)
+class HelpTopicLocale:
+    """One help topic's text in one language: its title and its raw markdown
+    body, exactly as the file holds them."""
+
+    locale: str
+    title: str
+    body: str  # raw markdown body (without frontmatter)
+
+
+@dataclass(frozen=True)
+class HelpTopic:
+    """One help topic as the scan reads it: identity and placement read from
+    the source language's frontmatter, plus every locale the topic exists in."""
+
+    capability: str
+    slug: str
+    surfaces: tuple[str, ...]
+    order: int | None
+    locales: tuple[str, ...]  # sorted, en first
+    locale_data: tuple[HelpTopicLocale, ...]
+
+
+@dataclass(frozen=True)
+class HelpCapability:
+    """One capability's help topics, sorted by slug."""
+
+    capability: str
+    topics: tuple[HelpTopic, ...]
+
+
+class HelpScanError(SystemExit):
+    """A help scan validation failure; SystemExit so `just generate` stops
+    with the message and nothing else."""
+
+
+def _split_frontmatter(source: Path, text: str) -> tuple[dict[object, object], str]:
+    """One topic file's frontmatter mapping and the markdown body after it.
+
+    The block sits between the opening ``---`` and the first closing ``---``
+    line; the body is everything after the closing delimiter's newline and
+    may be empty. Anything else — no opening delimiter, no closing one, a
+    closing delimiter with trailing characters, YAML that is not a mapping —
+    is a malformed topic.
+    """
+    if not text.startswith("---"):
+        raise HelpScanError(f"{source}: a help topic starts with a --- frontmatter block")
+    closing = text.find("\n---", 3)
+    if closing < 0:
+        raise HelpScanError(f"{source}: the frontmatter block has no closing ---")
+    rest = text[closing + 4 :]
+    if rest.startswith("\r\n"):
+        rest = rest[2:]
+    elif rest.startswith("\n"):
+        rest = rest[1:]
+    elif rest:
+        raise HelpScanError(f"{source}: the closing --- must sit on its own line")
+    try:
+        loaded = yaml.safe_load(text[3:closing])
+    except yaml.YAMLError as error:
+        raise HelpScanError(f"{source}: frontmatter is not valid YAML: {error}") from error
+    if not isinstance(loaded, dict):
+        raise HelpScanError(f"{source}: the frontmatter block is a mapping of fields")
+    return cast("dict[object, object]", loaded), rest
+
+
+def scan_help(root: Path) -> tuple[HelpCapability, ...]:
+    """The help convention, discovered from the capability folders.
+
+    A capability carries help when ``app/capabilities/<id>/web/help/``
+    exists. Its locale subdirectories hold the topics, one ``<slug>.md`` per
+    topic; the file's presence is the contract, so a new topic or a new
+    language appears on the next `just generate` with zero generator
+    changes. Unlike the route scans this one reads the files: frontmatter
+    must parse as a mapping, ``topic`` must equal the filename stem,
+    ``title`` must be non-empty prose, ``surfaces`` a list of surface
+    identifiers (the UI owns which exist, so they are not checked against a
+    closed set) and ``order`` an optional int — surfaces and order are read
+    from the source language's file, which every topic must have. Locale
+    subdirectories are checked against ``locales(root)`` so a typo'd code
+    stops generation instead of orphaning its prose, and a help directory
+    that carries no topic file at all stops instead of registering an empty
+    capability. A capability without a help directory is simply absent.
+    Raise HelpScanError — a SystemExit — for every one of these.
+    """
+    help_dirs = {
+        folder.name: folder / "web" / "help"
+        for folder in sorted((root / "app" / "capabilities").iterdir())
+        if (folder / "web" / "help").is_dir()
+    }
+    if not help_dirs:
+        return ()
+    known = locales(root)
+    capabilities: list[HelpCapability] = []
+    for capability, help_dir in help_dirs.items():
+        strangers = sorted(
+            path.name for path in help_dir.iterdir() if path.is_dir() and path.name not in known
+        )
+        if strangers:
+            raise HelpScanError(
+                f"{help_dir}: help for languages the central catalog does"
+                f" not carry: {strangers} (the catalog carries {', '.join(known)})"
+            )
+        files: dict[str, dict[str, Path]] = {}
+        for locale in known:
+            for topic_file in sorted((help_dir / locale).glob("*.md")):
+                files.setdefault(topic_file.stem, {})[locale] = topic_file
+        if not files:
+            raise HelpScanError(
+                f"{help_dir}: help present but no source language — topics"
+                f" live under locale directories ({', '.join(known)}), at"
+                f" least {SOURCE_LOCALE}/"
+            )
+        topics: list[HelpTopic] = []
+        for slug in sorted(files):
+            source = files[slug].get(SOURCE_LOCALE)
+            if source is None:
+                raise HelpScanError(
+                    f"{help_dir}/{SOURCE_LOCALE}/{slug}.md is missing: every"
+                    f" topic has an {SOURCE_LOCALE} file — it is the source language"
+                )
+            present = files[slug]
+            ordered = [code for code in known if code in present]
+            surfaces: tuple[str, ...] = ()
+            order: int | None = None
+            locale_data: list[HelpTopicLocale] = []
+            for locale in ordered:
+                frontmatter, body = _split_frontmatter(
+                    present[locale], present[locale].read_text(encoding="utf-8")
+                )
+                topic = frontmatter.get("topic")
+                if topic != slug:
+                    raise HelpScanError(
+                        f"{present[locale]}: frontmatter topic {topic!r} must"
+                        f" equal the filename stem {slug!r}"
+                    )
+                title = frontmatter.get("title")
+                if not isinstance(title, str) or not title.strip():
+                    raise HelpScanError(f"{present[locale]}: title must be a non-empty string")
+                raw_surfaces = frontmatter.get("surfaces")
+                if not isinstance(raw_surfaces, list) or not all(
+                    isinstance(surface, str) for surface in cast("list[object]", raw_surfaces)
+                ):
+                    raise HelpScanError(
+                        f"{present[locale]}: surfaces must be a list of surface identifiers"
+                    )
+                raw_order = frontmatter.get("order")
+                if raw_order is not None and (
+                    not isinstance(raw_order, int) or isinstance(raw_order, bool)
+                ):
+                    raise HelpScanError(f"{present[locale]}: order must be an int")
+                if locale == SOURCE_LOCALE:
+                    surfaces = tuple(cast("list[str]", raw_surfaces))
+                    order = raw_order if isinstance(raw_order, int) else None
+                locale_data.append(HelpTopicLocale(locale=locale, title=title, body=body))
+            topics.append(
+                HelpTopic(
+                    capability=capability,
+                    slug=slug,
+                    surfaces=surfaces,
+                    order=order,
+                    locales=tuple(ordered),
+                    locale_data=tuple(locale_data),
+                )
+            )
+        capabilities.append(HelpCapability(capability=capability, topics=tuple(topics)))
+    return tuple(capabilities)
+
+
 def workspace_route_id(sources: dict[str, str]) -> str | None:
     """The TanStack route id of the one capability that owns the workspace."""
     host = next(
