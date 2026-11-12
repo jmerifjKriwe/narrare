@@ -90,6 +90,8 @@ type RailOverrides = {
   chapterCounts?: Map<string, number>;
   visibleChapters?: Chapter[];
   chapterCount?: number;
+  active?: string | null;
+  activeVisibleIndex?: number;
 };
 
 let props: Record<string, unknown>;
@@ -330,6 +332,47 @@ describe("the drafted rows", () => {
     expect((props.onCreateChapter as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
       0,
     );
+  });
+});
+
+describe("the rail's foot", () => {
+  it("mounts the arc and the session card with the open chapter's number", async () => {
+    await renderRail();
+    expect(screen.getByText(t("workspace.railArcLabel"))).toBeTruthy();
+    // The open chapter is the book's first: the caption names chapter 1,
+    // the marker rides at 1/3, and the meta keeps its plot placeholder.
+    expect(screen.getByText(t("workspace.railArcChapter", { n: 1 }))).toBeTruthy();
+    expect(screen.getByText(t("workspace.railArcNone"))).toBeTruthy();
+    expect(screen.getByText(t("workspace.railSessionLabel"))).toBeTruthy();
+    expect(screen.getByText(t("workspace.railSessionNone"))).toBeTruthy();
+  });
+
+  it("marks no place on the curve when no chapter is open", async () => {
+    props = railProps({ active: null, activeVisibleIndex: -1 });
+    await renderRail();
+    expect(screen.queryByText(t("workspace.railArcChapter", { n: 1 }))).toBeNull();
+  });
+
+  it("stands on the rail's foot, both tabs — not the chapters panel's", async () => {
+    await renderRail();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: t("workspace.railTabScenes") }));
+    expect(screen.getByText(t("workspace.railArcLabel"))).toBeTruthy();
+    expect(screen.getByText(t("workspace.railSessionLabel"))).toBeTruthy();
+  });
+
+  it("reads the marker from the chapter's own place in the book, not the filter's slot", async () => {
+    // A filter's slot is the visible list's order, not the book's; the
+    // caption names the chapter's number, so it must survive the filter.
+    const late: Chapter = { ...CHAPTERS[2]!, id: "c9", position: 8, title: "Spät" };
+    props = railProps({
+      visibleChapters: [CHAPTERS[0]!, late],
+      active: "c9",
+      chapterCount: 9,
+    });
+    await renderRail();
+    expect(screen.getByText(t("workspace.railArcChapter", { n: 9 }))).toBeTruthy();
+    expect(screen.queryByText(t("workspace.railArcChapter", { n: 2 }))).toBeNull();
   });
 });
 

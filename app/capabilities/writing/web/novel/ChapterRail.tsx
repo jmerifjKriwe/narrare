@@ -9,6 +9,8 @@ import { Icon } from "@shell/ui/icons";
 import { Notice } from "@shell/ui/Notice";
 
 import { RailHeader, RailScenesEmpty, RailTabs, type RailTabId } from "./RailHeader";
+import { SessionStats } from "./SessionStats";
+import { StoryArc } from "./StoryArc";
 
 // The drag's drop marker: a 2 px primary edge at the slot's top — the row
 // a drop would land at. Its look is the spec's "left to the builder"; it
@@ -36,34 +38,17 @@ const ROW_REST = "text-muted hover:bg-surface-container hover:text-foreground";
 const ROW_CURRENT = "bg-secondary-container text-secondary-container-foreground shadow-sm";
 
 /**
- * The grip: the draft's hover-revealed `drag_indicator`, drawn with the
- * set's stroke voice (round-cap dots) and revealed like the shell rail's
- * names — hover, keyboard focus, or a coarse pointer, with the transition
- * dropped under reduced motion. Chrome: `aria-hidden`, because the row is
- * the grab and Alt+arrows are the keyboard reorder.
+ * The grip: the draft's hover-revealed `drag_indicator`, drawn in the set
+ * (`dragIndicator` — two columns of three round-cap dots, the set's own
+ * stroke voice) and revealed like the shell rail's names — hover, keyboard
+ * focus, or a coarse pointer, with the transition dropped under reduced
+ * motion. Chrome: `aria-hidden`, because the row is the grab and Alt+arrows
+ * are the keyboard reorder.
  */
 const GRIP_REST =
   "mt-0.5 shrink-0 cursor-grab text-outline-variant opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 motion-reduce:transition-none";
 const GRIP_CURRENT =
   "mt-0.5 shrink-0 cursor-grab text-outline opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 active:cursor-grabbing";
-
-/** The grip's drawing: two columns of three round-cap dots on the 16 grid. */
-function Grip() {
-  return (
-    <svg
-      aria-hidden="true"
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.5}
-      strokeLinecap="round"
-    >
-      <path d="M5.5 4h.01M10.5 4h.01M5.5 8h.01M10.5 8h.01M5.5 12h.01M10.5 12h.01" />
-    </svg>
-  );
-}
 
 export function ChapterRail({
   visibleChapters,
@@ -120,6 +105,13 @@ export function ChapterRail({
   // The header's Σ words: the same map the rows read, summed — one
   // derivation, a second view of the numbers the rail already holds.
   const railWords = [...chapterCounts.values()].reduce((sum, count) => sum + count, 0);
+  // The arc's marker: the open chapter's own place in the book, one-based.
+  // Not the visible slot — under a filter that slot is the filtered list's
+  // order, and the caption names the chapter's number, so the chapter's
+  // own `position` is the number that survives the filter. No open chapter
+  // (or one the filter hides) marks no place at all.
+  const openChapter = visibleChapters.find((chapter) => chapter.id === active);
+  const arcPosition = openChapter === undefined ? 0 : openChapter.position + 1;
   return (
     <aside
       /* Beside the editor at ≥1024 (the columns the desktop E2Es
@@ -137,14 +129,22 @@ export function ChapterRail({
          editor, and the rail — capped a viewport tall minus its
          own chrome — holds its place beside the writing instead of
          being carried out of sight with the page's top; `top-4`
-         and the 17rem max-height budget keep the box inside the
+         and the 17.5rem max-height budget keep the box inside the
          viewport at any height it takes. The budget is the chrome
          above the rail, the band included: the band holds the rail's
          own filter field, and the field's drafted height (36 px) is
-         part of what the rail must leave room for. The drafted
-         header and tab row are the rail's own chrome — they stand
+         part of what the rail must leave room for. The arithmetic,
+         measured at 1280×720 on the long rail — the budget's own
+         case, the band wearing its field: the shell's 61 px bar, the
+         page's 40 px top padding, the back link's 24 px line box,
+         the h1's 8 px margin and 26 px line, the band's 24 px margin
+         and 68 px (the field plus the band's own padding), and the
+         workbench row's 24 px margin — 275 px ≈ 17.2rem, and the
+         constant holds the half-rem step above it (280 px), 5 px of
+         slack for line-box rounding. The drafted header, tab row and
+         the two foot widgets are the rail's own chrome — they stand
          inside this cap and squeeze the list, not the budget. */
-      className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-17rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+      className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-17.5rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
       aria-label={t("chapters.heading")}
     >
       <RailHeader bookTitle={bookTitle} chapterCount={chapterCount} words={railWords} />
@@ -282,7 +282,7 @@ export function ChapterRail({
                     className={`${ROW_FRAME} ${isCurrent ? ROW_CURRENT : ROW_REST}`}
                   >
                     <span aria-hidden="true" className={isCurrent ? GRIP_CURRENT : GRIP_REST}>
-                      <Grip />
+                      <Icon name="dragIndicator" size={16} />
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       {/* DOM order is the reading order — title first — and
@@ -366,6 +366,14 @@ export function ChapterRail({
           <RailScenesEmpty novelId={novelId} />
         </div>
       )}
+      {/* The rail's drafted foot (screens/writing/workspace.html, the
+          drawer's two bottom cards): the tension arc with the open
+          chapter's marker, and the session card, honestly neutral. They
+          stand on the rail — both tabs — the way the draft draws them at
+          the drawer's foot, and the list above squeezes so they never
+          leave the viewport. */}
+      <StoryArc position={arcPosition} total={chapterCount} />
+      <SessionStats />
     </aside>
   );
 }

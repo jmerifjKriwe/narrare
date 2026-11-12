@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: forty-two line glyphs on one 16×16 grid, drawn for the
+ * The icon set: forty-three line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The forty-two drawings. Each stays inside the 2.35–13.65 envelope —
+ * The forty-three drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -125,6 +125,14 @@ export const icons = {
       <circle cx="8" cy="8" r="5.5" />
       <path d="M8 4.6V8.2L10.6 9.6" />
     </>
+  ),
+  /** The drag's grip: two columns of three round-cap dots — the drafted
+   *  `drag_indicator` the chapter rows reveal on hover. A row is the grab;
+   *  the arrows stay the keyboard's reorder. (The dots are 0.01 absolute
+   *  segments, the set's one command voice — a round cap turns each into
+   *  its dot.) */
+  dragIndicator: (
+    <path d="M5.5 4L5.51 4M10.5 4L10.51 4M5.5 8L5.51 8M10.5 8L10.51 8M5.5 12L5.51 12M10.5 12L10.51 12" />
   ),
   /** The editor's note: ruled lines with the nib laid against them. */
   editNote: (
