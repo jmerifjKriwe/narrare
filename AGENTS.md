@@ -78,11 +78,11 @@ explicitly — an omitted model silently inherits the session's most capable one
 and defeats the purpose. The coordinator picks the concrete models at dispatch
 time; the standing preference below is the default until the owner changes it.
 
-Standing preference (2026-11-11, owner decision, rev. 3; supersedes 2026-11-09):
+Standing preference (2026-11-12, owner decision, rev. 4; supersedes 2026-11-09):
 the agent-model assignment for narrare is — Coordinator
 `opencode-go/mimo-v2.6-pro`, Coding Agent `opencode-go/deepseek-v4.1-flash`,
 Reviewer `zai-coding-plan/glm-5.3`, UI Agent
-`opencode-go/minimax-m3.1-flash`. UI tasks are implemented by the UI Agent
+`opencode-go/deepseek-v4.1-flash`. UI tasks are implemented by the UI Agent
 and reviewed by the Reviewer.
 
 Keep the PR updated while the work continues: push after every green task
