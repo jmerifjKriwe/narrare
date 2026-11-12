@@ -5,6 +5,12 @@
 
 One row per capability that ships help; capabilities without help are listed at the bottom.
 
+## writing
+
+| Topic | en | de | fr |
+| --- | --- | --- | --- |
+| editor | ✓ | — | — |
+
 ## Capabilities without help
 
 - chat
@@ -13,4 +19,3 @@ One row per capability that ships help; capabilities without help are listed at 
 - prompts
 - settings
 - setup
-- writing

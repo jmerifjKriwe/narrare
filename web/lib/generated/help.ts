@@ -26,7 +26,18 @@ export interface HelpGroup {
   locales: Record<string, { title: string; load: () => Promise<string> }>;
 }
 
-export const helpGroups: readonly HelpGroup[] = [];
+export const helpGroups: readonly HelpGroup[] = [
+  {
+    id: "writing.editor",
+    capability: "writing",
+    topic: "editor",
+    surfaces: ["editor"],
+    order: 10,
+    locales: {
+      "en": { title: "The Writing Editor", load: () => import("../../../app/capabilities/writing/web/help/en/editor.md?raw").then((m) => m.default) },
+    },
+  },
+];
 
 export function helpFor(surface: string, locale?: string): HelpTopic[] {
   const wanted = locale ?? "en";
