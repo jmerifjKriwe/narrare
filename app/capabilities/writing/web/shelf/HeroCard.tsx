@@ -42,16 +42,16 @@ export function HeroCard({ novel }: { novel: Novel }) {
                * sync truth — the app is local, and this stamp is what the
                * autosave last wrote (§6.6, "derived"). Rendered as the
                * drafted soft pastille: container + text. */}
-              <span className="inline-flex items-center gap-1 rounded bg-[#E8F5E9] px-2 py-0.5 text-meta text-[#2E6930]">
+              <span className="inline-flex items-center gap-1 rounded border border-sync-badge-border bg-sync-badge px-2 py-0.5 text-meta text-sync-badge-ink">
                 <span
-                  className="h-1.5 w-1.5 rounded-full bg-[#2E6930] motion-safe:animate-pulse"
+                  className="h-1.5 w-1.5 rounded-full bg-sync-badge-ink motion-safe:animate-pulse"
                   aria-hidden="true"
                 />
                 {t("shelf.hero.synced", { time: formatRelative(novel.updated_at) })}
               </span>
             </div>
             <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-3xl font-bold tracking-tight text-[#231A14] [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+              <h2 className="text-hero text-foreground [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
                 {novel.title}
               </h2>
               {/* Interim: no series or band field exists; the genre is the

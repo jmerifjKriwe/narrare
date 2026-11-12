@@ -29,9 +29,7 @@ const TEXT_FAMILY = new Set([
   "left", "center", "right", "justify", "start", "end", "wrap", "nowrap",
   "balance", "pretty", "ellipsis", "clip", "inherit", "current", "transparent",
 ]);
-// Tailwind's default size steps that are explicit legal usages in the app
-// (the hero title carries text-3xl). Every other default step stays off-scale.
-const ALLOWED_DEFAULT_SIZES = new Set(["3xl"]);
+
 const COLOUR_NAMES = new Set(
   [...CSS.matchAll(/--color-([a-z][a-z0-9-]*):/g)].map((m) => m[1]),
 );
@@ -42,7 +40,6 @@ function isAllowedTextUtility(utility: string): boolean {
   if (name.startsWith("[")) return true; // arbitrary value
   if (SCALE_STEPS.has(name)) return true;
   if (TEXT_FAMILY.has(name)) return true;
-  if (ALLOWED_DEFAULT_SIZES.has(name)) return true;
   if (COLOUR_NAMES.has(name)) return true;
   return false;
 }
@@ -63,7 +60,7 @@ const SCALE: Record<string, { size: string; leading: string; weight: string; tra
   body: { size: "0.875rem", leading: "1.57", weight: "400" },
   emph: { size: "0.9375rem", leading: "1.47", weight: "600" },
   title: { size: "1.25rem", leading: "1.3", weight: "600" },
-  hero: { size: "1.75rem", leading: "1.14", weight: "700" },
+  hero: { size: "1.875rem", leading: "1.2", weight: "700", tracking: "-0.025em" },
 };
 const SCALE_STEPS = new Set(Object.keys(SCALE));
 
@@ -303,8 +300,8 @@ describe("the scale's utilities", () => {
   it("keeps the hero on the real 700 cut", async () => {
     const css = await compileCss();
     const hero = css.match(/\.text-hero\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(hero).toMatch(/font-size:\s*1\.75rem/);
-    expect(hero).toMatch(/line-height:[^;]*1\.14/);
+    expect(hero).toMatch(/font-size:\s*1\.875rem/);
+    expect(hero).toMatch(/line-height:[^;]*1\.2/);
     expect(hero).toMatch(/font-weight:[^;]*700/);
   });
 
