@@ -29,13 +29,22 @@ def _forget_everything() -> None:
     """
 
     async def run() -> None:
-        """Empty the tables a first run writes; the cascade takes their rows."""
+        """Empty every user table; the cascade takes their rows, so the
+        list of tables never has to be hand-kept (see follow-up #361)."""
         engine = create_async_engine(url_for(DATABASE))
         try:
             async with engine.begin() as connection:
-                await connection.execute(
-                    text("TRUNCATE chunks, documents, novels, chapters, users CASCADE")
+                result = await connection.execute(
+                    text(
+                        "SELECT tablename FROM pg_tables "
+                        "WHERE schemaname = 'public' AND tablename <> 'alembic_version'"
+                    )
                 )
+                tables = [row[0] for row in result]
+                if tables:
+                    await connection.execute(
+                        text("TRUNCATE " + ", ".join(f'"{t}"' for t in tables) + " CASCADE")
+                    )
         finally:
             await engine.dispose()
 
