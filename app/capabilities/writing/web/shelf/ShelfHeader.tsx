@@ -62,9 +62,10 @@ function Metric({
 }
 
 /** The shelf's head: title block, metrics and the two doors. The empty
- *  shelf keeps the head (its metrics are the honest zeros) but drops the
- *  doors: the empty panel further down is the one way in, so "Neues Buch"
- *  names exactly one button either way — the rule the shelf's E2E pins. */
+ *  shelf keeps the head exactly as the standing one draws it — the quiet
+ *  metric cells and both doors included (`shelf-empty.html` draws the
+ *  same strip, doors and all) — so the drafted create affordances stand
+ *  twice there: the header door and the empty panel's own CTA. */
 export function ShelfHeader({
   count,
   totalWords,
@@ -122,16 +123,17 @@ export function ShelfHeader({
           value={t("shelf.streakNone")}
           label={t("shelf.metrics.streak")}
         />
-        {empty ? null : (
-          <div className="flex items-center gap-2 pl-2">
-            <Button variant="secondary" size="md" icon={<Icon name="import" />} onClick={onImport}>
-              {t("shelf.import")}
-            </Button>
-            <Button variant="primary" size="md" icon={<Icon name="plus" />} onClick={onCreate}>
-              {t("novels.new")}
-            </Button>
-          </div>
-        )}
+        {/* Both doors stand on the empty shelf too — the draft draws the
+         *  strip with its doors and the panel with its own CTA beside
+         *  them (`shelf-empty.html`). */}
+        <div className="flex items-center gap-2 pl-2">
+          <Button variant="secondary" size="md" icon={<Icon name="import" />} onClick={onImport}>
+            {t("shelf.import")}
+          </Button>
+          <Button variant="primary" size="md" icon={<Icon name="plus" />} onClick={onCreate}>
+            {t("novels.new")}
+          </Button>
+        </div>
       </div>
     </div>
   );

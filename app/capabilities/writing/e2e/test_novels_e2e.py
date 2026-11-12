@@ -594,9 +594,10 @@ def test_header_controls_keep_their_content_inside_the_control(page: Page, stack
     assert created.ok, created.text()
     page.goto(f"{WEB_URL}/")
 
-    # Both controls need a book to stand on: the empty shelf swaps the header's
-    # actions for its one create door. The drafted doors carry the drafted
-    # words — "Importieren" and "Neues Buch anlegen".
+    # Both controls stand on the standing shelf — and on the empty one
+    # too: the draft draws the header strip with its doors even there
+    # (`shelf-empty.html`). The drafted doors carry the drafted words —
+    # "Importieren" and "Neues Buch anlegen".
     for name in ("Importieren", "Neues Buch anlegen"):
         expect(page.get_by_role("button", name=name)).to_be_visible()
 

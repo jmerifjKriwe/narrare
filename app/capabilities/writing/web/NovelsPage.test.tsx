@@ -751,14 +751,18 @@ describe("the drafted shelf (Task 10)", () => {
 
     // The empty shelf is quiet, not dead: the drafted panel names itself,
     // the metrics are the honest zeros, the banner waits for a session,
-    // and the two doors are the panel's own.
+    // and the doors stand as drafted.
     expect(await screen.findByRole("heading", { name: t("shelf.empty.title") })).toBeTruthy();
     expect(screen.getByText(t("shelf.empty.body"))).toBeTruthy();
     expect(screen.getByText(t("shelf.metrics.novels", { count: 0 }))).toBeTruthy();
     expect(screen.getByText(formatNumber(0))).toBeTruthy();
     expect(screen.getByText(t("shelf.banner.noSession"))).toBeTruthy();
     expect(screen.getByText(t("shelf.banner.ready"))).toBeTruthy();
-    expect(screen.getByRole("button", { name: t("novels.new") })).toBeTruthy();
+    // The drafted empty shelf carries the create affordance twice — the
+    // header's door and the panel's own CTA — and the import door beside
+    // them (`shelf-empty.html` draws the full strip, doors included).
+    expect(screen.getByRole("button", { name: t("shelf.import") })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: t("novels.new") })).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: t("shelf.empty.importManuscript") }),
     ).toBeTruthy();
