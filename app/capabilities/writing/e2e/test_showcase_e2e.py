@@ -13,6 +13,7 @@ Run with ``just test-e2e writing`` and read the screenshots from
 ``/tmp/opencode/showcase/``.
 """
 
+import re
 from pathlib import Path
 
 import httpx
@@ -113,6 +114,37 @@ def _seed_all(client: httpx.Client) -> dict[str, str]:
     return ids
 
 
+def _shelf_shot(page: Page, path: Path) -> None:
+    """The whole shelf at the draft's width, not the first viewport.
+
+    The shell is exactly one viewport tall and `main` owns the page scroll, so
+    `full_page` would capture the fold alone. The viewport grows to the
+    scroller's overflow for the frame — measured after widening to the
+    archive's 1600 px, since the text reflows — and returns to the fixture's
+    size.
+    """
+    page.set_viewport_size({"width": 1600, "height": 1000})
+    # The activity banner is the last block the shelf's queries fill; the
+    # dark capture measured before it landed and cut the banner off.
+    page.get_by_role("heading", name=re.compile("Heutiges Schreibziel")).wait_for()
+    height = int(
+        page.evaluate(
+            """() => {
+                const main = document.querySelector("main");
+                if (!main) return document.documentElement.scrollHeight;
+                return Math.ceil(
+                    main.scrollHeight + (window.innerHeight - main.clientHeight),
+                );
+            }"""
+        )
+    )
+    page.set_viewport_size({"width": 1600, "height": height})
+    try:
+        page.screenshot(path=str(path))
+    finally:
+        page.set_viewport_size({"width": 1280, "height": 720})
+
+
 def test_showcase_captures_stitch_comparison(page: Page, stack) -> None:
     SHOTS.mkdir(parents=True, exist_ok=True)
     with httpx.Client(timeout=120) as client:
@@ -123,7 +155,20 @@ def test_showcase_captures_stitch_comparison(page: Page, stack) -> None:
     expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
     for title in ("Dead Signal", "Winterhaus", "The Salt Road", "Der Nebel von Arkona"):
         expect(page.get_by_role("link", name=title).first).to_be_visible()
-    page.screenshot(path=str(SHOTS / "shelf.png"), full_page=True)
+    _shelf_shot(page, SHOTS / "shelf.png")
+
+    # The same seeded shelf in the reader's chosen dark, hold next to
+    # docs/design/stitch/screens/library/shelf-dark.webp. The theme is the
+    # stored choice, not `color_scheme`: the dark artifact must prove the
+    # setting the reader makes.
+    page.request.patch(f"{API}/api/settings/theme", data={"theme": "dark"})
+    page.goto(f"{BASE}/")
+    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    expect(page.get_by_role("heading", name="Das Bücherregal")).to_be_visible()
+    _shelf_shot(page, SHOTS / "shelf-dark.png")
+    page.request.patch(f"{API}/api/settings/theme", data={"theme": None})
+    page.goto(f"{BASE}/")
+    expect(page.locator("html")).not_to_have_attribute("data-theme", "dark")
 
     # Workspace: hold next to docs/design/stitch/screens/writing/workspace*.webp
     page.goto(f"{BASE}/novels/{ids['dead_signal']}")
