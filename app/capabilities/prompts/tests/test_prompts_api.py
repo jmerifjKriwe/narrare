@@ -327,9 +327,10 @@ async def test_two_saves_racing_on_an_empty_scope_both_land(
         self: PromptTemplateRepository,
         prompt_key: str,
         novel_id: UUID | None,
-        **_: object,
+        *,
+        fresh: bool = False,
     ) -> object:
-        snapshot = await original_row(self, prompt_key, novel_id)
+        snapshot = await original_row(self, prompt_key, novel_id, fresh=fresh)
         if stale_sessions and self.session is stale_sessions[0] and snapshot is None:
             # Only the stale read waits: the atomic save's re-read after its
             # upsert already sees a row and must pass through untouched.
