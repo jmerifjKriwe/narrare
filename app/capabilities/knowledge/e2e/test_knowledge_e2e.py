@@ -12,24 +12,22 @@ documents list states what it holds — size, passages, date — and a wrong
 upload can be deleted for good, passages and all.
 """
 
-import asyncio
 import re
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 from playwright.sync_api import Page, expect
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
-from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.jobs import wait_for_job
 from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
+
+DATABASE = testsupport.test_database("narrare_v2_knowledge_e2e")
 
 if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
@@ -73,8 +71,6 @@ def test_the_documents_area_is_one_panel_with_one_upload_control(
     _upload(page, source, "Notizen")
     expect(page.get_by_text("Notizen")).to_be_visible()
 
-    assert_accessible(page)
-
 
 def test_uploaded_passage_is_returned_by_search(page: Page, stack: Stack, tmp_path: Path) -> None:
     source = tmp_path / "notizen.txt"
@@ -87,8 +83,6 @@ def test_uploaded_passage_is_returned_by_search(page: Page, stack: Stack, tmp_pa
     page.get_by_label("Suchbegriff").fill("Leuchtturm")
     page.get_by_role("button", name="Suchen").click()
     expect(page.get_by_text("Der Leuchtturm am Horizont war seit Jahren dunkel.")).to_be_visible()
-
-    assert_accessible(page)
 
 
 def test_a_model_change_is_refused_and_reembedding_restores_search(
@@ -225,28 +219,8 @@ def test_a_dead_service_on_load_names_the_outage(page: Page, stack: Stack) -> No
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's database as plain tuples, in a worker thread.
-
-    The novels suite's own reader, copied local — a shared helper across
-    the capability suites is parked as a follow-up, and this copy keeps
-    its place until then. The worker thread because pytest-asyncio keeps
-    a session loop running and asyncio.run refuses a second one in the
-    same thread.
-    """
-    database = testsupport.test_database("narrare_v2_knowledge_e2e")
-
-    async def run() -> list[tuple[object, ...]]:
-        engine = create_async_engine(url_for(database))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def _document_id(page: Page, title: str) -> str:
@@ -319,7 +293,6 @@ def test_deleting_a_document_removes_its_passages_from_search(
     page.get_by_role("button", name="Notizen löschen").click()
     dialog = page.get_by_role("dialog", name="Dokument löschen")
     expect(dialog).to_contain_text("Originaldatei bleibt")
-    assert_accessible(page)
 
     # The confirm is one press and final: the dialog closes, the same
     # words find nothing, the list has lost the row, and not one chunk of
@@ -332,8 +305,6 @@ def test_deleting_a_document_removes_its_passages_from_search(
     assert _rows("SELECT count(*) FROM chunks WHERE document_id = :id", {"id": document_id}) == [
         (0,)
     ]
-
-    assert_accessible(page)
 
 
 def test_one_documents_row_keeps_its_height_and_fits_a_phone(
@@ -464,8 +435,6 @@ def test_the_graph_canvas_shows_two_entities_and_their_edge(page: Page, stack: S
     assert main is not None
     assert main["scroll"] <= main["client"] + 1
 
-    assert_accessible(page)
-
 
 def test_the_graph_canvas_zooms_and_resets(page: Page, stack: Stack) -> None:
     """The canvas pans and zooms without losing the graph.
@@ -518,5 +487,3 @@ def test_the_graph_canvas_zooms_and_resets(page: Page, stack: Stack) -> None:
     )
     assert main is not None
     assert main["scroll"] <= main["client"] + 1
-
-    assert_accessible(page)

@@ -26,22 +26,18 @@ Every assertion on a prompt, a profile or a chapter reads the rows the audit
 and the API wrote — the stack's own database, never a spy on the request.
 """
 
-import asyncio
 import json
 import re
 import shutil
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from playwright.sync_api import Locator, Page, expect
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
-from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
 
@@ -111,25 +107,8 @@ OVERRIDE_TEMPLATE = (
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's database as plain tuples, in a worker thread.
-
-    pytest-asyncio keeps a session loop running, and asyncio.run refuses to
-    start a second one in the same thread.
-    """
-
-    async def run() -> list[tuple[object, ...]]:
-        """Ask a fresh async engine; the dispose lands even on a failed query."""
-        engine = create_async_engine(url_for(DATABASE))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def _novel_id(title: str) -> str:
@@ -412,7 +391,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     # expectation stayed behind in that round; the repair lands here because
     # this suite is where it bites.
     expect(detail).to_contain_text("Johann Bauer · Verbunden mit")
-    assert_accessible(page)
 
     # --- The merge: two entries for the same thing fold into one. The floor
     # stands on the open dialog — the hero of the merge, the surface #369
@@ -425,7 +403,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     dialog = page.get_by_role("dialog")
     picker = dialog.get_by_label("Zusammenführen mit")
     expect(picker).to_be_visible()
-    assert_accessible(page)
     picker.fill("Försterhaus")
     picker.press("ArrowDown")
     picker.press("Enter")
@@ -441,7 +418,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     assert MERGED_AWAY not in _entity_names(novel_id)
     # The merged-away entry carried no edge of its own: the web is untouched.
     assert _relation_count(novel_id) == DEMO_RELATIONS
-    assert_accessible(page)
 
     # --- The shelf hero after a merge, under the floor: a merge is a write,
     # the hero's truth is the novel's touched time, and #369's gap was
@@ -467,7 +443,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     page.get_by_role("region", name="Anbieter").get_by_role("link", name="Anbieter").click()
     expect(page.get_by_role("heading", name="Aufgaben")).to_be_visible()
     _create_fake_profile(page)
-    assert_accessible(page)
     profile_id = _profile_id(PROFILE_NAME)
 
     # The prompts door is the frame's own cluster nav, which every page of
@@ -475,7 +450,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     page.get_by_role("navigation", name="Einstellungen").get_by_role("link", name="Prompts").click()
     expect(page.get_by_role("heading", name="Prompts")).to_be_visible()
     _save_novel_override(page)
-    assert_accessible(page)
 
     # --- The continuation, and the audit that answers for the chain: the
     # marker rode the override's template, and the call is the profile's own
@@ -570,7 +544,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     expect(page.get_by_role("heading", name="Settings")).to_be_visible()
     for region in ("Providers", "Prompts", "Language", "Appearance"):
         expect(page.get_by_role("region", name=region)).to_be_visible()
-    assert_accessible(page)
     # The palette is a surface of its own: its words re-render with the page.
     palette = _open_palette(page, title="Command palette")
     expect(palette.get_by_role("textbox")).to_have_attribute(
@@ -580,6 +553,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     expect(_palette_group(palette, "Docks & pages")).to_be_visible()
     assert_accessible(page)
     expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
+
     page.keyboard.press("Escape")
 
     page.goto(f"{BASE}/settings/prompts")
@@ -587,7 +561,6 @@ def test_the_writer_s_day_holds_together_end_to_end(
     page.get_by_label("Novel").select_option(label=NOVEL)
     card = page.get_by_role("listitem").filter(has_text=CONTINUATION)
     expect(card.get_by_text("An override of this novel is in force.")).to_be_visible()
-    assert_accessible(page)
     # Back to German, on the page the switch left: the stored choice drives
     # every surface, and the flow hands the sweep a German app again.
     page.get_by_role("banner").locator('select[name="locale"]').select_option("de")

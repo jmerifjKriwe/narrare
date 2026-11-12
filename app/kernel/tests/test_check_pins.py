@@ -83,6 +83,117 @@ def test_a_duplicate_cannot_replace_a_lost_site(tmp_path: Path) -> None:
         check_pins.read_pins(tmp_path, pins=(pin,))
 
 
+def test_report_names_only_the_behind_pins() -> None:
+    stale_pin = _pin("stale", (("x.yml", 1),), r"pin=(\d+)")
+    fresh_pin = _pin("fresh", (("y.yml", 1),), r"pin=(\d+)")
+    states = [
+        check_pins.PinState(pin=stale_pin, current="1"),
+        check_pins.PinState(pin=fresh_pin, current="2"),
+    ]
+    upstreams = {"stale": "2", "fresh": "2"}
+
+    text = check_pins.report(states, upstreams)
+
+    assert text.count("**behind**") == 1
+    assert text.count("| current |") == 1
+    assert check_pins.behind(states, upstreams) == ["stale"]
+
+
+def test_action_pins_collects_a_workflow_pin(tmp_path: Path) -> None:
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        "      - uses: actions/checkout@1111111111111111111111111111111111111111 # v7\n",
+        encoding="utf-8",
+    )
+
+    pins = check_pins.action_pins(tmp_path)
+
+    assert pins == {"actions/checkout": {"1111111111111111111111111111111111111111"}}
+
+
+def test_action_pins_collects_a_quoted_pin(tmp_path: Path) -> None:
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        "      - uses: 'actions/checkout@2222222222222222222222222222222222222222'\n",
+        encoding="utf-8",
+    )
+
+    pins = check_pins.action_pins(tmp_path)
+
+    assert pins == {"actions/checkout": {"2222222222222222222222222222222222222222"}}
+
+
+def test_action_pins_ignores_commented_uses(tmp_path: Path) -> None:
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        "#       - uses: actions/checkout@3333333333333333333333333333333333333333\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(check_pins.PinError, match="no action pins found"):
+        check_pins.action_pins(tmp_path)
+
+
+def test_action_pins_raises_on_an_empty_tree(tmp_path: Path) -> None:
+    with pytest.raises(check_pins.PinError, match="no action pins found"):
+        check_pins.action_pins(tmp_path)
+
+
+def test_check_action_pins_raises_when_gh_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        "      - uses: actions/checkout@4444444444444444444444444444444444444444\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(check_pins.shutil, "which", lambda _name: None)  # type: ignore[arg-type]
+
+    with pytest.raises(check_pins.PinError, match="gh is not on PATH"):
+        check_pins.check_action_pins(tmp_path)
+
+
+def test_check_action_pins_raises_on_an_unresolvable_sha(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        "      - uses: actions/checkout@5555555555555555555555555555555555555555\n",
+        encoding="utf-8",
+    )
+
+    class _Result:
+        returncode = 1
+        stdout = ""
+        stderr = "No commit found for SHA"
+
+    monkeypatch.setattr(check_pins.shutil, "which", lambda _name: "/usr/bin/gh")  # type: ignore[arg-type]
+    monkeypatch.setattr(check_pins.subprocess, "run", lambda *a, **k: _Result())  # type: ignore[arg-type]
+
+    with pytest.raises(check_pins.PinError, match="does not resolve upstream"):
+        check_pins.check_action_pins(tmp_path)
+
+
+def test_check_action_pins_accepts_a_resolving_sha(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sha = "6666666666666666666666666666666666666666"
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        f"      - uses: actions/checkout@{sha}\n", encoding="utf-8"
+    )
+
+    class _Result:
+        returncode = 0
+        stdout = sha + "\n"
+        stderr = ""
+
+    monkeypatch.setattr(check_pins.shutil, "which", lambda _name: "/usr/bin/gh")  # type: ignore[arg-type]
+    monkeypatch.setattr(check_pins.subprocess, "run", lambda *a, **k: _Result())  # type: ignore[arg-type]
+
+    assert check_pins.check_action_pins(tmp_path) is None
+
+
 def test_a_commented_digest_does_not_satisfy_a_pin(tmp_path: Path) -> None:
     (tmp_path / "a.yml").write_text(
         "    image: pgvector/pgvector:pg17 # was pgvector/pgvector@sha256:aaa\n",
@@ -114,16 +225,3 @@ def test_compare_ignores_the_v_prefix(current: str, upstream: str, is_behind: bo
 def test_a_changed_digest_is_behind() -> None:
     assert check_pins.compare("sha256:aaa", "sha256:bbb")
     assert not check_pins.compare("sha256:aaa", "sha256:aaa")
-
-
-def test_report_names_only_the_behind_pins() -> None:
-    stale = _pin("stale", (("a.yml", 1),), r"x")
-    fresh = _pin("fresh", (("b.yml", 1),), r"x")
-    states = [check_pins.PinState(stale, "1.0.0"), check_pins.PinState(fresh, "2.0.0")]
-    upstreams = {"stale": "1.1.0", "fresh": "2.0.0"}
-
-    text = check_pins.report(states, upstreams)
-
-    assert text.count("**behind**") == 1
-    assert text.count("| current |") == 1
-    assert check_pins.behind(states, upstreams) == ["stale"]

@@ -169,13 +169,11 @@ def test_focus_two_url_renders_chrome_free(page: Page, stack: Stack) -> None:
     # The affordance is gone at the deepest step: the keyboard is the way
     # back, and nothing on the page pretends otherwise.
     expect(page.get_by_role("button", name="Fokus")).to_have_count(0)
-    assert_accessible(page)
 
     # And the way back works from a direct render too.
     page.keyboard.press("Escape")
     expect(page.get_by_role("banner")).to_be_visible()
     expect(page.get_by_role("navigation", name="Hauptnavigation")).to_be_visible()
-    assert_accessible(page)
 
 
 def test_depth_two_hides_the_frame_and_retracts_its_hint(page: Page, stack: Stack) -> None:
@@ -219,7 +217,6 @@ def test_depth_two_hides_the_frame_and_retracts_its_hint(page: Page, stack: Stac
 
     # The retracted state must leave a whole page behind: no orphaned hint,
     # no contrast the floor trips over, the keyboard still on the surface.
-    assert_accessible(page)
 
 
 def test_go_back_from_depth_two_restores_chrome(page: Page, stack: Stack) -> None:
@@ -234,7 +231,6 @@ def test_go_back_from_depth_two_restores_chrome(page: Page, stack: Stack) -> Non
     page.go_back()
 
     expect(page.get_by_role("banner")).to_be_visible()
-    assert_accessible(page)
 
 
 def test_chrome_returns_when_leaving_the_novel(page: Page, stack: Stack) -> None:

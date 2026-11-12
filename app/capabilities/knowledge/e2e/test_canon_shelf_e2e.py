@@ -118,8 +118,19 @@ def test_editing_an_entity_makes_its_book_the_hero(page: Page, stack: Stack) -> 
 
     # Back through the app's own link: a client-side navigation, so the
     # query cache is exactly the one the edit above must have
-    # invalidated — a page load would destroy it and hide the gap.
-    page.get_by_role("link", name="Alle Romane").click()
+    # invalidated — a page load would destroy it and hide the gap. The
+    # shelf's re-read is waited for on the wire: the hero's own 5 s window
+    # must not have to cover a loaded runner's refetch, and a cache that
+    # was not invalidated sends no request at all (#681).
+    with page.expect_response(
+        lambda response: (
+            response.request.method == "GET"
+            and response.url.split("?")[0].endswith("/api/writing/novels")
+            and response.ok
+        )
+    ) as refetched:
+        page.get_by_role("link", name="Alle Romane").click()
+    assert refetched.value.ok
 
     # Well inside the 30 s staleTime, the hero names the book written in.
     expect(hero).to_contain_text(CANON_TITLE)

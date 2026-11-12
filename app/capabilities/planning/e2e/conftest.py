@@ -1,17 +1,19 @@
 """Full stack for the planning E2E: own database, real API, real web app.
 
-Module scope: the stack must be gone before the next capability's stack binds the
-same ports.
+Hebel 2: stack acquired once per worker and reused across planning modules.
 """
 
 from collections.abc import Iterator  # noqa: TC003
 
 import pytest
 
-from app.kernel.testing.stack import run_stack
+from app.kernel.db import testsupport
+from app.kernel.testing.stack import Stack, acquire_stack
+
+DATABASE = testsupport.test_database("narrare_v2_planning_e2e")
 
 
 @pytest.fixture(scope="module")
-def stack() -> Iterator[None]:
-    with run_stack(database="narrare_v2_planning_e2e", seed_user=True):
-        yield
+def stack() -> Iterator[Stack]:
+    running = acquire_stack("planning", database=DATABASE, seed_user=True)
+    yield running

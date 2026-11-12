@@ -18,14 +18,34 @@ the API process they start; this is only the pytest process's own connection.
 """
 
 import os
+from typing import TYPE_CHECKING
 
-import pytest  # noqa: TC002 — pytest's hook machinery reads this hook's own annotations
+import pytest
 
 from app.kernel.db.testsupport import drop_run_databases, ensure_database, test_database, url_for
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 DATABASE = test_database()
 ensure_database(DATABASE)
 os.environ["NARRE_DATABASE_URL"] = url_for(DATABASE)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _stop_the_shared_web() -> Iterator[None]:
+    """End the one Vite dev server the E2E stacks start, once per process.
+
+    A stack starts the dev server on first use and leaves it running: it is
+    stateless, while the API and its database are the state each module owns
+    (``app/kernel/testing/stack.py``). This fixture is the other end of that
+    lifetime, and it runs in an xdist worker too — where a stack usually lives.
+    """
+    yield
+    from app.kernel.testing.stack import stop_capability_stacks, stop_shared_web
+
+    stop_capability_stacks()
+    stop_shared_web()
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:

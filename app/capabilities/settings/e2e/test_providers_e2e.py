@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.vendor import chat_vendor
 from app.kernel.testing.viewport import assert_page_fits
@@ -58,24 +59,8 @@ TASKS = "Aufgaben"
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's own database, as plain tuples.
-
-    Runs in a worker thread: pytest-asyncio keeps a session loop running, and
-    asyncio.run refuses to start a second one in the same thread.
-    """
-
-    async def run() -> list[tuple[object, ...]]:
-        engine = create_async_engine(url_for(DATABASE))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader (app/kernel/testing/db_rows)."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def _run(statement: str, params: dict[str, object] | None = None) -> None:
@@ -526,6 +511,14 @@ def test_the_provider_surfaces_sit_on_the_label_grid(page: Page, stack: Stack) -
 
     def assert_label_row(scope: Locator, label_text: str, control: Locator) -> None:
         expect(control).to_be_visible()
+        # The grid is the subject; wait for it to be applied before reading
+        # boxes. A single read after visibility can measure the stacked form
+        # the first paint still shows — under a loaded runner that read is
+        # what flaked (#775).
+        expect(control).to_have_css("height", "28px")
+        expect(control.locator("xpath=..")).to_have_css(
+            "grid-template-columns", re.compile(r"^128px(\s|$)")
+        )
         label_box = scope.get_by_text(label_text, exact=True).bounding_box()
         control_box = control.bounding_box()
         assert label_box is not None and control_box is not None

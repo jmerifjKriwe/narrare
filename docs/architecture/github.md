@@ -37,7 +37,7 @@ carries uv, Python, the locked sync, pnpm, Node and just, one place for the
 versions — with `python: false` and `node: false` for the jobs that need
 only the other half (`frontend` and `build` take no Python).
 
-Two named, deliberate shapes a reader should not "fix":
+Three named, deliberate shapes a reader should not "fix":
 
 - **The `./` vs `$/` trade.** Every internal `uses:` is written
   `./.github/...` with a `zizmor: ignore[self-repository]` comment. zizmor
@@ -57,11 +57,26 @@ Two named, deliberate shapes a reader should not "fix":
   `scripts/check_pins.py` and reported monthly by `pins.yml` in one
   `ci/tool-pins` issue: actionlint's version comment **and** its image
   digest, zizmor's `version:` input, the Codecov CLI, `pip-audit`, and the
-  Postgres image digest. The check is advisory; a pin it cannot read or an
-  upstream it cannot reach reddens the run rather than passing.
+  Postgres image digest. The same monthly run now also resolves every
+  `owner/repo@<sha>` action pin against the GitHub API, so a SHA that never
+  existed (a typo, a fabricated pin) reddens the run instead of waiting for
+  the next release to notice. The check is advisory; a pin it cannot read or
+  an upstream it cannot reach reddens the run rather than passing.
   Dependabot's `github-actions` updater reads `.github/workflows/**` only
   (dependabot-core#6949), so a second entry names `/.github/actions/*` and
   keeps the composite's five pins current too.
+  The `pnpm` image digest is not in that list: it comes from ghcr, where
+  `check_pins.py` cannot ask (its registry client speaks Docker Hub, and
+  `pnpm/pnpm` has no tag there), so it moves by hand — tag and
+  `package.json`'s `packageManager` together, because pnpm otherwise follows
+  `packageManager` into the registry and the pin becomes decoration.
+- **The upgrade smoke's files, not pipes.** `container-external` writes each
+  API answer to `/tmp` and parses it from there. Piping `curl` into `python3`
+  reads the same and costs the same, but Scorecard's `downloadThenRun` audit
+  flags every `curl … | <interpreter>` without looking at the URL — it read
+  the three local-container calls as unpinned downloads (alerts #18–#20).
+  Keep the steps apart; a pipe there re-opens them and drops
+  Pinned-Dependencies below 10.
 
 ## `ci-required` — the required-check aggregator
 
@@ -79,7 +94,8 @@ repeat them: a second copy is a second thing to drift.
 
 ## `scripts/affected.py` — who owes which suite
 
-One resolver, called by `ci.yml`'s `changes` job (PR: `--base origin/main`,
+One resolver, called by `ci.yml`'s `changes` job (PR: `--base <payload base
+SHA>`, falling back to `origin/main` only when the payload SHA is absent;
 push to main: `--none`, dispatch: `--all`) and by the nightly gate
 (`--all`). Fail-open throughout: an unreadable range answers *every* suite,
 never none; an unrecognized path owes every suite — an unknown change is a

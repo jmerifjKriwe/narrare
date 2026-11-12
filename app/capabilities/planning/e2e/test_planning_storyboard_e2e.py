@@ -137,11 +137,16 @@ def test_a_drag_onto_another_stage_persists_across_a_reload(page: Page, stack: S
     card_handle = card.element_handle()
     target_handle = auflösung.element_handle()
     assert card_handle is not None and target_handle is not None
-    # Playwright's mouse-driven drag_to cannot carry an HTML5 DataTransfer,
-    # so the drop rides the synthetic dragstart/dragover/drop sequence the
-    # columns listen for — the dragstart handler fills the bag itself.
-    page.evaluate(
-        """([dragged, target]) => {
+    with page.expect_response(
+        lambda response: (
+            response.request.method == "PUT" and response.url.endswith("/stage") and response.ok
+        )
+    ) as persisted:
+        # Playwright's mouse-driven drag_to cannot carry an HTML5 DataTransfer,
+        # so the drop rides the synthetic dragstart/dragover/drop sequence the
+        # columns listen for — the dragstart handler fills the bag itself.
+        page.evaluate(
+            """([dragged, target]) => {
             const bag = new DataTransfer();
             dragged.dispatchEvent(
                 new DragEvent("dragstart", { dataTransfer: bag, bubbles: true, cancelable: true }),
@@ -153,8 +158,11 @@ def test_a_drag_onto_another_stage_persists_across_a_reload(page: Page, stack: S
                 new DragEvent("drop", { dataTransfer: bag, bubbles: true, cancelable: true }),
             );
         }""",
-        [card_handle, target_handle],
-    )
+            [card_handle, target_handle],
+        )
+    # The card's new column is optimistic; the reload must not race the PUT
+    # that makes it the server's answer (the flake in #775).
+    assert persisted.value.ok
 
     # The card stands in its new column, and the server kept the move.
     expect(auflösung.get_by_role("group", name="Ankunft")).to_be_visible()

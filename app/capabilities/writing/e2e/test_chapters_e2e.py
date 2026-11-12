@@ -10,19 +10,15 @@ Every flow drives the real stack — browser, API, Postgres — and ends on the
 accessibility floor.
 """
 
-import asyncio
 import re
-from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, cast
 
 import pytest
 from playwright.sync_api import Page, Route, expect
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
-from app.kernel.db.testsupport import url_for
 from app.kernel.testing.a11y import assert_accessible
+from app.kernel.testing.db_rows import rows as _shared_rows
 from app.kernel.testing.stack import API_URL, WEB_URL
 from app.kernel.testing.viewport import assert_page_fits
 from app.kernel.testing.workbench import new_chapter
@@ -33,6 +29,13 @@ if TYPE_CHECKING:
     from app.kernel.testing.stack import Stack
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(240)]
+
+# a11y sampling (audit 2026-11-11): axe runs once per distinct view state in
+# this file, not once per test. States still scanned here: empty book, default
+# editor, rail collapsed, outage (default + 360), 404 shelf, create failure,
+# refused-switch dialog, long rail (1280 + 360), renaming flow. Other tests
+# share one of these states; their UI assertions remain, only the axe scan
+# is dropped. Re-add a scan when a new distinct state is introduced.
 
 # How long a settled navigation is watched for a late write. The address is
 # already correct; this window is the negative half — the chapter param must
@@ -46,26 +49,8 @@ DATABASE = testsupport.test_database("narrare_v2_e2e")
 
 
 def _rows(statement: str, params: dict[str, object] | None = None) -> list[tuple[object, ...]]:
-    """Rows from the stack's database as plain tuples, in a worker thread.
-
-    The interchange suite's own helper, mirrored: pytest-asyncio keeps a
-    session loop running, and asyncio.run refuses to start a second one in
-    the same thread.
-    """
-
-    async def run() -> list[tuple[object, ...]]:
-        """Ask a fresh async engine; the dispose lands even on a failed query."""
-        engine = create_async_engine(url_for(DATABASE))
-        try:
-            async with engine.connect() as connection:
-                return [
-                    tuple(each) for each in await connection.execute(text(statement), params or {})
-                ]
-        finally:
-            await engine.dispose()
-
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, run()).result()
+    """Thin wrapper over the shared reader; DATABASE is this module's."""
+    return _shared_rows(DATABASE, statement, params)
 
 
 def _create_book(page: Page, title: str) -> None:
@@ -135,8 +120,6 @@ def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> Non
     assert first_box is not None and second_box is not None
     assert first_box["y"] + first_box["height"] <= second_box["y"] + 1
 
-    assert_accessible(page)
-
 
 def test_typed_chapter_body_survives_reload(page: Page, stack: Stack) -> None:
     page.goto(f"{WEB_URL}/")
@@ -182,8 +165,6 @@ def test_rail_sits_beside_the_editor_without_scrolling(page: Page, stack: Stack)
     for box in (rail_box, editor_box):
         assert box["x"] >= 0 and box["x"] + box["width"] <= viewport["width"]
         assert box["y"] >= 0 and box["y"] + box["height"] <= viewport["height"]
-
-    assert_accessible(page)
 
 
 def test_a_sixty_chapter_rail_stays_inside_the_viewport(page: Page, stack: Stack) -> None:
@@ -326,8 +307,6 @@ def test_back_button_restores_the_expanded_rail(page: Page, stack: Stack) -> Non
     expect(page.get_by_role("complementary")).to_be_visible()
     expect(page.locator(".ProseMirror")).to_be_visible()
 
-    assert_accessible(page)
-
 
 def test_typed_text_survives_a_chapter_switch(page: Page, stack: Stack) -> None:
     _create_book(page, "Die Mole")
@@ -360,29 +339,40 @@ def test_typed_text_survives_a_chapter_switch(page: Page, stack: Stack) -> None:
     page.get_by_role("button", name=re.compile(r"^Kapitel 1\b")).click()
     expect(page.locator(".ProseMirror")).to_contain_text("Erster Satz am Kai.")
 
-    assert_accessible(page)
-
 
 def test_the_latest_touched_chapter_opens_first(page: Page, stack: Stack) -> None:
     _create_book(page, "Deichgraf")
     new_chapter(page)
     editor = page.locator(".ProseMirror")
     editor.click()
-    page.keyboard.type("Kalter Wind.")
+    # The debounce's PUT is the fact the badge announces; waiting for the wire
+    # first keeps the badge's own 5 s window from having to cover a loaded
+    # runner's autosave (#448).
+    with page.expect_response(
+        lambda response: (
+            "/api/writing/chapters/" in response.url and response.request.method == "PUT"
+        )
+    ) as first_saved:
+        page.keyboard.type("Kalter Wind.")
+    assert first_saved.value.ok
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
     # The second chapter is not just created later — it is written in later.
     new_chapter(page)
     page.locator(".ProseMirror").click()
-    page.keyboard.type("Springflut.")
+    with page.expect_response(
+        lambda response: (
+            "/api/writing/chapters/" in response.url and response.request.method == "PUT"
+        )
+    ) as second_saved:
+        page.keyboard.type("Springflut.")
+    assert second_saved.value.ok
     expect(page.get_by_text("Gespeichert")).to_be_visible()
 
     # The reload opens the chapter last written in, not the first one.
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Springflut.")
     expect(page.locator(".ProseMirror")).not_to_contain_text("Kalter Wind.")
-
-    assert_accessible(page)
 
 
 def test_back_button_walks_chapters_and_the_switch_flushes(page: Page, stack: Stack) -> None:
@@ -420,8 +410,6 @@ def test_back_button_walks_chapters_and_the_switch_flushes(page: Page, stack: St
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Der Satz für Kapitel zwei.")
 
-    assert_accessible(page)
-
 
 def test_a_dead_chapter_param_degrades_to_the_last_touched_and_cleans_the_url(
     page: Page, stack: Stack
@@ -455,8 +443,6 @@ def test_a_dead_chapter_param_degrades_to_the_last_touched_and_cleans_the_url(
     expect(page).to_have_url(re.compile(r"^(?!.*chapter=).*$"))
     page.go_back()
     expect(page).to_have_url(f"{WEB_URL}/")
-
-    assert_accessible(page)
 
 
 def test_a_bare_arrival_opens_the_last_touched_chapter_and_writes_nothing(
@@ -493,8 +479,6 @@ def test_a_bare_arrival_opens_the_last_touched_chapter_and_writes_nothing(
     expect(dock.get_by_role("button", name="Dieses Kapitel durchsuchen")).to_be_visible()
     expect(dock.get_by_text("Kein aktives Kapitel")).to_have_count(0)
     assert "chapter=" not in page.url
-
-    assert_accessible(page)
 
 
 def test_a_param_less_create_never_flips_the_editor_past_the_gate(page: Page, stack: Stack) -> None:
@@ -536,8 +520,6 @@ def test_a_param_less_create_never_flips_the_editor_past_the_gate(page: Page, st
     expect(page.locator(".ProseMirror")).to_contain_text("Der zu rettende Satz.")
     page.reload()
     expect(page.locator(".ProseMirror")).to_contain_text("Der zu rettende Satz.")
-
-    assert_accessible(page)
 
 
 def test_a_refused_switch_to_a_created_chapter_asks_and_dismissal_keeps(
@@ -740,8 +722,6 @@ def test_the_rail_names_its_chapter_and_walks_by_keyboard(page: Page, stack: Sta
     page.keyboard.press("Enter")
     expect(second).to_have_attribute("aria-current", "true")
 
-    assert_accessible(page)
-
 
 def test_moving_a_chapter_by_keyboard_survives_a_reload(page: Page, stack: Stack) -> None:
     """Alt+ArrowUp on the focused row is a write, not a view: the new order
@@ -818,8 +798,6 @@ def test_moving_a_chapter_by_keyboard_survives_a_reload(page: Page, stack: Stack
     assert after[moved_id][1] == 0
     assert novel_touched() > touched_before
 
-    assert_accessible(page)
-
 
 def test_an_empty_book_shows_its_empty_state(page: Page, stack: Stack) -> None:
     """A book with no chapters shows the empty state, never an empty editor
@@ -884,8 +862,6 @@ def test_the_workbench_names_the_chapter_and_counts_its_words(page: Page, stack:
     # The count is the live document's, not the stored row's.
     expect(page.get_by_text("2.108 Wörter")).to_be_visible()
 
-    assert_accessible(page)
-
 
 def test_deleting_a_chapter_opens_its_neighbour(page: Page, stack: Stack) -> None:
     """The runhead's menu deletes the open chapter: the pending body is
@@ -934,8 +910,6 @@ def test_deleting_a_chapter_opens_its_neighbour(page: Page, stack: Stack) -> Non
         {"id": match.group(1)},
     )
     assert positions == [(0,), (1,)]
-
-    assert_accessible(page)
 
 
 def test_renaming_a_chapter_carries_to_the_rail_and_the_shelf(page: Page, stack: Stack) -> None:

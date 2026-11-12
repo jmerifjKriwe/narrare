@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.kernel.db import testsupport
 from app.kernel.db.testsupport import url_for
-from app.kernel.testing.stack import Stack, run_stack
+from app.kernel.testing.stack import Stack, acquire_stack
 
 DATABASE = testsupport.test_database("narrare_v2_setup_e2e")
 
@@ -45,8 +45,8 @@ def _forget_everything() -> None:
 
 @pytest.fixture(scope="module")
 def stack() -> Iterator[Stack]:
-    with run_stack(database=DATABASE, seed_user=False) as running:
-        yield running
+    running = acquire_stack("setup", database=DATABASE, seed_user=False)
+    yield running
 
 
 @pytest.fixture(autouse=True)

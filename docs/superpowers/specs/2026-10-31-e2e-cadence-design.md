@@ -3,6 +3,10 @@
 Date: 2026-10-31
 Status: approved by the human partner in the planning session (variant 1 + CI variant A,
 spec change as a dated correction, not an ADR).
+Amended 2026-11-11: the "no parametric ports, no xdist" non-goals are superseded for
+the local harness and the CI matrix job by
+[2026-11-11-e2e-parallel-design.md](./2026-11-11-e2e-parallel-design.md); the port
+knobs this decision called dead became configuration with #621.
 
 ## Intent
 

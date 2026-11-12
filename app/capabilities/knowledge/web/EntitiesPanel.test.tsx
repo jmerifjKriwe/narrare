@@ -336,3 +336,43 @@ describe("EntitiesPanel relation edit note-only save", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
+
+describe("EntitiesPanel relation add form", () => {
+  it("keeps the box focused while the relations read settles", async () => {
+    // The add form stands beside a conditional block: the loading notice,
+    // the error, the empty state, or the two tables. Without a stable
+    // wrapper React reconciles that block's shape change against the form's
+    // own index and remounts it, so the open suggestion list and the caret
+    // die under the user's hands — the E2E's kind pick raced exactly that.
+    const aster = entity("Aster", "character");
+    const harbor = entity("Harbor", "location");
+    let resolveRelations: (value: unknown) => void = () => undefined;
+    const relations = new Promise((resolve) => {
+      resolveRelations = resolve;
+    });
+    api.GET.mockImplementation(async (path: string) => {
+      if (path.includes("relations")) return relations as never;
+      return { data: [aster, harbor], response: { ok: true } };
+    });
+    renderPanel();
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    await user.click(await screen.findByRole("gridcell", { name: "Aster" }));
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    const typeBox = within(dialog).getByLabelText("Relation type");
+    await user.type(typeBox, "Own");
+    expect(document.activeElement).toBe(typeBox);
+
+    // The read lands: the section swaps the loading notice for its answer.
+    await act(async () => {
+      resolveRelations({ data: [], response: { ok: true } });
+    });
+    await waitFor(() => expect(within(dialog).queryByText("Loading…")).toBeNull());
+
+    const after = within(dialog).getByLabelText("Relation type");
+    expect(after).toBe(typeBox);
+    expect(document.activeElement).toBe(after);
+    expect(after).toHaveProperty("value", "Own");
+  });
+});

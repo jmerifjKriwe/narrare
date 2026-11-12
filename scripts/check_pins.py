@@ -8,6 +8,11 @@ monthly `Tool pins` workflow, which opens one issue when any is behind.
 
 A pin this module cannot read is an error (`PinError`), never a pass: a check
 that silently finds nothing is the defect it exists to prevent.
+
+Action pins (`owner/repo@<sha>`) are Dependabot's territory, but a SHA that does
+not resolve upstream (a typo, a never-existing commit) is invisible to every
+gate that only checks syntax or pinning. `check_action_pins` resolves each one
+against the GitHub API and raises `PinError` on the first miss.
 """
 
 from __future__ import annotations
@@ -215,6 +220,79 @@ def behind(states: Sequence[PinState], upstreams: Mapping[str, str]) -> list[str
     return [state.pin.name for state in states if compare(state.current, upstreams[state.pin.name])]
 
 
+_ACTION_USES_RE = re.compile(r"uses:\s*['\"]?([^\s'\"@]+)@([0-9a-f]{40})['\"]?\b")
+
+
+def action_pins(root: Path) -> dict[str, set[str]]:
+    """Collect every `owner/repo@<sha>` pin under `.github/`.
+
+    Pure discovery: no network, no mutation. A tree with none is a defect
+    (the monthly run must never be able to say "current" when it could not
+    ask), so it raises `PinError` rather than returning an empty mapping.
+    """
+
+    files: list[Path] = []
+    workflows = root / ".github" / "workflows"
+    if workflows.is_dir():
+        files.extend(sorted(workflows.rglob("*.yml")))
+        files.extend(sorted(workflows.rglob("*.yaml")))
+    actions = root / ".github" / "actions"
+    if actions.is_dir():
+        files.extend(sorted(actions.rglob("action.yml")))
+        files.extend(sorted(actions.rglob("action.yaml")))
+
+    pins: dict[str, set[str]] = {}
+    for path in files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise PinError(f"cannot read {path}: {error}") from error
+        for line in text.splitlines():
+            if line.lstrip().startswith("#"):
+                continue
+            for raw_repo, sha in _ACTION_USES_RE.findall(line):
+                if raw_repo.startswith(".") or raw_repo.startswith("/"):
+                    continue
+                parts = raw_repo.split("/")
+                if len(parts) < 2:
+                    continue
+                repo = f"{parts[0]}/{parts[1]}"
+                pins.setdefault(repo, set()).add(sha)
+
+    if not pins:
+        raise PinError("no action pins found under .github/workflows or .github/actions")
+    return pins
+
+
+def check_action_pins(root: Path) -> None:
+    """Resolve every `owner/repo@<sha>` pin in the workflow surface.
+
+    A SHA that does not exist upstream (a typo, a never-existing commit) is
+    invisible to actionlint and zizmor, and Dependabot cannot bump it. Asking
+    GitHub directly is the only way to notice, and this check raises
+    `PinError` on the first miss so the monthly run names it.
+    """
+
+    pins = action_pins(root)
+
+    executable = shutil.which("gh")
+    if executable is None:
+        raise PinError("gh is not on PATH")
+
+    for repo in sorted(pins):
+        for sha in sorted(pins[repo]):
+            completed = subprocess.run(  # noqa: S603  # nosec  # fixed argv, no shell
+                [executable, "api", f"repos/{repo}/commits/{sha}", "--jq", ".sha"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            resolved = completed.stdout.strip()
+            if completed.returncode != 0 or resolved != sha:
+                reason = completed.stderr.strip() or "commit not found"
+                raise PinError(f"action pin {repo}@{sha} does not resolve upstream: {reason}")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="check_pins.py",
@@ -241,6 +319,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.tree:
             print(" ".join(state.pin.name for state in states))
             return 0
+        # Action SHAs are network-checked here (not under --tree, which is
+        # offline by contract); a miss raises PinError and reddens the run.
+        check_action_pins(root)
         current = {state.pin.name: state.current for state in states}
         upstreams = {state.pin.name: latest(state.pin, current) for state in states}
         text = report(states, upstreams)

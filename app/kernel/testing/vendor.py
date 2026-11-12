@@ -44,6 +44,19 @@ from typing import Any
 from app.kernel.llm.anthropic_messages import ANTHROPIC_VERSION
 
 
+class _VendorServer(ThreadingHTTPServer):
+    """A vendor server whose handler threads are joined on close.
+
+    ``ThreadingHTTPServer`` runs its request handlers as daemon threads, and a
+    daemon still writing when the interpreter finalizes dies in
+    ``_enter_buffered_busy`` — a suite that passed every test then exits 134
+    (#619, #649). With ``daemon_threads`` off and ``block_on_close`` at its
+    default, the fixture's ``server_close`` waits for the request it started.
+    """
+
+    daemon_threads = False
+
+
 class EmbeddingsVendor:
     """The stand-in's address, its width, and every request it received."""
 
@@ -99,7 +112,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
-        self.wfile.write(payload)
+        try:
+            self.wfile.write(payload)
+        except BrokenPipeError, ConnectionResetError:
+            # The same client-hung-up rule as ``_JsonHandler._reply`` (#649).
+            return
 
     def log_message(self, format: str, *args: Any) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Silence the request log; nothing asserts on it here."""
@@ -108,7 +125,7 @@ class _Handler(BaseHTTPRequestHandler):
 @contextmanager
 def embeddings_vendor(width: int = 384) -> Generator[EmbeddingsVendor]:
     """A real HTTP server on a free port, answering token-hash vectors."""
-    server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    server: Any = _VendorServer(("127.0.0.1", 0), _Handler)
     server.width = width
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -300,7 +317,13 @@ class _JsonHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
-        self.wfile.write(payload)
+        try:
+            self.wfile.write(payload)
+        except BrokenPipeError, ConnectionResetError:
+            # The client hung up mid-answer — a stream it stopped reading is
+            # not a test failure, and its traceback must not reach a stderr
+            # the interpreter is already finalizing (#649).
+            return
 
     def _record(self, body: dict[str, Any] | None) -> None:
         server: Any = self.server
@@ -368,7 +391,7 @@ class _ChatHandler(_JsonHandler):
 @contextmanager
 def chat_vendor() -> Generator[ChatVendor]:
     """A real HTTP server on a free port, answering the OpenAI chat shape."""
-    server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _ChatHandler)
+    server: Any = _VendorServer(("127.0.0.1", 0), _ChatHandler)
     server.refuse = False
     server.refuse_status = 401
     server.refuse_payload = None
@@ -580,7 +603,7 @@ class _MessagesHandler(_JsonHandler):
 @contextmanager
 def messages_vendor() -> Generator[MessagesVendor]:
     """A real HTTP server on a free port, answering the Anthropic Messages shape."""
-    server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _MessagesHandler)
+    server: Any = _VendorServer(("127.0.0.1", 0), _MessagesHandler)
     server.refuse = False
     server.refuse_status = 401
     server.refuse_payload = None
@@ -681,7 +704,7 @@ def list_vendor() -> Generator[ListVendor]:
     request: the port routes it to this server, the host name keeps the key
     away. Every path answers the list, so the test needs no URL arithmetic.
     """
-    server: Any = ThreadingHTTPServer(("127.0.0.1", 0), _ListHandler)
+    server: Any = _VendorServer(("127.0.0.1", 0), _ListHandler)
     server.received = []
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

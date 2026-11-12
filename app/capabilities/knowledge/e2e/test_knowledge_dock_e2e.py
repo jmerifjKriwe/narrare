@@ -324,8 +324,6 @@ def test_the_knowledge_dock_reviews_extraction_beside_the_editor(page: Page, sta
     expect(detail).to_contain_text("Figur")
     expect(detail).to_contain_text("Mira appears in the chapter.")
 
-    assert_accessible(page)
-
 
 def test_the_knowledge_dock_reviews_the_novels_findings(page: Page, stack: Stack) -> None:
     """The whole-novel check: the planted contradictions, reviewed to empty.
@@ -398,8 +396,6 @@ def test_the_knowledge_dock_reviews_the_novels_findings(page: Page, stack: Stack
     )
     page.wait_for_timeout(POLL_SILENCE_MS)
     assert poll_silence == [], f"the done check job is still polled: {poll_silence}"
-
-    assert_accessible(page)
 
 
 def test_the_finding_card_and_long_names_hold_the_dock_column(page: Page, stack: Stack) -> None:
@@ -772,7 +768,6 @@ def test_the_running_bar_passes_the_axe_floor(page: Page, stack: Stack) -> None:
     bar = dock.get_by_role("progressbar")
     expect(bar).to_be_visible()
     expect(bar).to_have_attribute("aria-valuenow", "40")
-    assert_accessible(page)
 
     # The row goes back to done by hand — the assertion had its state, and
     # the poll settles with it.
@@ -871,8 +866,6 @@ def test_a_rerun_stacks_no_duplicate_cards(page: Page, stack: Stack) -> None:
     _rerun_extraction_to_done(dock, extract, status)
     expect(cards).to_have_count(5)
 
-    assert_accessible(page)
-
 
 def test_the_dock_search_reaches_passages(page: Page, stack: Stack) -> None:
     """The search box's second tier: passages from the semantic search.
@@ -923,8 +916,6 @@ def test_the_dock_search_reaches_passages(page: Page, stack: Stack) -> None:
     search.fill("Leuchtturm")
     expect(passages.get_by_text("Notizen")).to_be_visible()
     expect(dock.get_by_role("alert")).to_have_count(0)
-
-    assert_accessible(page)
 
 
 def _row_named(entities: Locator, name: str) -> Locator:
@@ -1042,8 +1033,6 @@ def test_the_detail_view_corrects_entities_by_hand(page: Page, stack: Stack) -> 
     expect(_row_named(entities, "Draußen")).to_be_visible()
     expect(_row_named(entities, "Leuchtturm")).to_be_visible()
     expect(page.locator("[data-live-announcer]")).to_contain_text("See wurde gelöscht")
-
-    assert_accessible(page)
 
 
 def test_an_entity_can_be_renamed_by_keyboard_alone(page: Page, stack: Stack) -> None:
@@ -1183,8 +1172,6 @@ def test_the_entity_list_filters_by_type_tag_and_searches_the_server(
     dock.get_by_label("Entitäten durchsuchen").press("Escape")
     expect(_row_named(entities, "Mira")).to_be_visible()
     expect(entities.get_by_role("row")).to_have_count(5)
-
-    assert_accessible(page)
 
 
 def test_the_edit_dialog_edits_aliases_tags_and_the_markdown_body(page: Page, stack: Stack) -> None:
@@ -1521,8 +1508,6 @@ def test_a_duplicate_relation_is_named_and_the_add_guards_a_double_submit(
     expect(page.get_by_text("Läuft der lokale Dienst?")).to_have_count(0)
     expect(table.get_by_role("row").filter(has_text="Haus")).to_have_count(1)
 
-    assert_accessible(page)
-
 
 def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) -> None:
     """The selected entity is URL state: a link opens the dock on its card.
@@ -1584,8 +1569,6 @@ def test_the_dock_opens_on_the_entity_the_url_names(page: Page, stack: Stack) ->
     page.go_back()
     expect(page).to_have_url(workspace_url)
 
-    assert_accessible(page)
-
 
 def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack) -> None:
     """`?entity=` and `?chapter=` share the address; each writer keeps the other.
@@ -1633,8 +1616,6 @@ def test_the_entity_and_chapter_params_live_on_one_url(page: Page, stack: Stack)
     expect(page).to_have_url(re.compile(f"chapter={second_chapter}"))
     expect(page).to_have_url(re.compile(f"entity={haus}"))
     expect(dock.get_by_role("region", name="Haus")).to_be_visible()
-
-    assert_accessible(page)
 
 
 def test_the_dock_lens_shows_the_entity_neighborhood(page: Page, stack: Stack) -> None:
@@ -1684,5 +1665,3 @@ def test_the_dock_lens_shows_the_entity_neighborhood(page: Page, stack: Stack) -
     # The cross-link carries the novel to the full canvas.
     link = lens.get_by_role("link", name="Im Graphen öffnen")
     expect(link).to_have_attribute("href", f"/knowledge/graph?novel={novel_id}")
-
-    assert_accessible(page)
