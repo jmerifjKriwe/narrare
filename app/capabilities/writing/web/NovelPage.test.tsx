@@ -257,12 +257,16 @@ function chapterRow(n: number): HTMLElement {
 /** The rail's named chapters as DOM positions: where each titled row
  *  sits in the list. `[1, 0]` is a reversed pair — "Zweites" is the
  *  list's first. (Named rows, because a position-derived label moves
- *  with the swap it names.) */
+ *  with the swap it names.) The panel is the list's scope: the drafted
+ *  tab row above it holds buttons of its own, and the order is the
+ *  rows' order, not the region's whole button census. */
 function railOrder(): number[] {
   const rail = screen.getByRole("complementary");
+  const panel = rail.querySelector('[role="tabpanel"]');
   return ["Erstes", "Zweites"].map((name) =>
-    [...rail.querySelectorAll<HTMLButtonElement>("button")].findIndex((button) =>
-      (button.getAttribute("aria-label") ?? "").startsWith(`${name} `),
+    [...(panel?.querySelectorAll<HTMLButtonElement>("button") ?? [])].findIndex(
+      (button) =>
+        (button.getAttribute("aria-label") ?? "").startsWith(`${name} `),
     ),
   );
 }

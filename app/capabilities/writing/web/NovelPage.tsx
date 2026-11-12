@@ -343,6 +343,8 @@ export function NovelPage() {
             orderFailed={orderFailed}
             createFailed={createFailed}
             chapterCount={chapters.length}
+            novelId={novelId}
+            bookTitle={novelQuery.data?.title}
             move={move}
             moveTo={moveTo}
             setWalkedIndex={setWalkedIndex}

@@ -191,6 +191,13 @@
   "workspace.focusToggle": "Focus",
   "workspace.historyPending": "L'historique des versions n'est pas encore disponible",
   "workspace.languageChip": "Langue : {code}",
+  "workspace.railDraft": "Brouillon",
+  "workspace.railOutline": "Plan du projet",
+  "workspace.railScenesEmpty": "Les scènes et l'intrigue vivent dans la planification de ce livre.",
+  "workspace.railScenesOpen": "Ouvrir la planification",
+  "workspace.railTabChapters": "Chapitres",
+  "workspace.railTabScenes": "Scènes & intrigue",
   "workspace.railToggle": "Liste des chapitres",
+  "workspace.railViews": "Vues du plan",
   "workspace.shortcutHints": "{focus} focus · {back} reculer ou annuler · {palette} palette"
 }

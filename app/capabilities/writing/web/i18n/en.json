@@ -191,6 +191,13 @@
   "workspace.focusToggle": "Focus",
   "workspace.historyPending": "Version history is not available yet",
   "workspace.languageChip": "Language: {code}",
+  "workspace.railDraft": "Draft",
+  "workspace.railOutline": "Project outline",
+  "workspace.railScenesEmpty": "Scenes and plot live in this book's planning.",
+  "workspace.railScenesOpen": "Open planning",
+  "workspace.railTabChapters": "Chapters",
+  "workspace.railTabScenes": "Scenes & plot",
   "workspace.railToggle": "Chapter rail",
+  "workspace.railViews": "Outline views",
   "workspace.shortcutHints": "{focus} focus · {back} step back or discard · {palette} palette"
 }
