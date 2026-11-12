@@ -579,6 +579,7 @@ def test_the_writer_s_day_holds_together_end_to_end(
     expect(_palette_group(palette, "Novels").get_by_role("button", name=NOVEL)).to_be_visible()
     expect(_palette_group(palette, "Docks & pages")).to_be_visible()
     assert_accessible(page)
+    expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
     page.keyboard.press("Escape")
 
     page.goto(f"{BASE}/settings/prompts")

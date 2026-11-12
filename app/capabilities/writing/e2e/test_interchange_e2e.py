@@ -507,5 +507,6 @@ def test_palette_opens_the_import_dialog(page: Page, stack: Stack) -> None:
     dialog = page.get_by_role("dialog")
     expect(dialog.get_by_label("Archivpfad")).to_be_visible()
     assert_accessible(page)
+    expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
     page.keyboard.press("Escape")
     expect(page.get_by_role("dialog")).to_have_count(0)

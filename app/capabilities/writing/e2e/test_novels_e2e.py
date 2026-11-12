@@ -580,6 +580,7 @@ def test_the_drafted_row_is_reachable_and_operable_by_keyboard(page: Page, stack
     expect(page.get_by_role("menuitem", name="Details")).to_be_visible()
     expect(page.get_by_role("menuitem", name="Exportieren")).to_be_visible()
     expect(page.get_by_role("menuitem", name="Löschen")).to_be_visible()
+    expect(page.locator("[role='dialog']:focus, [role='dialog'] :focus")).to_have_count(1)
     page.keyboard.press("Escape")
     expect(trigger).to_be_focused()
 
