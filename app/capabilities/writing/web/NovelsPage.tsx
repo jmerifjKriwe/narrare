@@ -125,6 +125,7 @@ export function NovelsPage() {
   const needle = search.trim().toLowerCase();
   const visible = list.filter(
     (novel) =>
+      novel.id !== hero?.id &&
       (genre === null || novel.genre === genre) &&
       (needle === "" || novel.title.toLowerCase().includes(needle)),
   );

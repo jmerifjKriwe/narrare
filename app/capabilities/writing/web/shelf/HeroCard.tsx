@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { useTranslation } from "@shell/lib/i18n";
@@ -5,7 +6,10 @@ import { formatNumber } from "@shell/lib/format";
 import { formatRelative } from "@shell/lib/time";
 import { buttonClass } from "@shell/ui/Button";
 import { Cover } from "@shell/ui/Cover";
+import { ActionMenu } from "@shell/ui/Menu";
 import { Icon } from "@shell/ui/icons";
+import { NovelDetailsDialog, NovelDeleteDialog } from "./NovelDialogs";
+import { ExportNovelDialog } from "../InterchangeDialogs";
 import type { Novel } from "@shell/lib/api/client";
 
 /**
@@ -23,12 +27,39 @@ import type { Novel } from "@shell/lib/api/client";
 
 export function HeroCard({ novel }: { novel: Novel }) {
   const t = useTranslation();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   return (
-    <section
-      aria-label={t("shelf.hero.active")}
-      className="relative overflow-hidden rounded-[var(--radius-surface)] bg-surface-container-low shadow-[var(--shadow-card)]"
-    >
-      <div className="flex flex-col items-center gap-8 p-6 md:flex-row lg:p-8">
+    <>
+      <section
+        aria-label={t("shelf.hero.active")}
+        className="relative overflow-hidden rounded-[var(--radius-surface)] bg-surface-container-low shadow-[var(--shadow-card)]"
+      >
+        <div className="absolute right-3 top-3 z-10">
+          <ActionMenu
+            triggerAriaLabel={t("novels.actionsFor", { title: novel.title })}
+            triggerIcon="moreHoriz"
+            items={[
+              {
+                id: "details",
+                label: t("novels.details"),
+                onSelect: () => setDetailsOpen(true),
+              },
+              {
+                id: "export",
+                label: t("shelf.export"),
+                onSelect: () => setExportOpen(true),
+              },
+              {
+                id: "delete",
+                label: t("novels.delete"),
+                onSelect: () => setDeleteOpen(true),
+              },
+            ]}
+          />
+        </div>
+        <div className="flex flex-col items-center gap-8 p-6 md:flex-row lg:p-8">
         <div className="shrink-0 rounded-[var(--radius)] shadow-[var(--shadow-card)] transition-transform duration-300 hover:-translate-y-1">
           <Cover title={novel.title} size="hero" genre={novel.genre} language={novel.language} />
         </div>
@@ -51,9 +82,15 @@ export function HeroCard({ novel }: { novel: Novel }) {
               </span>
             </div>
             <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-hero text-foreground [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
-                {novel.title}
-              </h2>
+              <Link
+                to="/novels/$id"
+                params={{ id: novel.id }}
+                className="no-underline"
+              >
+                <h2 className="text-hero text-foreground [font-family:'EB_Garamond',Georgia,'Times_New_Roman',serif]">
+                  {novel.title}
+                </h2>
+              </Link>
               {/* Interim: no series or band field exists; the genre is the
                * one honest line the row carries, and no line at all when
                * the book carries none.
@@ -133,6 +170,10 @@ export function HeroCard({ novel }: { novel: Novel }) {
           </div>
         </div>
       </div>
+      <NovelDetailsDialog novel={novel} open={detailsOpen} onOpenChange={setDetailsOpen} />
+      <NovelDeleteDialog novel={novel} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <ExportNovelDialog novel={novel} isOpen={exportOpen} onOpenChange={setExportOpen} />
     </section>
+    </>
   );
 }
