@@ -65,8 +65,15 @@
   "shell.paletteKeyMac": "⌘K",
   "shell.paletteKeyOther": "Ctrl K",
   "shell.paletteOpen": "Ouvrir la palette de commandes, {key}",
+  "shell.railBookMenu": "Changer de roman",
   "shell.railGroupManuscript": "Manuscrit & œuvre",
   "shell.railGroupWorld": "Architecture & monde",
+  "shell.railTheme": "Thème",
+  "shell.railUserFallback": "Auteur",
+  "shell.railUserTier": "Palier auteur",
   "shell.settings": "Paramètres",
-  "shell.skipToContent": "Aller au contenu"
+  "shell.skipToContent": "Aller au contenu",
+  "shell.syncFailed": "Sync en échec",
+  "shell.syncPending": "Sync en attente",
+  "shell.syncSaved": "Sync en ligne"
 }

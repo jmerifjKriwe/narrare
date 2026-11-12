@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 
 import { Palette } from "../components/Palette";
 import { TopBar } from "../components/TopBar";
-import { IconRail } from "../components/IconRail";
+import { IconRail, type RailSync } from "../components/IconRail";
 import { useTranslation } from "../lib/i18n";
 import { adoptServerLocale, activeLocale, subscribeLocale } from "../lib/locale";
 import { PALETTE_OPEN_EVENT, type PaletteOpenDetail } from "../lib/palette";
@@ -37,6 +37,33 @@ function useChromeless(): boolean {
   return chromeless;
 }
 
+/**
+ * The rail's sync state, published by the workspace the same way its focus
+ * depth is: a body attribute the shell subscribes to (`useNovelDraft`'s
+ * data-sync — capabilities never reach across, and the shell never reaches
+ * in). An observer, not an event: attribute writes fire no events, and the
+ * rail must follow whether the save landed before or after it mounted.
+ * Absent means saved — the truth of every route but the workspace, and of
+ * the workspace between saves.
+ */
+function useSyncStatus(): RailSync {
+  const [sync, setSync] = useState<RailSync>("saved");
+  useEffect(() => {
+    const read = () => {
+      const value = document.body.dataset.sync;
+      setSync(value === "pending" || value === "failed" ? value : "saved");
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-sync"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return sync;
+}
+
 /** A dialog owns the stage; the palette refuses to open over one. */
 function paletteCanOpen(): boolean {
   return document.querySelector('[role="dialog"]') === null;
@@ -55,6 +82,8 @@ function Shell() {
   // The deepest focus step owns the whole viewport: neither column of shell
   // chrome survives it.
   const chromeless = useChromeless();
+  // The autosave state the workspace publishes; the rail's sync dot wears it.
+  const sync = useSyncStatus();
 
   useEffect(() => {
     if (!settings.isSuccess) return;
@@ -160,7 +189,7 @@ function Shell() {
       <div className="flex h-dvh flex-col">
         {chromeless ? null : <TopBar onOpenPalette={openPalette} />}
         <div className="flex min-h-0 min-w-0 flex-1">
-          {chromeless ? null : <IconRail />}
+          {chromeless ? null : <IconRail sync={sync} />}
           {/* The shell owns the page's one main landmark; routes render content
               inside it, and the skip link lands here. tabIndex makes the landing
               hold focus — fragment navigation focuses a target only if it can —

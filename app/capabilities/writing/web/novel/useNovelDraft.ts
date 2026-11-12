@@ -48,6 +48,26 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
     remember,
   );
 
+  // The rail's sync dot reads the save state through the body attribute the
+  // shell subscribes to (`__root.tsx`'s useSyncStatus) — the focus-depth
+  // publish's own bridge: capabilities never reach across to the shell, and
+  // the shell never reaches in. The attribute carries the rail's vocabulary:
+  // a debounced or in-flight write is "pending", a refused one "failed";
+  // absent means saved, the default every route but this one shows, restored
+  // when the workspace goes away.
+  useEffect(() => {
+    if (status === "failed") {
+      document.body.dataset.sync = "failed";
+    } else if (status === "pending" || status === "saving") {
+      document.body.dataset.sync = "pending";
+    } else {
+      delete document.body.dataset.sync;
+    }
+    return () => {
+      delete document.body.dataset.sync;
+    };
+  }, [status]);
+
   // The document the writer holds: title beside body, one draft — the
   // autosave's unit of work. It belongs to the open chapter, and the
   // selection's change is its reset, done in render (the state-adjust

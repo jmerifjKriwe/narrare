@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The icon set: forty-one line glyphs on one 16×16 grid, drawn for the
+ * The icon set: forty-two line glyphs on one 16×16 grid, drawn for the
  * stroke they run on — `currentColor` at 1.5, round caps and joins, no
  * fills — so a glyph wears the ink of whatever it sits beside and carries
  * no color of its own. The whole presentation contract lives on the
@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 
 /**
- * The forty-one drawings. Each stays inside the 2.35–13.65 envelope —
+ * The forty-two drawings. Each stays inside the 2.35–13.65 envelope —
  * knowledge's stack sets both extremes; on the x axis the ink never leaves
  * 2.5–13.5 — so the 1.5 stroke, reaching half its width past the ink, never
  * clips the viewBox. Each is a single-stroke metaphor: detail that
@@ -247,6 +247,9 @@ export const icons = {
       <circle cx="10.4" cy="10.6" r="1.6" />
     </>
   ),
+  /** The switcher's spread: a chevron up over a chevron down, the
+   *  drafted `unfold_more` that opens the book menu between the books. */
+  unfoldMore: <path d="M4.5 6.2L8 2.9L11.5 6.2M4.5 9.8L8 13.1L11.5 9.8" />,
   /** The list: a row of entries, each with its bullet. */
   viewList: (
     <>

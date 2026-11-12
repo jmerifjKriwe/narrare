@@ -1,10 +1,18 @@
 import type { ComponentProps, CSSProperties } from "react";
-import { Link, useMatches } from "@tanstack/react-router";
+import { useState } from "react";
+import { Link, useMatches, useNavigate, useParams } from "@tanstack/react-router";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
+
 import { workspaceRouteId } from "../lib/generated/workspace";
 
+import { client } from "../lib/api/client";
+import type { Novel } from "../lib/api/client";
 import { useTranslation, type MessageKey } from "../lib/i18n";
 import { nav } from "../lib/generated/capabilities";
+import { queryClient, useNovelsQuery, useSettingsQuery } from "../lib/query";
+import { applyTheme, type Theme } from "../lib/theme";
 import { buttonClass } from "../ui/Button";
+import { coverTone, type CoverTone } from "../ui/Cover";
 import { Icon, type IconName } from "../ui/icons";
 
 /**
@@ -18,6 +26,14 @@ import { Icon, type IconName } from "../ui/icons";
  * ride the same reveal as the destination names, so the rail opens as
  * one column.
  *
+ * The drafted blocks complete the rail (spec §5.0, the workspace screen's
+ * own left `<aside>`): the book-switcher at the head — the active novel's
+ * cover chip and name, and an unfold-more menu of the user's novels that
+ * navigates on select; and at the foot, behind the hairline, the sync dot
+ * the autosave state drives, the theme toggle cycling the settings row's
+ * own tri-state, and the user block. All four run on the real sources the
+ * app already owns; none renders a number or a name the app does not have.
+ *
  * Destinations are links — that is what they are, and P9's one-navigation
  * bar counts on it — wearing the icon button's paint through `buttonClass`
  * (the sanctioned way to put a non-button control in the button's states,
@@ -27,6 +43,9 @@ import { Icon, type IconName } from "../ui/icons";
  * (`--soft` fill, foreground ink) through the attribute selector, so the
  * paint can only agree with the semantics.
  */
+
+/** The autosave state the workspace publishes; the rail's sync dot renders it. */
+export type RailSync = "saved" | "pending" | "failed";
 
 /** The rail's destinations: exactly the paths Link itself accepts. */
 type RailTo = ComponentProps<typeof Link>["to"];
@@ -129,9 +148,237 @@ export const RAIL_GROUPS: ReadonlyArray<{
   { labelKey: "shell.railGroupWorld", ids: ["knowledge", "planning"] },
 ];
 
-/** The global icon rail: shell chrome, one navigation on every route. */
-export function IconRail() {
+/** The dot's state colour, one state token per autosave state — the
+ *  diagnostics the design reserves for exactly this: a state of the work,
+ *  never a decoration. */
+const SYNC_DOT: Record<RailSync, string> = {
+  saved: "bg-success",
+  pending: "bg-warning",
+  failed: "bg-danger",
+};
+
+const SYNC_KEY: Record<RailSync, MessageKey> = {
+  saved: "shell.syncSaved",
+  pending: "shell.syncPending",
+  failed: "shell.syncFailed",
+};
+
+/** The sync line at the foot: the dot reads at a glance in the collapsed
+ *  rail, the label opens with the rail. No live region here on purpose —
+ *  the editor's own SaveIndicator is the save state's announcement, next
+ *  to the text the writer is looking at; a second one in the chrome would
+ *  repeat it on every save. The dot sits in the names' 28 px column, so
+ *  the open line aligns with every label above it. */
+function SyncLine({ sync }: { sync: RailSync }) {
   const t = useTranslation();
+  return (
+    <div
+      data-sync={sync}
+      className="flex h-8 w-full items-center gap-2 px-1 text-muted"
+    >
+      <span className="grid w-7 shrink-0 place-items-center">
+        <span aria-hidden="true" className={`h-2 w-2 rounded-full ${SYNC_DOT[sync]}`} />
+      </span>
+      <span className={`${REVEAL} min-w-0 justify-self-start truncate uppercase tracking-wide text-meta`}>
+        {t(SYNC_KEY[sync])}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The theme states and their cycle, as the settings row owns the
+ * tri-state (AppearancePage): the stored null is "system", and the rail's
+ * press walks system → light → dark → system. The state labels are the
+ * appearance select's own catalog keys — one vocabulary for one choice.
+ */
+const THEME_STATE_KEY = {
+  system: "settings.appearance.system",
+  light: "settings.appearance.light",
+  dark: "settings.appearance.dark",
+} as const;
+type ThemeChoice = keyof typeof THEME_STATE_KEY;
+const THEME_CYCLE: Record<ThemeChoice, ThemeChoice> = {
+  system: "light",
+  light: "dark",
+  dark: "system",
+};
+
+/**
+ * The theme toggle at the foot, driving the exact contract the appearance
+ * page drives: apply before the write, PATCH `/api/settings/theme` with
+ * the row's shape, invalidate `["settings"]` on success, roll the document
+ * and the control back to the stored choice on a refusal. The refusal
+ * speaks on the settings page — its Notice is the one surface a theme
+ * refusal has; the rail rolls back quietly rather than growing failure
+ * chrome no draft draws. The face is the drafts' moon and the catalog's
+ * "Theme"; the current choice rides the accessible name, so a reader
+ * hears what a press will move from before it moves.
+ */
+function ThemeToggle() {
+  const t = useTranslation();
+  const settings = useSettingsQuery();
+  const stored = settings.data?.theme ?? null;
+  // The control's own choice until the refetch lands (the appearance
+  // page's answer to the same roundtrip lag): a press must not wait for
+  // the write to name itself.
+  const [chosen, setChosen] = useState<ThemeChoice | null>(null);
+  const value: ThemeChoice = chosen ?? (stored === "light" || stored === "dark" ? stored : "system");
+
+  async function cycle(): Promise<void> {
+    const next = THEME_CYCLE[value];
+    const theme: Theme | null = next === "system" ? null : next;
+    const previous: Theme | null =
+      stored === "light" || stored === "dark" ? stored : null;
+    setChosen(next);
+    applyTheme(theme);
+    try {
+      const { response } = await client.PATCH("/api/settings/theme", {
+        body: { theme },
+      });
+      if (!response.ok) throw new Error(`refused: ${response.status}`);
+      // The row changed, so the cached answer is stale; the refetch brings
+      // back what was just persisted, so cache and row cannot disagree.
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+    } catch {
+      // The write did not happen, so neither the document nor the control
+      // may pretend it did.
+      setChosen(null);
+      applyTheme(previous);
+    }
+  }
+
+  return (
+    <Button
+      aria-label={`${t("shell.railTheme")}: ${t(THEME_STATE_KEY[value])}`}
+      onPress={() => void cycle()}
+      className={`${buttonClass("icon", "sm")} w-full grid-cols-[auto_1fr] gap-2`}
+    >
+      <span>
+        <Icon name="theme" />
+      </span>
+      <span className={`${REVEAL} min-w-0 justify-self-start whitespace-nowrap`}>
+        {t("shell.railTheme")}
+      </span>
+    </Button>
+  );
+}
+
+/** The cover chip's grounds: the tile's own four tone utilities keyed by
+ *  the tone `coverTone` names — the same tokens the shelf's Cover wears,
+ *  never a hex. At 20 px the tile's lettering and spine would be detail
+ *  that disappears, so the chip is the tone's ground alone. */
+const CHIP_GROUND: Record<CoverTone, string> = {
+  pale: "bg-cover-pale",
+  sepia: "bg-cover-sepia",
+  ink: "bg-cover-ink",
+  slate: "bg-cover-slate",
+};
+
+/**
+ * The book-switcher at the rail's head (the workspace draft's soft pill):
+ * the active novel's cover chip — its face while the rail is closed — and
+ * its name beside the unfold-more, opening a menu of the user's novels
+ * that navigates on select. The trigger is the menu primitive's own
+ * pattern (Menu.tsx, which cannot fit here: its trigger paints a glyph or
+ * a label, never the drafted chip-plus-name face) — React Aria's whole
+ * contract rides on: the arrows, Escape back to the trigger, focus
+ * contained while the menu stands. With no book open the face is the
+ * library glyph and the catalog's label; with no book in the library
+ * there is nothing to switch, and the block waits.
+ */
+function BookSwitcher({ novels, active }: { novels: Novel[]; active: Novel | null }) {
+  const t = useTranslation();
+  const navigate = useNavigate();
+  if (novels.length === 0) return null;
+  const tone = active !== null ? coverTone(active.title) : null;
+  return (
+    <MenuTrigger>
+      <Button
+        aria-label={
+          active !== null
+            ? `${t("shell.railBookMenu")}: ${active.title}`
+            : t("shell.railBookMenu")
+        }
+        className="flex h-8 w-full items-center gap-2 rounded-[var(--radius-control)] bg-soft px-1 text-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1 focus-visible:ring-offset-transparent"
+      >
+        {/* The chip is the collapsed rail's face for the book: decorative —
+         * the trigger's accessible name is the one that names it. */}
+        {tone !== null && active !== null ? (
+          <span
+            aria-hidden="true"
+            data-rail-cover={tone}
+            className={`aspect-[3/4] w-5 shrink-0 rounded-[var(--radius)] border border-border ${CHIP_GROUND[tone]}`}
+          />
+        ) : (
+          <span aria-hidden="true" className="grid w-5 shrink-0 place-items-center">
+            <Icon name="autoStories" />
+          </span>
+        )}
+        <span className={`${REVEAL} min-w-0 truncate text-left text-label`}>
+          {active?.title}
+        </span>
+        <span aria-hidden="true" className={`${REVEAL} shrink-0`}>
+          <Icon name="unfoldMore" />
+        </span>
+      </Button>
+      <Popover className="min-w-40 rounded-[var(--radius)] border border-border bg-card p-1 shadow-overlay">
+        <Menu className="flex flex-col outline-hidden">
+          {novels.map((novel) => (
+            <MenuItem
+              key={novel.id}
+              onAction={() =>
+                void navigate({ to: "/novels/$id", params: { id: novel.id } })
+              }
+              aria-label={novel.title}
+              className="flex items-center justify-between gap-4 rounded-[var(--radius)] px-2 py-1 text-body outline-hidden data-[focused]:bg-soft data-focus-visible:ring-2 data-focus-visible:ring-focus"
+            >
+              <span className="min-w-0 truncate">{novel.title}</span>
+            </MenuItem>
+          ))}
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+  );
+}
+
+/**
+ * The user block at the foot: the drafts' avatar chip, name line and
+ * standing line. The writer's name is the one the app carries — the open
+ * book's author row (the drafts' "H. Calder" is Dead Signal's own author)
+ * — and a book without one names the block by its own label, never an
+ * invented person. The standing line is the drafts' copy for the
+ * persona's tier ("Author Tier"), catalog copy in all three locales.
+ */
+function UserBlock({ author }: { author: string | null }) {
+  const t = useTranslation();
+  return (
+    <div className="flex h-8 w-full items-center gap-2 px-1">
+      <span className="grid w-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+        <Icon name="person" />
+      </span>
+      <span className={`${REVEAL} min-w-0`}>
+        <span className="block truncate text-label text-foreground">
+          {author ?? t("shell.railUserFallback")}
+        </span>
+        <span className="block truncate text-meta text-muted">
+          {t("shell.railUserTier")}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** The global icon rail: shell chrome, one navigation on every route. */
+export function IconRail({ sync }: { sync: RailSync }) {
+  const t = useTranslation();
+  // The switcher's reads: the library list under its own cache key, the
+  // open novel from the workspace address, read tolerantly — off the
+  // workspace there is none (the palette's own precedent).
+  const novelsQuery = useNovelsQuery();
+  const workspace = useParams({ from: "/novels/$id", shouldThrow: false });
+  const active =
+    novelsQuery.data?.find((novel) => novel.id === workspace?.id) ?? null;
   // R29: the breakpoint answers the surface, not one number for all. The
   // workspace is where prose is written — the novel route and every dock
   // child under it (the parent is in the match chain on all of them) — and
@@ -177,13 +424,18 @@ export function IconRail() {
         className="group absolute inset-y-0 left-0 z-20 flex w-[var(--rail-width)] flex-col items-start justify-between overflow-hidden border-r border-border bg-panel p-1.5 transition-[width] duration-150 hover:w-[168px] focus-within:w-[168px] motion-reduce:transition-none pointer-coarse:transition-none"
       >
         <div className="flex w-full flex-col items-stretch gap-1">
+          {/* The book-switcher at the head, above the groups: the drafts put
+           * the open book at the rail's top, the destinations beneath it. */}
+          {novelsQuery.data !== undefined ? (
+            <BookSwitcher novels={novelsQuery.data} active={active} />
+          ) : null}
           {RAIL_GROUPS.map((group) => (
             <div key={group.labelKey} className="flex flex-col gap-1">
               <RailGroup label={t(group.labelKey)} />
               {/* Home is a shell constant, not a generated row: the shelf is
-                  where the app opens, exact — a prefix match would light it
-                  on every route. It sits in the manuscript's group, the
-                  drafts' Bücherregal. */}
+                   where the app opens, exact — a prefix match would light it
+                   on every route. It sits in the manuscript's group, the
+                   drafts' Bücherregal. */}
               {group.home ? (
                 <RailLink
                   to="/"
@@ -208,15 +460,24 @@ export function IconRail() {
             </div>
           ))}
         </div>
-        {/* Settings is area-wide — the anchor stays lit on the settings
-            cluster's sub-pages, which are settings too. */}
-        <RailLink
-          to="/settings"
-          label={t("shell.settings")}
-          icon="settings"
-          area="settings"
-          activeOptions={{ includeSearch: false }}
-        />
+        {/* The anchored Settings above the hairline, and the drafted foot
+         * beneath it: sync, theme and user, the drafts' own foot order. */}
+        <div className="flex w-full flex-col gap-1">
+          {/* Settings is area-wide — the anchor stays lit on the settings
+              cluster's sub-pages, which are settings too. */}
+          <RailLink
+            to="/settings"
+            label={t("shell.settings")}
+            icon="settings"
+            area="settings"
+            activeOptions={{ includeSearch: false }}
+          />
+          <div className="flex w-full flex-col gap-1 border-t border-rule pt-1.5">
+            <SyncLine sync={sync} />
+            <ThemeToggle />
+            <UserBlock author={active?.author ?? null} />
+          </div>
+        </div>
       </nav>
     </div>
   );
