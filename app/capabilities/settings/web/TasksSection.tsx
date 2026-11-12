@@ -74,7 +74,12 @@ export function TasksSection({
         return;
       }
       setFailure(false);
-      await reload();
+      try {
+        await reload();
+      } catch {
+        // A failed refetch is a load failure, not a failure of the assignment
+        // that just landed.
+      }
     } catch {
       // A rejected fetch has no response to inspect: the page still says so,
       // in the same place a server-reachable failure appears.

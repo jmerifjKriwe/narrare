@@ -14,6 +14,7 @@ own origin (scheme, host and port).
 No side effect beyond the request's own transaction: each method commits once.
 """
 
+import contextlib
 from collections.abc import Sequence  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003  the service's parameter annotations name it
@@ -134,10 +135,10 @@ class ProviderService:
         The keyring write precedes the commit: ``_store_key`` runs on the
         flushed row, so a key tier that fails there aborts before anything a
         reader could see is committed. The reverse order would let a visible
-        row point at a key that was never written. The cost of this order is
-        the orphaned secret: a commit that fails after the write leaves a
-        stored key no row names, until the next save for that provider id
-        overwrites it. The profile create documents the same ordering (F-10).
+        row point at a key that was never written. A commit that fails after
+        the write rolls the keyring write back with ``erase_key``, so no
+        orphaned secret survives a failed save. The profile create documents
+        the same ordering (F-10).
         """
         base_url = payload.base_url.rstrip("/") if payload.base_url else None
         self._gate(kind=payload.kind, base_url=base_url, has_key=bool(payload.api_key))
@@ -152,7 +153,16 @@ class ProviderService:
         column, hint = self._store_key(provider.id, payload.api_key or "")
         if hint is not None:
             await providers.update(provider, api_key=column, api_key_hint=hint)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except Exception:
+            # The keyring write already happened; roll it back so a failed
+            # commit leaves no orphaned secret behind a row that never landed.
+            if payload.api_key:
+                with contextlib.suppress(Exception):
+                    erase_key(provider.id)
+            await self.session.rollback()
+            raise
         return provider, payload.api_key or None
 
     async def update(self, provider_id: UUID, payload: ProviderUpdate) -> LLMProvider:
@@ -193,13 +203,33 @@ class ProviderService:
         if "base_url" in set_fields:
             # The normalized spelling, never the payload's raw one.
             updates["base_url"] = base_url
+        # Remember the prior credential so a failed commit can restore it
+        # instead of leaving the provider keyless.
+        prior_column = provider.api_key
+        prior_plaintext = None
+        if prior_column:
+            with contextlib.suppress(Exception):
+                prior_plaintext = load_key(provider.id, prior_column)
         if payload.api_key:
             column, hint = self._store_key(provider.id, payload.api_key)
             updates["api_key"] = column
             updates["api_key_hint"] = hint
         if updates:
             await providers.update(provider, **updates)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except Exception:
+            # A new key was already written to the keyring; roll it back and
+            # restore the prior credential so a failed commit does not leave
+            # the provider keyless.
+            if payload.api_key:
+                with contextlib.suppress(Exception):
+                    erase_key(provider.id)
+                if prior_plaintext is not None:
+                    with contextlib.suppress(Exception):
+                        save_key(provider.id, prior_plaintext)
+            await self.session.rollback()
+            raise
         return provider
 
     async def delete(self, provider_id: UUID) -> None:

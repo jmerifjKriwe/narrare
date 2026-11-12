@@ -255,7 +255,12 @@ export function ModelsSection({
           return;
         }
         resetForm();
-        await reload();
+        try {
+          await reload();
+        } catch {
+          // A failed refetch is a load failure, not a failure of the write
+          // that just landed: the saved row stands.
+        }
         return;
       } catch {
         // A rejected fetch has no response to inspect: the page still says
@@ -320,7 +325,12 @@ export function ModelsSection({
       });
       if (response.ok) {
         setDeleteRefused(null);
-        await reload();
+        try {
+          await reload();
+        } catch {
+          // A failed refetch is a load failure, not a failure of the write
+          // that just landed: the saved row stands.
+        }
         return;
       }
       // The 409 is the default guard: its message names the way out, so the

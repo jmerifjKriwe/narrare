@@ -25,6 +25,7 @@
   "errors.link": "Einstellungen → Modelle",
   "errors.modelNotFound": "Der Anbieter stellt „{model}“ nicht mehr bereit. Wähle einen anderen unter {link}.",
   "errors.promptRefused": "Die Anfrage wurde abgelehnt, bevor sie das Modell erreichte. Prüfe den Anbieter unter {link}.",
+  "errors.promptRefusedBudget": "Die Anfrage wurde abgelehnt, bevor sie das Modell erreichte: das Fenster ist zu klein. Prüfe den Anbieter unter {link}.",
   "errors.providerAuth": "Der Endpunkt hat den API-Schlüssel abgelehnt. Prüfe ihn unter {link}.",
   "errors.unknown": "Die Anfrage an das Modell ist fehlgeschlagen. Prüfe den Anbieter unter {link}.",
   "jobs.done.check-consistency": "{count, plural, one {# Widerspruch gefunden} other {# Widersprüche gefunden}}",

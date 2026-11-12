@@ -80,7 +80,7 @@
   "settings.providers.keyOnce": "Le fournisseur « {name} » a été enregistré. La clé API n'est affichée qu'une seule fois: {key}",
   "settings.providers.keyOnceDone": "Compris",
   "settings.providers.kind.anthropic": "Anthropic (Claude)",
-  "settings.providers.kind.fake": "Fake (déterministe, sans réseau)",
+  "settings.providers.kind.fake": "Fake, déterministe, sans réseau",
   "settings.providers.kind.openai-chat": "Chat compatible OpenAI",
   "settings.providers.kindLabel": "Type",
   "settings.providers.models": "Modèles disponibles",
@@ -114,6 +114,7 @@
   "settings.task.knowledge.check-consistency": "Savoir, contrôle de cohérence",
   "settings.task.knowledge.extract-entities": "Savoir, trouver des entités",
   "settings.task.writing.continuation": "Continuer à écrire",
+  "settings.tasks.errorKey": "La clé d'une tâche n'a pas pu être lue. Saisissez à nouveau la clé dans les paramètres.",
   "settings.tasks.settings.test": "Test de connexion",
   "settings.tasks.unknown": "Tâche"
 }

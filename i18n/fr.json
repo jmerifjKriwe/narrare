@@ -25,6 +25,7 @@
   "errors.link": "Paramètres → Modèles",
   "errors.modelNotFound": "Le fournisseur ne sert plus « {model} ». Choisissez-en un autre dans {link}.",
   "errors.promptRefused": "La demande a été refusée avant d'atteindre le modèle. Vérifiez le fournisseur dans {link}.",
+  "errors.promptRefusedBudget": "La demande a été refusée avant d'atteindre le modèle : la fenêtre est trop petite. Vérifiez le fournisseur dans {link}.",
   "errors.providerAuth": "Le point de terminaison a refusé la clé API. Vérifiez-la dans {link}.",
   "errors.unknown": "La demande au modèle a échoué. Vérifiez le fournisseur dans {link}.",
   "jobs.done.check-consistency": "{count, plural, one {# incohérence trouvée} other {# incohérences trouvées}}",

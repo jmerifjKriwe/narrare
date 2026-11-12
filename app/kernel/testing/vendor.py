@@ -312,18 +312,23 @@ class _JsonHandler(BaseHTTPRequestHandler):
 
     protocol_version = "HTTP/1.1"
 
-    def _reply(self, status: int, content_type: str, payload: bytes) -> None:
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(payload)))
-        self.end_headers()
+    def _reply(self, status: int, content_type: str, payload: bytes) -> bool:
+        # The client may have gone during a delayed answer: guard the whole
+        # reply — status line, headers and body — so a write to a closed
+        # socket never escapes as an unhandled traceback. Returns whether the
+        # reply reached the socket.
         try:
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
             self.wfile.write(payload)
-        except BrokenPipeError, ConnectionResetError:
+            return True
+        except BrokenPipeError, ConnectionResetError, OSError:
             # The client hung up mid-answer — a stream it stopped reading is
             # not a test failure, and its traceback must not reach a stderr
             # the interpreter is already finalizing (#649).
-            return
+            return False
 
     def _record(self, body: dict[str, Any] | None) -> None:
         server: Any = self.server
@@ -359,12 +364,14 @@ class _ChatHandler(_JsonHandler):
             # The slow answer the read-timeout tests need: this request's own
             # thread sleeps, so other requests are unaffected.
             time.sleep(server.delay)
-        self._reply(
+        # The client may have gone during the delay: only count a completion
+        # that actually reached the socket, so a timed-out read stays at 0.
+        if self._reply(
             200,
             "text/event-stream",
             _chat_frames(done_line=server.done_line, answer=server.answer).encode(),
-        )
-        server.completions += 1
+        ):
+            server.completions += 1
 
     def do_GET(self) -> None:
         server: Any = self.server
