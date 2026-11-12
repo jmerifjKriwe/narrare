@@ -40,7 +40,7 @@ function BookRow({ novel }: { novel: Novel }) {
             {/* Interim: no status field exists; the draft's default pill
              * until one does — the same neutral the cards wear.
              * Missing data: the per-book status field.
-             * Follow-up: render the real status (index issue at Task 11). */}
+             * Follow-up: render the real status (#784). */}
             <span className="rounded-full bg-secondary-container px-2 py-0.5 text-eyebrow uppercase text-secondary-container-foreground">
               {t("shelf.statusDraft")}
             </span>

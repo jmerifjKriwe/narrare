@@ -80,7 +80,7 @@ export function BookCard({ novel }: { novel: Novel }) {
             {/* Interim: no status field exists; every book wears the
              * draft's default pill until one does.
              * Missing data: the per-book status field.
-             * Follow-up: render the real status (index issue at Task 11). */}
+             * Follow-up: render the real status (#784). */}
             <span className="shrink-0 rounded-full bg-secondary-container px-2 py-0.5 text-eyebrow uppercase text-secondary-container-foreground">
               {t("shelf.statusDraft")}
             </span>
@@ -95,8 +95,7 @@ export function BookCard({ novel }: { novel: Novel }) {
            * the words alone are the row's real truth, and no percentage is
            * ever implied. The E2E pins this: words, never percentages.
            * Missing data: per-book word target.
-           * Follow-up: render the target pair, percent and bar (index
-           * issue at Task 11). */}
+           * Follow-up: render the target pair, percent and bar (#783). */}
           <div className="text-meta text-muted tabular-nums">
             {t("shelf.card.words", { count: novel.word_count })}
           </div>

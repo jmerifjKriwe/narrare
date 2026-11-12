@@ -123,7 +123,7 @@ export function ShelfHeader({
           // Interim: no writing-streak source exists; the §6.6 neutral is
           // the em dash, never a guessed number.
           // Missing data: daily writing activity.
-          // Follow-up: render the tracked streak (index issue at Task 11).
+          // Follow-up: render the tracked streak (#781).
           value={t("shelf.streakNone")}
           label={t("shelf.metrics.streak")}
         />

@@ -81,7 +81,7 @@ export function ShelfToolbar({
           {/* Interim: only titles are searched; figures and tags become
            * searchable with their search index.
            * Missing data: the figure/tag search index.
-           * Follow-up: match them too (index issue at Task 11). */}
+           * Follow-up: match them too (#785). */}
           <input
             type="text"
             aria-label={t("shelf.searchLabel")}

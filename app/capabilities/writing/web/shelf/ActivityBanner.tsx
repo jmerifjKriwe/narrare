@@ -28,8 +28,7 @@ export function ActivityBanner({ empty = false }: { empty?: boolean }) {
           {/* Interim: no goals exist; the drafted "750" is never implied —
            * the §6.6 neutral is 0, and the sentence stays the drafted one.
            * Missing data: the daily writing goal.
-           * Follow-up: render the goal and today's progress (index issue at
-           * Task 11). */}
+           * Follow-up: render the goal and today's progress (#782). */}
           <h3 className="text-emph text-foreground tabular-nums">
             {t("shelf.banner.goal", { count: 0 })}
           </h3>
@@ -39,7 +38,7 @@ export function ActivityBanner({ empty = false }: { empty?: boolean }) {
               : // Interim: the same neutral in the drafted sentence's shape
                 // — 0 written, 0 to go, until a goal series exists.
                 // Missing data: today's written words and the daily goal.
-                // Follow-up: render both counts (index issue at Task 11).
+                // Follow-up: render both counts (#782).
               t("shelf.banner.goalIdle", { count: 0, remaining: 0 })}
           </p>
         </div>
@@ -57,7 +56,7 @@ export function ActivityBanner({ empty = false }: { empty?: boolean }) {
               {/* Interim: no goal series exists; the weekly average is the
                * §6.6 neutral, 0 — never a plausible number.
                * Missing data: the daily word series.
-               * Follow-up: render the real average (index issue at Task 11). */}
+               * Follow-up: render the real average (#782). */}
               <span className="text-emph text-foreground tabular-nums">
                 {t("shelf.banner.weeklyValue", { count: 0 })}
               </span>
@@ -67,7 +66,7 @@ export function ActivityBanner({ empty = false }: { empty?: boolean }) {
              * height, the last point still marked. Purely decorative until
              * the series does.
              * Missing data: the daily word series.
-             * Follow-up: draw the real week (index issue at Task 11). */}
+             * Follow-up: draw the real week (#782). */}
             <svg
               data-sparkline
               aria-hidden="true"
@@ -92,7 +91,7 @@ export function ActivityBanner({ empty = false }: { empty?: boolean }) {
          * stands, disabled, rather than pointing nowhere.
          * Missing data: the statistics surface (and the goal settings one,
          * on the empty shelf).
-         * Follow-up: open them (index issue at Task 11). */}
+         * Follow-up: open them (#788). */}
         <Button variant="secondary" size="md" disabled className="shrink-0">
           {empty ? t("shelf.banner.adjustGoal") : t("shelf.banner.statistics")}
         </Button>

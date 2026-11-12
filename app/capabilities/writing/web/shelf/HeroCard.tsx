@@ -57,7 +57,7 @@ export function HeroCard({ novel }: { novel: Novel }) {
                * one honest line the row carries, and no line at all when
                * the book carries none.
                * Missing data: series/band metadata.
-               * Follow-up: render the series line (index issue at Task 11). */}
+               * Follow-up: render the series line (#786). */}
               {novel.genre ? (
                 <span className="text-label text-muted">{novel.genre}</span>
               ) : null}
@@ -84,8 +84,7 @@ export function HeroCard({ novel }: { novel: Novel }) {
                * are absent — a target the app never earned is never
                * implied. The word count above is the row's real one.
                * Missing data: per-book word target.
-               * Follow-up: render the target pair and the bar (index issue
-               * at Task 11). */}
+               * Follow-up: render the target pair and the bar (#783). */}
               <div className="flex items-center gap-1.5">
                 <span className="text-outline" aria-hidden="true">
                   <Icon name="menuBook" />
@@ -123,7 +122,7 @@ export function HeroCard({ novel }: { novel: Novel }) {
                * second door opens the book itself until a dedicated route
                * does.
                * Missing data: the outline & scenes route.
-               * Follow-up: point this door at it (index issue at Task 11). */}
+               * Follow-up: point this door at it (#787). */}
               <Link
                 to="/novels/$id"
                 params={{ id: novel.id }}
