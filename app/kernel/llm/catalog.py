@@ -139,7 +139,8 @@ def _info(model_id: str, entry: object) -> ModelInfo:
             f"model {model_id}: fields {sorted(fields)} are not exactly {sorted(_FIELDS)}"
         )
     for field in _WINDOW_FIELDS:
-        if fields[field] is not None and not isinstance(fields[field], int):
+        value = fields[field]
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
             raise ValueError(f"model {model_id}: {field} is not an integer or null")
     for field in _PRICE_FIELDS:
         if fields[field] is not None and not isinstance(fields[field], int | float):
