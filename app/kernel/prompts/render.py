@@ -356,6 +356,9 @@ async def render(
             try:
                 await asyncio.shield(inner)
             except asyncio.CancelledError:
+                # A cancelling scope may re-deliver cancellation while we wait;
+                # yield control so the retry does not busy-spin.
+                await asyncio.sleep(0)
                 continue
             except Exception:
                 break  # the render failed on its own; the cancellation wins
