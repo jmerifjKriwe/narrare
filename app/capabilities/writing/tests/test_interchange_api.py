@@ -412,6 +412,25 @@ async def test_oversized_zip_is_refused_before_it_is_read(
         assert response.json() == {"detail": "archive too large"}
 
 
+async def test_directory_over_cap_is_422_at_api_level(tmp_path: Path) -> None:
+    """A server-side directory whose files expand past the cap answers 422,
+    not 500 — the tree's named refusal reaches the HTTP surface (#367)."""
+    from app.kernel.interchange.tree import MAX_UNCOMPRESSED_BYTES
+
+    source = tmp_path / "big"
+    source.mkdir()
+    (source / "metadata.json").write_text('{"title": "X"}')
+    (source / "chapters").mkdir()
+    # Sparse file: apparent size past the cap, no disk allocated.
+    big = source / "chapters" / "01-big.md"
+    with big.open("wb") as handle:
+        handle.truncate(MAX_UNCOMPRESSED_BYTES + 1)
+
+    async with _client() as client:
+        response = await client.post("/api/writing/novels/import", data={"path": str(source)})
+    assert response.status_code == 422
+
+
 async def test_malformed_archive_is_422_with_file_named() -> None:
     """A ZIP whose metadata.json is not JSON is a 422 naming the file."""
     data = zip_bytes({"metadata.json": b"{ definitely not json"})
