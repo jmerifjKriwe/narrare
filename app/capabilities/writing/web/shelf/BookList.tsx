@@ -29,7 +29,7 @@ function BookRow({ novel }: { novel: Novel }) {
         <span className="min-w-0 flex-1">
           <span
             data-shelf-title
-            className="block truncate text-label font-semibold text-foreground"
+            className="block break-words text-label font-semibold text-foreground"
           >
             {novel.title}
           </span>
