@@ -106,7 +106,7 @@ def _relations_of(novel_id: str) -> list[tuple[object, ...]]:
         " JOIN entities source ON source.id = edge.from_entity_id"
         " JOIN entities target ON target.id = edge.to_entity_id"
         " WHERE source.novel_id = :novel_id"
-        " ORDER BY edge.created_at, edge.id",
+        " ORDER BY source.name, edge.relation_type, target.name, edge.note",
         {"novel_id": novel_id},
     )
 
@@ -248,7 +248,7 @@ def _export_path(page: Page, title: str, target: Path) -> None:
     dialog.get_by_label("Zielordner").fill(str(target))
     dialog.get_by_role("button", name="Jetzt exportieren").click()
     expect(dialog.get_by_role("heading", name="Export abgeschlossen")).to_be_visible()
-    expect(dialog).to_contain_text(f"Geschrieben nach {target}")
+    expect(dialog).to_contain_text(f"Geschrieben nach {target.resolve()}")
     dialog.get_by_role("button", name="Schließen").click()
     expect(page.get_by_role("dialog")).to_have_count(0)
 
