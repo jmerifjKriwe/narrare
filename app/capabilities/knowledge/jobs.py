@@ -31,7 +31,8 @@ from app.capabilities.knowledge.repository import (
 from app.kernel.contracts.models import ENTITY_TYPES, Chapter, Novel
 from app.kernel.llm.audit import record_call
 from app.kernel.llm.resolution import resolve_provider
-from app.kernel.prompts import render
+from app.kernel.prompts import get_registry, no_includes, render, render_source
+from app.kernel.prompts.models import PromptTemplateRepository
 
 from .structured import AuditedCall, MalformedAnswerError, ask_structured
 
@@ -492,18 +493,24 @@ async def check_consistency(
     if total:
         # A re-run must not inherit the previous run's percentage.
         await report(0)
+    # Read the override once for the whole job so every group measures the same
+    # frame even if the row is edited mid-run; the audit row still records each
+    # group's rendered prompt. (Previously each group re-read the effective row.)
+    effective_row = await PromptTemplateRepository(session, job.user_id).effective(
+        CONSISTENCY_KEY, novel_id
+    )
+    override_content = effective_row.content if effective_row is not None else None
+
     for group in groups:
-        # Same chain render as the extraction: the cut lives in the grouping
-        # (a group is under BODY_LIMIT), a refusal fails the row by name.
-        prompt = await render(
-            session,
-            job.user_id,
-            CONSISTENCY_KEY,
-            consistency_variables(
-                entities=canon, chapters=[(chapter.title, chapter.body) for chapter in group]
-            ),
-            novel_id=novel_id,
+        variables = consistency_variables(
+            entities=canon, chapters=[(chapter.title, chapter.body) for chapter in group]
         )
+        if override_content is not None:
+            prompt = render_source(override_content, variables, include=no_includes)
+        else:
+            prompt = render_source(
+                get_registry().spec(CONSISTENCY_KEY).template, variables, include=no_includes
+            )
         found = await ask_structured(
             resolved.provider,
             prompt,
