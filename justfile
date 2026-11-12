@@ -186,7 +186,7 @@ check-generated:
     just generate
     changed=$(git status --porcelain --untracked-files=all -- \
         app/generated web/lib/generated \
-        web/lib/api/openapi.json web/lib/api/schema.d.ts docs/user/INDEX.md)
+        web/lib/api/openapi.json web/lib/api/schema.d.ts docs/user/INDEX.md docs/user/help-coverage.md)
     if [ -n "$changed" ]; then
         printf '%s\n' "$changed" >&2
         echo "committed generated files are stale: commit the regenerated files, or revert the input change" >&2

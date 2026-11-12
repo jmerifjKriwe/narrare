@@ -5,7 +5,7 @@ Sources of truth: ``app/capabilities/*/capability.yaml`` — facts only (spec §
 ``i18n/*.json`` for the shared text, whose *filenames* are the set of languages,
 and ``app/capabilities/*/web/i18n/*.json`` for each capability's own text, with
 ``i18n/overlays/formality/*.json`` carrying sparse formal variants. Nothing
-declares a language twice. Twelve views, none hand-edited, all committed:
+declares a language twice. Fourteen views, none hand-edited, all committed:
 
 * ``app/generated/capabilities.py`` — the registry ``app/api/main.py``
   cross-checks against the mounted routers at startup;
@@ -40,8 +40,13 @@ declares a language twice. Twelve views, none hand-edited, all committed:
   the switcher offers, one row per structure in
   ``app/capabilities/planning/structures.py``: a new structure appears by
   existing, with zero switcher edits;
+* ``web/lib/generated/help.ts`` — the help registry the UI resolves by
+  surface, one group per topic under ``app/capabilities/*/web/help/``:
+  a new topic appears by existing, with zero generator changes;
 * ``docs/user/INDEX.md`` — one row per capability per locale, with the table's
-  own words read from the catalogs.
+  own words read from the catalogs;
+* ``docs/user/help-coverage.md`` — which capabilities ship help, in which
+  languages, one table per capability the help scan found.
 
 Adding a language is therefore one central file plus one file per capability
 that owns text, then ``just generate``. A field no view reads is deleted from
@@ -648,6 +653,379 @@ def scan_settings(sources: dict[str, str]) -> SettingsScan:
     return SettingsScan(rows=rows, host=hosts[0])
 
 
+@dataclass(frozen=True)
+class HelpTopicLocale:
+    """One help topic's text in one language: its title and its raw markdown
+    body, exactly as the file holds them."""
+
+    locale: str
+    title: str
+    body: str  # raw markdown body (without frontmatter)
+
+
+@dataclass(frozen=True)
+class HelpTopic:
+    """One help topic as the scan reads it: identity and placement read from
+    the source language's frontmatter, plus every locale the topic exists in."""
+
+    capability: str
+    slug: str
+    surfaces: tuple[str, ...]
+    order: int | None
+    locales: tuple[str, ...]  # sorted, en first
+    locale_data: tuple[HelpTopicLocale, ...]
+
+
+@dataclass(frozen=True)
+class HelpCapability:
+    """One capability's help topics, sorted by slug."""
+
+    capability: str
+    topics: tuple[HelpTopic, ...]
+
+
+class HelpScanError(SystemExit):
+    """A help scan validation failure; SystemExit so `just generate` stops
+    with the message and nothing else."""
+
+
+def _split_frontmatter(source: Path, text: str) -> tuple[dict[object, object], str]:
+    """One topic file's frontmatter mapping and the markdown body after it.
+
+    The block sits between the opening ``---`` and the first closing ``---``
+    line; the body is everything after the closing delimiter's newline and
+    may be empty. Anything else — no opening delimiter, no closing one, a
+    closing delimiter with trailing characters, YAML that is not a mapping —
+    is a malformed topic.
+    """
+    if not text.startswith("---"):
+        raise HelpScanError(f"{source}: a help topic starts with a --- frontmatter block")
+    closing = text.find("\n---", 3)
+    if closing < 0:
+        raise HelpScanError(f"{source}: the frontmatter block has no closing ---")
+    rest = text[closing + 4 :]
+    if rest.startswith("\r\n"):
+        rest = rest[2:]
+    elif rest.startswith("\n"):
+        rest = rest[1:]
+    elif rest:
+        raise HelpScanError(f"{source}: the closing --- must sit on its own line")
+    try:
+        loaded = yaml.safe_load(text[3:closing])
+    except yaml.YAMLError as error:
+        raise HelpScanError(f"{source}: frontmatter is not valid YAML: {error}") from error
+    if not isinstance(loaded, dict):
+        raise HelpScanError(f"{source}: the frontmatter block is a mapping of fields")
+    return cast("dict[object, object]", loaded), rest
+
+
+def _is_slug(value: str) -> bool:
+    """A capability id or topic slug: lowercase letters, digits and
+    hyphens, starting with a letter. This is the documented format, and it
+    is also what makes the value safe to interpolate into the generated
+    TypeScript string literals and import paths without escaping."""
+    return bool(re.fullmatch(r"[a-z][a-z0-9-]*", value))
+
+
+def scan_help(root: Path) -> tuple[HelpCapability, ...]:
+    """The help convention, discovered from the capability folders.
+
+    A capability carries help when ``app/capabilities/<id>/web/help/``
+    exists. Its locale subdirectories hold the topics, one ``<slug>.md`` per
+    topic; the file's presence is the contract, so a new topic or a new
+    language appears on the next `just generate` with zero generator
+    changes. Unlike the route scans this one reads the files: frontmatter
+    must parse as a mapping, ``topic`` must equal the filename stem,
+    ``title`` must be non-empty prose, ``surfaces`` a list of surface
+    identifiers (the UI owns which exist, so they are not checked against a
+    closed set) and ``order`` an optional int — surfaces and order are read
+    from the source language's file, which every topic must have. Locale
+    subdirectories are checked against ``locales(root)`` so a typo'd code
+    stops generation instead of orphaning its prose, and a help directory
+    that carries no topic file at all stops instead of registering an empty
+    capability. A capability without a help directory is simply absent.
+    Raise HelpScanError — a SystemExit — for every one of these.
+    """
+    help_dirs = {
+        folder.name: folder / "web" / "help"
+        for folder in sorted((root / "app" / "capabilities").iterdir())
+        if (folder / "web" / "help").is_dir()
+    }
+    if not help_dirs:
+        return ()
+    for capability in help_dirs:
+        if not _is_slug(capability):
+            raise HelpScanError(
+                f"app/capabilities/{capability}: capability id must be a"
+                f" lowercase, hyphenated slug (was {capability!r})"
+            )
+    known = locales(root)
+    capabilities: list[HelpCapability] = []
+    for capability, help_dir in help_dirs.items():
+        stray_files = sorted(path.name for path in help_dir.iterdir() if not path.is_dir())
+        if stray_files:
+            raise HelpScanError(
+                f"{help_dir}: stray files in the help root must live under a"
+                f" locale directory: {stray_files}"
+            )
+        strangers = sorted(
+            path.name for path in help_dir.iterdir() if path.is_dir() and path.name not in known
+        )
+        if strangers:
+            raise HelpScanError(
+                f"{help_dir}: help for languages the central catalog does"
+                f" not carry: {strangers} (the catalog carries {', '.join(known)})"
+            )
+        files: dict[str, dict[str, Path]] = {}
+        for locale in known:
+            for topic_file in sorted((help_dir / locale).glob("*.md")):
+                files.setdefault(topic_file.stem, {})[locale] = topic_file
+        if not files:
+            raise HelpScanError(
+                f"{help_dir}: help present but no source language — topics"
+                f" live under locale directories ({', '.join(known)}), at"
+                f" least {SOURCE_LOCALE}/"
+            )
+        topics: list[HelpTopic] = []
+        for slug in sorted(files):
+            if not _is_slug(slug):
+                raise HelpScanError(
+                    f"{help_dir}: topic slug {slug!r} must be a lowercase,"
+                    f" hyphenated slug (a-z, 0-9, -)"
+                )
+            source = files[slug].get(SOURCE_LOCALE)
+            if source is None:
+                raise HelpScanError(
+                    f"{help_dir}/{SOURCE_LOCALE}/{slug}.md is missing: every"
+                    f" topic has an {SOURCE_LOCALE} file — it is the source language"
+                )
+            present = files[slug]
+            ordered = [code for code in known if code in present]
+            surfaces: tuple[str, ...] = ()
+            order: int | None = None
+            locale_data: list[HelpTopicLocale] = []
+            for locale in ordered:
+                frontmatter, body = _split_frontmatter(
+                    present[locale], present[locale].read_text(encoding="utf-8")
+                )
+                unknown_fields = cast("set[str]", set(frontmatter)) - {
+                    "topic",
+                    "title",
+                    "surfaces",
+                    "order",
+                }
+                if unknown_fields:
+                    raise HelpScanError(
+                        f"{present[locale]}: unknown frontmatter fields"
+                        f" {sorted(unknown_fields)} (allowed: topic, title, surfaces, order)"
+                    )
+                topic = frontmatter.get("topic")
+                if topic != slug:
+                    raise HelpScanError(
+                        f"{present[locale]}: frontmatter topic {topic!r} must"
+                        f" equal the filename stem {slug!r}"
+                    )
+                title = frontmatter.get("title")
+                if not isinstance(title, str) or not title.strip():
+                    raise HelpScanError(f"{present[locale]}: title must be a non-empty string")
+                raw_surfaces = frontmatter.get("surfaces")
+                if not isinstance(raw_surfaces, list) or not all(
+                    isinstance(surface, str) for surface in cast("list[object]", raw_surfaces)
+                ):
+                    raise HelpScanError(
+                        f"{present[locale]}: surfaces must be a list of surface identifiers"
+                    )
+                raw_order = frontmatter.get("order")
+                if raw_order is not None and (
+                    not isinstance(raw_order, int) or isinstance(raw_order, bool)
+                ):
+                    raise HelpScanError(f"{present[locale]}: order must be an int")
+                if locale == SOURCE_LOCALE:
+                    surfaces = tuple(cast("list[str]", raw_surfaces))
+                    order = raw_order if isinstance(raw_order, int) else None
+                locale_data.append(HelpTopicLocale(locale=locale, title=title, body=body))
+            topics.append(
+                HelpTopic(
+                    capability=capability,
+                    slug=slug,
+                    surfaces=surfaces,
+                    order=order,
+                    locales=tuple(ordered),
+                    locale_data=tuple(locale_data),
+                )
+            )
+        capabilities.append(HelpCapability(capability=capability, topics=tuple(topics)))
+    return tuple(capabilities)
+
+
+# Topics without an explicit order sort after every ordered topic in their
+# surface's list: 1000 sits far enough past any hand-written order that the
+# two never interleave by accident.
+HELP_ORDER_DEFAULT = 1000
+
+
+def _ts_string(value: str) -> str:
+    """One prose string as a TypeScript double-quoted literal, json-ish
+    escaped: backslash and quote first, then the characters a multi-line
+    YAML scalar could smuggle into a title."""
+    escaped = (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+    )
+    return f'"{escaped}"'
+
+
+def typescript_help(root: Path) -> str:
+    """The web-side view: the help registry the UI resolves by surface.
+
+    One group per topic, in scan order (capability id, then slug), keyed by
+    the canonical ``<capability>.<slug>`` id. Each group carries every locale
+    the topic exists in as a lazy ``?raw`` import — a topic's markdown body
+    is fetched only when a reader asks for it, never bundled eagerly.
+    ``helpFor`` does the locale resolution: the requested locale when the
+    topic carries it, otherwise the source language with ``fallback`` set —
+    a missing translation degrades to English, never to nothing. Groups and
+    titles carry only what the scan already validated; the import paths are
+    written as full literals because Vite resolves dynamic imports by
+    pattern-matching the literal text.
+    """
+    scan = scan_help(root)
+    groups = ""
+    for capability in scan:
+        for topic in capability.topics:
+            entries = "".join(
+                f"      {_ts_string(entry.locale)}: {{"
+                f" title: {_ts_string(entry.title)},"
+                f' load: () => import("../../../app/capabilities/{capability.capability}'
+                f'/web/help/{entry.locale}/{topic.slug}.md?raw").then((m) => m.default) }},\n'
+                for entry in topic.locale_data
+            )
+            surfaces = ", ".join(_ts_string(surface) for surface in topic.surfaces)
+            order = topic.order if topic.order is not None else HELP_ORDER_DEFAULT
+            groups += (
+                "  {\n"
+                f'    id: "{capability.capability}.{topic.slug}",\n'
+                f'    capability: "{capability.capability}",\n'
+                f'    topic: "{topic.slug}",\n'
+                f"    surfaces: [{surfaces}],\n"
+                f"    order: {order},\n"
+                "    locales: {\n"
+                f"{entries}"
+                "    },\n"
+                "  },\n"
+            )
+    table = (
+        f"export const helpGroups: readonly HelpGroup[] = [\n{groups}];"
+        if groups
+        else "export const helpGroups: readonly HelpGroup[] = [];"
+    )
+    return (
+        "// Generated by scripts/generate_capabilities.py from\n"
+        "// app/capabilities/*/web/help/ — DO NOT EDIT.\n"
+        "// The help registry: one group per topic, keyed by the canonical\n"
+        "// <capability>.<slug> id. Bodies are lazy ?raw imports, and helpFor\n"
+        "// resolves the requested locale, falling back to the source language\n"
+        "// with fallback set where a topic has no translation in it. A new\n"
+        "// topic appears here by existing, with zero generator changes.\n"
+        "\n"
+        "export interface HelpTopic {\n"
+        "  id: string;\n"
+        "  capability: string;\n"
+        "  topic: string;\n"
+        "  title: string;\n"
+        "  surfaces: readonly string[];\n"
+        "  locale: string;\n"
+        "  fallback: boolean;\n"
+        "  load: () => Promise<string>;\n"
+        "}\n"
+        "\n"
+        "export interface HelpGroup {\n"
+        "  id: string;\n"
+        "  capability: string;\n"
+        "  topic: string;\n"
+        "  surfaces: readonly string[];\n"
+        "  order: number;\n"
+        "  locales: Record<string, { title: string; load: () => Promise<string> }>;\n"
+        "}\n"
+        "\n"
+        f"{table}\n"
+        "\n"
+        "export function helpFor(surface: string, locale?: string): HelpTopic[] {\n"
+        f'  const wanted = locale ?? "{SOURCE_LOCALE}";\n'
+        "  return helpGroups\n"
+        "    .filter((group) => group.surfaces.includes(surface))\n"
+        "    .sort((a, b) => a.order - b.order\n"
+        "      || (a.topic < b.topic ? -1 : a.topic > b.topic ? 1 : 0))\n"
+        "    .map((group) => {\n"
+        "      const localized = group.locales[wanted];\n"
+        f'      const picked = localized ?? group.locales["{SOURCE_LOCALE}"];\n'
+        "      return {\n"
+        "        id: group.id,\n"
+        "        capability: group.capability,\n"
+        "        topic: group.topic,\n"
+        "        title: picked.title,\n"
+        "        surfaces: group.surfaces,\n"
+        f'        locale: localized ? wanted : "{SOURCE_LOCALE}",\n'
+        "        fallback: !localized,\n"
+        "        load: picked.load,\n"
+        "      };\n"
+        "    });\n"
+        "}\n"
+    )
+
+
+def help_coverage(root: Path) -> str:
+    """The reader-side view: which capabilities ship help, in which languages.
+
+    One ``## <capability>`` section per capability the help scan found, in
+    scan order (alphabetical by id); its table is one row per topic (by
+    slug) and one column per catalog locale in ``locales()`` order — a
+    ``—`` marks a translation the topic does not carry yet. Every folder
+    under ``app/capabilities/`` that holds a ``capability.yaml`` but no
+    help the scan found closes the report as a plain list, so a reader
+    sees at a glance where help is still missing entirely; with every
+    capability covered, the list (and its heading) is absent.
+    """
+    capabilities = tuple(
+        folder.name
+        for folder in sorted((root / "app" / "capabilities").iterdir())
+        if (folder / "capability.yaml").exists()
+    )
+    scan = scan_help(root)
+    helped = {capability.capability for capability in scan}
+    known = locales(root)
+    columns = " | ".join(known)
+    rule = " | ".join(["---"] * (len(known) + 1))
+    blocks: list[str] = []
+    for capability in scan:
+        rows = "".join(
+            f"| {topic.slug} | "
+            + " | ".join("✓" if locale in topic.locales else "—" for locale in known)
+            + " |\n"
+            for topic in capability.topics
+        )
+        blocks.append(f"## {capability.capability}\n\n| Topic | {columns} |\n| {rule} |\n{rows}")
+    missing = [name for name in capabilities if name not in helped]
+    if missing:
+        bullets = "".join(f"- {name}\n" for name in missing)
+        blocks.append(f"## Capabilities without help\n\n{bullets}")
+    return (
+        "<!-- Generated by scripts/generate_capabilities.py from"
+        " app/capabilities/*/web/help/ — DO NOT EDIT. -->\n"
+        "<!-- A — marks a translation the topic does not carry yet."
+        " Regenerate with `just generate`. -->\n"
+        "\n"
+        "# Help coverage\n"
+        "\n"
+        "One row per capability that ships help; capabilities without help are"
+        " listed at the bottom.\n"
+        "\n" + "\n".join(blocks)
+    )
+
+
 def workspace_route_id(sources: dict[str, str]) -> str | None:
     """The TanStack route id of the one capability that owns the workspace."""
     host = next(
@@ -1012,7 +1390,7 @@ def docs_index(
 
 
 def main() -> None:
-    """Validate capability inputs and overwrite the twelve views from the current directory.
+    """Validate capability inputs and overwrite the fourteen views from the current directory.
 
     Validation may raise SystemExit; file and parse errors propagate. Parent
     directories are created as needed when writing the views.
@@ -1034,7 +1412,9 @@ def main() -> None:
         "web/lib/generated/settingsPages.ts": typescript_settings_pages(root),
         "web/lib/generated/commands.ts": typescript_commands(root),
         "web/lib/generated/structures.ts": typescript_structures(loaded),
+        "web/lib/generated/help.ts": typescript_help(root),
         "docs/user/INDEX.md": docs_index(loaded_facts, known, loaded),
+        "docs/user/help-coverage.md": help_coverage(root),
     }
     for target, content in outputs.items():
         path = root / target
