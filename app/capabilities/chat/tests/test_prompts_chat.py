@@ -124,7 +124,9 @@ async def test_a_global_override_revoices_the_frame_and_the_fake_still_quotes_th
     assert prompt.startswith("Answer strictly from the sources.")
     assert SOURCE_PREFIX + FIRST_PASSAGE in prompt
     # The accept side of the contract pair: the override as rendered passes
-    # the gate it saved under, not only GOLDEN and the sample.
+    # the gate it saved under, not only GOLDEN and the sample. FIRST_PASSAGE
+    # equals _SAMPLE_PASSAGE deliberately (the sample payload), so this pins
+    # the bundled render; a distinct re-voice is exercised by the save tests.
     assert chat_contract(prompt) is True
     assert [passage.text for passage in passages] == [FIRST_PASSAGE]
     events = [event async for event in FakeProvider().stream(CompletionRequest.user(prompt))]
