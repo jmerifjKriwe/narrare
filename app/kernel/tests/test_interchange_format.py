@@ -326,6 +326,22 @@ def test_over_long_relation_type_is_refused_by_name() -> None:
     assert "80" in raised.value.reason
 
 
+def test_over_long_entity_name_is_refused_by_name() -> None:
+    """An entity name past the column width refuses at parse, naming the kb
+    file that carries it — the shared helper's own coverage."""
+    files = {
+        "metadata.json": b'{"title": "X"}',
+        "kb/lang.md": ("---\ntype: character\nname: " + "x" * 201 + "\n---\n\nText.\n").encode(),
+    }
+
+    with pytest.raises(ArchiveError) as raised:
+        parse_archive(open_zip(zip_bytes(files)))
+
+    assert raised.value.path == "kb/lang.md"
+    assert "name" in raised.value.reason
+    assert "200" in raised.value.reason
+
+
 def test_blank_entity_name_is_refused_by_name() -> None:
     """A nameless entity has nothing other rows can point at: a present-but-
     blank `name` refuses at parse, naming the file and the field — while an
