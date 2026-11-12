@@ -158,6 +158,22 @@ class HelpScanTests(HelpRootTestCase):
         result = scan_help(root)
         self.assertEqual(result[0].topics[0].order, 10)
 
+    def test_unknown_frontmatter_field_is_error(self):
+        root = self._make(
+            {"en/editor.md": "---\ntopic: editor\ntitle: Ed\nsurfaces: []\norderx: 5\n---\nbody"}
+        )
+        with self.assertRaises(SystemExit):
+            scan_help(root)
+
+    def test_stray_file_in_help_root_is_error(self):
+        root = self._make(
+            {"en/editor.md": "---\ntopic: editor\ntitle: Ed\nsurfaces: []\n---\nbody"}
+        )
+        stray = root / "app" / "capabilities" / "writing" / "web" / "help" / "README.md"
+        stray.write_text("stray", encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            scan_help(root)
+
     def test_capability_without_help_dir_absent(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)

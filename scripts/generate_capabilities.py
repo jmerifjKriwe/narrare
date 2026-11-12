@@ -748,6 +748,12 @@ def scan_help(root: Path) -> tuple[HelpCapability, ...]:
     known = locales(root)
     capabilities: list[HelpCapability] = []
     for capability, help_dir in help_dirs.items():
+        stray_files = sorted(path.name for path in help_dir.iterdir() if not path.is_dir())
+        if stray_files:
+            raise HelpScanError(
+                f"{help_dir}: stray files in the help root must live under a"
+                f" locale directory: {stray_files}"
+            )
         strangers = sorted(
             path.name for path in help_dir.iterdir() if path.is_dir() and path.name not in known
         )
@@ -783,6 +789,17 @@ def scan_help(root: Path) -> tuple[HelpCapability, ...]:
                 frontmatter, body = _split_frontmatter(
                     present[locale], present[locale].read_text(encoding="utf-8")
                 )
+                unknown_fields = cast("set[str]", set(frontmatter)) - {
+                    "topic",
+                    "title",
+                    "surfaces",
+                    "order",
+                }
+                if unknown_fields:
+                    raise HelpScanError(
+                        f"{present[locale]}: unknown frontmatter fields"
+                        f" {sorted(unknown_fields)} (allowed: topic, title, surfaces, order)"
+                    )
                 topic = frontmatter.get("topic")
                 if topic != slug:
                     raise HelpScanError(
@@ -918,20 +935,21 @@ def typescript_help(root: Path) -> str:
         f"{table}\n"
         "\n"
         "export function helpFor(surface: string, locale?: string): HelpTopic[] {\n"
-        '  const wanted = locale ?? "en";\n'
+        f'  const wanted = locale ?? "{SOURCE_LOCALE}";\n'
         "  return helpGroups\n"
         "    .filter((group) => group.surfaces.includes(surface))\n"
-        "    .sort((a, b) => a.order - b.order || a.topic.localeCompare(b.topic))\n"
+        "    .sort((a, b) => a.order - b.order\n"
+        "      || (a.topic < b.topic ? -1 : a.topic > b.topic ? 1 : 0))\n"
         "    .map((group) => {\n"
         "      const localized = group.locales[wanted];\n"
-        '      const picked = localized ?? group.locales["en"];\n'
+        f'      const picked = localized ?? group.locales["{SOURCE_LOCALE}"];\n'
         "      return {\n"
         "        id: group.id,\n"
         "        capability: group.capability,\n"
         "        topic: group.topic,\n"
         "        title: picked.title,\n"
         "        surfaces: group.surfaces,\n"
-        '        locale: localized ? wanted : "en",\n'
+        f'        locale: localized ? wanted : "{SOURCE_LOCALE}",\n'
         "        fallback: !localized,\n"
         "        load: picked.load,\n"
         "      };\n"

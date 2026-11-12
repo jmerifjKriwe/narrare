@@ -43,7 +43,8 @@ export function helpFor(surface: string, locale?: string): HelpTopic[] {
   const wanted = locale ?? "en";
   return helpGroups
     .filter((group) => group.surfaces.includes(surface))
-    .sort((a, b) => a.order - b.order || a.topic.localeCompare(b.topic))
+    .sort((a, b) => a.order - b.order
+      || (a.topic < b.topic ? -1 : a.topic > b.topic ? 1 : 0))
     .map((group) => {
       const localized = group.locales[wanted];
       const picked = localized ?? group.locales["en"];
