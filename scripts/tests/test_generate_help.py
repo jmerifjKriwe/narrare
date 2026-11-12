@@ -1,10 +1,12 @@
-"""Tests for the help scan in scripts/generate_capabilities.py.
+"""Tests for the help scan and registry view in scripts/generate_capabilities.py.
 
 The scan is the generator's only read of ``app/capabilities/*/web/help/``,
 so every rule it enforces is pinned here: a help directory must carry the
 source language, every topic file's frontmatter must parse and agree with
 its filename, and every locale directory must be a locale the central
-catalog carries.
+catalog carries. The registry tests pin what ``typescript_help`` emits for
+a scanned tree: canonical ids, per-locale lazy ``?raw`` loads, escaped
+titles, and the default sort order.
 """
 
 import sys
@@ -14,11 +16,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scripts.generate_capabilities import HelpScanError, scan_help
+from scripts.generate_capabilities import HelpScanError, scan_help, typescript_help
 
 
-class HelpScanTests(unittest.TestCase):
-    """One help directory under app/capabilities/writing, one root per test."""
+class HelpRootTestCase(unittest.TestCase):
+    """One throwaway root per test: central i18n files plus a writing help tree."""
 
     def _make(self, files: dict[str, str]) -> Path:
         tmp = tempfile.TemporaryDirectory()
@@ -36,6 +38,10 @@ class HelpScanTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body, encoding="utf-8")
         return root
+
+
+class HelpScanTests(HelpRootTestCase):
+    """One help directory under app/capabilities/writing, one root per test."""
 
     def test_help_scan_error_is_system_exit(self):
         # `just generate` stops plainly on a help validation failure: what
@@ -156,6 +162,69 @@ class HelpScanTests(unittest.TestCase):
         root = Path(tmp.name)
         (root / "app" / "capabilities" / "writing").mkdir(parents=True)
         self.assertEqual(scan_help(root), ())
+
+
+class TypescriptHelpTests(HelpRootTestCase):
+    """The registry view: what typescript_help emits for a scanned help tree."""
+
+    def test_typescript_help_contains_topic(self):
+        root = self._make(
+            {
+                "en/editor.md": (
+                    "---\ntopic: editor\ntitle: Ed\nsurfaces: [editor]\norder: 5\n---\nbody"
+                )
+            }
+        )
+        out = typescript_help(root)
+        self.assertIn("writing.editor", out)
+        self.assertIn("helpFor", out)
+        self.assertIn("editor.md?raw", out)
+        self.assertIn('surfaces: ["editor"]', out)
+
+    def test_typescript_help_lists_every_locale_with_its_title(self):
+        root = self._make(
+            {
+                "en/editor.md": "---\ntopic: editor\ntitle: Ed\nsurfaces: [editor]\n---\nbody",
+                "de/editor.md": "---\ntopic: editor\ntitle: Editor\nsurfaces: [editor]\n---\nbody",
+            }
+        )
+        out = typescript_help(root)
+        self.assertIn('"de": { title: "Editor"', out)
+        self.assertIn("help/en/editor.md?raw", out)
+        self.assertIn("help/de/editor.md?raw", out)
+
+    def test_typescript_help_escapes_quotes_and_backslashes_in_titles(self):
+        root = self._make(
+            {
+                "en/editor.md": (
+                    '---\ntopic: editor\ntitle: "The \\"Ed\\" \\\\ editor"\n'
+                    "surfaces: [editor]\n---\nbody"
+                )
+            }
+        )
+        out = typescript_help(root)
+        self.assertIn(r'title: "The \"Ed\" \\ editor"', out)
+
+    def test_typescript_help_order_defaults_to_1000(self):
+        root = self._make(
+            {
+                "en/ordered.md": (
+                    "---\ntopic: ordered\ntitle: Or\nsurfaces: [s]\norder: 5\n---\nbody"
+                ),
+                "en/plain.md": "---\ntopic: plain\ntitle: Pl\nsurfaces: [s]\n---\nbody",
+            }
+        )
+        out = typescript_help(root)
+        self.assertIn("order: 5,", out)
+        self.assertIn("order: 1000,", out)
+
+    def test_typescript_help_without_help_renders_empty_registry(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        (root / "app" / "capabilities" / "writing").mkdir(parents=True)
+        out = typescript_help(root)
+        self.assertIn("export const helpGroups: readonly HelpGroup[] = [];", out)
 
 
 if __name__ == "__main__":
