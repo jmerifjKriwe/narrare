@@ -235,6 +235,9 @@ const CHEVRON_CLASSES =
  * is the shell around it: the height, the radius, the ring and the caret.
  * The caret is the icon set's glyph, drawn in the control's ink, so it
  * follows the theme and never names itself.
+ *
+ * Width belongs on the shell's parent: the control carries `w-full`, and a
+ * caller's `className="w-…"` loses to it — same layer, source order decides.
  */
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   const { id, describedBy, ariaInvalid } = useFieldControl();
