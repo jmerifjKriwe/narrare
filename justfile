@@ -141,6 +141,10 @@ test-frontend-changed:
 build:
     pnpm --dir web build
 
+# Capture the README's images from the real app (needs dev-services + playwright chromium).
+screenshots *args:
+    uv run python -m scripts.screenshots {{args}}
+
 # Bring the development database to the migration history's head. A missing
 # schema is created; an existing one keeps its tables and is upgraded.
 db-init:

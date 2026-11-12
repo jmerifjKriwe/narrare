@@ -1,0 +1,149 @@
+name: Screenshots
+
+# Regenerates the README's images from the real app and opens a pull request
+# when they changed. Manual by default; the weekly schedule catches drift that
+# nobody triggered by hand; a push to main regenerates when a UI-relevant path
+# changed or a commit carries a `Screenshots: regenerate` footer. A
+# `Screenshots: skip` footer suppresses a run that would otherwise fire.
+# This workflow is deliberately not a required check: a flaky screenshot run
+# must never block a merge.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Sunday 06:00 UTC — catches drift without per-PR cost.
+    - cron: "0 6 * * 0"
+  push:
+    branches: [main]
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  decide:
+    name: decide
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Decide whether to regenerate
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Manual dispatch and the weekly sweep always run.
+          if [ "$EVENT" != "push" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "trigger=$EVENT: always regenerate"
+            exit 0
+          fi
+          # First push to a branch: treat everything as changed.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "first push: regenerate"
+            exit 0
+          fi
+          commits=$(git log --format=%B "${BEFORE}..${SHA}")
+          # An explicit regenerate override in any commit wins.
+          if printf '%s\n' "$commits" | grep -qiE '^Screenshots:[[:space:]]*regenerate[[:space:]]*$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "override: regenerate requested"
+            exit 0
+          fi
+          # An explicit skip override suppresses, unless a UI path also changed.
+          ui_changed=false
+          if git diff --name-only "$BEFORE" "$SHA" | grep -qE '^(web/|app/capabilities/[^/]+/web/|i18n/|scripts/screenshots\.py$)'; then
+            ui_changed=true
+          fi
+          if [ "$ui_changed" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "UI path changed: regenerate"
+            exit 0
+          fi
+          if printf '%s\n' "$commits" | grep -qiE '^Screenshots:[[:space:]]*skip[[:space:]]*$'; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "override: skip requested and no UI path changed"
+            exit 0
+          fi
+          echo "run=false" >> "$GITHUB_OUTPUT"
+          echo "no UI path changed and no regenerate override; skipping"
+
+  screenshots:
+    name: screenshots
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    services:
+      postgres:
+        image: pgvector/pgvector@sha256:7d0a41464797aeb9862dfdc0bbf1526b82cfd324cdd8036df19e3545f4a9ccb8 # pg17 — digest is the contract
+        env:
+          POSTGRES_USER: narrare
+          POSTGRES_PASSWORD: narrare
+          POSTGRES_DB: narrare
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U narrare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup # zizmor: ignore[self-repository]
+        with:
+          python: "true"
+          node: "true"
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('uv.lock') }}
+          restore-keys: ${{ runner.os }}-playwright-
+      - name: Install Playwright browser
+        run: uv run playwright install chromium
+      - name: Regenerate screenshots
+        run: uv run python -m scripts.screenshots
+      - name: Open pull request if images changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- assets/screenshots; then
+            echo "no screenshot changes; nothing to do"
+            exit 0
+          fi
+          branch="chore/screenshots-${RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add assets/screenshots
+          git commit -m "chore(screenshots): regenerate README images"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/${branch}"
+          gh pr create \
+            --repo "$REPOSITORY" \
+            --base main \
+            --head "$branch" \
+            --title "Regenerated README screenshots" \
+            --body "Automated screenshot regeneration from the Screenshots workflow. Review the diff and merge if the new images look right."

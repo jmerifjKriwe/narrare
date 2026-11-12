@@ -40,6 +40,12 @@ USER_FACING = frozenset({"feat", "fix", "perf", "docs"})
 
 USER_VISIBLE = re.compile(r"^User-visible:\s*(.*)$", re.IGNORECASE)
 
+# Optional footer that overrides screenshot regeneration on a push: a commit
+# that changes a UI surface can force it (`regenerate`) or a backend-only
+# change that touches no pixel can skip it (`skip`). Absent means "decide by
+# changed paths".
+SCREENSHOTS = re.compile(r"^Screenshots:\s*(.*)$", re.IGNORECASE)
+
 # A value asks for no user-visible effect when it starts with one of these
 # words, unless it continues as the sentence "None of the old commands remain".
 PLACEHOLDER_WORD = re.compile(r"^(none|nothing|n/?a|na|tbd)\b", re.IGNORECASE)
@@ -130,6 +136,20 @@ def check(message: str) -> str | None:
             "development documentation is `chore(docs)`. A placeholder (`none`,\n"
             "`n/a`, `-`, `nothing`, `tbd`) is not a user-visible effect."
         )
+    # An optional override for screenshot regeneration. Absent is fine; a present
+    # value must name one of the two decisions the workflow understands.
+    for line in lines:
+        match = SCREENSHOTS.match(line.strip())
+        if match is None:
+            continue
+        value = match.group(1).strip().lower()
+        if value not in ("regenerate", "skip"):
+            return (
+                "A `Screenshots:` footer must say `regenerate` or `skip`:\n"
+                f"  {line.strip()}\n"
+                "Use `regenerate` to force a screenshot run on a change that\n"
+                "touches no UI path, or `skip` to suppress one that does."
+            )
     return None
 
 
