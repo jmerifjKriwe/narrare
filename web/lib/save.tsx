@@ -152,6 +152,10 @@ export function useAutosave(
       pending.current =
         pending.current === null
           ? { draft, dirty: new Set([changed]) }
+          // Deliberate over-send: a newer slot inherits the in-flight slot's
+          // dirty set and re-sends a field the request already carried, so a
+          // late keystroke never loses an edit. Better one word too many than
+          // one lost (#684).
           : { draft, dirty: new Set(pending.current.dirty).add(changed) };
       // A failure stays named while its draft waits for the retry — a message
       // that vanishes on the next keystroke and returns 800 ms later is

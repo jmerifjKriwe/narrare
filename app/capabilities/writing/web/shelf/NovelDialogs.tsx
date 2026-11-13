@@ -155,6 +155,7 @@ function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
   // refusal is answered. Typing lifts it, like the derived marks.
   const [languageRefused, setLanguageRefused] = useState(false);
   const [updateFailed, setUpdateFailed] = useState(false);
+  const [deletedElsewhere, setDeletedElsewhere] = useState(false);
   const [busy, setBusy] = useState(false);
   // Derived, not stored, so typing lifts the mark: a refusal the field can
   // answer never outlives the answer. The language's rule is the guard's
@@ -191,12 +192,15 @@ function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
       language: language.trim() === "" ? null : language.trim(),
       blurb: blurb.trim() === "" ? null : blurb.trim(),
     };
+    // Normalize the stored values through the same trim-to-null rule the
+    // candidate uses, so a hand-edited empty string compares equal to a
+    // cleared (null) field instead of marking the row dirty (#698).
     const dirty = dirtyFields(written, {
       title: novel.title,
-      author: novel.author,
-      genre: novel.genre,
-      language: novel.language,
-      blurb: novel.blurb,
+      author: (novel.author ?? "").trim() || null,
+      genre: (novel.genre ?? "").trim() || null,
+      language: (novel.language ?? "").trim() || null,
+      blurb: (novel.blurb ?? "").trim() || null,
     });
     if (dirty.length === 0) {
       close();
@@ -217,6 +221,10 @@ function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
       // sentence, named where the retry is one press away.
       if ((error as { detail?: unknown }).detail === "invalid language") {
         setLanguageRefused(true);
+        return;
+      }
+      if ((error as { status?: number }).status === 404) {
+        setDeletedElsewhere(true);
         return;
       }
       setUpdateFailed(true);
@@ -279,6 +287,11 @@ function DetailsForm({ novel, close }: { novel: Novel; close: () => void }) {
           rows={3}
         />
       </Field>
+      {deletedElsewhere ? (
+        <Notice tone="danger" live="alert">
+          {t("novels.deleteElsewhere")}
+        </Notice>
+      ) : null}
       {updateFailed ? (
         <Notice tone="danger" live="alert">
           {t("novels.errorUpdate")}
@@ -374,6 +387,11 @@ function DeleteForm({ novel, close }: { novel: Novel; close: () => void }) {
             {" "}
             <span>{t("novels.deleteEntities", { entities: entities.data.length })}</span>
           </>
+        ) : entities.isError ? (
+          <>
+            {" "}
+            <span>{t("novels.deleteEntitiesUnavailable")}</span>
+          </>
         ) : null}
       </p>
       <p className="text-body text-muted">{t("novels.deleteDocuments")}</p>
@@ -392,7 +410,7 @@ function DeleteForm({ novel, close }: { novel: Novel; close: () => void }) {
         </Notice>
       ) : null}
       <div className="mt-2 flex justify-end gap-3">
-        <Button onClick={close}>{t("novels.cancel")}</Button>
+        <Button disabled={busy} onClick={close}>{t("novels.cancel")}</Button>
         <Button variant="primary" disabled={busy} onClick={() => void confirm()}>
           {t("novels.delete")}
         </Button>

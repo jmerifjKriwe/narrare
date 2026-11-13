@@ -23,7 +23,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
       queryClient.setQueryData<Array<Chapter>>(["chapters", novelId], (rows) =>
         rows?.map((row) =>
           row.id === chapterId
-            ? { ...row, ...draft, updated_at: new Date().toISOString() }
+            ? { ...row, ...draft, title: draft.title.trim(), updated_at: new Date().toISOString() }
             : row,
         ),
       );

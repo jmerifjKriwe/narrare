@@ -55,7 +55,13 @@ export function NovelsPage() {
   // shelf's card opened was deleted elsewhere, and the shelf says so once,
   // on the mount the degrade lands on — the note dies with the showing, so
   // it can never outlive the event it names.
-  const [deletedElsewhere] = useState(takeNovelDeletedElsewhere);
+  // Consume the one-shot marker in an effect, not during render: the marker
+  // is a module-level side effect and React's rules (and Strict Mode's
+  // double-invoke) treat a state initializer that mutates it as a hazard.
+  const [deletedElsewhere, setDeletedElsewhere] = useState(false);
+  useEffect(() => {
+    setDeletedElsewhere(takeNovelDeletedElsewhere());
+  }, []);
 
   // The setup gate decides whether there is a library to list at all. Only
   // the novels themselves go through the query cache; this check cannot,

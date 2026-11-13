@@ -81,6 +81,9 @@ export function formatBytes(bytes: number | null): string | null {
  * wording, so no catalog carries it (`formatRelative`'s precedent).
  */
 function formatUploadedDate(timestamp: string): string {
+  // Guard the unparseable case: `formatDate` throws on an invalid date,
+  // which would take the whole panel down. Render the raw string instead.
+  if (Number.isNaN(Date.parse(timestamp))) return timestamp;
   return formatDate(timestamp, { dateStyle: "medium" });
 }
 
@@ -198,7 +201,14 @@ function DeleteForm({
     setRefusal(false);
     try {
       await deleteDocument.mutateAsync(document.id);
-    } catch {
+    } catch (error) {
+      // A 404 means the document is already gone — the user's intent (delete
+      // it) is satisfied, so close instead of blaming the service (#707).
+      if (error instanceof Error && /404/.test(error.message)) {
+        await onDeleted();
+        close();
+        return;
+      }
       setRefusal(true);
       return;
     } finally {

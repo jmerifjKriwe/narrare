@@ -308,7 +308,7 @@ export function NovelPage() {
           Below the desktop breakpoint the row is the overlays' containing
           block: the panels float above the editor instead of standing
           beside it. */}
-      <div className="mt-6 flex items-start max-lg:relative">
+      <div className="mt-6 flex items-start max-lg:relative" data-testid="chapter-filter-band">
         {railOverlay ? (
           <div
             aria-hidden="true"

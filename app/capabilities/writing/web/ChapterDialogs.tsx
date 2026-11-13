@@ -226,7 +226,7 @@ function DeleteForm({
         </Notice>
       ) : null}
       <div className="mt-2 flex justify-end gap-3">
-        <Button onClick={close}>{t("chapters.cancel")}</Button>
+        <Button disabled={busy} onClick={close}>{t("chapters.cancel")}</Button>
         <Button variant="primary" disabled={busy} onClick={() => void confirm()}>
           {t("chapters.delete")}
         </Button>
