@@ -193,7 +193,15 @@ export function useAutosave(
     };
   }, [flush]);
 
-  return { status, schedule, flush, discard };
+  /** Drop a field from the pending slot's dirty set, so a later flush
+   *  cannot re-send a value a rename already committed (Sourcery). */
+  const clearDirty = useCallback((field: keyof DocumentDraft) => {
+    if (pending.current === null) return;
+    pending.current.dirty.delete(field);
+    if (pending.current.dirty.size === 0) pending.current = null;
+  }, []);
+
+  return { status, schedule, flush, discard, clearDirty };
 }
 
 /** Show saving, confirmed success or a retryable failure beside the editor. */

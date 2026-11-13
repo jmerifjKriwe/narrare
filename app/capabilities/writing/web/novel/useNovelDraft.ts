@@ -60,7 +60,7 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
   // its ref — on each switch. Here the body's lifetime spans switches: the
   // editor shows `status` beside the text and feeds `schedule` on update;
   // `flush` is the page's own handle on what has not reached the server.
-  const { status, schedule: saveSchedule, flush, discard } = useAutosave(
+  const { status, schedule: saveSchedule, flush, discard, clearDirty } = useAutosave(
     current?.id ?? null,
     remember,
   );
@@ -182,13 +182,17 @@ export function useNovelDraft(novelId: string, current: Chapter | null) {
    *  and the rename survives it (Task 9's contract). */
   const rename = useCallback(
     (title: string) => {
+      // The rename committed a new title: drop the title from any pending
+      // autosave slot so a later flush cannot overwrite it with the old
+      // value (Sourcery).
+      clearDirty("title");
       setHeld((previous) =>
         previous.id === current?.id
           ? { ...previous, draft: { ...previous.draft, title } }
           : previous,
       );
     },
-    [current?.id],
+    [current?.id, clearDirty],
   );
 
   return {
