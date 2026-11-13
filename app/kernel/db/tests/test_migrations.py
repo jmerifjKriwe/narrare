@@ -127,32 +127,30 @@ def test_migrations_have_one_head() -> None:
     assert head_revision().count(",") == 0 and head_revision()
 
 
-def test_head_revision_refuses_zero_or_multiple_heads(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_head_revision_refuses_zero_or_multiple_heads(tmp_path: Path) -> None:
     # head_revision() must refuse anything but exactly one head, so a branch
     # that slipped in (or an empty history) cannot be upgraded against
-    # silently (issue #488).
-    class _FakeScriptDirectory:
-        @classmethod
-        def from_config(cls, config: Any) -> _FakeScriptDirectory:
+    # silently (issue #488). Real Alembic histories back both cases.
+    from alembic.config import Config
 
-            return cls()
-
-        def get_heads(self) -> list[str]:
-            return []
-
-    monkeypatch.setattr(migrate_module, "ScriptDirectory", _FakeScriptDirectory)
+    empty = tmp_path / "empty"
+    (empty / "versions").mkdir(parents=True)
+    empty_config = Config()
+    empty_config.set_main_option("script_location", str(empty))
     with pytest.raises(MigrationRefused):
-        head_revision()
+        head_revision(empty_config)
 
-    class _MultiHead(_FakeScriptDirectory):
-        def get_heads(self) -> list[str]:
-            return ["a", "b"]
-
-    monkeypatch.setattr(migrate_module, "ScriptDirectory", _MultiHead)
+    multi = tmp_path / "multi"
+    (multi / "versions").mkdir(parents=True)
+    for revision_id in ("aaa", "bbb"):
+        (multi / "versions" / f"{revision_id}_root.py").write_text(
+            f"revision = {revision_id!r}\ndown_revision = None\n",
+            encoding="utf-8",
+        )
+    multi_config = Config()
+    multi_config.set_main_option("script_location", str(multi))
     with pytest.raises(MigrationRefused):
-        head_revision()
+        head_revision(multi_config)
 
 
 def test_head_revision_is_found_from_any_working_directory(
