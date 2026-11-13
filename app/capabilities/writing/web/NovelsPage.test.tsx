@@ -578,7 +578,7 @@ describe("the drafted shelf (Task 10)", () => {
   }
 
   it("every_drafted_section_is_present", { timeout: 10_000 }, async () => {
-    mockShelfList([secondNovel(), shelfNovel()]);
+    mockShelfList([shelfNovel()]);
     renderShelf();
 
     // The header: eyebrow, page title, subtitle. The eyebrow is the
@@ -601,22 +601,8 @@ describe("the drafted shelf (Task 10)", () => {
     expect(screen.getByRole("group", { name: t("shelf.viewLabel") })).toBeTruthy();
     // The grid and the banner.
     expect(screen.getByRole("list")).toBeTruthy();
-    expect(await cardLink("Die Halligen")).toBeTruthy();
+    expect(await cardLink("Das Zählwerk")).toBeTruthy();
     expect(screen.getByText(t("shelf.banner.weekly"))).toBeTruthy();
-  });
-
-  it("the_hero_is_not_duplicated_in_the_grid", { timeout: 10_000 }, async () => {
-    mockShelfList([secondNovel(), shelfNovel()]);
-    renderShelf();
-
-    await screen.findByRole("region", { name: t("shelf.hero.active") });
-    // The hero's book must not appear again as a grid card.
-    const cards = document.querySelectorAll("[data-shelf-card]");
-    for (const card of cards) {
-      expect(card.textContent).not.toContain("Das Zählwerk");
-    }
-    // The other book still shows as a card.
-    expect(await cardLink("Die Halligen")).toBeTruthy();
   });
 
   it("the_hero_derives_from_the_last_touched_novel", { timeout: 10_000 }, async () => {
@@ -681,10 +667,9 @@ describe("the drafted shelf (Task 10)", () => {
     // No target exists: no "x / y Wörter" pair and no progress bar anywhere.
     expect(document.body.textContent).not.toContain("60.000");
     expect(document.querySelector("[data-target-bar]")).toBeNull();
-    // The grid book (the hero is featured above, not in the grid) wears the
-    // draft's default pill.
+    // Every book wears the draft's default pill.
     const pills = screen.getAllByText(t("shelf.statusDraft"));
-    expect(pills).toHaveLength(1);
+    expect(pills).toHaveLength(2);
     // The banner's goal is 0, its weekly average 0, its sparkline flat.
     expect(screen.getByText(t("shelf.banner.goal", { count: 0 }))).toBeTruthy();
     expect(screen.getByText(t("shelf.banner.weeklyValue", { count: 0 }))).toBeTruthy();
@@ -697,29 +682,31 @@ describe("the drafted shelf (Task 10)", () => {
 
   it("search_filters_titles", { timeout: 10_000 }, async () => {
     mockShelfList([
-      shelfNovel({ title: "Der Sturm", updated_at: "2026-11-01T08:00:00Z" }),
-      secondNovel({ updated_at: "2026-11-02T09:00:00Z" }),
+      shelfNovel({ title: "Der Sturm", updated_at: "2026-11-02T09:00:00Z" }),
+      secondNovel(),
     ]);
     renderShelf();
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     expect(await cardLink("Der Sturm")).toBeTruthy();
+    expect(await cardLink("Die Halligen")).toBeTruthy();
 
     const search = screen.getByRole("textbox", { name: t("shelf.searchLabel") });
     await user.type(search, "sturm");
 
-    // The matching title stands; the match is case-insensitive.
+    // Only the matching title stands; the match is case-insensitive.
     expect(screen.getByRole("link", { name: /Der Sturm/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Die Halligen/ })).toBeNull();
 
     // Clearing the box brings the whole shelf back.
     await user.clear(search);
-    expect(screen.getByRole("link", { name: /Der Sturm/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Die Halligen/ })).toBeTruthy();
   });
 
   it("the_toggle_switches_views", { timeout: 10_000 }, async () => {
-    mockShelfList([secondNovel(), shelfNovel()]);
+    mockShelfList([shelfNovel()]);
     renderShelf();
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    expect(await cardLink("Die Halligen")).toBeTruthy();
+    expect(await cardLink("Das Zählwerk")).toBeTruthy();
 
     // The grid stands; the pressed state says which view is on.
     const grid = screen.getByRole("button", { name: t("shelf.viewGrid") });
@@ -749,8 +736,8 @@ describe("the drafted shelf (Task 10)", () => {
     const longTitle =
       "Die Geschichte Nordseeinsellichterturmwegesommerblickea und die Küsten im Herbst";
     mockShelfList([
-      shelfNovel({ title: longTitle, updated_at: "2026-11-01T08:00:00Z" }),
-      secondNovel({ updated_at: "2026-11-02T09:00:00Z" }),
+      shelfNovel({ title: longTitle, updated_at: "2026-11-02T09:00:00Z" }),
+      secondNovel(),
     ]);
     renderShelf();
 
