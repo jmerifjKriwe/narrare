@@ -39,11 +39,11 @@ const ROW_CURRENT = "bg-secondary-container text-secondary-container-foreground 
 
 /**
  * The grip: the draft's hover-revealed `drag_indicator`, drawn in the set
- * (`dragIndicator` — two columns of three round-cap dots, the set's own
- * stroke voice) and revealed like the shell rail's names — hover, keyboard
- * focus, or a coarse pointer, with the transition dropped under reduced
- * motion. Chrome: `aria-hidden`, because the row is the grab and Alt+arrows
- * are the keyboard reorder.
+ * (`dragIndicator` — two columns of three solid dots, a 0.5 circle the
+ * set's 1.5 stroke reads as a full disc) and revealed like the shell
+ * rail's names — hover, keyboard focus, or a coarse pointer, with the
+ * transition dropped under reduced motion. Chrome: `aria-hidden`, because
+ * the row is the grab and Alt+arrows are the keyboard reorder.
  */
 const GRIP_REST =
   "mt-0.5 shrink-0 cursor-grab text-outline-variant opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 motion-reduce:transition-none";

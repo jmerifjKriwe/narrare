@@ -126,13 +126,23 @@ export const icons = {
       <path d="M8 4.6V8.2L10.6 9.6" />
     </>
   ),
-  /** The drag's grip: two columns of three round-cap dots — the drafted
-   *  `drag_indicator` the chapter rows reveal on hover. A row is the grab;
-   *  the arrows stay the keyboard's reorder. (The dots are 0.01 absolute
-   *  segments, the set's one command voice — a round cap turns each into
-   *  its dot.) */
+  /** The drag's grip: two columns of three solid dots — the drafted
+   *  `drag_indicator` the chapter rows reveal on hover. The owner's fix
+   *  round redraws the first hairline caps as the draft prints them, full
+   *  dots: circles so small under the set's 1.5 stroke (r 0.5) that the
+   *  stroke swallows the centre hole and the disc reads filled — still
+   *  bare geometry, no fill attribute, so the ink stays whatever the
+   *  glyph sits beside. A row is the grab; the arrows stay the keyboard's
+   *  reorder. */
   dragIndicator: (
-    <path d="M5.5 4L5.51 4M10.5 4L10.51 4M5.5 8L5.51 8M10.5 8L10.51 8M5.5 12L5.51 12M10.5 12L10.51 12" />
+    <>
+      <circle cx="5.5" cy="4" r="0.5" />
+      <circle cx="10.5" cy="4" r="0.5" />
+      <circle cx="5.5" cy="8" r="0.5" />
+      <circle cx="10.5" cy="8" r="0.5" />
+      <circle cx="5.5" cy="12" r="0.5" />
+      <circle cx="10.5" cy="12" r="0.5" />
+    </>
   ),
   /** The editor's note: ruled lines with the nib laid against them. */
   editNote: (

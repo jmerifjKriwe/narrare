@@ -330,10 +330,21 @@ describe("icons", () => {
   it("draws the rail's grip as the drafted six dots, moved out of the row", () => {
     // Task 5 drew the row grip locally; the drawing belongs to the set the
     // same voice the rest of the wave speaks — one geometry, one consumer.
+    // The owner's fix round pins the full dots the draft prints: solid
+    // discs, a 0.5 circle the set's 1.5 stroke swallows whole — the hairline
+    // caps read finer than the draft's ~2.5 px dots.
     const svg = svgOf("dragIndicator");
-    expect(svg.querySelector("path")!.getAttribute("d")).toBe(
-      "M5.5 4L5.51 4M10.5 4L10.51 4M5.5 8L5.51 8M10.5 8L10.51 8M5.5 12L5.51 12M10.5 12L10.51 12",
-    );
+    const dots = [...svg.querySelectorAll("circle")];
+    expect(
+      dots.map((dot) => `${dot.getAttribute("cx")},${dot.getAttribute("cy")} r${dot.getAttribute("r")}`),
+    ).toEqual([
+      "5.5,4 r0.5",
+      "10.5,4 r0.5",
+      "5.5,8 r0.5",
+      "10.5,8 r0.5",
+      "5.5,12 r0.5",
+      "10.5,12 r0.5",
+    ]);
   });
 
   it("draws every glyph with real ink — no empty path, no degenerate shape", () => {
