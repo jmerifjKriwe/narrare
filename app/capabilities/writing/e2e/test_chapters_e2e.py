@@ -92,7 +92,7 @@ def _seed_chapter(page: Page, novel_id: str, title: str) -> None:
 
 
 def test_a_long_chapter_title_is_fully_readable(page: Page, stack: Stack) -> None:
-    """A title longer than the 224 px rail truncates at the card's one line,
+    """A title longer than the 288 px rail truncates at the card's one line,
     as the draft draws it — and stays fully readable through the row's
     accessible name, which opens with the whole untruncated title. The grown
     list still pushes the next card down instead of painting over it."""

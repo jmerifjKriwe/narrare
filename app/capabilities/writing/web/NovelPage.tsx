@@ -322,10 +322,15 @@ export function NovelPage() {
       {/* The workbench: the rail beside the editor, so writing never scrolls
           past the chapter list. The container is one width in both states
           (F25) — 1200, the shelf's own, so the bar, the shelf and this page
-          share one left edge: rail 224, column 608, dock 336. The column
-          holds the card's 576 and leaves the ring its 24 px before the
-          dock's seam — the centring's 8 and the column's own 16 of padding.
-          The frame stays while the book
+          share one left edge — and the row sums its 1168 content exactly
+          both ways: rail 288 + column 880 closed, rail 288 + column 544 +
+          dock 336 open. The draft's rail is 288 (`lg:w-72`), so the dock
+          column is 544 where it was 608: the card fills its 528 zone (the
+          column's own 16 px pad is the ring's whole clearance to the
+          dock's seam — the ring never lands on it) and the measure
+          re-derives 544 → 496, the draft's own fluid card drawn `w-full
+          max-w` and shrinking with its column. The frame stays while the
+          book
           loads or fails — the toolbar and the docks are independent of the
           book's row, and a dock's own outage story must stay reachable.
           Below the desktop breakpoint the row is the overlays' containing

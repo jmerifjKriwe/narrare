@@ -115,16 +115,19 @@ export function ChapterRail({
   return (
     <aside
       /* Beside the editor at ≥1024 (the columns the desktop E2Es
-         pin); below, a drawer over it. The 224 the rail takes are
-         the desktop arithmetic's own — the gutter to the prose lives
-         inside the column (lg:pr-6), so rail + column + dock sum to
-         the container with no gap of their own; the column's 16 px
-         padding is the gap the card's ring needs. The list bounds
-         its height and scrolls inside itself (Review Focus 2); below
-         the breakpoint the whole drawer scrolls instead. The drawer
-         paints one z-step above the dock's: opening it over a live
-         dock covers the dock without unmounting it, so the dock's
-         own draft survives behind it. At ≥1024 the column is also
+         pin); below, a drawer over it. The 288 the rail takes are
+         the draft's own (screens/writing/workspace.html draws the
+         chapter sidebar `lg:w-72`) and the desktop arithmetic's —
+         rail 288 + column + dock sum to the container's 1168 content
+         with no gap of their own: 880 closed, 544 with the dock
+         open, where the card fills its zone and the column's own
+         16 px padding is the focus ring's clearance to the dock's
+         seam. The list bounds its height and scrolls inside itself
+         (Review Focus 2); below the breakpoint the whole drawer
+         scrolls instead. The drawer paints one z-step above the
+         dock's: opening it over a live dock covers the dock without
+         unmounting it, so the dock's own draft survives behind it.
+         At ≥1024 the column is also
          sticky: a long manuscript scrolls the page under the
          editor, and the rail — capped a viewport tall minus its
          own chrome — holds its place beside the writing instead of
@@ -141,10 +144,14 @@ export function ChapterRail({
          and 68 px (the field plus the band's own padding), and the
          workbench row's 24 px margin — 275 px ≈ 17.2rem, and the
          constant holds the half-rem step above it (280 px), 5 px of
-         slack for line-box rounding. The drafted header, tab row and
+         slack for line-box rounding. Nothing in that sum has a
+         rail-width term — every line sits above the workbench row,
+         which spans the container, not the rail — so the width's
+         224 → 288 step re-derives the budget to the same 17.5rem.
+         The drafted header, tab row and
          the two foot widgets are the rail's own chrome — they stand
          inside this cap and squeeze the list, not the budget. */
-      className="flex w-56 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-17.5rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
+      className="flex w-72 shrink-0 flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-17.5rem)] lg:pr-6 max-lg:absolute max-lg:top-0 max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:max-w-full max-lg:overflow-y-auto max-lg:rounded-[var(--radius-lg)] max-lg:border max-lg:border-rule max-lg:bg-panel max-lg:p-4 max-lg:shadow-overlay"
       aria-label={t("chapters.heading")}
     >
       <RailHeader bookTitle={bookTitle} chapterCount={chapterCount} words={railWords} />

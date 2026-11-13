@@ -76,11 +76,14 @@ export function EditorColumn({
     >
       {/* The writing surface is the card (F18): ChapterEditor paints it,
           the page only leaves it the column. The arithmetic is the
-          workspace's: rail 224 + column 608 + dock 336 = the container's
-          1168; the column is fluid around the card's 576 and keeps the
-          16 px the focus ring needs, so the ring never lands on the dock's
-          seam. The measure stays 544 inside the card, wherever the dock
-          is. */}
+          workspace's: rail 288 + column 544 + dock 336 = the container's
+          1168 (F25's one width). Closed, the column is the 880 remainder
+          and centres the card's 576; open, the card fills the column's
+          528 zone and the column's own 16 px pad is the ring's clearance,
+          so the ring never lands on the dock's seam. The measure is 544
+          inside the card on the workbench; with the dock open the card
+          yields to its zone and the measure re-derives to 496 — the
+          draft's own card is `w-full max-w` and shrinks with its column. */}
       <div className="w-full py-6">
         <div className="mx-auto w-full max-w-[576px]">
           {pending ? (

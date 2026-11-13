@@ -155,10 +155,15 @@ def _container_width(page: Page) -> float:
     return float(width)
 
 
-def test_the_prose_keeps_its_measure_when_the_dock_opens(page: Page, stack: Stack) -> None:
-    """F25: one container width with and without the dock, and the prose
-    keeps its 544 px measure at 1280x800 — opening a panel never reflows
-    the text."""
+def test_the_dock_open_row_sums_the_container(page: Page, stack: Stack) -> None:
+    """F25: one container width with and without the dock, and the row sums
+    its 1168 px content exactly both ways — rail 288 + column 880 closed,
+    rail 288 + column 544 + dock 336 open (the draft's own `lg:w-72` rail).
+    The card yields its centring before it yields the ring's 16 px: open,
+    it fills the column's 528 px zone and the measure re-derives
+    544 → 496, the draft's own fluid card drawn `w-full max-w` — pinned
+    here so a drift in any of the five is a different layout, not a
+    surprise."""
     _create_workspace(page, "Das Bleiband")
     page.set_viewport_size({"width": 1280, "height": 800})
     expect(page.locator(PROSE)).to_be_visible()
@@ -173,18 +178,28 @@ def test_the_prose_keeps_its_measure_when_the_dock_opens(page: Page, stack: Stac
     if abs(closed - 544) > 1:
         pytest.fail(f"the prose column is {closed}px at 1280x800, not 544±1")
     container_closed = _container_width(page)
+    rail_box = page.locator(RAIL).bounding_box()
+    if rail_box is None:
+        pytest.fail("the rail has no box to measure")
+    if abs(rail_box["width"] - 288) > 1:
+        pytest.fail(f"the rail is {rail_box['width']}px, not the draft's 288±1")
+    card_closed = page.locator("[data-editor-card]").bounding_box()
+    if card_closed is None:
+        pytest.fail("the editor card has no box closed")
+    if abs(card_closed["width"] - 576) > 1:
+        pytest.fail(f"the card is {card_closed['width']}px closed, not 576±1")
 
     page.get_by_role("button", name=DOCK_TAB, exact=True).click()
     expect(page.locator(DOCK)).to_be_visible()
 
     opened = prose_width()
-    if abs(opened - 544) > 1:
-        pytest.fail(f"the prose column is {opened}px with the dock open, not 544±1")
-    # The card's arithmetic (1168 = 224 + 608 + 336): the dock is the
-    # design's 21 rem, and the column is what the container leaves it — the
-    # card's 576 plus the 8 px the centring adds on either side and the
-    # 16 px the focus ring needs, so the ring never lands on the dock's
-    # seam. A drift in any of the three is a different layout.
+    if abs(opened - 496) > 1:
+        pytest.fail(f"the prose column is {opened}px with the dock open, not 496±1")
+    # The row's arithmetic (1168 = 288 + 544 + 336): the dock is the
+    # design's 21 rem, the rail the draft's 18, and the column is what the
+    # container leaves them — the card fills its zone and the column's
+    # 16 px pad is the ring's whole clearance, so the ring never lands on
+    # the dock's seam. A drift in any of the three is a different layout.
     dock_box = page.locator(DOCK).bounding_box()
     editor_box = page.locator(EDITOR).bounding_box()
     card_box = page.locator("[data-editor-card]").bounding_box()
@@ -192,12 +207,12 @@ def test_the_prose_keeps_its_measure_when_the_dock_opens(page: Page, stack: Stac
         pytest.fail("the dock, the editor column or the editor card has no box")
     if abs(dock_box["width"] - 336) > 1:
         pytest.fail(f"the dock is {dock_box['width']}px, not 336±1")
-    if abs(editor_box["width"] - 608) > 1:
-        pytest.fail(f"the editor column is {editor_box['width']}px, not 608±1")
-    if abs(card_box["width"] - 576) > 1:
-        pytest.fail(f"the editor card is {card_box['width']}px, not 576±1")
-    if abs((card_box["x"] + card_box["width"] + 24) - dock_box["x"]) > 1:
-        pytest.fail("the 24 px gap does not sit between the card and the dock")
+    if abs(editor_box["width"] - 544) > 1:
+        pytest.fail(f"the editor column is {editor_box['width']}px, not 544±1")
+    if abs(card_box["width"] - 528) > 1:
+        pytest.fail(f"the editor card is {card_box['width']}px, not 528±1")
+    if abs((card_box["x"] + card_box["width"] + 16) - dock_box["x"]) > 1:
+        pytest.fail("the ring's 16 px does not sit between the card and the dock")
     container_opened = _container_width(page)
     if container_closed != container_opened:
         pytest.fail(
