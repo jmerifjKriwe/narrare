@@ -153,12 +153,20 @@ export function ChapterRail({
         /* The chapters' panel: the list and its deeds, exactly as they
            stood — the tab row is the only thing new above them. The
            panel bounds the height the list scrolls in, the way the
-           aside used to. */
+           aside used to. `flex-1`/`min-h-0` are the desktop column's:
+           at ≥1024 the rail is capped and the panel takes the
+           remainder so the list scrolls inside itself. In the drawer
+           (<1024) the panel must NOT grow or shrink — a growing panel
+           under a too-small cap collapses to nothing and its content
+           spills below the foot widgets, which paint over it (later
+           DOM): the rows and the add button become unclickable. Below
+           the breakpoint the drawer itself is the scroll container and
+           the panel is plain flow. */
         <div
           role="tabpanel"
           id="rail-panel-chapters"
           aria-labelledby="rail-tab-chapters"
-          className="flex min-h-0 flex-1 flex-col px-3"
+          className="flex flex-col px-3 lg:min-h-0 lg:flex-1"
         >
           {chapterCount === 0 ? (
             <p className="mt-2 text-body text-muted">{t("chapters.empty")}</p>
@@ -356,12 +364,15 @@ export function ChapterRail({
         </div>
       ) : (
         /* The Szenen panel: the honest stand-in until the rail grows a
-           scenes view of its own — one sentence and the planning door. */
+           scenes view of its own — one sentence and the planning door.
+           Same wiring as the chapters' panel: the drawer's children are
+           natural flow below 1024, the desktop column's remainder
+           above. */
         <div
           role="tabpanel"
           id="rail-panel-scenes"
           aria-labelledby="rail-tab-scenes"
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex flex-col lg:min-h-0 lg:flex-1"
         >
           <RailScenesEmpty novelId={novelId} />
         </div>

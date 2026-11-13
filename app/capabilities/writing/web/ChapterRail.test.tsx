@@ -361,6 +361,20 @@ describe("the rail's foot", () => {
     expect(screen.getByText(t("workspace.railSessionLabel"))).toBeTruthy();
   });
 
+  it("lays the drawer's panels out at natural flow — flex-1 is the desktop column's alone", () => {
+    // Below 1024 the drawer is the scroll container: a flex-growing panel
+    // under the drawer's height collapses and spills the list beneath the
+    // foot widgets, which paint over it — the rows and the add button
+    // become unclickable (the 360 sweep's drawer legs once proved it).
+    // The panel may take the capped column's remainder only at ≥1024,
+    // where the list scrolls inside itself.
+    const source = readFileSync("../app/capabilities/writing/web/novel/ChapterRail.tsx", "utf8");
+    expect(source).toContain('className="flex flex-col px-3 lg:min-h-0 lg:flex-1"');
+    expect(source).toContain('className="flex flex-col lg:min-h-0 lg:flex-1"');
+    // No bare flex-1 on a tabpanel — the spill is what the pins above prevent.
+    expect(source).not.toMatch(/className="flex min-h-0 flex-1[^"]*"/);
+  });
+
   it("reads the marker from the chapter's own place in the book, not the filter's slot", async () => {
     // A filter's slot is the visible list's order, not the book's; the
     // caption names the chapter's number, so it must survive the filter.
