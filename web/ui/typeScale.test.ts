@@ -343,6 +343,17 @@ describe("the paper's utilities", () => {
     expect(head["color"]).toBe("var(--primary)");
   });
 
+  it("keeps the serif's voice a family: the rail title wears it at its own step", () => {
+    const family = utilitiesRule(".font-garamond");
+    expect(family["font-family"]).toContain('"EB Garamond"');
+    // Family only: the metrics stay the call site's step's — the rail's
+    // book name reads the title step, not the headline's 26/34.
+    expect(family["font-size"]).toBeUndefined();
+    expect(family["line-height"]).toBeUndefined();
+    expect(family["font-weight"]).toBeUndefined();
+    expect(family["color"]).toBeUndefined();
+  });
+
   it("inks the ghost in the writing hue at the drafted strength", () => {
     const ghost = rule(".ProseMirror .ghost");
     expect(ghost["font-style"]).toBe("italic");

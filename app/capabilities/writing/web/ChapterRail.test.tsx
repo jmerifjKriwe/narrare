@@ -183,9 +183,11 @@ describe("the meta header", () => {
   it("shows the book in the serif, as text — never a second book-title heading", async () => {
     await renderRail();
     const title = screen.getByText("Dead Signal");
-    // The face is the stylesheet's one prose headline (the census pins the
-    // rule where it lives; the rail only wears it).
-    expect(title.className).toContain("prose-headline");
+    // The serif rides as the family utility; the metrics stay the title
+    // step's own — the draft's rail head draws the name near 21/28, not
+    // the chapter headline's 26/34.
+    expect(title.className).toContain("font-garamond");
+    expect(title.className).toContain("text-title");
     // The workspace's one book-title heading is the page's h1: eight E2E
     // files pin `get_by_role("heading", name=title)` to resolve to exactly
     // it, so the rail's drafted title must stay a styled paragraph.

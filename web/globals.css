@@ -684,6 +684,17 @@ body {
   }
 
   /*
+   * The serif's voice alone, for the site that wears it at its own scale
+   * step: the rail's book name reads the title step (text-title) in the
+   * brand serif — the draft's rail head draws the name near 21/28, not the
+   * chapter headline's 26/34, so the metrics stay the step's and this
+   * carries no size, weight or ink of its own.
+   */
+  .font-garamond {
+    font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+  }
+
+  /*
    * The drop cap on the prose's first paragraph — the draft's literary
    * first letter, floated in the primary ink. The first <p>, not the first
    * child: a chapter that opens with a heading still caps its first
